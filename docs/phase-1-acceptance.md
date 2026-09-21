@@ -29,7 +29,7 @@ Compose stack and observing, with the command shown.
 | 20 | Accepted suggestions stored with source, unconfirmed; confirming is a distinct action | `test_catalog_usda.py::test_accepted_suggestion_is_unconfirmed_until_confirmed`, `test_catalog_ingredients.py::test_density_set_then_confirmed_as_distinct_action`, `::test_measures_crud_and_confirm` |
 | 21 | Bench equals a direct `convert` call, including failures | `test_catalog_bench.py::test_bench_matches_direct_convert` |
 | 22 | Deactivated items leave the typeahead but resolve by id | `test_catalog_products.py::test_update_clear_and_deactivate`, `test_catalog_ingredients.py::test_deactivated_hidden_from_list_but_resolvable` |
-| 23 (1D-21) | Home base, vendor, location from pins and names only | `test_geo_locations.py::test_home_base_vendor_and_location_from_pins_and_names`; browser: `e2e/tests/map.spec.ts` (pending 1E) |
+| 23 (1D-21) | Home base, vendor, location from pins and names only | `test_geo_locations.py::test_home_base_vendor_and_location_from_pins_and_names`; browser: `e2e/tests/map.spec.ts` (pin drop, inline vendor, name only) |
 | 24 (1D-22) | Stall inherits market hours unless it has its own | `test_geo_locations.py::test_stall_inherits_market_hours_unless_it_has_its_own` |
 | 25 (1D-23) | Invalid hours rejected with a locating message; the two spec strings evaluate correctly across DST in America/Los_Angeles | `test_geo_opening_hours.py` (all tests, including `::test_is_open_endpoint_across_dst`) |
 | 26 (1D-24) | Overpass candidates, adoption in one transaction, double adoption refused | `test_geo_osm.py::test_adopt_creates_vendor_place_location_and_refuses_twice`, `::test_candidates_query_user_agent_and_cache` |
@@ -37,17 +37,19 @@ Compose stack and observing, with the command shown.
 | 28 (1D-26) | Refresh updates hours from OSM but keeps a user-changed name | `test_geo_osm.py::test_refresh_updates_hours_but_keeps_user_edits` |
 | 29 (1D-27) | New location defaults to the nearest home base; can be cleared | `test_geo_locations.py::test_home_base_defaults_to_nearest_and_can_be_cleared` |
 | 30 (1D-28) | `price_scope = chain` reflected in the API and covered by a test | `test_geo_vendors.py::test_price_scope_chain_is_reflected_everywhere` |
-| 31 (1E-29) | Tiles present: map renders with no external request | `e2e/tests/map.spec.ts` (pending 1E; the no-tiles variant runs in CI, the with-tiles variant needs a local extract) |
-| 32 (1E-30) | No tiles: pins at correct positions and a "tiles missing" notice | `e2e/tests/map.spec.ts` (pending 1E) |
-| 33 (1E-31) | "Open at" hides a closed seasonal market and shows it when open | `e2e/tests/map.spec.ts` (pending 1E); API level in `test_geo_locations.py::test_open_at_filter_and_is_open_flag` |
-| 34 (1E-32) | Kinds distinguishable without colour alone | Frontend unit test on marker shapes (pending 1E) |
-| 35 (1E-33) | Market lists stalls; stall shows inherited or own hours | `e2e/tests/map.spec.ts` (pending 1E) |
-| 36 (1E-34) | 390 px: pin selected and detail read without horizontal scroll | `e2e/tests/map.spec.ts` phone project (pending 1E) |
-| 37 (1E-35) | OSM and Protomaps attribution shown | `e2e/tests/map.spec.ts` (pending 1E) |
+| 31 (1E-29) | Tiles present: map renders with no external request | `e2e/tests/map.spec.ts` asserts zero external requests through `watchExternalRequests`; the basemap style drops every symbol layer so no glyph or sprite CDN is ever contacted. Run locally with an extract in `data/tiles/` to exercise the tiles-present path; CI runs the no-tiles path |
+| 32 (1E-30) | No tiles: pins at correct positions and a "tiles missing" notice | `e2e/tests/map.spec.ts`; `frontend/src/test/map.test.tsx` (markers carry the location's coordinates) |
+| 33 (1E-31) | "Open at" hides a closed seasonal market and shows it when open | `e2e/tests/map.spec.ts` (seasonal stall hidden in January, shown on a July Saturday); API level in `test_geo_locations.py::test_open_at_filter_and_is_open_flag`. Locations with unknown hours stay listed |
+| 34 (1E-32) | Kinds distinguishable without colour alone | `frontend/src/components/geo/MapView.tsx`: square, circle, diamond, triangle, and a house glyph per kind, plus colour; asserted in `frontend/src/test/map.test.tsx` |
+| 35 (1E-33) | Market lists stalls; stall shows inherited or own hours | `frontend/src/test/map.test.tsx` (market → stalls → inherited hours); `e2e/tests/map.spec.ts` |
+| 36 (1E-34) | 390 px: pin selected and detail read without horizontal scroll | `e2e/tests/map.spec.ts` in the `phone` project asserts `scrollWidth <= innerWidth` with the detail sheet open |
+| 37 (1E-35) | OSM and Protomaps attribution shown | `e2e/tests/map.spec.ts` (attribution present with tiles absent) |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
 criteria to 1A, then restarts at 13 for 1C and continues to 35; the second column
 gives the spec's own number where it differs.
+
+All Phase 1 criteria pass as of 2026-09-21: backend 184 tests, frontend 38, browser 16.
 
 ## Known gaps carried into Phase 2
 
@@ -55,3 +57,5 @@ gives the spec's own number where it differs.
   A household has tens of locations, not thousands; add pagination if the
   planner in Phase 4 ever needs it.
 - Nominatim geocoding was optional at the end of Phase 1 and was not built.
+- The basemap is unlabelled: label layers need glyphs, and serving them from a CDN would break the no-external-requests rule. Self-hosted glyphs under `frontend/public/` would restore labels later.
+- Stalls share their market's pin and are reached through the market's panel.
