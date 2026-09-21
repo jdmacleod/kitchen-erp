@@ -140,7 +140,7 @@ function RecentProducts() {
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium">All products</h2>
+        <h2 className="text-lg font-medium">Product catalog</h2>
         <label className="inline-flex min-h-10 items-center gap-2 text-sm">
           <input
             type="checkbox"

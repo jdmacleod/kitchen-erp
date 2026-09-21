@@ -29,6 +29,7 @@ export function Nav({ id }: { id?: string }) {
 
   const settingsLinks = [
     ...(user.role === "admin" ? [{ to: "/settings/users", label: "Users" }] : []),
+    { to: "/settings/home-bases", label: "Home bases" },
     { to: "/settings/tokens", label: "API tokens" },
   ];
 

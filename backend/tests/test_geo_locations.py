@@ -281,12 +281,13 @@ async def test_open_at_filter_and_is_open_flag(admin_client: httpx.AsyncClient):
         "/api/v1/vendor-locations", params={"open_at": "2026-06-06T17:00:00Z"}
     )
     names = {i["name"]: i["is_open"] for i in r.json()["items"]}
-    assert names == {"Weekly": True, "Seasonal": True}
+    # Unknown hours are not "closed": the location stays listed with is_open null.
+    assert names == {"Weekly": True, "Seasonal": True, "Unknown Hours": None}
     # Saturday 2026-01-03 10:00 PST: the seasonal market is closed for winter.
     r = await admin_client.get(
         "/api/v1/vendor-locations", params={"open_at": "2026-01-03T18:00:00Z"}
     )
-    assert [i["name"] for i in r.json()["items"]] == ["Weekly"]
+    assert sorted(i["name"] for i in r.json()["items"]) == ["Unknown Hours", "Weekly"]
     # Without open_at, is_open is not evaluated and unknown-hours locations are listed.
     r = await admin_client.get("/api/v1/vendor-locations")
     assert {i["name"]: i["is_open"] for i in r.json()["items"]} == {

@@ -410,7 +410,9 @@ async def list_locations(
         location = row[0]
         distance_m = row[1] if point is not None else None
         is_open = is_open_at(location, at) if at is not None else None
-        if at is not None and not is_open:
+        # Filtering by "open at" removes only locations known to be closed; a
+        # location with no recorded hours is unknown, not closed, and stays.
+        if at is not None and is_open is False:
             continue
         rows.append(LocationRow(location, distance_m, is_open))
     return rows

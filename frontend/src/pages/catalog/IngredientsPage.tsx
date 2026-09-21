@@ -39,7 +39,7 @@ export function IngredientsPage() {
 
         <Card>
           <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-lg font-medium">All ingredients</h2>
+            <h2 className="text-lg font-medium">Ingredient catalog</h2>
             <label className="inline-flex min-h-10 items-center gap-2 text-sm">
               <input
                 type="checkbox"

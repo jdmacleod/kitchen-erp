@@ -8,6 +8,10 @@ import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
+import { MapPage } from "./pages/geo/MapPage";
+import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
+import { VendorsPage } from "./pages/geo/VendorsPage";
+import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { TokensPage } from "./pages/settings/TokensPage";
@@ -28,9 +32,11 @@ export function App() {
             <Route path="/ingredients/:id" element={<IngredientDetailPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
-            {/* Phase 1D/1E: vendors and map */}
-            <Route path="/vendors" element={<CatalogPage {...catalogPages.vendors} />} />
-            <Route path="/map" element={<CatalogPage {...catalogPages.map} />} />
+            {/* Phase 1D/1E: vendors, home bases, and the map */}
+            <Route path="/vendors" element={<VendorsPage />} />
+            <Route path="/vendors/:id" element={<VendorDetailPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/settings/home-bases" element={<HomeBasesPage />} />
             <Route path="/purchases" element={<CatalogPage {...catalogPages.purchases} />} />
             <Route
               path="/settings/users"

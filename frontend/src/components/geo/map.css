@@ -1,0 +1,106 @@
+/* Map pins. Each vendor kind has its own colour AND shape, so kinds stay
+   distinguishable without colour vision. Buttons are 36px for tapping; the
+   visible shape is smaller so pins do not crowd each other. */
+
+.kerp-pin {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+}
+.kerp-pin:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 1px;
+}
+.kerp-pin__shape {
+  display: block;
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+/* chain: square */
+.kerp-pin--chain .kerp-pin__shape {
+  background: #2563eb;
+  border: 2px solid #fff;
+  border-radius: 3px;
+}
+/* independent: circle */
+.kerp-pin--independent .kerp-pin__shape {
+  background: #15803d;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+/* market: diamond */
+.kerp-pin--market .kerp-pin__shape {
+  width: 18px;
+  height: 18px;
+  background: #d97706;
+  border: 2px solid #fff;
+  transform: rotate(45deg);
+}
+/* stand: triangle (clip-path cannot carry a border, so it is a bit bigger) */
+.kerp-pin--stand .kerp-pin__shape {
+  width: 26px;
+  height: 24px;
+  background: #dc2626;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+/* home base: house glyph (an inline SVG) */
+.kerp-pin--home .kerp-pin__shape {
+  width: 26px;
+  height: 26px;
+  color: #171717;
+}
+/* the pin being placed: dashed ring */
+.kerp-pin--draft .kerp-pin__shape {
+  background: rgba(37, 99, 235, 0.25);
+  border: 3px dashed #1d4ed8;
+  border-radius: 50%;
+  width: 26px;
+  height: 26px;
+}
+.kerp-pin--selected .kerp-pin__shape {
+  outline: 3px solid #111;
+  outline-offset: 2px;
+}
+.kerp-pin--inactive .kerp-pin__shape {
+  opacity: 0.45;
+}
+.kerp-pin--market.kerp-pin--selected .kerp-pin__shape {
+  outline-offset: 3px;
+}
+.kerp-pin--stand.kerp-pin--selected .kerp-pin__shape,
+.kerp-pin--home.kerp-pin--selected .kerp-pin__shape {
+  /* outlines do not follow clip-path or glyphs; a ring behind the button does */
+  outline: none;
+}
+.kerp-pin--stand.kerp-pin--selected,
+.kerp-pin--home.kerp-pin--selected {
+  box-shadow: 0 0 0 3px #111;
+}
+
+.kerp-map--placing .maplibregl-canvas {
+  cursor: crosshair;
+}
+/* While placing, a click on an existing pin must still reach the map. */
+.kerp-map--placing .kerp-pin:not(.kerp-pin--draft) {
+  pointer-events: none;
+}
+
+.kerp-attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #262626;
+  background: rgba(255, 255, 255, 0.85);
+  border-top-left-radius: 4px;
+}

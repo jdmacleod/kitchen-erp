@@ -84,7 +84,7 @@ Each location defaults its home base to the nearest one by geodesic distance, wh
 
 Render vendor locations and home bases on a MapLibre map backed by a PMTiles extract of Southern California served from `data/tiles/` by the `web` container. Document in the repository how to obtain or cut the extract; the file itself is not committed. If no tiles file is present the map falls back to a plain background with pins still placed correctly, and the UI says that tiles are missing, so that a missing download never blocks the rest of the system.
 
-Pins are distinguished by vendor kind using both colour and shape. A filter narrows by kind, by home base, and by "open at", which defaults to now and accepts any date and time. Selecting a pin shows the location's name, vendor, hours in readable form, and whether it is open at the chosen time; in Phase 2 this panel gains price information. Stalls are reachable by selecting their market. The map is usable on a phone: pins are large enough to tap and the detail panel does not cover the whole map.
+Pins are distinguished by vendor kind using both colour and shape. A filter narrows by kind, by home base, and by "open at", which defaults to now and accepts any date and time; it removes locations known to be closed at that instant and keeps locations whose hours are unknown, marked as such. Selecting a pin shows the location's name, vendor, hours in readable form, and whether it is open at the chosen time; in Phase 2 this panel gains price information. Stalls are reachable by selecting their market. The map is usable on a phone: pins are large enough to tap and the detail panel does not cover the whole map.
 
 ### Acceptance criteria
 

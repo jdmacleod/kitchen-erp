@@ -19,16 +19,6 @@ export function CatalogPage({ title, emptyTitle, description }: CatalogPageProps
 }
 
 export const catalogPages = {
-  vendors: {
-    title: "Vendors",
-    emptyTitle: "No vendors yet",
-    description: "Vendors are the shops, markets, and stands you buy from.",
-  },
-  map: {
-    title: "Map",
-    emptyTitle: "No locations to show",
-    description: "Vendor locations and home bases will appear here once they exist.",
-  },
   purchases: {
     title: "Purchases",
     emptyTitle: "No purchases yet",
