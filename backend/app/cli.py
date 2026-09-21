@@ -14,6 +14,8 @@ from app.core.logging import configure_logging
 cli = typer.Typer(help="Kitchen ERP administration.", no_args_is_help=True)
 seed_cli = typer.Typer(help="Seed reference data.", no_args_is_help=True)
 cli.add_typer(seed_cli, name="seed")
+import_cli = typer.Typer(help="Import reference data.", no_args_is_help=True)
+cli.add_typer(import_cli, name="import")
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -78,6 +80,24 @@ def seed_units() -> None:
             n = await _seed(db)
         await dispose_engine()
         typer.echo(f"seeded {n} units")
+
+    asyncio.run(_run())
+
+
+PATH_OPTION = typer.Option(..., "--path", exists=True, file_okay=False, resolve_path=True)
+
+
+@import_cli.command("usda-portions")
+def import_usda_portions(path: Path = PATH_OPTION) -> None:
+    """Load food portions from a local USDA FoodData Central CSV download."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.usda import import_portions
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            n = await import_portions(db, path)
+        await dispose_engine()
+        typer.echo(f"imported {n} portions")
 
     asyncio.run(_run())
 

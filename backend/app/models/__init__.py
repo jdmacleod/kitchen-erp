@@ -1,5 +1,20 @@
 from app.models.base import Base
+from app.models.catalog import Ingredient, IngredientMeasure, Product, RefUsdaPortion
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.units import UnitRow
 
-__all__ = ["ApiToken", "AppUser", "Base", "IdempotencyKey", "Session", "UnitRow"]
+# Geography models (Phase 1D) register with Base on import.
+from app.models import geo as _geo  # noqa: F401  isort: skip
+
+__all__ = [
+    "ApiToken",
+    "AppUser",
+    "Base",
+    "IdempotencyKey",
+    "Ingredient",
+    "IngredientMeasure",
+    "Product",
+    "RefUsdaPortion",
+    "Session",
+    "UnitRow",
+]

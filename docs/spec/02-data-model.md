@@ -33,7 +33,7 @@ Conversions within a dimension are physical constants and live entirely in `to_b
 ingredient(
   id, name (unique on lower(name)), category,
   canonical_unit FK unit CHECK IN (g, ml, each),
-  density_g_per_ml NUMERIC(10,5)?, density_source?,
+  density_g_per_ml NUMERIC(10,5)?, density_source?, density_confirmed BOOLEAN DEFAULT false,
   yield_pct NUMERIC(5,4) DEFAULT 1 CHECK (0 < yield_pct <= 1),
   perishability CHECK IN (shelf_stable, refrigerated, fresh),
   notes?
@@ -48,7 +48,7 @@ ingredient_measure(
 )
 ```
 
-`density_source` takes the same values as `ingredient_measure.source`. `yield_pct` and `perishability` are not used until Phase 3 and Phase 4 respectively but are cheap to capture while an ingredient is being created, and both default sensibly.
+`density_source` takes the same values as `ingredient_measure.source`, and `density_confirmed` plays the role that `confirmed` plays on a measure: an accepted suggestion or a newly entered value is unconfirmed until a person confirms it as a distinct action. The same pair exists on `product` for the density override. `yield_pct` and `perishability` are not used until Phase 3 and Phase 4 respectively but are cheap to capture while an ingredient is being created, and both default sensibly.
 
 ### Products
 
@@ -60,9 +60,10 @@ product(
   barcode? (unique when present),
   quality_rating SMALLINT? CHECK (1..5),
   exclusive_vendor_id FK vendor?,            -- single-source items and vendor-specific produce
-  density_override NUMERIC(10,5)?, density_override_source?,
+  density_override NUMERIC(10,5)?, density_override_source?, density_override_confirmed BOOLEAN DEFAULT false,
   active BOOLEAN DEFAULT true, notes?,
-  CHECK ((pack_qty IS NULL) = (pack_unit IS NULL))
+  CHECK ((pack_qty IS NULL) = (pack_unit IS NULL)),
+  CHECK ((density_override IS NULL) = (density_override_source IS NULL))
 )
 ```
 

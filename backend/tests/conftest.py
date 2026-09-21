@@ -77,12 +77,25 @@ async def database() -> AsyncIterator[None]:
             await admin.close()
 
 
+KEEP_TABLES = {"alembic_version", "unit", "spatial_ref_sys"}
+
+
 @pytest.fixture(autouse=True)
 async def clean_tables() -> AsyncIterator[None]:
+    """Empty every application table after each test; reference data stays."""
     yield
     owner = await asyncpg.connect(_dsn(os.environ["MIGRATION_DATABASE_URL"]))
     try:
-        await owner.execute("TRUNCATE app_user CASCADE")
+        names = [
+            r["tablename"]
+            for r in await owner.fetch(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+            )
+            if r["tablename"] not in KEEP_TABLES
+        ]
+        if names:
+            quoted = ", ".join(f'"{n}"' for n in names)
+            await owner.execute(f"TRUNCATE {quoted} CASCADE")
     finally:
         await owner.close()
 
