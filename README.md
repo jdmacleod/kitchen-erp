@@ -26,6 +26,22 @@ it through `host.docker.internal`. On a Linux host with a GPU, add
 `--profile llm` to run it in Docker and set `OLLAMA_BASE_URL=http://ollama:11434`.
 The system is fully usable for manual workflows with no model server running.
 
+## Optional reference data
+
+Both are optional and local. The system works fully without them.
+
+- **USDA FoodData Central** portions, used only to suggest densities and named
+  measures when an ingredient is created. Download the "Full Download of All Data
+  Types" CSV bundle from <https://fdc.nal.usda.gov/download-datasets> (public
+  domain), unzip it under `data/usda/`, then:
+
+  ```bash
+  docker compose exec api kerp import usda-portions --path /data/usda/<unzipped-dir>
+  ```
+
+- **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See
+  `docs/tiles.md` for how to cut one and for the attribution it carries.
+
 ## Tests
 
 ```bash
