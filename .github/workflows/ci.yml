@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgis/postgis:16-3.5
+        env:
+          POSTGRES_USER: kerp_owner
+          POSTGRES_PASSWORD: ci-owner-pw
+          POSTGRES_DB: kerp
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kerp_owner -d kerp"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+asyncpg://kerp_app:ci-app-pw@127.0.0.1:5433/kerp
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:ci-owner-pw@127.0.0.1:5433/kerp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - name: Create the runtime role
+        run: |
+          PGPASSWORD=ci-owner-pw psql -h 127.0.0.1 -p 5433 -U kerp_owner -d kerp \
+            -c "CREATE ROLE kerp_app LOGIN PASSWORD 'ci-app-pw'" \
+            -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC"
+      - name: Lint
+        working-directory: backend
+        run: |
+          uv sync --frozen
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Test
+        working-directory: backend
+        run: uv run pytest -q
+
+  frontend:
+    name: Frontend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - name: Install, lint, test, build
+        working-directory: frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm test
+          pnpm build
+
+  e2e:
+    name: Browser tests
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - name: Start the stack
+        run: |
+          cp .env.example .env
+          docker compose up -d --build
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8080/api/v1/health >/dev/null && break; sleep 2; done
+          docker compose exec -T api kerp migrate
+          docker compose exec -T api kerp seed units
+          docker compose exec -T api kerp create-admin --email admin@example.com --display-name Admin --password local-dev-admin-pw
+      - name: Run Playwright
+        working-directory: e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          pnpm test
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
