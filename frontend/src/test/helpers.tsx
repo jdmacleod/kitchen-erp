@@ -37,7 +37,10 @@ export function errorResponse(status: number, code: string, message: string): Re
 
 export interface RecordedCall {
   method: string;
+  /** Path relative to /api/v1, including any query string. */
   path: string;
+  /** The query string parsed, for routes matched by pathname. */
+  query: URLSearchParams;
   headers: Headers;
   body: unknown;
 }
@@ -46,7 +49,9 @@ export type RouteHandler = (call: RecordedCall) => Response | Promise<Response>;
 
 /**
  * Replace global fetch with a router keyed by "METHOD /path" (path relative to
- * /api/v1). Unmatched calls fail loudly. Returns the recorded calls.
+ * /api/v1). A key without a query string also matches calls that carry one, so
+ * "GET /ingredients" serves "GET /ingredients?q=flour&limit=50". Unmatched
+ * calls fail loudly. Returns the recorded calls.
  */
 export function mockApi(routes: Record<string, RouteHandler>): RecordedCall[] {
   const calls: RecordedCall[] = [];
@@ -56,9 +61,10 @@ export function mockApi(routes: Record<string, RouteHandler>): RecordedCall[] {
     const method = (init?.method ?? "GET").toUpperCase();
     const headers = new Headers(init?.headers);
     const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-    const call: RecordedCall = { method, path, headers, body };
+    const [pathname, search = ""] = path.split("?", 2);
+    const call: RecordedCall = { method, path, query: new URLSearchParams(search), headers, body };
     calls.push(call);
-    const handler = routes[`${method} ${path}`];
+    const handler = routes[`${method} ${path}`] ?? routes[`${method} ${pathname}`];
     if (!handler) {
       throw new Error(`Unexpected API call: ${method} ${path}`);
     }

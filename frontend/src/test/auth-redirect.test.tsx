@@ -19,6 +19,7 @@ describe("route guards", () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "degraded" }),
+      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     renderApp("/");
 

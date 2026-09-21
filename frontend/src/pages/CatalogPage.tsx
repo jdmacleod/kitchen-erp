@@ -19,16 +19,6 @@ export function CatalogPage({ title, emptyTitle, description }: CatalogPageProps
 }
 
 export const catalogPages = {
-  ingredients: {
-    title: "Ingredients",
-    emptyTitle: "No ingredients yet",
-    description: "Ingredients are the things you cook with. Adding them arrives in a later sub-phase.",
-  },
-  products: {
-    title: "Products",
-    emptyTitle: "No products yet",
-    description: "Products are the packaged forms of ingredients that vendors sell.",
-  },
   vendors: {
     title: "Vendors",
     emptyTitle: "No vendors yet",

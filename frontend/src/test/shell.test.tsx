@@ -11,9 +11,9 @@ describe("app shell", () => {
       "POST /auth/logout": () => jsonResponse(204),
     });
     const user = userEvent.setup();
-    renderApp("/products");
+    renderApp("/purchases");
 
-    expect(await screen.findByText("No products yet")).toBeInTheDocument();
+    expect(await screen.findByText("No purchases yet")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Log out" }));
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
@@ -26,8 +26,8 @@ describe("app shell", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
     });
     const user = userEvent.setup();
-    renderApp("/products");
-    await screen.findByText("No products yet");
+    renderApp("/purchases");
+    await screen.findByText("No purchases yet");
 
     const button = screen.getByRole("button", { name: "Menu" });
     expect(button).toHaveAttribute("aria-expanded", "false");

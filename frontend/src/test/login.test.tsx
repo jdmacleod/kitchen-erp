@@ -9,6 +9,7 @@ describe("login", () => {
       "GET /auth/me": () => errorResponse(401, "unauthenticated", "Not signed in."),
       "POST /auth/login": () => jsonResponse(200, { user: adminUser }),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     const user = userEvent.setup();
     renderApp("/login");
@@ -18,7 +19,7 @@ describe("login", () => {
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
     expect(await screen.findByRole("heading", { name: "Ingredients" })).toBeInTheDocument();
-    expect(screen.getByText("No ingredients yet")).toBeInTheDocument();
+    expect(await screen.findByText("No ingredients yet")).toBeInTheDocument();
 
     const login = calls.find((c) => c.path === "/auth/login");
     expect(login).toBeDefined();
@@ -48,6 +49,7 @@ describe("login", () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     renderApp("/login");
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ingredients" })).toBeInTheDocument());
