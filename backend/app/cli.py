@@ -28,8 +28,23 @@ def alembic_config() -> Config:
 
 @cli.command()
 def migrate(revision: str = typer.Argument("head")) -> None:
-    """Apply migrations as the owner role."""
+    """Apply migrations as the owner role, then seed reference units (idempotent)."""
     command.upgrade(alembic_config(), revision)
+    if revision == "head":
+        _seed_units()
+
+
+def _seed_units() -> None:
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.units import seed_units as _seed
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            n = await _seed(db)
+        await dispose_engine()
+        typer.echo(f"seeded {n} units")
+
+    asyncio.run(_run())
 
 
 @cli.command()
@@ -71,17 +86,8 @@ def worker() -> None:
 
 @seed_cli.command("units")
 def seed_units() -> None:
-    """Seed the unit table. Idempotent."""
-    from app.core.db import dispose_engine, get_sessionmaker
-    from app.services.units import seed_units as _seed
-
-    async def _run() -> None:
-        async with get_sessionmaker()() as db:
-            n = await _seed(db)
-        await dispose_engine()
-        typer.echo(f"seeded {n} units")
-
-    asyncio.run(_run())
+    """Seed the unit table. Idempotent; `kerp migrate` runs this too."""
+    _seed_units()
 
 
 PATH_OPTION = typer.Option(..., "--path", exists=True, file_okay=False, resolve_path=True)

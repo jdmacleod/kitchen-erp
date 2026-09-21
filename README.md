@@ -14,7 +14,7 @@ enforce that.
 ```bash
 cp .env.example .env            # then change the two passwords
 docker compose up -d --build    # db, api, worker, web
-docker compose exec api kerp migrate
+docker compose exec api kerp migrate         # also seeds the unit table
 docker compose exec api kerp create-admin
 ```
 
