@@ -69,9 +69,17 @@ def worker() -> None:
 
 @seed_cli.command("units")
 def seed_units() -> None:
-    """Seed the unit table (Phase 1B)."""
-    typer.echo("units seeding arrives with Phase 1B", err=True)
-    raise typer.Exit(code=2)
+    """Seed the unit table. Idempotent."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.units import seed_units as _seed
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            n = await _seed(db)
+        await dispose_engine()
+        typer.echo(f"seeded {n} units")
+
+    asyncio.run(_run())
 
 
 def main() -> None:
