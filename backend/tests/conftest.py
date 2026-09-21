@@ -67,6 +67,11 @@ async def database() -> AsyncIterator[None]:
         await admin.close()
     try:
         run_alembic("upgrade", "head")
+        # Reference units survive per-test truncation; seed them once.
+        from app.services.units import seed_units
+
+        async with get_sessionmaker()() as db:
+            await seed_units(db)
         yield
     finally:
         await dispose_engine()
