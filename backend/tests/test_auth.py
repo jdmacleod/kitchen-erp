@@ -58,6 +58,4 @@ async def test_logout_everywhere(client: httpx.AsyncClient, admin):
     r = await client.post("/api/v1/auth/logout-all")
     assert r.status_code == 204
     assert await _me_with(client, first) == 401
-    assert (
-        await client.get("/api/v1/auth/me", cookies={"kerp_session": second})
-    ).status_code == 401
+    assert await _me_with(client, second) == 401
