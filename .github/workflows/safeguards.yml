@@ -1,0 +1,86 @@
+name: PII safeguards
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  safeguards:
+    name: PII safeguards
+    runs-on: ubuntu-latest
+    steps:
+      # Full history: a contributor who commits a real receipt and then amends
+      # it away must still be caught before merge.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan the checkout
+        run: python -m tools.scan_pii
+
+      - name: Scan the history introduced by this PR
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          python -m tools.scan_pii --history "origin/${{ github.base_ref }}..HEAD"
+
+      - name: Scan the full history
+        if: github.event_name == 'push'
+        run: python -m tools.scan_pii --history
+
+      - name: Secrets scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuse tracked files under data/ or a reference clone
+        run: |
+          tracked=$(git ls-files -- data backups output reference 'data.bak-*' \
+            cookcli grocy kitchenowl mealie paprika-recipes || true)
+          if [ -n "$tracked" ]; then
+            echo "Tracked files under a forbidden directory:"; echo "$tracked"; exit 1
+          fi
+
+      - name: Refuse stray data-shaped files
+        run: |
+          # Mirrors the suffix denials in .gitignore. Every one of these is a shape
+          # real receipt or purchase data arrives in AND a format the scanner cannot
+          # read, so a miss here is a miss everywhere. Keep the lists in step.
+          stray=$(git ls-files \
+            '*.csv' '*.tsv' '*.pdf' '*.zip' '*.7z' '*.rar' '*.tar' '*.tar.gz' '*.tgz' \
+            '*.xls' '*.xlsx' '*.ods' '*.doc' '*.docx' '*.eml' '*.mbox' \
+            '*.sqlite' '*.sqlite3' '*.db' '*.dump' '*.pgdump' '*.backup' \
+            '*.png' '*.jpg' '*.jpeg' '*.heic' '*.heif' '*.webp' '*.gif' '*.tif' '*.tiff' '*.bmp' \
+            '*.pmtiles' '*.mbtiles' '*.osm.pbf' \
+            | grep -v '^frontend/public/' || true)
+          if [ -n "$stray" ]; then
+            echo "Data-shaped files committed outside an allowed directory:"; echo "$stray"; exit 1
+          fi
+
+      - name: Refuse large files under frontend/public/
+        run: |
+          # frontend/public/ is the one re-inclusion in .gitignore. It holds icons.
+          # A receipt photograph is far larger than 64 KB.
+          big=$(git ls-files frontend/public | while read -r f; do
+            [ -f "$f" ] && [ "$(wc -c < "$f")" -gt 65536 ] && echo "$f"; done || true)
+          if [ -n "$big" ]; then
+            echo "Files over 64 KB under frontend/public/:"; echo "$big"; exit 1
+          fi
+
+      - name: Verify re-inclusions in .gitignore are the known set
+        run: |
+          # Every `!` line in .gitignore must have a check above. Adding one
+          # without its check is the whole failure mode.
+          allowed='^!(frontend/public/\*\*|\.env\.example)$'
+          bad=$(grep -E '^!' .gitignore | grep -Ev "$allowed" || true)
+          if [ -n "$bad" ]; then
+            echo "Unexpected re-inclusion in .gitignore:"; echo "$bad"; exit 1
+          fi

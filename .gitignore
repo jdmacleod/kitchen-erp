@@ -1,0 +1,122 @@
+# ---------------------------------------------------------------------------
+# Deny by default.
+#
+# This repository is meant to become public. The deployment it describes holds
+# receipt photographs, purchase histories, home coordinates, and the household's
+# email addresses. None of that may ever be committed. Broad denials come first;
+# the only re-inclusions are directories a CI check vouches for. Do not add a
+# re-inclusion without adding the check (see .github/workflows/safeguards.yml).
+# ---------------------------------------------------------------------------
+
+# Everything the running system stores or downloads: receipt images, map tiles,
+# USDA downloads, imports, backups. Bind-mounted at runtime, never committed.
+# Git will not descend into an excluded directory, so nothing below these paths
+# can be re-included by a later rule.
+/data/
+/data.bak-*/
+/backups/
+/output/
+
+# Reference clones of other open-source projects. Two of them are AGPL-3.0 and
+# this project is MIT: their code must never enter this tree, let alone history.
+# The named directories are the clones as they sit today at the repo root; the
+# `reference/` directory is where CLAUDE.md says they belong.
+/reference/
+/cookcli/
+/grocy/
+/kitchenowl/
+/mealie/
+/paprika-recipes/
+
+# Database files and dumps, wherever they land.
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.pgdump
+*.backup
+*.sql.gz
+
+# Receipt photographs and scans. HEIC is the iPhone default and is easy to forget.
+# The scanner (tools/scan_pii.py) cannot read pixels, so these are denied outright;
+# the test corpus generates its images at test time rather than committing them.
+*.png
+*.jpg
+*.jpeg
+*.heic
+*.heif
+*.webp
+*.gif
+*.tif
+*.tiff
+*.bmp
+*.pdf
+
+# Spreadsheets, archives, and mail: the shapes real purchase data arrives in, and
+# formats the scanner cannot read.
+*.csv
+*.tsv
+*.xls
+*.xlsx
+*.ods
+*.doc
+*.docx
+*.eml
+*.mbox
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+
+# Map tiles and OSM extracts: not personal, but hundreds of megabytes.
+*.pmtiles
+*.mbtiles
+*.osm.pbf
+
+# The single re-inclusion. frontend/public/ holds icons the app serves. CI
+# refuses any file there larger than 64 KB, which no receipt photograph is.
+!frontend/public/**
+
+# The PII scanner's literal denylist is itself a PII file.
+tools/denylist.txt
+
+# Local configuration and secrets.
+.env
+.env.*
+!.env.example
+*.local.*
+*.pem
+*.key
+
+# Tool output about the project rather than part of it (gstack reports carry
+# screenshots of the running app, which may show real data).
+/.gstack/
+/.claude/settings.local.json
+
+# ---------------------------------------------------------------------------
+# Ordinary build and tooling noise
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+node_modules/
+.vite/
+*.tsbuildinfo
+frontend/dist/
+
+.DS_Store
+.idea/
+.vscode/

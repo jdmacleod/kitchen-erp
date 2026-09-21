@@ -1,0 +1,11 @@
+# Shape of tools/denylist.txt, which is gitignored and never committed.
+# One literal string per line, matched case-insensitively anywhere in the tree
+# and in history. Populate it with tools/build_denylist.py rather than by hand.
+# These example values are fictional.
+# pii-scan: allow example entries, all fictional
+jane.doe@example.com
+# pii-scan: allow example loyalty number, fictional
+987654321012
+# pii-scan: allow example coordinate prefixes, fictional
+12.345
+-98.765
