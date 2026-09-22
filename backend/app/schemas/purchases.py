@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
+from app.schemas.catalog import ProductCreate
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import"]
 NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
@@ -153,6 +154,8 @@ class LineOut(ApiModel):
     resolution_confidence: DecimalStr | None
     flags: list[str]
     observation_id: uuid.UUID | None
+    raw_text_norm: str | None = None
+    suggestions: list[dict] = []
 
 
 class PurchaseLocationRef(ApiModel):
@@ -186,3 +189,98 @@ class PurchaseList(ApiModel):
 
 class LastUnitOut(ApiModel):
     unit: str | None
+
+
+# --- review (2D) ------------------------------------------------------------
+
+
+class LineDecision(ApiModel):
+    product_id: uuid.UUID | None = None
+    ignore: bool = False
+    product: ProductCreate | None = None  # create inline, then choose it
+    accepted_kind: Literal["alias", "fuzzy", "llm"] | None = None
+
+    @model_validator(mode="after")
+    def _one(self):
+        given = sum(1 for x in (self.product_id, self.product) if x is not None) + int(self.ignore)
+        if given != 1:
+            raise ValueError("give exactly one of product_id, product, or ignore")
+        return self
+
+
+class LineEdit(ApiModel):
+    raw_text: str | None = None
+    line_kind: Literal["item", "discount", "tax", "deposit", "fee"] | None = None
+    qty: Decimal | None = Field(default=None, gt=0)
+    unit: str | None = Field(default=None, max_length=16)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+    line_total: Decimal | None = None
+    parent_line_id: uuid.UUID | None = None
+    clear_parent: bool = False
+    clear_qty: bool = False
+
+
+class LineAdd(ApiModel):
+    raw_text: str | None = None
+    line_kind: Literal["item", "discount", "tax", "deposit", "fee"] = "item"
+    qty: Decimal | None = Field(default=None, gt=0)
+    unit: str | None = Field(default=None, max_length=16)
+    unit_price: Decimal | None = Field(default=None, ge=0)
+    line_total: Decimal
+    parent_line_id: uuid.UUID | None = None
+    product_id: uuid.UUID | None = None
+    after_seq: int | None = None
+
+
+class PurchaseHeaderEdit(ApiModel):
+    vendor_location_id: uuid.UUID | None = None
+    purchased_at: datetime | None = None
+    subtotal: Decimal | None = None
+    tax: Decimal | None = None
+    total: Decimal | None = None
+    ledger_txn_ref: str | None = None
+    clear_ledger_txn_ref: bool = False
+
+
+class QueueLine(ApiModel):
+    line_id: uuid.UUID
+    purchase_id: uuid.UUID
+    raw_text: str | None
+    purchased_at: datetime
+    line_total: DecimalStr
+    qty: DecimalStr | None
+    unit: str | None
+
+
+class VendorSummary(ApiModel):
+    id: uuid.UUID
+    name: str
+
+
+class QueueGroup(ApiModel):
+    vendor: VendorSummary
+    raw_text_norm: str | None
+    line_count: int
+    lines: list[QueueLine]
+
+
+class QueueList(ApiModel):
+    items: list[QueueGroup]
+
+
+class QueueApply(ApiModel):
+    vendor_id: uuid.UUID
+    raw_text_norm: str
+    product_id: uuid.UUID | None = None
+    ignore: bool = False
+    line_ids: list[uuid.UUID] | None = None
+
+    @model_validator(mode="after")
+    def _one(self):
+        if self.ignore == (self.product_id is not None):
+            raise ValueError("give a product_id or ignore, not both")
+        return self
+
+
+class QueueApplied(ApiModel):
+    applied: int

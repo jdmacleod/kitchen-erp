@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,6 +17,19 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://host.docker.internal:11434"
     llm_model: str = "gpt-oss:20b"
     ocr_adapter: str = "tesseract"
+    # Ingest (Phase 2C). OCR adapters are tried in order; `client` uses text sent
+    # with the upload, `tesseract` runs the binary in the worker image. As an
+    # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.
+    ocr_adapters: list[str] = ["client", "tesseract"]
+    tesseract_command: str = "tesseract"
+    receipt_max_bytes: int = 32 * 1024 * 1024
+    ingest_max_attempts: int = 5
+    ingest_backoff_base_seconds: float = 5.0
+    ingest_backoff_factor: float = 4.0
+    ingest_backoff_max_seconds: float = 300.0  # cap while the model server is unreachable
+    ingest_location_radius_m: int = 300
+    llm_max_retries: int = 2  # extra attempts when model output fails schema validation
+    llm_timeout_seconds: float = 120.0
     enable_overpass: bool = False
     enable_nominatim: bool = False
 
@@ -26,6 +40,12 @@ class Settings(BaseSettings):
     household_timezone: str = "America/Los_Angeles"
     currency: str = "USD"
     ingest_lock_timeout_seconds: int = 600
+
+    # Resolution ladder.
+    price_outlier_factor: Decimal = Decimal("2")  # flag when implied unit price is off by this
+    alias_fuzzy_threshold: Decimal = Decimal("0.35")  # trigram similarity for fuzzy alias hints
+    llm_shortlist_size: int = 10
+    price_plausibility_factor: Decimal = Decimal("5")  # shortlist narrowing where history exists
 
     session_ttl_days: int = 30
     idempotency_ttl_hours: int = 24

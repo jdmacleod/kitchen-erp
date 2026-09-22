@@ -160,6 +160,8 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     )
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     raw_text: Mapped[str | None] = mapped_column(Text)
+    raw_text_norm: Mapped[str | None] = mapped_column(Text)
+    suggestions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     line_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="item")
     product_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("product.id"), index=True

@@ -10,6 +10,9 @@ from fastapi.responses import JSONResponse
 from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.schemas.purchases import (
     LastUnitOut,
+    LineAdd,
+    LineDecision,
+    LineEdit,
     LineOut,
     ManualPurchaseIn,
     NeedsBridgeItem,
@@ -17,12 +20,16 @@ from app.schemas.purchases import (
     ObservationCreate,
     ObservationList,
     ObservationOut,
+    PurchaseHeaderEdit,
     PurchaseList,
     PurchaseOut,
+    QueueApplied,
+    QueueApply,
+    QueueList,
     RecomputeOut,
     VoidIn,
 )
-from app.services import pricebook, purchases
+from app.services import catalog, pricebook, purchases, resolution, review
 
 router = APIRouter(tags=["purchases"])
 
@@ -192,6 +199,8 @@ async def purchase_out(db, purchase) -> PurchaseOut:
             resolution_confidence=line.resolution_confidence,
             flags=line.flags,
             observation_id=live.get(line.id),
+            raw_text_norm=line.raw_text_norm,
+            suggestions=line.suggestions or [],
         )
         for line in purchase.lines
     ]
@@ -274,3 +283,104 @@ async def update_purchase(
 @router.get("/products/{product_id}/last-purchase-unit", response_model=LastUnitOut)
 async def last_purchase_unit(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> LastUnitOut:
     return LastUnitOut(unit=await purchases.last_purchase_unit(db, product_id))
+
+
+# --- review (2D) ------------------------------------------------------------
+
+
+@router.patch("/purchases/{purchase_id}", response_model=PurchaseOut)
+async def edit_header(
+    purchase_id: uuid.UUID, payload: PurchaseHeaderEdit, _: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await review.edit_header(db, purchase_id, payload))
+
+
+@router.post("/purchases/{purchase_id}/lines", response_model=PurchaseOut, status_code=201)
+async def add_line(
+    purchase_id: uuid.UUID, payload: LineAdd, _: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await review.add_line(db, purchase_id, payload))
+
+
+@router.patch("/purchases/{purchase_id}/lines/{line_id}", response_model=PurchaseOut)
+async def edit_line(
+    purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineEdit, _: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await review.edit_line(db, purchase_id, line_id, payload))
+
+
+@router.delete("/purchases/{purchase_id}/lines/{line_id}", response_model=PurchaseOut)
+async def delete_line(
+    purchase_id: uuid.UUID, line_id: uuid.UUID, user: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await review.delete_line(db, user, purchase_id, line_id))
+
+
+@router.post("/purchases/{purchase_id}/lines/{line_id}/resolve", response_model=PurchaseOut)
+async def resolve_line(
+    purchase_id: uuid.UUID,
+    line_id: uuid.UUID,
+    payload: LineDecision,
+    user: CurrentUser,
+    db: DbSession,
+) -> PurchaseOut:
+    product_id = payload.product_id
+    if payload.product is not None:
+        product_id = (await catalog.create_product(db, payload.product)).id
+    purchase = await resolution.decide_line(
+        db,
+        user,
+        purchase_id,
+        line_id,
+        product_id=product_id,
+        ignore=payload.ignore,
+        accepted_kind=payload.accepted_kind,
+    )
+    return await purchase_out(db, purchase)
+
+
+@router.post("/purchases/{purchase_id}/lines/{line_id}/re-resolve", response_model=PurchaseOut)
+async def re_resolve_line(
+    purchase_id: uuid.UUID, line_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await review.re_resolve_line(db, purchase_id, line_id))
+
+
+@router.post("/purchases/{purchase_id}/commit", response_model=PurchaseOut)
+async def commit_purchase(purchase_id: uuid.UUID, user: CurrentUser, db: DbSession) -> PurchaseOut:
+    return await purchase_out(db, await resolution.commit_purchase(db, user, purchase_id))
+
+
+@router.post("/purchases/{purchase_id}/reopen", response_model=PurchaseOut)
+async def reopen_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> PurchaseOut:
+    return await purchase_out(db, await resolution.reopen_purchase(db, purchase_id))
+
+
+@router.get("/to-identify", response_model=QueueList)
+async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
+    groups = await resolution.to_identify(db)
+    return QueueList(
+        items=[
+            {
+                "vendor": {"id": g["vendor_id"], "name": g["vendor_name"]},
+                "raw_text_norm": g["raw_text_norm"],
+                "line_count": g["line_count"],
+                "lines": g["lines"],
+            }
+            for g in groups
+        ]
+    )
+
+
+@router.post("/to-identify/apply", response_model=QueueApplied)
+async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSession) -> QueueApplied:
+    n = await resolution.apply_to_identify(
+        db,
+        user,
+        vendor_id=payload.vendor_id,
+        raw_text_norm=payload.raw_text_norm,
+        product_id=payload.product_id,
+        ignore=payload.ignore,
+        line_ids=payload.line_ids,
+    )
+    return QueueApplied(applied=n)
