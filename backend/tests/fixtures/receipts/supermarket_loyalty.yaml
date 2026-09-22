@@ -1,0 +1,70 @@
+# Synthetic receipt. Vendor, address, phone, card and items are invented (SECURITY.md).
+name: supermarket_loyalty
+notes: |
+  Supermarket layout with loyalty-card discounts printed directly beneath the
+  item they reduce, a quantity prefix ("2 @ 1.99") on the same line, a taxable
+  non-food item, and a tax line in the totals block. Store number in the header
+  matches a location's receipt_identifiers. Street name is invented.
+ocr_text: |
+  HARBORVIEW MARKET
+  STORE #0412   1200 HARBOR VISTA BLVD
+  SAN MARISOL, CALIF
+  (555) 555-0142
+  03/04/2026  17:42   REG 3  TRN 4471
+  --------------------------------------
+  ORG WHOLE MILK 1GAL          5.99 F
+    HRBV CARD SAVINGS          1.00-
+  CHKN THIGHS B/S              9.47 F
+    MEMBER PRICE               2.48-
+  ITAL BRD LOAF                3.49 F
+  GRK YOGURT PLN 5.3Z  2 @ 1.99   3.98 F
+  PAPER TOWELS 6RL            12.99 T
+    HRBV CARD SAVINGS          3.00-
+  --------------------------------------
+  SUBTOTAL                    29.44
+  TAX                          0.95
+  TOTAL                       30.39
+  VISA ************0000       30.39
+  YOU SAVED TODAY              6.48
+  THANK YOU FOR SHOPPING
+expected_header:
+  merchant_name: HARBORVIEW MARKET
+  store_identifier: "0412"
+  purchased_at_local: "2026-03-04 17:42"
+  purchased_at: "2026-03-05T01:42:00+00:00"
+  subtotal: "29.44"
+  tax: "0.95"
+  total: "30.39"
+expected_lines:
+  - {seq: 1, raw_text: "ORG WHOLE MILK 1GAL          5.99 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.99", parent_seq: null}
+  - {seq: 2, raw_text: "HRBV CARD SAVINGS          1.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "1.00", parent_seq: 1}
+  - {seq: 3, raw_text: "CHKN THIGHS B/S              9.47 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.47", parent_seq: null}
+  - {seq: 4, raw_text: "MEMBER PRICE               2.48-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "2.48", parent_seq: 3}
+  - {seq: 5, raw_text: "ITAL BRD LOAF                3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_seq: null}
+  - {seq: 6, raw_text: "GRK YOGURT PLN 5.3Z  2 @ 1.99   3.98 F", line_kind: item, qty: "2", unit: each, unit_price: "1.99", line_total: "3.98", parent_seq: null}
+  - {seq: 7, raw_text: "PAPER TOWELS 6RL            12.99 T", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "12.99", parent_seq: null}
+  - {seq: 8, raw_text: "HRBV CARD SAVINGS          3.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "3.00", parent_seq: 7}
+  - {seq: 9, raw_text: "TAX                          0.95", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.95", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "HARBORVIEW MARKET"
+    store_identifier: "0412"
+    address_text: "1200 HARBOR VISTA BLVD, SAN MARISOL, CALIF"
+    phone_text: "(555) 555-0142"
+    purchased_at_local: "2026-03-04 17:42"
+    subtotal: "29.44"
+    tax: "0.95"
+    total: "30.39"
+  lines:
+    lines:
+      - {raw_text: "ORG WHOLE MILK 1GAL          5.99 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.99", parent_index: null}
+      - {raw_text: "HRBV CARD SAVINGS          1.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "1.00", parent_index: 0}
+      - {raw_text: "CHKN THIGHS B/S              9.47 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.47", parent_index: null}
+      - {raw_text: "MEMBER PRICE               2.48-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "2.48", parent_index: 2}
+      - {raw_text: "ITAL BRD LOAF                3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_index: null}
+      - {raw_text: "GRK YOGURT PLN 5.3Z  2 @ 1.99   3.98 F", line_kind: item, qty: "2", unit: each, unit_price: "1.99", line_total: "3.98", parent_index: null}
+      - {raw_text: "PAPER TOWELS 6RL            12.99 T", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "12.99", parent_index: null}
+      - {raw_text: "HRBV CARD SAVINGS          3.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "3.00", parent_index: 6}
+      - {raw_text: "TAX                          0.95", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.95", parent_index: null}

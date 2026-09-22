@@ -1,0 +1,62 @@
+# Synthetic receipt. Vendor, address, membership, card and items are invented (SECURITY.md).
+name: warehouse_codes
+notes: |
+  Warehouse club layout: a tax-flag column and a six-digit item code before
+  each name, an instant rebate printed beneath its item and referencing the
+  item code, the total marked with asterisks, and the date at the bottom.
+  Street name is invented; the membership number is two four-digit groups.
+ocr_text: |
+  SUMMIT WHOLESALE CLUB
+  SUMMIT WHOLESALE #118
+  7800 TIDEWATER PKWY
+  MEMBER 4471 0822
+   E  184201 KS ALMONDS 3LB        14.99
+   E  552310 ORG EGGS 24CT          7.49
+   E  993004 OLIVE OIL 2L          16.99
+      993004 / 3.00-
+   A  301778 PAPER TWL 12RL        19.99
+   E  776120 CHKN BRST 6.5LB       21.44
+  SUBTOTAL                          77.90
+  TAX                                1.90
+  ****  TOTAL                       79.80
+  XXXXXXXXXXXX0000  CHIP READ
+  AMOUNT: 79.80
+  TOTAL NUMBER OF ITEMS SOLD = 5
+  03/20/2026 11:32 118 4 208
+expected_header:
+  merchant_name: SUMMIT WHOLESALE CLUB
+  store_identifier: "118"
+  purchased_at_local: "2026-03-20 11:32"
+  purchased_at: "2026-03-20T18:32:00+00:00"
+  subtotal: "77.90"
+  tax: "1.90"
+  total: "79.80"
+expected_lines:
+  - {seq: 1, raw_text: "E  184201 KS ALMONDS 3LB        14.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "14.99", parent_seq: null}
+  - {seq: 2, raw_text: "E  552310 ORG EGGS 24CT          7.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.49", parent_seq: null}
+  - {seq: 3, raw_text: "E  993004 OLIVE OIL 2L          16.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "16.99", parent_seq: null}
+  - {seq: 4, raw_text: "993004 / 3.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "3.00", parent_seq: 3}
+  - {seq: 5, raw_text: "A  301778 PAPER TWL 12RL        19.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "19.99", parent_seq: null}
+  - {seq: 6, raw_text: "E  776120 CHKN BRST 6.5LB       21.44", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "21.44", parent_seq: null}
+  - {seq: 7, raw_text: "TAX                                1.90", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "1.90", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "SUMMIT WHOLESALE CLUB"
+    store_identifier: "118"
+    address_text: "7800 TIDEWATER PKWY"
+    phone_text: null
+    purchased_at_local: "2026-03-20 11:32"
+    subtotal: "77.90"
+    tax: "1.90"
+    total: "79.80"
+  lines:
+    lines:
+      - {raw_text: "E  184201 KS ALMONDS 3LB        14.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "14.99", parent_index: null}
+      - {raw_text: "E  552310 ORG EGGS 24CT          7.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.49", parent_index: null}
+      - {raw_text: "E  993004 OLIVE OIL 2L          16.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "16.99", parent_index: null}
+      - {raw_text: "993004 / 3.00-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "-3.00", parent_index: 2}
+      - {raw_text: "A  301778 PAPER TWL 12RL        19.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "19.99", parent_index: null}
+      - {raw_text: "E  776120 CHKN BRST 6.5LB       21.44", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "21.44", parent_index: null}
+      - {raw_text: "TAX                                1.90", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "1.90", parent_index: null}

@@ -1,0 +1,59 @@
+# Synthetic receipt. Vendor, address, phone, card and items are invented (SECURITY.md).
+name: poor_ocr
+notes: |
+  Deliberately poor OCR of a Harborview Market receipt: zeros read as the
+  letter O, ones as l, broken lines, and a misread price (9.47 read as 9.4l,
+  which the model records as 9.41). The lines therefore do not sum to the
+  printed total, so the purchase is flagged reconcile_mismatch and still
+  reaches review. Street name is invented.
+ocr_text: |
+  HARB0RVIEW MARKET
+  ST0RE #O412  12OO HARBOR VISTA BLVD
+  (555) 555-O142
+  O3/O9/2026 18:O1 REG 2 TRN 4S12
+  ORG WH0LE MILK 1GAL 5.99 F
+   HRBV CARD SAVlNGS 1.OO-
+  CHKN THlGHS B/S 9.4l F
+  BANANAS
+  2.O5 lb @ O.69/lb 1.4l
+  ITAL BRD L0AF 3.49 F
+  SUBT0TAL l9.36
+  TAX O.OO
+  T0TAL l9.36
+  VlSA ************0000 l9.36
+expected_header:
+  merchant_name: HARBORVIEW MARKET
+  store_identifier: "0412"
+  purchased_at_local: "2026-03-09 18:01"
+  purchased_at: "2026-03-10T01:01:00+00:00"
+  subtotal: "19.36"
+  tax: "0.00"
+  total: "19.36"
+expected_lines:
+  - {seq: 1, raw_text: "ORG WH0LE MILK 1GAL 5.99 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.99", parent_seq: null}
+  - {seq: 2, raw_text: "HRBV CARD SAVlNGS 1.OO-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "1.00", parent_seq: 1}
+  - {seq: 3, raw_text: "CHKN THlGHS B/S 9.4l F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.41", parent_seq: null}
+  - {seq: 4, raw_text: "BANANAS 2.O5 lb @ O.69/lb 1.4l", line_kind: item, qty: "2.05", unit: lb, unit_price: "0.69", line_total: "1.41", parent_seq: null}
+  - {seq: 5, raw_text: "ITAL BRD L0AF 3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_seq: null}
+  - {seq: 6, raw_text: "TAX O.OO", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_seq: null}
+expected_reconciliation:
+  mismatch: true
+  difference: "-0.06"
+llm_responses:
+  header:
+    merchant_name: "HARBORVIEW MARKET"
+    store_identifier: "0412"
+    address_text: "1200 HARBOR VISTA BLVD"
+    phone_text: "(555) 555-0142"
+    purchased_at_local: "2026-03-09 18:01"
+    subtotal: "19.36"
+    tax: "0.00"
+    total: "19.36"
+  lines:
+    lines:
+      - {raw_text: "ORG WH0LE MILK 1GAL 5.99 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.99", parent_index: null}
+      - {raw_text: "HRBV CARD SAVlNGS 1.OO-", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "1.00", parent_index: 0}
+      - {raw_text: "CHKN THlGHS B/S 9.4l F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.41", parent_index: null}
+      - {raw_text: "BANANAS 2.O5 lb @ O.69/lb 1.4l", line_kind: item, qty: "2.05", unit: lb, unit_price: "0.69", line_total: "1.41", parent_index: null}
+      - {raw_text: "ITAL BRD L0AF 3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_index: null}
+      - {raw_text: "TAX O.OO", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_index: null}

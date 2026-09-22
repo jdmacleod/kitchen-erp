@@ -19,6 +19,8 @@ dependencies = [
     "uuid6>=2024.1.12",
     "python-multipart>=0.0.9",
     "opening-hours-py>=1.0",
+    "pillow>=12.3.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.scripts]

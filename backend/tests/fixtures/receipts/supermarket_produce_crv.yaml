@@ -1,0 +1,66 @@
+# Synthetic receipt. Vendor, address, phone, card and items are invented (SECURITY.md).
+name: supermarket_produce_crv
+notes: |
+  Supermarket with weighed produce ("2.31 lb @ 0.69/lb" printed under the item
+  name) and California redemption value lines beneath beverages. The model
+  joins a two-line item into one raw_text with a single space. The model reply
+  deliberately omits the qty for the tomatoes so the deterministic refinement
+  fills it from the printed pattern. Street name is invented.
+ocr_text: |
+  PACIFIC FRESH FOODS
+  STORE 77  ROUTE 9 AT SEAGRASS WAY
+  NORTH POINT, CALIF
+  TEL (555) 555-0199
+  03/11/2026 09:15 AM
+  BANANAS
+    2.31 lb @ 0.69/lb            1.59
+  HEIRLOOM TOMATO
+    1.12 lb @ 3.99/lb            4.47
+  SPARKLING WATER 12PK          6.99
+    CRV                          1.20
+  KOMBUCHA 16OZ                 3.49
+    CA REDEMPTION VAL            0.05
+  CHEDDAR SHARP 8OZ             4.29
+  SUBTOTAL                     22.08
+  TAX                           0.00
+  TOTAL                        22.08
+  DEBIT XXXXXXXXXXXX0000       22.08
+expected_header:
+  merchant_name: PACIFIC FRESH FOODS
+  store_identifier: "77"
+  purchased_at_local: "2026-03-11 09:15"
+  purchased_at: "2026-03-11T16:15:00+00:00"
+  subtotal: "22.08"
+  tax: "0.00"
+  total: "22.08"
+expected_lines:
+  - {seq: 1, raw_text: "BANANAS 2.31 lb @ 0.69/lb            1.59", line_kind: item, qty: "2.31", unit: lb, unit_price: "0.69", line_total: "1.59", parent_seq: null}
+  - {seq: 2, raw_text: "HEIRLOOM TOMATO 1.12 lb @ 3.99/lb            4.47", line_kind: item, qty: "1.12", unit: lb, unit_price: "3.99", line_total: "4.47", parent_seq: null}
+  - {seq: 3, raw_text: "SPARKLING WATER 12PK          6.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "6.99", parent_seq: null}
+  - {seq: 4, raw_text: "CRV                          1.20", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "1.20", parent_seq: 3}
+  - {seq: 5, raw_text: "KOMBUCHA 16OZ                 3.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_seq: null}
+  - {seq: 6, raw_text: "CA REDEMPTION VAL            0.05", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "0.05", parent_seq: 5}
+  - {seq: 7, raw_text: "CHEDDAR SHARP 8OZ             4.29", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.29", parent_seq: null}
+  - {seq: 8, raw_text: "TAX                           0.00", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "PACIFIC FRESH FOODS"
+    store_identifier: "77"
+    address_text: "ROUTE 9 AT SEAGRASS WAY, NORTH POINT, CALIF"
+    phone_text: "(555) 555-0199"
+    purchased_at_local: "2026-03-11 09:15"
+    subtotal: "22.08"
+    tax: "0.00"
+    total: "22.08"
+  lines:
+    lines:
+      - {raw_text: "BANANAS 2.31 lb @ 0.69/lb            1.59", line_kind: item, qty: "2.31", unit: lb, unit_price: "0.69", line_total: "1.59", parent_index: null}
+      - {raw_text: "HEIRLOOM TOMATO 1.12 lb @ 3.99/lb            4.47", line_kind: item, qty: null, unit: null, unit_price: null, line_total: "4.47", parent_index: null}
+      - {raw_text: "SPARKLING WATER 12PK          6.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "6.99", parent_index: null}
+      - {raw_text: "CRV                          1.20", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "1.20", parent_index: 2}
+      - {raw_text: "KOMBUCHA 16OZ                 3.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_index: null}
+      - {raw_text: "CA REDEMPTION VAL            0.05", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "0.05", parent_index: null}
+      - {raw_text: "CHEDDAR SHARP 8OZ             4.29", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.29", parent_index: null}
+      - {raw_text: "TAX                           0.00", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_index: null}

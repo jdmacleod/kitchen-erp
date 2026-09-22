@@ -1,0 +1,64 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: discount_grocer_terse
+notes: |
+  Discount grocer with terse abbreviated names, no address, a store number
+  printed as "#0230", weighed meat with the weight line printed after the item,
+  count prefixes on the same line, and a zero "TOTAL SAVINGS" summary line
+  that is not a purchase line. Units come back from the model as "LB" and "EA"
+  to exercise unit normalization.
+ocr_text: |
+  THRIFTWAY BASICS
+  #0230  03/15/26 14:07
+  WHL MLK GAL          3.29
+  EGGS LG 12CT         2.49
+  BNLS CHKN BRST       6.84
+     1.96 lb @ 3.49/lb
+  BLK BNS 15OZ  2 @ 0.79   1.58
+  TORT FLR 10CT        1.99
+  AVOCADO HASS  3 @ 0.69  2.07
+  DISH SOAP            1.49 T
+  TOTAL SAVINGS        0.00
+  SUBTOTAL            19.75
+  TAX                  0.12
+  TOTAL               19.87
+  CASH                20.00
+  CHANGE               0.13
+expected_header:
+  merchant_name: THRIFTWAY BASICS
+  store_identifier: "0230"
+  purchased_at_local: "2026-03-15 14:07"
+  purchased_at: "2026-03-15T21:07:00+00:00"
+  subtotal: "19.75"
+  tax: "0.12"
+  total: "19.87"
+expected_lines:
+  - {seq: 1, raw_text: "WHL MLK GAL          3.29", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.29", parent_seq: null}
+  - {seq: 2, raw_text: "EGGS LG 12CT         2.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.49", parent_seq: null}
+  - {seq: 3, raw_text: "BNLS CHKN BRST       6.84 1.96 lb @ 3.49/lb", line_kind: item, qty: "1.96", unit: lb, unit_price: "3.49", line_total: "6.84", parent_seq: null}
+  - {seq: 4, raw_text: "BLK BNS 15OZ  2 @ 0.79   1.58", line_kind: item, qty: "2", unit: each, unit_price: "0.79", line_total: "1.58", parent_seq: null}
+  - {seq: 5, raw_text: "TORT FLR 10CT        1.99", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.99", parent_seq: null}
+  - {seq: 6, raw_text: "AVOCADO HASS  3 @ 0.69  2.07", line_kind: item, qty: "3", unit: each, unit_price: "0.69", line_total: "2.07", parent_seq: null}
+  - {seq: 7, raw_text: "DISH SOAP            1.49 T", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.49", parent_seq: null}
+  - {seq: 8, raw_text: "TAX                  0.12", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.12", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "THRIFTWAY BASICS"
+    store_identifier: "0230"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-03-15 14:07"
+    subtotal: "19.75"
+    tax: "0.12"
+    total: "19.87"
+  lines:
+    lines:
+      - {raw_text: "WHL MLK GAL          3.29", line_kind: item, qty: "1", unit: "EA", unit_price: null, line_total: "3.29", parent_index: null}
+      - {raw_text: "EGGS LG 12CT         2.49", line_kind: item, qty: "1", unit: "EA", unit_price: null, line_total: "2.49", parent_index: null}
+      - {raw_text: "BNLS CHKN BRST       6.84 1.96 lb @ 3.49/lb", line_kind: item, qty: "1.96", unit: "LB", unit_price: "3.49", line_total: "6.84", parent_index: null}
+      - {raw_text: "BLK BNS 15OZ  2 @ 0.79   1.58", line_kind: item, qty: "2", unit: "EA", unit_price: "0.79", line_total: "1.58", parent_index: null}
+      - {raw_text: "TORT FLR 10CT        1.99", line_kind: item, qty: "1", unit: "EA", unit_price: null, line_total: "1.99", parent_index: null}
+      - {raw_text: "AVOCADO HASS  3 @ 0.69  2.07", line_kind: item, qty: "3", unit: "EA", unit_price: "0.69", line_total: "2.07", parent_index: null}
+      - {raw_text: "DISH SOAP            1.49 T", line_kind: item, qty: "1", unit: "EA", unit_price: null, line_total: "1.49", parent_index: null}
+      - {raw_text: "TAX                  0.12", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.12", parent_index: null}

@@ -1,0 +1,52 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: independent_minimal
+notes: |
+  Small independent shop with mixed-case names, no store number, no address,
+  no tax line, a weighed line on one row, and a bag fee. The header carries no
+  identifier, so location matching relies on the merchant name (and capture
+  coordinates when present).
+ocr_text: |
+  Rosalind's Corner Grocery
+  Thank you!
+  3/22/2026 4:05 PM
+  Sourdough loaf        6.50
+  Local honey 12oz      9.00
+  Butter 1lb            5.75
+  Apples 2.04 lb @ 1.50/lb   3.06
+  Bag fee               0.10
+  Total                24.41
+  Cash                 25.00
+  Change                0.59
+expected_header:
+  merchant_name: Rosalind's Corner Grocery
+  store_identifier: null
+  purchased_at_local: "2026-03-22 16:05"
+  purchased_at: "2026-03-22T23:05:00+00:00"
+  subtotal: null
+  tax: null
+  total: "24.41"
+expected_lines:
+  - {seq: 1, raw_text: "Sourdough loaf        6.50", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "6.50", parent_seq: null}
+  - {seq: 2, raw_text: "Local honey 12oz      9.00", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.00", parent_seq: null}
+  - {seq: 3, raw_text: "Butter 1lb            5.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.75", parent_seq: null}
+  - {seq: 4, raw_text: "Apples 2.04 lb @ 1.50/lb   3.06", line_kind: item, qty: "2.04", unit: lb, unit_price: "1.50", line_total: "3.06", parent_seq: null}
+  - {seq: 5, raw_text: "Bag fee               0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "Rosalind's Corner Grocery"
+    store_identifier: null
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-03-22 16:05"
+    subtotal: null
+    tax: null
+    total: "24.41"
+  lines:
+    lines:
+      - {raw_text: "Sourdough loaf        6.50", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "6.50", parent_index: null}
+      - {raw_text: "Local honey 12oz      9.00", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "9.00", parent_index: null}
+      - {raw_text: "Butter 1lb            5.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.75", parent_index: null}
+      - {raw_text: "Apples 2.04 lb @ 1.50/lb   3.06", line_kind: item, qty: "2.04", unit: lb, unit_price: "1.50", line_total: "3.06", parent_index: null}
+      - {raw_text: "Bag fee               0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_index: null}
