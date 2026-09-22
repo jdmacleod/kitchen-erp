@@ -244,8 +244,8 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
             )
     obs_rows, norm_rows = [], []
     base = datetime.now(UTC)
-    for n, pid in enumerate(products):
-        for t in range(10):
+    for n, pid in enumerate(products):  # 200 products x 100 observations = 20,000
+        for t in range(100):
             oid = new_id()
             price = D("1.00") + D(n % 50) / 10 + D(t) / 100
             when = base - timedelta(days=t * 3)
