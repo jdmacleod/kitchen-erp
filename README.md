@@ -145,6 +145,17 @@ uv run pytest
 
 ## Contributing
 
-`make setup` installs the git hooks. `make check-pii` runs the personal-data
-scanner. `docs/licensing.md` records what may be borrowed from the reference
-projects and which third-party data carries attribution obligations.
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first, and `SECURITY.md` with it. The
+short version: `make setup` installs the git hooks, `make check` runs everything
+CI runs, and **no real receipt, address, coordinate, or screenshot of real data
+ever goes into an issue, a PR, a fixture, or a commit message.** Reproduce
+problems against the demo stack instead.
+
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) applies. `docs/licensing.md` records
+what may be borrowed from the reference projects — two are AGPL-3.0 and their
+code must never enter this tree — and which third-party data carries attribution
+obligations.
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE).

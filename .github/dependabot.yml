@@ -1,0 +1,39 @@
+# Pinned action SHAs do not rot on their own, and a pin nobody updates is just an
+# old version with extra steps. Dependabot rewrites the SHA and the version
+# comment together.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: uv
+    directory: "/backend"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "backend"
+
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "frontend"
+
+  - package-ecosystem: npm
+    directory: "/e2e"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "e2e"
+
+  - package-ecosystem: docker
+    directory: "/backend"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "docker"

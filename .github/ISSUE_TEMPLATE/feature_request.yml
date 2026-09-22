@@ -1,0 +1,29 @@
+name: Feature or change request
+description: Something the system should do that it does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `docs/spec/` is the specification, and `docs/spec/05-later-phase-design-notes.md`
+        records ideas already considered for later phases. Worth a look first —
+        the answer may already be written down.
+
+        As with bug reports: no real receipts, addresses, or household data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the system makes hard or impossible?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you have tried or considered

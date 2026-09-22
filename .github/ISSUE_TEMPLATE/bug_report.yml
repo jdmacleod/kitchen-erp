@@ -1,0 +1,47 @@
+name: Bug report
+description: Something behaves differently from what the specification or the UI promises.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you write anything: never paste a real receipt, a real address, a
+        loyalty number, or a screenshot of your own data.** Those identify your
+        household, and an issue is public and permanent.
+
+        Reproduce the problem with invented data instead. `make demo-up &&
+        make demo-seed` gives you a throwaway stack full of synthetic data, and a
+        bug reproduced there is one a maintainer can actually work on.
+  - type: checkboxes
+    id: no-personal-data
+    attributes:
+      label: Personal data
+      options:
+        - label: >-
+            This report contains no real receipt text, addresses, coordinates,
+            loyalty numbers, or screenshots of my own data.
+          required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Against the demo stack where possible.
+      placeholder: |
+        1. make demo-up && make demo-seed
+        2. Go to Compare, add "Olive oil"
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version and environment
+      description: Commit SHA, host OS, and whether Ollama is running.
+    validations:
+      required: true
