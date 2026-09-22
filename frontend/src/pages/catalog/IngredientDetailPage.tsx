@@ -22,6 +22,7 @@ import {
 import { BridgeEditor } from "../../components/catalog/BridgeEditor";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { TestBench } from "../../components/catalog/TestBench";
+import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -110,6 +111,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
 
         {editing ? <EditDetailsForm ingredient={ingredient} onDone={() => setEditing(false)} /> : null}
 
+        <IngredientOffers ingredient={ingredient} />
         <BridgeEditor ingredient={ingredient} />
         <TestBench ingredient={ingredient} />
         <IngredientProducts ingredient={ingredient} />

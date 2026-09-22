@@ -75,10 +75,16 @@ export function PurchasesPage() {
                         </Link>
                       </td>
                       <td className="py-2 pr-3">
-                        {p.vendor_location.vendor.name}
-                        {p.vendor_location.name !== p.vendor_location.vendor.name ? (
-                          <span className="text-neutral-600 dark:text-neutral-400"> — {p.vendor_location.name}</span>
-                        ) : null}
+                        {p.vendor_location ? (
+                          <>
+                            {p.vendor_location.vendor.name}
+                            {p.vendor_location.name !== p.vendor_location.vendor.name ? (
+                              <span className="text-neutral-600 dark:text-neutral-400"> — {p.vendor_location.name}</span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="text-neutral-600 italic dark:text-neutral-400">No location yet</span>
+                        )}
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(p.total ?? p.computed_total)}</td>
                       <td className="py-2 pr-3">

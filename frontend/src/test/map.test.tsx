@@ -2,6 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { VendorLocation } from "../api/geo";
+import { flour, flourProductId } from "./catalog-fixtures";
 import { chainLocation, homeBase, marketDetail, marketLocation, marketLocationId, stallLocation, stallLocationId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { instances } from "./maplibre-stub";
@@ -63,6 +64,7 @@ describe("map", () => {
       [`GET /vendor-locations/${marketLocationId}`]: () => jsonResponse(200, marketDetail),
       [`GET /vendor-locations/${marketLocationId}/is-open`]: () => jsonResponse(200, { id: marketLocationId, at: "x", is_open: false, effective_opening_hours: "Sa 08:00-13:00" }),
       [`GET /vendor-locations/${stallLocationId}/is-open`]: () => jsonResponse(200, { id: stallLocationId, at: "x", is_open: false, effective_opening_hours: "Sa 08:00-13:00" }),
+      [`GET /vendor-locations/${marketLocationId}/price-panel`]: () => jsonResponse(200, { last_visit: null, spend: "0", visits: 0, period_days: 30, recent: [] }),
     });
     const user = userEvent.setup();
     renderApp("/map");
@@ -138,5 +140,76 @@ describe("map", () => {
     await user.type(within(form).getByLabelText("Name"), "The cabin");
     await user.click(within(form).getByRole("button", { name: "Create home base" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/home-bases")?.body).toEqual({ name: "The cabin", lat: "33.250000", lon: "-120.750000" }));
+  });
+});
+
+describe("map price book (2E)", () => {
+  it("labels pins with the best price per unit for a chosen ingredient and marks stale ones", async () => {
+    const calls = mockApi({
+      ...baseRoutes(() => [chainLocation, marketLocation]),
+      "GET /ingredients": (call) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [flour] : [], next_cursor: null }),
+      "GET /price-book/cheapest": () =>
+        jsonResponse(200, {
+          unit: "g",
+          items: [
+            { location_id: chainLocation.id, location_name: chainLocation.name, lat: chainLocation.lat, lon: chainLocation.lon, vendor_id: chainLocation.vendor.id, vendor_name: chainLocation.vendor.name, kind: "chain", product_id: flourProductId, product_name: "All-Purpose Flour", quality_rating: 4, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", is_promo: false, norm_unit_price: "0.002200", norm_unit: "g", stale: false },
+            { location_id: marketLocationId, location_name: marketLocation.name, lat: marketLocation.lat, lon: marketLocation.lon, vendor_id: marketLocation.vendor.id, vendor_name: marketLocation.vendor.name, kind: "market", product_id: flourProductId, product_name: "All-Purpose Flour", quality_rating: 4, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04", observed_at: "2026-05-20T15:00:00Z", is_promo: false, norm_unit_price: "0.002425", norm_unit: "g", stale: true },
+          ],
+        }),
+    });
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+    await within(map.container).findByRole("button", { name: "Millstone Harbour (Chain)" });
+
+    const form = screen.getByRole("form", { name: "Where is this cheapest" });
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
+    await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));
+
+    const chain = await within(map.container).findByRole("button", { name: /^Millstone Harbour \(Chain\), \$0\.0022\/g · \d+ days$/ });
+    expect(chain).toHaveClass("kerp-pin--priced");
+    expect(chain).not.toHaveClass("kerp-pin--stale");
+    expect(chain.querySelector(".kerp-pin__label")).toHaveTextContent("$0.0022/g");
+    const market = within(map.container).getByRole("button", { name: /^Pier Farmers Market \(Market\), \$0\.002425\/g · \d+ days, stale$/ });
+    expect(market).toHaveClass("kerp-pin--stale");
+    expect(market.querySelector(".kerp-pin__label")).toHaveTextContent(/^\$0\.002425\/g · \d+ days \(stale\)$/);
+    expect(screen.getByTestId("cheapest-summary")).toHaveTextContent("best price per g for all-purpose flour at 2 locations");
+    expect(calls.find((c) => c.path.startsWith("/price-book/cheapest"))?.query.get("ingredient_id")).toBe(flour.id);
+
+    await user.click(within(form).getByRole("checkbox", { name: "Exclude stale" }));
+    await waitFor(() => expect(calls.filter((c) => c.path.startsWith("/price-book/cheapest")).at(-1)?.query.get("exclude_stale")).toBe("true"));
+  });
+
+  it("shows last visit, spend over a chosen period, and recent prices in the location panel", async () => {
+    const calls = mockApi({
+      ...baseRoutes(() => [chainLocation]),
+      [`GET /vendor-locations/${chainLocation.id}`]: () => jsonResponse(200, { ...chainLocation, stalls: [] }),
+      [`GET /vendor-locations/${chainLocation.id}/is-open`]: () => jsonResponse(200, { id: chainLocation.id, at: "x", is_open: true, effective_opening_hours: "Mo-Su 07:00-22:00" }),
+      [`GET /vendor-locations/${chainLocation.id}/price-panel`]: (call) =>
+        jsonResponse(200, {
+          last_visit: "2026-09-18T15:00:00Z",
+          spend: call.query.get("days") === "90" ? "123.45" : "41.20",
+          visits: call.query.get("days") === "90" ? 6 : 2,
+          period_days: Number(call.query.get("days")),
+          recent: [{ observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", price: "4.99", qty: "1", unit: "each", is_promo: true, norm_unit_price: "0.002200", norm_unit: "g", norm_status: "ok", product_id: flourProductId, product_name: "All-Purpose Flour", brand: "Millstone" }],
+        }),
+    });
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+    await user.click(await within(map.container).findByRole("button", { name: "Millstone Harbour (Chain)" }));
+
+    const prices = await screen.findByTestId("location-prices");
+    await waitFor(() => expect(prices).toHaveTextContent("$41.20 over 2 visits in 30 days"));
+    expect(prices).toHaveTextContent("Last visit");
+    const recent = within(prices).getByRole("list", { name: "Recent prices" });
+    expect(within(recent).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/products/${flourProductId}`);
+    expect(recent).toHaveTextContent("$4.99 / 1 each");
+    expect(recent).toHaveTextContent("sale");
+    expect(recent).toHaveTextContent("$0.0022/g");
+
+    await user.selectOptions(within(prices).getByLabelText("Spend period"), "90");
+    await waitFor(() => expect(calls.filter((c) => c.path.startsWith(`/vendor-locations/${chainLocation.id}/price-panel`)).at(-1)?.query.get("days")).toBe("90"));
+    await waitFor(() => expect(screen.getByTestId("location-prices")).toHaveTextContent("$123.45 over 6 visits in 90 days"));
   });
 });

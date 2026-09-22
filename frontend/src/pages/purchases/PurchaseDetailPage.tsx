@@ -2,19 +2,39 @@ import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { formatPack, productTitle, trimDecimal } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
-import { purchaseStatusLabel, sourceLabel, usePurchase, useUpdatePurchase, type Purchase, type PurchaseLine } from "../../api/purchases";
+import {
+  purchaseErrorMessage,
+  purchaseLocationLabel,
+  purchaseStatusLabel,
+  resolutionLabel,
+  sourceLabel,
+  usePurchase,
+  useReopenPurchase,
+  useUpdatePurchase,
+  type Purchase,
+  type PurchaseLine,
+  type Resolution,
+} from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { PurchaseForm, purchaseValues } from "../../components/purchases/PurchaseForm";
+import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import { Alert, Button, Card, PageHeader, focusRing } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
+/**
+ * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);
+ * committed ones show their lines and observations, with Reopen to go back
+ * to review and, for manual purchases, the entry form to edit them outright.
+ */
 export function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const purchase = usePurchase(id);
   const [editing, setEditing] = useState(false);
-  const title = purchase.data ? `${purchase.data.vendor_location.vendor.name} · ${formatDateTime(purchase.data.purchased_at)}` : "Purchase";
+  const title = purchase.data
+    ? `${purchase.data.vendor_location?.vendor.name ?? "Receipt"} · ${formatDateTime(purchase.data.purchased_at)}`
+    : "Purchase";
   usePageTitle(title);
 
   if (purchase.isPending) {
@@ -40,15 +60,40 @@ export function PurchaseDetailPage() {
     );
   }
 
+  if (p.status !== "committed") {
+    return (
+      <>
+        <PageHeader title={title}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge tone="warn">{purchaseStatusLabel[p.status]}</Badge>
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">{sourceLabel[p.source]}</span>
+            <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+              All purchases
+            </Link>
+          </div>
+        </PageHeader>
+        <ReviewPurchase purchase={p} />
+      </>
+    );
+  }
+
+  return <CommittedPurchase purchase={p} title={title} onEdit={() => setEditing(true)} />;
+}
+
+function CommittedPurchase({ purchase: p, title, onEdit }: { purchase: Purchase; title: string; onEdit: () => void }) {
+  const reopen = useReopenPurchase(p.id);
   return (
     <>
       <PageHeader title={title}>
         <div className="flex flex-wrap gap-2">
           {p.source === "manual" ? (
-            <Button variant="secondary" onClick={() => setEditing(true)}>
+            <Button variant="secondary" onClick={onEdit}>
               Edit
             </Button>
           ) : null}
+          <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
+            {reopen.isPending ? "Reopening…" : "Reopen"}
+          </Button>
           <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
             All purchases
           </Link>
@@ -56,13 +101,20 @@ export function PurchaseDetailPage() {
       </PageHeader>
 
       <div className="flex flex-col gap-6">
+        {reopen.error ? <Alert tone="error">{purchaseErrorMessage(reopen.error)}</Alert> : null}
         <Card>
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <Item label="Location">
-              <Link to={`/vendors/${p.vendor_location.vendor.id}`} className={`rounded underline ${focusRing}`}>
-                {p.vendor_location.vendor.name}
-              </Link>
-              {p.vendor_location.name !== p.vendor_location.vendor.name ? ` — ${p.vendor_location.name}` : ""}
+              {p.vendor_location ? (
+                <>
+                  <Link to={`/vendors/${p.vendor_location.vendor.id}`} className={`rounded underline ${focusRing}`}>
+                    {p.vendor_location.vendor.name}
+                  </Link>
+                  {p.vendor_location.name !== p.vendor_location.vendor.name ? ` — ${p.vendor_location.name}` : ""}
+                </>
+              ) : (
+                purchaseLocationLabel(p)
+              )}
             </Item>
             <Item label="Purchased">{formatDateTime(p.purchased_at)}</Item>
             <Item label="Status">
@@ -76,7 +128,7 @@ export function PurchaseDetailPage() {
                 <span className="flex flex-wrap gap-1">
                   {p.flags.map((f) => (
                     <Badge key={f} tone="warn">
-                      {f}
+                      {f.replaceAll("_", " ")}
                     </Badge>
                   ))}
                 </span>
@@ -107,6 +159,15 @@ export function PurchaseDetailPage() {
               </tbody>
             </table>
           </div>
+          {p.lines.some((l) => l.line_kind === "item" && l.resolution === "unmatched") ? (
+            <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+              Unidentified lines wait in the{" "}
+              <Link to="/to-identify" className={`rounded underline ${focusRing}`}>
+                to-identify queue
+              </Link>
+              .
+            </p>
+          ) : null}
         </Card>
       </div>
     </>
@@ -124,6 +185,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
 
 function LineRow({ line }: { line: PurchaseLine }) {
   const isItem = line.line_kind === "item";
+  const resolution = line.resolution as Resolution | null;
   return (
     <tr className={isItem ? "" : "text-neutral-600 dark:text-neutral-400"}>
       <td className="py-2 pr-3 tabular-nums">{line.seq}</td>
@@ -139,9 +201,21 @@ function LineRow({ line }: { line: PurchaseLine }) {
           </>
         ) : (
           <span>
-            {line.raw_text ?? "—"} {isItem ? <Badge tone="warn">unresolved</Badge> : <Badge>{line.line_kind}</Badge>}
+            {line.raw_text ?? "—"}{" "}
+            {isItem ? (
+              resolution === "ignored" ? (
+                <Badge>ignored</Badge>
+              ) : (
+                <Badge tone="warn">unresolved</Badge>
+              )
+            ) : (
+              <Badge>{line.line_kind}</Badge>
+            )}
           </span>
         )}
+        {line.product && resolution && resolution !== "manual" ? (
+          <span className="ml-1 text-xs text-neutral-500">{resolutionLabel[resolution] ?? resolution}</span>
+        ) : null}
       </td>
       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</td>
       <td className="py-2 pr-3 text-right tabular-nums">{line.unit_price !== null ? formatMoney(line.unit_price, 2, 4) : "—"}</td>
@@ -150,12 +224,14 @@ function LineRow({ line }: { line: PurchaseLine }) {
         <span className="flex flex-wrap gap-1">
           {line.flags.map((f) => (
             <Badge key={f} tone="warn">
-              {f}
+              {f.replaceAll("_", " ")}
             </Badge>
           ))}
         </span>
       </td>
-      <td className="py-2">{isItem ? line.observation_id ? <Badge tone="good">observed</Badge> : <Badge tone="warn">no observation</Badge> : null}</td>
+      <td className="py-2">
+        {isItem && resolution !== "ignored" ? line.observation_id ? <Badge tone="good">observed</Badge> : <Badge tone="warn">no observation</Badge> : null}
+      </td>
     </tr>
   );
 }

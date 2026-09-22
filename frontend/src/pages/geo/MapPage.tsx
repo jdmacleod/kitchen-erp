@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
+import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
+import { formatAge, useCheapest, useLocationPricePanel, type PriceFilters as Filters } from "../../api/pricebook";
 import {
   VENDOR_KINDS,
   formatLatLon,
@@ -18,11 +20,15 @@ import {
   type VendorLocation,
 } from "../../api/geo";
 import { Badge, Disclosure, SelectField } from "../../components/catalog/fields";
+import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { VendorPicker, type VendorChoice } from "../../components/geo/VendorPicker";
+import { PriceAge, PromoBadge, formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { Alert, Button, Field, PageHeader, focusRing } from "../../components/ui";
+import { formatMoney, stripZeros } from "../../lib/decimal";
+import { formatDateTime } from "../../lib/format";
 import { describeOpeningHours, fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -65,18 +71,45 @@ export function MapPage() {
   // With the open-at filter on, the list is the set of locations open then;
   // stalls in a market's panel are narrowed to it too.
   const visibleIds = useMemo(() => (openAtOn ? new Set(items.map((l) => l.id)) : null), [openAtOn, items]);
+
+  // "Where is this cheapest": one ingredient, and each location's pin is
+  // labelled with its best normalized unit price. A chain-scoped vendor's
+  // price is repeated at each of its locations by the server.
+  const [cheapestOf, setCheapestOf] = useState<IngredientSummary | null>(null);
+  const [cheapestFilters, setCheapestFilters] = useState<Filters>({ min_quality: "", exclude_stale: false });
+  const cheapest = useCheapest(cheapestOf?.id, cheapestFilters);
+  const priceByLocation = useMemo(() => {
+    const out = new Map<string, { label: string; stale: boolean }>();
+    if (!cheapestOf) return out;
+    for (const item of cheapest.data?.items ?? []) {
+      // Every price carries its age, even on a pin.
+      out.set(item.location_id, { label: `${formatUnitPrice(item.norm_unit_price, item.norm_unit)} · ${formatAge(null, item.observed_at)}`, stale: item.stale });
+    }
+    return out;
+  }, [cheapestOf, cheapest.data]);
+
   const pins = useMemo<MapPin[]>(() => {
     const out: MapPin[] = [];
     for (const l of items) {
       // Stalls share their market's pin; they are reached through the market.
       if (l.parent_location_id) continue;
-      out.push({ id: l.id, lat: l.lat, lon: l.lon, kind: l.vendor.kind, label: `${l.name} (${vendorKindLabel[l.vendor.kind]})`, inactive: !l.active });
+      const price = priceByLocation.get(l.id);
+      out.push({
+        id: l.id,
+        lat: l.lat,
+        lon: l.lon,
+        kind: l.vendor.kind,
+        label: price ? `${l.name} (${vendorKindLabel[l.vendor.kind]}), ${price.label}${price.stale ? ", stale" : ""}` : `${l.name} (${vendorKindLabel[l.vendor.kind]})`,
+        inactive: !l.active,
+        priceLabel: price?.label,
+        stale: price?.stale,
+      });
     }
     for (const h of homeBases.data ?? []) {
       out.push({ id: `${HOME_PREFIX}${h.id}`, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (home base)` });
     }
     return out;
-  }, [items, homeBases.data]);
+  }, [items, homeBases.data, priceByLocation]);
 
   const selectedPinId = selected ? (selected.type === "home" ? `${HOME_PREFIX}${selected.id}` : selected.id) : null;
 
@@ -113,6 +146,17 @@ export function MapPage() {
         onOpenAtOn={setOpenAtOn}
         openAtLocal={openAtLocal}
         onOpenAtLocal={setOpenAtLocal}
+      />
+
+      <CheapestControl
+        ingredient={cheapestOf}
+        onIngredient={setCheapestOf}
+        filters={cheapestFilters}
+        onFilters={setCheapestFilters}
+        unit={cheapest.data?.unit ?? cheapestOf?.canonical_unit ?? null}
+        count={cheapest.data?.items.length ?? 0}
+        loading={cheapest.isFetching}
+        error={cheapest.error}
       />
 
       {tilesPresent === false ? (
@@ -230,6 +274,60 @@ function Filters({ kind, onKind, homeBaseId, onHomeBase, homeBases, openAtOn, on
           </Button>
         </div>
       </div>
+    </form>
+  );
+}
+
+interface CheapestControlProps {
+  ingredient: IngredientSummary | null;
+  onIngredient: (i: IngredientSummary | null) => void;
+  filters: Filters;
+  onFilters: (f: Filters) => void;
+  unit: string | null;
+  count: number;
+  loading: boolean;
+  error: unknown;
+}
+
+/** Choose an ingredient and each pin is labelled with its best price per canonical unit. */
+function CheapestControl({ ingredient, onIngredient, filters, onFilters, unit, count, loading, error }: CheapestControlProps) {
+  return (
+    <form aria-label="Where is this cheapest" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900" onSubmit={(e) => e.preventDefault()}>
+      <h2 className="text-sm font-medium">Where is this cheapest?</h2>
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto]">
+        <IngredientPicker
+          id="cheapest-ingredient"
+          label="Ingredient"
+          allowCreate={false}
+          value={ingredient ? { kind: "existing", ingredient } : null}
+          onChange={(choice) => onIngredient(choice?.kind === "existing" ? choice.ingredient : null)}
+        />
+        <SelectField id="cheapest-min-quality" label="Minimum quality" value={filters.min_quality ?? ""} onChange={(e) => onFilters({ ...filters, min_quality: e.target.value ? Number(e.target.value) : "" })}>
+          <option value="">Any</option>
+          {[1, 2, 3, 4, 5].map((q) => (
+            <option key={q} value={q}>
+              {q}/5 or better
+            </option>
+          ))}
+        </SelectField>
+        <label className="inline-flex min-h-10 items-center gap-2 self-end text-sm">
+          <input type="checkbox" checked={Boolean(filters.exclude_stale)} onChange={(e) => onFilters({ ...filters, exclude_stale: e.target.checked })} className={`size-4 ${focusRing}`} />
+          Exclude stale
+        </label>
+      </div>
+      {ingredient ? (
+        error ? (
+          <Alert tone="error">{errorMessage(error)}</Alert>
+        ) : (
+          <p role="status" className="text-xs text-neutral-600 dark:text-neutral-400" data-testid="cheapest-summary">
+            {loading && count === 0
+              ? "Looking up prices…"
+              : count === 0
+                ? `No normalized price for ${ingredient.name} at any location.`
+                : `Pins show the best price per ${unit ?? ingredient.canonical_unit} for ${ingredient.name} at ${count} ${count === 1 ? "location" : "locations"}; stale prices say so.`}
+          </p>
+        )
+      ) : null}
     </form>
   );
 }
@@ -355,6 +453,7 @@ function LocationPanel({ id, openAtIso, visibleIds, onClose }: { id: string; ope
           </>
         ) : null}
       </dl>
+      <LocationPrices id={l.id} />
       {l.vendor.kind === "market" || l.stalls.length > 0 ? (
         <div className="mt-3">
           <h3 className="text-sm font-medium">Stalls</h3>
@@ -375,6 +474,68 @@ function LocationPanel({ id, openAtIso, visibleIds, onClose }: { id: string; ope
         </div>
       ) : null}
     </div>
+  );
+}
+
+const PERIODS = [7, 30, 90, 365] as const;
+
+/** Last visit, spend over a chosen period, and the most recent prices seen at a location. */
+function LocationPrices({ id }: { id: string }) {
+  const [days, setDays] = useState<number>(30);
+  const panel = useLocationPricePanel(id, days);
+  return (
+    <section aria-label="Prices here" className="mt-3 border-t border-neutral-200 pt-3 dark:border-neutral-800" data-testid="location-prices">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-medium">Prices here</h3>
+        <label className="inline-flex items-center gap-1 text-xs">
+          Over
+          <select aria-label="Spend period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={`min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
+            {PERIODS.map((d) => (
+              <option key={d} value={d}>
+                {d} days
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      {panel.isPending ? (
+        <p role="status" className="text-neutral-600 dark:text-neutral-400">
+          Loading…
+        </p>
+      ) : panel.isError ? (
+        <Alert tone="error">{errorMessage(panel.error)}</Alert>
+      ) : (
+        <>
+          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dt className="text-neutral-600 dark:text-neutral-400">Last visit</dt>
+            <dd>{panel.data.last_visit ? formatDateTime(panel.data.last_visit) : "never"}</dd>
+            <dt className="text-neutral-600 dark:text-neutral-400">Spend</dt>
+            <dd className="tabular-nums">
+              {formatMoney(panel.data.spend)} over {panel.data.visits} {panel.data.visits === 1 ? "visit" : "visits"} in {panel.data.period_days} days
+            </dd>
+          </dl>
+          {panel.data.recent.length === 0 ? (
+            <p className="mt-1 text-neutral-600 dark:text-neutral-400">No prices seen here yet.</p>
+          ) : (
+            <ul aria-label="Recent prices" className="mt-1 divide-y divide-neutral-200 dark:divide-neutral-800">
+              {panel.data.recent.map((r) => (
+                <li key={r.observation_id} className="flex flex-wrap items-baseline justify-between gap-x-2 py-1">
+                  <Link to={`/products/${r.product_id}`} className={`min-w-0 truncate rounded underline-offset-2 hover:underline ${focusRing}`}>
+                    {r.brand ? `${r.brand} ${r.product_name}` : r.product_name}
+                  </Link>
+                  <span className="text-xs whitespace-nowrap tabular-nums">
+                    {formatMoney(r.price)} / {stripZeros(r.qty)} {r.unit} <PromoBadge promo={r.is_promo} />
+                    {r.norm_unit_price ? <span className="text-neutral-600 dark:text-neutral-400"> · {formatUnitPrice(r.norm_unit_price, r.norm_unit)}</span> : null}
+                    {" · "}
+                    <PriceAge observedAt={r.observed_at} />
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

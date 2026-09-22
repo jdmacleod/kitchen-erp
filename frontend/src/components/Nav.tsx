@@ -14,7 +14,14 @@ export const catalogLinks = [
 export const purchaseLinks = [
   { to: "/purchases", label: "Purchases", end: true },
   { to: "/purchases/new", label: "New purchase" },
+  { to: "/receipts", label: "Receipts" },
+  { to: "/to-identify", label: "To identify" },
   { to: "/prices/new", label: "Shelf price" },
+] as const;
+
+export const priceBookLinks = [
+  { to: "/compare", label: "Compare" },
+  { to: "/price-book/needs-bridge", label: "Needs a bridge" },
 ] as const;
 
 function linkClass({ isActive }: { isActive: boolean }): string {
@@ -58,6 +65,18 @@ export function Nav({ id }: { id?: string }) {
           {purchaseLinks.map((link) => (
             <li key={link.to}>
               <NavLink to={link.to} end={"end" in link} className={linkClass}>
+                {link.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Price book</p>
+        <ul className="flex flex-col gap-0.5">
+          {priceBookLinks.map((link) => (
+            <li key={link.to}>
+              <NavLink to={link.to} className={linkClass}>
                 {link.label}
               </NavLink>
             </li>

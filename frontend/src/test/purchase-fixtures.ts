@@ -1,6 +1,6 @@
 // Synthetic Phase 2 records for tests: an invented store, invented products,
 // fixed v7-shaped ids, and prices that exercise the decimal arithmetic.
-import type { Observation, Purchase } from "../api/purchases";
+import type { Observation, Purchase, PurchaseLine } from "../api/purchases";
 import { flourId, flourProductId, hits } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
 
@@ -104,4 +104,106 @@ export const manualPurchase: Purchase = {
   ],
   created_at: "2026-09-19T16:31:00Z",
   updated_at: "2026-09-19T16:31:00Z",
+};
+
+// --- a receipt purchase under review (2D) -----------------------------------
+
+export const receiptPurchaseId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8003";
+export const receiptDocumentId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9001";
+export const ingestJobId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9101";
+
+export const milkProduct = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d03", name: "Whole Milk", brand: "Coastline", pack_qty: "1", pack_unit: "gal" };
+
+const receiptLineBase = {
+  parent_line_id: null,
+  resolved_by: null,
+  flags: [] as string[],
+  suggestions: [],
+  observation_id: null,
+};
+
+/** Quiet: resolved by a confirmed alias, nothing flagged. */
+export const aliasLine: PurchaseLine = {
+  ...receiptLineBase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8201",
+  seq: 1,
+  raw_text: "MLSTN AP FLOUR 5LB",
+  raw_text_norm: "MLSTN AP FLOUR",
+  line_kind: "item",
+  product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb" },
+  qty: "1",
+  unit: "each",
+  unit_price: "4.9900",
+  line_total: "4.99",
+  resolution: "alias",
+};
+
+/** Unmatched, with a fuzzy suggestion on top and a model suggestion under it. */
+export const unmatchedLine: PurchaseLine = {
+  ...receiptLineBase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8202",
+  seq: 2,
+  raw_text: "RVRBND BREAD FLR 2KG",
+  raw_text_norm: "RVRBND BREAD FLR",
+  line_kind: "item",
+  product: null,
+  qty: "1",
+  unit: "each",
+  unit_price: "6.5000",
+  line_total: "6.50",
+  resolution: "unmatched",
+  suggestions: [
+    { kind: "fuzzy", product_id: hits[1].id, ignore: false, label: "Riverbend Bread Flour", score: "0.710" },
+    { kind: "llm", product_id: flourProductId, ignore: false, label: "Millstone All-Purpose Flour", score: "0.400" },
+  ],
+};
+
+/** A coupon not yet attached to anything. */
+export const discountLine: PurchaseLine = {
+  ...receiptLineBase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8203",
+  seq: 3,
+  raw_text: "COUPON",
+  raw_text_norm: "COUPON",
+  line_kind: "discount",
+  product: null,
+  qty: null,
+  unit: null,
+  unit_price: null,
+  line_total: "-1.00",
+  resolution: "unmatched",
+};
+
+/** Resolved by alias but flagged: the price is far from the product's history. */
+export const outlierLine: PurchaseLine = {
+  ...receiptLineBase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8204",
+  seq: 4,
+  raw_text: "CSTLN WHOLE MILK GAL",
+  raw_text_norm: "CSTLN WHOLE MILK GAL",
+  line_kind: "item",
+  product: milkProduct,
+  qty: "1",
+  unit: "each",
+  unit_price: "1.0100",
+  line_total: "1.01",
+  resolution: "alias",
+  flags: ["price_outlier"],
+};
+
+export const receiptPurchase: Purchase = {
+  id: receiptPurchaseId,
+  vendor_location: { id: chainLocationId, name: chainLocation.name, vendor: { id: chainLocation.vendor.id, name: chainLocation.vendor.name, kind: "chain" } },
+  receipt_document_id: receiptDocumentId,
+  purchased_at: "2026-09-20T18:05:00Z",
+  subtotal: "11.50",
+  tax: "0.00",
+  total: "12.00",
+  computed_total: "11.50",
+  status: "draft",
+  source: "receipt",
+  flags: ["total_mismatch"],
+  lines: [aliasLine, unmatchedLine, discountLine, outlierLine],
+  created_at: "2026-09-20T18:06:00Z",
+  updated_at: "2026-09-20T18:06:00Z",
 };

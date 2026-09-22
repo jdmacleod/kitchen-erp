@@ -11,6 +11,7 @@ function baseRoutes(ingredient: () => Ingredient) {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     [`GET /ingredients/${flourId}`]: () => jsonResponse(200, ingredient()),
+    [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: [], stale_thresholds: { fresh: 14, refrigerated: 45, shelf_stable: 120 } }),
     "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
   };
 }

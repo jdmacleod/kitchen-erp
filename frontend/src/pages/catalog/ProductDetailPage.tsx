@@ -13,6 +13,7 @@ import {
   type ProductUpdateInput,
 } from "../../api/catalog";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
+import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -110,6 +111,8 @@ function ProductDetail({ product }: { product: Product }) {
             ) : null}
           </Card>
         ) : null}
+
+        <ProductPrices product={product} />
 
         <Card>
           <EditProductForm key={product.updated_at} product={product} />

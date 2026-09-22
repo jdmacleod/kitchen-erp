@@ -31,6 +31,10 @@ export interface MapPin {
   kind: PinKind;
   label: string;
   inactive?: boolean;
+  /** A short text drawn under the pin, e.g. a price per unit. */
+  priceLabel?: string;
+  /** The price label is past its staleness threshold. */
+  stale?: boolean;
 }
 
 export interface MapViewProps {
@@ -115,6 +119,10 @@ function pinElement(pin: MapPin | { kind: "draft" }, label: string): HTMLButtonE
       '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5 2.5 11h3v10h5v-6h3v6h5V11h3z"/></svg>';
   }
   el.appendChild(shape);
+  const text = document.createElement("span");
+  text.className = "kerp-pin__label";
+  text.setAttribute("aria-hidden", "true");
+  el.appendChild(text);
   return el;
 }
 
@@ -208,6 +216,10 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       for (const k of PIN_KINDS) el.classList.toggle(`kerp-pin--${k}`, pin.kind === k);
       el.classList.toggle("kerp-pin--selected", pin.id === selectedId);
       el.classList.toggle("kerp-pin--inactive", Boolean(pin.inactive));
+      el.classList.toggle("kerp-pin--priced", Boolean(pin.priceLabel));
+      el.classList.toggle("kerp-pin--stale", Boolean(pin.stale));
+      const text = el.querySelector<HTMLElement>(".kerp-pin__label");
+      if (text) text.textContent = pin.priceLabel ? (pin.stale ? `${pin.priceLabel} (stale)` : pin.priceLabel) : "";
       el.setAttribute("aria-label", pin.label);
       el.setAttribute("aria-pressed", pin.id === selectedId ? "true" : "false");
     }

@@ -70,7 +70,7 @@ export function purchaseValues(p: Purchase): PurchaseFormValues {
     };
   });
   return {
-    vendor_location_id: p.vendor_location.id,
+    vendor_location_id: p.vendor_location?.id ?? "",
     date: toLocalDate(new Date(p.purchased_at)),
     total: p.total ?? "",
     lines: lines.length > 0 ? [...lines, newLine()] : [newLine()],

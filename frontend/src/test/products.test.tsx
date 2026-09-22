@@ -116,6 +116,7 @@ describe("products", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, product),
+      [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
       [`PATCH /products/${flourProductId}`]: () => {
         product = { ...product, pack_qty: null, pack_unit: null, name: "AP Flour", updated_at: "2026-03-03T00:00:00Z" };
         return jsonResponse(200, product);

@@ -10,10 +10,14 @@ import { ProductsPage } from "./pages/catalog/ProductsPage";
 import { MapPage } from "./pages/geo/MapPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
+import { ComparePage } from "./pages/pricebook/ComparePage";
+import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
 import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
+import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
+import { ToIdentifyPage } from "./pages/purchases/ToIdentifyPage";
 import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -45,6 +49,12 @@ export function App() {
             <Route path="/purchases/new" element={<NewPurchasePage />} />
             <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
             <Route path="/prices/new" element={<ShelfPricePage />} />
+            {/* Phase 2C/2D: receipt ingest, review, and the to-identify queue */}
+            <Route path="/receipts" element={<ReceiptsPage />} />
+            <Route path="/to-identify" element={<ToIdentifyPage />} />
+            {/* Phase 2E: price book views */}
+            <Route path="/compare" element={<ComparePage />} />
+            <Route path="/price-book/needs-bridge" element={<NeedsBridgePage />} />
             <Route
               path="/settings/users"
               element={
