@@ -7,6 +7,12 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action lists the pull request's commits through the API to work out
+  # what to scan. Without this it fails with 403 "Resource not accessible by
+  # integration" on every pull request, including Dependabot's — which looks
+  # exactly like a secret being found. Read is all it needs; comments are off
+  # below, and a Dependabot run gets a read-only token regardless.
+  pull-requests: read
 
 jobs:
   safeguards:
@@ -53,6 +59,11 @@ jobs:
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7  # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A finding belongs in the job log, not in a comment on the pull
+          # request: posting it needs write access the token does not have on a
+          # Dependabot or fork run, and quoting a leaked secret into a comment
+          # publishes it a second time.
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
       - name: Refuse tracked files under data/ or a reference clone
         run: |
