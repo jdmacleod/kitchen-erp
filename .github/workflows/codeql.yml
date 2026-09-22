@@ -1,0 +1,72 @@
+name: CodeQL
+
+# Static analysis for the two languages this repository actually ships. It earns
+# its place here rather than being a badge: the application accepts uploaded
+# files, parses text taken from receipts by OCR, and parses output from a
+# language model — three untrusted inputs — and SECURITY.md names path traversal
+# in receipt upload as an in-scope vulnerability class. Those are the shapes
+# CodeQL is good at.
+#
+# It does not replace anything already here. The PII safeguards job looks for
+# personal data, gitleaks looks for secrets, and this looks for code that can be
+# made to misbehave.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, because the interesting case is a query published after code was
+    # written. Nothing else in this repository would notice that.
+    - cron: "37 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Uploading results needs write here specifically. The repository's default
+      # workflow token is read-only on purpose; this grant is the exception and is
+      # scoped to this job.
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            # backend/ and tools/ — the API, the services, the ingest pipeline,
+            # and the PII scanner itself.
+          - language: javascript-typescript
+            # frontend/ and e2e/.
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
+        with:
+          languages: ${{ matrix.language }}
+          # security-and-quality adds maintainability queries to the security
+          # ones. On a codebase this size the extra noise is affordable and the
+          # findings have been worth reading.
+          queries: security-and-quality
+
+      # Neither language needs a build step: Python is interpreted and the
+      # TypeScript is analysed from source. No autobuild, so nothing runs
+      # arbitrary build scripts during analysis.
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4
+        with:
+          category: /language:${{ matrix.language }}
