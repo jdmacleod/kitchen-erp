@@ -124,7 +124,7 @@ Worth knowing before you put this anywhere:
 ## Tests
 
 ```bash
-docker compose exec api pytest          # backend, against a throwaway database
+docker compose exec api pytest          # backend suite, against a throwaway database
 docker compose exec api pytest -m llm   # opt-in, needs a live model
 ```
 
