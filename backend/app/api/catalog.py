@@ -143,9 +143,17 @@ async def list_products(
     db: DbSession,
     ingredient_id: uuid.UUID | None = None,
     include_inactive: bool = False,
+    q: str | None = Query(default=None, description="typeahead text; ranks like /products/search"),
+    barcode: str | None = Query(default=None, description="exact barcode match"),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
 ) -> ProductList:
+    if barcode or q:
+        hits = await catalog.search_products(db, barcode or q or "", limit)
+        if barcode:
+            hits = [h for h in hits if h.barcode == barcode]
+        rows = [await catalog.get_product(db, h.id) for h in hits]
+        return ProductList(items=[ProductOut.model_validate(r) for r in rows], next_cursor=None)
     rows, next_cursor = await catalog.list_products(
         db,
         ingredient_id=ingredient_id,

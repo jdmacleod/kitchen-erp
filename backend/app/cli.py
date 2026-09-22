@@ -240,6 +240,26 @@ def import_purchases(
     asyncio.run(_run())
 
 
+OPENAPI_OUT = typer.Option(
+    Path(__file__).resolve().parent.parent.parent / "docs" / "api" / "openapi.json",
+    "--out",
+    dir_okay=False,
+    resolve_path=True,
+)
+
+
+@cli.command("export-openapi")
+def export_openapi(out: Path = OPENAPI_OUT) -> None:
+    """Write the running application's OpenAPI document (the capture contract) to disk."""
+    import json
+
+    from app.main import app
+
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n")
+    typer.echo(f"wrote {out}")
+
+
 def main() -> None:
     cli()
 
