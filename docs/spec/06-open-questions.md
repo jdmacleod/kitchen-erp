@@ -67,6 +67,9 @@ MIT) and whether each `.cook` file must carry a front-matter `id` so renames sur
 reindexing. Cookcli treats the path as identity; the Paprika translator uses a
 stable UUID plus a content hash, which is the shape Phase 3 wants. *Recommendation:*
 require the front-matter id from the first recipe, and validate it in Phase 3.
+*Superseded 2026-09-22:* the revised Phase 3 design carries identity without
+writing into the file (content hash, git rename detection, and a confirmed relink);
+no front-matter id is required. See `07-phase-3-recipes-and-costing.md`.
 
 **A5. Resolved: layout.** The spec files were under `docs/` and the clones at the
 repository root; both now match `CLAUDE.md` (`docs/spec/`, `reference/`). The one

@@ -20,6 +20,7 @@ Where this package records a decision, treat it as settled unless implementation
 | `04-phase-2-purchases-and-price-book.md` | Receipt ingest, resolution, review, manual entry, price book, capture API |
 | `05-later-phase-design-notes.md` | Decisions already made for Phases 3–6; context only |
 | `06-open-questions.md` | Tensions found in the 2026-09-21 review; every recommendation was accepted and folded into the documents above |
+| `07-phase-3-recipes-and-costing.md` | Phase 3 specified to implementation depth; a draft awaiting approval |
 
 ## Roadmap
 
