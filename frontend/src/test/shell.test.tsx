@@ -8,6 +8,7 @@ describe("app shell", () => {
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
       "POST /auth/logout": () => jsonResponse(204),
     });
     const user = userEvent.setup();
@@ -24,6 +25,7 @@ describe("app shell", () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     const user = userEvent.setup();
     renderApp("/purchases");

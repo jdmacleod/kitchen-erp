@@ -3,7 +3,6 @@ import { AuthBridge } from "./auth/AuthBridge";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./components/AppShell";
-import { CatalogPage, catalogPages } from "./pages/CatalogPage";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
@@ -11,6 +10,10 @@ import { ProductsPage } from "./pages/catalog/ProductsPage";
 import { MapPage } from "./pages/geo/MapPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
+import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
+import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
+import { PurchasesPage } from "./pages/purchases/PurchasesPage";
+import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
 import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
@@ -37,7 +40,11 @@ export function App() {
             <Route path="/vendors/:id" element={<VendorDetailPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/settings/home-bases" element={<HomeBasesPage />} />
-            <Route path="/purchases" element={<CatalogPage {...catalogPages.purchases} />} />
+            {/* Phase 2A/2B: shelf prices and manual purchases */}
+            <Route path="/purchases" element={<PurchasesPage />} />
+            <Route path="/purchases/new" element={<NewPurchasePage />} />
+            <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
+            <Route path="/prices/new" element={<ShelfPricePage />} />
             <Route
               path="/settings/users"
               element={
