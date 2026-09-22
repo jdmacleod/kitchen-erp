@@ -25,7 +25,8 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
-from app.models.geo import GeographyPoint
+from app.models.catalog import Product
+from app.models.geo import GeographyPoint, VendorLocation
 
 INGEST_STAGES = ("captured", "ocr", "header", "lines", "resolve", "review", "committed")
 INGEST_STATUSES = ("pending", "running", "needs_review", "done", "failed")
@@ -140,6 +141,7 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
     lines: Mapped[list[PurchaseLine]] = relationship(
         back_populates="purchase", cascade="all, delete-orphan", order_by="PurchaseLine.seq"
     )
+    vendor_location: Mapped[VendorLocation | None] = relationship(lazy="joined")
 
 
 class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
@@ -177,6 +179,7 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     flags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
 
     purchase: Mapped[Purchase] = relationship(back_populates="lines")
+    product: Mapped[Product | None] = relationship(lazy="joined")
 
 
 class ReceiptAlias(UUIDPrimaryKey, Timestamped, Base):
@@ -234,6 +237,11 @@ class PriceObservation(UUIDPrimaryKey, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+    product: Mapped[Product] = relationship(lazy="joined")
+    vendor_location: Mapped[VendorLocation] = relationship(lazy="joined")
+    norm: Mapped[PriceNorm | None] = relationship(lazy="joined", uselist=False)
+    void: Mapped[PriceObservationVoid | None] = relationship(lazy="joined", uselist=False)
 
 
 class PriceObservationVoid(UUIDPrimaryKey, Base):

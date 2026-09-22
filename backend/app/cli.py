@@ -108,6 +108,21 @@ def import_usda_portions(path: Path = PATH_OPTION) -> None:
     asyncio.run(_run())
 
 
+@cli.command("recompute-norms")
+def recompute_norms() -> None:
+    """Truncate and rebuild price_norm from observations and current bridges."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.pricebook import recompute_all
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            n = await recompute_all(db)
+        await dispose_engine()
+        typer.echo(f"recomputed {n} normalizations")
+
+    asyncio.run(_run())
+
+
 def main() -> None:
     cli()
 

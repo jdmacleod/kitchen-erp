@@ -2,6 +2,275 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+import uuid
+
+from fastapi import APIRouter, Query, status
+from fastapi.responses import JSONResponse
+
+from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.schemas.purchases import (
+    LastUnitOut,
+    LineOut,
+    ManualPurchaseIn,
+    NeedsBridgeItem,
+    NeedsBridgeList,
+    ObservationCreate,
+    ObservationList,
+    ObservationOut,
+    PurchaseList,
+    PurchaseOut,
+    RecomputeOut,
+    VoidIn,
+)
+from app.services import pricebook, purchases
 
 router = APIRouter(tags=["purchases"])
+
+
+def observation_out(o) -> ObservationOut:
+    return ObservationOut(
+        id=o.id,
+        product={
+            "id": o.product.id,
+            "name": o.product.name,
+            "brand": o.product.brand,
+            "pack_qty": o.product.pack_qty,
+            "pack_unit": o.product.pack_unit,
+            "ingredient": {
+                "id": o.product.ingredient.id,
+                "name": o.product.ingredient.name,
+                "canonical_unit": o.product.ingredient.canonical_unit,
+            },
+        },
+        vendor_location={
+            "id": o.vendor_location.id,
+            "name": o.vendor_location.name,
+            "vendor": {
+                "id": o.vendor_location.vendor.id,
+                "name": o.vendor_location.vendor.name,
+                "kind": o.vendor_location.vendor.kind,
+                "price_scope": o.vendor_location.vendor.price_scope,
+            },
+        },
+        purchase_line_id=o.purchase_line_id,
+        observed_at=o.observed_at,
+        price=o.price,
+        qty=o.qty,
+        unit=o.unit,
+        is_promo=o.is_promo,
+        source=o.source,
+        voided=o.void is not None,
+        void_reason=o.void.reason if o.void is not None else None,
+        norm=o.norm,
+        created_at=o.created_at,
+    )
+
+
+@router.get("/price-observations", response_model=ObservationList)
+async def list_observations(
+    _: CurrentUser,
+    db: DbSession,
+    product_id: uuid.UUID | None = None,
+    vendor_location_id: uuid.UUID | None = None,
+    include_voided: bool = False,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
+) -> ObservationList:
+    rows, next_cursor = await pricebook.list_observations(
+        db,
+        product_id=product_id,
+        vendor_location_id=vendor_location_id,
+        include_voided=include_voided,
+        limit=limit,
+        cursor=cursor,
+    )
+    return ObservationList(items=[observation_out(o) for o in rows], next_cursor=next_cursor)
+
+
+@router.post(
+    "/price-observations", response_model=ObservationOut, status_code=status.HTTP_201_CREATED
+)
+async def create_observation(
+    payload: ObservationCreate, user: CurrentUser, db: DbSession, guard: Idempotency
+) -> JSONResponse:
+    """A shelf price: the simplest producer of observations (capture contract)."""
+    if guard.replay is not None:
+        return guard.replay
+    o = await pricebook.observe(
+        db,
+        product_id=payload.product_id,
+        vendor_location_id=payload.vendor_location_id,
+        price=payload.price,
+        qty=payload.qty,
+        unit=payload.unit,
+        source="shelf",
+        entered_by=user,
+        is_promo=payload.is_promo,
+        observed_at=payload.observed_at,
+    )
+    return await guard.commit(201, observation_out(o).model_dump(mode="json"))
+
+
+@router.get("/price-observations/{observation_id}", response_model=ObservationOut)
+async def get_observation(
+    observation_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> ObservationOut:
+    return observation_out(await pricebook.get_observation(db, observation_id))
+
+
+@router.post("/price-observations/{observation_id}/void", response_model=ObservationOut)
+async def void_observation(
+    observation_id: uuid.UUID, payload: VoidIn, user: CurrentUser, db: DbSession
+) -> ObservationOut:
+    return observation_out(await pricebook.void(db, observation_id, payload.reason, user))
+
+
+@router.get("/price-book/needs-bridge", response_model=NeedsBridgeList)
+async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
+    items = [
+        NeedsBridgeItem(
+            ingredient={
+                "id": r["ingredient_id"],
+                "name": r["ingredient_name"],
+                "canonical_unit": r["canonical_unit"],
+            },
+            product={
+                "id": r["product_id"],
+                "name": r["name"],
+                "brand": r["brand"],
+                "pack_qty": r["pack_qty"],
+                "pack_unit": r["pack_unit"],
+                "ingredient": {
+                    "id": r["ingredient_id"],
+                    "name": r["ingredient_name"],
+                    "canonical_unit": r["canonical_unit"],
+                },
+            },
+            status=r["status"],
+            observation_count=r["observation_count"],
+            latest_observed_at=r["latest_observed_at"],
+        )
+        for r in await pricebook.needs_bridge(db)
+    ]
+    return NeedsBridgeList(items=items)
+
+
+@router.post("/price-book/recompute", response_model=RecomputeOut)
+async def recompute(_: CurrentUser, db: DbSession) -> RecomputeOut:
+    return RecomputeOut(recomputed=await pricebook.recompute_all(db))
+
+
+# --- purchases --------------------------------------------------------------
+
+
+async def purchase_out(db, purchase) -> PurchaseOut:
+    live = await purchases.live_observations(db, purchase)
+    lines = [
+        LineOut(
+            id=line.id,
+            seq=line.seq,
+            raw_text=line.raw_text,
+            line_kind=line.line_kind,
+            product=(
+                {
+                    "id": line.product.id,
+                    "name": line.product.name,
+                    "brand": line.product.brand,
+                    "pack_qty": line.product.pack_qty,
+                    "pack_unit": line.product.pack_unit,
+                }
+                if line.product is not None
+                else None
+            ),
+            parent_line_id=line.parent_line_id,
+            qty=line.qty,
+            unit=line.unit,
+            unit_price=line.unit_price,
+            line_total=line.line_total,
+            resolution=line.resolution,
+            resolved_by=line.resolved_by,
+            resolution_confidence=line.resolution_confidence,
+            flags=line.flags,
+            observation_id=live.get(line.id),
+        )
+        for line in purchase.lines
+    ]
+    location = purchase.vendor_location
+    return PurchaseOut(
+        id=purchase.id,
+        vendor_location=(
+            {
+                "id": location.id,
+                "name": location.name,
+                "vendor": {
+                    "id": location.vendor.id,
+                    "name": location.vendor.name,
+                    "kind": location.vendor.kind,
+                    "price_scope": location.vendor.price_scope,
+                },
+            }
+            if location is not None
+            else None
+        ),
+        receipt_document_id=purchase.receipt_document_id,
+        purchased_at=purchase.purchased_at,
+        subtotal=purchase.subtotal,
+        tax=purchase.tax,
+        total=purchase.total,
+        computed_total=purchases.computed_total(purchase),
+        status=purchase.status,
+        source=purchase.source,
+        flags=purchase.flags,
+        ledger_txn_ref=purchase.ledger_txn_ref,
+        lines=lines,
+        created_at=purchase.created_at,
+        updated_at=purchase.updated_at,
+    )
+
+
+@router.get("/purchases", response_model=PurchaseList)
+async def list_purchases(
+    _: CurrentUser,
+    db: DbSession,
+    vendor_location_id: uuid.UUID | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    source: str | None = None,
+    limit: int = Query(50, ge=1, le=200),
+    cursor: str | None = None,
+) -> PurchaseList:
+    rows, next_cursor = await purchases.list_purchases(
+        db,
+        vendor_location_id=vendor_location_id,
+        status=status_filter,
+        source=source,
+        limit=limit,
+        cursor=cursor,
+    )
+    return PurchaseList(items=[await purchase_out(db, p) for p in rows], next_cursor=next_cursor)
+
+
+@router.post("/purchases", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)
+async def create_purchase(
+    payload: ManualPurchaseIn, user: CurrentUser, db: DbSession, guard: Idempotency
+) -> JSONResponse:
+    if guard.replay is not None:
+        return guard.replay
+    purchase = await purchases.create_manual(db, user, payload)
+    return await guard.commit(201, (await purchase_out(db, purchase)).model_dump(mode="json"))
+
+
+@router.get("/purchases/{purchase_id}", response_model=PurchaseOut)
+async def get_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> PurchaseOut:
+    return await purchase_out(db, await purchases.get_purchase(db, purchase_id))
+
+
+@router.put("/purchases/{purchase_id}", response_model=PurchaseOut)
+async def update_purchase(
+    purchase_id: uuid.UUID, payload: ManualPurchaseIn, user: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    return await purchase_out(db, await purchases.update_manual(db, user, purchase_id, payload))
+
+
+@router.get("/products/{product_id}/last-purchase-unit", response_model=LastUnitOut)
+async def last_purchase_unit(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> LastUnitOut:
+    return LastUnitOut(unit=await purchases.last_purchase_unit(db, product_id))

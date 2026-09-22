@@ -137,11 +137,17 @@ async def update_ingredient(
         data["name"] = data["name"].strip()
     for key, value in data.items():
         setattr(ingredient, key, value)
+    bridge_changed = bool(
+        {"density_g_per_ml", "density_source", "clear_density", "canonical_unit"}
+        & set(payload.model_dump(exclude_unset=True))
+    )
     try:
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
         raise _ingredient_conflict(exc) from exc
+    if bridge_changed:
+        await _after_ingredient_bridge_change(db, ingredient_id)
     return await get_ingredient(db, ingredient_id)
 
 
@@ -191,6 +197,7 @@ async def add_measure(
         await db.rollback()
         raise ApiError(409, "measure_label_taken", "That measure label already exists.") from exc
     await db.refresh(measure)
+    await _after_ingredient_bridge_change(db, ingredient_id)
     return measure
 
 
@@ -211,6 +218,7 @@ async def update_measure(
         await db.rollback()
         raise ApiError(409, "measure_label_taken", "That measure label already exists.") from exc
     await db.refresh(measure)
+    await _after_ingredient_bridge_change(db, measure.ingredient_id)
     return measure
 
 
@@ -224,8 +232,10 @@ async def confirm_measure(db: AsyncSession, measure_id: uuid.UUID) -> Ingredient
 
 async def delete_measure(db: AsyncSession, measure_id: uuid.UUID) -> None:
     measure = await get_measure(db, measure_id)
+    ingredient_id = measure.ingredient_id
     await db.delete(measure)
     await db.commit()
+    await _after_ingredient_bridge_change(db, ingredient_id)
 
 
 # --- products ---------------------------------------------------------------
@@ -361,11 +371,25 @@ async def update_product(
         if value is None and key in {"name"}:
             continue
         setattr(product, key, value)
+    bridge_changed = bool(
+        {
+            "pack_qty",
+            "pack_unit",
+            "clear_pack",
+            "density_override",
+            "density_override_source",
+            "clear_density_override",
+            "ingredient_id",
+        }
+        & set(payload.model_dump(exclude_unset=True))
+    )
     try:
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
         raise _product_conflict(exc) from exc
+    if bridge_changed:
+        await _after_product_bridge_change(db, product_id)
     return await get_product(db, product_id)
 
 
@@ -520,3 +544,18 @@ async def bench(db: AsyncSession, ingredient_id: uuid.UUID, payload: ConvertIn) 
     return ConvertOut(
         ok=False, failure_code=result.code, message=result.message, version=result.version
     )
+
+
+# --- recompute hooks (price book) -------------------------------------------
+
+
+async def _after_ingredient_bridge_change(db: AsyncSession, ingredient_id: uuid.UUID) -> None:
+    from app.services.pricebook import recompute_for_ingredient
+
+    await recompute_for_ingredient(db, ingredient_id)
+
+
+async def _after_product_bridge_change(db: AsyncSession, product_id: uuid.UUID) -> None:
+    from app.services.pricebook import recompute_for_product
+
+    await recompute_for_product(db, product_id)
