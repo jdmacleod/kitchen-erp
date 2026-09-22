@@ -34,6 +34,7 @@ from app.ingest import parsers
 from app.ingest.errors import IngestError, InvalidModelOutput, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
+from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptHeader, ReceiptLines
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
 from app.services import resolution
@@ -105,8 +106,6 @@ async def latest_results(db: AsyncSession, job_id: uuid.UUID) -> dict[str, Inges
 
 async def stage_captured(ctx: StageContext) -> StageOutcome:
     """Confirm the stored image is present and hand over to OCR."""
-    from app.services.ingest import document_path
-
     path = document_path(ctx.document)
     if not path.is_file():
         raise IngestError(code="image_missing")
@@ -124,8 +123,6 @@ async def stage_captured(ctx: StageContext) -> StageOutcome:
 
 
 async def stage_ocr(ctx: StageContext) -> StageOutcome:
-    from app.services.ingest import document_path
-
     adapter, text, skipped = await run_ocr(
         ctx.document, document_path(ctx.document), ctx.ocr_adapters
     )

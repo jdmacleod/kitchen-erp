@@ -24,7 +24,8 @@ from app.models import (
     PriceObservationVoid,
     Product,
 )
-from app.services.catalog import build_context, decode_cursor, encode_cursor
+from app.services.pagination import decode_cursor, encode_cursor
+from app.services.units import build_context
 from app.units import CanonicalQty, ConversionFailure, convert
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)

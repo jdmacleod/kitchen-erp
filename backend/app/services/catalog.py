@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import uuid
 from decimal import ROUND_HALF_EVEN, Decimal
 
@@ -25,32 +24,16 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services.units import load_units
+from app.services.pagination import decode_cursor, encode_cursor
+from app.services.pricebook import recompute_for_ingredient, recompute_for_product
+from app.services.units import build_context
 from app.units import (
     CanonicalQty,
-    ConversionContext,
-    Measure,
-    Pack,
-    ProductContext,
     Provenance,
     convert,
 )
 
 # --- cursors ---------------------------------------------------------------
-
-
-def encode_cursor(value: uuid.UUID) -> str:
-    return base64.urlsafe_b64encode(value.bytes).decode().rstrip("=")
-
-
-def decode_cursor(cursor: str | None) -> uuid.UUID | None:
-    if not cursor:
-        return None
-    try:
-        padded = cursor + "=" * (-len(cursor) % 4)
-        return uuid.UUID(bytes=base64.urlsafe_b64decode(padded))
-    except (ValueError, TypeError) as exc:
-        raise ApiError(400, "bad_cursor", "The cursor is not valid.") from exc
 
 
 # --- ingredients ------------------------------------------------------------
@@ -483,34 +466,7 @@ async def search_products(db: AsyncSession, q: str, limit: int = 10) -> list[Sea
     return hits
 
 
-# --- conversion context and bench -------------------------------------------
-
-
-async def build_context(
-    db: AsyncSession, ingredient: Ingredient, product: Product | None
-) -> ConversionContext:
-    units = await load_units(db)
-    product_ctx = None
-    if product is not None:
-        product_ctx = ProductContext(
-            pack=Pack(product.pack_qty, product.pack_unit)
-            if product.pack_qty is not None
-            else None,
-            density_g_per_ml=product.density_override,
-            density_source=product.density_override_source,
-            density_confirmed=product.density_override_confirmed,
-        )
-    return ConversionContext(
-        canonical_unit=ingredient.canonical_unit,
-        density_g_per_ml=ingredient.density_g_per_ml,
-        density_source=ingredient.density_source,
-        density_confirmed=ingredient.density_confirmed,
-        measures=tuple(
-            Measure(m.label, m.canonical_qty, m.source, m.confirmed) for m in ingredient.measures
-        ),
-        product=product_ctx,
-        units=units,
-    )
+# --- bench -------------------------------------------------------------------
 
 
 def provenance_out(p: Provenance) -> ProvenanceOut:
@@ -547,15 +503,16 @@ async def bench(db: AsyncSession, ingredient_id: uuid.UUID, payload: ConvertIn) 
 
 
 # --- recompute hooks (price book) -------------------------------------------
+#
+# These were function-level imports to break a cycle: pricebook imported the
+# cursor helpers and build_context from here. Those now live in
+# services/pagination.py and services/units.py, pricebook no longer imports this
+# module at all, and the dependency runs one way — so the import can say so.
 
 
 async def _after_ingredient_bridge_change(db: AsyncSession, ingredient_id: uuid.UUID) -> None:
-    from app.services.pricebook import recompute_for_ingredient
-
     await recompute_for_ingredient(db, ingredient_id)
 
 
 async def _after_product_bridge_change(db: AsyncSession, product_id: uuid.UUID) -> None:
-    from app.services.pricebook import recompute_for_product
-
     await recompute_for_product(db, product_id)

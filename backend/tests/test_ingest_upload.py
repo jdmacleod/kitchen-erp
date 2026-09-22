@@ -145,7 +145,8 @@ async def test_image_download(
 
 async def test_job_list_filters_by_status(admin_client: httpx.AsyncClient, receipts_dir: Path):
     for seed in ("a", "b", "c"):
-        assert (await upload(admin_client, png_bytes(seed))).status_code == 201
+        uploaded = await upload(admin_client, png_bytes(seed))
+        assert uploaded.status_code == 201
     r = await admin_client.get("/api/v1/ingest-jobs", params={"status": "pending", "limit": 2})
     assert r.status_code == 200
     body = r.json()

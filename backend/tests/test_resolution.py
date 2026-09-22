@@ -257,7 +257,8 @@ async def test_commit_with_unresolved_lines_queues_them_and_identify_applies_to_
     p3 = await make_receipt_purchase(
         admin.id, loc["id"], [{"raw_text": "MYSTERY ITEM 1.10", "line_total": "1.10"}]
     )
-    assert (await resolve(admin_client, p3, db_session))["lines"][0]["resolution"] == "alias"
+    resolved = await resolve(admin_client, p3, db_session)
+    assert resolved["lines"][0]["resolution"] == "alias"
 
 
 async def test_ignored_lines_emit_nothing_and_stay_ignored(admin_client, admin, db_session):
@@ -276,7 +277,8 @@ async def test_ignored_lines_emit_nothing_and_stay_ignored(admin_client, admin, 
     p2 = await make_receipt_purchase(
         admin.id, loc["id"], [{"raw_text": "PAPER TOWELS 9.49", "line_total": "9.49"}]
     )
-    assert (await resolve(admin_client, p2, db_session))["lines"][0]["resolution"] == "ignored"
+    resolved = await resolve(admin_client, p2, db_session)
+    assert resolved["lines"][0]["resolution"] == "ignored"
 
 
 async def test_attached_discount_and_deposit_affect_the_observation_correctly(
@@ -369,7 +371,8 @@ async def test_reopen_and_repoint_one_line_voids_and_reemits_only_that_line(
         loc["id"],
         [{"raw_text": "PASTA B 2.59", "line_total": "2.59", "qty": "1", "unit": "each"}],
     )
-    assert (await resolve(admin_client, p2, db_session))["lines"][0]["product"]["id"] == c["id"]
+    resolved = await resolve(admin_client, p2, db_session)
+    assert resolved["lines"][0]["product"]["id"] == c["id"]
 
 
 async def test_review_edits_lines_and_header(admin_client, admin, db_session):
