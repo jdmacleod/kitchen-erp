@@ -39,11 +39,30 @@ the paper or standard it implements and work from that.
 
 ## Recipes
 
-Recipes live in a separate repository (`cooklang-recipes`) and are content, not
-code. Choose a licence for that repository independently; Creative Commons BY or
-BY-SA suits recipe text better than MIT, and family recipes may stay private
-regardless. This repository must never embed recipe files; it indexes them by path
-and commit from a mounted checkout.
+Recipes live in a separate repository, `cooklang-recipes`, and are content rather
+than code. That repository is **MIT**, the same as this one: a single licence
+across both is simpler to reason about than a split, and MIT covers whatever
+copyright actually subsists in a recipe. Creative Commons BY is the more
+conventional choice for prose and remains a reasonable alternative, but it was
+not taken.
+
+What matters more than the licence is what goes in. Its public corpus is entirely
+**invented** — recipes written to demonstrate the format and exercise the indexer.
+The household's own recipes live in that repository's gitignored `private/`
+directory, or in a separate private repository, and are never published. A recipe
+collection identifies a household through names and occasions at least as surely
+as an address does.
+
+On borrowing recipes: in the US an ingredient list and a bare procedure are not
+copyrightable, but the expression around them is — headnotes, prose, the
+particular wording of the steps, photographs, and the selection and arrangement
+of a collection. A recipe taken from a book is rewritten in the contributor's own
+words and the original credited in a required `source` field, which that
+repository's checker enforces. Attribution is not a licence; rewriting is what
+makes it lawful.
+
+This repository must never embed recipe files; it indexes them by path and commit
+from a mounted read-only checkout.
 
 ## Dependencies
 
