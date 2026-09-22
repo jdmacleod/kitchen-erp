@@ -202,8 +202,10 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
         )
     for i in range(10):
         place = await owner_conn.fetchval(
-            "INSERT INTO place (id, lat, lon, geom) VALUES ($1, $2, $3, "
-            "ST_SetSRID(ST_MakePoint($3::float8, $2::float8), 4326)::geography) RETURNING id",
+            "INSERT INTO place (id, lat, lon, geom) "
+            "VALUES ($1, CAST($2 AS numeric), CAST($3 AS numeric), ST_SetSRID(ST_MakePoint("
+            "CAST(CAST($3 AS numeric) AS float8), CAST(CAST($2 AS numeric) AS float8)), 4326)"
+            "::geography) RETURNING id",
             new_id(),
             D("33.1") + D(i) / 100,
             D("-120.9") + D(i) / 100,
