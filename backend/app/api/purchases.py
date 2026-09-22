@@ -8,6 +8,14 @@ from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.schemas.pricebook_views import (
+    CheapestOut,
+    CompareIn,
+    CompareOut,
+    LocationPanel,
+    OfferList,
+    ProductHistory,
+)
 from app.schemas.purchases import (
     LastUnitOut,
     LineAdd,
@@ -29,7 +37,7 @@ from app.schemas.purchases import (
     RecomputeOut,
     VoidIn,
 )
-from app.services import catalog, pricebook, purchases, resolution, review
+from app.services import catalog, pricebook, pricebook_views, purchases, resolution, review
 
 router = APIRouter(tags=["purchases"])
 
@@ -384,3 +392,66 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
         line_ids=payload.line_ids,
     )
     return QueueApplied(applied=n)
+
+
+# --- price book views (2E) --------------------------------------------------
+
+
+@router.get("/products/{product_id}/prices", response_model=ProductHistory)
+async def product_prices(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ProductHistory:
+    await catalog.get_product(db, product_id)
+    return ProductHistory(**await pricebook_views.product_history(db, product_id))
+
+
+@router.get("/ingredients/{ingredient_id}/offers", response_model=OfferList)
+async def ingredient_offers(
+    ingredient_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    min_quality: int | None = Query(default=None, ge=1, le=5),
+    exclude_stale: bool = False,
+    exclude_promo: bool = False,
+) -> OfferList:
+    await catalog.get_ingredient(db, ingredient_id)
+    items = await pricebook_views.ingredient_offers(
+        db,
+        ingredient_id,
+        min_quality=min_quality,
+        exclude_stale=exclude_stale,
+        exclude_promo=exclude_promo,
+    )
+    return OfferList(items=items, stale_thresholds=pricebook_views.stale_thresholds())
+
+
+@router.post("/price-book/compare", response_model=CompareOut)
+async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareOut:
+    result = await pricebook_views.compare(
+        db,
+        payload.ingredient_ids,
+        min_quality=payload.min_quality,
+        exclude_stale=payload.exclude_stale,
+        exclude_promo=payload.exclude_promo,
+    )
+    return CompareOut(**result, stale_thresholds=pricebook_views.stale_thresholds())
+
+
+@router.get("/vendor-locations/{location_id}/price-panel", response_model=LocationPanel)
+async def location_price_panel(
+    location_id: uuid.UUID, _: CurrentUser, db: DbSession, days: int = Query(30, ge=1, le=3650)
+) -> LocationPanel:
+    return LocationPanel(**await pricebook_views.location_panel(db, location_id, days))
+
+
+@router.get("/price-book/cheapest", response_model=CheapestOut)
+async def cheapest(
+    _: CurrentUser,
+    db: DbSession,
+    ingredient_id: uuid.UUID,
+    min_quality: int | None = Query(default=None, ge=1, le=5),
+    exclude_stale: bool = False,
+) -> CheapestOut:
+    ingredient = await catalog.get_ingredient(db, ingredient_id)
+    items = await pricebook_views.cheapest_by_location(
+        db, ingredient_id, min_quality=min_quality, exclude_stale=exclude_stale
+    )
+    return CheapestOut(items=items, unit=ingredient.canonical_unit)

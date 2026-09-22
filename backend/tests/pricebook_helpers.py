@@ -28,11 +28,20 @@ async def make_location(
 
 
 async def make_product(
-    client: httpx.AsyncClient, ingredient_name: str, product_name: str, **extra
+    client: httpx.AsyncClient,
+    ingredient_name: str,
+    product_name: str,
+    *,
+    canonical_unit: str = "g",
+    **extra,
 ) -> dict:
     r = await client.post(
         "/api/v1/products",
-        json={"ingredient": {"name": ingredient_name}, "name": product_name, **extra},
+        json={
+            "ingredient": {"name": ingredient_name, "canonical_unit": canonical_unit},
+            "name": product_name,
+            **extra,
+        },
     )
     assert r.status_code == 201, r.text
     return r.json()

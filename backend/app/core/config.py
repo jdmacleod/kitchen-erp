@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     llm_shortlist_size: int = 10
     price_plausibility_factor: Decimal = Decimal("5")  # shortlist narrowing where history exists
 
+    # Price staleness by perishability (days); stale prices are shown but marked.
+    stale_days_fresh: int = 14
+    stale_days_refrigerated: int = 45
+    stale_days_shelf_stable: int = 120
+
     session_ttl_days: int = 30
     idempotency_ttl_hours: int = 24
     cookie_name: str = "kerp_session"

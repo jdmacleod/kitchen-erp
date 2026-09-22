@@ -84,6 +84,34 @@ def worker() -> None:
     asyncio.run(run())
 
 
+ingest_cli = typer.Typer(help="Receipt ingest.", no_args_is_help=True)
+cli.add_typer(ingest_cli, name="ingest")
+
+
+@ingest_cli.command("run-once")
+def ingest_run_once(
+    drain: bool = typer.Option(False, "--drain", help="Keep going until nothing is claimable."),
+) -> None:
+    """Claim and run one stage of one pending ingest job (or all, with --drain)."""
+    from app.core.config import get_settings
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.worker import run_once
+
+    configure_logging(get_settings().log_level)
+
+    async def _run() -> None:
+        n = 0
+        async with get_sessionmaker()() as db:
+            while await run_once(db):
+                n += 1
+                if not drain:
+                    break
+        await dispose_engine()
+        typer.echo(f"ran {n} stage(s)")
+
+    asyncio.run(_run())
+
+
 @seed_cli.command("units")
 def seed_units() -> None:
     """Seed the unit table. Idempotent; `kerp migrate` runs this too."""
@@ -119,6 +147,95 @@ def recompute_norms() -> None:
             n = await recompute_all(db)
         await dispose_engine()
         typer.echo(f"recomputed {n} normalizations")
+
+    asyncio.run(_run())
+
+
+OUT_OPTION = typer.Option(..., "--out", file_okay=False, resolve_path=True)
+FROM_OPTION = typer.Option(..., "--from", exists=True, file_okay=False, resolve_path=True)
+FORCE_OPTION = typer.Option(False, "--force", help="overwrite a non-empty database")
+
+
+@cli.command()
+def backup(out: Path = OUT_OPTION) -> None:
+    """Write a database dump, the receipt images, and a manifest to a directory."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.backup import backup as _backup
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            manifest = await _backup(db, out)
+        await dispose_engine()
+        typer.echo(
+            f"backup written to {out}: {manifest['counts']} and "
+            f"{len(manifest['receipts'])} receipt image(s)"
+        )
+
+    asyncio.run(_run())
+
+
+@cli.command()
+def restore(src: Path = FROM_OPTION, force: bool = FORCE_OPTION) -> None:
+    """Restore a backup directory into this deployment."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.services.backup import restore as _restore
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            try:
+                result = await _restore(db, src, force=force)
+            except ApiError as exc:
+                typer.echo(f"error: {exc.message}", err=True)
+                raise typer.Exit(code=1) from exc
+        await dispose_engine()
+        typer.echo(
+            f"restored {result['counts']} and {result['restored_receipts']} receipt image(s)"
+        )
+
+    asyncio.run(_run())
+
+
+IMPORT_FILE = typer.Option(..., "--from", exists=True, dir_okay=False, resolve_path=True)
+AS_USER = typer.Option(..., "--as", help="email of the user recorded as entering the purchases")
+FALLBACK_LOCATION = typer.Option(
+    None, "--location", help="location id used when no store code matches"
+)
+
+
+@import_cli.command("purchases")
+def import_purchases(
+    src: Path = IMPORT_FILE, user_email: str = AS_USER, location_id: str | None = FALLBACK_LOCATION
+) -> None:
+    """Import a retailer purchase export (kitchen-erp-purchase-export/1 JSON)."""
+    import uuid
+
+    from sqlalchemy import select
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.models import AppUser
+    from app.services.importer import import_export, load_export
+
+    async def _run() -> None:
+        export = load_export(src)
+        async with get_sessionmaker()() as db:
+            user = (
+                await db.execute(select(AppUser).where(AppUser.email == user_email.lower()))
+            ).scalar_one_or_none()
+            if user is None:
+                typer.echo(f"error: no user {user_email}", err=True)
+                raise typer.Exit(code=1)
+            result = await import_export(
+                db,
+                user,
+                export,
+                fallback_location_id=uuid.UUID(location_id) if location_id else None,
+            )
+        await dispose_engine()
+        typer.echo(
+            f"imported {result['created']} purchase(s), skipped {result['skipped']} already "
+            f"present, {result['unlocated']} without a matching location"
+        )
 
     asyncio.run(_run())
 
