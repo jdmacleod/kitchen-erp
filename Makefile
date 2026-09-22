@@ -9,9 +9,13 @@ setup:  ## Install git hooks and create the local data directories
 	@mkdir -p data/receipts data/tiles data/usda data/imports
 	@echo
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."
+	@echo "It also writes tools/denylist.salt and refreshes tools/denylist.hashes."
 
 check-pii:  ## Scan the working tree for personal data
 	$(PY) -m tools.scan_pii
+
+check-denylist:  ## Verify the committed denylist digests and the salt agree
+	$(PY) -m tools.denylist --self-test
 
 check-pii-history:  ## Scan commit messages and diffs across all history
 	$(PY) -m tools.scan_pii --history
@@ -27,5 +31,6 @@ e2e:  ## Run the Playwright suite against the Compose stack (needs `docker compo
 	cd e2e && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install chromium && corepack pnpm test
 
 check:  ## Everything CI runs for safeguards
+	$(PY) -m tools.denylist --self-test
 	$(PY) -m tools.scan_pii
 	pre-commit run --all-files

@@ -36,7 +36,14 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DENYLIST_PATH = REPO_ROOT / "tools" / "denylist.txt"
+
+try:
+    from tools.denylist import EMPTY as EMPTY_DENYLIST
+    from tools.denylist import Denylist, load_denylist
+except ImportError:  # invoked as a path rather than as `python -m tools.scan_pii`
+    sys.path.insert(0, str(REPO_ROOT))
+    from tools.denylist import EMPTY as EMPTY_DENYLIST
+    from tools.denylist import Denylist, load_denylist
 
 SUPPRESSION = re.compile(r"pii-scan:\s*allow\b(?P<reason>.*)")
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
@@ -328,18 +335,6 @@ RULES: tuple[Rule, ...] = (
 )
 
 
-def load_denylist() -> tuple[str, ...]:
-    """Literal strings that must never appear. The file is itself gitignored."""
-    if not DENYLIST_PATH.exists():
-        return ()
-    entries = []
-    for raw in DENYLIST_PATH.read_text(encoding="utf-8", errors="replace").splitlines():
-        line = raw.strip()
-        if line and not line.startswith("#"):
-            entries.append(line.lower())
-    return tuple(entries)
-
-
 def classify(path: str) -> tuple[bool, bool]:
     """Return (is_fixture, is_test) for a repo-relative path."""
     p = Path(path)
@@ -377,7 +372,7 @@ def scan_lines(
     *,
     is_fixture: bool = False,
     is_test: bool = False,
-    denylist: Sequence[str] = (),
+    denylist: Denylist = EMPTY_DENYLIST,
     line_offset: int = 1,
     preceding: str = "",
 ) -> list[Finding]:
@@ -394,17 +389,16 @@ def scan_lines(
         if suppressed(line, lines[idx - 1] if idx > 0 else preceding):
             continue
         lowered = line.lower()
-        for needle in denylist:
-            if needle in lowered:
-                found.append(
-                    Finding(
-                        origin,
-                        idx + line_offset,
-                        "DENYLIST",
-                        needle,
-                        "Literal string from tools/denylist.txt.",
-                    )
+        for matched in denylist.find(lowered):
+            found.append(
+                Finding(
+                    origin,
+                    idx + line_offset,
+                    "DENYLIST",
+                    matched,
+                    "Literal string from the denylist. See SECURITY.md.",
                 )
+            )
         for rule in active:
             for m in rule.pattern.finditer(line):
                 if rule.accept(m):
@@ -449,7 +443,7 @@ def tracked_and_untracked() -> list[str]:
     return sorted({p for p in listed if p})
 
 
-def scan_paths(paths: Iterable[str], denylist: Sequence[str]) -> list[Finding]:
+def scan_paths(paths: Iterable[str], denylist: Denylist) -> list[Finding]:
     findings: list[Finding] = []
     for rel in paths:
         path = (REPO_ROOT / rel).resolve()
@@ -476,7 +470,7 @@ def scan_paths(paths: Iterable[str], denylist: Sequence[str]) -> list[Finding]:
     return findings
 
 
-def scan_history(rev_range: str | None, denylist: Sequence[str]) -> list[Finding]:
+def scan_history(rev_range: str | None, denylist: Denylist) -> list[Finding]:
     """Scan commit messages and added lines across history.
 
     A contributor who commits a real receipt and then amends it away still gets
@@ -496,7 +490,7 @@ def scan_history(rev_range: str | None, denylist: Sequence[str]) -> list[Finding
     return scan_diff_stream(out, denylist)
 
 
-def scan_diff_stream(out: str, denylist: Sequence[str] = ()) -> list[Finding]:
+def scan_diff_stream(out: str, denylist: Denylist = EMPTY_DENYLIST) -> list[Finding]:
     """Walk `git log -p` output produced with LOG_FORMAT."""
     findings: list[Finding] = []
     commit = "HEAD"
@@ -604,7 +598,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         target = f"{len(paths)} path(s)"
 
     if not findings:
-        note = "" if denylist else "  (no tools/denylist.txt; see SECURITY.md)"
+        note = (
+            f"  (denylist: {denylist.size} entries via {denylist.source})"
+            if denylist
+            else "  (NO DENYLIST — literal tier not running; see SECURITY.md)"
+        )
         print(f"scan_pii: clean — {target}{note}")
         return 0
 

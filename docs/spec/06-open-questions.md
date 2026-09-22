@@ -13,15 +13,18 @@ the project by name.
 
 ## A. Repository posture (before 1A)
 
-**A1. Household location in the spec — decide.** The glossary names the two home
-bases as two cities about an hour apart, and the tile extract and the daylight-saving test are
-pinned to Southern California and `America/Los_Angeles`. In a public repository
-that discloses where the household lives to city level. The region is hard to hide
-(the tiles and timezone are real configuration), but the city names are gratuitous.
-*Recommendation:* replace the glossary example with "two home bases about an hour
-apart", keep the region and timezone as documented defaults, and never commit real
-home coordinates (the scanner's denylist holds their prefixes). Accept that the
-repository reveals "a household in Southern California".
+**A1. Household location in the spec — decided.** The glossary originally named
+the household's two home bases by city, and the tile extract and the daylight-
+saving test are pinned to Southern California and `America/Los_Angeles`. In a
+public repository those city names disclosed where the household lives at a
+resolution nothing in the design needed. The region itself is hard to hide: the
+tile extract and the timezone are real configuration.
+*Resolution:* the glossary example reads "two home bases about an hour apart",
+the region and timezone stay as documented defaults, and real home coordinates
+are never committed (the scanner's denylist holds their prefixes). Accepted on
+2026-09-22 that the repository reveals "a household in Southern California" and
+nothing finer. The city names were removed from the working tree and from every
+commit before the repository was first pushed.
 
 **A2. Real purchase data from `unbagged` — decide.** The sibling repository holds
 right-to-know responses from retailers: transactions with store codes, line items

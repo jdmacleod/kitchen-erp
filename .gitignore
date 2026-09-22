@@ -79,8 +79,10 @@
 # refuses any file there larger than 64 KB, which no receipt photograph is.
 !frontend/public/**
 
-# The PII scanner's literal denylist is itself a PII file.
+# The PII scanner's literal denylist is itself a PII file. So is the salt that
+# keys its digests: tools/denylist.hashes IS committed, and is inert without it.
 tools/denylist.txt
+tools/denylist.salt
 
 # Local configuration and secrets.
 .env

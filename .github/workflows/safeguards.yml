@@ -12,6 +12,8 @@ jobs:
   safeguards:
     name: PII safeguards
     runs-on: ubuntu-latest
+    env:
+      KERP_DENYLIST_SALT: ${{ secrets.KERP_DENYLIST_SALT }}
     steps:
       # Full history: a contributor who commits a real receipt and then amends
       # it away must still be caught before merge.
@@ -22,6 +24,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      # The literal tier keys on a salt this repository never stores. With the
+      # secret present the digests in tools/denylist.hashes become live; a fork's
+      # pull request gets no secret and falls back to the regex tier, which is
+      # what every run did before the digests existed.
+      - name: Prove the denylist digests and the salt agree
+        if: env.KERP_DENYLIST_SALT != ''
+        run: python -m tools.denylist --self-test
+
+      - name: Report which denylist tier is running
+        run: python -m tools.denylist --status
 
       - name: Scan the checkout
         run: python -m tools.scan_pii

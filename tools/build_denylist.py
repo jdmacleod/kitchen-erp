@@ -124,6 +124,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"denylist: {len(merged)} entries ({len(merged) - len(existing)} new)")
     for kind, n in sorted(counts.items()):
         print(f"  {kind}: {n}")
+
+    # The committed digests are derived from this file, so regenerate them here
+    # rather than leaving the two to drift until CI notices.
+    if args.output == DEFAULT_OUTPUT:
+        from tools.denylist import create_salt, write_hashes
+
+        count, lengths = write_hashes(merged, create_salt())
+        print(f"  digests: {count} over {lengths} length(s) -> tools/denylist.hashes")
     return 0
 
 

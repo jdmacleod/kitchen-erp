@@ -1,0 +1,17 @@
+# Salted SHA-256 of every literal denylist entry. Committed on purpose.
+#
+# The salt is NOT in this file. It lives in tools/denylist.salt, which is
+# gitignored, and in the KERP_DENYLIST_SALT repository secret. Without it
+# these digests are inert. See tools/denylist.py and SECURITY.md.
+#
+# Regenerate with: python3 -m tools.denylist --write
+# Columns: <entry length> <digest>. Sorted, so the order says nothing.
+version 1
+# pii-scan: allow public canary, named below so CI can prove the tier runs
+canary kerp-denylist-canary-do-not-remove
+4 48267676e92b15bd2f0031a97e0214bafb5381767588d185dbf925e2f84d331e
+6 a9192caaa07265b98dafbe7f34fb4c9893f45f9abb220ef0074a1a6fd4a8a485
+6 daac7de221ea8ea3933f4a70d70883e13220e6db48028f2bbf657828311b092c
+8 2ca8030b8a001f0e74ada0a84f019d0cf70278f66b1efcc5c3985f5c31d8f614
+8 4b6ec7b4835b338df7a1a520ca0fefeb3893621f120881bf88935fb189ecfe98
+34 b0a6b3c1d47cc6611725ddc74ab8131d2782bac2fed854d4d234fdcd51e6372e

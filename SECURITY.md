@@ -43,9 +43,47 @@ or documentation build.
 | `tools/no_data_dir.py` (pre-commit) | Refuses any staged path under `data/`, a backup, or a reference clone, even via `git add -f`. |
 | `tools/scan_pii.py` (pre-commit and CI) | Regex rules for emails, phones, street addresses, ZIP fragments, card numbers, masked tender lines, loyalty-length digit runs without a GS1 check digit, coordinate pairs, and home-directory paths, plus a literal denylist. Scans the tree and, in CI, every added line and commit message in history. |
 | `tools/denylist.txt` (gitignored) | Literal strings that must never appear: your loyalty numbers, your addresses, the first three decimals of your home coordinates. Built with `tools/build_denylist.py`, which prints counts only. |
+| `tools/denylist.hashes` (committed) | Salted digests of those same strings, so the literal tier runs in CI too. Inert without the salt. See "The denylist in public CI" below. |
 | gitleaks (pre-commit and CI) | Secrets and tokens. |
 | CI stray-file check | Fails if any data-shaped suffix is tracked outside `frontend/public/`. |
 | CI re-inclusion check | Fails if `.gitignore` gains a `!` rule without a matching check. |
+
+## The denylist in public CI
+
+The denylist is the scanner's strongest rule and the only one that knows anything
+specific about this household, which is why `tools/denylist.txt` is gitignored. For
+a long time that had a cost worth naming: a rule that lives only on one machine is
+a rule that a pushed branch never gets. CI ran the regex tier alone.
+
+It now runs both, without publishing anything:
+
+- `tools/denylist.hashes` **is committed**. Each line is a salted SHA-256 of one
+  denylist entry, with that entry's length. Matching is still by substring — a
+  coordinate prefix has to match inside a longer coordinate — so the scanner hashes
+  every window of a line whose length equals some entry's, and looks it up.
+- The salt is **not** in that file. It lives in `tools/denylist.salt`, gitignored,
+  and in the `KERP_DENYLIST_SALT` repository secret.
+- GitHub therefore holds a random string in one place and a list of digests in
+  another. Neither is worth anything without the other, and nobody can test a guess
+  against the digests without the salt.
+- Entry *lengths* are published, because the matcher needs them. "There is a
+  six-character entry" is not a disclosure.
+
+A pull request **from a fork** gets no secret — GitHub does not expose one to forked
+workflows — so it runs the regex tier, exactly as every run did before. That is a
+deliberate downgrade, not a failure, and the workflow prints which tier it ran.
+
+The file carries one public canary string whose digest is checked on every CI run.
+If the secret is ever mistyped or rotated out of step with the digests, the canary
+stops matching and the build fails loudly. Without it, a broken salt would look
+exactly like a clean scan — which is the failure mode that matters most here.
+
+    make check-denylist          # prove the salt and the digests agree
+    python3 -m tools.denylist --status   # report which tier would run, and why
+
+Regenerate the digests with `python3 -m tools.denylist --write` after changing the
+cleartext denylist; `tools/build_denylist.py` does it for you. Rotating the salt
+means regenerating the digests and updating the secret in the same change.
 
 Every suppression of the scanner is a line with a written reason:
 
