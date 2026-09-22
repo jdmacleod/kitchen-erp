@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     tiles_path: str = "/data/tiles"
     receipts_path: str = "/data/receipts"
-    recipes_path: str | None = None
+    recipes_path: str = "/data/recipes"  # read-only mount of the cooklang-recipes checkout
 
     household_timezone: str = "America/Los_Angeles"
     currency: str = "USD"

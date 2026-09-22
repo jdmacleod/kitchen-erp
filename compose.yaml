@@ -29,7 +29,7 @@ services:
       ENABLE_NOMINATIM: ${ENABLE_NOMINATIM:-false}
       TILES_PATH: /data/tiles
       RECEIPTS_PATH: /data/receipts
-      RECIPES_PATH: ${RECIPES_PATH:-}
+      RECIPES_PATH: /data/recipes
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       CURRENCY: ${CURRENCY:-USD}
       INGEST_LOCK_TIMEOUT_SECONDS: ${INGEST_LOCK_TIMEOUT_SECONDS:-600}
@@ -37,6 +37,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - ./data:/data
+      - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
     depends_on:
       db:
         condition: service_healthy
@@ -51,6 +52,7 @@ services:
     environment: *app-env
     volumes:
       - ./data:/data
+      - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
     depends_on:
       db:
         condition: service_healthy
