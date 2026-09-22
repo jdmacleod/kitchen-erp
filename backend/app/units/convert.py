@@ -151,10 +151,18 @@ def convert(
             "unknown_measure", f"'{from_unit}' is neither a unit nor a measure of this ingredient."
         )
 
-    # 2. Count unit with a pack.
-    if unit.dimension == "count" and canonical_dim != "count":
-        product = context.product
-        if product is not None and product.pack is not None:
+    # 2. Count unit with a pack. "1 each" of a packaged product means one pack,
+    # whatever the canonical unit; other count units (dozen) reach a pack only
+    # when the canonical unit is not itself a count.
+    product = context.product
+    pack_applies = (
+        unit.dimension == "count"
+        and product is not None
+        and product.pack is not None
+        and (unit.code == "each" or canonical_dim != "count")
+    )
+    if unit.dimension == "count" and (pack_applies or canonical_dim != "count"):
+        if pack_applies:
             each = _mul(qty, unit.to_base_factor)
             inner_context = ConversionContext(
                 canonical_unit=canonical,

@@ -180,3 +180,13 @@ def test_invalid_canonical_unit_is_a_programming_error():
 def test_results_carry_version():
     assert ok(convert(D("1"), "g", FLOUR)).version == "1"
     assert fail(convert(None, "g", FLOUR), "no_qty").version == "1"
+
+
+def test_each_with_pack_in_count_canonical_means_one_pack():
+    ctx = ConversionContext("each", product=ProductContext(pack=Pack(D("12"), "each")))
+    r = ok(convert(D("2"), "each", ctx))
+    assert r.qty == D("24")
+    assert r.provenance.bridge_kind == "pack"
+    # A dozen of a count-canonical ingredient is plain arithmetic, pack or not.
+    assert ok(convert(D("1"), "dozen", ctx)).qty == D("12")
+    assert ok(convert(D("1"), "dozen", ctx)).provenance.bridge_kind == "none"
