@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     price_outlier_factor: Decimal = Decimal("2")  # flag when implied unit price is off by this
     alias_fuzzy_threshold: Decimal = Decimal("0.35")  # trigram similarity for fuzzy alias hints
     llm_shortlist_size: int = 10
+    llm_ranker_enabled: bool = True  # ask the model to rank shortlists during resolution
     price_plausibility_factor: Decimal = Decimal("5")  # shortlist narrowing where history exists
 
     # Price staleness by perishability (days); stale prices are shown but marked.

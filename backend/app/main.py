@@ -20,6 +20,9 @@ log = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure_logging(get_settings().log_level)
+    from app.services.resolution import install_default_ranker
+
+    install_default_ranker()
     log.info("api starting")
     yield
     await dispose_engine()

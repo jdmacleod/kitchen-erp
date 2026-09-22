@@ -55,6 +55,25 @@ def set_ranker(ranker: Ranker | None) -> None:
     _ranker = ranker
 
 
+def install_default_ranker() -> bool:
+    """Wire the ingest pipeline's model client as the ranker, when configured.
+
+    Returns True when a ranker was installed. Safe to call when the ingest
+    package is absent or the setting is off; the ladder then stops at rung 3.
+    """
+    if not get_settings().llm_ranker_enabled:
+        set_ranker(None)
+        return False
+    try:
+        from app.ingest.llm import rank_products
+    except ImportError:
+        log.info("no model ranker available; resolution stops at fuzzy suggestions")
+        set_ranker(None)
+        return False
+    set_ranker(rank_products)
+    return True
+
+
 _BARCODE = re.compile(r"(?<!\d)(\d{12,14})(?!\d)")
 
 
