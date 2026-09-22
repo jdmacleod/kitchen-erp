@@ -46,12 +46,14 @@ copyright actually subsists in a recipe. Creative Commons BY is the more
 conventional choice for prose and remains a reasonable alternative, but it was
 not taken.
 
-What matters more than the licence is what goes in. Its public corpus is entirely
-**invented** — recipes written to demonstrate the format and exercise the indexer.
-The household's own recipes live in that repository's gitignored `private/`
-directory, or in a separate private repository, and are never published. A recipe
-collection identifies a household through names and occasions at least as surely
-as an address does.
+What matters more than the licence is what goes in. That repository holds the
+household's **real** recipes, published deliberately. The line it draws is not
+between real and invented but between whose information it is: the household's
+own cooking is published, other people's names, contact details and addresses are
+not, and anything the household would rather keep goes in a gitignored `private/`
+directory that Kitchen ERP still indexes exactly like a published recipe. Its
+scanner carries a names denylist for precisely this, since a name is not a
+pattern any rule can find.
 
 On borrowing recipes: in the US an ingredient list and a bare procedure are not
 copyrightable, but the expression around them is — headnotes, prose, the
