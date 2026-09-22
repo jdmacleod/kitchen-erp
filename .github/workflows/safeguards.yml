@@ -73,7 +73,7 @@ jobs:
             '*.sqlite' '*.sqlite3' '*.db' '*.dump' '*.pgdump' '*.backup' \
             '*.png' '*.jpg' '*.jpeg' '*.heic' '*.heif' '*.webp' '*.gif' '*.tif' '*.tiff' '*.bmp' \
             '*.pmtiles' '*.mbtiles' '*.osm.pbf' \
-            | grep -v '^frontend/public/' || true)
+            | grep -v '^frontend/public/' | grep -v '^docs/screenshots/' || true)
           if [ -n "$stray" ]; then
             echo "Data-shaped files committed outside an allowed directory:"; echo "$stray"; exit 1
           fi
@@ -88,11 +88,26 @@ jobs:
             echo "Files over 64 KB under frontend/public/:"; echo "$big"; exit 1
           fi
 
+      - name: Refuse oversized or unexpected files under docs/screenshots/
+        run: |
+          # The other re-inclusion. These are UI screenshots of the synthetic demo
+          # household, produced by `make screenshots`; nothing else belongs here and
+          # a photograph of real data would be far larger than a flat UI capture.
+          bad=$(git ls-files docs/screenshots | grep -v '\.png$' || true)
+          if [ -n "$bad" ]; then
+            echo "Non-PNG files under docs/screenshots/:"; echo "$bad"; exit 1
+          fi
+          big=$(git ls-files docs/screenshots | while read -r f; do
+            [ -f "$f" ] && [ "$(wc -c < "$f")" -gt 307200 ] && echo "$f"; done || true)
+          if [ -n "$big" ]; then
+            echo "Files over 300 KB under docs/screenshots/:"; echo "$big"; exit 1
+          fi
+
       - name: Verify re-inclusions in .gitignore are the known set
         run: |
           # Every `!` line in .gitignore must have a check above. Adding one
           # without its check is the whole failure mode.
-          allowed='^!(frontend/public/\*\*|\.env\.example)$'
+          allowed='^!(frontend/public/\*\*|docs/screenshots/\*\.png|\.env\.example)$'
           bad=$(grep -E '^!' .gitignore | grep -Ev "$allowed" || true)
           if [ -n "$bad" ]; then
             echo "Unexpected re-inclusion in .gitignore:"; echo "$bad"; exit 1

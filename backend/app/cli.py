@@ -118,6 +118,34 @@ def seed_units() -> None:
     _seed_units()
 
 
+DEMO_FORCE = typer.Option(False, "--force", help="seed even if purchases already exist")
+
+
+@seed_cli.command("demo")
+def seed_demo(force: bool = DEMO_FORCE) -> None:
+    """Fill a THROWAWAY database with a synthetic household, for demos and screenshots.
+
+    Invented vendors, invented products, example.com people, and coordinates in the
+    synthetic grid from SECURITY.md. Never run this against the household's own
+    database: it refuses one that already holds purchases unless --force.
+    """
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.demo import seed_demo as _seed_demo
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            counts = await _seed_demo(db, force=force)
+        await dispose_engine()
+        for name, n in counts.items():
+            typer.echo(f"  {name}: {n}")
+
+    try:
+        asyncio.run(_run())
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(2) from exc
+
+
 PATH_OPTION = typer.Option(..., "--path", exists=True, file_okay=False, resolve_path=True)
 
 

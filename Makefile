@@ -2,7 +2,7 @@
 PY ?= python3
 
 help:  ## Show this help
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-22s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-22s %s\n", $$1, $$2}'
 
 setup:  ## Install git hooks and create the local data directories
 	pre-commit install
@@ -29,6 +29,22 @@ e2e-seed:  ## Create the local dev admin used by the browser tests (idempotent)
 
 e2e:  ## Run the Playwright suite against the Compose stack (needs `docker compose up -d`)
 	cd e2e && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install chromium && corepack pnpm test
+
+DEMO := docker compose -f compose.yaml -f compose.demo.yaml
+
+demo-up:  ## Start the throwaway demo stack (web on :8081, its own volumes)
+	$(DEMO) up -d --build
+	$(DEMO) exec -T api kerp migrate
+
+demo-seed:  ## Fill the demo stack with the synthetic household
+	$(DEMO) exec -T api kerp seed demo
+
+demo-down:  ## Stop the demo stack and delete its volumes
+	$(DEMO) down -v
+
+screenshots:  ## Recapture docs/screenshots from the demo stack (never from real data)
+	cd e2e && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install chromium
+	cd e2e && corepack pnpm exec playwright test -c playwright.screenshots.config.ts
 
 check:  ## Everything CI runs for safeguards
 	$(PY) -m tools.denylist --self-test

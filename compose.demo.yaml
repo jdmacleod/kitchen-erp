@@ -1,0 +1,42 @@
+# A throwaway stack holding nothing but the synthetic household.
+#
+# The household's own deployment and this one share no volume, no database, and
+# no port. That separation is the point: screenshots for a public repository, and
+# a stranger's first look at the UI, must never be taken from real data. Bring it
+# up with `make demo-up`, which is `docker compose` across both files.
+#
+#     docker compose -f compose.yaml -f compose.demo.yaml up -d --build
+#
+# Every port binds to 127.0.0.1, including the web UI, because a demo is for the
+# machine it runs on.
+name: kerp-demo
+
+services:
+  db:
+    volumes: !override
+      - demo-db-data:/var/lib/postgresql/data
+      - ./docker/db/init:/docker-entrypoint-initdb.d:ro
+    ports: !override
+      - "127.0.0.1:${DEMO_DB_PORT:-5434}:5432"
+
+  api:
+    volumes: !override
+      - demo-data:/data
+      - ./docs:/srv/docs:ro
+    ports: !override
+      - "127.0.0.1:${DEMO_API_PORT:-8001}:8000"
+
+  worker:
+    volumes: !override
+      - demo-data:/data
+
+  web:
+    volumes: !override
+      - demo-tiles:/tiles:ro
+    ports: !override
+      - "127.0.0.1:${DEMO_WEB_PORT:-8081}:80"
+
+volumes:
+  demo-db-data:
+  demo-data:
+  demo-tiles:

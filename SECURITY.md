@@ -44,6 +44,7 @@ or documentation build.
 | `tools/scan_pii.py` (pre-commit and CI) | Regex rules for emails, phones, street addresses, ZIP fragments, card numbers, masked tender lines, loyalty-length digit runs without a GS1 check digit, coordinate pairs, and home-directory paths, plus a literal denylist. Scans the tree and, in CI, every added line and commit message in history. |
 | `tools/denylist.txt` (gitignored) | Literal strings that must never appear: your loyalty numbers, your addresses, the first three decimals of your home coordinates. Built with `tools/build_denylist.py`, which prints counts only. |
 | `tools/denylist.hashes` (committed) | Salted digests of those same strings, so the literal tier runs in CI too. Inert without the salt. See "The denylist in public CI" below. |
+| CI screenshot check | Fails if anything under `docs/screenshots/` is not a PNG, or is over 300 KB — far larger than a flat UI capture, and the size a photograph would be. |
 | gitleaks (pre-commit and CI) | Secrets and tokens. |
 | CI stray-file check | Fails if any data-shaped suffix is tracked outside `frontend/public/`. |
 | CI re-inclusion check | Fails if `.gitignore` gains a `!` rule without a matching check. |
@@ -107,6 +108,13 @@ with `--no-verify`.
   coordinate prefixes still apply everywhere.
 - Receipt fixtures are text (YAML) with the receipt image generated from that
   text at test time. No image is committed.
+- **Screenshots are never taken of real data.** `docs/screenshots/` is produced
+  only by `make screenshots`, which drives the demo stack (`compose.demo.yaml`) —
+  its own database, its own volumes, its own port — filled by `kerp seed demo`
+  with invented vendors and products. The capture asserts that a synthetic vendor
+  is present and aborts if it is not, so pointing it at a real deployment fails
+  rather than publishing a photograph of someone's groceries. No scanner can read
+  pixels; this procedure is the control.
 - The USDA reference table, map tiles, and any retailer export are downloaded or
   copied into `data/` locally and never committed.
 

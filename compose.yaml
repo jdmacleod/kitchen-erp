@@ -67,7 +67,9 @@ services:
     depends_on:
       - api
     ports:
-      - "${WEB_PORT:-8080}:80"
+      # Every interface by default: the point of the UI is capturing receipts from
+      # a phone on the same network. Set WEB_BIND=127.0.0.1 to keep it local.
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80"
 
   ollama:
     image: ollama/ollama:latest

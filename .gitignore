@@ -75,9 +75,16 @@
 *.mbtiles
 *.osm.pbf
 
-# The single re-inclusion. frontend/public/ holds icons the app serves. CI
-# refuses any file there larger than 64 KB, which no receipt photograph is.
+# Re-inclusions. Each one has a matching check in .github/workflows/safeguards.yml;
+# adding one without its check is the whole failure mode, and CI refuses that.
+#
+# frontend/public/ holds icons the app serves. CI refuses any file there larger
+# than 64 KB, which no receipt photograph is.
 !frontend/public/**
+# docs/screenshots/ holds README images. They are produced only by
+# `make screenshots`, which runs against the synthetic demo stack and refuses to
+# photograph a database that is not the seeded one. CI caps them at 300 KB.
+!docs/screenshots/*.png
 
 # The PII scanner's literal denylist is itself a PII file. So is the salt that
 # keys its digests: tools/denylist.hashes IS committed, and is inert without it.
