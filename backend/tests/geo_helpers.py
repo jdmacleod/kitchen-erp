@@ -7,12 +7,13 @@ is invented. Test modules import the fixtures they need by name.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import socket
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 
 import asyncpg
 import httpx
@@ -54,15 +55,28 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     """
     real_connect = socket.socket.connect
     real_getaddrinfo = socket.getaddrinfo
+    # The database is the one host tests may reach; inside the Compose network
+    # it is `db`, not loopback. Its name and resolved addresses are allowed.
+    allowed = set(_LOOPBACK)
+    db_host = urlsplit(os.environ.get("DATABASE_URL", "")).hostname
+    if db_host:
+        allowed.add(db_host)
+        with contextlib.suppress(OSError):
+            allowed.update(info[4][0] for info in real_getaddrinfo(db_host, None))
+
+    def _ok(host: Any) -> bool:
+        if isinstance(host, bytes):
+            host = host.decode()
+        return host in allowed
 
     def guarded_connect(self: socket.socket, address: Any) -> None:
         host = address[0] if isinstance(address, tuple) else address
-        if self.family == socket.AF_UNIX or host in _LOOPBACK:
+        if self.family == socket.AF_UNIX or _ok(host):
             return real_connect(self, address)
         raise AssertionError(f"outbound network access attempted (connect): {host!r}")
 
     def guarded_getaddrinfo(host: Any, *args: Any, **kwargs: Any) -> Any:
-        if host in _LOOPBACK or (isinstance(host, bytes) and host.decode() in _LOOPBACK):
+        if _ok(host):
             return real_getaddrinfo(host, *args, **kwargs)
         raise AssertionError(f"outbound network access attempted (dns): {host!r}")
 

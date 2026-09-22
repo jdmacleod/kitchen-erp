@@ -38,6 +38,7 @@ services:
     volumes:
       - ./data:/data
       - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
+      - ./docs:/srv/docs:ro   # the checked-in capture contract, for the drift test
     depends_on:
       db:
         condition: service_healthy

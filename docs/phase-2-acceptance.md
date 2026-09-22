@@ -22,8 +22,17 @@ frontend unit tests under `frontend/src/test/`, browser tests under `e2e/tests/`
 | 13 | Exactly one observation per item line, linked by `purchase_line_id` | `test_purchases_manual.py::test_three_line_purchase_commits_and_emits_one_observation_per_line` |
 | 14 | Reopen and change a price: old observation voided with a system reason, new one emitted, untouched lines keep theirs | `test_purchases_manual.py::test_reopen_voids_and_reemits_only_changed_lines` |
 | 15 | Inline product and ingredient creation keeps entered lines | `frontend/src/test/purchase-entry.test.tsx` |
-| 16–25 | Receipt ingest pipeline | Pending: `tests/test_ingest_*.py` (being finished) |
-| 26 | Normalization table, idempotence, version recorded | `test_normalize.py`; version in the resolve stage output (`resolve_purchase` returns `normalize_version`) |
+| 16 | Uploading the same image twice returns the same document and job | `test_ingest_upload.py::test_duplicate_upload_returns_same_rows`, `::test_idempotency_key_replays` |
+| 17 | A fixture advances captured → review with one stage result per stage | `test_ingest_pipeline.py::test_fixture_advances_to_review` (seven fixture layouts, parametrized) |
+| 18 | Client OCR text is used and Tesseract is not invoked | `test_ingest_pipeline.py::test_client_ocr_skips_tesseract`, `::test_ocr_falls_through_to_next_adapter`, `::test_tesseract_reads_rendered_fixture` (skipped without the binary; runs in the container) |
+| 19 | Model unreachable: jobs wait with backoff and resume; API unaffected | `test_ingest_worker.py::test_model_unreachable_waits_with_backoff_and_resumes`, `::test_backoff_schedule` |
+| 20 | An instruction addressed to the model is an ordinary unrecognised line | `test_ingest_pipeline.py::test_prompt_injection_is_inert`, `::test_prompt_never_interpolates_outside_the_block` |
+| 21 | Invalid model output retried, then review with raw text | `test_ingest_pipeline.py::test_invalid_model_output_retried_then_review_with_raw_text`, `::test_invalid_then_valid_model_output`, `::test_unparsed_header_still_reaches_review` |
+| 22 | Weighted, quantity-prefixed, attached discount, and deposit lines parsed correctly | fixture corpus expectations in `test_fixture_advances_to_review` (`supermarket_loyalty`, `supermarket_produce_crv`, `warehouse_codes`, `discount_grocer_terse`) |
+| 23 | Lines that do not sum to the total are flagged and still reach review | `test_ingest_pipeline.py::test_reconcile_mismatch_is_flagged_and_reaches_review` |
+| 24 | Chain matched by store identifier, and by proximity without one | `test_ingest_pipeline.py::test_chain_matched_by_store_identifier`, `::test_chain_matched_by_proximity_without_identifier`, `::test_ambiguous_chain_stays_unmatched_with_ranked_candidates` |
+| 25 | Failed stage retried from the UI; failed job converted to manual keeping the document link | `test_ingest_worker.py::test_stage_failure_retries_then_fails_and_can_be_retried`, `::test_convert_failed_job_to_manual_keeps_document_link`; receipts page in `frontend/src/test/receipts.test.tsx` |
+| 26 | Normalization table, idempotence, version recorded | `test_normalize.py`; the resolve stage result carries `normalize_version` (`test_ingest_pipeline.py::test_fixture_advances_to_review`) |
 | 27 | Confirmed alias resolves; `confirmed_count = 0` does not | `test_resolution.py::test_confirmed_alias_resolves_and_unconfirmed_only_suggests`, `::test_unconfirmed_alias_does_not_auto_resolve` |
 | 28 | Fuzzy and model rungs only suggest | `test_resolution.py::test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rejected` |
 | 29 | Model answer outside the shortlist rejected | same test (rogue ranker) |
@@ -43,12 +52,14 @@ frontend unit tests under `frontend/src/test/`, browser tests under `e2e/tests/`
 | 43 | Needs-a-bridge list empties after the bridge is added and the price appears | `test_pricebook_views.py::test_needs_bridge_clears_and_price_appears_in_compare` |
 | 44 | Comparison views p95 < 500 ms at 20,000 observations | `test_pricebook_views.py::test_comparison_views_p95_under_500ms_with_20000_observations` |
 | 45 | Every contract endpoint authenticates with a bearer token and rejects a revoked one | `test_capture_contract.py` |
-| 46 | Retried POST with the same key returns the original and creates nothing | `test_capture_contract.py::test_bearer_only_flow_with_retries` (locations, products, observations, purchases); receipts pending 2C |
+| 46 | Retried POST with the same key returns the original and creates nothing | `test_capture_contract.py::test_bearer_only_flow_with_retries` (locations, products, observations, purchases); receipts in `test_ingest_upload.py::test_idempotency_key_replays` |
 | 47 | `near=` ordering with distance | `test_geo_locations.py::test_list_near_orders_by_distance_with_decimal_strings` |
 | 48 | Checked-in OpenAPI document matches the running app | `test_capture_contract.py::test_openapi_document_matches_the_application`; regenerate with `kerp export-openapi` |
 | 48a–48d | Export import: purchases per transaction, barcode resolution, queue, idempotence, exact amounts, `realdata` skip | `test_importer.py` |
 | 49 | Backup and restore reproduce rows and images by count and hash | `test_backup.py` (runs where `pg_dump` exists: the api container) |
 | 50 | Restore refuses a non-empty database unless forced | same test |
+
+All Phase 2 criteria pass as of 2026-09-21: backend 325 tests (plus the container-only backup and Tesseract tests), frontend 76, browser 20.
 
 ## Notes
 
