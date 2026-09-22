@@ -260,7 +260,8 @@ async def test_convert_failed_job_to_manual_keeps_document_link(
     assert (
         await admin_client.post(f"/api/v1/ingest-jobs/{job['id']}/to-manual")
     ).status_code == 409
-    assert (await admin_client.post(f"/api/v1/ingest-jobs/{job['id']}/retry")).status_code == 409
+    posted = await admin_client.post(f"/api/v1/ingest-jobs/{job['id']}/retry")
+    assert posted.status_code == 409
     async with get_sessionmaker()() as db:
         assert await run_once(db) is False  # nothing claimable at 'committed'
 

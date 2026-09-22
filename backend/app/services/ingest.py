@@ -61,11 +61,6 @@ def sniff_mime(data: bytes) -> str | None:
     return None
 
 
-def document_path(document: ReceiptDocument) -> Path:
-    """Absolute path of the stored image. Built from the digest, not the stored string."""
-    return Path(get_settings().receipts_path) / document.image_path
-
-
 def relative_path(sha256: str, mime: str) -> str:
     return f"{sha256[:2]}/{sha256[2:4]}/{sha256}.{EXTENSIONS[mime]}"
 

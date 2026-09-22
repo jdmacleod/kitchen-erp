@@ -21,8 +21,11 @@ from pathlib import Path
 from typing import Protocol
 
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.ingest.errors import OcrUnavailable, StageFailure
 from app.models import ReceiptDocument
+
+log = get_logger(__name__)
 
 TESSERACT_TIMEOUT_SECONDS = 120.0
 TESSERACT_MIMES = {"image/jpeg", "image/png", "image/webp"}
@@ -74,8 +77,13 @@ class TesseractAdapter:
                     )
                     first = (out.stdout or out.stderr).strip().splitlines()[0]
                     self._version = first.split()[-1] if first else "unknown"
-                except (OSError, subprocess.SubprocessError, IndexError):
-                    pass
+                except (OSError, subprocess.SubprocessError, IndexError) as exc:
+                    # Not fatal: the version is provenance recorded alongside the
+                    # OCR text, not something the pipeline depends on, and it is
+                    # already "unknown" here. Swallowing it silently was hiding a
+                    # broken tesseract install behind a stage that then failed
+                    # somewhere less obvious, so it gets logged.
+                    log.debug("tesseract version probe failed: %s", exc)
         return self._version
 
     async def run(self, document: ReceiptDocument, image_path: Path) -> str:

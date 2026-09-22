@@ -93,7 +93,10 @@ async def test_disabled_by_default_and_no_code_path_touches_the_network(
         assert r.status_code == 409, (method, path, r.text)
         assert r.json()["error"]["code"] == "integration_disabled"
 
-    assert (await admin_client.delete(f"/api/v1/home-bases/{home['id']}")).status_code == 409
+    # As above: the call is hoisted out of the assert so `python -O` cannot
+    # skip it.
+    deleted = await admin_client.delete(f"/api/v1/home-bases/{home['id']}")
+    assert deleted.status_code == 409
 
 
 async def test_guard_blocks_dns_and_direct_connections(no_network):

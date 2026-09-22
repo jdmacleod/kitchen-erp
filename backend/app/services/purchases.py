@@ -21,7 +21,7 @@ from app.models import (
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineIn, ManualPurchaseIn
 from app.services import pricebook
-from app.services.catalog import decode_cursor, encode_cursor
+from app.services.pagination import decode_cursor, encode_cursor
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 _FOUR = Decimal("0.0001")

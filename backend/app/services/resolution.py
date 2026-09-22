@@ -34,9 +34,10 @@ from app.models import (
 )
 from app.models.geo import VendorLocation
 from app.services import pricebook
-from app.services.catalog import build_context, search_products
+from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
 from app.services.purchases import get_purchase, live_observations
+from app.services.units import build_context
 from app.units import CanonicalQty, convert
 
 log = get_logger(__name__)

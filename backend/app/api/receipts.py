@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from app.api.deps import CurrentUser, DbSession
 from app.core.errors import ApiError
 from app.core.idempotency import HEADER, IdempotencyGuard
+from app.ingest.paths import document_path
 from app.schemas.receipts import (
     ConvertToManualOut,
     IngestJobDetail,
@@ -102,7 +103,7 @@ async def get_receipt(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> 
 @router.get("/receipts/{document_id}/image")
 async def get_receipt_image(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> FileResponse:
     document = await ingest.get_document(db, document_id)
-    path = ingest.document_path(document)
+    path = document_path(document)
     if not path.is_file():
         raise ApiError(404, "image_missing", "The stored image is missing.")
     return FileResponse(

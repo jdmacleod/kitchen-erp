@@ -84,7 +84,8 @@ async def test_computed_fields_are_decimal_and_rounded_half_even(admin_client):
     p = (await admin_client.post("/api/v1/purchases", json=body)).json()
     assert p["lines"][0]["unit_price"] == "3.3333"
     bad = {**body, "lines": [{"product_id": berries["id"], "qty": "1", "unit": "each"}]}
-    assert (await admin_client.post("/api/v1/purchases", json=bad)).status_code == 422
+    posted = await admin_client.post("/api/v1/purchases", json=bad)
+    assert posted.status_code == 422
     both = {
         **body,
         "lines": [
@@ -97,7 +98,8 @@ async def test_computed_fields_are_decimal_and_rounded_half_even(admin_client):
             }
         ],
     }
-    assert (await admin_client.post("/api/v1/purchases", json=both)).status_code == 422
+    posted = await admin_client.post("/api/v1/purchases", json=both)
+    assert posted.status_code == 422
 
 
 async def test_entered_total_is_reconciled(admin_client):
@@ -160,7 +162,9 @@ async def test_unknown_product_or_location_is_404(admin_client):
         "purchased_at": datetime.now(UTC).isoformat(),
         "lines": [{"product_id": berries["id"], "qty": "1", "unit": "each", "unit_price": "1"}],
     }
-    assert (await admin_client.post("/api/v1/purchases", json=body)).status_code == 404
+    posted = await admin_client.post("/api/v1/purchases", json=body)
+    assert posted.status_code == 404
     body["vendor_location_id"] = loc["id"]
     body["lines"][0]["product_id"] = str(uuid.uuid4())
-    assert (await admin_client.post("/api/v1/purchases", json=body)).status_code == 404
+    posted = await admin_client.post("/api/v1/purchases", json=body)
+    assert posted.status_code == 404

@@ -69,7 +69,11 @@ async def test_delete_refused_while_referenced(admin_client: httpx.AsyncClient):
         f"/api/v1/vendor-locations/{location['id']}", json={"home_base_id": None}
     )
     assert cleared.status_code == 200 and cleared.json()["home_base_id"] is None
-    assert (await admin_client.delete(f"/api/v1/home-bases/{home['id']}")).status_code == 204
+    # The request is made before the assertion, not inside it: `python -O`
+    # strips assert statements, and a DELETE that only happens under a
+    # non-optimised interpreter is a test that silently stops testing.
+    deleted = await admin_client.delete(f"/api/v1/home-bases/{home['id']}")
+    assert deleted.status_code == 204
 
 
 async def test_validation_and_auth(admin_client: httpx.AsyncClient, client: httpx.AsyncClient):
