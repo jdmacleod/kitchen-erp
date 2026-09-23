@@ -43,12 +43,13 @@ NOT_FORWARDED = {
 }
 
 VARIABLE = re.compile(r"\$\{([A-Z0-9_]+)")
+ENVIRONMENT_KEY = re.compile(r"^(\s*)environment:")
 
 
 def documented_settings() -> list[str]:
     names = []
-    for line in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
+    for raw in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
         names.append(line.split("=", 1)[0].strip())
@@ -56,7 +57,27 @@ def documented_settings() -> list[str]:
 
 
 def forwarded_variables() -> set[str]:
-    return set(VARIABLE.findall(COMPOSE.read_text(encoding="utf-8")))
+    """Variables referenced inside an `environment:` block, and nowhere else.
+
+    Scanning the whole file would accept a setting that only appears under
+    `ports:` or `volumes:` — referenced, but never handed to the application,
+    which is the exact failure this check exists to catch.
+    """
+    found: set[str] = set()
+    block_indent: int | None = None
+    for raw in COMPOSE.read_text(encoding="utf-8").splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        indent = len(raw) - len(raw.lstrip())
+        if block_indent is not None and indent <= block_indent:
+            block_indent = None  # dedented back out of the block
+        match = ENVIRONMENT_KEY.match(raw)
+        if match:
+            block_indent = len(match.group(1))
+            continue
+        if block_indent is not None:
+            found.update(VARIABLE.findall(raw))
+    return found
 
 
 def main() -> int:
@@ -75,8 +96,7 @@ def main() -> int:
 
     if orphaned:
         print(
-            f"check_compose_env: {len(orphaned)} documented setting(s) never reach a "
-            "container\n",
+            f"check_compose_env: {len(orphaned)} documented setting(s) never reach a container\n",
             file=sys.stderr,
         )
         for name in orphaned:
