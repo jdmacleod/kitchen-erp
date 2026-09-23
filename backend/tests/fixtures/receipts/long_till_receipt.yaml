@@ -1,0 +1,194 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: long_till_receipt
+notes: |
+  A full weekly shop: 48 item lines plus a deposit, a bag fee, a member
+  discount and a tax line. Every other fixture here is a dozen lines or
+  fewer, which is why nothing caught the model server's default context
+  and prediction limits truncating the reply on an ordinary receipt.
+  Keep this one long; its length is the thing under test.
+ocr_text: |
+  TIDELINE MARKET
+  #0042  09/14/26 10:21
+
+  BREAD FLOUR 1.5KG          3.40
+  STONEGROUND WHOLEMEAL      2.85
+  OLIVE OIL 750ML           11.20
+  HOUSE OLIVE OIL 1L         8.60
+  WHOLE MILK 2L              3.10
+  UNSALTED BUTTER 250G       4.05
+  FREE RANGE EGGS 12         5.45
+  CARROTS LOOSE 1KG          1.95
+  YELLOW ONIONS 2KG          2.60
+  VINE TOMATOES 500G         2.75
+  DRIED CHICKPEAS 500G       2.15
+  SHORT GRAIN RICE 1KG       3.95
+  CHICKEN THIGH BONE IN      7.40
+  FILTER COFFEE 340G        13.50
+  PARMESAN WEDGE 200G        8.90
+  FLAKED SEA SALT 250G       4.60
+  PLAIN FLOUR 1KG            1.85
+  CASTER SUGAR 1KG           2.20
+  BAKING POWDER 170G         1.95
+  DRIED PASTA 500G           1.40
+  TINNED TOMATOES 400G       1.10
+  RED LENTILS 500G           2.05
+  PEANUT BUTTER 340G         4.75
+  STRAWBERRY JAM 340G        3.30
+  BREAD FLOUR 1.5KG          3.86
+  STONEGROUND WHOLEMEAL      2.87
+  OLIVE OIL 750ML           10.83
+  HOUSE OLIVE OIL 1L         8.59
+  WHOLE MILK 2L              3.02
+  UNSALTED BUTTER 250G       3.83
+  FREE RANGE EGGS 12         5.54
+  CARROTS LOOSE 1KG          2.36
+  YELLOW ONIONS 2KG          2.36
+  VINE TOMATOES 500G         2.92
+  DRIED CHICKPEAS 500G       2.42
+  SHORT GRAIN RICE 1KG       3.67
+  CHICKEN THIGH BONE IN      7.13
+  FILTER COFFEE 340G        13.24
+  PARMESAN WEDGE 200G        8.84
+  FLAKED SEA SALT 250G       4.37
+  PLAIN FLOUR 1KG            1.69
+  CASTER SUGAR 1KG           2.49
+  BAKING POWDER 170G         2.22
+  DRIED PASTA 500G           1.23
+  TINNED TOMATOES 400G       1.15
+  RED LENTILS 500G           2.56
+  PEANUT BUTTER 340G         4.69
+  STRAWBERRY JAM 340G        3.22
+  CRV REDEMPTION VALUE      0.50
+  BAG FEE                   0.10
+  MEMBER SAVINGS            -2.00
+  TAX                       10.44
+  SUBTOTAL                 208.75
+  TOTAL                    219.19
+  VISA ****0000            219.19
+expected_header:
+  merchant_name: TIDELINE MARKET
+  store_identifier: "0042"
+  purchased_at_local: "2026-09-14 10:21"
+  purchased_at: "2026-09-14T17:21:00+00:00"
+  subtotal: "208.75"
+  tax: "10.44"
+  total: "219.19"
+expected_lines:
+  - {seq: 1, raw_text: "BREAD FLOUR 1.5KG          3.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.40", parent_seq: null}
+  - {seq: 2, raw_text: "STONEGROUND WHOLEMEAL      2.85", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.85", parent_seq: null}
+  - {seq: 3, raw_text: "OLIVE OIL 750ML           11.20", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "11.20", parent_seq: null}
+  - {seq: 4, raw_text: "HOUSE OLIVE OIL 1L         8.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.60", parent_seq: null}
+  - {seq: 5, raw_text: "WHOLE MILK 2L              3.10", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.10", parent_seq: null}
+  - {seq: 6, raw_text: "UNSALTED BUTTER 250G       4.05", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.05", parent_seq: null}
+  - {seq: 7, raw_text: "FREE RANGE EGGS 12         5.45", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.45", parent_seq: null}
+  - {seq: 8, raw_text: "CARROTS LOOSE 1KG          1.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.95", parent_seq: null}
+  - {seq: 9, raw_text: "YELLOW ONIONS 2KG          2.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.60", parent_seq: null}
+  - {seq: 10, raw_text: "VINE TOMATOES 500G         2.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.75", parent_seq: null}
+  - {seq: 11, raw_text: "DRIED CHICKPEAS 500G       2.15", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.15", parent_seq: null}
+  - {seq: 12, raw_text: "SHORT GRAIN RICE 1KG       3.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.95", parent_seq: null}
+  - {seq: 13, raw_text: "CHICKEN THIGH BONE IN      7.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.40", parent_seq: null}
+  - {seq: 14, raw_text: "FILTER COFFEE 340G        13.50", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "13.50", parent_seq: null}
+  - {seq: 15, raw_text: "PARMESAN WEDGE 200G        8.90", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.90", parent_seq: null}
+  - {seq: 16, raw_text: "FLAKED SEA SALT 250G       4.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.60", parent_seq: null}
+  - {seq: 17, raw_text: "PLAIN FLOUR 1KG            1.85", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.85", parent_seq: null}
+  - {seq: 18, raw_text: "CASTER SUGAR 1KG           2.20", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.20", parent_seq: null}
+  - {seq: 19, raw_text: "BAKING POWDER 170G         1.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.95", parent_seq: null}
+  - {seq: 20, raw_text: "DRIED PASTA 500G           1.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.40", parent_seq: null}
+  - {seq: 21, raw_text: "TINNED TOMATOES 400G       1.10", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.10", parent_seq: null}
+  - {seq: 22, raw_text: "RED LENTILS 500G           2.05", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.05", parent_seq: null}
+  - {seq: 23, raw_text: "PEANUT BUTTER 340G         4.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.75", parent_seq: null}
+  - {seq: 24, raw_text: "STRAWBERRY JAM 340G        3.30", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.30", parent_seq: null}
+  - {seq: 25, raw_text: "BREAD FLOUR 1.5KG          3.86", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.86", parent_seq: null}
+  - {seq: 26, raw_text: "STONEGROUND WHOLEMEAL      2.87", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.87", parent_seq: null}
+  - {seq: 27, raw_text: "OLIVE OIL 750ML           10.83", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "10.83", parent_seq: null}
+  - {seq: 28, raw_text: "HOUSE OLIVE OIL 1L         8.59", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.59", parent_seq: null}
+  - {seq: 29, raw_text: "WHOLE MILK 2L              3.02", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.02", parent_seq: null}
+  - {seq: 30, raw_text: "UNSALTED BUTTER 250G       3.83", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.83", parent_seq: null}
+  - {seq: 31, raw_text: "FREE RANGE EGGS 12         5.54", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.54", parent_seq: null}
+  - {seq: 32, raw_text: "CARROTS LOOSE 1KG          2.36", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.36", parent_seq: null}
+  - {seq: 33, raw_text: "YELLOW ONIONS 2KG          2.36", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.36", parent_seq: null}
+  - {seq: 34, raw_text: "VINE TOMATOES 500G         2.92", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.92", parent_seq: null}
+  - {seq: 35, raw_text: "DRIED CHICKPEAS 500G       2.42", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.42", parent_seq: null}
+  - {seq: 36, raw_text: "SHORT GRAIN RICE 1KG       3.67", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.67", parent_seq: null}
+  - {seq: 37, raw_text: "CHICKEN THIGH BONE IN      7.13", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.13", parent_seq: null}
+  - {seq: 38, raw_text: "FILTER COFFEE 340G        13.24", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "13.24", parent_seq: null}
+  - {seq: 39, raw_text: "PARMESAN WEDGE 200G        8.84", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.84", parent_seq: null}
+  - {seq: 40, raw_text: "FLAKED SEA SALT 250G       4.37", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.37", parent_seq: null}
+  - {seq: 41, raw_text: "PLAIN FLOUR 1KG            1.69", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.69", parent_seq: null}
+  - {seq: 42, raw_text: "CASTER SUGAR 1KG           2.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.49", parent_seq: null}
+  - {seq: 43, raw_text: "BAKING POWDER 170G         2.22", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.22", parent_seq: null}
+  - {seq: 44, raw_text: "DRIED PASTA 500G           1.23", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.23", parent_seq: null}
+  - {seq: 45, raw_text: "TINNED TOMATOES 400G       1.15", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.15", parent_seq: null}
+  - {seq: 46, raw_text: "RED LENTILS 500G           2.56", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.56", parent_seq: null}
+  - {seq: 47, raw_text: "PEANUT BUTTER 340G         4.69", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.69", parent_seq: null}
+  - {seq: 48, raw_text: "STRAWBERRY JAM 340G        3.22", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.22", parent_seq: null}
+  - {seq: 49, raw_text: "CRV REDEMPTION VALUE      0.50", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "0.50", parent_seq: 48}
+  - {seq: 50, raw_text: "BAG FEE                   0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_seq: null}
+  - {seq: 51, raw_text: "MEMBER SAVINGS            -2.00", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "2.00", parent_seq: null}
+  - {seq: 52, raw_text: "TAX                       10.44", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "10.44", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "TIDELINE MARKET"
+    store_identifier: "0042"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-09-14 10:21"
+    subtotal: "208.75"
+    tax: "10.44"
+    total: "219.19"
+  lines:
+    lines:
+      - {raw_text: "BREAD FLOUR 1.5KG          3.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.40", parent_index: null}
+      - {raw_text: "STONEGROUND WHOLEMEAL      2.85", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.85", parent_index: null}
+      - {raw_text: "OLIVE OIL 750ML           11.20", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "11.20", parent_index: null}
+      - {raw_text: "HOUSE OLIVE OIL 1L         8.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.60", parent_index: null}
+      - {raw_text: "WHOLE MILK 2L              3.10", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.10", parent_index: null}
+      - {raw_text: "UNSALTED BUTTER 250G       4.05", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.05", parent_index: null}
+      - {raw_text: "FREE RANGE EGGS 12         5.45", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.45", parent_index: null}
+      - {raw_text: "CARROTS LOOSE 1KG          1.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.95", parent_index: null}
+      - {raw_text: "YELLOW ONIONS 2KG          2.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.60", parent_index: null}
+      - {raw_text: "VINE TOMATOES 500G         2.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.75", parent_index: null}
+      - {raw_text: "DRIED CHICKPEAS 500G       2.15", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.15", parent_index: null}
+      - {raw_text: "SHORT GRAIN RICE 1KG       3.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.95", parent_index: null}
+      - {raw_text: "CHICKEN THIGH BONE IN      7.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.40", parent_index: null}
+      - {raw_text: "FILTER COFFEE 340G        13.50", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "13.50", parent_index: null}
+      - {raw_text: "PARMESAN WEDGE 200G        8.90", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.90", parent_index: null}
+      - {raw_text: "FLAKED SEA SALT 250G       4.60", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.60", parent_index: null}
+      - {raw_text: "PLAIN FLOUR 1KG            1.85", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.85", parent_index: null}
+      - {raw_text: "CASTER SUGAR 1KG           2.20", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.20", parent_index: null}
+      - {raw_text: "BAKING POWDER 170G         1.95", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.95", parent_index: null}
+      - {raw_text: "DRIED PASTA 500G           1.40", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.40", parent_index: null}
+      - {raw_text: "TINNED TOMATOES 400G       1.10", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.10", parent_index: null}
+      - {raw_text: "RED LENTILS 500G           2.05", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.05", parent_index: null}
+      - {raw_text: "PEANUT BUTTER 340G         4.75", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.75", parent_index: null}
+      - {raw_text: "STRAWBERRY JAM 340G        3.30", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.30", parent_index: null}
+      - {raw_text: "BREAD FLOUR 1.5KG          3.86", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.86", parent_index: null}
+      - {raw_text: "STONEGROUND WHOLEMEAL      2.87", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.87", parent_index: null}
+      - {raw_text: "OLIVE OIL 750ML           10.83", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "10.83", parent_index: null}
+      - {raw_text: "HOUSE OLIVE OIL 1L         8.59", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.59", parent_index: null}
+      - {raw_text: "WHOLE MILK 2L              3.02", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.02", parent_index: null}
+      - {raw_text: "UNSALTED BUTTER 250G       3.83", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.83", parent_index: null}
+      - {raw_text: "FREE RANGE EGGS 12         5.54", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.54", parent_index: null}
+      - {raw_text: "CARROTS LOOSE 1KG          2.36", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.36", parent_index: null}
+      - {raw_text: "YELLOW ONIONS 2KG          2.36", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.36", parent_index: null}
+      - {raw_text: "VINE TOMATOES 500G         2.92", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.92", parent_index: null}
+      - {raw_text: "DRIED CHICKPEAS 500G       2.42", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.42", parent_index: null}
+      - {raw_text: "SHORT GRAIN RICE 1KG       3.67", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.67", parent_index: null}
+      - {raw_text: "CHICKEN THIGH BONE IN      7.13", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "7.13", parent_index: null}
+      - {raw_text: "FILTER COFFEE 340G        13.24", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "13.24", parent_index: null}
+      - {raw_text: "PARMESAN WEDGE 200G        8.84", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "8.84", parent_index: null}
+      - {raw_text: "FLAKED SEA SALT 250G       4.37", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.37", parent_index: null}
+      - {raw_text: "PLAIN FLOUR 1KG            1.69", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.69", parent_index: null}
+      - {raw_text: "CASTER SUGAR 1KG           2.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.49", parent_index: null}
+      - {raw_text: "BAKING POWDER 170G         2.22", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.22", parent_index: null}
+      - {raw_text: "DRIED PASTA 500G           1.23", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.23", parent_index: null}
+      - {raw_text: "TINNED TOMATOES 400G       1.15", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.15", parent_index: null}
+      - {raw_text: "RED LENTILS 500G           2.56", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.56", parent_index: null}
+      - {raw_text: "PEANUT BUTTER 340G         4.69", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.69", parent_index: null}
+      - {raw_text: "STRAWBERRY JAM 340G        3.22", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.22", parent_index: null}
+      - {raw_text: "CRV REDEMPTION VALUE      0.50", line_kind: deposit, qty: null, unit: null, unit_price: null, line_total: "0.50", parent_index: null}
+      - {raw_text: "BAG FEE                   0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_index: null}
+      - {raw_text: "MEMBER SAVINGS            -2.00", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "2.00", parent_index: null}
+      - {raw_text: "TAX                       10.44", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "10.44", parent_index: null}

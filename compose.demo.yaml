@@ -11,8 +11,28 @@
 # machine it runs on.
 name: kerp-demo
 
+# A default for the demo's passwords, so `make demo-up` works on a fresh clone
+# with no .env at all. That is the README's promise and it used to be false:
+# with no .env the two DB_*_PASSWORD variables expanded to empty strings,
+# Postgres refused to initialise without a password, and the first command a new
+# reader runs died with "dependency failed to start" and nothing pointing at the
+# cause.
+#
+# These are defaults rather than fixed values on purpose. Postgres only applies
+# POSTGRES_PASSWORD when it initialises a volume, so hardcoding would break
+# anyone who already has a demo volume made with their own .env: the database
+# would keep the old password while the api connected with the new one. Falling
+# back to the same variables keeps an existing demo working and gives a fresh
+# clone something that is not the empty string.
+#
+# They are not secrets. The demo holds invented data, binds to localhost only,
+# and its volumes are deleted by `make demo-down`.
+
 services:
   db:
+    environment:
+      POSTGRES_PASSWORD: ${DB_OWNER_PASSWORD:-demo-only-not-a-secret}
+      KERP_APP_PASSWORD: ${DB_APP_PASSWORD:-demo-only-not-a-secret}
     volumes: !override
       - demo-db-data:/var/lib/postgresql/data
       - ./docker/db/init:/docker-entrypoint-initdb.d:ro
@@ -20,6 +40,9 @@ services:
       - "127.0.0.1:${DEMO_DB_PORT:-5434}:5432"
 
   api:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kerp_app:${DB_APP_PASSWORD:-demo-only-not-a-secret}@db:5432/kerp
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:${DB_OWNER_PASSWORD:-demo-only-not-a-secret}@db:5432/kerp
     volumes: !override
       - demo-data:/data
       - ./docs:/srv/docs:ro
@@ -27,6 +50,9 @@ services:
       - "127.0.0.1:${DEMO_API_PORT:-8001}:8000"
 
   worker:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kerp_app:${DB_APP_PASSWORD:-demo-only-not-a-secret}@db:5432/kerp
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:${DB_OWNER_PASSWORD:-demo-only-not-a-secret}@db:5432/kerp
     volumes: !override
       - demo-data:/data
 

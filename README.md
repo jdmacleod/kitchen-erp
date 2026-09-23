@@ -54,7 +54,15 @@ photograph a database that is not the seeded synthetic one.
 cp .env.example .env            # then change the two passwords
 docker compose up -d --build    # db, api, worker, web
 docker compose exec api kerp migrate         # also seeds the unit table
-docker compose exec api kerp create-admin
+docker compose exec api kerp create-admin   # prompts for email, name, password
+```
+
+`create-admin` prompts, so it needs a terminal. Scripting it (or running it over
+`exec -T`) takes the values as flags instead:
+
+```bash
+docker compose exec -T api kerp create-admin \
+  --email you@example.com --display-name "Your Name" --password '<password>'
 ```
 
 Open <http://localhost:8080> and log in. The API is also reachable directly at
