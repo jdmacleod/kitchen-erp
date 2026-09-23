@@ -11,8 +11,23 @@
 # machine it runs on.
 name: kerp-demo
 
+# The demo's own passwords, so `make demo-up` works on a fresh clone with no
+# .env at all. That is the README's promise and it used to be false: with no
+# .env the two DB_*_PASSWORD variables expanded to empty strings, Postgres
+# refused to initialise without a password, and the first command a new reader
+# runs died with "dependency failed to start" and nothing pointing at the cause.
+#
+# These are not secrets. The demo holds invented data, binds to localhost only,
+# and its volumes are deleted by `make demo-down`. A real deployment reads its
+# passwords from .env as before; nothing here touches that path.
+x-demo-db-password: &demo-db-password demo-only-not-a-secret
+x-demo-app-password: &demo-app-password demo-only-not-a-secret
+
 services:
   db:
+    environment:
+      POSTGRES_PASSWORD: *demo-db-password
+      KERP_APP_PASSWORD: *demo-app-password
     volumes: !override
       - demo-db-data:/var/lib/postgresql/data
       - ./docker/db/init:/docker-entrypoint-initdb.d:ro
@@ -20,6 +35,9 @@ services:
       - "127.0.0.1:${DEMO_DB_PORT:-5434}:5432"
 
   api:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kerp_app:demo-only-not-a-secret@db:5432/kerp
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:demo-only-not-a-secret@db:5432/kerp
     volumes: !override
       - demo-data:/data
       - ./docs:/srv/docs:ro
@@ -27,6 +45,9 @@ services:
       - "127.0.0.1:${DEMO_API_PORT:-8001}:8000"
 
   worker:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://kerp_app:demo-only-not-a-secret@db:5432/kerp
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:demo-only-not-a-secret@db:5432/kerp
     volumes: !override
       - demo-data:/data
 

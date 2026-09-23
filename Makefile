@@ -11,6 +11,9 @@ setup:  ## Install git hooks and create the local data directories
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."
 	@echo "It also writes tools/denylist.salt and refreshes tools/denylist.hashes."
 
+check-compose-env:  ## Every documented setting must reach a container
+	$(PY) -m tools.check_compose_env
+
 check-pii:  ## Scan the working tree for personal data
 	$(PY) -m tools.scan_pii
 
@@ -47,6 +50,7 @@ screenshots:  ## Recapture docs/screenshots from the demo stack (never from real
 	cd e2e && corepack pnpm exec playwright test -c playwright.screenshots.config.ts
 
 check:  ## Everything CI runs for safeguards
+	$(PY) -m tools.check_compose_env
 	$(PY) -m tools.denylist --self-test
 	$(PY) -m tools.scan_pii
 	pre-commit run --all-files

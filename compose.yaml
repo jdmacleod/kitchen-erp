@@ -33,6 +33,17 @@ services:
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       CURRENCY: ${CURRENCY:-USD}
       INGEST_LOCK_TIMEOUT_SECONDS: ${INGEST_LOCK_TIMEOUT_SECONDS:-600}
+      # Everything .env.example documents has to be forwarded here or setting
+      # it does nothing: the container sees only what this block names, and the
+      # application falls back to its code defaults in silence.
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
+      LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
+      OCR_ADAPTERS: ${OCR_ADAPTERS:-["client","tesseract"]}
+      INGEST_MAX_ATTEMPTS: ${INGEST_MAX_ATTEMPTS:-5}
+      INGEST_BACKOFF_BASE_SECONDS: ${INGEST_BACKOFF_BASE_SECONDS:-5}
+      INGEST_BACKOFF_FACTOR: ${INGEST_BACKOFF_FACTOR:-4}
+      INGEST_BACKOFF_MAX_SECONDS: ${INGEST_BACKOFF_MAX_SECONDS:-300}
+      INGEST_LOCATION_RADIUS_M: ${INGEST_LOCATION_RADIUS_M:-300}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:

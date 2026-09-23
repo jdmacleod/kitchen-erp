@@ -25,7 +25,25 @@ from app.ingest.errors import InvalidModelOutput, ModelUnavailable
 
 log = get_logger(__name__)
 
-CLIENT_VERSION = "1"
+CLIENT_VERSION = "2"
+
+# Ollama's own defaults are the reason a normal grocery receipt used to come back
+# empty. num_ctx defaults to 2048 tokens, which a 60-line receipt plus this
+# schema overruns, and num_predict is short enough that the JSON array is cut off
+# mid-object. Neither failure announces itself: the server returns 200 with
+# truncated or empty content, the reply fails schema validation, and the job ends
+# in review with no lines and the code "invalid_model_output".
+#
+# Measured against gpt-oss:20b before these were set: 25 item lines parsed, 45
+# returned 2054 characters ending mid-object, 70 returned nothing at all. With
+# them, 100 item lines parse. A till receipt of 40-60 items is ordinary, so the
+# old defaults failed the common case rather than an edge one.
+#
+# These cost memory on the model server. They are deliberately constants rather
+# than settings: an operator who needs to tune them is past the point where a
+# default helps, and every knob is a support question.
+NUM_CTX = 8192
+NUM_PREDICT = 8192
 
 BEGIN_DELIMITER = "-----BEGIN RECEIPT TEXT-----"
 END_DELIMITER = "-----END RECEIPT TEXT-----"
@@ -140,7 +158,7 @@ class LlmClient:
             "messages": build_messages(task, receipt_text),
             "format": model_cls.model_json_schema(),
             "stream": False,
-            "options": {"temperature": 0},
+            "options": {"temperature": 0, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
         }
         attempts = 0
         for attempts in range(1, 2 + max(self.max_retries, 0)):
