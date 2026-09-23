@@ -35,12 +35,15 @@ test("the sidebar names the build this stack was made from", async ({ page }) =>
   expect(commit, "the commit is the Dockerfile default").toMatch(/^[0-9a-f]{7,40}$/);
   expect(version, "the version is the Dockerfile default").not.toBe("dev");
 
-  // `git describe --tags --always --dirty` is the source, so the version is a
-  // tag form (`v1.2.3`, `v1.2.3-5-gabc1234`) until one exists and the sha
-  // itself after that, either with a `-dirty` suffix on an uncommitted tree.
-  // Asserting a bare 7-hex sha would fail for a developer running e2e on a
-  // dirty tree, which is the normal case.
-  expect(version).toMatch(/^(v.+|[0-9a-f]{7,40})(-dirty)?$/);
+  // Nothing narrower than this. `git describe --tags --always --dirty` emits a
+  // tag name, which need not start with `v` (`is_dev_build` treats `0.2.0` as a
+  // release); a tag plus `-5-gabc1234` once commits land on top; or the
+  // abbreviated sha until a tag exists; any of them with `-dirty` on an
+  // uncommitted tree. A shape assertion here would be a second copy of a rule
+  // the backend already owns, and would fail the first time someone tags
+  // without a `v`. The sha above is what proves the args traversed the stack:
+  // "unknown" cannot match hex.
+  expect(version, "the version is empty or not a single token").toMatch(/^\S+$/);
 
   // Whichever half leads, the sha is on screen: it is what a bug report needs.
   await expect(line).toContainText(version.startsWith(commit) ? version : commit);
