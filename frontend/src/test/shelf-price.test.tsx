@@ -1,9 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { flourId, hits, units } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
+import { adminUser, jsonResponse, mainRegion, mockApi, renderApp, type RecordedCall } from "./helpers";
 import { observationNoDensity, observationOk } from "./purchase-fixtures";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -92,7 +92,7 @@ describe("shelf price", () => {
     await user.click(screen.getByRole("checkbox", { name: "Sale price" }));
     await user.click(screen.getByRole("button", { name: "Save price" }));
 
-    const note = await screen.findByRole("status", {}, { timeout: 2000 });
+    const note = await within(mainRegion()).findByRole("status", {}, { timeout: 2000 });
     await waitFor(() => expect(note).toHaveTextContent("has no density"));
     expect(screen.getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/ingredients/${flourId}#density-heading`);
     const post = calls.find((c) => c.method === "POST" && c.path === "/price-observations");

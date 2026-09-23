@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Ingredient } from "../api/catalog";
 import { flour, flourId, units } from "./catalog-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
+import { adminUser, jsonResponse, mainRegion, mockApi, renderApp } from "./helpers";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -43,7 +43,7 @@ describe("ingredients", () => {
     expect(post?.body).toEqual({ name: "cumin", canonical_unit: "g" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
 
-    expect(await screen.findByRole("status")).toHaveTextContent(/Created/);
+    expect(await within(mainRegion()).findByRole("status")).toHaveTextContent(/Created/);
     const list = await screen.findByRole("list", { name: "Ingredients" });
     expect(within(list).getByRole("link", { name: "cumin" })).toHaveAttribute("href", `/ingredients/${created.id}`);
     // The form reset for the next entry.
@@ -85,7 +85,9 @@ describe("ingredients", () => {
     expect(screen.getByRole("group", { name: "Measures to add" })).toHaveTextContent("cup = 125 g");
 
     await user.click(screen.getByRole("button", { name: "Create ingredient" }));
-    expect(await screen.findByRole("status")).toHaveTextContent(/with 1 measure/);
+    expect(await within(mainRegion()).findByRole("status")).toHaveTextContent(
+      /with 1 measure/,
+    );
 
     const post = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
     expect(post?.body).toEqual({

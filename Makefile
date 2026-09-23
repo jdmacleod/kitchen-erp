@@ -1,6 +1,18 @@
 .DEFAULT_GOAL := help
 PY ?= python3
 
+# Build identity. Compose cannot run git, so make resolves it and exports it;
+# every compose target below inherits it, including demo-up. A checkout with no
+# git (a downloaded tarball) falls back to the same values the Dockerfile
+# defaults to, so the UI says "dev" instead of inventing a version.
+#
+# BUILD_VERSION is `git describe`: the short sha today, a tag once tagging
+# starts, and `-dirty` whenever the tree has uncommitted changes.
+BUILD_COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+BUILD_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+export BUILD_COMMIT
+export BUILD_VERSION
+
 help:  ## Show this help
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-22s %s\n", $$1, $$2}'
 
@@ -10,6 +22,10 @@ setup:  ## Install git hooks and create the local data directories
 	@echo
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."
 	@echo "It also writes tools/denylist.salt and refreshes tools/denylist.hashes."
+
+up:  ## Start the stack with build identity baked in (use this, not bare compose)
+	docker compose up -d --build
+	@echo "built $(BUILD_VERSION) ($(BUILD_COMMIT))"
 
 check-compose-env:  ## Every documented setting must reach a container
 	$(PY) -m tools.check_compose_env

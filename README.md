@@ -52,7 +52,7 @@ photograph a database that is not the seeded synthetic one.
 
 ```bash
 cp .env.example .env            # then change the two passwords
-docker compose up -d --build    # db, api, worker, web
+make up                         # db, api, worker, web
 docker compose exec api kerp migrate         # also seeds the unit table
 docker compose exec api kerp create-admin   # prompts for email, name, password
 ```
@@ -63,6 +63,21 @@ docker compose exec api kerp create-admin   # prompts for email, name, password
 ```bash
 docker compose exec -T api kerp create-admin \
   --email you@example.com --display-name "Your Name" --password '<password>'
+```
+
+`make up` is `docker compose up -d --build` with the build identity resolved from
+git and passed in, so the running deployment can tell you which commit it is. Plain
+`docker compose up -d --build` works too and reports `dev` — Compose cannot run git
+itself, so nothing can fill those in without make. The sidebar shows whichever it
+got.
+
+To check which build is running, look at the bottom of the sidebar, under the
+health line. A `dev` badge there means the build is not a clean tagged release:
+an untagged commit, a tree with uncommitted changes, or an image built without
+the args. The same answer without a browser:
+
+```bash
+docker compose exec api kerp --version   # kitchen-erp <version> (<commit>)
 ```
 
 Open <http://localhost:8080> and log in. The API is also reachable directly at

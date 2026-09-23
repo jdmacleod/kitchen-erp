@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
@@ -84,4 +84,15 @@ export function renderApp(initialPath: string) {
     </QueryClientProvider>,
   );
   return { ...result, client };
+}
+
+/**
+ * The page's own content, excluding the shell.
+ *
+ * The sidebar's health line is a live region, so an unscoped `getByRole("status")`
+ * now matches it as well as whatever the page under test is showing. Scope to the
+ * main landmark and the query means what it used to mean.
+ */
+export function mainRegion(): HTMLElement {
+  return screen.getByRole("main");
 }
