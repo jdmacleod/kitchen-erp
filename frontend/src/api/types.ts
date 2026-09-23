@@ -29,6 +29,13 @@ export type HealthStatus = "ok" | "degraded" | "failed";
 
 export interface Health {
   status: HealthStatus;
+  // Build identity, sent on the authenticated branch only, and absent from an
+  // older API. `is_dev` is decided by the server rather than by comparing against
+  // the "dev" / "unknown" sentinels here, which would spread one concept across
+  // the Makefile, the Dockerfile and this file.
+  version?: string;
+  commit?: string;
+  is_dev?: boolean;
   // Per-check details arrive only when authenticated; their shape is the
   // backend's to define and the shell only shows the overall word.
   [key: string]: unknown;

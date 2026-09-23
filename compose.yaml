@@ -18,7 +18,15 @@ services:
       - "127.0.0.1:${DB_PORT:-5433}:5432"
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      # Compose has NO command substitution: these resolve only from the
+      # environment, which the Makefile exports and CI sets. A bare
+      # `docker compose up -d --build` falls back to the defaults and the UI
+      # says "dev", which is honest rather than wrong. Use `make up`.
+      args: &build-args
+        BUILD_COMMIT: ${BUILD_COMMIT:-unknown}
+        BUILD_VERSION: ${BUILD_VERSION:-dev}
     environment: &app-env
       DATABASE_URL: postgresql+asyncpg://kerp_app:${DB_APP_PASSWORD}@db:5432/kerp
       MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:${DB_OWNER_PASSWORD}@db:5432/kerp
@@ -59,7 +67,11 @@ services:
       - "host.docker.internal:host-gateway"
 
   worker:
-    build: ./backend
+    build:
+      context: ./backend
+      # Same image contents as api, built separately; without these the worker
+      # would report a different identity than the API from `kerp --version`.
+      args: *build-args
     command: ["kerp", "worker"]
     environment: *app-env
     volumes:

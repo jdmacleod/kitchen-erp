@@ -2,10 +2,42 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Build identity sentinels. An image built without the args genuinely does not
+# know what it is, so it says so rather than guessing. Named here because three
+# places compare against them: the defaults below, the `is_dev` derivation in the
+# health router, and `kerp --version`.
+DEV_VERSION = "dev"
+UNKNOWN_COMMIT = "unknown"
+
+# `git describe` appends this when HEAD is not the tag itself: `v1.2.3-5-gabc1234`
+# is five commits past v1.2.3.
+_COMMITS_PAST_THE_TAG = re.compile(r"-\d+-g[0-9a-f]+$")
+
+
+def is_dev_build(version: str, commit: str) -> bool:
+    """True for anything that is not a clean, tagged release.
+
+    `git describe --tags --always --dirty` returns a bare tag name only when HEAD
+    is exactly that tag on a clean tree. Every other output says why it is not a
+    release: `-dirty` for uncommitted changes, `-5-gabc1234` for commits since the
+    tag, and the abbreviated sha itself when `--always` fell back because no tag
+    exists at all. That last case is the one this repository is in today, and
+    checking only the sentinels would have called it a release.
+
+    Decided here rather than in the frontend so the rule lives in one language
+    instead of being re-derived against the sentinels in TypeScript.
+    """
+    if version == DEV_VERSION or commit == UNKNOWN_COMMIT:
+        return True  # built without the args; the image does not know what it is
+    if version.endswith("-dirty") or _COMMITS_PAST_THE_TAG.search(version):
+        return True
+    return version.startswith(commit)  # `--always` fallback: there is no tag
 
 
 class Settings(BaseSettings):
@@ -13,6 +45,13 @@ class Settings(BaseSettings):
 
     database_url: str
     migration_database_url: str
+
+    # Baked into the image by `make up` and by CI, not read from `.env`: these are
+    # build-time inputs to `docker build`, not runtime configuration. Compose has no
+    # command substitution, so a bare `docker compose up --build` leaves the
+    # defaults in place.
+    build_version: str = DEV_VERSION
+    build_commit: str = UNKNOWN_COMMIT
 
     ollama_base_url: str = "http://host.docker.internal:11434"
     llm_model: str = "gpt-oss:20b"

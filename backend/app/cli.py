@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import typer
 from alembic.config import Config
 
 from alembic import command
+from app.core.config import DEV_VERSION, UNKNOWN_COMMIT
 from app.core.logging import configure_logging
 
 cli = typer.Typer(help="Kitchen ERP administration.", no_args_is_help=True)
@@ -18,6 +20,40 @@ import_cli = typer.Typer(help="Import reference data.", no_args_is_help=True)
 cli.add_typer(import_cli, name="import")
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _version_line() -> str:
+    """The build identity, read straight from the environment.
+
+    Deliberately not through `Settings`: `database_url` and `migration_database_url`
+    are declared without defaults, so constructing settings raises `ValidationError`
+    when they are unset. A version check that needs a configured database is not a
+    version check — the first thing an operator runs on a container that will not
+    start is `kerp --version`.
+    """
+    version = os.environ.get("BUILD_VERSION", DEV_VERSION)
+    commit = os.environ.get("BUILD_COMMIT", UNKNOWN_COMMIT)
+    return f"kitchen-erp {version} ({commit})"
+
+
+def _show_version(value: bool) -> None:
+    if not value:
+        return
+    typer.echo(_version_line())
+    raise typer.Exit()
+
+
+@cli.callback()
+def main_callback(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        callback=_show_version,
+        is_eager=True,
+        help="Show the build version and commit, then exit.",
+    ),
+) -> None:
+    """Kitchen ERP administration."""
 
 
 def alembic_config() -> Config:

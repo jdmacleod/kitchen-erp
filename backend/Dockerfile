@@ -33,5 +33,15 @@ RUN uv sync --frozen --no-install-project
 COPY . .
 RUN uv sync --frozen
 
+# Build identity, last on purpose. These change on every commit, so anything
+# below them rebuilds each time; everything above — apt, the pgdg repo, tesseract
+# and both `uv sync` layers — stays cached. Defaults say "unknown" rather than
+# guessing: an image built without them (a bare `docker compose build`, a tarball
+# with no .git) genuinely does not know what it is.
+ARG BUILD_COMMIT=unknown
+ARG BUILD_VERSION=dev
+ENV BUILD_COMMIT=${BUILD_COMMIT} \
+    BUILD_VERSION=${BUILD_VERSION}
+
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
