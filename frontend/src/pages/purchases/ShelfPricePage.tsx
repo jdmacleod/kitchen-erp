@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { formatPack, isPositiveDecimal, productTitle } from "../../api/catalog";
 import { purchaseErrorMessage, useCreateObservation, type Observation, type ObservationCreateInput } from "../../api/purchases";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
+import { LocationGuard } from "../../components/purchases/LocationGuard";
 import { LocationSelect, rememberLocation } from "../../components/purchases/LocationSelect";
 import { ProductPicker, type ProductRef } from "../../components/purchases/ProductPicker";
 import { Alert, Button, Card, Field, PageHeader, focusRing } from "../../components/ui";
@@ -98,88 +99,90 @@ export function ShelfPricePage() {
           Enter a purchase instead
         </Link>
       </PageHeader>
-      <Card>
-        <form onSubmit={submit} onKeyDown={onKeyDown} aria-labelledby="shelf-heading" noValidate className="flex flex-col gap-4">
-          <h2 id="shelf-heading" className="text-lg font-medium">
-            Record a posted price
-          </h2>
-          {result ? <ObservationResult observation={result} /> : null}
-          {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-          {create.error ? <Alert tone="error">{purchaseErrorMessage(create.error)}</Alert> : null}
+      <LocationGuard>
+        <Card>
+          <form onSubmit={submit} onKeyDown={onKeyDown} aria-labelledby="shelf-heading" noValidate className="flex flex-col gap-4">
+            <h2 id="shelf-heading" className="text-lg font-medium">
+              Record a posted price
+            </h2>
+            {result ? <ObservationResult observation={result} /> : null}
+            {invalid ? <Alert tone="error">{invalid}</Alert> : null}
+            {create.error ? <Alert tone="error">{purchaseErrorMessage(create.error)}</Alert> : null}
 
-          <LocationSelect id="shelf-location" value={locationId} onChange={setLocationId} disabled={busy} />
+            <LocationSelect id="shelf-location" value={locationId} onChange={setLocationId} disabled={busy} />
 
-          <ProductPicker
-            id="shelf-product"
-            value={product}
-            onChange={(p) => {
-              setProduct(p);
-              if (!p) setUnit("");
-            }}
-            onPicked={onPicked}
-            inputRef={productRef}
-            disabled={busy}
-            hint="Arrow keys move, Enter picks. New product creates the product and, if needed, its ingredient."
-          />
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field
-              id="shelf-price"
-              label="Price"
-              inputMode="decimal"
-              autoComplete="off"
-              required
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              disabled={busy}
-              hint="What the tag says, before tax."
-            />
-            <Field
-              id="shelf-qty"
-              label="Quantity"
-              inputMode="decimal"
-              autoComplete="off"
-              required
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              disabled={busy}
-            />
-            <UnitSelect
-              id="shelf-unit"
-              label="Unit"
-              value={unit}
-              onChange={setUnit}
-              disabled={busy}
-              hint={pack ? `1 each = one ${pack} pack.` : undefined}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="inline-flex min-h-10 items-center gap-2 text-sm">
-              <input type="checkbox" checked={promo} onChange={(e) => setPromo(e.target.checked)} disabled={busy} className={`size-4 ${focusRing}`} />
-              Sale price
-            </label>
-            <Field
-              id="shelf-observed-at"
-              label="Observed at"
-              type="datetime-local"
-              value={observedAt}
-              onChange={(e) => {
-                setObservedAt(e.target.value);
-                setObservedTouched(true);
+            <ProductPicker
+              id="shelf-product"
+              value={product}
+              onChange={(p) => {
+                setProduct(p);
+                if (!p) setUnit("");
               }}
+              onPicked={onPicked}
+              inputRef={productRef}
               disabled={busy}
-              hint={observedTouched ? undefined : "Now, unless you change it."}
+              hint="Arrow keys move, Enter picks. New product creates the product and, if needed, its ingredient."
             />
-          </div>
 
-          <div>
-            <Button type="submit" disabled={busy}>
-              {busy ? "Saving…" : "Save price"}
-            </Button>
-          </div>
-        </form>
-      </Card>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field
+                id="shelf-price"
+                label="Price"
+                inputMode="decimal"
+                autoComplete="off"
+                required
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                disabled={busy}
+                hint="What the tag says, before tax."
+              />
+              <Field
+                id="shelf-qty"
+                label="Quantity"
+                inputMode="decimal"
+                autoComplete="off"
+                required
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                disabled={busy}
+              />
+              <UnitSelect
+                id="shelf-unit"
+                label="Unit"
+                value={unit}
+                onChange={setUnit}
+                disabled={busy}
+                hint={pack ? `1 each = one ${pack} pack.` : undefined}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="inline-flex min-h-10 items-center gap-2 text-sm">
+                <input type="checkbox" checked={promo} onChange={(e) => setPromo(e.target.checked)} disabled={busy} className={`size-4 ${focusRing}`} />
+                Sale price
+              </label>
+              <Field
+                id="shelf-observed-at"
+                label="Observed at"
+                type="datetime-local"
+                value={observedAt}
+                onChange={(e) => {
+                  setObservedAt(e.target.value);
+                  setObservedTouched(true);
+                }}
+                disabled={busy}
+                hint={observedTouched ? undefined : "Now, unless you change it."}
+              />
+            </div>
+
+            <div>
+              <Button type="submit" disabled={busy}>
+                {busy ? "Saving…" : "Save price"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </LocationGuard>
     </>
   );
 }

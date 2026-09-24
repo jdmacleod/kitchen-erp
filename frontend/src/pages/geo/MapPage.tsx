@@ -53,7 +53,11 @@ export function MapPage() {
   const locations = useLocations({ kind, home_base_id: homeBaseId, open_at: openAtIso });
 
   const [tilesPresent, setTilesPresent] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<Mode>("browse");
+  // `?place=location` opens ready to drop a pin. MapView ignores map clicks
+  // unless it is placing, so anything that sends a newcomer here to add their
+  // first location has to turn placing on for them or the first click does
+  // nothing and the instruction reads as broken.
+  const [mode, setMode] = useState<Mode>(() => (params.get("place") === "location" ? "location" : "browse"));
   const [draft, setDraft] = useState<Point | null>(null);
   const [selected, setSelected] = useState<Selection | null>(() => {
     const id = params.get("location");
@@ -159,7 +163,21 @@ export function MapPage() {
         error={cheapest.error}
       />
 
-      {tilesPresent === false ? (
+      {locations.isSuccess && items.length === 0 ? (
+        // Arriving from a blocked entry form, placing mode is already on and the
+        // line below already says where to click, so repeating "use Add location
+        // here" would name a button the visitor never had to press.
+        <Alert tone="info">
+          {mode === "browse"
+            ? "No locations yet. Use “Add location here”, then click the map where you shop. "
+            : "No locations yet. "}
+          Naming the pin creates the vendor and the location together, so this is one step, not
+          two.
+          {tilesPresent === false
+            ? " The background is blank because no map tiles are installed; pins are placed by coordinate and work without them (see docs/tiles.md)."
+            : ""}
+        </Alert>
+      ) : tilesPresent === false ? (
         <Alert tone="info">
           Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates on a plain background.
         </Alert>

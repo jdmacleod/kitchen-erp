@@ -89,7 +89,20 @@ export function PageHeader({ title, children }: { title: string; children?: Reac
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: ReactNode }) {
+/**
+ * `action` is for an empty state the user cannot resolve on the page they are on.
+ * Most callers do not need it: their create form is directly above the list, so
+ * "Add one above" is the whole instruction. Pass it when the way out is elsewhere.
+ */
+export function EmptyState({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <section
       aria-label={title}
@@ -99,6 +112,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
       {children ? (
         <div className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">{children}</div>
       ) : null}
+      {action ? <div className="mt-4">{action}</div> : null}
     </section>
   );
 }
