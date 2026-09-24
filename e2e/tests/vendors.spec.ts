@@ -26,6 +26,19 @@ test("create a vendor, open it, and change its price scope", async ({ page }) =>
   await page.getByRole("button", { name: "Save vendor" }).click();
   await expect(page.getByText("Prices chain-wide")).toBeVisible();
   await expect(page.getByText("No locations yet")).toBeVisible();
+
+  // A location without the map (issue #20): until this existed, a vendor made
+  // here could not be used for a purchase until someone dropped a pin for it.
+  await page.getByRole("button", { name: "Add a location" }).click();
+  const form = page.getByRole("form", { name: `Add a location for ${name}` });
+  await form.getByLabel(/^name/i).fill(`${name} quay`);
+  // The synthetic box from SECURITY.md, never a real place.
+  await form.getByLabel("Coordinates").fill("33.512345, -120.487654");
+  await form.getByRole("button", { name: "Create location" }).click();
+
+  const locations = page.getByRole("list", { name: "Locations" });
+  await expect(locations.getByText(`${name} quay`)).toBeVisible();
+  await expect(locations.getByText("33.512345, -120.487654")).toBeVisible();
 });
 
 test("the OpenStreetMap panel says the integration is off rather than failing", async ({ page }) => {
