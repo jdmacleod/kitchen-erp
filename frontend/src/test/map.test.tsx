@@ -212,4 +212,40 @@ describe("map price book (2E)", () => {
     await waitFor(() => expect(calls.filter((c) => c.path.startsWith(`/vendor-locations/${chainLocation.id}/price-panel`)).at(-1)?.query.get("days")).toBe("90"));
     await waitFor(() => expect(screen.getByTestId("location-prices")).toHaveTextContent("$123.45 over 6 visits in 90 days"));
   });
+  it("arrives ready to place when sent from a blocked entry form", async () => {
+    // MapView ignores map clicks unless it is placing, so a link to a bare /map
+    // would land someone on a screen that swallows their first click. The guard
+    // on the entry forms deep-links here instead.
+    mockApi(baseRoutes(() => []));
+    renderApp("/map?place=location");
+
+    expect(await screen.findByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("opens in browse mode without the parameter", async () => {
+    mockApi(baseRoutes(() => []));
+    renderApp("/map");
+
+    expect(await screen.findByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("tells a first-time visitor what the pin does, not what is missing", async () => {
+    mockApi(baseRoutes(() => []));
+    renderApp("/map");
+
+    expect(await screen.findByText(/Use .Add location here., then click the map/)).toBeInTheDocument();
+    expect(screen.getByText(/Naming the pin creates the vendor and the location together/)).toBeInTheDocument();
+  });
+
+  it("does not name a button the visitor never had to press", async () => {
+    // Caught by looking at the rendered page rather than by a test: arriving
+    // deep-linked, placing mode is already on and the status line already says
+    // where to click, so "use Add location here" describes a step that did not
+    // happen.
+    mockApi(baseRoutes(() => []));
+    renderApp("/map?place=location");
+
+    expect(await screen.findByText(/Naming the pin creates the vendor and the location together/)).toBeInTheDocument();
+    expect(screen.queryByText(/Use .Add location here., then click the map/)).not.toBeInTheDocument();
+  });
 });
