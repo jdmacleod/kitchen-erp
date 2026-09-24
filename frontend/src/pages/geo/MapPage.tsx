@@ -173,11 +173,12 @@ export function MapPage() {
             : "No locations yet. "}
           Naming the pin creates the vendor and the location together, so this is one step, not
           two.
-          {tilesPresent === false
-            ? " The background is blank because no map tiles are installed; pins are placed by coordinate and work without them (see docs/tiles.md)."
-            : ""}
         </Alert>
-      ) : tilesPresent === false ? (
+      ) : null}
+      {/* Independent of whether any location exists: whether tiles are installed
+          is a fact about the deployment, and folding it into the notice above
+          made this sentence disappear on a database that happened to be empty. */}
+      {tilesPresent === false ? (
         <Alert tone="info">
           Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates on a plain background.
         </Alert>

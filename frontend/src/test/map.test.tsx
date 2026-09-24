@@ -237,6 +237,18 @@ describe("map price book (2E)", () => {
     expect(screen.getByText(/Naming the pin creates the vendor and the location together/)).toBeInTheDocument();
   });
 
+  it("still says tiles are missing when there are no locations either", async () => {
+    // CI caught this: folding the tiles sentence into the first-run notice made
+    // it vanish on an empty database, and the e2e spec asserting it passed or
+    // failed depending on whether another spec had created a location first.
+    // Whether tiles are installed has nothing to do with whether you have shops.
+    mockApi(baseRoutes(() => []));
+    renderApp("/map");
+
+    expect(await screen.findByText(/No locations yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeInTheDocument();
+  });
+
   it("does not name a button the visitor never had to press", async () => {
     // Caught by looking at the rendered page rather than by a test: arriving
     // deep-linked, placing mode is already on and the status line already says
