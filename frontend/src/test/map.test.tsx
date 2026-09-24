@@ -249,6 +249,24 @@ describe("map price book (2E)", () => {
     expect(screen.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeInTheDocument();
   });
 
+  it("does not call a filtered-out list an empty household", async () => {
+    // The map's location query is filtered. An empty result under a filter means
+    // "nothing matches", and telling an established household "No locations yet"
+    // would invite them to re-create a shop they already have.
+    mockApi({
+      ...baseRoutes(() => [chainLocation]),
+      "GET /vendor-locations": (call) =>
+        jsonResponse(200, { items: call.query.get("kind") ? [] : [chainLocation] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/map");
+    await mapReady();
+
+    await user.selectOptions(screen.getByLabelText("Kind"), "market");
+
+    await waitFor(() => expect(screen.queryByText(/No locations yet/)).not.toBeInTheDocument());
+  });
+
   it("does not name a button the visitor never had to press", async () => {
     // Caught by looking at the rendered page rather than by a test: arriving
     // deep-linked, placing mode is already on and the status line already says
