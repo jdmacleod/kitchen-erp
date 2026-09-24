@@ -46,7 +46,7 @@ export function PurchaseDetailPage() {
   // the same purchase again.
   const routerLocation = useLocation();
   const navigate = useNavigate();
-  const [firstPurchase] = useState(
+  const [firstPurchase, setFirstPurchase] = useState(
     () => (routerLocation.state as { firstPurchase?: boolean } | null)?.firstPurchase === true,
   );
   useEffect(() => {
@@ -101,6 +101,10 @@ export function PurchaseDetailPage() {
       purchase={p}
       title={title}
       firstPurchase={firstPurchase}
+      // The acknowledgement belongs to the first commit, not to every commit of
+      // this purchase. Reopening retires it, so a reopen-and-recommit without
+      // leaving the page does not congratulate the household twice.
+      onReopened={() => setFirstPurchase(false)}
       onEdit={() => setEditing(true)}
     />
   );
@@ -110,11 +114,13 @@ function CommittedPurchase({
   purchase: p,
   title,
   firstPurchase,
+  onReopened,
   onEdit,
 }: {
   purchase: Purchase;
   title: string;
   firstPurchase: boolean;
+  onReopened: () => void;
   onEdit: () => void;
 }) {
   const reopen = useReopenPurchase(p.id);
@@ -133,7 +139,7 @@ function CommittedPurchase({
               Edit
             </Button>
           ) : null}
-          <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate()}>
+          <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
             {reopen.isPending ? "Reopening…" : "Reopen"}
           </Button>
           <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>

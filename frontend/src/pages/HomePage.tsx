@@ -50,6 +50,19 @@ export function HomePage() {
 
   usePageTitle(firstRun ? "Set up your kitchen" : "Home");
 
+  // Errored is checked before pending, not after. One lookup failing while the
+  // other is still in flight is a known answer, and hiding it behind "Loading…"
+  // leaves someone watching a spinner that will never resolve into anything but
+  // this error.
+  if (failed) {
+    return (
+      <>
+        <PageHeader title="Home" />
+        <Alert tone="error">{errorMessage(locations.error ?? recent.error)}</Alert>
+      </>
+    );
+  }
+
   // No heading while the answers are in flight. The two modes have different
   // headings, so committing to one here would flash "Home" at a brand-new owner
   // and then replace it with "Set up your kitchen" — on the exact screen this
@@ -59,15 +72,6 @@ export function HomePage() {
       <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
         Loading…
       </p>
-    );
-  }
-
-  if (failed) {
-    return (
-      <>
-        <PageHeader title="Home" />
-        <Alert tone="error">{errorMessage(locations.error ?? recent.error)}</Alert>
-      </>
     );
   }
 
@@ -105,7 +109,10 @@ export function HomePage() {
       label: (n) => `${n} ${n === 1 ? "product needs" : "products need"} a unit bridge`,
       to: "/price-book/needs-bridge",
       linkLabel: "Add bridges",
-      count: needsBridge.data?.length ?? 0,
+      // Distinct products, not rows. `needs_bridge` groups by norm_status as well
+      // as product (pricebook.py:262-263), so one product failing two ways is two
+      // rows, and counting rows would overstate the work waiting.
+      count: new Set(needsBridge.data?.map((item) => item.product.id) ?? []).size,
       isPending: needsBridge.isPending,
       isError: needsBridge.isError,
     },

@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { flourId, flourProductId } from "./catalog-fixtures";
 import { chainLocation } from "./geo-fixtures";
 import { manualPurchase } from "./purchase-fixtures";
 import { adminUser, errorResponse, jsonResponse, mainRegion, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
@@ -159,6 +160,33 @@ describe("home page, set up", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Could not load the to-identify queue or the needs-a-bridge queue",
     );
+  });
+});
+
+describe("home page, review findings", () => {
+  it("counts distinct products needing a bridge, not response rows", async () => {
+    // `needs_bridge` groups by norm_status as well as product, so one product
+    // failing two ways comes back as two rows. Counting rows would tell the
+    // household there is twice as much waiting for them as there is.
+    const oneProductTwoStatuses = [
+      { ingredient: { id: flourId, name: "flour", canonical_unit: "g" }, product: { id: flourProductId, name: "Flour", brand: null, pack_qty: null, pack_unit: null }, status: "no_density", observation_count: 2, latest_observed_at: "2026-09-19T15:00:00Z" },
+      { ingredient: { id: flourId, name: "flour", canonical_unit: "g" }, product: { id: flourProductId, name: "Flour", brand: null, pack_qty: null, pack_unit: null }, status: "no_pack", observation_count: 1, latest_observed_at: "2026-09-18T15:00:00Z" },
+    ];
+    mount({
+      purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
+      needsBridge: () => jsonResponse(200, { items: oneProductTwoStatuses }),
+    });
+
+    expect(await screen.findByText("1 product needs a unit bridge")).toBeInTheDocument();
+  });
+
+  it("shows a failed lookup rather than waiting on the other one", async () => {
+    // A known error hidden behind "Loading…" leaves someone watching a spinner
+    // that can only ever resolve into that error.
+    mount({ locations: () => errorResponse(500, "unavailable", "down"), purchases: NEVER });
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.queryByText(CHECKLIST_STEP)).not.toBeInTheDocument();
   });
 });
 

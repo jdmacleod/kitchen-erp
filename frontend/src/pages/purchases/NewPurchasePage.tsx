@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useCreatePurchase } from "../../api/purchases";
 import { LocationGuard } from "../../components/purchases/LocationGuard";
@@ -19,8 +19,17 @@ export function NewPurchasePage() {
   // unmounts on success and the message has to be carried to where the user lands.
   // Someone who opens this form from the sidebar instead gets no acknowledgement;
   // that is the accepted cost of not putting a query on the weekly hot path.
-  const routerState = useLocation().state as { firstPurchase?: boolean } | null;
+  const routerLocation = useLocation();
+  const routerState = routerLocation.state as { firstPurchase?: boolean } | null;
   const [firstPurchase] = useState(() => routerState?.firstPurchase === true);
+  // Strip it from this entry as well as the destination's. Saving pushes a new
+  // entry for the purchase, so pressing Back lands here again — and without this
+  // the form would still be holding the flag and would congratulate the next
+  // purchase too. The value is already captured above, so clearing is safe.
+  useEffect(() => {
+    if (routerState?.firstPurchase !== true) return;
+    navigate(routerLocation.pathname, { replace: true, state: null });
+  }, [routerState, routerLocation.pathname, navigate]);
 
   return (
     <>
