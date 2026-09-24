@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qs } from "./catalog";
 import { API_BASE, ApiError, api, newIdempotencyKey } from "./client";
+import { invalidatePurchases } from "./purchases";
 import type { ErrorEnvelope } from "./types";
 
 // The backend's statuses; anything else is shown verbatim.
@@ -39,6 +40,7 @@ export interface IngestJob {
   attempts?: number;
   purchase_id: string | null;
   last_error: string | null;
+  last_error_detail?: string | null;
   /** Present on the detail endpoint; `results` is accepted as an older spelling. */
   stage_results?: StageResult[];
   results?: StageResult[];
@@ -124,7 +126,15 @@ export function useJobToManual() {
     mutationFn: (id: string) => api<{ job: IngestJob; purchase_id: string }>(`/ingest-jobs/${enc(id)}/to-manual`, { method: "POST" }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ingestKeys.jobs });
-      void client.invalidateQueries({ queryKey: ["purchases"] });
+      // Through the shared helper, not a literal key: it is the one place that
+      // decides what a purchase mutation clears (issue #19).
+      //
+      // "all", not the default: convert_to_manual reuses the job's own draft
+      // receipt purchase when it has one, dropping its lines and changing its
+      // source to manual. That purchase may already be cached from the review
+      // screen, so clearing only the lists would leave its detail showing lines
+      // that no longer exist.
+      invalidatePurchases(client, "all");
     },
   });
 }

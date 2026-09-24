@@ -7,11 +7,15 @@ backoff (``INGEST_BACKOFF_BASE_SECONDS`` × ``INGEST_BACKOFF_FACTOR`` ^ (attempt
 capped at ``INGEST_BACKOFF_MAX_SECONDS``) until ``INGEST_MAX_ATTEMPTS``, then
 marks the job ``failed``. An unreachable model server is the exception: the
 job keeps waiting in ``pending`` with capped backoff and never fails for it,
-so the deployment works without a model and resumes when one appears.
+so the deployment works without a model and resumes when one appears. Which
+errors get that treatment is decided by :class:`app.ingest.errors.RetryableError`,
+not here — a condition this deployment cannot fix by trying again, such as a
+request that exceeds the model timeout, is not one of them.
 
 Stages are idempotent. The latest result per stage is the effective one;
 each stage reads its inputs from the latest results of the stages before it.
-``last_error`` and every log line carry error codes only, never receipt text.
+``last_error``, ``last_error_detail`` and every log line carry error codes and
+short condition names only, never receipt text.
 """
 
 from __future__ import annotations
@@ -333,9 +337,11 @@ async def run_stage(
             assert job is not None
             duration_ms = int((time.perf_counter() - started) * 1000)
             code = exc.code if isinstance(exc, IngestError) else "unexpected_error"
+            detail = exc.detail if isinstance(exc, IngestError) else None
             retryable = isinstance(exc, RetryableError)
             job.attempts += 1
             job.last_error = code
+            job.last_error_detail = detail
             job.locked_at = None
             job.locked_by = None
             if not retryable and job.attempts >= settings.ingest_max_attempts:
@@ -349,7 +355,11 @@ async def run_stage(
                 stage=stage,
                 adapter="pipeline",
                 adapter_version=PIPELINE_VERSION,
-                output={"ok": False, "error": code, "retryable": retryable},
+                # detail is omitted rather than null when there is none: the
+                # output is an append-only record, and an absent key reads as
+                # "the code said everything" without inventing a value.
+                output={"ok": False, "error": code, "retryable": retryable}
+                | ({"detail": detail} if detail is not None else {}),
                 duration_ms=duration_ms,
             )
             db.add(result)
@@ -359,6 +369,7 @@ async def run_stage(
                 extra={
                     "stage": stage,
                     "error": code,
+                    "detail": detail,
                     "exc_type": type(exc).__name__,
                     "attempts": job.attempts,
                     "status": job.status,
@@ -381,6 +392,7 @@ async def run_stage(
         job.status = outcome.next_status
         job.attempts = 0
         job.last_error = None
+        job.last_error_detail = None
         job.next_attempt_at = None
         job.locked_at = None
         job.locked_by = None

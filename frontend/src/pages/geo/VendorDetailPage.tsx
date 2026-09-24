@@ -7,6 +7,7 @@ import {
   formatLatLon,
   geoErrorMessage,
   priceScopeLabel,
+  useCreateLocation,
   useHomeBases,
   useLocations,
   useRefreshOsm,
@@ -16,15 +17,18 @@ import {
   useUpdateVendor,
   useVendor,
   vendorKindLabel,
+  type LocationCreateInput,
   type LocationUpdateInput,
   type PriceScope,
   type Vendor,
   type VendorKind,
   type VendorLocation,
 } from "../../api/geo";
-import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
+import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
+import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -168,6 +172,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
 
 function VendorLocations({ vendor }: { vendor: Vendor }) {
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [adding, setAdding] = useState(false);
   const locations = useLocations({ vendor_id: vendor.id, include_inactive: includeInactive });
   const homeBases = useHomeBases();
   const items = locations.data ?? [];
@@ -185,11 +190,15 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
             <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} className={`size-4 ${focusRing}`} />
             Show inactive
           </label>
-          <Link to="/map" className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
+            {adding ? "Cancel" : "Add a location"}
+          </Button>
+          <Link to={`/map?place=location`} className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
             Add on the map
           </Link>
         </div>
       </div>
+      {adding ? <AddLocationForm vendor={vendor} markets={top} onDone={() => setAdding(false)} /> : null}
       {locations.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -197,7 +206,9 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
       ) : locations.isError ? (
         <Alert tone="error">{errorMessage(locations.error)}</Alert>
       ) : items.length === 0 ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">No locations yet. Drop a pin on the map and pick this vendor.</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          No locations yet, so this vendor cannot be chosen for a purchase. Add one above, with its coordinates or by dropping a pin on the map.
+        </p>
       ) : (
         <ul aria-label="Locations" className="flex flex-col gap-3">
           {top.map((l) => (
@@ -222,6 +233,81 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
         </ul>
       )}
     </Card>
+  );
+}
+
+/**
+ * Create a location for this vendor without going to the map.
+ *
+ * `useCreateLocation` used to have exactly one caller, the map's pin-drop flow
+ * (issue #20), so a vendor added on the Vendors page could not be used for a
+ * purchase until someone separately found it on a map with no tiles. The vendor
+ * is already known here, so the only thing this form has to answer that the map
+ * answered by being a map is where the place is.
+ */
+function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets: VendorLocation[]; onDone: () => void }) {
+  const create = useCreateLocation();
+  const [form, setForm] = useState({ name: "", coordinates: "", address: "", opening_hours: "", parent_location_id: "" });
+  const [hoursValid, setHoursValid] = useState(true);
+  const [invalid, setInvalid] = useState<string | null>(null);
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!form.name.trim()) {
+      setInvalid("A name is required.");
+      return;
+    }
+    const point = parseLatLon(form.coordinates);
+    if (!point) {
+      setInvalid("Coordinates must be a latitude and a longitude, like 33.512345, -120.487654.");
+      return;
+    }
+    if (form.opening_hours.trim() && !hoursValid) {
+      setInvalid("Fix the opening hours first.");
+      return;
+    }
+    setInvalid(null);
+    const input: LocationCreateInput = { vendor_id: vendor.id, name: form.name.trim(), lat: point.lat, lon: point.lon };
+    if (form.address.trim()) input.address = form.address.trim();
+    if (form.opening_hours.trim()) input.opening_hours = form.opening_hours.trim();
+    if (form.parent_location_id) input.parent_location_id = form.parent_location_id;
+    create.mutate(input, { onSuccess: onDone });
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="mb-4 flex flex-col gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800" aria-label={`Add a location for ${vendor.name}`} noValidate>
+      <h3 className="text-base font-medium">New location</h3>
+      {invalid ? <Alert tone="error">{invalid}</Alert> : null}
+      {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
+      <Field id="add-location-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} hint="What you call this place, e.g. “the one on the coast road”." />
+      <CoordinatesField id="add-location-coordinates" value={form.coordinates} onChange={(v) => set("coordinates", v)} disabled={create.isPending} />
+      <Field id="add-location-address" label="Address" autoComplete="off" value={form.address} onChange={(e) => set("address", e.target.value)} />
+      {markets.length > 0 ? (
+        <SelectField id="add-location-parent" label="Stall at" value={form.parent_location_id} onChange={(e) => set("parent_location_id", e.target.value)} hint="Choose a market to make this a stall of it.">
+          <option value="">Not a stall</option>
+          {markets.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </SelectField>
+      ) : null}
+      <Disclosure summary="Opening hours (optional)">
+        <OpeningHoursInput idPrefix="add-location" value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} disabled={create.isPending} />
+      </Disclosure>
+      {/* Home base and stop overhead are left to the editor on the row this
+          creates: neither has to be right before the location can be used, and
+          the create form is the one a new deployment meets first. */}
+      <div className="flex flex-wrap gap-2">
+        <Button type="submit" disabled={create.isPending}>
+          {create.isPending ? "Creating…" : "Create location"}
+        </Button>
+        <Button variant="secondary" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 

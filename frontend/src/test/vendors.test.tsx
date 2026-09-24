@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { Vendor } from "../api/geo";
+import type { Vendor, VendorLocation } from "../api/geo";
 import { chainLocation, chainVendor, chainVendorId, homeBase, homeBaseId, marketLocation, marketVendor, stallLocation } from "./geo-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
 
@@ -119,6 +119,132 @@ describe("vendors", () => {
     await user.click(screen.getByRole("button", { name: "Save vendor" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ price_scope: "chain" }));
     expect(await screen.findByText("Prices chain-wide")).toBeInTheDocument();
+  });
+
+  it("creates a location for a vendor without going to the map", async () => {
+    // useCreateLocation used to have one caller, the map's pin-drop flow, so a
+    // vendor added on the Vendors page could not be used for a purchase until
+    // someone found it on a map with no tiles (issue #20).
+    let locations: VendorLocation[] = [];
+    const created: VendorLocation = { ...marketLocation, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009", name: "Quay stand", lat: "33.512345", lon: "-120.487654" };
+    const calls = mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: locations }),
+      "POST /vendor-locations": () => {
+        locations = [created];
+        return jsonResponse(201, created);
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    expect(await screen.findByText(/No locations yet, so this vendor cannot be chosen for a purchase/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add a location" }));
+    const form = screen.getByRole("form", { name: `Add a location for ${marketVendor.name}` });
+
+    await user.type(within(form).getByLabelText("Name"), "Quay stand");
+    await user.click(within(form).getByRole("button", { name: "Create location" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Coordinates must be a latitude and a longitude/);
+
+    await user.type(within(form).getByLabelText("Coordinates"), "33.512345, -120.487654");
+    await user.click(within(form).getByRole("button", { name: "Create location" }));
+
+    const post = await waitFor(() => {
+      const found = calls.find((c) => c.method === "POST" && c.path === "/vendor-locations");
+      expect(found).toBeDefined();
+      return found;
+    });
+    // The vendor is known from the page, and the coordinates travel as the
+    // strings they were typed as.
+    expect(post?.body).toEqual({ vendor_id: marketVendor.id, name: "Quay stand", lat: "33.512345", lon: "-120.487654" });
+    expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
+    const list = await screen.findByRole("list", { name: "Locations" });
+    expect(within(list).getByText("Quay stand")).toBeInTheDocument();
+  });
+
+  // Regression: NEW-004 — the shared coordinates control told you as you typed on
+  // the map and stayed silent on the vendor page, so the same field gave two
+  // different answers depending on where it was used.
+  // Found by /qa on 2026-09-24
+  // Report: .gstack/qa-reports/qa-report-localhost-8080-2026-09-24.md
+  it("says so while you type something that is not a coordinate pair", async () => {
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    await user.click(await screen.findByRole("button", { name: "Add a location" }));
+    const field = screen.getByLabelText("Coordinates");
+    expect(screen.queryByText("Not a latitude and longitude yet.")).not.toBeInTheDocument();
+
+    await user.type(field, "somewhere near the pier");
+    expect(await screen.findByText("Not a latitude and longitude yet.")).toBeInTheDocument();
+
+    // And it goes away once the pair reads.
+    await user.clear(field);
+    await user.type(field, "33.512345, -120.487654");
+    await waitFor(() => expect(screen.queryByText("Not a latitude and longitude yet.")).not.toBeInTheDocument());
+  });
+
+  it("fills the coordinates from this device's position", async () => {
+    const getCurrentPosition = vi.fn((ok: PositionCallback) =>
+      ok({ coords: { latitude: 33.4123, longitude: -120.5987 } } as GeolocationPosition),
+    );
+    vi.stubGlobal("navigator", Object.assign(Object.create(Object.getPrototypeOf(navigator)), navigator, { geolocation: { getCurrentPosition } }));
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    await user.click(await screen.findByRole("button", { name: "Add a location" }));
+    await user.click(screen.getByRole("button", { name: "Use my location" }));
+    // Standing in the shop is the other way the coordinates are known.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue("33.4123, -120.5987"));
+    vi.unstubAllGlobals();
+  });
+
+  // Greptile review on PR #29: a position fix can take up to eight seconds, and
+  // anything typed in the meantime was overwritten when it landed, so a submit
+  // could save the device position instead of the point that was chosen.
+  it("drops a position fix that arrives after the coordinates were changed", async () => {
+    let deliver: (() => void) | null = null;
+    const getCurrentPosition = vi.fn((ok: PositionCallback) => {
+      deliver = () => ok({ coords: { latitude: 33.9999, longitude: -120.9999 } } as GeolocationPosition);
+    });
+    vi.stubGlobal("navigator", Object.assign(Object.create(Object.getPrototypeOf(navigator)), navigator, { geolocation: { getCurrentPosition } }));
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    await user.click(await screen.findByRole("button", { name: "Add a location" }));
+    await user.click(screen.getByRole("button", { name: "Use my location" }));
+    // Still in flight; the person types the coordinates they actually want.
+    await user.type(screen.getByLabelText("Coordinates"), "33.512345, -120.487654");
+
+    deliver!();
+
+    // The stale fix is discarded rather than replacing the newer choice.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue("33.512345, -120.487654"));
+    vi.unstubAllGlobals();
   });
 
   it("creates a home base from the settings page and reports the in-use message on delete", async () => {

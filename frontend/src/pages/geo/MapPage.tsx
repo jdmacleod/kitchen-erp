@@ -21,6 +21,7 @@ import {
 } from "../../api/geo";
 import { Badge, Disclosure, SelectField } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
+import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
@@ -29,6 +30,7 @@ import { PriceAge, PromoBadge, formatUnitPrice } from "../../components/priceboo
 import { Alert, Button, Field, PageHeader, focusRing } from "../../components/ui";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
+import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours, fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -64,6 +66,9 @@ export function MapPage() {
   // nothing and the instruction reads as broken.
   const [mode, setMode] = useState<Mode>(() => (params.get("place") === "location" ? "location" : "browse"));
   const [draft, setDraft] = useState<Point | null>(null);
+  // A point chosen away from the map needs the view brought to it; a point that
+  // came from a click is already in front of the person who clicked.
+  const [centerOn, setCenterOn] = useState<Point | null>(null);
   const [selected, setSelected] = useState<Selection | null>(() => {
     const id = params.get("location");
     return id ? { type: "location", id } : null;
@@ -135,12 +140,69 @@ export function MapPage() {
   const startPlacing = (next: Mode) => {
     setMode(next);
     setDraft(null);
+    setCenterOn(null);
     setSelected(null);
   };
   const stopPlacing = () => {
     setMode("browse");
     setDraft(null);
+    setCenterOn(null);
   };
+  /**
+   * A point typed, pasted, or read off this device rather than clicked, or null
+   * when the field stopped reading as a pair and the pin has to go with it.
+   */
+  const placeAt = (point: Point | null) => {
+    setDraft(point);
+    setCenterOn(point);
+  };
+
+  /**
+   * Select a location and bring the map to it.
+   *
+   * For the ways of choosing a place that are not a click on its pin: the list
+   * beside the map, and the `?location=` link that every location row on a
+   * vendor page points at. Those used to open the detail panel and leave the
+   * map wherever it was, so "show me this shop" answered with a panel about one
+   * place and a map showing another, with no tiles and several hundred pins to
+   * navigate by. A pin the user just clicked is already in front of them, so
+   * that path stays put.
+   */
+  const pointOf = (sel: Selection): Point | null => {
+    const found =
+      sel.type === "home"
+        ? (homeBases.data ?? []).find((h) => h.id === sel.id)
+        : items.find((l) => l.id === sel.id);
+    return found ? { lat: found.lat, lon: found.lon } : null;
+  };
+  const selectAndCenter = (sel: Selection) => {
+    setSelected(sel);
+    const point = pointOf(sel);
+    if (point) setCenterOn(point);
+  };
+
+  // The `?location=` link arrives before the locations have loaded, so the
+  // centring waits for them. Keyed on the id rather than fired once, because the
+  // page stays mounted when only the search parameters change -- browser back
+  // and forward between two map links, or a second link followed from the same
+  // page -- and a one-shot would leave the panel and the map on the previous
+  // location while the URL claimed another.
+  const linkedLocationId = params.get("location");
+  const [appliedDeepLink, setAppliedDeepLink] = useState<string | null>(null);
+  if (linkedLocationId !== appliedDeepLink) {
+    if (linkedLocationId === null) {
+      setAppliedDeepLink(null);
+    } else {
+      // Not found yet means the locations are still loading, so nothing is
+      // recorded and the next render tries again. Once it matches, this stops.
+      const target = items.find((l) => l.id === linkedLocationId);
+      if (target) {
+        setAppliedDeepLink(linkedLocationId);
+        setSelected({ type: "location", id: linkedLocationId });
+        setCenterOn({ lat: target.lat, lon: target.lon });
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -184,7 +246,7 @@ export function MapPage() {
         // here" would name a button the visitor never had to press.
         <Alert tone="info">
           {mode === "browse"
-            ? "No locations yet. Use “Add location here”, then click the map where you shop. "
+            ? "No locations yet. Use “Add location here”, then click the map where you shop, or give its coordinates. "
             : "No locations yet. "}
           Naming the pin creates the vendor and the location together, so this is one step, not
           two.
@@ -195,13 +257,15 @@ export function MapPage() {
           made this sentence disappear on a database that happened to be empty. */}
       {tilesPresent === false ? (
         <Alert tone="info">
-          Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates on a plain background.
+          Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates on a plain background, and
+          a new pin can be given its coordinates instead of being aimed at one.
         </Alert>
       ) : null}
       {locations.isError ? <Alert tone="error">{errorMessage(locations.error)}</Alert> : null}
       {mode !== "browse" && !draft ? (
         <p role="status" className="text-sm text-neutral-700 dark:text-neutral-300">
-          Click or tap the map where the {mode === "home" ? "home base" : "location"} is. You can drag the pin afterwards.
+          Click or tap the map where the {mode === "home" ? "home base" : "location"} is, or give its
+          coordinates on the right. You can drag the pin afterwards.
         </p>
       ) : null}
 
@@ -215,7 +279,11 @@ export function MapPage() {
           draft={draft}
           onTilesStatus={setTilesPresent}
           initialView={initialView}
-          onMapClick={(lat, lon) => setDraft({ lat, lon })}
+          centerOn={centerOn}
+          onMapClick={(lat, lon) => {
+            setDraft({ lat, lon });
+            setCenterOn(null);
+          }}
           onPinSelect={(id) => {
             if (mode !== "browse") return;
             setSelected(id.startsWith(HOME_PREFIX) ? { type: "home", id: id.slice(HOME_PREFIX.length) } : { type: "location", id });
@@ -228,6 +296,7 @@ export function MapPage() {
           {mode === "location" ? (
             <LocationDraftForm
               draft={draft}
+              onPoint={placeAt}
               onCancel={stopPlacing}
               onCreated={(location) => {
                 stopPlacing();
@@ -237,6 +306,7 @@ export function MapPage() {
           ) : mode === "home" ? (
             <HomeBaseDraftForm
               draft={draft}
+              onPoint={placeAt}
               onCancel={stopPlacing}
               onCreated={(home) => {
                 stopPlacing();
@@ -248,7 +318,7 @@ export function MapPage() {
           ) : selected?.type === "home" ? (
             <HomeBasePanel id={selected.id} homeBases={homeBases.data ?? []} locations={items} onClose={() => setSelected(null)} />
           ) : (
-            <LocationList items={items} loading={locations.isPending} onSelect={(id) => setSelected({ type: "location", id })} />
+            <LocationList items={items} loading={locations.isPending} onSelect={(id) => selectAndCenter({ type: "location", id })} />
           )}
         </aside>
       </div>
@@ -633,7 +703,62 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
 
 // --- creation forms ---------------------------------------------------------
 
-function LocationDraftForm({ draft, onCancel, onCreated }: { draft: Point | null; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
+/**
+ * Where the draft pin is, and the two ways to say so that are not a click.
+ *
+ * On a fresh deployment the map has no tiles and no pins, so the only way to
+ * place the first location was to click a featureless grey field and hope
+ * (issue #18). Those coordinates then drive nearest-store defaulting, the
+ * distance labels and the cheapest-nearby layer for the life of the deployment,
+ * which is a lot to rest on a guess.
+ *
+ * The empty map still opens on open ocean: that default is deliberate, so that
+ * nothing about the household is implied before the first pin exists. Reading
+ * this device's position is a button someone presses, not something the page
+ * does on arrival, so the default is untouched.
+ */
+function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; onPoint: (point: Point | null) => void; disabled?: boolean }) {
+  const [text, setText] = useState(() => (draft ? formatLatLon(draft.lat, draft.lon) : ""));
+
+  // A click on the map is the other direction of the same state, so it has to
+  // reach the field. Adjusted during render rather than in an effect: React
+  // restarts the render with the new value before anything is shown, where an
+  // effect would paint the stale text first and then cascade a second render.
+  // Compared by value, so typing "33.5,-120" is not rewritten under the cursor
+  // by the point it just produced.
+  const draftText = draft ? formatLatLon(draft.lat, draft.lon) : "";
+  const [mirrored, setMirrored] = useState(draftText);
+  if (draftText !== mirrored) {
+    setMirrored(draftText);
+    const shown = parseLatLon(text);
+    // Only when there IS a draft to show. A draft cleared because the field
+    // stopped reading must not then blank the field and erase the half-typed
+    // pair that cleared it.
+    if (draft && (!shown || shown.lat !== draft.lat || shown.lon !== draft.lon)) {
+      setText(draftText);
+    }
+  }
+
+  const onText = (value: string) => {
+    setText(value);
+    const point = parseLatLon(value);
+    // A pin that no longer matches what the field says is a pin nobody chose:
+    // editing a good pair into a bad one, or clearing the field, used to leave
+    // the old point in place and submittable. The pin follows the field.
+    onPoint(point);
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
+        {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map, or give the coordinates below."}
+      </p>
+      <CoordinatesField id="draft-coordinates" value={text} onChange={onText} disabled={disabled} />
+    </div>
+  );
+}
+
+function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
   const create = useCreateLocation();
   const [vendor, setVendor] = useState<VendorChoice | null>(null);
   const [name, setName] = useState("");
@@ -644,7 +769,7 @@ function LocationDraftForm({ draft, onCancel, onCreated }: { draft: Point | null
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft) {
-      setInvalid("Drop a pin on the map first.");
+      setInvalid("Click the map, or give the coordinates, so the pin has a place.");
       return;
     }
     if (!vendor) {
@@ -675,9 +800,7 @@ function LocationDraftForm({ draft, onCancel, onCreated }: { draft: Point | null
           Cancel
         </Button>
       </div>
-      <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
-        {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map."}
-      </p>
+      <DraftPointControl draft={draft} onPoint={onPoint} disabled={create.isPending} />
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
       <VendorPicker id="new-location-vendor" value={vendor} onChange={setVendor} disabled={create.isPending} />
@@ -694,7 +817,7 @@ function LocationDraftForm({ draft, onCancel, onCreated }: { draft: Point | null
   );
 }
 
-function HomeBaseDraftForm({ draft, onCancel, onCreated }: { draft: Point | null; onCancel: () => void; onCreated: (h: HomeBase) => void }) {
+function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (h: HomeBase) => void }) {
   const create = useCreateHomeBase();
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -702,7 +825,7 @@ function HomeBaseDraftForm({ draft, onCancel, onCreated }: { draft: Point | null
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft) {
-      setInvalid("Drop a pin on the map first.");
+      setInvalid("Click the map, or give the coordinates, so the pin has a place.");
       return;
     }
     if (!name.trim()) {
@@ -721,9 +844,7 @@ function HomeBaseDraftForm({ draft, onCancel, onCreated }: { draft: Point | null
           Cancel
         </Button>
       </div>
-      <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
-        {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map."}
-      </p>
+      <DraftPointControl draft={draft} onPoint={onPoint} disabled={create.isPending} />
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
       <Field id="new-home-name" label="Name" autoComplete="off" required value={name} onChange={(e) => setName(e.target.value)} hint="e.g. “Home” or “The cabin”." />

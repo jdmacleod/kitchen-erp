@@ -17,13 +17,14 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pillow_heif
 import pytest
 import yaml
 from PIL import Image, ImageDraw, ImageFont
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
-from app.ingest import llm, ocr
+from app.ingest import formats, llm, ocr, raster
 from app.ingest.errors import OcrUnavailable
 from app.ingest.replay import RecordedTransport
 from app.ingest.stages import run_pending
@@ -86,8 +87,8 @@ def _font(size: int) -> ImageFont.ImageFont | ImageFont.FreeTypeFont:
     return ImageFont.load_default(size=size)
 
 
-def render_receipt_png(text: str, path: Path, *, size: int = 28) -> Path:
-    """Render receipt text as a black-on-white PNG for the Tesseract path."""
+def _render_receipt_image(text: str, *, size: int = 28) -> Image.Image:
+    """Receipt text as black-on-white pixels."""
     font = _font(size)
     lines = text.splitlines() or [""]
     line_height = int(size * 1.4)
@@ -97,8 +98,33 @@ def render_receipt_png(text: str, path: Path, *, size: int = 28) -> Path:
     draw = ImageDraw.Draw(image)
     for i, line in enumerate(lines):
         draw.text((40, 40 + i * line_height), line, font=font, fill=0)
+    return image
+
+
+# Written at the dpi app.ingest.raster renders PDFs back at, so a page survives
+# the round trip at its original pixel size.
+PDF_RESOLUTION = float(raster.PDF_RENDER_DPI)
+
+
+def render_receipt_as(mime: str, text: str, path: Path, *, size: int = 28) -> Path:
+    """The same receipt in any format the upload endpoint accepts.
+
+    A photographed receipt really does arrive as HEIC and an emailed one as PDF,
+    so the tests that prove the pipeline reads them need those bytes. They are
+    generated here and written only under a temp directory, like every other
+    image in this suite.
+    """
+    image = _render_receipt_image(text, size=size)
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path, format="PNG")
+    if mime == "application/pdf":
+        image.convert("RGB").save(path, format="PDF", resolution=PDF_RESOLUTION)
+    elif mime == "image/heic":
+        pillow_heif.register_heif_opener()
+        # Lossy HEIF at a low quality smears 8pt monospace enough to cost Tesseract
+        # the decimal points, which would make this a test of the encoder.
+        image.convert("RGB").save(path, format="HEIF", quality=100)
+    else:
+        image.save(path, format=formats.BY_MIME[mime].label.upper())
     return path
 
 

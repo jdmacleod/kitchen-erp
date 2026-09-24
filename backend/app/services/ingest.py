@@ -23,6 +23,7 @@ from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
+from app.ingest import formats
 from app.ingest.stages import RUNNABLE_STAGES, STAGE_ORDER, latest_results
 from app.models import (
     AppUser,
@@ -36,18 +37,15 @@ from app.models.geo import point_expr
 
 log = get_logger(__name__)
 
-EXTENSIONS = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/heic": "heic",
-    "image/webp": "webp",
-    "application/pdf": "pdf",
-}
 _HEIC_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"mif1", b"msf1"}
 
 
 def sniff_mime(data: bytes) -> str | None:
-    """The MIME type from the bytes themselves; None when it is not an accepted type."""
+    """The MIME type from the bytes themselves; None when it is not an accepted type.
+
+    Every type this can return is a row in :data:`app.ingest.formats.FORMATS`;
+    the test suite holds the two to each other.
+    """
     if data.startswith(b"\xff\xd8\xff"):
         return "image/jpeg"
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -62,7 +60,10 @@ def sniff_mime(data: bytes) -> str | None:
 
 
 def relative_path(sha256: str, mime: str) -> str:
-    return f"{sha256[:2]}/{sha256[2:4]}/{sha256}.{EXTENSIONS[mime]}"
+    # app.ingest.formats is the single table: what the door accepts, what the file
+    # is stored as, and what the OCR stage can read all come from it, so they
+    # cannot drift apart the way they did in issue #13.
+    return f"{sha256[:2]}/{sha256[2:4]}/{sha256}.{formats.EXTENSIONS[mime]}"
 
 
 @dataclass
@@ -92,7 +93,7 @@ async def upload_receipt(
         raise ApiError(
             415,
             "unsupported_media_type",
-            "Accepted receipt formats are JPEG, PNG, HEIC, WebP and PDF.",
+            f"Accepted receipt formats are {formats.accepted_labels()}.",
         )
     if (lat is None) != (lon is None):
         raise ApiError(422, "validation_error", "lat and lon must be given together.")
@@ -201,6 +202,7 @@ async def retry_job(db: AsyncSession, job_id: uuid.UUID) -> IngestJob:
     job.status = "pending"
     job.attempts = 0
     job.last_error = None
+    job.last_error_detail = None
     job.next_attempt_at = None
     job.locked_at = None
     job.locked_by = None
@@ -263,6 +265,7 @@ async def convert_to_manual(
     job.stage = "committed"
     job.status = "done"
     job.last_error = None
+    job.last_error_detail = None
     job.next_attempt_at = None
     job.locked_at = None
     job.locked_by = None

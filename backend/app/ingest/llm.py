@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, ValidationError, WithJsonSchema, create_m
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.ingest.errors import InvalidModelOutput, ModelUnavailable
+from app.ingest.errors import InvalidModelOutput, ModelTimeout, ModelUnavailable
 
 log = get_logger(__name__)
 
@@ -125,23 +125,46 @@ class LlmClient:
         return self._transport if self._transport is not None else http_transport
 
     async def chat(self, payload: dict[str, Any]) -> str:
-        """POST one chat request; return the assistant content. Raises ModelUnavailable."""
+        """POST one chat request; return the assistant content.
+
+        Raises :class:`ModelTimeout` when the server was reached but did not
+        answer in ``timeout_seconds``, and :class:`ModelUnavailable` when it
+        could not be reached, answered non-200, or answered with nonsense.
+        """
         url = f"{self.base_url}/api/chat"
         try:
             async with httpx.AsyncClient(
                 transport=self.transport, timeout=httpx.Timeout(self.timeout_seconds)
             ) as client:
                 response = await client.post(url, json=payload)
+        except httpx.ReadTimeout as exc:
+            # Connected, sent the request, and the server did not answer in time.
+            # A different problem from an unreachable one, with a different fix
+            # and a different retry policy, so it gets its own code rather than
+            # being folded into ModelUnavailable with the rest of httpx.HTTPError.
+            #
+            # ReadTimeout specifically, not httpx.TimeoutException: ConnectTimeout
+            # is also a TimeoutException, and it means the opposite thing. A host
+            # that drops connection attempts rather than refusing them -- exactly
+            # what a stopped container does -- raises ConnectTimeout, and treating
+            # that as a slow answer would tell the operator to raise
+            # LLM_TIMEOUT_SECONDS when the server is not there at all, and would
+            # fail the job after a few attempts instead of waiting for it to come
+            # back. WriteTimeout and PoolTimeout are likewise about getting the
+            # request out, not about the answer, so they fall through below.
+            raise ModelTimeout(
+                detail=f"{type(exc).__name__} after {self.timeout_seconds:g}s"
+            ) from None
         except httpx.HTTPError as exc:
-            raise ModelUnavailable(type(exc).__name__) from None
+            raise ModelUnavailable(detail=type(exc).__name__) from None
         if response.status_code != 200:
             # 404 is Ollama's "no such model"; 5xx is a server in trouble. Both are
             # conditions a person fixes; the job waits rather than fails.
-            raise ModelUnavailable(f"http_{response.status_code}")
+            raise ModelUnavailable(detail=f"http_{response.status_code}")
         try:
             body = response.json()
         except ValueError:
-            raise ModelUnavailable("malformed_response") from None
+            raise ModelUnavailable(detail="malformed_response") from None
         message = body.get("message") if isinstance(body, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
         return content if isinstance(content, str) else ""

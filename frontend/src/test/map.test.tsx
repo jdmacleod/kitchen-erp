@@ -126,6 +126,153 @@ describe("map", () => {
     await waitFor(() => expect(within(map.container).getByRole("button", { name: "Coast road stand (Stand)" })).toHaveAttribute("aria-pressed", "true"));
   });
 
+  it("places the first pin from typed coordinates when there is nothing to aim at", async () => {
+    // On a fresh deployment the map has no tiles and no pins, so clicking was
+    // aiming at a featureless grey field (issue #18). Those coordinates then
+    // drive nearest-store defaulting and the distance labels for the life of
+    // the deployment.
+    let locations: VendorLocation[] = [];
+    const calls = mockApi({
+      ...baseRoutes(() => locations),
+      "GET /vendors": () => jsonResponse(200, { items: [] }),
+      "POST /vendor-locations": (call) => {
+        const body = call.body as { name: string; lat: string; lon: string };
+        const created: VendorLocation = { ...chainLocation, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009", name: body.name, lat: body.lat, lon: body.lon, vendor: { ...chainLocation.vendor, name: "Coast stand", kind: "stand" } };
+        locations = [created];
+        return jsonResponse(201, { ...created, stalls: [] });
+      },
+      "GET /vendor-locations/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009": () => jsonResponse(200, { ...locations[0], stalls: [] }),
+      "GET /vendor-locations/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009/is-open": () => jsonResponse(200, { id: "x", at: "x", is_open: null, effective_opening_hours: null }),
+    });
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+
+    await user.click(screen.getByRole("button", { name: "Add location here" }));
+    expect(screen.getByTestId("draft-point")).toHaveTextContent("No pin yet");
+    await user.type(screen.getByLabelText("Coordinates"), "33.512345, -120.487654");
+
+    // The pin exists without a click, and the view is brought to it: a point
+    // chosen away from the map would otherwise land outside the viewport.
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("33.512345, -120.487654"));
+    const jump = map.jumps.at(-1);
+    expect(jump?.center).toEqual([-120.487654, 33.512345]);
+    expect(jump?.zoom).toBe(13);
+
+    const form = screen.getByRole("form", { name: "Add location here" });
+    await user.type(within(form).getByRole("combobox", { name: "Vendor" }), "Coast stand");
+    await user.click(await within(form).findByRole("option", { name: /Create vendor/ }));
+    await user.type(within(form).getByLabelText("Name"), "Coast road stand");
+    await user.click(within(form).getByRole("button", { name: "Create location" }));
+
+    await waitFor(() => {
+      const post = calls.find((c) => c.method === "POST" && c.path === "/vendor-locations");
+      // The digits reach the API as typed, not rounded through the map.
+      expect(post?.body).toEqual({ name: "Coast road stand", lat: "33.512345", lon: "-120.487654", vendor: { name: "Coast stand", kind: "stand" } });
+    });
+  });
+
+  // Regression: NEW-001 — ?location= opened a location's panel but left the map
+  // wherever it was, so "show me this shop" answered with a panel about one place
+  // and a map showing another.
+  // Found by /qa on 2026-09-24
+  // Report: .gstack/qa-reports/qa-report-localhost-8080-2026-09-24.md
+  it("brings the map to a location opened by link", async () => {
+    mockApi(baseRoutes(() => [chainLocation, marketLocation]));
+    renderApp(`/map?location=${chainLocation.id}`);
+    const map = await mapReady();
+
+    await waitFor(() => {
+      const jump = map.jumps.at(-1);
+      expect(jump?.center).toEqual([Number(chainLocation.lon), Number(chainLocation.lat)]);
+    });
+    // Zoomed in far enough that a pin is findable, not left at the fit-everything zoom.
+    expect(map.jumps.at(-1)?.zoom).toBeGreaterThanOrEqual(13);
+  });
+
+  it("brings the map to a location chosen from the list beside it", async () => {
+    // The other way of selecting that is not a click on the pin itself.
+    mockApi(baseRoutes(() => [chainLocation, marketLocation]));
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+
+    const before = map.jumps.length;
+    // Scoped to the list: the pin on the map carries the same name.
+    const list = await screen.findByRole("list", { name: "Locations on the map" });
+    await user.click(within(list).getByRole("button", { name: new RegExp(marketLocation.name) }));
+    await waitFor(() => {
+      expect(map.jumps.length).toBeGreaterThan(before);
+      expect(map.jumps.at(-1)?.center).toEqual([Number(marketLocation.lon), Number(marketLocation.lat)]);
+    });
+  });
+
+  // Greptile review on PR #29: editing a good pair into a bad one, or clearing the
+  // field, left the old draft point in place and submittable.
+  it("drops the pin when the coordinates stop reading as a pair", async () => {
+    mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    renderApp("/map?place=location");
+    await mapReady();
+
+    // ?place=location already opened the draft form; clicking the button would
+    // toggle placing back off.
+    const field = await screen.findByLabelText("Coordinates");
+    await user.type(field, "33.512345, -120.487654");
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("33.512345, -120.487654"));
+
+    // Edited into something unreadable: the pin goes with it rather than
+    // lingering as a point nobody chose.
+    await user.type(field, "x");
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("No pin yet"));
+    // And the half-typed text is not wiped by the pin disappearing.
+    expect(field).toHaveValue("33.512345, -120.487654x");
+
+    await user.clear(field);
+    expect(screen.getByTestId("draft-point")).toHaveTextContent("No pin yet");
+  });
+
+  // Greptile review on PR #29: the deep link was applied once by a ref, so it
+  // also never selected the panel and could not re-apply. It is now derived from
+  // the parameter, which is what makes both work.
+  //
+  // The cross-navigation half of that review point (back/forward between two map
+  // links while the page stays mounted) is not reachable here: renderApp mounts a
+  // MemoryRouter, which does not read window.history. What is checked is that the
+  // link drives the panel as well as the map, and that deriving it converges
+  // instead of jumping on every render.
+  it("selects the panel for a linked location, and settles", async () => {
+    mockApi({
+      ...baseRoutes(() => [chainLocation, marketLocation]),
+      [`GET /vendor-locations/${marketLocationId}`]: () => jsonResponse(200, marketDetail),
+      [`GET /vendor-locations/${marketLocationId}/is-open`]: () => jsonResponse(200, { id: marketLocationId, at: "x", is_open: null, effective_opening_hours: null }),
+      [`GET /vendor-locations/${marketLocationId}/price-panel`]: () => jsonResponse(200, { last_visit: null, spend: "0", visits: 0, period_days: 30, recent: [] }),
+    });
+    renderApp(`/map?location=${marketLocation.id}`);
+    const map = await mapReady();
+
+    await waitFor(() => expect(map.jumps.at(-1)?.center).toEqual([Number(marketLocation.lon), Number(marketLocation.lat)]));
+    expect(await screen.findByTestId("location-panel")).toHaveTextContent(marketLocation.name);
+
+    const settled = map.jumps.length;
+    await new Promise((r) => setTimeout(r, 120));
+    expect(map.jumps.length).toBe(settled);
+  });
+
+  it("mirrors a map click back into the coordinates field", async () => {
+    mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+
+    await user.click(screen.getByRole("button", { name: "Add location here" }));
+    await user.type(screen.getByLabelText("Coordinates"), "33.1, -120.1");
+    act(() => map.fire("click", { lngLat: { lat: 33.5, lng: -120.5 } }));
+    // One pin, two ways of saying where it is; they do not disagree.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue("33.500000, -120.500000"));
+    expect(screen.getByTestId("draft-point")).toHaveTextContent("33.500000, -120.500000");
+  });
+
   it("adds a home base where the map was clicked", async () => {
     const calls = mockApi({
       ...baseRoutes(() => []),

@@ -5,6 +5,7 @@ import { jobInFlight, useIngestJobs, useJobToManual, useRetryJob, useUploadRecei
 import { Badge } from "../../components/catalog/fields";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
+import { ingestErrorText } from "../../lib/ingestErrors";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 /** Upload a receipt photo and watch its job; a finished job links to its review. */
@@ -48,8 +49,11 @@ export function ReceiptsPage() {
               <label htmlFor="receipt-image" className="text-sm font-medium">
                 Photo
               </label>
-              <input id="receipt-image" ref={fileRef} type="file" accept="image/*" capture="environment" className={`text-sm ${focusRing}`} />
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">The photo stays on this deployment; nothing is sent elsewhere.</p>
+              {/* The server's allowlist (app/ingest/formats.py) is the one that
+                  decides; this only filters the picker, and image/* alone used to
+                  hide the PDFs that emailed receipts arrive as. */}
+              <input id="receipt-image" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment" className={`text-sm ${focusRing}`} />
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.</p>
             </div>
             <div>
               <Button type="submit" disabled={upload.isPending}>
@@ -92,17 +96,37 @@ const statusText: Record<string, string> = {
   failed: "failed",
 };
 
+/**
+ * A pending job that has already failed an attempt is retrying, not queued.
+ * Reporting it as "queued" was how a job could sit in a failing retry loop for
+ * minutes while the page implied nothing had happened yet (issue #13).
+ */
+function jobStatusText(job: IngestJob): string {
+  if (job.status === "pending" && (job.attempts ?? 0) > 0) return "retrying";
+  return statusText[job.status] ?? job.status;
+}
+
 function JobRow({ job }: { job: IngestJob }) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
-  const tone = job.status === "done" ? "good" : job.status === "failed" ? "warn" : "neutral";
+  const tone = job.status === "done" ? "good" : job.status === "failed" || job.last_error ? "warn" : "neutral";
+  const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>
       <span className="flex flex-wrap items-center gap-2">
-        <Badge tone={tone}>{statusText[job.status] ?? job.status}</Badge>
+        <Badge tone={tone}>{jobStatusText(job)}</Badge>
         {job.stage && jobInFlight(job) ? <span className="text-neutral-600 dark:text-neutral-400">stage {job.stage}</span> : null}
         {job.created_at ? <time dateTime={job.created_at}>{formatDateTime(job.created_at)}</time> : null}
-        {job.last_error ? <span className="text-red-700 dark:text-red-300">{job.last_error}</span> : null}
+        {error ? (
+          <span className="text-red-700 dark:text-red-300">
+            {error.message}{" "}
+            {/* The code and the condition stay visible: the sentence is for acting
+                on, these two are what a log search or a bug report needs. */}
+            <span className="text-xs text-neutral-600 dark:text-neutral-400">
+              ({error.detail ? `${error.code}: ${error.detail}` : error.code})
+            </span>
+          </span>
+        ) : null}
       </span>
       <span className="flex flex-wrap gap-1">
         {job.purchase_id ? (

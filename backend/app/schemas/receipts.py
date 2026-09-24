@@ -44,6 +44,7 @@ class IngestJobOut(ApiModel):
     status: str
     attempts: int
     last_error: str | None
+    last_error_detail: str | None = None
     next_attempt_at: datetime | None
     locked_at: datetime | None
     purchase_id: uuid.UUID | None

@@ -30,7 +30,16 @@ export class MapStub {
   remove() {
     instances.splice(instances.indexOf(this), 1);
   }
-  jumpTo() {}
+  /** Every jumpTo, so a test can assert the view followed a point it was given. */
+  jumps: { center: [number, number]; zoom?: number }[] = [];
+  zoom = 9;
+  jumpTo(options: { center: [number, number]; zoom?: number }) {
+    this.jumps.push(options);
+    if (options.zoom !== undefined) this.zoom = options.zoom;
+  }
+  getZoom() {
+    return this.zoom;
+  }
   fitBounds() {}
   getContainer() {
     return this.container;

@@ -52,6 +52,13 @@ export interface MapViewProps {
   className?: string;
   /** Start here instead of fitting the first pins. */
   initialView?: { lat: string; lon: string; zoom: number } | null;
+  /**
+   * Move the view to this point whenever it changes to a new one. For a point
+   * chosen away from the map — typed, pasted, or read off the device — where
+   * the pin would otherwise land outside the viewport with nothing to say so.
+   * A point that came from a click is already in view and is not passed here.
+   */
+  centerOn?: { lat: string; lon: string } | null;
 }
 
 const PIN_KINDS: readonly PinKind[] = ["chain", "independent", "market", "stand", "home"];
@@ -139,7 +146,7 @@ function fix(value: number): string {
  * own origin, and when the extract is missing draws a plain ground instead.
  * Nothing here ever reaches another origin.
  */
-export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, label, className = "", initialView = null }: MapViewProps) {
+export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, label, className = "", initialView = null, centerOn = null }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const draftRef = useRef<Marker | null>(null);
@@ -245,6 +252,19 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       }
     }
   }, [ready, pins, selectedId]);
+
+  // Move to a point chosen away from the map. Held as the two values rather than
+  // the object so a caller that rebuilds it each render does not re-centre the
+  // map out from under a drag.
+  const centerLat = centerOn?.lat ?? null;
+  const centerLon = centerOn?.lon ?? null;
+  useEffect(() => {
+    const map = ready;
+    if (!map || centerLat === null || centerLon === null) return;
+    // Keep the operator's zoom when they are already close in; only pull in when
+    // the view is wide enough that a pin would be lost on it.
+    map.jumpTo({ center: [num(centerLon), num(centerLat)], zoom: Math.max(map.getZoom(), 13) });
+  }, [ready, centerLat, centerLon]);
 
   // Sync the draft pin.
   useEffect(() => {

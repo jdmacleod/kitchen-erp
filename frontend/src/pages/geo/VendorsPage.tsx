@@ -68,7 +68,7 @@ export function VendorsPage() {
             <Alert tone="error">{errorMessage(vendors.error)}</Alert>
           ) : items.length === 0 ? (
             <EmptyState title={debouncedQ || kind ? "No vendors match" : "No vendors yet"}>
-              {debouncedQ || kind ? "Try a shorter search or another kind." : "Vendors are the shops, markets, and stands you buy from. Add one above, or drop a pin on the map."}
+              {debouncedQ || kind ? "Try a shorter search or another kind." : "Vendors are the shops, markets, and stands you buy from. Add one above, then give it a location on its page."}
             </EmptyState>
           ) : (
             <ul aria-label="Vendors" className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -143,11 +143,11 @@ function CreateVendorForm() {
             <Link to={`/vendors/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {created.name}
             </Link>
-            . Add its locations by dropping pins on the{" "}
-            <Link to="/map" className={`rounded underline ${focusRing}`}>
-              map
-            </Link>
-            .
+. A vendor cannot be chosen for a purchase until it has a location, and{" "}
+            <Link to={`/vendors/${created.id}`} className={`rounded underline ${focusRing}`}>
+              its page
+            </Link>{" "}
+            is where you add one.
           </Alert>
         ) : null}
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}

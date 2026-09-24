@@ -128,6 +128,7 @@ async def test_model_unreachable_waits_with_backoff_and_resumes(
     state = await run_job(job["id"])  # captured, ocr, then header stalls
     assert (state.stage, state.status) == ("header", "pending")
     assert state.attempts == 1 and state.last_error == "model_unavailable"
+    assert state.last_error_detail == "ConnectError"
     assert state.next_attempt_at is not None
     wait = (state.next_attempt_at - datetime.now(UTC)).total_seconds()
     assert 2 < wait <= 5.5
@@ -162,7 +163,12 @@ async def test_model_unreachable_waits_with_backoff_and_resumes(
             )
         ).scalar_one()
     assert n == 4  # ... but every attempt is on record
-    assert failures[0]["output"] == {"ok": False, "error": "model_unavailable", "retryable": True}
+    assert failures[0]["output"] == {
+        "ok": False,
+        "error": "model_unavailable",
+        "detail": "ConnectError",
+        "retryable": True,
+    }
 
     # The model comes back: the job resumes from the header stage.
     recorded(fixture)
@@ -170,6 +176,63 @@ async def test_model_unreachable_waits_with_backoff_and_resumes(
     state = await run_job(job["id"])
     assert (state.stage, state.status) == ("review", "needs_review")
     assert state.attempts == 0 and state.last_error is None
+    assert state.last_error_detail is None
+
+
+class _TimingOutTransport(httpx.AsyncBaseTransport):
+    """Reachable, and never answers: the large-model-on-small-hardware case."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+
+async def test_model_timeout_fails_the_job_instead_of_waiting_for_ever(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A timeout is bounded, distinct from unreachable, and says which limit it hit.
+
+    The unreachable case above waits for ever on purpose. A request that exceeds
+    the timeout will exceed it again on every attempt, so waiting for ever means
+    the job never succeeds and never fails, and the operator is sent to check a
+    model server that is working.
+    """
+    settings = get_settings()
+    monkeypatch.setattr(settings, "ingest_max_attempts", 3)
+    monkeypatch.setattr(settings, "ingest_backoff_base_seconds", 30.0)  # one attempt per run
+    monkeypatch.setattr(llm, "http_transport", _TimingOutTransport())
+    fixture = load_fixture("supermarket_loyalty")
+    _, job = await upload_fixture(admin_client, fixture)
+
+    state = await run_job(job["id"])  # captured, ocr, then header times out
+    assert (state.stage, state.status) == ("header", "pending")  # it does retry ...
+    assert state.attempts == 1 and state.last_error == "model_timeout"
+    # receipts_dir pins llm_timeout_seconds to 2.0.
+    assert state.last_error_detail == "ReadTimeout after 2s"
+
+    for expected in (2, 3):
+        await _set(job["id"], next_attempt_at=None)
+        state = await run_job(job["id"])
+        assert state.attempts == expected
+    assert state.status == "failed"  # ... but it stops, unlike model_unavailable
+    assert state.next_attempt_at is None
+
+    outputs = await stage_outputs(admin_client, job["id"])
+    assert outputs["header"] == {
+        "ok": False,
+        "error": "model_timeout",
+        "detail": "ReadTimeout after 2s",
+        "retryable": False,
+    }
+
+    # Raising the limit is the fix, and the job can be retried once it is raised.
+    listed = await admin_client.get("/api/v1/ingest-jobs", params={"status": "failed"})
+    assert [j["last_error_detail"] for j in listed.json()["items"]] == ["ReadTimeout after 2s"]
+    retried = await admin_client.post(f"/api/v1/ingest-jobs/{job['id']}/retry")
+    assert retried.status_code == 200
+    assert retried.json()["last_error"] is None
+    assert retried.json()["last_error_detail"] is None
 
 
 async def test_stage_failure_retries_then_fails_and_can_be_retried(
@@ -190,7 +253,12 @@ async def test_stage_failure_retries_then_fails_and_can_be_retried(
     assert state.attempts == 2 and state.last_error == "no_ocr_text"
     assert state.next_attempt_at is None
     outputs = await stage_outputs(admin_client, job["id"])
-    assert outputs["ocr"] == {"ok": False, "error": "no_ocr_text", "retryable": False}
+    assert outputs["ocr"] == {
+        "ok": False,
+        "error": "no_ocr_text",
+        "detail": "client: no_client_text",  # which adapter declined, and why
+        "retryable": False,
+    }
 
     not_failed = await admin_client.post(f"/api/v1/ingest-jobs/{uuid.uuid4()}/retry")
     assert not_failed.status_code == 404
