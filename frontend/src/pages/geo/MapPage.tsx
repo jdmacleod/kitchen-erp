@@ -705,7 +705,6 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
  */
 function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; onPoint: (point: Point) => void; disabled?: boolean }) {
   const [text, setText] = useState(() => (draft ? formatLatLon(draft.lat, draft.lon) : ""));
-  const [invalid, setInvalid] = useState(false);
 
   // A click on the map is the other direction of the same state, so it has to
   // reach the field. Adjusted during render rather than in an effect: React
@@ -720,14 +719,12 @@ function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; 
     const shown = parseLatLon(text);
     if (!draft || !shown || shown.lat !== draft.lat || shown.lon !== draft.lon) {
       setText(draftText);
-      setInvalid(false);
     }
   }
 
   const onText = (value: string) => {
     setText(value);
     const point = parseLatLon(value);
-    setInvalid(value.trim() !== "" && point === null);
     if (point) onPoint(point);
   };
 
@@ -737,7 +734,6 @@ function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; 
         {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map, or give the coordinates below."}
       </p>
       <CoordinatesField id="draft-coordinates" value={text} onChange={onText} disabled={disabled} />
-      {invalid ? <p className="text-xs text-red-700 dark:text-red-300">Not a latitude and longitude yet.</p> : null}
     </div>
   );
 }

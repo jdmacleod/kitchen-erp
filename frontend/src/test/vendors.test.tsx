@@ -165,6 +165,35 @@ describe("vendors", () => {
     expect(within(list).getByText("Quay stand")).toBeInTheDocument();
   });
 
+  // Regression: NEW-004 — the shared coordinates control told you as you typed on
+  // the map and stayed silent on the vendor page, so the same field gave two
+  // different answers depending on where it was used.
+  // Found by /qa on 2026-09-24
+  // Report: .gstack/qa-reports/qa-report-localhost-8080-2026-09-24.md
+  it("says so while you type something that is not a coordinate pair", async () => {
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    await user.click(await screen.findByRole("button", { name: "Add a location" }));
+    const field = screen.getByLabelText("Coordinates");
+    expect(screen.queryByText("Not a latitude and longitude yet.")).not.toBeInTheDocument();
+
+    await user.type(field, "somewhere near the pier");
+    expect(await screen.findByText("Not a latitude and longitude yet.")).toBeInTheDocument();
+
+    // And it goes away once the pair reads.
+    await user.clear(field);
+    await user.type(field, "33.512345, -120.487654");
+    await waitFor(() => expect(screen.queryByText("Not a latitude and longitude yet.")).not.toBeInTheDocument());
+  });
+
   it("fills the coordinates from this device's position", async () => {
     const getCurrentPosition = vi.fn((ok: PositionCallback) =>
       ok({ coords: { latitude: 33.4123, longitude: -120.5987 } } as GeolocationPosition),

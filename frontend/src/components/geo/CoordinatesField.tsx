@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { parseLatLon } from "../../lib/latlon";
 import { Button, Field } from "../ui";
 
 /**
@@ -30,6 +31,11 @@ export function CoordinatesField({
 }) {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  // Said here rather than by each caller, so the control behaves the same
+  // wherever it is used. The map's draft form told you as you typed and the
+  // vendor page stayed silent until submit, which is the same field giving two
+  // different answers.
+  const unreadable = value.trim() !== "" && parseLatLon(value) === null;
 
   const locate = () => {
     setGeoError(null);
@@ -67,6 +73,7 @@ export function CoordinatesField({
         disabled={disabled}
         hint="Latitude and longitude, separated by a comma. Copy them from a map application, or use this device's position."
       />
+      {unreadable ? <p className="text-xs text-red-700 dark:text-red-300">Not a latitude and longitude yet.</p> : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={locate} disabled={disabled || locating}>
           {locating ? "Locating…" : "Use my location"}
