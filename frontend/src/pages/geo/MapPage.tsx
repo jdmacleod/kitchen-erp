@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
@@ -154,6 +154,42 @@ export function MapPage() {
     setCenterOn(point);
   };
 
+  /**
+   * Select a location and bring the map to it.
+   *
+   * For the ways of choosing a place that are not a click on its pin: the list
+   * beside the map, and the `?location=` link that every location row on a
+   * vendor page points at. Those used to open the detail panel and leave the
+   * map wherever it was, so "show me this shop" answered with a panel about one
+   * place and a map showing another, with no tiles and several hundred pins to
+   * navigate by. A pin the user just clicked is already in front of them, so
+   * that path stays put.
+   */
+  const pointOf = (sel: Selection): Point | null => {
+    const found =
+      sel.type === "home"
+        ? (homeBases.data ?? []).find((h) => h.id === sel.id)
+        : items.find((l) => l.id === sel.id);
+    return found ? { lat: found.lat, lon: found.lon } : null;
+  };
+  const selectAndCenter = (sel: Selection) => {
+    setSelected(sel);
+    const point = pointOf(sel);
+    if (point) setCenterOn(point);
+  };
+
+  // The `?location=` link arrives before the locations have loaded, so the
+  // centring waits for them and then happens once. A later selection goes
+  // through selectAndCenter instead.
+  const pendingDeepLink = useRef<string | null>(params.get("location"));
+  useEffect(() => {
+    const id = pendingDeepLink.current;
+    if (id === null || items.length === 0) return;
+    pendingDeepLink.current = null;
+    const target = items.find((l) => l.id === id);
+    if (target) setCenterOn({ lat: target.lat, lon: target.lon });
+  }, [items]);
+
   return (
     <div className="flex flex-col gap-3">
       <PageHeader title="Map">
@@ -268,7 +304,7 @@ export function MapPage() {
           ) : selected?.type === "home" ? (
             <HomeBasePanel id={selected.id} homeBases={homeBases.data ?? []} locations={items} onClose={() => setSelected(null)} />
           ) : (
-            <LocationList items={items} loading={locations.isPending} onSelect={(id) => setSelected({ type: "location", id })} />
+            <LocationList items={items} loading={locations.isPending} onSelect={(id) => selectAndCenter({ type: "location", id })} />
           )}
         </aside>
       </div>

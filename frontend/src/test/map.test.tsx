@@ -172,6 +172,41 @@ describe("map", () => {
     });
   });
 
+  // Regression: NEW-001 — ?location= opened a location's panel but left the map
+  // wherever it was, so "show me this shop" answered with a panel about one place
+  // and a map showing another.
+  // Found by /qa on 2026-09-24
+  // Report: .gstack/qa-reports/qa-report-localhost-8080-2026-09-24.md
+  it("brings the map to a location opened by link", async () => {
+    mockApi(baseRoutes(() => [chainLocation, marketLocation]));
+    renderApp(`/map?location=${chainLocation.id}`);
+    const map = await mapReady();
+
+    await waitFor(() => {
+      const jump = map.jumps.at(-1);
+      expect(jump?.center).toEqual([Number(chainLocation.lon), Number(chainLocation.lat)]);
+    });
+    // Zoomed in far enough that a pin is findable, not left at the fit-everything zoom.
+    expect(map.jumps.at(-1)?.zoom).toBeGreaterThanOrEqual(13);
+  });
+
+  it("brings the map to a location chosen from the list beside it", async () => {
+    // The other way of selecting that is not a click on the pin itself.
+    mockApi(baseRoutes(() => [chainLocation, marketLocation]));
+    const user = userEvent.setup();
+    renderApp("/map");
+    const map = await mapReady();
+
+    const before = map.jumps.length;
+    // Scoped to the list: the pin on the map carries the same name.
+    const list = await screen.findByRole("list", { name: "Locations on the map" });
+    await user.click(within(list).getByRole("button", { name: new RegExp(marketLocation.name) }));
+    await waitFor(() => {
+      expect(map.jumps.length).toBeGreaterThan(before);
+      expect(map.jumps.at(-1)?.center).toEqual([Number(marketLocation.lon), Number(marketLocation.lat)]);
+    });
+  });
+
   it("mirrors a map click back into the coordinates field", async () => {
     mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
     const user = userEvent.setup();
