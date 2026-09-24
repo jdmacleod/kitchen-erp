@@ -114,3 +114,14 @@ test("open-at hides a seasonal stall in January and shows it on a July Saturday 
   await expect(page.getByTestId("stall-panel")).toContainText("own hours");
   await expect(page.getByTestId("stall-panel")).toContainText("open");
 });
+
+test("the placing deep-link applies once and then leaves the URL alone", async ({ page }) => {
+  // `place` is an instruction, not state. The route does not remount on a query
+  // change, so a lingering parameter would describe a mode the user may already
+  // have left, and revisiting the URL would silently re-enter it.
+  await login(page);
+  await page.goto("/map?place=location");
+
+  await expect(page.getByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page).not.toHaveURL(/place=/);
+});

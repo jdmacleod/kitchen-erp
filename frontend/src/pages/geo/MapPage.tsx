@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
@@ -40,7 +40,7 @@ const HOME_PREFIX = "home:";
 
 export function MapPage() {
   usePageTitle("Map");
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const homeBases = useHomeBases();
 
   // Filters. "Open at" defaults to now but only filters once switched on:
@@ -51,9 +51,18 @@ export function MapPage() {
   const [openAtLocal, setOpenAtLocal] = useState(() => toDateTimeLocal(new Date()));
   const openAtIso = openAtOn ? (fromDateTimeLocal(openAtLocal) ?? undefined) : undefined;
   const locations = useLocations({ kind, home_base_id: homeBaseId, open_at: openAtIso });
+  // The query above is filtered, so an empty result means "nothing matches these
+  // filters", not "this household has nowhere to shop". Only the unfiltered case
+  // can say the latter, and saying it wrongly would tell an established household
+  // to go and create a location it already has.
+  const filtered = kind !== "" || homeBaseId !== "" || openAtOn;
 
   const [tilesPresent, setTilesPresent] = useState<boolean | null>(null);
-  const [mode, setMode] = useState<Mode>("browse");
+  // `?place=location` opens ready to drop a pin. MapView ignores map clicks
+  // unless it is placing, so anything that sends a newcomer here to add their
+  // first location has to turn placing on for them or the first click does
+  // nothing and the instruction reads as broken.
+  const [mode, setMode] = useState<Mode>(() => (params.get("place") === "location" ? "location" : "browse"));
   const [draft, setDraft] = useState<Point | null>(null);
   const [selected, setSelected] = useState<Selection | null>(() => {
     const id = params.get("location");
@@ -113,6 +122,16 @@ export function MapPage() {
 
   const selectedPinId = selected ? (selected.type === "home" ? `${HOME_PREFIX}${selected.id}` : selected.id) : null;
 
+  // `place` is an instruction, not state. Strip it once it has been applied, or
+  // the URL keeps claiming placing mode after the user leaves it, and a later
+  // visit to this same URL would silently re-enter it.
+  useEffect(() => {
+    if (!params.has("place")) return;
+    const next = new URLSearchParams(params);
+    next.delete("place");
+    setParams(next, { replace: true });
+  }, [params, setParams]);
+
   const startPlacing = (next: Mode) => {
     setMode(next);
     setDraft(null);
@@ -159,6 +178,21 @@ export function MapPage() {
         error={cheapest.error}
       />
 
+      {locations.isSuccess && !filtered && items.length === 0 ? (
+        // Arriving from a blocked entry form, placing mode is already on and the
+        // line below already says where to click, so repeating "use Add location
+        // here" would name a button the visitor never had to press.
+        <Alert tone="info">
+          {mode === "browse"
+            ? "No locations yet. Use “Add location here”, then click the map where you shop. "
+            : "No locations yet. "}
+          Naming the pin creates the vendor and the location together, so this is one step, not
+          two.
+        </Alert>
+      ) : null}
+      {/* Independent of whether any location exists: whether tiles are installed
+          is a fact about the deployment, and folding it into the notice above
+          made this sentence disappear on a database that happened to be empty. */}
       {tilesPresent === false ? (
         <Alert tone="info">
           Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates on a plain background.
