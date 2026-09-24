@@ -1,6 +1,8 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { adminUser, errorResponse, jsonResponse, memberUser, mockApi, renderApp } from "./helpers";
+import { chainLocation } from "./geo-fixtures";
+import { manualPurchase } from "./purchase-fixtures";
+import { adminUser, errorResponse, jsonResponse, mainRegion, memberUser, mockApi, renderApp } from "./helpers";
 
 describe("route guards", () => {
   it("sends an unauthenticated visitor to /login", async () => {
@@ -15,15 +17,28 @@ describe("route guards", () => {
     expect(calls[0]?.headers.get("Accept")).toBe("application/json");
   });
 
-  it("redirects / to /ingredients when signed in and shows the health word", async () => {
+  /**
+   * The regression contract for issue #15's landing change.
+   *
+   * `/` used to redirect to /ingredients; it is now a page that decides. Every
+   * existing household's post-login destination therefore moves, and the one
+   * thing that must never happen is a set-up household being shown the first-run
+   * checklist and told to add a shop it has had for a year.
+   */
+  it("renders the home page at / for a set-up household, never the checklist", async () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "degraded" }),
-      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation] }),
+      "GET /purchases": () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
+      "GET /to-identify": () => jsonResponse(200, { items: [] }),
+      "GET /price-book/needs-bridge": () => jsonResponse(200, { items: [] }),
     });
     renderApp("/");
 
-    expect(await screen.findByRole("heading", { name: "Ingredients" })).toBeInTheDocument();
+    expect(await screen.findByLabelText("Lately")).toBeInTheDocument();
+    expect(within(mainRegion()).getByRole("heading", { name: "Home" })).toBeInTheDocument();
+    expect(screen.queryByText("Add somewhere you shop")).not.toBeInTheDocument();
     expect(await screen.findByTestId("health-status")).toHaveTextContent("degraded");
   });
 

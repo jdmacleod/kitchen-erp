@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from "react";
-import { Link, useParams } from "react-router";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { formatPack, productTitle, trimDecimal } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import {
@@ -36,6 +36,23 @@ export function PurchaseDetailPage() {
     ? `${purchase.data.vendor_location?.vendor.name ?? "Receipt"} · ${formatDateTime(purchase.data.purchased_at)}`
     : "Purchase";
   usePageTitle(title);
+
+  // The first-run arc closes here, where the work finished, rather than on a later
+  // visit to the home page that may be days away. The flag travels in router state
+  // from the checklist through the entry form, which unmounts on success.
+  //
+  // Read once into state, then stripped from history, the way MapPage consumes
+  // `?place`. Without the strip a reload or a back-navigation would congratulate
+  // the same purchase again.
+  const routerLocation = useLocation();
+  const navigate = useNavigate();
+  const [firstPurchase] = useState(
+    () => (routerLocation.state as { firstPurchase?: boolean } | null)?.firstPurchase === true,
+  );
+  useEffect(() => {
+    if ((routerLocation.state as { firstPurchase?: boolean } | null)?.firstPurchase !== true) return;
+    navigate(routerLocation.pathname, { replace: true, state: null });
+  }, [routerLocation.state, routerLocation.pathname, navigate]);
 
   if (purchase.isPending) {
     return (
@@ -77,13 +94,38 @@ export function PurchaseDetailPage() {
     );
   }
 
-  return <CommittedPurchase purchase={p} title={title} onEdit={() => setEditing(true)} />;
+  // Only the committed branch carries the acknowledgement: manual entry commits at
+  // once, so a purchase created from the checklist always lands here.
+  return (
+    <CommittedPurchase
+      purchase={p}
+      title={title}
+      firstPurchase={firstPurchase}
+      onEdit={() => setEditing(true)}
+    />
+  );
 }
 
-function CommittedPurchase({ purchase: p, title, onEdit }: { purchase: Purchase; title: string; onEdit: () => void }) {
+function CommittedPurchase({
+  purchase: p,
+  title,
+  firstPurchase,
+  onEdit,
+}: {
+  purchase: Purchase;
+  title: string;
+  firstPurchase: boolean;
+  onEdit: () => void;
+}) {
   const reopen = useReopenPurchase(p.id);
   return (
     <>
+      {firstPurchase ? (
+        <Alert tone="success" className="mb-6">
+          That is your kitchen set up. This purchase is in the price book, and the next one
+          will have something to compare against.
+        </Alert>
+      ) : null}
       <PageHeader title={title}>
         <div className="flex flex-wrap gap-2">
           {p.source === "manual" ? (
