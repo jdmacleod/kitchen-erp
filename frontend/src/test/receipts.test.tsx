@@ -8,8 +8,10 @@ import { ingestJobId, receiptDocumentId, receiptPurchaseId } from "./purchase-fi
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const reviewJob: IngestJob = { id: ingestJobId, receipt_document_id: receiptDocumentId, stage: "review", status: "needs_review", attempts: 1, last_error: null, purchase_id: receiptPurchaseId, created_at: "2026-09-20T18:05:30Z", updated_at: "2026-09-20T18:06:00Z" };
-const failedJob: IngestJob = { ...reviewJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9102", stage: "ocr", status: "failed", last_error: "ocr_unavailable", purchase_id: null };
+// attempts mirrors the backend: zeroed whenever a stage succeeds or a job is
+// retried, incremented only by a failed attempt.
+const reviewJob: IngestJob = { id: ingestJobId, receipt_document_id: receiptDocumentId, stage: "review", status: "needs_review", attempts: 0, last_error: null, purchase_id: receiptPurchaseId, created_at: "2026-09-20T18:05:30Z", updated_at: "2026-09-20T18:06:00Z" };
+const failedJob: IngestJob = { ...reviewJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9102", stage: "ocr", status: "failed", attempts: 5, last_error: "ocr_unavailable", purchase_id: null };
 
 function baseRoutes(jobs: () => IngestJob[]) {
   return {
@@ -62,7 +64,7 @@ describe("receipts", () => {
     const calls = mockApi({
       ...baseRoutes(() => jobs),
       [`POST /ingest-jobs/${failedJob.id}/retry`]: () => {
-        jobs = [reviewJob, { ...failedJob, status: "pending", last_error: null }];
+        jobs = [reviewJob, { ...failedJob, status: "pending", attempts: 0, last_error: null }];
         return jsonResponse(200, jobs[1]);
       },
     });
@@ -82,5 +84,41 @@ describe("receipts", () => {
     await user.click(within(rows[1]).getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/ingest-jobs/${failedJob.id}/retry`)).toBe(true));
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
+  });
+
+  it("says what a failure means and what to change, keeping the code for a bug report", async () => {
+    // A model that was simply given too little time used to read `model_unavailable`,
+    // which sends the owner to check a model server that is working (issue #14).
+    const timedOut: IngestJob = { ...failedJob, stage: "lines", last_error: "model_timeout", last_error_detail: "ReadTimeout after 120s" };
+    mockApi(baseRoutes(() => [timedOut]));
+    renderApp("/receipts");
+
+    const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
+    expect(row).toHaveTextContent("The model server answered too slowly");
+    expect(row).toHaveTextContent("LLM_TIMEOUT_SECONDS");
+    expect(row).toHaveTextContent("(model_timeout: ReadTimeout after 120s)");
+  });
+
+  it("calls a pending job that has already failed an attempt retrying, not queued", async () => {
+    // A job looping on a retry used to be indistinguishable from one that had
+    // not started (issue #13).
+    const retrying: IngestJob = { ...failedJob, status: "pending", attempts: 3, last_error: "model_unavailable", last_error_detail: "ConnectError" };
+    mockApi(baseRoutes(() => [retrying, { ...failedJob, status: "pending", attempts: 0, last_error: null }]));
+    renderApp("/receipts");
+
+    const rows = within(await screen.findByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job");
+    expect(rows[0]).toHaveTextContent("retrying");
+    expect(rows[0]).toHaveTextContent("The model server could not be reached");
+    expect(rows[1]).toHaveTextContent("queued");
+  });
+
+  it("falls back to the bare code for a code it has no sentence for", async () => {
+    // Visible rather than hidden behind "something went wrong": an unprosed code
+    // on screen is the prompt to add one.
+    mockApi(baseRoutes(() => [{ ...failedJob, last_error: "a_code_from_the_future" }]));
+    renderApp("/receipts");
+
+    const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
+    expect(row).toHaveTextContent("a_code_from_the_future");
   });
 });

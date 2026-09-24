@@ -39,6 +39,7 @@ export interface IngestJob {
   attempts?: number;
   purchase_id: string | null;
   last_error: string | null;
+  last_error_detail?: string | null;
   /** Present on the detail endpoint; `results` is accepted as an older spelling. */
   stage_results?: StageResult[];
   results?: StageResult[];
