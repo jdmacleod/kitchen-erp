@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseLatLon } from "../../lib/latlon";
 import { Button, Field } from "../ui";
 
@@ -31,6 +31,16 @@ export function CoordinatesField({
 }) {
   const [locating, setLocating] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  // A position fix can take up to the timeout below to arrive. Anything that
+  // changes the answer in the meantime -- typing a pair, or clicking the map,
+  // which reaches this control as a new `value` rather than through the input's
+  // own handler -- is newer than the fix in flight, so the fix is dropped rather
+  // than written over that choice. Comparing the value itself catches both,
+  // where counting keystrokes would miss the map.
+  const latestValue = useRef(value);
+  useEffect(() => {
+    latestValue.current = value;
+  }, [value]);
   // Said here rather than by each caller, so the control behaves the same
   // wherever it is used. The map's draft form told you as you typed and the
   // vendor page stayed silent until submit, which is the same field giving two
@@ -39,6 +49,7 @@ export function CoordinatesField({
 
   const locate = () => {
     setGeoError(null);
+    const valueWhenAsked = latestValue.current;
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       setGeoError("This browser cannot report a position.");
       return;
@@ -47,10 +58,12 @@ export function CoordinatesField({
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setLocating(false);
+        if (latestValue.current !== valueWhenAsked) return;
         onChange(`${position.coords.latitude}, ${position.coords.longitude}`);
       },
       () => {
         setLocating(false);
+        if (latestValue.current !== valueWhenAsked) return;
         // Refused, unavailable and timed out are the same thing to the person
         // reading this: type or paste the coordinates instead.
         setGeoError("Could not read this device's position. Type or paste the coordinates instead.");

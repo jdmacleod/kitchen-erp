@@ -127,9 +127,14 @@ export function useJobToManual() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ingestKeys.jobs });
       // Through the shared helper, not a literal key: it is the one place that
-      // decides what a purchase mutation clears (issue #19). The draft this
-      // creates is new, so there is no cached detail of it to clear.
-      invalidatePurchases(client);
+      // decides what a purchase mutation clears (issue #19).
+      //
+      // "all", not the default: convert_to_manual reuses the job's own draft
+      // receipt purchase when it has one, dropping its lines and changing its
+      // source to manual. That purchase may already be cached from the review
+      // screen, so clearing only the lists would leave its detail showing lines
+      // that no longer exist.
+      invalidatePurchases(client, "all");
     },
   });
 }

@@ -216,6 +216,37 @@ describe("vendors", () => {
     vi.unstubAllGlobals();
   });
 
+  // Greptile review on PR #29: a position fix can take up to eight seconds, and
+  // anything typed in the meantime was overwritten when it landed, so a submit
+  // could save the device position instead of the point that was chosen.
+  it("drops a position fix that arrives after the coordinates were changed", async () => {
+    let deliver: (() => void) | null = null;
+    const getCurrentPosition = vi.fn((ok: PositionCallback) => {
+      deliver = () => ok({ coords: { latitude: 33.9999, longitude: -120.9999 } } as GeolocationPosition);
+    });
+    vi.stubGlobal("navigator", Object.assign(Object.create(Object.getPrototypeOf(navigator)), navigator, { geolocation: { getCurrentPosition } }));
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/vendors/${marketVendor.id}`);
+
+    await user.click(await screen.findByRole("button", { name: "Add a location" }));
+    await user.click(screen.getByRole("button", { name: "Use my location" }));
+    // Still in flight; the person types the coordinates they actually want.
+    await user.type(screen.getByLabelText("Coordinates"), "33.512345, -120.487654");
+
+    deliver!();
+
+    // The stale fix is discarded rather than replacing the newer choice.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue("33.512345, -120.487654"));
+    vi.unstubAllGlobals();
+  });
+
   it("creates a home base from the settings page and reports the in-use message on delete", async () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),

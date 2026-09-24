@@ -207,6 +207,58 @@ describe("map", () => {
     });
   });
 
+  // Greptile review on PR #29: editing a good pair into a bad one, or clearing the
+  // field, left the old draft point in place and submittable.
+  it("drops the pin when the coordinates stop reading as a pair", async () => {
+    mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    renderApp("/map?place=location");
+    await mapReady();
+
+    // ?place=location already opened the draft form; clicking the button would
+    // toggle placing back off.
+    const field = await screen.findByLabelText("Coordinates");
+    await user.type(field, "33.512345, -120.487654");
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("33.512345, -120.487654"));
+
+    // Edited into something unreadable: the pin goes with it rather than
+    // lingering as a point nobody chose.
+    await user.type(field, "x");
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("No pin yet"));
+    // And the half-typed text is not wiped by the pin disappearing.
+    expect(field).toHaveValue("33.512345, -120.487654x");
+
+    await user.clear(field);
+    expect(screen.getByTestId("draft-point")).toHaveTextContent("No pin yet");
+  });
+
+  // Greptile review on PR #29: the deep link was applied once by a ref, so it
+  // also never selected the panel and could not re-apply. It is now derived from
+  // the parameter, which is what makes both work.
+  //
+  // The cross-navigation half of that review point (back/forward between two map
+  // links while the page stays mounted) is not reachable here: renderApp mounts a
+  // MemoryRouter, which does not read window.history. What is checked is that the
+  // link drives the panel as well as the map, and that deriving it converges
+  // instead of jumping on every render.
+  it("selects the panel for a linked location, and settles", async () => {
+    mockApi({
+      ...baseRoutes(() => [chainLocation, marketLocation]),
+      [`GET /vendor-locations/${marketLocationId}`]: () => jsonResponse(200, marketDetail),
+      [`GET /vendor-locations/${marketLocationId}/is-open`]: () => jsonResponse(200, { id: marketLocationId, at: "x", is_open: null, effective_opening_hours: null }),
+      [`GET /vendor-locations/${marketLocationId}/price-panel`]: () => jsonResponse(200, { last_visit: null, spend: "0", visits: 0, period_days: 30, recent: [] }),
+    });
+    renderApp(`/map?location=${marketLocation.id}`);
+    const map = await mapReady();
+
+    await waitFor(() => expect(map.jumps.at(-1)?.center).toEqual([Number(marketLocation.lon), Number(marketLocation.lat)]));
+    expect(await screen.findByTestId("location-panel")).toHaveTextContent(marketLocation.name);
+
+    const settled = map.jumps.length;
+    await new Promise((r) => setTimeout(r, 120));
+    expect(map.jumps.length).toBe(settled);
+  });
+
   it("mirrors a map click back into the coordinates field", async () => {
     mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
     const user = userEvent.setup();

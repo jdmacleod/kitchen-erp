@@ -9,7 +9,12 @@ import httpx
 import pytest
 
 from app.ingest import lines as lines_mod
-from app.ingest.errors import InvalidModelOutput, ModelTimeout, ModelUnavailable
+from app.ingest.errors import (
+    InvalidModelOutput,
+    ModelTimeout,
+    ModelUnavailable,
+    RetryableError,
+)
 from app.ingest.header import parse_local_datetime
 from app.ingest.llm import LlmClient, parse_model_output, rank_products, sanitize_receipt_text
 from app.ingest.replay import RecordedTransport
@@ -212,6 +217,38 @@ class _TimingOutTransport(httpx.AsyncBaseTransport):
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         raise httpx.ReadTimeout("timed out", request=request)
+
+
+class _ConnectTimeoutTransport(httpx.AsyncBaseTransport):
+    """A host that drops connection attempts instead of refusing them."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectTimeout("timed out connecting", request=request)
+
+
+async def test_a_connect_timeout_is_an_unreachable_server_not_a_slow_one():
+    """httpx.ConnectTimeout is a TimeoutException, and it means the opposite thing.
+
+    Catching TimeoutException wholesale classified an unreachable host as
+    model_timeout: the job would fail after a few attempts instead of waiting for
+    the server to come back, and the operator would be told to raise
+    LLM_TIMEOUT_SECONDS for a server that was not running. A dropped SYN is
+    exactly what a stopped container does, so this is the common case, not an
+    exotic one.
+    """
+    client = LlmClient(
+        base_url="http://model.invalid",
+        timeout_seconds=120.0,
+        max_retries=0,
+        transport=_ConnectTimeoutTransport(),
+    )
+    with pytest.raises(ModelUnavailable) as raised:
+        await rank_products("org whole milk 1gal", SHORTLIST, client=client)
+    assert raised.value.code == "model_unavailable"
+    assert raised.value.detail == "ConnectTimeout"
+    # Retryable, so the job waits rather than failing.
+    assert isinstance(raised.value, RetryableError)
+    assert not isinstance(raised.value, ModelTimeout)
 
 
 async def test_a_timeout_is_its_own_code_and_is_not_retried_for_ever():

@@ -30,6 +30,13 @@ from app.models import ReceiptDocument
 log = get_logger(__name__)
 
 TESSERACT_TIMEOUT_SECONDS = 120.0
+# Rasterising is bounded separately, because TESSERACT_TIMEOUT_SECONDS only
+# starts once tesseract runs. The megapixel ceiling in app.ingest.raster caps
+# what comes out; this caps how long getting there may take, so one pathological
+# page cannot hold the worker -- which processes jobs one at a time -- and delay
+# every receipt behind it. 60s is far above a real page: measured, a 200 dpi
+# till receipt renders in well under a second.
+RASTER_TIMEOUT_SECONDS = 60.0
 
 
 class OcrAdapter(Protocol):
@@ -105,9 +112,22 @@ class TesseractAdapter:
         with tempfile.TemporaryDirectory(prefix="kerp-ocr-") as tmp:
             # Rendering is CPU-bound and would otherwise stall the worker's loop
             # for the length of a page.
-            png = await asyncio.to_thread(
-                raster.to_png, fmt.converter, image_path, Path(tmp) / "page.png"
-            )
+            try:
+                png = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        raster.to_png, fmt.converter, image_path, Path(tmp) / "page.png"
+                    ),
+                    timeout=RASTER_TIMEOUT_SECONDS,
+                )
+            except TimeoutError:
+                # The thread is abandoned rather than killed -- there is no way to
+                # interrupt a native decode -- so this bounds the job's wait, not
+                # the work. That is the part that matters here: the stage stops and
+                # the queue moves on instead of one receipt blocking the rest.
+                raise StageFailure(
+                    code="raster_timeout",
+                    detail=f"{fmt.converter} after {RASTER_TIMEOUT_SECONDS:g}s",
+                ) from None
             return await self._recognize(png)
 
     async def _recognize(self, image_path: Path) -> str:

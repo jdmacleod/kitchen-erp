@@ -137,11 +137,21 @@ class LlmClient:
                 transport=self.transport, timeout=httpx.Timeout(self.timeout_seconds)
             ) as client:
                 response = await client.post(url, json=payload)
-        except httpx.TimeoutException as exc:
-            # Reached the server; it did not answer in time. A different problem
-            # from an unreachable one, with a different fix and a different retry
-            # policy, so it gets its own code rather than being folded into
-            # ModelUnavailable with the rest of httpx.HTTPError.
+        except httpx.ReadTimeout as exc:
+            # Connected, sent the request, and the server did not answer in time.
+            # A different problem from an unreachable one, with a different fix
+            # and a different retry policy, so it gets its own code rather than
+            # being folded into ModelUnavailable with the rest of httpx.HTTPError.
+            #
+            # ReadTimeout specifically, not httpx.TimeoutException: ConnectTimeout
+            # is also a TimeoutException, and it means the opposite thing. A host
+            # that drops connection attempts rather than refusing them -- exactly
+            # what a stopped container does -- raises ConnectTimeout, and treating
+            # that as a slow answer would tell the operator to raise
+            # LLM_TIMEOUT_SECONDS when the server is not there at all, and would
+            # fail the job after a few attempts instead of waiting for it to come
+            # back. WriteTimeout and PoolTimeout are likewise about getting the
+            # request out, not about the answer, so they fall through below.
             raise ModelTimeout(
                 detail=f"{type(exc).__name__} after {self.timeout_seconds:g}s"
             ) from None

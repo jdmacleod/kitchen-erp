@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
@@ -148,8 +148,11 @@ export function MapPage() {
     setDraft(null);
     setCenterOn(null);
   };
-  /** A point typed, pasted, or read off this device rather than clicked. */
-  const placeAt = (point: Point) => {
+  /**
+   * A point typed, pasted, or read off this device rather than clicked, or null
+   * when the field stopped reading as a pair and the pin has to go with it.
+   */
+  const placeAt = (point: Point | null) => {
     setDraft(point);
     setCenterOn(point);
   };
@@ -179,16 +182,27 @@ export function MapPage() {
   };
 
   // The `?location=` link arrives before the locations have loaded, so the
-  // centring waits for them and then happens once. A later selection goes
-  // through selectAndCenter instead.
-  const pendingDeepLink = useRef<string | null>(params.get("location"));
-  useEffect(() => {
-    const id = pendingDeepLink.current;
-    if (id === null || items.length === 0) return;
-    pendingDeepLink.current = null;
-    const target = items.find((l) => l.id === id);
-    if (target) setCenterOn({ lat: target.lat, lon: target.lon });
-  }, [items]);
+  // centring waits for them. Keyed on the id rather than fired once, because the
+  // page stays mounted when only the search parameters change -- browser back
+  // and forward between two map links, or a second link followed from the same
+  // page -- and a one-shot would leave the panel and the map on the previous
+  // location while the URL claimed another.
+  const linkedLocationId = params.get("location");
+  const [appliedDeepLink, setAppliedDeepLink] = useState<string | null>(null);
+  if (linkedLocationId !== appliedDeepLink) {
+    if (linkedLocationId === null) {
+      setAppliedDeepLink(null);
+    } else {
+      // Not found yet means the locations are still loading, so nothing is
+      // recorded and the next render tries again. Once it matches, this stops.
+      const target = items.find((l) => l.id === linkedLocationId);
+      if (target) {
+        setAppliedDeepLink(linkedLocationId);
+        setSelected({ type: "location", id: linkedLocationId });
+        setCenterOn({ lat: target.lat, lon: target.lon });
+      }
+    }
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -703,7 +717,7 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
  * this device's position is a button someone presses, not something the page
  * does on arrival, so the default is untouched.
  */
-function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; onPoint: (point: Point) => void; disabled?: boolean }) {
+function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; onPoint: (point: Point | null) => void; disabled?: boolean }) {
   const [text, setText] = useState(() => (draft ? formatLatLon(draft.lat, draft.lon) : ""));
 
   // A click on the map is the other direction of the same state, so it has to
@@ -717,7 +731,10 @@ function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; 
   if (draftText !== mirrored) {
     setMirrored(draftText);
     const shown = parseLatLon(text);
-    if (!draft || !shown || shown.lat !== draft.lat || shown.lon !== draft.lon) {
+    // Only when there IS a draft to show. A draft cleared because the field
+    // stopped reading must not then blank the field and erase the half-typed
+    // pair that cleared it.
+    if (draft && (!shown || shown.lat !== draft.lat || shown.lon !== draft.lon)) {
       setText(draftText);
     }
   }
@@ -725,7 +742,10 @@ function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; 
   const onText = (value: string) => {
     setText(value);
     const point = parseLatLon(value);
-    if (point) onPoint(point);
+    // A pin that no longer matches what the field says is a pin nobody chose:
+    // editing a good pair into a bad one, or clearing the field, used to leave
+    // the old point in place and submittable. The pin follows the field.
+    onPoint(point);
   };
 
   return (
@@ -738,7 +758,7 @@ function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; 
   );
 }
 
-function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point) => void; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
+function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
   const create = useCreateLocation();
   const [vendor, setVendor] = useState<VendorChoice | null>(null);
   const [name, setName] = useState("");
@@ -797,7 +817,7 @@ function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Poi
   );
 }
 
-function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point) => void; onCancel: () => void; onCreated: (h: HomeBase) => void }) {
+function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (h: HomeBase) => void }) {
   const create = useCreateHomeBase();
   const [name, setName] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
