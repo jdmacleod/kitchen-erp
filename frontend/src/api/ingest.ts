@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qs } from "./catalog";
 import { API_BASE, ApiError, api, newIdempotencyKey } from "./client";
+import { invalidatePurchases } from "./purchases";
 import type { ErrorEnvelope } from "./types";
 
 // The backend's statuses; anything else is shown verbatim.
@@ -125,7 +126,10 @@ export function useJobToManual() {
     mutationFn: (id: string) => api<{ job: IngestJob; purchase_id: string }>(`/ingest-jobs/${enc(id)}/to-manual`, { method: "POST" }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ingestKeys.jobs });
-      void client.invalidateQueries({ queryKey: ["purchases"] });
+      // Through the shared helper, not a literal key: it is the one place that
+      // decides what a purchase mutation clears (issue #19). The draft this
+      // creates is new, so there is no cached detail of it to clear.
+      invalidatePurchases(client);
     },
   });
 }

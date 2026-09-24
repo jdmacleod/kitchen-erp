@@ -1,11 +1,35 @@
 import { useHealth } from "../api/queries";
 import type { Health } from "../api/types";
 
+/**
+ * The status dot's colour per state, measured rather than chosen (issue #21).
+ *
+ * WCAG 1.4.11 asks 3:1 of non-text UI that carries meaning. The word sits
+ * beside the dot, so no state is conveyed by colour alone and the criterion
+ * arguably does not bite -- but the dot is what people actually scan, and every
+ * -500 was under the floor against the page it sits on.
+ *
+ * Contrast against the page background, Tailwind 4's palette, light
+ * (neutral-50) / dark (neutral-950):
+ *
+ *   ok           green-500  2.13 x / 8.90     green-600  3.08 / 8.90
+ *   degraded     amber-500  2.05 x / 9.23     amber-700  4.84 / 9.23
+ *   failed       red-500    3.66   / 5.18     red-600    4.56 / 5.18
+ *   unreachable  neutral-400 2.48 x / 7.63    neutral-500 4.53 / 7.63
+ *
+ * Light gets the darker step and dark keeps -500, which is the pairing
+ * FirstRunChecklist already settled on for its tick. Degraded goes one step
+ * further than the others because amber-600 clears the floor by 0.06 against
+ * neutral-50, which is close enough to round the wrong way on a palette tweak.
+ *
+ * Move this table to DESIGN.md when that exists; it has to document the palette
+ * anyway, and these numbers should not have to be derived twice.
+ */
 const dot: Record<string, string> = {
-  ok: "bg-green-500",
-  degraded: "bg-amber-500",
-  failed: "bg-red-500",
-  unreachable: "bg-neutral-400",
+  ok: "bg-green-600 dark:bg-green-500",
+  degraded: "bg-amber-700 dark:bg-amber-500",
+  failed: "bg-red-600 dark:bg-red-500",
+  unreachable: "bg-neutral-500 dark:bg-neutral-400",
 };
 
 export interface BuildIdentity {

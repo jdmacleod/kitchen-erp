@@ -265,8 +265,21 @@ function invalidateObservations(client: QueryClient) {
   void client.invalidateQueries({ queryKey: purchaseKeys.observations });
 }
 
-function invalidatePurchases(client: QueryClient) {
-  void client.invalidateQueries({ queryKey: [...purchaseKeys.purchases, "list"] });
+/**
+ * Clear the purchase caches after a mutation. The single place that decides
+ * what a purchase mutation invalidates, so a key added here reaches every
+ * caller (issue #19); two call sites used to invalidate by hand and would have
+ * silently missed it.
+ *
+ * "lists" is enough for a mutation that already wrote the detail it changed
+ * back into the cache, which `usePurchaseMutation` does. "all" is for one that
+ * changes purchases it does not hold: creating one, or applying an
+ * identification across every purchase with a line that matches.
+ */
+export function invalidatePurchases(client: QueryClient, scope: "lists" | "all" = "lists") {
+  void client.invalidateQueries({
+    queryKey: scope === "all" ? purchaseKeys.purchases : [...purchaseKeys.purchases, "list"],
+  });
 }
 
 // --- price observations -----------------------------------------------------
@@ -458,7 +471,9 @@ export function useApplyToIdentify() {
     mutationFn: (input: ToIdentifyApplyInput) => api<{ applied: number }>("/to-identify/apply", { method: "POST", body: input }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
-      void client.invalidateQueries({ queryKey: purchaseKeys.purchases });
+      // "all": this applies a product to lines in purchases this hook never
+      // loaded, so their cached details are stale too, not just the lists.
+      invalidatePurchases(client, "all");
       invalidateObservations(client);
     },
   });
