@@ -4,12 +4,15 @@ import { describe, expect, it } from "vitest";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
 
 describe("login", () => {
-  it("submits email and password to the API and lands on the catalog", async () => {
+  it("submits email and password to the API and lands on the home page", async () => {
     const calls = mockApi({
       "GET /auth/me": () => errorResponse(401, "unauthenticated", "Not signed in."),
       "POST /auth/login": () => jsonResponse(200, { user: adminUser }),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
-      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /to-identify": () => jsonResponse(200, { items: [] }),
+      "GET /price-book/needs-bridge": () => jsonResponse(200, { items: [] }),
     });
     const user = userEvent.setup();
     renderApp("/login");
@@ -18,8 +21,9 @@ describe("login", () => {
     await user.type(screen.getByLabelText("Password"), "correct horse");
     await user.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(await screen.findByRole("heading", { name: "Ingredients" })).toBeInTheDocument();
-    expect(await screen.findByText("No ingredients yet")).toBeInTheDocument();
+    // Login navigates to "/", which is now a page rather than a redirect. This
+    // deployment is empty, so that page is the first-run checklist.
+    expect(await screen.findByRole("heading", { name: "Set up your kitchen" })).toBeInTheDocument();
 
     const login = calls.find((c) => c.path === "/auth/login");
     expect(login).toBeDefined();
@@ -49,9 +53,14 @@ describe("login", () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
-      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /to-identify": () => jsonResponse(200, { items: [] }),
+      "GET /price-book/needs-bridge": () => jsonResponse(200, { items: [] }),
     });
     renderApp("/login");
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Ingredients" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Set up your kitchen" })).toBeInTheDocument(),
+    );
   });
 });

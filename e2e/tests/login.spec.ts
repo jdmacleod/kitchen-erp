@@ -8,11 +8,18 @@ test("unauthenticated visit redirects to login", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
 
-test("admin logs in and sees the ingredients page with no external requests", async ({ page, baseURL }) => {
+test("admin logs in and lands on the home route with no external requests", async ({ page, baseURL }) => {
   const external = watchExternalRequests(page, baseURL!);
   await login(page);
-  await expect(page).toHaveURL(/\/ingredients$/);
-  await expect(page.getByRole("heading", { name: "Ingredients" })).toBeVisible();
+
+  // Asserts nothing about which of the two home modes renders. The suite shares
+  // one backend and other specs create purchases in parallel, so whether this
+  // household is "set up" flips mid-run. `home.spec.ts` seeds its own data to
+  // assert the set-up branch deterministically.
+  // The phone project keeps the sidebar behind a menu, so the main landmark is
+  // the one marker of the authenticated shell that holds at both viewports.
+  await expect(page).toHaveURL(new URL("/", baseURL!).toString());
+  await expect(page.getByRole("main")).toBeVisible();
   expect(external).toEqual([]);
 });
 

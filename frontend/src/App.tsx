@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Route, Routes } from "react-router";
 import { AuthBridge } from "./auth/AuthBridge";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -19,6 +19,7 @@ import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
 import { ToIdentifyPage } from "./pages/purchases/ToIdentifyPage";
 import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
+import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { TokensPage } from "./pages/settings/TokensPage";
@@ -33,7 +34,7 @@ export function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
-            <Route index element={<Navigate to="/ingredients" replace />} />
+            <Route index element={<HomePage />} />
             {/* Phase 1C: ingredients and products */}
             <Route path="/ingredients" element={<IngredientsPage />} />
             <Route path="/ingredients/:id" element={<IngredientDetailPage />} />

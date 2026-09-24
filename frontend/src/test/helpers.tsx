@@ -74,11 +74,16 @@ export function mockApi(routes: Record<string, RouteHandler>): RecordedCall[] {
   return calls;
 }
 
-export function renderApp(initialPath: string) {
+/**
+ * Mount the app at a path. Pass an object instead of a string to arrive with
+ * router state, the way a `<Link state={…}>` or a `navigate(path, { state })`
+ * hands one page a fact the next one needs.
+ */
+export function renderApp(initial: string | { pathname: string; state?: unknown }) {
   const client = createQueryClient({ retry: false });
   const result = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[initialPath]}>
+      <MemoryRouter initialEntries={[initial]}>
         <App />
       </MemoryRouter>
     </QueryClientProvider>,

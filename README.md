@@ -80,8 +80,12 @@ the args. The same answer without a browser:
 docker compose exec api kerp --version   # kitchen-erp <version> (<commit>)
 ```
 
-Open <http://localhost:8080> and log in. The API is also reachable directly at
-<http://localhost:8000/api/docs>.
+Open <http://localhost:8080> and log in. A new deployment lands on a two-step
+checklist: add somewhere you shop, then record your first purchase. Dropping a pin
+on the map creates the shop and its location together, and the purchase form
+creates products and their ingredients as you type them, so those two steps are
+the whole setup. The checklist is replaced by the home page once a purchase lands.
+The API is also reachable directly at <http://localhost:8000/api/docs>.
 
 On macOS run Ollama natively on the host; the default `OLLAMA_BASE_URL` reaches
 it through `host.docker.internal`. On a Linux host with a GPU, add

@@ -327,6 +327,29 @@ export function usePurchases(filters: PurchaseFilters, limit = 50) {
   });
 }
 
+/**
+ * The household's most recent committed purchases — and, from the same answer,
+ * whether it has recorded any at all.
+ *
+ * `status=committed` is load-bearing, not tidiness. Receipt parsing inserts a
+ * `draft` purchase the moment a photo is read, before anyone has looked at it,
+ * so an unfiltered probe would report a household as set up on the strength of
+ * an upload nobody reviewed. Committed is also exactly what the price book
+ * contains, so this is the same bar the rest of the app uses.
+ *
+ * One query, two consumers: the home page's checklist ticks on `length > 0` and
+ * its "Lately" section renders the same rows. Keyed under
+ * `["purchases", "list", …]` so `invalidatePurchases` already reaches it by
+ * prefix — there is no separate invalidation for a future call site to forget.
+ */
+export function useRecentCommittedPurchases(limit = 5) {
+  return useQuery({
+    queryKey: [...purchaseKeys.purchases, "list", "committed", limit] as const,
+    queryFn: () => api<Page<Purchase>>(`/purchases${qs({ status: "committed", limit })}`),
+    select: (page) => page.items,
+  });
+}
+
 export function usePurchase(id: string | undefined) {
   return useQuery({
     queryKey: purchaseKeys.purchase(id ?? ""),

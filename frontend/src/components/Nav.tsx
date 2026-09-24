@@ -47,6 +47,16 @@ export function Nav({ id }: { id?: string }) {
 
   return (
     <nav id={id} aria-label="Main" className="flex h-full flex-col gap-6">
+      {/* Ungrouped and above the first group label: Home belongs to no section,
+          and appending it to catalogLinks would file it under "Catalog". `end`
+          keeps it from matching every route, since every path starts with "/". */}
+      <ul className="flex flex-col gap-0.5">
+        <li>
+          <NavLink to="/" end className={linkClass}>
+            Home
+          </NavLink>
+        </li>
+      </ul>
       <div>
         <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Catalog</p>
         <ul className="flex flex-col gap-0.5">
