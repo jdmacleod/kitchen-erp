@@ -38,6 +38,12 @@ export function useMe() {
     queryKey: queryKeys.me,
     queryFn: fetchMe,
     staleTime: 60_000,
+    // No automatic retry on this one. It is the first request of every session,
+    // and RequireAuth already renders a Try again button for it, so a second
+    // attempt plus its backoff only doubles the time before the guard can say
+    // anything true: measured against a stopped API, 3.1s becomes 6.2s plus
+    // backoff (issue #25). Every other query keeps the client's default.
+    retry: false,
   });
 }
 

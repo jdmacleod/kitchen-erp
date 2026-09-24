@@ -105,7 +105,8 @@ test("the receipts page uploads nothing by itself and lists jobs; the to-identif
   await login(page);
   await page.goto("/receipts");
   await expect(page.getByRole("heading", { name: "Upload a receipt" })).toBeVisible();
-  await expect(page.getByText("The photo stays on this deployment; nothing is sent elsewhere.")).toBeVisible();
+  // A PDF is named because the picker accepts one: an emailed receipt is not a photo.
+  await expect(page.getByText("A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.")).toBeVisible();
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByRole("alert")).toContainText("Choose a photo of the receipt.");
 
