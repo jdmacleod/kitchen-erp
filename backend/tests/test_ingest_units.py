@@ -5,10 +5,11 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from decimal import Decimal
 
+import httpx
 import pytest
 
 from app.ingest import lines as lines_mod
-from app.ingest.errors import InvalidModelOutput, ModelUnavailable
+from app.ingest.errors import InvalidModelOutput, ModelTimeout, ModelUnavailable
 from app.ingest.header import parse_local_datetime
 from app.ingest.llm import LlmClient, parse_model_output, rank_products, sanitize_receipt_text
 from app.ingest.replay import RecordedTransport
@@ -201,5 +202,30 @@ async def test_rank_products_null_answer_and_empty_shortlist():
 
 async def test_rank_products_model_unavailable_propagates():
     client = LlmClient(base_url="http://127.0.0.1:9", timeout_seconds=1.0, max_retries=0)
-    with pytest.raises(ModelUnavailable):
+    with pytest.raises(ModelUnavailable) as raised:
         await rank_products("org whole milk 1gal", SHORTLIST, client=client)
+    assert raised.value.detail == "ConnectError"  # which HTTPError it was, not just that it was one
+
+
+class _TimingOutTransport(httpx.AsyncBaseTransport):
+    """A server that is reachable and answers nothing."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timed out", request=request)
+
+
+async def test_a_timeout_is_its_own_code_and_is_not_retried_for_ever():
+    """A request the deployment cannot fix by waiting must not look like one it can."""
+    client = LlmClient(
+        base_url="http://model.invalid",
+        timeout_seconds=120.0,
+        max_retries=0,
+        transport=_TimingOutTransport(),
+    )
+    with pytest.raises(ModelTimeout) as raised:
+        await rank_products("org whole milk 1gal", SHORTLIST, client=client)
+    assert raised.value.code == "model_timeout"
+    # The detail names the condition and the limit it hit, so the operator is sent
+    # to LLM_TIMEOUT_SECONDS rather than to "is Ollama running?".
+    assert raised.value.detail == "ReadTimeout after 120s"
+    assert not isinstance(raised.value, ModelUnavailable)

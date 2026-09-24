@@ -16,19 +16,20 @@ from __future__ import annotations
 
 import asyncio
 import shutil
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Protocol
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.ingest import formats, raster
 from app.ingest.errors import OcrUnavailable, StageFailure
 from app.models import ReceiptDocument
 
 log = get_logger(__name__)
 
 TESSERACT_TIMEOUT_SECONDS = 120.0
-TESSERACT_MIMES = {"image/jpeg", "image/png", "image/webp"}
 
 
 class OcrAdapter(Protocol):
@@ -52,7 +53,12 @@ class ClientOcrAdapter:
 
 
 class TesseractAdapter:
-    """Server-side fallback: the ``tesseract`` binary in the worker image."""
+    """Server-side fallback: the ``tesseract`` binary in the worker image.
+
+    Reads every format :mod:`app.ingest.formats` accepts. Tesseract itself only
+    understands the image formats; HEIC and PDF are rendered to PNG first, which
+    is why the accepted-format list can be the list of formats that work.
+    """
 
     name = "tesseract"
     _version: str | None = None
@@ -89,8 +95,22 @@ class TesseractAdapter:
     async def run(self, document: ReceiptDocument, image_path: Path) -> str:
         if shutil.which(self.command) is None:
             raise OcrUnavailable("tesseract_missing")
-        if document.mime not in TESSERACT_MIMES:
+        fmt = formats.BY_MIME.get(document.mime)
+        if fmt is None:
+            # Unreachable through the upload endpoint, which rejects anything not
+            # in FORMATS, and so a real inconsistency rather than a bad document.
             raise OcrUnavailable("unsupported_for_tesseract")
+        if fmt.converter is None:
+            return await self._recognize(image_path)
+        with tempfile.TemporaryDirectory(prefix="kerp-ocr-") as tmp:
+            # Rendering is CPU-bound and would otherwise stall the worker's loop
+            # for the length of a page.
+            png = await asyncio.to_thread(
+                raster.to_png, fmt.converter, image_path, Path(tmp) / "page.png"
+            )
+            return await self._recognize(png)
+
+    async def _recognize(self, image_path: Path) -> str:
         try:
             proc = await asyncio.create_subprocess_exec(
                 self.command,
@@ -142,4 +162,8 @@ async def run_ocr(
         if text.strip():
             return adapter, text, skipped
         skipped.append({"adapter": name, "reason": "empty_text"})
-    raise StageFailure(code="no_ocr_text")
+    # Which adapters declined and why, so "no_ocr_text" on the Receipts page is
+    # followed by the reason instead of leaving the operator to guess between a
+    # missing tesseract, an unreadable file and an empty photograph.
+    detail = ", ".join(f"{s['adapter']}: {s['reason']}" for s in skipped) or None
+    raise StageFailure(code="no_ocr_text", detail=detail)

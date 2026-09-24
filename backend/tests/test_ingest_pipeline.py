@@ -13,11 +13,13 @@ from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
-from app.ingest import llm, parsers
+from app.ingest import formats as ingest_formats
+from app.ingest import llm, parsers, raster
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.stages import run_stage
 from app.models import IngestJob, IngestStageResult, Purchase, PurchaseLine
+from app.services.ingest import sniff_mime
 from app.services.normalize import normalize_receipt_text
 from tests import geo_helpers as gh
 from tests import ingest_helpers as ih
@@ -27,7 +29,7 @@ from tests.ingest_helpers import (
     fixture_names,
     get_job,
     load_fixture,
-    render_receipt_png,
+    render_receipt_as,
     run_job,
     stage_outputs,
     upload,
@@ -186,16 +188,53 @@ async def test_ocr_falls_through_to_next_adapter(
     assert outputs["ocr"]["skipped"] == [{"adapter": "client", "reason": "no_client_text"}]
 
 
+def test_accepted_formats_are_exactly_the_formats_ocr_can_read():
+    """The bug in #13: two lists of formats, in two modules, quietly disagreeing.
+
+    A format the upload endpoint accepts but no adapter can read is accepted at
+    the door and then fails on a retry loop nobody can act on. There is now one
+    table, and every row of it either is read by Tesseract directly or names a
+    converter that exists.
+    """
+    assert {fmt.mime for fmt in ingest_formats.FORMATS} == set(ingest_formats.EXTENSIONS)
+    for fmt in ingest_formats.FORMATS:
+        if fmt.converter is not None:
+            assert fmt.converter in raster.CONVERTERS, fmt.mime
+
+
+def test_sniffer_returns_only_declared_formats():
+    """Bytes the sniffer accepts must be a format the rest of the system knows."""
+    for mime in ingest_formats.EXTENSIONS:
+        assert mime in ingest_formats.BY_MIME
+    # The sniffer is the only way a mime enters the system, so a type it can
+    # return that FORMATS does not carry would reintroduce the drift.
+    for probe in (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n", b"%PDF-1.4"):
+        sniffed = sniff_mime(probe + b"\x00" * 16)
+        assert sniffed is None or sniffed in ingest_formats.BY_MIME
+
+
 @pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
-async def test_tesseract_reads_rendered_fixture(
+@pytest.mark.parametrize("mime", [fmt.mime for fmt in ingest_formats.FORMATS])
+async def test_every_accepted_format_reaches_the_header_stage(
+    mime: str,
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,
     tmp_path: Path,
 ):
+    """Upload each accepted format with no client text and read it with Tesseract.
+
+    HEIC is the iPhone default and PDF is what an emailed receipt is, so these
+    are the ordinary cases, not the edges. Both reach OCR through a converter;
+    the rest are read as they arrive.
+    """
     fixture = load_fixture("supermarket_loyalty")
-    image = render_receipt_png(fixture.ocr_text, tmp_path / "render" / "receipt.png")
-    r = await upload(admin_client, image.read_bytes())
+    extension = ingest_formats.BY_MIME[mime].extension
+    image = render_receipt_as(mime, fixture.ocr_text, tmp_path / "render" / f"receipt.{extension}")
+    r = await upload(
+        admin_client, image.read_bytes(), filename=f"receipt.{extension}", content_type=mime
+    )
     assert r.status_code == 201, r.text
+    assert r.json()["document"]["mime"] == mime
     job_id = r.json()["job"]["id"]
     async with get_sessionmaker()() as db:
         job = await db.get(IngestJob, uuid.UUID(job_id))
@@ -211,6 +250,49 @@ async def test_tesseract_reads_rendered_fixture(
         token for token in ("HARBORVIEW", "MARKET", "TOTAL", "30.39", "SUBTOTAL") if token in text
     ]
     assert len(hits) >= 3, hits
+
+
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
+async def test_a_pdf_that_is_not_a_pdf_fails_with_a_code_naming_the_problem(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+):
+    """Truncated bytes are a bad document, and the code says which document problem.
+
+    Not ``no_ocr_text``: that is what the operator used to get for anything the
+    OCR stage could not do, and it sent them to look at the deployment. A file
+    that will not decode is named as such and the job fails rather than looping.
+    """
+    r = await upload(
+        admin_client,
+        b"%PDF-1.4\n" + b"\x00" * 512,
+        filename="receipt.pdf",
+        content_type="application/pdf",
+    )
+    assert r.status_code == 201, r.text
+    job_id = r.json()["job"]["id"]
+    final = await run_job(job_id, ocr_adapters=["client", "tesseract"])
+    assert final.stage == "ocr" and final.last_error == "pdf_unreadable"
+    assert final.last_error_detail == "PdfiumError"
+
+
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
+async def test_no_adapter_could_read_it_says_why_each_one_declined(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    tmp_path: Path,
+    ocr_registry,
+):
+    """``no_ocr_text`` alone does not tell an operator what to change."""
+    fixture = load_fixture("independent_minimal")
+    image = render_receipt_as("image/png", fixture.ocr_text, tmp_path / "r" / "receipt.png")
+    r = await upload(admin_client, image.read_bytes())
+    assert r.status_code == 201, r.text
+    job_id = r.json()["job"]["id"]
+    ocr_registry["tesseract"] = SpyAdapter("tesseract", text=None).factory()
+    final = await run_job(job_id, ocr_adapters=["client", "tesseract"])
+    assert final.stage == "ocr" and final.last_error == "no_ocr_text"
+    assert final.last_error_detail == "client: no_client_text, tesseract: spy_declines"
 
 
 async def test_prompt_injection_is_inert(

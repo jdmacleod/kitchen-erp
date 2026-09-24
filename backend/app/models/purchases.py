@@ -77,6 +77,11 @@ class IngestJob(UUIDPrimaryKey, Timestamped, Base):
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text)
+    # The condition behind last_error, when the code alone does not identify it:
+    # "ReadTimeout after 120s", "application/pdf". Codes are a closed set the UI
+    # maps to sentences; this is the part that varies between two jobs that
+    # failed the same way.
+    last_error_detail: Mapped[str | None] = mapped_column(Text)
     locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     locked_by: Mapped[str | None] = mapped_column(String(100))
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

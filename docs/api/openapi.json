@@ -1089,6 +1089,17 @@
             ],
             "title": "Last Error"
           },
+          "last_error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Detail"
+          },
           "locked_at": {
             "anyOf": [
               {
@@ -1222,6 +1233,17 @@
               }
             ],
             "title": "Last Error"
+          },
+          "last_error_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error Detail"
           },
           "locked_at": {
             "anyOf": [
