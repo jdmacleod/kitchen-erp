@@ -380,9 +380,9 @@ function Filters({ kind, onKind, homeBaseId, onHomeBase, homeBases, openAtOn, on
             type="datetime-local"
             value={openAtLocal}
             onChange={(e) => onOpenAtLocal(e.target.value)}
-            className={`min-h-10 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+            className={`min-h-11 lg:min-h-10 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 py-1 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
           />
-          <Button variant="secondary" className="min-h-10 px-2" onClick={() => onOpenAtLocal(toDateTimeLocal(new Date()))}>
+          <Button variant="secondary" className="min-h-11 lg:min-h-10 px-2" onClick={() => onOpenAtLocal(toDateTimeLocal(new Date()))}>
             Now
           </Button>
         </div>
@@ -423,7 +423,7 @@ function CheapestControl({ ingredient, onIngredient, filters, onFilters, unit, c
             </option>
           ))}
         </SelectField>
-        <label className="inline-flex min-h-10 items-center gap-2 self-end text-sm">
+        <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 self-end text-sm">
           <input type="checkbox" checked={Boolean(filters.exclude_stale)} onChange={(e) => onFilters({ ...filters, exclude_stale: e.target.checked })} className={`size-4 ${focusRing}`} />
           Exclude stale
         </label>
@@ -489,7 +489,7 @@ function PanelHeader({ title, onClose, children }: { title: string; onClose: () 
         <h2 className="text-base font-medium">{title}</h2>
         {children}
       </div>
-      <Button variant="ghost" className="min-h-8 px-2" onClick={onClose} aria-label="Close details">
+      <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" onClick={onClose} aria-label="Close details">
         ×
       </Button>
     </div>
@@ -602,7 +602,7 @@ function LocationPrices({ id }: { id: string }) {
         <h3 className="text-sm font-medium">Prices here</h3>
         <label className="inline-flex items-center gap-1 text-xs">
           Over
-          <select aria-label="Spend period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={`min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
+          <select aria-label="Spend period" value={days} onChange={(e) => setDays(Number(e.target.value))} className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
             {PERIODS.map((d) => (
               <option key={d} value={d}>
                 {d} days
@@ -805,7 +805,7 @@ function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Poi
     <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Add location here" noValidate>
       <div className="flex items-start justify-between gap-2">
         <h2 className="text-base font-medium">New location</h2>
-        <Button variant="ghost" className="min-h-8 px-2" onClick={onCancel}>
+        <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" onClick={onCancel}>
           Cancel
         </Button>
       </div>
@@ -849,7 +849,7 @@ function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Poi
     <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Add home base here" noValidate>
       <div className="flex items-start justify-between gap-2">
         <h2 className="text-base font-medium">New home base</h2>
-        <Button variant="ghost" className="min-h-8 px-2" onClick={onCancel}>
+        <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" onClick={onCancel}>
           Cancel
         </Button>
       </div>

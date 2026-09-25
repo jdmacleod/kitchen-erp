@@ -88,7 +88,7 @@ export function CoordinatesField({
       />
       {unreadable ? <p className="text-xs text-red-700 dark:text-red-300">Not a latitude and longitude yet.</p> : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={locate} disabled={disabled || locating}>
+        <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={locate} disabled={disabled || locating}>
           {locating ? "Locating…" : "Use my location"}
         </Button>
         {geoError ? <span className="text-xs text-red-700 dark:text-red-300">{geoError}</span> : null}

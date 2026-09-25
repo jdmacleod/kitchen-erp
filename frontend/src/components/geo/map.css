@@ -27,6 +27,18 @@
   cursor: pointer;
   border-radius: 50%;
 }
+/* Below lg every control is a 44px target (UI-4.2): the pin's hit area grows,
+   its shape does not, and so do the map's own zoom buttons. */
+@media (max-width: 1023.98px) {
+  .kerp-pin {
+    width: 44px;
+    height: 44px;
+  }
+  .kerp-map .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
+  }
+}
 /* Price labels for the "where is this cheapest" layer, drawn under the pin. */
 .kerp-pin {
   position: relative;

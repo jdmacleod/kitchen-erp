@@ -186,7 +186,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-medium">Locations</h2>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex min-h-10 items-center gap-2 text-sm">
+          <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
             <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} className={`size-4 ${focusRing}`} />
             Show inactive
           </label>
@@ -334,18 +334,18 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
         </div>
         <div className="flex flex-wrap gap-1">
-          <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
             Map
           </Link>
-          <Button variant="ghost" className="min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${location.name}`}>
+          <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${location.name}`}>
             Edit
           </Button>
           {location.osm_id ? (
-            <Button variant="ghost" className="min-h-8 px-2 text-xs" disabled={refresh.isPending} onClick={() => refresh.mutate()} aria-label={`Refresh ${location.name} from OpenStreetMap`}>
+            <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={refresh.isPending} onClick={() => refresh.mutate()} aria-label={`Refresh ${location.name} from OpenStreetMap`}>
               {refresh.isPending ? "Refreshing…" : "Refresh from OSM"}
             </Button>
           ) : null}
-          <Button variant={location.active ? "danger" : "secondary"} className="min-h-8 px-2 text-xs" disabled={setActive.isPending} onClick={() => setActive.mutate(!location.active)} aria-label={`${location.active ? "Deactivate" : "Activate"} ${location.name}`}>
+          <Button variant={location.active ? "danger" : "secondary"} className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={setActive.isPending} onClick={() => setActive.mutate(!location.active)} aria-label={`${location.active ? "Deactivate" : "Activate"} ${location.name}`}>
             {location.active ? "Deactivate" : "Activate"}
           </Button>
         </div>

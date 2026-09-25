@@ -58,7 +58,7 @@ export function ReceiptsPage() {
               {/* The server's allowlist (app/ingest/formats.py) is the one that
                   decides; this only filters the picker, and image/* alone used to
                   hide the PDFs that emailed receipts arrive as. */}
-              <input id="receipt-image" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment" className={`text-sm ${focusRing}`} />
+              <input id="receipt-image" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment" className={`min-h-11 text-sm lg:min-h-0 ${focusRing}`} />
               <p className="text-xs text-neutral-600 dark:text-neutral-400">A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.</p>
             </div>
             <div>
@@ -151,17 +151,17 @@ function JobRow({ job }: { job: IngestJob }) {
       </span>
       <span className="flex flex-wrap gap-1">
         {job.purchase_id ? (
-          <Link to={`/shop/purchases/${job.purchase_id}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-sm font-medium underline ${focusRing}`}>
+          <Link to={`/shop/purchases/${job.purchase_id}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-sm font-medium underline ${focusRing}`}>
             Review purchase
           </Link>
         ) : null}
         {job.status === "failed" ? (
-          <Button variant="secondary" className="min-h-8 px-2 text-xs" disabled={retry.isPending} onClick={() => retry.mutate(job.id)}>
+          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={retry.isPending} onClick={() => retry.mutate(job.id)}>
             Retry
           </Button>
         ) : null}
         {job.status === "failed" || job.status === "pending" ? (
-          <Button variant="secondary" className="min-h-8 px-2 text-xs" disabled={toManual.isPending} onClick={() => toManual.mutate(job.id)}>
+          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={toManual.isPending} onClick={() => toManual.mutate(job.id)}>
             Enter by hand
           </Button>
         ) : null}

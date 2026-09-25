@@ -94,7 +94,7 @@ function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) 
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="inline-flex min-h-10 items-center gap-2 text-sm">
+        <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
           <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} className={`size-4 ${focusRing}`} />
           Apply to all {group.line_count}
         </label>

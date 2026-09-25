@@ -14,14 +14,20 @@ const buttonVariants = {
     "text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-neutral-800",
 } as const;
 
+/**
+ * A text link that is a 44px touch target below lg (UI-4.2) and plain inline text
+ * at lg and wider, where the row it sits in is already dense enough to scan.
+ */
+export const tapTarget = "inline-flex min-h-11 items-center lg:inline lg:min-h-0";
+
 /** The primary button's look, for a link that acts as the page's primary action. */
-export const primaryLinkClass = `inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
+export const primaryLinkClass = `inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
 
 /**
  * The secondary button's look, for a link. It sets its own text colour, so the
  * base rule that makes links herb (theme.css) cannot turn it into a primary action.
  */
-export const secondaryLinkClass = `inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.secondary} ${focusRing}`;
+export const secondaryLinkClass = `inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.secondary} ${focusRing}`;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof buttonVariants;
@@ -33,7 +39,7 @@ export function Button({ variant = "primary", className = "", type = "button", .
   return (
     <button
       type={type}
-      className={`inline-flex min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${buttonVariants[variant]} ${focusRing} ${className}`}
+      className={`inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${buttonVariants[variant]} ${focusRing} ${className}`}
       {...rest}
     />
   );
@@ -55,7 +61,7 @@ export function Field({ id, label, hint, className = "", ...rest }: FieldProps) 
       <input
         id={id}
         aria-describedby={hintId}
-        className={`min-w-0 min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`}
+        className={`min-w-0 min-h-11 lg:min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`}
         {...rest}
       />
       {hint ? (

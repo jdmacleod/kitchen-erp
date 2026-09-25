@@ -68,7 +68,7 @@ function SuggestionRow({
         {density ? (
           <Button
             variant="secondary"
-            className="min-h-8 px-2 text-xs"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
             onClick={() => onUseDensity(density.density_g_per_ml, density.from_portion)}
           >
             Use density {trimDecimal(density.density_g_per_ml)} g/ml (from {density.from_portion})
@@ -81,7 +81,7 @@ function SuggestionRow({
                 <Button
                   key={m.label}
                   variant="secondary"
-                  className="min-h-8 px-2 text-xs"
+                  className="min-h-11 lg:min-h-8 px-2 text-xs"
                   disabled={already}
                   onClick={() =>
                     onAddMeasure({ label: m.label, canonical_qty: m.canonical_qty_g, from_portion: m.from_portion })

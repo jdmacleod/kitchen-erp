@@ -481,7 +481,7 @@ function LineRow({ idPrefix, index, line, busy, onProduct, onPicked, onQty, onUn
         disabled={busy}
       />
       <div className="flex sm:justify-end">
-        <Button variant="ghost" className="min-h-10 px-2 text-xs" disabled={busy} onClick={onRemove} aria-label={`Remove line ${n}`}>
+        <Button variant="ghost" className="min-h-11 lg:min-h-10 px-2 text-xs" disabled={busy} onClick={onRemove} aria-label={`Remove line ${n}`}>
           Remove
         </Button>
       </div>
