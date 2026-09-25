@@ -128,3 +128,49 @@ def test_settings_take_the_build_args_from_the_environment(monkeypatch: pytest.M
     settings = Settings(_env_file=None, database_url="x", migration_database_url="y")
     assert settings.build_version == "v0.2.0-5-gabc1234"
     assert settings.build_commit == "abc1234"
+
+
+# --- features: which navigation sections exist (docs/spec/09, UI-2.2, D11) --------
+
+
+async def test_health_lists_the_migrated_sections_when_authenticated(
+    admin_client: httpx.AsyncClient,
+):
+    body = (await admin_client.get("/api/v1/health")).json()
+    assert body["features"] == ["catalog", "shop"]
+
+
+async def test_health_public_hides_the_features(client: httpx.AsyncClient):
+    assert "features" not in (await client.get("/api/v1/health")).json()
+
+
+async def test_features_follow_the_database_revision_not_the_build():
+    from app.services.health import features
+
+    assert features("0002") == []
+    assert features("0004") == ["catalog"]
+    assert features("0007") == ["catalog", "shop"]
+    # No revision, or one this build does not know: nothing rather than a guess.
+    assert features(None) == []
+    assert features("9999") == []
+
+
+async def test_features_survive_a_failing_health_check(
+    admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    """The navigation needs the list most when something is wrong (D11)."""
+    from app.services import health as health_service
+
+    async def db_down(db):
+        return health_service.Check(status="failed", detail={"error": "OperationalError"})
+
+    monkeypatch.setattr(health_service, "check_database", db_down)
+    r = await admin_client.get("/api/v1/health")
+    assert r.status_code == 503
+    assert r.json()["features"] == ["catalog", "shop"]
+
+
+def test_migration_scripts_are_read_once():
+    from app.services.health import _scripts
+
+    assert _scripts() is _scripts()

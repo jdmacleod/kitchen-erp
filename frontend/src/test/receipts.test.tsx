@@ -86,6 +86,75 @@ describe("receipts", () => {
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
   });
 
+  it("pins the job an inbox item names, even when it is not among the newest listed", async () => {
+    mockApi({
+      ...baseRoutes(() => [reviewJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
+    });
+    renderApp(`/receipts?job=${failedJob.id}`);
+
+    const pinned = await screen.findByRole("heading", { name: "From your inbox" });
+    const card = pinned.parentElement as HTMLElement;
+    const row = await within(card).findByTestId("ingest-job");
+    expect(row).toHaveAttribute("data-status", "failed");
+    expect(within(row).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Enter by hand" })).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    expect(within(list).getAllByTestId("ingest-job")).toHaveLength(1);
+  });
+
+  it("lists the pinned job once, above the others", async () => {
+    mockApi({
+      ...baseRoutes(() => [reviewJob, failedJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
+    });
+    renderApp(`/receipts?job=${failedJob.id}`);
+    await screen.findByRole("heading", { name: "From your inbox" });
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const rows = within(list).getAllByTestId("ingest-job");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute("data-status", "needs_review");
+  });
+
+  it("keeps a listed job in the list when the pinned card cannot load it", async () => {
+    mockApi({
+      ...baseRoutes(() => [reviewJob, failedJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(500, { error: { code: "internal", message: "Something went wrong." } }),
+    });
+    renderApp(`/receipts?job=${failedJob.id}`);
+    const pinned = await screen.findByRole("heading", { name: "From your inbox" });
+    expect(await within(pinned.parentElement as HTMLElement).findByRole("alert")).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const rows = within(list).getAllByTestId("ingest-job");
+    expect(rows.map((r) => r.getAttribute("data-status"))).toEqual(["needs_review", "failed"]);
+    expect(within(rows[1]).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("follows a retried pinned job until it finishes", async () => {
+    let job: IngestJob = failedJob;
+    let reads = 0;
+    mockApi({
+      ...baseRoutes(() => [reviewJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => {
+        reads += 1;
+        // Pending on the read after the retry, finished on the next poll.
+        if (job.status === "pending" && reads > 2) job = { ...job, status: "needs_review", stage: "review", purchase_id: receiptPurchaseId };
+        return jsonResponse(200, job);
+      },
+      [`POST /ingest-jobs/${failedJob.id}/retry`]: () => {
+        job = { ...failedJob, status: "pending", attempts: 0, last_error: null };
+        return jsonResponse(200, job);
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/receipts?job=${failedJob.id}`);
+    const pinned = await screen.findByRole("heading", { name: "From your inbox" });
+    const card = pinned.parentElement as HTMLElement;
+    await user.click(await within(card).findByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(within(card).getByTestId("ingest-job")).toHaveAttribute("data-status", "needs_review"), { timeout: 6000 });
+    expect(within(card).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/purchases/${receiptPurchaseId}`);
+  }, 10_000);
+
   it("says what a failure means and what to change, keeping the code for a bug report", async () => {
     // A model that was simply given too little time used to read `model_unavailable`,
     // which sends the owner to check a model server that is working (issue #14).

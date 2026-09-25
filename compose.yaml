@@ -40,6 +40,7 @@ services:
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       CURRENCY: ${CURRENCY:-USD}
       INGEST_LOCK_TIMEOUT_SECONDS: ${INGEST_LOCK_TIMEOUT_SECONDS:-600}
+      INGEST_STALL_MINUTES: ${INGEST_STALL_MINUTES:-10}
       # Everything .env.example documents has to be forwarded here or setting
       # it does nothing: the container sees only what this block names, and the
       # application falls back to its code defaults in silence.

@@ -720,6 +720,20 @@
             ],
             "title": "Commit"
           },
+          "features": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Features"
+          },
           "is_dev": {
             "anyOf": [
               {
@@ -1059,6 +1073,116 @@
           }
         },
         "title": "HomeBaseUpdate",
+        "type": "object"
+      },
+      "InboxItem": {
+        "additionalProperties": false,
+        "properties": {
+          "action_label": {
+            "title": "Action Label",
+            "type": "string"
+          },
+          "action_route": {
+            "title": "Action Route",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "kind": {
+            "enum": [
+              "receipt",
+              "receipt_failed",
+              "identify",
+              "bridge"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "detail",
+          "action_label",
+          "action_route",
+          "created_at"
+        ],
+        "title": "InboxItem",
+        "type": "object"
+      },
+      "InboxOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/InboxItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "reading": {
+            "$ref": "#/components/schemas/InboxReading"
+          }
+        },
+        "required": [
+          "items",
+          "reading"
+        ],
+        "title": "InboxOut",
+        "type": "object"
+      },
+      "InboxReading": {
+        "additionalProperties": false,
+        "description": "Receipts still being read: shown as a line above the inbox, not as items.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "oldest_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest At"
+          },
+          "stalled": {
+            "default": false,
+            "title": "Stalled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "InboxReading",
         "type": "object"
       },
       "IngestJobDetail": {
@@ -6897,6 +7021,27 @@
         "tags": [
           "geo",
           "home-bases"
+        ]
+      }
+    },
+    "/api/v1/inbox": {
+      "get": {
+        "operationId": "inbox_api_v1_inbox_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Inbox",
+        "tags": [
+          "inbox"
         ]
       }
     },
