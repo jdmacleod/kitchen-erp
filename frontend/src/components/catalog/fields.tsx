@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode, type SelectHTMLAttributes, type Textar
 import { focusRing } from "../ui";
 
 /** The input chrome shared by Field, selects, and textareas. */
-export const inputClass = `min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`;
+export const inputClass = `min-w-0 min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`;
 
 export const labelClass = "text-sm font-medium";
 export const hintClass = "text-xs text-neutral-600 dark:text-neutral-400";
@@ -17,7 +17,7 @@ type SelectFieldProps = SelectHTMLAttributes<HTMLSelectElement> & {
 export function SelectField({ id, label, hint, className = "", children, ...rest }: SelectFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div className={`flex min-w-0 flex-col gap-1 ${className}`}>
       <label htmlFor={id} className={labelClass}>
         {label}
       </label>
@@ -42,7 +42,7 @@ type TextAreaFieldProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
 export function TextAreaField({ id, label, hint, className = "", ...rest }: TextAreaFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   return (
-    <div className={`flex flex-col gap-1 ${className}`}>
+    <div className={`flex min-w-0 flex-col gap-1 ${className}`}>
       <label htmlFor={id} className={labelClass}>
         {label}
       </label>

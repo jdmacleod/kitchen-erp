@@ -15,5 +15,9 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     { name: "phone", use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } } },
+    // 375px is the narrowest phone still in common use, and it is narrower than
+    // the 390 above. The Location select on the purchase form overflowed only
+    // below ~427px, so `phone` was green while the form ran off the screen.
+    { name: "phone-375", use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } } },
   ],
 });
