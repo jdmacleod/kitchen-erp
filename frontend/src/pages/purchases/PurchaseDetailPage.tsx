@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { useState, type ReactNode } from "react";
+import { Link, useParams } from "react-router";
 import { formatPack, productTitle, trimDecimal } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import {
@@ -24,6 +24,7 @@ import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
+import { useNotice } from "../../components/Notice";
 
 /**
  * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);
@@ -39,22 +40,7 @@ export function PurchaseDetailPage() {
     : "Purchase";
   usePageTitle(title);
 
-  // The first-run arc closes here, where the work finished, rather than on a later
-  // visit to the home page that may be days away. The flag travels in router state
-  // from the checklist through the entry form, which unmounts on success.
-  //
-  // Read once into state, then stripped from history, the way MapPage consumes
-  // `?place`. Without the strip a reload or a back-navigation would congratulate
-  // the same purchase again.
-  const routerLocation = useLocation();
-  const navigate = useNavigate();
-  const [firstPurchase, setFirstPurchase] = useState(
-    () => (routerLocation.state as { firstPurchase?: boolean } | null)?.firstPurchase === true,
-  );
-  useEffect(() => {
-    if ((routerLocation.state as { firstPurchase?: boolean } | null)?.firstPurchase !== true) return;
-    navigate(routerLocation.pathname, { replace: true, state: null });
-  }, [routerLocation.state, routerLocation.pathname, navigate]);
+  const notice = useNotice();
 
   if (purchase.isPending) {
     return (
@@ -96,17 +82,13 @@ export function PurchaseDetailPage() {
     );
   }
 
-  // Only the committed branch carries the acknowledgement: manual entry commits at
-  // once, so a purchase created from the checklist always lands here.
   return (
     <CommittedPurchase
       purchase={p}
       title={title}
-      firstPurchase={firstPurchase}
-      // The acknowledgement belongs to the first commit, not to every commit of
-      // this purchase. Reopening retires it, so a reopen-and-recommit without
-      // leaving the page does not congratulate the household twice.
-      onReopened={() => setFirstPurchase(false)}
+      // A confirmation about the committed purchase (the first-purchase one, a
+      // commit) no longer holds once it is reopened.
+      onReopened={notice.dismiss}
       onEdit={() => setEditing(true)}
     />
   );
@@ -115,25 +97,17 @@ export function PurchaseDetailPage() {
 function CommittedPurchase({
   purchase: p,
   title,
-  firstPurchase,
   onReopened,
   onEdit,
 }: {
   purchase: Purchase;
   title: string;
-  firstPurchase: boolean;
   onReopened: () => void;
   onEdit: () => void;
 }) {
   const reopen = useReopenPurchase(p.id);
   return (
     <>
-      {firstPurchase ? (
-        <Alert tone="success" className="mb-6">
-          That is your kitchen set up. This purchase is in the price book, and the next one
-          will have something to compare against.
-        </Alert>
-      ) : null}
       <PageHeader title={title}>
         <div className="flex flex-wrap gap-2">
           {p.source === "manual" ? (

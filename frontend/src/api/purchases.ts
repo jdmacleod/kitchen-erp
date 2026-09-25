@@ -455,6 +455,12 @@ export function useCommitPurchase(purchaseId: string) {
   return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/commit`, { method: "POST" }));
 }
 
+/** Another draft still waiting, for "Next draft" after a commit (G9); null when none. */
+export async function fetchNextDraft(excludeId: string): Promise<Purchase | null> {
+  const page = await api<Page<Purchase>>(`/purchases${qs({ status: "draft", limit: 2 })}`);
+  return page.items.find((p) => p.id !== excludeId) ?? null;
+}
+
 export function useReopenPurchase(purchaseId: string) {
   return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/reopen`, { method: "POST" }));
 }

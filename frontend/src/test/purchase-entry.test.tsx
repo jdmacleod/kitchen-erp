@@ -205,6 +205,30 @@ describe("manual purchase entry", () => {
     expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent("slip is lower by $0.2169");
   });
 
+  it("acknowledges the first purchase on the page it lands on, and only the first", async () => {
+    for (const first of [true, false]) {
+      localStorage.setItem(LAST_LOCATION, chainLocationId);
+      mockApi({
+        ...baseRoutes(),
+        "POST /purchases": () => jsonResponse(201, manualPurchase),
+        [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
+      });
+      const user = userEvent.setup();
+      const { unmount } = renderApp({ pathname: "/shop/purchases/new", state: first ? { firstPurchase: true } : undefined });
+      await screen.findByRole("group", { name: "Line 1" });
+      await waitFor(() => expect(screen.getByLabelText("Location")).toHaveValue(chainLocationId));
+      await pickFlour(user, 1);
+      await user.type(within(line(1)).getByLabelText("Quantity 1"), "2");
+      await user.type(within(line(1)).getByLabelText("Unit price 1"), "3.99");
+      await user.click(screen.getByRole("button", { name: "Save purchase" }));
+
+      expect(await screen.findByRole("heading", { name: /Pier Farmers Market/ })).toBeInTheDocument();
+      if (first) expect(screen.getByTestId("notice")).toHaveTextContent(/That is your kitchen set up/);
+      else expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("refuses to save a line with a product but no price, and keeps the draft", async () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     const calls = mockApi(baseRoutes());

@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Ingredient } from "../api/catalog";
 import { flour, flourId, units } from "./catalog-fixtures";
-import { adminUser, jsonResponse, mainRegion, mockApi, renderApp } from "./helpers";
+import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -43,7 +43,10 @@ describe("ingredients", () => {
     expect(post?.body).toEqual({ name: "cumin", canonical_unit: "g" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
 
-    expect(await within(mainRegion()).findByRole("status")).toHaveTextContent(/Created/);
+    // The shared Notice (D18), with a way to the new ingredient (G10).
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent(/^Added cumin\./);
+    expect(within(notice).getByRole("link", { name: "Open it" })).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
     const list = await screen.findByRole("list", { name: "Ingredients" });
     expect(within(list).getByRole("link", { name: "cumin" })).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
     // The form reset for the next entry.
@@ -85,9 +88,7 @@ describe("ingredients", () => {
     expect(screen.getByRole("group", { name: "Measures to add" })).toHaveTextContent("cup = 125 g");
 
     await user.click(screen.getByRole("button", { name: "Create ingredient" }));
-    expect(await within(mainRegion()).findByRole("status")).toHaveTextContent(
-      /with 1 measure/,
-    );
+    expect(await screen.findByTestId("notice")).toHaveTextContent(/with 1 measure/);
 
     const post = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
     expect(post?.body).toEqual({

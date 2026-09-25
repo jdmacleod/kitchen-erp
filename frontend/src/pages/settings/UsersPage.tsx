@@ -4,6 +4,7 @@ import { useCreateUser, useUsers } from "../../api/queries";
 import { Alert, Button, Card, EmptyState, Field, PageHeader } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useNotice } from "../../components/Notice";
 
 const emptyForm = { email: "", display_name: "", password: "" };
 
@@ -12,17 +13,16 @@ export function UsersPage() {
   const users = useUsers();
   const create = useCreateUser();
   const [form, setForm] = useState(emptyForm);
-  const [created, setCreated] = useState<string | null>(null);
+  const notice = useNotice();
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setCreated(null);
     create.mutate(
       { email: form.email.trim(), display_name: form.display_name.trim(), password: form.password },
       {
         onSuccess: (user) => {
           setForm(emptyForm);
-          setCreated(user.email);
+          notice.show({ tone: "success", message: `Created ${user.email}.` });
         },
       },
     );
@@ -84,7 +84,6 @@ export function UsersPage() {
               Add a member
             </h2>
             {createError ? <Alert tone="error">{createError}</Alert> : null}
-            {created ? <Alert tone="success">Created {created}.</Alert> : null}
             <Field
               id="new-user-email"
               label="Email"

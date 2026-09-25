@@ -9,6 +9,7 @@ import {
   purchaseErrorMessage,
   resolutionLabel,
   useAddLine,
+  fetchNextDraft,
   useCommitPurchase,
   useDeleteLine,
   usePatchLine,
@@ -31,6 +32,7 @@ import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Card, Field, focusRing } from "../ui";
 import { ProductPicker } from "./ProductPicker";
 import { CategoryChip } from "../CategoryChip";
+import { useNotice } from "../Notice";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm" };
 
@@ -78,6 +80,20 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const notice = useNotice();
+
+  // The page stays and turns Committed, with how many prices the commit added and,
+  // when drafts remain, a way to the next one (G9).
+  const announceCommit = async (committed: Purchase) => {
+    const n = committed.lines.filter((l) => l.observation_id).length;
+    const message = `Committed. ${n} ${n === 1 ? "price" : "prices"} added to the price book.`;
+    const next = await fetchNextDraft(committed.id).catch(() => null);
+    notice.show({
+      tone: "success",
+      message,
+      action: next ? { label: "Next draft", to: `/shop/purchases/${next.id}` } : undefined,
+    });
+  };
 
   // Something to focus once the next render has put it in the document.
   const pendingFocus = useRef<string | null>(null);
@@ -324,7 +340,15 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               <Button
                 autoFocus
                 disabled={commit.isPending}
-                onClick={() => commit.mutate(undefined, { onSuccess: () => setConfirming(false), onError: () => setConfirming(false) })}
+                onClick={() =>
+                  commit.mutate(undefined, {
+                    onSuccess: (committed) => {
+                      setConfirming(false);
+                      void announceCommit(committed);
+                    },
+                    onError: () => setConfirming(false),
+                  })
+                }
               >
                 {commit.isPending ? "Committing…" : "Commit"}
               </Button>

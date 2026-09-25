@@ -9,7 +9,6 @@ import {
   useIngredient,
   useProducts,
   type IngredientSummary,
-  type Product,
   type ProductCreateInput,
 } from "../../api/catalog";
 import { Badge } from "../../components/catalog/fields";
@@ -19,6 +18,7 @@ import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../co
 import { usePageTitle } from "../../lib/usePageTitle";
 import { ProductForm, emptyProductValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 import { CategoryChip } from "../../components/CategoryChip";
+import { useNotice } from "../../components/Notice";
 
 export function ProductsPage() {
   usePageTitle("Products");
@@ -66,10 +66,9 @@ function CreateProductForm({ initialIngredient }: { initialIngredient: Ingredien
   const create = useCreateProduct();
   const [values, setValues] = useState<ProductFormValues>(() => emptyProductValues(initialIngredient));
   const [invalid, setInvalid] = useState<string | null>(null);
-  const [created, setCreated] = useState<Product | null>(null);
+  const notice = useNotice();
 
   const onSubmit = () => {
-    setCreated(null);
     const problem = validateProductValues(values);
     setInvalid(problem);
     if (problem || !values.ingredient) return;
@@ -92,7 +91,9 @@ function CreateProductForm({ initialIngredient }: { initialIngredient: Ingredien
 
     create.mutate(input, {
       onSuccess: (product) => {
-        setCreated(product);
+        // The drawer (T6) moves focus to "Open it" (G10); this inline form keeps it
+        // in the form, so several products of one ingredient go quickly.
+        notice.show({ tone: "success", message: `Added ${productTitle(product)}.`, action: { label: "Open it", to: `/catalog/products/${product.id}` } });
         // Keep the ingredient so several products of one ingredient go quickly.
         setValues(emptyProductValues({ kind: "existing", ingredient: product.ingredient }));
         document.getElementById("new-product-brand")?.focus();
@@ -113,21 +114,6 @@ function CreateProductForm({ initialIngredient }: { initialIngredient: Ingredien
       busy={create.isPending}
       submitLabel="Create product"
       busyLabel="Creating…"
-      notice={
-        created ? (
-          <Alert tone="success">
-            Created{" "}
-            <Link to={`/catalog/products/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
-              {productTitle(created)}
-            </Link>{" "}
-            for{" "}
-            <Link to={`/catalog/ingredients/${created.ingredient.id}`} className={`rounded underline ${focusRing}`}>
-              {created.ingredient.name}
-            </Link>
-            .
-          </Alert>
-        ) : null
-      }
     />
   );
 }

@@ -8,6 +8,7 @@ import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../co
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useNotice } from "../../components/Notice";
 
 /**
  * Unmatched lines across every committed purchase, grouped by vendor and
@@ -46,6 +47,10 @@ export function ToIdentifyPage() {
 
 function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) {
   const apply = useApplyToIdentify();
+  const notice = useNotice();
+  // The group leaves the list once applied, so the confirmation lives in the Notice.
+  const onApplied = ({ applied }: { applied: number }) =>
+    notice.show({ tone: "success", message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.` });
   const [all, setAll] = useState(true);
   const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
   const id = `identify-${index}`;
@@ -63,7 +68,6 @@ function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) 
         </span>
       </div>
       {apply.error ? <Alert tone="error">{purchaseErrorMessage(apply.error)}</Alert> : null}
-      {apply.isSuccess ? <Alert tone="success">Applied to {apply.data.applied} {apply.data.applied === 1 ? "line" : "lines"}.</Alert> : null}
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 dark:text-neutral-300">
         {group.lines.map((l) => (
           <li key={l.line_id}>
@@ -80,11 +84,11 @@ function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) 
           id={id}
           label="Product"
           value={null}
-          onChange={(p) => p && apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() })}
+          onChange={(p) => p && apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() }, { onSuccess: onApplied })}
           disabled={apply.isPending}
         />
         <div className="flex items-end">
-          <Button variant="secondary" disabled={apply.isPending} onClick={() => apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", ignore: true, ...scope() })}>
+          <Button variant="secondary" disabled={apply.isPending} onClick={() => apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", ignore: true, ...scope() }, { onSuccess: onApplied })}>
             Ignore
           </Button>
         </div>

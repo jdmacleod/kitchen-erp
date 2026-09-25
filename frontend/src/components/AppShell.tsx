@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation } from "react-router";
 import { CaptureSheet } from "./CaptureSheet";
 import { ChromeContext, type Chrome } from "./chrome";
 import { Nav } from "./Nav";
+import { NoticeProvider } from "./Notice";
 import { SearchPalette } from "./SearchPalette";
 import { focusRing } from "./ui";
 
@@ -126,7 +127,9 @@ export function AppShell() {
 
       <main id="main" tabIndex={-1} className="mx-auto w-full max-w-4xl flex-1 px-4 py-6 md:px-8 md:py-8">
         <ChromeContext.Provider value={chrome}>
-          <Outlet />
+          <NoticeProvider>
+            <Outlet />
+          </NoticeProvider>
         </ChromeContext.Provider>
       </main>
 
