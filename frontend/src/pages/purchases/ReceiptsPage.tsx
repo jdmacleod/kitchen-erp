@@ -42,7 +42,7 @@ export function ReceiptsPage() {
 
   return (
     <>
-      <PageHeader title="Receipts" />
+      <PageHeader title="Receipts" description="Upload a photo and its lines are read for you to review." />
       <div className="flex flex-col gap-6">
         <Card>
           <form onSubmit={submit} aria-labelledby="upload-heading" className="flex flex-col gap-3" noValidate>

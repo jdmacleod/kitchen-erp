@@ -18,10 +18,10 @@ export function PurchasesPage() {
 
   return (
     <>
-      <PageHeader title="Purchases">
+      <PageHeader title="Purchases" description="Everything you've bought, newest first. Drafts wait for you to finish them.">
         <div className="flex flex-wrap gap-2">
-          <Link to="/shop/shelf-prices" className={secondaryLinkClass}>
-            Shelf price
+          <Link to="/shop/receipts" className={secondaryLinkClass}>
+            Scan a receipt
           </Link>
           <Link to="/shop/purchases/new" className={primaryLinkClass}>
             New purchase
