@@ -22,15 +22,16 @@ export function NewPurchasePage() {
   const navigate = useNavigate();
   const navigateWithNotice = useNavigateWithNotice();
   const create = useCreatePurchase();
-  const [values, setValues] = useState(emptyPurchaseValues);
+  const routerLocation = useLocation();
+  const routerState = routerLocation.state as { firstPurchase?: boolean; locationId?: string } | null;
+  // A store chosen in Capture comes along; the location select keeps it (G2).
+  const [values, setValues] = useState(() => ({ ...emptyPurchaseValues(), vendor_location_id: routerState?.locationId ?? "" }));
   // Set by the first-run checklist's step two, and only there: that link exists
   // only while the household has no committed purchase, so the flag is true by
   // construction rather than by asking. Read once at mount, because this page
   // unmounts on success and the message has to be carried to where the user lands.
   // Someone who opens this form from the sidebar instead gets no acknowledgement;
   // that is the accepted cost of not putting a query on the weekly hot path.
-  const routerLocation = useLocation();
-  const routerState = routerLocation.state as { firstPurchase?: boolean } | null;
   const [firstPurchase] = useState(() => routerState?.firstPurchase === true);
   // Strip it from this entry as well as the destination's. Saving pushes a new
   // entry for the purchase, so pressing Back lands here again — and without this
