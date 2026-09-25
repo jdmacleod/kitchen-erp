@@ -443,7 +443,7 @@ function CheapestControl({ ingredient, onIngredient, filters, onFilters, unit, c
 
 function OpenBadge({ isOpen }: { isOpen: boolean | null | undefined }) {
   if (isOpen === null || isOpen === undefined) return <Badge>hours unknown</Badge>;
-  return isOpen ? <Badge tone="good">open</Badge> : <Badge tone="warn">closed</Badge>;
+  return isOpen ? <Badge>open</Badge> : <Badge tone="warn">closed</Badge>;
 }
 
 function LocationList({ items, loading, onSelect }: { items: VendorLocation[]; loading: boolean; onSelect: (id: string) => void }) {
@@ -662,7 +662,7 @@ function StallPanel({ stall, market, at, onBack, onClose }: { stall: VendorLocat
         <dt className="text-neutral-600 dark:text-neutral-400">Hours</dt>
         <dd>
           {describeOpeningHours(stall.effective_opening_hours)}{" "}
-          {stall.opening_hours_inherited ? <Badge>inherited from the market</Badge> : <Badge tone="good">own hours</Badge>}
+          {stall.opening_hours_inherited ? <Badge>inherited from the market</Badge> : <Badge>own hours</Badge>}
         </dd>
         <dt className="text-neutral-600 dark:text-neutral-400">At {new Date(at).toLocaleString()}</dt>
         <dd>

@@ -501,6 +501,13 @@ export const purchaseStatusLabel: Record<PurchaseStatus, string> = {
   committed: "Committed",
 };
 
+/** Badge tone per status (spec 08): a draft waits on a person, reviewed is neutral, committed is done. */
+export const purchaseStatusTone: Record<PurchaseStatus, "warn" | "neutral" | "good"> = {
+  draft: "warn",
+  reviewed: "neutral",
+  committed: "good",
+};
+
 export const resolutionLabel: Record<Resolution, string> = {
   barcode: "barcode",
   alias: "alias",

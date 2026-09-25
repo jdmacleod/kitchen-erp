@@ -34,7 +34,7 @@ export function IngredientOffers({ ingredient }: { ingredient: Ingredient }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm" aria-label="Offers">
             <thead>
-              <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+              <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                 <th className="py-2 pr-3">Product</th>
                 <th className="py-2 pr-3 text-right">Quality</th>
                 <th className="py-2 pr-3">Where</th>
@@ -50,7 +50,7 @@ export function IngredientOffers({ ingredient }: { ingredient: Ingredient }) {
                     <Link to={`/products/${o.product_id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                       {o.brand ? `${o.brand} ${o.product_name}` : o.product_name}
                     </Link>
-                    {formatPack(o.pack_qty, o.pack_unit) ? <span className="text-xs text-neutral-500"> · {formatPack(o.pack_qty, o.pack_unit)}</span> : null}
+                    {formatPack(o.pack_qty, o.pack_unit) ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {formatPack(o.pack_qty, o.pack_unit)}</span> : null}
                   </td>
                   <td className="py-2 pr-3 text-right">
                     <QualityText rating={o.quality_rating} />

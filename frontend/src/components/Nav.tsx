@@ -27,7 +27,7 @@ export const priceBookLinks = [
 function linkClass({ isActive }: { isActive: boolean }): string {
   return `block rounded-md px-3 py-2 text-sm font-medium ${focusRing} ${
     isActive
-      ? "bg-neutral-200 text-neutral-900 dark:bg-neutral-800 dark:text-neutral-50"
+      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
       : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
   }`;
 }
@@ -58,7 +58,7 @@ export function Nav({ id }: { id?: string }) {
         </li>
       </ul>
       <div>
-        <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Catalog</p>
+        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Catalog</p>
         <ul className="flex flex-col gap-0.5">
           {catalogLinks.map((link) => (
             <li key={link.to}>
@@ -70,7 +70,7 @@ export function Nav({ id }: { id?: string }) {
         </ul>
       </div>
       <div>
-        <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Purchases</p>
+        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Purchases</p>
         <ul className="flex flex-col gap-0.5">
           {purchaseLinks.map((link) => (
             <li key={link.to}>
@@ -82,7 +82,7 @@ export function Nav({ id }: { id?: string }) {
         </ul>
       </div>
       <div>
-        <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Price book</p>
+        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Price book</p>
         <ul className="flex flex-col gap-0.5">
           {priceBookLinks.map((link) => (
             <li key={link.to}>
@@ -94,7 +94,7 @@ export function Nav({ id }: { id?: string }) {
         </ul>
       </div>
       <div>
-        <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Settings</p>
+        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Settings</p>
         <ul className="flex flex-col gap-0.5">
           {settingsLinks.map((link) => (
             <li key={link.to}>

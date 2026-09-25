@@ -6,6 +6,7 @@ import {
   purchaseErrorMessage,
   purchaseLocationLabel,
   purchaseStatusLabel,
+  purchaseStatusTone,
   resolutionLabel,
   sourceLabel,
   usePurchase,
@@ -82,7 +83,7 @@ export function PurchaseDetailPage() {
       <>
         <PageHeader title={title}>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge tone="warn">{purchaseStatusLabel[p.status]}</Badge>
+            <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
             <span className="text-sm text-neutral-600 dark:text-neutral-400">{sourceLabel[p.source]}</span>
             <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
               All purchases
@@ -166,7 +167,7 @@ function CommittedPurchase({
             </Item>
             <Item label="Purchased">{formatDateTime(p.purchased_at)}</Item>
             <Item label="Status">
-              <Badge tone={p.status === "committed" ? "good" : "warn"}>{purchaseStatusLabel[p.status]}</Badge> <span>{sourceLabel[p.source]}</span>
+              <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge> <span>{sourceLabel[p.source]}</span>
             </Item>
             <Item label="Total">{p.total !== null ? formatMoney(p.total) : "—"}</Item>
             <Item label="Computed total">{p.computed_total !== null ? formatMoney(p.computed_total) : "—"}</Item>
@@ -190,7 +191,7 @@ function CommittedPurchase({
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Lines">
               <thead>
-                <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                   <th className="py-2 pr-3">#</th>
                   <th className="py-2 pr-3">Product</th>
                   <th className="py-2 pr-3 text-right">Qty</th>
@@ -262,7 +263,7 @@ function LineRow({ line }: { line: PurchaseLine }) {
           </span>
         )}
         {line.product && resolution && resolution !== "manual" ? (
-          <span className="ml-1 text-xs text-neutral-500">{resolutionLabel[resolution] ?? resolution}</span>
+          <span className="ml-1 text-xs text-neutral-600 dark:text-neutral-400">{resolutionLabel[resolution] ?? resolution}</span>
         ) : null}
       </td>
       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</td>

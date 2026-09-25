@@ -29,7 +29,7 @@ export function UsdaSuggestions({ name, canonicalUnit, onUseDensity, onAddMeasur
   return (
     <section
       aria-labelledby="usda-suggestions-heading"
-      className="rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/40"
+      className="rounded-md border border-neutral-300 bg-neutral-100 p-3 dark:border-neutral-700 dark:bg-neutral-900"
     >
       <h3 id="usda-suggestions-heading" className="text-sm font-medium">
         Reference suggestions

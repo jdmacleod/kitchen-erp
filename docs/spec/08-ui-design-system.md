@@ -62,7 +62,20 @@ Theme the surfaces browsers draw themselves, in both themes (G17): `::selection`
 
 ### Chart series
 
-The product price chart draws up to six vendor series, so it may use a six-hue series palette that exists for charts only (T13b). Choose the six hues at matched OKLCH lightness during UI-1, record their values here, and give each series a distinct line style as well, so colour is never the only signal. Series colours never appear outside charts.
+The product price chart draws up to six vendor series, so it may use a six-hue series palette that exists for charts only (T13b). Every series colour has lightness 0.60 and chroma 0.12, and measures at least 3.5:1 against both the light and the dark card, above the 3:1 floor for graphics. Each series also has its own dash pattern and marker, so colour is never the only signal. Series colours never appear outside charts.
+
+| Series | OKLCH | sRGB |
+|---|---|---|
+| 1 | `oklch(0.60 0.12 255)` | `#4C82C6` |
+| 2 | `oklch(0.60 0.12 40)` | `#BB6546` |
+| 3 | `oklch(0.60 0.12 140)` | `#57914A` |
+| 4 | `oklch(0.60 0.12 305)` | `#916CB9` |
+| 5 | `oklch(0.60 0.12 85)` | `#A1790C` |
+| 6 | `oklch(0.60 0.12 195)` | `#009696` |
+
+### Surfaces that can't read CSS
+
+MapLibre parses only sRGB colours, and the chart draws SVG strokes. Both take colour from `frontend/src/lib/palette.ts`, which holds each colour as its OKLCH source with an sRGB mirror. A unit test recomputes every mirror, and checks the neutrals against `theme.css`, so the two can't drift. Nothing else in the app may use a raw hex; a test enforces that too.
 
 ## Ingredient category accents
 
@@ -166,6 +179,10 @@ These are patterns, not a component library; build them as the pages need them.
 
 ## Map
 
-The map uses the self-hosted PMTiles extract from the Phase 1 spec. Style the basemap to sit on the cream palette: desaturated land in the `neutral-50`/`neutral-100` range, water in a muted tide blue, parks in a faint leaf, roads in `neutral-200`/`neutral-300`, and labels in `neutral-600`. Provide a dark-mode style that follows the espresso neutrals. MapLibre parses only sRGB colours, so the basemap takes hex mirrors from `lib/palette.ts` (rule 1's second exception); water and parks are the only basemap colours outside the five scales, desaturated so the pins stay the loudest thing on the map.
+The map uses the self-hosted PMTiles extract from the Phase 1 spec. The basemap is the Protomaps light or dark flavour, recoloured onto the palette:
+- **Light:** land on `neutral-50`, parks in a desaturated leaf, water in a muted tide blue, roads in `neutral-200`/`neutral-300`.
+- **Dark:** the same roles on the espresso neutrals.
+- **Labels:** the map has none, because its label layers would need fonts from a CDN.
+- **Colours:** MapLibre parses only sRGB, so the basemap takes hex mirrors from `lib/palette.ts` (rule 1's second exception). Water and parks are its only colours outside the five scales, desaturated so the pins stay the loudest thing on the map.
 
-Vendor pins are walnut (`neutral-800`), with herb for the selected pin. They keep their shape per vendor kind, so kinds stay distinguishable without colour (T13): square for a chain, circle for an independent, diamond for a market, triangle for a stand. The existing `kerp-pin--{kind}` classes and their tests stay. The map legend shows the four shapes.
+Vendor pins are walnut (`neutral-800`, and `neutral-200` in dark mode), with herb for the selected pin. They keep their shape per vendor kind, so kinds stay distinguishable without colour (T13): square for a chain, circle for an independent, diamond for a market, triangle for a stand. The existing `kerp-pin--{kind}` classes and their tests stay. The map legend shows the four shapes.

@@ -28,7 +28,7 @@ export function ProductPrices({ product }: { product: Product }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Latest price per location">
                 <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                     <th className="py-2 pr-3">Location</th>
                     <th className="py-2 pr-3 text-right">Price</th>
                     <th className="py-2 pr-3 text-right">Per {unit}</th>
@@ -42,7 +42,7 @@ export function ProductPrices({ product }: { product: Product }) {
                         <Link to={`/map?location=${encodeURIComponent(l.location_id)}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {l.location_name === l.vendor_name ? l.location_name : `${l.vendor_name} — ${l.location_name}`}
                         </Link>
-                        {l.price_scope === "chain" ? <span className="text-xs text-neutral-500"> · chain price</span> : null}
+                        {l.price_scope === "chain" ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · chain price</span> : null}
                       </td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
                         {formatMoney(l.price)} / {stripZeros(l.qty)} {l.unit} <PromoBadge promo={l.is_promo} />

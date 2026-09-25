@@ -29,7 +29,7 @@ export function NeedsBridgePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Needs a bridge">
               <thead>
-                <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                   <th className="py-2 pr-3">Ingredient</th>
                   <th className="py-2 pr-3">Product</th>
                   <th className="py-2 pr-3">Missing</th>
@@ -47,13 +47,13 @@ export function NeedsBridgePage() {
                         <Link to={`/ingredients/${item.ingredient.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {item.ingredient.name}
                         </Link>
-                        <span className="text-xs text-neutral-500"> · {item.ingredient.canonical_unit}</span>
+                        <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {item.ingredient.canonical_unit}</span>
                       </td>
                       <td className="py-2 pr-3">
                         <Link to={`/products/${item.product.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {productTitle(item.product)}
                         </Link>
-                        {formatPack(item.product.pack_qty, item.product.pack_unit) ? <span className="text-xs text-neutral-500"> · {formatPack(item.product.pack_qty, item.product.pack_unit)}</span> : null}
+                        {formatPack(item.product.pack_qty, item.product.pack_unit) ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {formatPack(item.product.pack_qty, item.product.pack_unit)}</span> : null}
                       </td>
                       <td className="py-2 pr-3">
                         <Badge tone="warn">{normStatusText[item.status]}</Badge>

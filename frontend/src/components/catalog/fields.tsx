@@ -102,15 +102,23 @@ export function RadioGroup<V extends string>({ name, legend, options, value, onC
   );
 }
 
+/**
+ * One tone per meaning (spec 08): olive for success, committed, cheapest and on sale;
+ * squash for drafts, warnings and guesses; tomato for failures; neutral for information.
+ * Never herb: herb means "you can act on this".
+ */
 const badgeTones = {
   neutral: "bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200",
   good: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
   warn: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
+  danger: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200",
 } as const;
 
-export function Badge({ tone = "neutral", children }: { tone?: keyof typeof badgeTones; children: ReactNode }) {
+export type BadgeTone = keyof typeof badgeTones;
+
+export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
-    <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap ${badgeTones[tone]}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badgeTones[tone]}`}>
       {children}
     </span>
   );

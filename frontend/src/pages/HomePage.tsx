@@ -6,7 +6,7 @@ import { useRecentCommittedPurchases, useToIdentify } from "../api/purchases";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { Lately } from "../components/landing/Lately";
 import { NeedsYou, type QueueSummary } from "../components/landing/NeedsYou";
-import { Alert, PageHeader, focusRing } from "../components/ui";
+import { Alert, PageHeader, primaryLinkClass } from "../components/ui";
 import { usePageTitle } from "../lib/usePageTitle";
 
 /**
@@ -123,7 +123,7 @@ export function HomePage() {
       <PageHeader title="Home">
         <Link
           to="/purchases/new"
-          className={`inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 ${focusRing}`}
+          className={primaryLinkClass}
         >
           New purchase
         </Link>

@@ -27,7 +27,7 @@ import {
 import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -193,7 +193,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
           <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
             {adding ? "Cancel" : "Add a location"}
           </Button>
-          <Link to={`/map?place=location`} className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Link to={`/map?place=location`} className={secondaryLinkClass}>
             Add on the map
           </Link>
         </div>
@@ -331,7 +331,7 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
             {home ? ` · from ${home.name}` : ""}
             {location.osm_id ? ` · OSM ${location.osm_type} ${location.osm_id}` : ""}
           </p>
-          <p className="font-mono text-xs text-neutral-500">{formatLatLon(location.lat, location.lon)}</p>
+          <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
         </div>
         <div className="flex flex-wrap gap-1">
           <Link to={`/map?location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>

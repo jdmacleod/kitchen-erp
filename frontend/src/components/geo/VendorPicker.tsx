@@ -65,7 +65,7 @@ export function VendorPicker({ id, label = "Vendor", value, onChange, allowCreat
               </>
             ) : (
               <>
-                <span className="font-medium">{value.name}</span> <Badge tone="good">new vendor</Badge>
+                <span className="font-medium">{value.name}</span> <Badge>new vendor</Badge>
               </>
             )}
           </span>

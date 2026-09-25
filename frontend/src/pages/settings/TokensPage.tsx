@@ -139,7 +139,7 @@ function TokenRow({ token }: { token: ApiToken }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div className="min-w-0">
-        <p className={`font-medium ${revoked ? "text-neutral-500 line-through" : ""}`}>{token.name}</p>
+        <p className={`font-medium ${revoked ? "text-neutral-600 dark:text-neutral-400 line-through" : ""}`}>{token.name}</p>
         <p className="text-xs text-neutral-600 dark:text-neutral-400">
           Created <time dateTime={token.created_at}>{formatDateTime(token.created_at)}</time>
           {" · "}

@@ -368,7 +368,7 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
       </div>
 
       <div className="flex flex-col gap-3">
-        <div className="hidden gap-2 px-1 text-xs font-semibold tracking-wide text-neutral-500 uppercase sm:grid sm:grid-cols-[minmax(0,3fr)_5rem_6rem_7rem_7rem_4rem]">
+        <div className="hidden gap-2 px-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400 sm:grid sm:grid-cols-[minmax(0,3fr)_5rem_6rem_7rem_7rem_4rem]">
           <span>Product</span>
           <span>Qty</span>
           <span>Unit</span>
