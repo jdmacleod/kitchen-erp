@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import {
   formatPack,
+  ingredientSummary,
   productTitle,
   useCreateProduct,
   useIngredient,
@@ -17,6 +18,7 @@ import { ProductTypeahead } from "../../components/catalog/ProductTypeahead";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { ProductForm, emptyProductValues, validateProductValues, type ProductFormValues } from "./ProductForm";
+import { CategoryChip } from "../../components/CategoryChip";
 
 export function ProductsPage() {
   usePageTitle("Products");
@@ -25,9 +27,7 @@ export function ProductsPage() {
   const presetId = params.get("ingredient_id") ?? undefined;
   // When arriving from an ingredient page, preselect that ingredient once it loads.
   const preset = useIngredient(presetId);
-  const presetSummary: IngredientSummary | null = preset.data
-    ? { id: preset.data.id, name: preset.data.name, canonical_unit: preset.data.canonical_unit, active: preset.data.active }
-    : null;
+  const presetSummary: IngredientSummary | null = preset.data ? ingredientSummary(preset.data) : null;
 
   return (
     <>
@@ -169,6 +169,7 @@ function RecentProducts() {
                 </Link>
                 <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
                   <span>{p.ingredient.name}</span>
+                  <CategoryChip category={p.ingredient.category} categoryKey={p.ingredient.category_key} />
                   {formatPack(p.pack_qty, p.pack_unit) ? <span>{formatPack(p.pack_qty, p.pack_unit)}</span> : null}
                   {p.barcode ? <span className="font-mono">{p.barcode}</span> : null}
                   {p.active ? null : <Badge tone="warn">inactive</Badge>}

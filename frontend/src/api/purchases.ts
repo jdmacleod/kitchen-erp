@@ -4,6 +4,7 @@
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { qs, validationMessages, type CanonicalUnit, type Page, type ProductCreateInput } from "./catalog";
+import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
 
@@ -19,7 +20,7 @@ export interface ObservationProduct {
   brand: string | null;
   pack_qty: string | null;
   pack_unit: string | null;
-  ingredient: { id: string; name: string; canonical_unit: CanonicalUnit };
+  ingredient: { id: string; name: string; canonical_unit: CanonicalUnit; category: string | null; category_key: CategoryKey | null };
 }
 
 export interface ObservationLocation {
@@ -60,6 +61,9 @@ export interface PurchaseLineProduct {
   brand: string | null;
   pack_qty: string | null;
   pack_unit: string | null;
+  /** The product's ingredient's category and its display key. */
+  category: string | null;
+  category_key: CategoryKey | null;
 }
 
 export type Resolution = "barcode" | "alias" | "fuzzy" | "llm" | "manual" | "unmatched" | "ignored";

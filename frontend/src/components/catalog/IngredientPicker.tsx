@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { errorMessage } from "../../api/client";
-import { useIngredientSearch, type IngredientSummary } from "../../api/catalog";
+import { ingredientSummary, useIngredientSearch, type IngredientSummary } from "../../api/catalog";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { Button } from "../ui";
 import { Badge, labelClass } from "./fields";
@@ -47,7 +47,7 @@ export function IngredientPicker({
 
   const options: Option[] = found.map((i) => ({
     kind: "existing",
-    ingredient: { id: i.id, name: i.name, canonical_unit: i.canonical_unit, active: i.active },
+    ingredient: ingredientSummary(i),
   }));
   const exact = found.some((i) => i.name.toLowerCase() === trimmed.toLowerCase());
   if (allowCreate && trimmed && settled && !exact) {

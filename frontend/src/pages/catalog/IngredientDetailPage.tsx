@@ -25,6 +25,7 @@ import { TestBench } from "../../components/catalog/TestBench";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { CategoryChip } from "../../components/CategoryChip";
 
 export function IngredientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -93,7 +94,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           {ingredient.category ? (
             <>
               <span aria-hidden="true">·</span>
-              <span>{ingredient.category}</span>
+              <CategoryChip category={ingredient.category} categoryKey={ingredient.category_key} />
             </>
           ) : null}
           <span aria-hidden="true">·</span>

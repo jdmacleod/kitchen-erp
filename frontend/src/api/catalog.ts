@@ -9,6 +9,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
+import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { ListResponse } from "./types";
 
@@ -52,12 +53,16 @@ export interface IngredientSummary {
   name: string;
   canonical_unit: CanonicalUnit;
   active: boolean;
+  category: string | null;
+  /** The backend's display key for `category` (D12); null when it has none. */
+  category_key: CategoryKey | null;
 }
 
 export interface Ingredient {
   id: string;
   name: string;
   category: string | null;
+  category_key: CategoryKey | null;
   canonical_unit: CanonicalUnit;
   density_g_per_ml: string | null;
   density_source: BridgeSource | null;
@@ -69,6 +74,11 @@ export interface Ingredient {
   measures: Measure[];
   created_at: string;
   updated_at: string;
+}
+
+/** The summary shape of a full ingredient, as product responses carry it. */
+export function ingredientSummary(i: Ingredient): IngredientSummary {
+  return { id: i.id, name: i.name, canonical_unit: i.canonical_unit, active: i.active, category: i.category, category_key: i.category_key };
 }
 
 export interface Product {

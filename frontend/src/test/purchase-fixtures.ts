@@ -1,6 +1,6 @@
 // Synthetic Phase 2 records for tests: an invented store, invented products,
 // fixed v7-shaped ids, and prices that exercise the decimal arithmetic.
-import type { Observation, Purchase, PurchaseLine } from "../api/purchases";
+import type { Observation, Purchase, PurchaseLine, PurchaseLineProduct } from "../api/purchases";
 import { flourId, flourProductId, hits } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
 
@@ -15,7 +15,7 @@ export const observationOk: Observation = {
     brand: "Millstone",
     pack_qty: "5",
     pack_unit: "lb",
-    ingredient: { id: flourId, name: "all-purpose flour", canonical_unit: "g" },
+    ingredient: { id: flourId, name: "all-purpose flour", canonical_unit: "g", category: "pantry", category_key: "pantry" },
   },
   vendor_location: { id: chainLocationId, name: chainLocation.name, vendor: chainLocation.vendor },
   purchase_line_id: null,
@@ -76,7 +76,7 @@ export const manualPurchase: Purchase = {
       seq: 1,
       raw_text: null,
       line_kind: "item",
-      product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb" },
+      product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" },
       parent_line_id: null,
       qty: "2.31",
       unit: "lb",
@@ -91,7 +91,7 @@ export const manualPurchase: Purchase = {
       seq: 2,
       raw_text: null,
       line_kind: "item",
-      product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit },
+      product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit, category: hits[1].ingredient.category, category_key: hits[1].ingredient.category_key },
       parent_line_id: null,
       qty: "1",
       unit: "each",
@@ -112,7 +112,7 @@ export const receiptPurchaseId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8003";
 export const receiptDocumentId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9001";
 export const ingestJobId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9101";
 
-export const milkProduct = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d03", name: "Whole Milk", brand: "Coastline", pack_qty: "1", pack_unit: "gal" };
+export const milkProduct: PurchaseLineProduct = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d03", name: "Whole Milk", brand: "Coastline", pack_qty: "1", pack_unit: "gal", category: "Dairy", category_key: "dairy" };
 
 const receiptLineBase = {
   parent_line_id: null,
@@ -130,7 +130,7 @@ export const aliasLine: PurchaseLine = {
   raw_text: "MLSTN AP FLOUR 5LB",
   raw_text_norm: "MLSTN AP FLOUR",
   line_kind: "item",
-  product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb" },
+  product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" },
   qty: "1",
   unit: "each",
   unit_price: "4.9900",

@@ -18,6 +18,7 @@ import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../co
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
+import { CategoryChip } from "../../components/CategoryChip";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -79,7 +80,8 @@ function ProductDetail({ product }: { product: Product }) {
             Ingredient{" "}
             <Link to={`/ingredients/${product.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {product.ingredient.name}
-            </Link>
+            </Link>{" "}
+            <CategoryChip category={product.ingredient.category} categoryKey={product.ingredient.category_key} />
           </span>
           <span aria-hidden="true">·</span>
           <span>

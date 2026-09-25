@@ -37,7 +37,7 @@ describe("receipt review", () => {
           ...purchase,
           lines: purchase.lines.map((l) =>
             l.id === unmatchedLine.id
-              ? { ...l, product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit }, resolution: "fuzzy", resolved_by: adminUser.id, suggestions: [] }
+              ? { ...l, product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit, category: hits[1].ingredient.category, category_key: hits[1].ingredient.category_key }, resolution: "fuzzy", resolved_by: adminUser.id, suggestions: [] }
               : l,
           ),
         };
@@ -109,7 +109,7 @@ describe("receipt review", () => {
       [`POST ${base}/lines/${unmatchedLine.id}/resolve`]: () => {
         purchase = {
           ...purchase,
-          lines: purchase.lines.map((l) => (l.id === unmatchedLine.id ? { ...l, product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb" }, resolution: "manual", resolved_by: adminUser.id, suggestions: [] } : l)),
+          lines: purchase.lines.map((l) => (l.id === unmatchedLine.id ? { ...l, product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" }, resolution: "manual", resolved_by: adminUser.id, suggestions: [] } : l)),
         };
         return jsonResponse(200, purchase);
       },
