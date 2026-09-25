@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
 
 // Every name carries a per-run stamp so repeated runs never collide. The
 // vendor, the location (in the synthetic Pacific box from SECURITY.md), and
 // the product are invented; nothing here resembles a real receipt.
-const stamp = Date.now().toString(36);
+const stamp = nextTag();
 
 interface Seeded {
   purchaseId: string;

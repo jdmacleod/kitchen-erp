@@ -1,22 +1,21 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
 
 // Every name carries a per-run stamp so repeated runs never collide. The vendor,
 // the location (in the synthetic Pacific box from SECURITY.md) and the product
 // are invented; nothing here resembles a real shop or a real receipt.
 //
-// Unique per run and per project: the two Playwright projects run in parallel
+// Unique per run and per project: the three Playwright projects run in parallel
 // against one backend, and the catalog rejects a duplicate ingredient name with
 // a 409. One scenario, so one seed — every location this spec creates also lands
 // on the shared map that `map.spec.ts` is interacting with at the same time.
-const nextTag = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 /**
  * The landing route, for a household that is already set up.
  *
  * This spec establishes its own precondition rather than reading global state.
- * The suite runs two projects in parallel against one backend and `review.spec`
+ * The suite runs three projects in parallel against one backend and `review.spec`
  * creates a committed purchase while this one runs, so "the database is empty"
  * and "the database is not empty" are both coin flips here. Seeding first makes
  * the assertion deterministic.

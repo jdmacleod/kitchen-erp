@@ -36,8 +36,10 @@ describe("map", () => {
     act(() => map.fire("error", { error: new Error("Failed to load worker") }));
 
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(/The map could not finish loading/);
-    expect(alert).toHaveTextContent(/Reload the page/);
+    expect(alert).toHaveTextContent(/Part of the map could not be loaded/);
+    // The advice is conditional on purpose: the same event covers one failed
+    // tile and a map that drew nothing, and reloading only helps the second.
+    expect(alert).toHaveTextContent(/If the map is blank, reload the page/);
     expect(alert).toHaveTextContent(/map_error: Failed to load worker/);
   });
 

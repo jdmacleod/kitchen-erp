@@ -32,15 +32,22 @@ const EMPTY_CENTER_LON = -120.5;
 const EMPTY_CENTER_LAT = 33.5;
 
 /**
- * MapLibre reports failures as plain Error objects with no code of their own.
- * The one that matters here is a tile-parsing worker that never started: every
- * vector tile then fails to parse and the map renders nothing at all. Reloading
- * fetches the current asset hashes, which is the fix when a browser held a
- * cached chunk that outlived the build it came from.
+ * MapLibre reports failures as plain Error objects with no code of their own,
+ * and the same `error` event covers both a single tile that would not load and
+ * a tile-parsing worker that never started. `ErrorEvent` exposes only
+ * `error: ErrorLike` plus an untyped `data` bag, so there is no supported way
+ * to tell those apart: keying off an undocumented `sourceId` would suppress the
+ * dead-worker case, which is the one this exists to catch, because a dead
+ * worker surfaces as its source failing to load tiles.
+ *
+ * So the wording claims only what is known. "Part of the map" is true of a lone
+ * failed tile and of a map that drew nothing, and the reload advice is hung on
+ * "if the map is blank", which is the one thing the viewer can check and the
+ * only case where reloading helps.
  */
 export function mapErrorMessage(error: unknown): string {
   const detail = error instanceof Error ? error.message : String(error ?? "unknown");
-  return `The map could not finish loading. Reload the page — after an update the browser can keep a stale copy of the map code. (map_error: ${detail})`;
+  return `Part of the map could not be loaded. If the map is blank, reload the page — after an update the browser can keep a stale copy of the map code. (map_error: ${detail})`;
 }
 
 export type PinKind = VendorKind | "home";

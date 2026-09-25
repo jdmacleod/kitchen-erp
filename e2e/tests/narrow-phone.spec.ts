@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
 
-// Names carry a per-run stamp so repeated runs never collide on the
-// case-insensitive unique index.
-const stamp = Date.now().toString(36);
+// Names carry a per-run, per-worker stamp: repeated runs never collide on the
+// case-insensitive unique index, and neither do the three projects this spec
+// runs in, whose workers start within the same millisecond of each other.
+const stamp = nextTag();
 
 /** The widest thing on the purchase form is the Location option text, so the
  * regression needs a location whose name is genuinely long. Invented, and the
