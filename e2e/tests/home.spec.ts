@@ -75,7 +75,8 @@ test("a set-up household lands on the home page and can start a purchase from it
   await expect(page.getByText("Add somewhere you shop")).toHaveCount(0);
 
   // New purchase lives under Capture now, not in the nav (UI-2.14).
-  await page.getByRole("main").getByRole("button", { name: "Capture" }).click();
+  // The header's primary action; an empty inbox offers Capture again in its card.
+  await page.getByRole("main").getByRole("button", { name: "Capture" }).first().click();
   await page.getByRole("dialog", { name: "Capture" }).getByRole("link", { name: /Enter a purchase/ }).click();
   await expect(page).toHaveURL(/\/shop\/purchases\/new$/);
   await expect(page.getByRole("button", { name: "Save purchase" })).toBeVisible();

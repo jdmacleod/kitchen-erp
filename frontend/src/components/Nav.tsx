@@ -82,7 +82,7 @@ export function visibleSections(sections: NavSection[], features: readonly strin
 }
 
 function sectionClass(active: boolean): string {
-  return `flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm ${focusRing} ${
+  return `flex min-h-11 items-center justify-between gap-2 rounded-md px-3 text-sm lg:min-h-10 ${focusRing} ${
     active
       ? "bg-blue-100 font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-100"
       : "font-medium text-neutral-700 hover:bg-neutral-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
@@ -90,7 +90,7 @@ function sectionClass(active: boolean): string {
 }
 
 function itemClass({ isActive }: { isActive: boolean }): string {
-  return `flex min-h-9 items-center rounded-md px-3 text-sm ${focusRing} ${
+  return `flex min-h-11 items-center rounded-md px-3 text-sm lg:min-h-9 ${focusRing} ${
     isActive
       ? "bg-white font-medium text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
       : "text-neutral-700 hover:bg-neutral-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
@@ -104,7 +104,9 @@ function itemClass({ isActive }: { isActive: boolean }): string {
 export function InboxBadge() {
   const inbox = useInbox();
   const pill = "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold";
-  if (inbox.isError && !inbox.data) {
+  // Checked before the count: after a failed refresh the last answer is still
+  // cached, and showing it would claim a check that did not happen (D6).
+  if (inbox.isError) {
     return (
       <span role="img" aria-label="Couldn't check what needs you" className={`${pill} bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100`}>
         !

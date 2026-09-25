@@ -85,14 +85,19 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   // The page stays and turns Committed, with how many prices the commit added and,
   // when drafts remain, a way to the next one (G9).
   const announceCommit = async (committed: Purchase) => {
-    const n = committed.lines.filter((l) => l.observation_id).length;
-    const message = `Committed. ${n} ${n === 1 ? "price" : "prices"} added to the price book.`;
+    // Only the prices this commit made. A recommit keeps the observations of
+    // lines that did not change, and those were in the price book already.
+    const before = new Set(purchase.lines.map((l) => l.observation_id).filter(Boolean));
+    const n = committed.lines.filter((l) => l.observation_id && !before.has(l.observation_id)).length;
+    const message =
+      n === 0
+        ? "Committed. Its prices were already in the price book."
+        : `Committed. ${n} ${n === 1 ? "price" : "prices"} added to the price book.`;
+    // Said at once. "Next draft" joins it when the lookup answers, and only if
+    // this notice is still showing: a reopen in the meantime dismisses it.
+    const id = notice.show({ tone: "success", message });
     const next = await fetchNextDraft(committed.id).catch(() => null);
-    notice.show({
-      tone: "success",
-      message,
-      action: next ? { label: "Next draft", to: `/shop/purchases/${next.id}` } : undefined,
-    });
+    if (next) notice.update(id, { action: { label: "Next draft", to: `/shop/purchases/${next.id}` } });
   };
 
   // Something to focus once the next render has put it in the document.

@@ -27,11 +27,17 @@ interface Shown extends NoticeData {
 }
 
 interface NoticeApi {
-  show: (notice: NoticeData) => void;
+  /** Show a notice, replacing any other; returns its id for `update`. */
+  show: (notice: NoticeData) => string;
+  /**
+   * Change a notice that is still showing, e.g. to add an action once it is known.
+   * A notice that was dismissed or replaced in the meantime stays gone.
+   */
+  update: (id: string, patch: Partial<NoticeData>) => void;
   dismiss: () => void;
 }
 
-const NoticeContext = createContext<NoticeApi>({ show: () => {}, dismiss: () => {} });
+const NoticeContext = createContext<NoticeApi>({ show: () => "", update: () => {}, dismiss: () => {} });
 
 export function useNotice(): NoticeApi {
   return useContext(NoticeContext);
@@ -61,8 +67,16 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
   const [shown, setShown] = useState<Shown | null>(null);
 
   const show = useCallback(
-    (notice: NoticeData) => setShown({ ...notice, id: `shown-${++nextId}`, pathname: location.pathname }),
+    (notice: NoticeData) => {
+      const id = `shown-${++nextId}`;
+      setShown({ ...notice, id, pathname: location.pathname });
+      return id;
+    },
     [location.pathname],
+  );
+  const update = useCallback(
+    (id: string, patch: Partial<NoticeData>) => setShown((current) => (current?.id === id ? { ...current, ...patch } : current)),
+    [],
   );
   const dismiss = useCallback(() => setShown(null), []);
 
@@ -91,7 +105,7 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timer);
   }, [shown]);
 
-  const api = useMemo(() => ({ show, dismiss }), [show, dismiss]);
+  const api = useMemo(() => ({ show, update, dismiss }), [show, update, dismiss]);
   // A notice belongs to the page it was shown on.
   const visible = shown && shown.pathname === location.pathname ? shown : null;
 
@@ -132,7 +146,7 @@ function NoticeRegion({ notice, onDismiss }: { notice: Shown | null; onDismiss: 
             type="button"
             aria-label="Dismiss"
             onClick={onDismiss}
-            className={`-my-1 inline-flex size-8 items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10 ${focusRing}`}
+            className={`-my-1 inline-flex size-11 items-center justify-center rounded-md hover:bg-black/5 lg:size-8 dark:hover:bg-white/10 ${focusRing}`}
           >
             <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
