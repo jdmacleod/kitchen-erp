@@ -15,6 +15,8 @@ interface DialogProps {
   placement?: "center" | "sheet";
   /** Where focus goes on open; the first focusable element otherwise. */
   initialFocus?: RefObject<HTMLElement | null>;
+  /** Set to false before closing by navigating, so focus goes to the new page. */
+  returnFocus?: RefObject<boolean>;
   className?: string;
   children: ReactNode;
 }
@@ -23,7 +25,7 @@ interface DialogProps {
  * A modal over a scrim. Focus moves in on open, Tab stays inside, Escape or a click
  * on the scrim closes it, and focus returns to whatever opened it.
  */
-export function Dialog({ open, onClose, labelledBy, placement = "center", initialFocus, className = "", children }: DialogProps) {
+export function Dialog({ open, onClose, labelledBy, placement = "center", initialFocus, returnFocus, className = "", children }: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -57,11 +59,13 @@ export function Dialog({ open, onClose, labelledBy, placement = "center", initia
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      // Back to the opener, unless closing moved focus somewhere on purpose (a
-      // result that navigated, for instance, leaves the opener behind).
-      if (opener?.isConnected) opener.focus();
+      // A dismissal returns focus to the opener. A close that navigated (a
+      // search result, a Capture mode) sends it to the new page's content, so
+      // keyboard and screen-reader users start where they arrived.
+      if (returnFocus && !returnFocus.current) document.getElementById("main")?.focus();
+      else if (opener?.isConnected) opener.focus();
     };
-  }, [open, initialFocus]);
+  }, [open, initialFocus, returnFocus]);
 
   if (!open) return null;
 

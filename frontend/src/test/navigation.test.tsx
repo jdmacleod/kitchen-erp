@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it } from "vitest";
@@ -238,5 +238,70 @@ describe("Capture (UI-2.10)", () => {
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
+  });
+});
+
+describe("review follow-ups on the shell", () => {
+  it("does not open a result from an earlier search on Enter", async () => {
+    let answer: (r: Response) => void = () => {};
+    let calls = 0;
+    const navCalls = mount({
+      "GET /search": () => {
+        calls += 1;
+        // The first search answers at once; the second never does.
+        return calls === 1 ? jsonResponse(200, results) : new Promise<Response>((r) => (answer = r));
+      },
+    });
+    await screen.findByRole("heading", { name: "System" });
+    const user = userEvent.setup();
+    await user.keyboard("{Control>}k{/Control}");
+    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    const box = within(dialog).getByRole("combobox");
+    await user.type(box, "basil");
+    await within(dialog).findByRole("listbox");
+
+    await user.type(box, "x");
+    await user.keyboard("{Enter}");
+    // Still searching for "basilx": nothing opened, and the old list is not offered.
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
+    await waitFor(() => expect(navCalls.filter((c) => c.path.startsWith("/search")).length).toBe(2));
+    answer(jsonResponse(200, results));
+    expect(await within(dialog).findByRole("listbox")).toBeInTheDocument();
+  });
+
+  it("sends focus to the new page after a result is chosen, not back to Search", async () => {
+    mount({ "GET /search": () => jsonResponse(200, results) });
+    await screen.findByRole("heading", { name: "System" });
+    const user = userEvent.setup();
+    await user.click(screen.getAllByRole("button", { name: /^Search/ })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Search" });
+    await user.type(within(dialog).getByRole("combobox"), "basil");
+    await within(dialog).findByRole("listbox");
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("shows ! when a refresh fails, even with an older count cached (D6)", async () => {
+    let ok = true;
+    const { client } = (() => {
+      mockApi({
+        "GET /auth/me": () => jsonResponse(200, adminUser),
+        "GET /health": () => jsonResponse(200, { status: "ok" }),
+        "GET /inbox": () =>
+          ok
+            ? jsonResponse(200, { items: [{ kind: "identify", title: "1 receipt line to identify", detail: "", action_label: "Review lines", action_route: "/shop/receipts/identify", created_at: "2026-09-24T18:00:00Z" }], reading: { count: 0, oldest_at: null, stalled: false } })
+            : errorResponse(500, "internal", "boom"),
+      });
+      return renderApp("/settings/system");
+    })();
+    expect((await screen.findAllByLabelText("1 thing needs you")).length).toBeGreaterThan(0);
+    ok = false;
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["inbox"] });
+    });
+    expect((await screen.findAllByRole("img", { name: "Couldn't check what needs you" })).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("1 thing needs you")).not.toBeInTheDocument();
   });
 });
