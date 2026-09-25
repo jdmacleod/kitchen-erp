@@ -254,6 +254,7 @@ async def needs_bridge(db: AsyncSession) -> list[dict]:
             SELECT p.id AS product_id, p.name, p.brand, p.pack_qty, p.pack_unit,
                    i.id AS ingredient_id, i.name AS ingredient_name, i.canonical_unit,
                    pc.norm_status AS status, count(*) AS observation_count,
+                   min(pc.observed_at) AS first_observed_at,
                    max(pc.observed_at) AS latest_observed_at
             FROM price_current pc
             JOIN product p ON p.id = pc.product_id

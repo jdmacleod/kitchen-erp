@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import time
+from functools import cache
 from pathlib import Path
 
 import httpx
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from alembic.util.exc import CommandError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,11 +19,46 @@ from app.schemas.health import Check, HealthOut
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def expected_migration_head() -> str | None:
+@cache
+def _scripts() -> ScriptDirectory:
+    """The build's migration scripts. They never change at runtime, and /health is
+    polled, so they are read from disk once per process."""
     cfg = Config(str(_BACKEND_ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(_BACKEND_ROOT / "alembic"))
-    heads = ScriptDirectory.from_config(cfg).get_heads()
+    return ScriptDirectory.from_config(cfg)
+
+
+def expected_migration_head() -> str | None:
+    heads = _scripts().get_heads()
     return heads[0] if heads else None
+
+
+# Each navigation section and the migration that built its tables. The client shows
+# a section only when its feature is listed (docs/spec/09, "Phase gating"); a later
+# phase adds its row here with the migration that introduces it.
+FEATURE_MIGRATIONS: tuple[tuple[str, str], ...] = (
+    ("catalog", "0003"),
+    ("shop", "0005"),
+)
+
+
+def features(current_revision: str | None) -> list[str]:
+    """The sections whose migrations the database has applied, in navigation order.
+
+    Keyed to the database's revision rather than the build's head, so the list says
+    what is actually migrated. An unknown or missing revision yields no features;
+    the client then shows its Phase 1–2 defaults (D11).
+    """
+    if not current_revision:
+        return []
+    try:
+        walk = _scripts().walk_revisions(base="base", head=current_revision)
+        applied = {rev.revision for rev in walk}
+    except CommandError:
+        # A revision this build does not know, e.g. a newer database: say nothing
+        # rather than guess. The migrations check already reports the mismatch.
+        return []
+    return [name for name, revision in FEATURE_MIGRATIONS if revision in applied]
 
 
 async def check_database(db: AsyncSession) -> Check:

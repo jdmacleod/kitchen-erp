@@ -26,3 +26,6 @@ class HealthOut(ApiModel):
     version: str | None = None
     commit: str | None = None
     is_dev: bool | None = None
+    # The navigation sections whose migrations are applied (docs/spec/09). Also
+    # authenticated-only, like the build identity.
+    features: list[str] | None = None

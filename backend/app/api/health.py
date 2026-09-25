@@ -18,10 +18,14 @@ async def health(db: DbSession, user: OptionalUser, response: Response) -> Healt
     if user is None:
         return HealthOut(status=result.status)
     settings = get_settings()
+    migrations = (result.checks or {}).get("migrations")
+    current = (migrations.detail or {}).get("current") if migrations else None
+    # Sent even with a 503: the navigation needs it most when something is wrong.
     return result.model_copy(
         update={
             "version": settings.build_version,
             "commit": settings.build_commit,
             "is_dev": is_dev_build(settings.build_version, settings.build_commit),
+            "features": health_service.features(current),
         }
     )

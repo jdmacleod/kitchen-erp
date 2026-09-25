@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     household_timezone: str = "America/Los_Angeles"
     currency: str = "USD"
     ingest_lock_timeout_seconds: int = 600
+    # After this long in flight, Home says reading has stalled rather than implying
+    # progress: a stopped worker must not look like a busy one (D21).
+    ingest_stall_minutes: int = 10
 
     # Resolution ladder.
     price_outlier_factor: Decimal = Decimal("2")  # flag when implied unit price is off by this
