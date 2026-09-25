@@ -21,6 +21,10 @@ Where this package records a decision, treat it as settled unless implementation
 | `05-later-phase-design-notes.md` | Decisions already made for Phases 3–6; context only |
 | `06-open-questions.md` | Tensions found in the 2026-09-21 review; every recommendation was accepted and folded into the documents above |
 | `07-phase-3-recipes-and-costing.md` | Phase 3 specified to implementation depth; a draft awaiting approval |
+| `08-ui-design-system.md` | UI palette, category accents, typography, shape, core components, accessibility floor, map styling |
+| `09-information-architecture.md` | Workflow-based navigation, routes and redirects, search, capture, the unified inbox, phone and tablet tabs |
+| `10-page-layouts.md` | Approved layout of each desktop and phone page, with their states |
+| `11-ui-acceptance-criteria.md` | UI sub-phases UI-1 to UI-4 with numbered acceptance criteria; approved alongside Phases 1–2, with later-phase criteria marked dormant |
 
 ## Roadmap
 
