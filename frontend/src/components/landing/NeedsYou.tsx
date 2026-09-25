@@ -32,7 +32,7 @@ export interface QueueSummary {
   isError: boolean;
 }
 
-const sectionLabel = "text-xs font-semibold tracking-wide text-neutral-500 uppercase";
+const sectionLabel = "text-xs font-semibold text-neutral-600 dark:text-neutral-400";
 
 export function NeedsYou({ queues }: { queues: QueueSummary[] }) {
   const failed = queues.filter((q) => q.isError);

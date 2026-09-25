@@ -204,10 +204,10 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled }: Inlin
       role="group"
       aria-label="New product"
       onKeyDown={onKeyDown}
-      className="flex flex-col gap-3 rounded-md border border-blue-200 bg-blue-50/40 p-3 dark:border-blue-900 dark:bg-blue-950/30"
+      className="flex flex-col gap-3 rounded-md border border-neutral-300 bg-neutral-100 p-3 dark:border-neutral-700 dark:bg-neutral-900"
     >
       <p className="text-sm font-medium">
-        New product <Badge tone="good">created with this entry</Badge>
+        New product <Badge>created with this entry</Badge>
       </p>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {create.error ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}

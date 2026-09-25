@@ -84,9 +84,9 @@ describe("build identity line", () => {
   });
 
   it("keeps the contrast token the design review measured", async () => {
-    // A class assertion proves a string, not a ratio. neutral-600 was measured at
-    // 7.5:1 on the #fafafa sidebar; neutral-400, the next step down, is 2.5:1 and
-    // fails AA. This is a regression guard on that choice, not a contrast proof.
+    // A class assertion proves a string, not a ratio. neutral-600 measures 5.6:1 on
+    // the neutral-100 sidebar in the Market palette; neutral-400 is 2.2:1 and fails
+    // AA. This is a regression guard on that choice, not a contrast proof.
     mountWith(health({ version: "v0.2.0", commit: "a1b2c3d", is_dev: false }));
 
     const line = await screen.findByTestId("build-identity");

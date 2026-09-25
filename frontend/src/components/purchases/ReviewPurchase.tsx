@@ -234,7 +234,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Receipt lines">
                 <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                     <th className="py-2 pr-2">#</th>
                     <th className="py-2 pr-2">Receipt says</th>
                     <th className="py-2 pr-2">Parsed</th>
@@ -472,7 +472,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
       data-testid="review-line"
       data-quiet={quiet ? "true" : undefined}
       onFocus={onFocus}
-      className={`align-top ${focusRing} ${current ? "bg-blue-50/60 dark:bg-blue-950/30" : ""} ${quiet ? "text-neutral-500 dark:text-neutral-500" : ""} ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}
+      className={`align-top ${focusRing} ${current ? "bg-neutral-100 dark:bg-neutral-900" : ""} ${quiet ? "text-neutral-600 dark:text-neutral-400" : ""} ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}
     >
       <td className="py-2 pr-2 pl-1 tabular-nums">
         {line.seq}
@@ -491,7 +491,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
       <td className="py-2 pr-2">
         <span className="font-mono text-xs break-all">{line.raw_text ?? "—"}</span>
         {line.raw_text_norm && line.raw_text_norm !== line.raw_text ? (
-          <span className="block text-[11px] text-neutral-500">{line.raw_text_norm}</span>
+          <span className="block text-[11px] text-neutral-600 dark:text-neutral-400">{line.raw_text_norm}</span>
         ) : null}
       </td>
       <td className="py-2 pr-2 whitespace-nowrap">
@@ -534,7 +534,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
             {resolution && isItem ? (
               <span className="ml-1 text-xs">
                 <Badge tone={resolution === "unmatched" ? "warn" : quiet ? "neutral" : "good"}>{resolutionLabel[resolution] ?? resolution}</Badge>
-                {line.resolved_by ? <span className="text-neutral-500"> by {line.resolved_by}</span> : null}
+                {line.resolved_by ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by}</span> : null}
               </span>
             ) : null}
             {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
@@ -543,7 +543,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
                   <li key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`} className="flex flex-wrap items-center gap-1 text-xs">
                     <span className={s === top ? "font-medium" : ""}>{s.ignore ? "Ignore this line" : s.label}</span>
                     <Badge>{s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : "fuzzy"}</Badge>
-                    <span className="text-neutral-500 tabular-nums">{s.score}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400 tabular-nums">{s.score}</span>
                     <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
                       {s === top ? "Accept (Enter)" : "Accept"}
                     </Button>

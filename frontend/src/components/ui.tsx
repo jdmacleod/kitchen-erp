@@ -4,8 +4,8 @@ export const focusRing =
   "focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:focus-visible:outline-blue-400";
 
 const buttonVariants = {
-  primary:
-    "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-600/50 dark:bg-blue-500 dark:hover:bg-blue-400",
+  // Dark keeps blue-600: white on the remapped blue-500 is 3.7:1 and fails the 4.5:1 floor.
+  primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-600/50 dark:hover:bg-blue-700",
   secondary:
     "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
   danger:
@@ -13,6 +13,9 @@ const buttonVariants = {
   ghost:
     "text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-neutral-800",
 } as const;
+
+/** The primary button's look, for a link that acts as the page's primary action. */
+export const primaryLinkClass = `inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof buttonVariants;
@@ -66,7 +69,8 @@ const alertTones = {
   error: "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
   success:
     "border-green-300 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200",
-  info: "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200",
+  // Blue means "you can act on this" (spec 08), so information is neutral.
+  info: "border-neutral-300 bg-neutral-100 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
 } as const;
 
 export function Alert({ tone, children, className = "" }: AlertProps) {
@@ -83,7 +87,7 @@ export function Alert({ tone, children, className = "" }: AlertProps) {
 export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+      <h1 className="text-3xl leading-tight md:text-[2.5rem]">{title}</h1>
       {children}
     </header>
   );

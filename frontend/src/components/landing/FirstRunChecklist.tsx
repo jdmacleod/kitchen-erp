@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { focusRing } from "../ui";
+import { focusRing, primaryLinkClass } from "../ui";
 
 /**
  * The two-step first-run checklist.
@@ -21,7 +21,7 @@ import { focusRing } from "../ui";
  */
 
 const primaryAction =
-  `inline-flex min-h-10 w-full items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 sm:w-auto dark:bg-blue-500 dark:hover:bg-blue-400 ${focusRing}`;
+  `${primaryLinkClass} w-full sm:w-auto`;
 
 const secondaryAction =
   `inline-flex min-h-10 w-full items-center justify-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 sm:w-auto dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`;
@@ -45,8 +45,9 @@ function Step({ done, next, title, to, state, action, children }: StepProps) {
           where it read as a stray dot rather than a checkbox. */}
       <div className="flex min-w-0 flex-1 gap-3">
         {/* Decoration: the sr-only word below carries this state for a screen reader.
-            green-600, not green-500 — 3.29:1 against white, over the 3:1 floor that
-            WCAG 1.4.11 sets for non-text UI. green-500 measures 2.28:1. */}
+            green-600, not green-500 — 4.83:1 against the white card, over the 3:1
+            floor that WCAG 1.4.11 sets for non-text UI; green-500 measures 3.47:1.
+            Dark keeps green-500: 4.59:1 on neutral-900. Market palette, 2026-09-25. */}
         <span
           aria-hidden="true"
           className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${
@@ -61,7 +62,7 @@ function Step({ done, next, title, to, state, action, children }: StepProps) {
         </span>
 
         <div className="min-w-0">
-          <p className={`text-base font-medium ${done ? "text-neutral-500 dark:text-neutral-400" : ""}`}>
+          <p className={`text-base font-medium ${done ? "text-neutral-600 dark:text-neutral-400" : ""}`}>
             <span className="sr-only">{done ? "Done" : "To do"} — </span>
             {title}
           </p>

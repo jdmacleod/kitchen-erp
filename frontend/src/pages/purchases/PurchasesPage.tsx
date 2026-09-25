@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
-import { itemLines, purchaseStatusLabel, sourceLabel, usePurchases, type PurchaseStatus } from "../../api/purchases";
+import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type PurchaseStatus } from "../../api/purchases";
 import { Badge, SelectField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -23,7 +23,7 @@ export function PurchasesPage() {
           <Link to="/prices/new" className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
             Shelf price
           </Link>
-          <Link to="/purchases/new" className={`inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 ${focusRing}`}>
+          <Link to="/purchases/new" className={primaryLinkClass}>
             New purchase
           </Link>
         </div>
@@ -57,7 +57,7 @@ export function PurchasesPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Purchases">
                 <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                     <th className="py-2 pr-3">Date</th>
                     <th className="py-2 pr-3">Location</th>
                     <th className="py-2 pr-3 text-right">Total</th>
@@ -88,7 +88,7 @@ export function PurchasesPage() {
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(p.total ?? p.computed_total)}</td>
                       <td className="py-2 pr-3">
-                        <Badge tone={p.status === "committed" ? "good" : "warn"}>{purchaseStatusLabel[p.status]}</Badge>
+                        <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
                       </td>
                       <td className="py-2 pr-3">{sourceLabel[p.source]}</td>
                       <td className="py-2 text-right tabular-nums">{itemLines(p).length}</td>

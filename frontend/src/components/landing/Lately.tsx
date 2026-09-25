@@ -12,7 +12,7 @@ import { formatDate } from "../../lib/format";
  * mode only exists because that query returned something.
  */
 
-const sectionLabel = "text-xs font-semibold tracking-wide text-neutral-500 uppercase";
+const sectionLabel = "text-xs font-semibold text-neutral-600 dark:text-neutral-400";
 
 export function Lately({ purchases }: { purchases: Purchase[] }) {
   return (

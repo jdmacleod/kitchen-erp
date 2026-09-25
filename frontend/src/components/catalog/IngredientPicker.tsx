@@ -86,7 +86,7 @@ export function IngredientPicker({
               </>
             ) : (
               <>
-                <span className="font-medium">{value.name}</span> <Badge tone="good">new ingredient</Badge>
+                <span className="font-medium">{value.name}</span> <Badge>new ingredient</Badge>
               </>
             )}
           </span>

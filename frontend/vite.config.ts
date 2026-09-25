@@ -22,6 +22,8 @@ export default defineConfig({
     globals: false,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
-    css: false,
+    // The app's own stylesheets are loaded, not stubbed: src/test/theme.test.ts reads
+    // them raw to check that every shade is defined and no raw hex slips in.
+    css: { include: [/\/src\/.+\.css/] },
   },
 });

@@ -9,7 +9,8 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { noLabels } from "protomaps-themes-base";
+import { namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
+import { basemapColours } from "../../lib/palette";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { VendorKind } from "../../api/geo";
@@ -128,14 +129,17 @@ function buildStyle(present: boolean): StyleSpecification {
     return {
       version: 8,
       sources: {},
-      layers: [{ id: "ground", type: "background", paint: { "background-color": prefersDark() ? "#262626" : "#e5e5e5" } }],
+      layers: [{ id: "ground", type: "background", paint: { "background-color": basemapColours(prefersDark()).background } }],
     };
   }
   // The Protomaps theme's label layers need glyphs (fonts) that ship from a
   // CDN. Criterion 29 forbids any request to another origin, so the symbol
   // layers are dropped instead of pointing `glyphs` at a remote host. The map
   // is therefore unlabelled; pins carry the names.
-  const layers: LayerSpecification[] = noLabels("protomaps", prefersDark() ? "dark" : "light").filter(
+  // The Protomaps light/dark flavours recoloured onto the Market palette (spec 08).
+  const dark = prefersDark();
+  const theme = { ...namedTheme(dark ? "dark" : "light"), ...basemapColours(dark) };
+  const layers: LayerSpecification[] = noLabelsWithCustomTheme("protomaps", theme).filter(
     (layer) => layer.type !== "symbol",
   );
   return {
@@ -157,7 +161,7 @@ function pinElement(pin: MapPin | { kind: "draft" }, label: string): HTMLButtonE
   shape.setAttribute("aria-hidden", "true");
   if (pin.kind === "home") {
     shape.innerHTML =
-      '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5 2.5 11h3v10h5v-6h3v6h5V11h3z"/></svg>';
+      '<svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="var(--color-white)" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2.5 2.5 11h3v10h5v-6h3v6h5V11h3z"/></svg>';
   }
   el.appendChild(shape);
   const text = document.createElement("span");
@@ -337,7 +341,7 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
         role="region"
         aria-label={label}
         data-testid="map-canvas"
-        className={`h-full w-full ${placing ? "kerp-map--placing" : ""}`}
+        className={`kerp-map h-full w-full ${placing ? "kerp-map--placing" : ""}`}
       />
       <div className="kerp-attribution" data-testid="map-attribution">
         {ATTRIBUTION}

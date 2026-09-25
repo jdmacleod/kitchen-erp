@@ -34,8 +34,8 @@ describe("health status dot", () => {
   it("keeps degraded and failed apart, both above the floor", async () => {
     mountWith({ status: "degraded" });
     await waitFor(() => expect(screen.getByTestId("health-status")).toHaveTextContent("degraded"));
-    // One step darker than the others: amber-600 clears neutral-50 by 0.06,
-    // close enough to round the wrong way.
+    // One step darker than the others: amber-600 measures 3.2 on the sidebar,
+    // too close to the 3:1 floor to survive a palette tweak.
     expect(dot()).toHaveClass("bg-amber-700", "dark:bg-amber-500");
   });
 

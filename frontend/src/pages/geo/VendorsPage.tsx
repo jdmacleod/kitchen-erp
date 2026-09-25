@@ -268,7 +268,7 @@ function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandida
         ) : null}
       </div>
       {adopted ? (
-        <Badge tone="good">adopted</Badge>
+        <Badge>adopted</Badge>
       ) : (
         <div className="flex items-end gap-2">
           <div className="flex flex-col gap-1">

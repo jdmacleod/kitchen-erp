@@ -331,7 +331,7 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
             {home ? ` · from ${home.name}` : ""}
             {location.osm_id ? ` · OSM ${location.osm_type} ${location.osm_id}` : ""}
           </p>
-          <p className="font-mono text-xs text-neutral-500">{formatLatLon(location.lat, location.lon)}</p>
+          <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
         </div>
         <div className="flex flex-wrap gap-1">
           <Link to={`/map?location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
