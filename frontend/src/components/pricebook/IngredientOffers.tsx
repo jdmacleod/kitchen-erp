@@ -37,7 +37,7 @@ export function IngredientOffers({
         <PriceFilters id="offers" value={filters} onChange={onFilters} />
       </div>
       {offers.length === 0 ? (
-        <p className={`text-sm ${muted}`}>No prices match these filters.</p>
+        <p className={`text-sm ${muted}`}>No current prices match. Recent ones are in the history above.</p>
       ) : (
         <div className="overflow-x-auto">
           {/* Four columns from sm up; on a phone, two: the product rides under the
@@ -65,7 +65,7 @@ export function IngredientOffers({
             ? `Prices older than ${staleThreshold} days count as stale for a ${ingredient.perishability.replace("_", "-")} ingredient.`
             : null}
         </span>
-        <Link to="/shop/compare" className={`rounded text-sm font-medium underline ${focusRing}`}>
+        <Link to="/shop/compare" className={`inline-flex min-h-11 items-center lg:min-h-0 rounded text-sm font-medium underline ${focusRing}`}>
           Compare prices
         </Link>
       </p>
@@ -78,7 +78,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
   const fix = !comparable && o.norm_status ? bridgeFixLink(o.norm_status, ingredient.id, o.product_id) : null;
   const product = (
     <>
-      <Link to={`/catalog/products/${o.product_id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+      <Link to={`/catalog/products/${o.product_id}`} className={`inline-flex min-h-11 items-center lg:min-h-0 rounded underline-offset-2 hover:underline ${focusRing}`}>
         {o.brand ? `${o.brand} ${o.product_name}` : o.product_name}
       </Link>
       <span className={`block text-xs ${muted}`}>
@@ -107,7 +107,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
               {formatMoney(o.price)} / {stripZeros(o.qty)} {o.unit}
             </span>
             {fix ? (
-              <Link to={fix.to} className={`text-xs underline ${focusRing}`}>
+              <Link to={fix.to} className={`inline-flex min-h-11 items-center lg:min-h-0 text-xs underline ${focusRing}`}>
                 Can&apos;t compare yet · {fix.text.toLowerCase()}
               </Link>
             ) : (

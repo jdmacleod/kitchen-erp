@@ -1,5 +1,6 @@
 import type { Ingredient } from "../../api/catalog";
-import { useIngredientPriceHistory, type Offer } from "../../api/pricebook";
+import type { UseQueryResult } from "@tanstack/react-query";
+import type { IngredientPriceHistory, IngredientPricePoint } from "../../api/pricebook";
 import { formatDate } from "../../lib/format";
 import { formatUnitPrice } from "./PriceAge";
 import { Sparkline } from "./Sparkline";
@@ -9,21 +10,28 @@ const card = "rounded-lg border p-4";
 const muted = "text-sm text-neutral-600 dark:text-neutral-400";
 
 /**
- * The cheapest comparable offer seen in the last 90 days, or null. Offers without
- * a normalized price can't be compared and never count (G8).
+ * The cheapest comparable price in the window, or null, from the price history:
+ * every observation, not just the latest per location, so a cheaper price from
+ * weeks ago still counts. Prices that can't be compared are never in the history
+ * (G8). On a tie, the most recent wins.
  */
-export function bestRecent(offers: Offer[], now = Date.now()): Offer | null {
-  const since = now - WINDOW_DAYS * 86_400_000;
-  // Offers arrive cheapest first (the API sorts by normalized price), so the
-  // first comparable one in the window is the best.
-  return offers.find((o) => o.norm_unit_price !== null && new Date(o.observed_at).getTime() >= since) ?? null;
+export function bestRecent(points: IngredientPricePoint[]): IngredientPricePoint | null {
+  let best: IngredientPricePoint | null = null;
+  for (const p of points) {
+    // Decimal strings compare as numbers for ordering only; the text shown is the API's.
+    if (!best || Number(p.norm_unit_price) <= Number(best.norm_unit_price)) best = p;
+  }
+  return best;
 }
 
 /** The hub's summary strip (docs/spec/10, Ingredient hub). */
-export function IngredientSummary({ ingredient, offers }: { ingredient: Ingredient; offers: Offer[] }) {
-  const best = bestRecent(offers);
-  const history = useIngredientPriceHistory(ingredient.id, WINDOW_DAYS);
+/**
+ * The hub's summary strip. Built only from the 90-day history, so the price
+ * table's filters (quality, stale, sale) never change what it says.
+ */
+export function IngredientSummary({ ingredient, history }: { ingredient: Ingredient; history: UseQueryResult<IngredientPriceHistory> }) {
   const points = history.data?.points ?? [];
+  const best = bestRecent(points);
   const unit = points[0]?.norm_unit ?? ingredient.canonical_unit;
 
   return (
@@ -33,11 +41,15 @@ export function IngredientSummary({ ingredient, offers }: { ingredient: Ingredie
         <h2 id="best-price" className="text-sm font-medium text-green-900 dark:text-green-200">
           Best recent price
         </h2>
-        {best ? (
+        {history.isPending ? (
+          <p role="status" className="mt-1 text-sm text-green-900 dark:text-green-200">
+            Loading…
+          </p>
+        ) : best ? (
           <>
             <p className="font-display mt-1 text-2xl tabular-nums">{formatUnitPrice(best.norm_unit_price, best.norm_unit)}</p>
             <p className="text-sm text-green-900 dark:text-green-200">
-              {best.brand ? `${best.brand} ${best.product_name}` : best.product_name} · {best.vendor_name} · {formatDate(best.observed_at)}
+              {best.product_name} · {best.vendor_name} · {formatDate(best.observed_at)}
             </p>
           </>
         ) : (

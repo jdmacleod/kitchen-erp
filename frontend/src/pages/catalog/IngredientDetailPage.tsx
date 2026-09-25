@@ -24,7 +24,7 @@ import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/
 import { TestBench } from "../../components/catalog/TestBench";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
 import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
-import { useIngredientOffers, type PriceFilters as PriceFiltersValue } from "../../api/pricebook";
+import { useIngredientOffers, useIngredientPriceHistory, type PriceFilters as PriceFiltersValue } from "../../api/pricebook";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
@@ -78,6 +78,10 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const offers = useIngredientOffers(ingredient.id, filters);
   const items = offers.data?.items ?? [];
   const unfiltered = JSON.stringify(filters) === JSON.stringify(NO_FILTERS);
+  const history = useIngredientPriceHistory(ingredient.id, 90);
+  // "No prices yet" only when nothing was recorded at all: no current offer, and
+  // nothing in the history (a deactivated location's prices stay in the history).
+  const noPrices = offers.isSuccess && history.isSuccess && items.length === 0 && unfiltered && history.data.points.length === 0;
 
   const meta = (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -99,7 +103,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
     <>
       <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
         <span>Catalog</span> <span aria-hidden="true">/</span>{" "}
-        <Link to="/catalog/ingredients" className={`rounded underline ${focusRing}`}>
+        <Link to="/catalog/ingredients" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
           Ingredients
         </Link>
       </nav>
@@ -132,7 +136,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           </p>
         ) : offers.isError ? (
           <Alert tone="error">{errorMessage(offers.error)}</Alert>
-        ) : items.length === 0 && unfiltered ? (
+        ) : noPrices ? (
           <EmptyState
             title="No prices yet"
             action={
@@ -144,12 +148,12 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
             A price seen on a shelf or paid on a receipt shows up here, with the cheapest first.
           </EmptyState>
         ) : (
-          <IngredientSummary ingredient={ingredient} offers={items} />
+          <IngredientSummary ingredient={ingredient} history={history} />
         )}
 
         <div className="grid gap-6 lg:grid-cols-[1.65fr_1fr]">
           <div className="min-w-0">
-            {offers.isSuccess && (items.length > 0 || !unfiltered) ? (
+            {offers.isSuccess && !noPrices ? (
               <IngredientOffers
                 ingredient={ingredient}
                 offers={items}

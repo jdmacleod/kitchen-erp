@@ -27,7 +27,12 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
   const coords = points.map((_, i) => [sx(xs[i]), sy(ys[i])] as const);
   const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
   const last = coords[coords.length - 1];
-  const hit = Math.max(8, (W - 2 * PAD) / points.length);
+  // Each point's hover target runs halfway to its neighbours, so targets never
+  // overlap however the dates cluster, and together they cover the width.
+  const edges = coords.map(([x], i) => [
+    i === 0 ? 0 : (coords[i - 1][0] + x) / 2,
+    i === coords.length - 1 ? W : (x + coords[i + 1][0]) / 2,
+  ]);
 
   return (
     <figure className="m-0">
@@ -35,7 +40,7 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
         <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         <circle cx={last[0]} cy={last[1]} r="4" fill="currentColor" stroke="var(--color-white)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
         {points.map((p, i) => (
-          <rect key={p.observation_id} x={coords[i][0] - hit / 2} y="0" width={hit} height={H} fill="transparent">
+          <rect key={p.observation_id} data-testid="sparkline-target" x={edges[i][0]} y="0" width={edges[i][1] - edges[i][0]} height={H} fill="transparent">
             <title>
               {formatDate(p.observed_at)}: {formatUnitPrice(p.norm_unit_price, p.norm_unit)} at {p.vendor_name}
             </title>
