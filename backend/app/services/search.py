@@ -15,6 +15,7 @@ from app.catalog import categories
 from app.core.logging import get_logger
 from app.schemas.search import SearchResult, SearchResults
 from app.services import catalog, geo
+from app.services.catalog import like_escape
 
 log = get_logger(__name__)
 
@@ -43,7 +44,12 @@ _INGREDIENT_SQL = text(
 async def _ingredients(db: AsyncSession, ql: str) -> list[SearchResult]:
     rows = await db.execute(
         _INGREDIENT_SQL,
-        {"ql": ql, "like": f"%{ql}%", "prefix": f"{ql}%", "limit": GROUP_LIMIT},
+        {
+            "ql": ql,
+            "like": f"%{like_escape(ql)}%",
+            "prefix": f"{like_escape(ql)}%",
+            "limit": GROUP_LIMIT,
+        },
     )
     return [
         SearchResult(

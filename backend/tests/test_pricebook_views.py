@@ -416,3 +416,25 @@ async def test_ingredient_history_bounds_and_errors(admin_client):
 async def test_ingredient_history_needs_a_session(client):
     r = await client.get(f"/api/v1/ingredients/{uuid.uuid4()}/price-history")
     assert r.status_code == 401
+
+
+async def test_ingredient_history_keeps_the_cheapest_price_of_each_day(admin_client):
+    _, chain_b, indie = await three_locations(admin_client)
+    bag = await make_product(admin_client, "Quinoa", "Quinoa bag", pack_qty="1", pack_unit="kg")
+    noon = (datetime.now(UTC) - timedelta(days=5)).replace(
+        hour=19, minute=0, second=0, microsecond=0
+    )
+    await shelf(admin_client, bag["id"], indie["id"], "8.00", observed_at=noon.isoformat())
+    cheap = await shelf(
+        admin_client,
+        bag["id"],
+        chain_b["id"],
+        "6.00",
+        observed_at=(noon + timedelta(minutes=30)).isoformat(),
+    )
+
+    h = await _history(admin_client, bag["ingredient"]["id"])
+    [point] = h["points"]
+    assert point["observation_id"] == cheap["id"] and point["norm_unit_price"] == "0.006000"
+    # The range still covers every price in the window, not just the daily point.
+    assert (h["low"], h["high"]) == ("0.006000", "0.008000")
