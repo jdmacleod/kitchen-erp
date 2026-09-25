@@ -23,7 +23,9 @@ import { BridgeEditor } from "../../components/catalog/BridgeEditor";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { TestBench } from "../../components/catalog/TestBench";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
+import { useIngredientOffers, useIngredientPriceHistory, type PriceFilters as PriceFiltersValue } from "../../api/pricebook";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
 
@@ -62,13 +64,50 @@ export function IngredientDetailPage() {
   return <IngredientDetail ingredient={ingredient.data} />;
 }
 
+const NO_FILTERS: PriceFiltersValue = { min_quality: "", exclude_stale: false, exclude_promo: false };
+const muted = "text-neutral-600 dark:text-neutral-400";
+
+/**
+ * The ingredient hub (docs/spec/10), where search results and inbox items land
+ * most often: what it costs where, then the tools that make prices comparable.
+ */
 function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const setActive = useSetIngredientActive(ingredient.id);
   const [editing, setEditing] = useState(false);
+  const [filters, setFilters] = useState<PriceFiltersValue>(NO_FILTERS);
+  const offers = useIngredientOffers(ingredient.id, filters);
+  const items = offers.data?.items ?? [];
+  const unfiltered = JSON.stringify(filters) === JSON.stringify(NO_FILTERS);
+  const history = useIngredientPriceHistory(ingredient.id, 90);
+  // "No prices yet" only when nothing was recorded at all: no current offer, and
+  // nothing in the history (a deactivated location's prices stay in the history).
+  const noPrices = offers.isSuccess && history.isSuccess && items.length === 0 && unfiltered && history.data.points.length === 0;
+
+  const meta = (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <CategoryChip category={ingredient.category} categoryKey={ingredient.category_key} />
+      <span>Measured in {ingredient.canonical_unit}</span>
+      <span aria-hidden="true">·</span>
+      <span>{perishabilityLabel[ingredient.perishability]}</span>
+      {trimDecimal(ingredient.yield_pct) !== "1" ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>yield {trimDecimal(ingredient.yield_pct)}</span>
+        </>
+      ) : null}
+      {ingredient.active ? null : <Badge tone="warn">inactive</Badge>}
+    </span>
+  );
 
   return (
     <>
-      <PageHeader title={ingredient.name}>
+      <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
+        <span>Catalog</span> <span aria-hidden="true">/</span>{" "}
+        <Link to="/catalog/ingredients" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+          Ingredients
+        </Link>
+      </nav>
+      <PageHeader title={ingredient.name} description={meta}>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
             {editing ? "Close editor" : "Edit details"}
@@ -80,42 +119,55 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           >
             {setActive.isPending ? "Saving…" : ingredient.active ? "Deactivate" : "Activate"}
           </Button>
+          <Link to="/shop/shelf-prices" className={primaryLinkClass}>
+            Log shelf price
+          </Link>
         </div>
       </PageHeader>
+
       <div className="flex flex-col gap-6">
-        <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/catalog/ingredients" className={`rounded underline ${focusRing}`}>
-            All ingredients
-          </Link>
-          <span aria-hidden="true">·</span>
-          <span>
-            Canonical unit <span className="font-medium">{ingredient.canonical_unit}</span>
-          </span>
-          {ingredient.category ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <CategoryChip category={ingredient.category} categoryKey={ingredient.category_key} />
-            </>
-          ) : null}
-          <span aria-hidden="true">·</span>
-          <span>{perishabilityLabel[ingredient.perishability]}</span>
-          {ingredient.yield_pct !== "1" ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>yield {trimDecimal(ingredient.yield_pct)}</span>
-            </>
-          ) : null}
-          {ingredient.active ? <Badge tone="good">active</Badge> : <Badge tone="warn">inactive</Badge>}
-        </p>
         {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
         {ingredient.notes ? <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p> : null}
-
         {editing ? <EditDetailsForm ingredient={ingredient} onDone={() => setEditing(false)} /> : null}
 
-        <IngredientOffers ingredient={ingredient} />
+        {offers.isPending ? (
+          <p role="status" className={`text-sm ${muted}`}>
+            Loading prices…
+          </p>
+        ) : offers.isError ? (
+          <Alert tone="error">{errorMessage(offers.error)}</Alert>
+        ) : noPrices ? (
+          <EmptyState
+            title="No prices yet"
+            action={
+              <Link to="/shop/shelf-prices" className={primaryLinkClass}>
+                Log shelf price
+              </Link>
+            }
+          >
+            A price seen on a shelf or paid on a receipt shows up here, with the cheapest first.
+          </EmptyState>
+        ) : (
+          <IngredientSummary ingredient={ingredient} history={history} />
+        )}
+
+        <div className="grid gap-6 lg:grid-cols-[1.65fr_1fr]">
+          <div className="min-w-0">
+            {offers.isSuccess && !noPrices ? (
+              <IngredientOffers
+                ingredient={ingredient}
+                offers={items}
+                filters={filters}
+                onFilters={setFilters}
+                staleThreshold={offers.data.stale_thresholds[ingredient.perishability]}
+              />
+            ) : null}
+          </div>
+          <IngredientProducts ingredient={ingredient} />
+        </div>
+
         <BridgeEditor ingredient={ingredient} />
         <TestBench ingredient={ingredient} />
-        <IngredientProducts ingredient={ingredient} />
       </div>
     </>
   );
@@ -232,60 +284,48 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
   const items = products.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <Card>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium">Products</h2>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex min-h-10 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={includeInactive}
-              onChange={(e) => setIncludeInactive(e.target.checked)}
-              className={`size-4 ${focusRing}`}
-            />
-            Show inactive
-          </label>
-          <Link
-            to={`/catalog/products?ingredient_id=${encodeURIComponent(ingredient.id)}`}
-            className={secondaryLinkClass}
-          >
-            Add a product
-          </Link>
-        </div>
-      </div>
+    <section aria-labelledby="ingredient-products" className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <h2 id="ingredient-products" className="font-display mb-3 text-lg">
+        Products
+      </h2>
       {products.isPending ? (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p role="status" className={`text-sm ${muted}`}>
           Loading…
         </p>
       ) : products.isError ? (
         <Alert tone="error">{errorMessage(products.error)}</Alert>
       ) : items.length === 0 ? (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">No products for this ingredient yet.</p>
+        <p className={`text-sm ${muted}`}>No products for this ingredient yet.</p>
       ) : (
-        <>
-          <ul aria-label="Products of this ingredient" className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {items.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <Link to={`/catalog/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-                  {productTitle(p)}
-                </Link>
-                <span className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-                  {formatPack(p.pack_qty, p.pack_unit) || "no pack"}
-                  {p.density_override ? <Badge>density override</Badge> : null}
-                  {p.active ? null : <Badge tone="warn">inactive</Badge>}
-                </span>
-              </li>
-            ))}
-          </ul>
-          {products.hasNextPage ? (
-            <div className="mt-3">
-              <Button variant="secondary" disabled={products.isFetchingNextPage} onClick={() => products.fetchNextPage()}>
-                {products.isFetchingNextPage ? "Loading…" : "Load more"}
-              </Button>
-            </div>
-          ) : null}
-        </>
+        <ul aria-label="Products of this ingredient" className="flex flex-wrap gap-2">
+          {items.map((p) => (
+            <li key={p.id}>
+              <Link
+                to={`/catalog/products/${p.id}`}
+                className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm text-neutral-900 hover:bg-neutral-100 lg:min-h-9 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
+              >
+                {productTitle(p)}
+                {formatPack(p.pack_qty, p.pack_unit) ? <span className={`text-xs ${muted}`}>{formatPack(p.pack_qty, p.pack_unit)}</span> : null}
+                {p.active ? null : <Badge tone="warn">inactive</Badge>}
+              </Link>
+            </li>
+          ))}
+        </ul>
       )}
-    </Card>
+      {products.hasNextPage ? (
+        <Button variant="secondary" className="mt-3" disabled={products.isFetchingNextPage} onClick={() => products.fetchNextPage()}>
+          {products.isFetchingNextPage ? "Loading…" : "Load more"}
+        </Button>
+      ) : null}
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
+          <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} className={`size-4 ${focusRing}`} />
+          Show inactive
+        </label>
+        <Link to={`/catalog/products?ingredient_id=${encodeURIComponent(ingredient.id)}`} className={secondaryLinkClass}>
+          Add a product
+        </Link>
+      </div>
+    </section>
   );
 }

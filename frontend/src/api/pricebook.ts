@@ -220,6 +220,38 @@ export function useIngredientOffers(ingredientId: string | undefined, filters: P
   });
 }
 
+/** One day's cheapest normalized price, for the hub's sparkline (D22). */
+export interface IngredientPricePoint {
+  observation_id: string;
+  observed_at: string;
+  norm_unit_price: string;
+  norm_unit: string;
+  is_promo: boolean;
+  source: string;
+  product_id: string;
+  product_name: string;
+  location_id: string;
+  vendor_id: string;
+  vendor_name: string;
+}
+
+export interface IngredientPriceHistory {
+  days: number;
+  /** Oldest first, one per day. */
+  points: IngredientPricePoint[];
+  /** The range over every price in the window; null when there are none. */
+  low: string | null;
+  high: string | null;
+}
+
+export function useIngredientPriceHistory(ingredientId: string | undefined, days = 90) {
+  return useQuery({
+    queryKey: ["price-history", ingredientId ?? "", days] as const,
+    queryFn: () => api<IngredientPriceHistory>(`/ingredients/${enc(ingredientId ?? "")}/price-history${qs({ days })}`),
+    enabled: Boolean(ingredientId),
+  });
+}
+
 /** A read that happens to be a POST: the ingredient set is the query key. */
 export function useCompare(input: CompareInput) {
   return useQuery({

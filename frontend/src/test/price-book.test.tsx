@@ -116,7 +116,8 @@ describe("product price history", () => {
     expect(within(rows[0]).queryByText("stale")).not.toBeInTheDocument();
     expect(rows[0]).toHaveTextContent("chain price");
     expect(rows[1]).toHaveTextContent("124 days");
-    expect(within(rows[1]).getByText("stale")).toBeInTheDocument();
+    // The date and its mark appear once per layout (phone and wider); CSS shows one.
+    expect(within(rows[1]).getAllByText("stale").length).toBeGreaterThan(0);
     expect(rows[1]).toHaveTextContent("$0.002425/g");
   });
 
@@ -144,7 +145,7 @@ describe("ingredient offers", () => {
     const user = userEvent.setup();
     renderApp(`/catalog/ingredients/${flourId}`);
 
-    const table = await screen.findByRole("table", { name: "Offers" });
+    const table = await screen.findByRole("table", { name: "Prices by vendor" });
     let rows = within(table).getAllByTestId("offer");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Riverbend Bread Flour");
@@ -152,14 +153,15 @@ describe("ingredient offers", () => {
     expect(rows[0]).toHaveTextContent("sale");
     expect(rows[0]).toHaveTextContent("2/5");
     expect(rows[1]).toHaveTextContent("130 days");
-    expect(within(rows[1]).getByText("stale")).toBeInTheDocument();
+    // The date and its mark appear once per layout (phone and wider); CSS shows one.
+    expect(within(rows[1]).getAllByText("stale").length).toBeGreaterThan(0);
     expect(screen.getByText("Prices older than 120 days count as stale for a shelf-stable ingredient.")).toBeInTheDocument();
     expect(calls.filter((c) => c.path.startsWith(`/ingredients/${flourId}/offers`)).at(-1)?.query.has("min_quality")).toBe(false);
 
     await user.selectOptions(screen.getByLabelText("Minimum quality"), "4");
     await waitFor(() => expect(calls.filter((c) => c.path.startsWith(`/ingredients/${flourId}/offers`)).at(-1)?.query.get("min_quality")).toBe("4"));
-    await waitFor(() => expect(within(screen.getByRole("table", { name: "Offers" })).getAllByTestId("offer")).toHaveLength(1));
-    rows = within(screen.getByRole("table", { name: "Offers" })).getAllByTestId("offer");
+    await waitFor(() => expect(within(screen.getByRole("table", { name: "Prices by vendor" })).getAllByTestId("offer")).toHaveLength(1));
+    rows = within(screen.getByRole("table", { name: "Prices by vendor" })).getAllByTestId("offer");
     expect(rows[0]).toHaveTextContent("Millstone All-Purpose Flour");
 
     await user.click(screen.getByRole("checkbox", { name: "Exclude stale" }));
