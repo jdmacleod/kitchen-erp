@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, Ref } from "react";
 
 export const focusRing =
   "focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:focus-visible:outline-blue-400";
@@ -25,6 +25,8 @@ export const secondaryLinkClass = `inline-flex min-h-10 items-center justify-cen
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof buttonVariants;
+  /** React 19 passes refs as props; the drawer focuses "Keep editing" through one. */
+  ref?: Ref<HTMLButtonElement>;
 };
 
 export function Button({ variant = "primary", className = "", type = "button", ...rest }: ButtonProps) {

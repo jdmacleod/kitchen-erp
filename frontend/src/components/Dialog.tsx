@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 
-const FOCUSABLE =
+export const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 interface DialogProps {
@@ -20,14 +20,19 @@ interface DialogProps {
 }
 
 /**
- * A modal over a scrim. Focus moves in on open, Tab stays inside, Escape or a click
- * on the scrim closes it, and focus returns to whatever opened it.
+ * The keyboard contract every modal shares (spec 08: Dialog, Drawer): focus moves
+ * in on open, Tab stays inside, Escape asks to close, and focus returns to whatever
+ * opened it.
  */
-export function Dialog({ open, onClose, labelledBy, placement = "center", initialFocus, className = "", children }: DialogProps) {
-  const panel = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
+export function useModal(
+  panel: RefObject<HTMLElement | null>,
+  open: boolean,
+  onEscape: () => void,
+  initialFocus?: RefObject<HTMLElement | null>,
+) {
+  const onEscapeRef = useRef(onEscape);
   useEffect(() => {
-    onCloseRef.current = onClose;
+    onEscapeRef.current = onEscape;
   });
 
   useEffect(() => {
@@ -39,7 +44,7 @@ export function Dialog({ open, onClose, labelledBy, placement = "center", initia
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCloseRef.current();
+        onEscapeRef.current();
         return;
       }
       if (event.key !== "Tab" || !panel.current) return;
@@ -61,7 +66,16 @@ export function Dialog({ open, onClose, labelledBy, placement = "center", initia
       // result that navigated, for instance, leaves the opener behind).
       if (opener?.isConnected) opener.focus();
     };
-  }, [open, initialFocus]);
+  }, [open, initialFocus, panel]);
+}
+
+/**
+ * A modal over a scrim. Focus moves in on open, Tab stays inside, Escape or a click
+ * on the scrim closes it, and focus returns to whatever opened it.
+ */
+export function Dialog({ open, onClose, labelledBy, placement = "center", initialFocus, className = "", children }: DialogProps) {
+  const panel = useRef<HTMLDivElement>(null);
+  useModal(panel, open, onClose, initialFocus);
 
   if (!open) return null;
 
