@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Purchase } from "../api/purchases";
@@ -22,12 +22,30 @@ function routes(purchase: () => Purchase) {
   };
 }
 
-/** Pretend the window is narrower than lg (1024px), as a phone is. */
-function phoneWidth() {
+/** A window whose width the test controls; `resize(wide)` crosses lg and tells listeners. */
+function controllableWidth(initiallyWide: boolean) {
+  let wide = initiallyWide;
+  const listeners = new Set<() => void>();
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+    value: (query: string) => ({
+      get matches() {
+        return wide;
+      },
+      media: query,
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+    }),
   });
+  return (next: boolean) => {
+    wide = next;
+    act(() => listeners.forEach((fn) => fn()));
+  };
+}
+
+/** Pretend the window is narrower than lg (1024px), as a phone is. */
+function phoneWidth() {
+  controllableWidth(false);
 }
 
 afterEach(() => {
@@ -98,5 +116,57 @@ describe("receipt review on a phone (G18, UI-4.10)", () => {
     const post = calls.find((c) => c.method === "POST" && c.path.endsWith("/resolve"));
     expect(post?.body).toEqual({ product_id: hits[1].id, accepted_kind: "fuzzy" });
     await waitFor(() => expect(within(screen.getByRole("group", { name: "Show lines" })).getByRole("button", { name: "Needs you 1" })).toBeInTheDocument());
+  });
+
+  it("gives the product link a 44px target on a card", async () => {
+    phoneWidth();
+    mockApi(routes(() => receiptPurchase));
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    const aliasCard = screen.getAllByTestId("review-line").find((el) => el.getAttribute("aria-label")?.startsWith("Line 1:"))!;
+    expect(within(aliasCard).getByRole("link").className).toContain("min-h-11");
+  });
+});
+
+describe("receipt review: review findings", () => {
+  it("never lets a shortcut act on a line the filter has hidden", async () => {
+    const calls = mockApi({
+      ...routes(() => receiptPurchase),
+      [`POST ${base}/lines/${receiptPurchase.lines[0].id}/resolve`]: () => jsonResponse(200, receiptPurchase),
+      [`POST ${base}/lines/${unmatchedLine.id}/resolve`]: () => jsonResponse(200, receiptPurchase),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    // Line 1 (a quiet alias match) is current, then the filter hides it.
+    screen.getAllByTestId("review-line")[0].focus();
+    await user.click(within(screen.getByRole("group", { name: "Show lines" })).getByRole("button", { name: "Needs you 2" }));
+    await user.keyboard("i");
+
+    const posts = calls.filter((c) => c.method === "POST");
+    expect(posts.map((c) => c.path)).toEqual([`${base}/lines/${unmatchedLine.id}/resolve`]);
+  });
+
+  it("keeps what was typed in a line editor when the window crosses lg", async () => {
+    const resize = controllableWidth(true);
+    mockApi(routes(() => receiptPurchase));
+    const user = userEvent.setup();
+    renderApp(base);
+    await screen.findByTestId("review");
+    expect(screen.getByRole("table", { name: "Receipt lines" })).toBeInTheDocument();
+
+    const row = screen.getAllByTestId("review-line")[1];
+    await user.click(within(row).getByRole("button", { name: "Edit" }));
+    const qty = await screen.findByLabelText("Qty");
+    await user.clear(qty);
+    await user.type(qty, "7");
+
+    resize(false);
+    expect(screen.getByLabelText("Qty")).toHaveValue("7");
+    // Once the edit ends, the layout follows the window again.
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("table")).toBeNull());
   });
 });

@@ -30,7 +30,7 @@ import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
-import { Alert, Button, Card, Field, focusRing } from "../ui";
+import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
 import { ProductPicker } from "./ProductPicker";
 import { CategoryChip } from "../CategoryChip";
 import { useNotice } from "../Notice";
@@ -85,7 +85,13 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const notice = useNotice();
   // Cards below lg, the table at lg and wider (G18). One or the other is in the
   // document, so each line's ids stay unique.
-  const wide = useMediaQuery(LG_QUERY);
+  const liveWide = useMediaQuery(LG_QUERY);
+  // The layout holds while a line is being edited or given a product: crossing
+  // the breakpoint would remount the editor and drop what was typed.
+  const holding = editing !== null || picking !== null;
+  const [heldWide, setHeldWide] = useState(liveWide);
+  if (!holding && heldWide !== liveWide) setHeldWide(liveWide);
+  const wide = holding ? heldWide : liveWide;
   const [filter, setFilter] = useState<"needs" | "all">("all");
   const needing = lines.filter(needsYou);
   // What is on screen, in order: on a phone the lines that need you come first.
@@ -125,10 +131,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     if (lineId) pendingFocus.current = rowId(lineId);
   };
 
-  const current = lines.find((l) => l.id === currentId) ?? null;
+  // Always a line on screen: when the filter hides the current one, the first
+  // shown takes over, so a shortcut never acts on a line nobody can see.
+  const current = shown.find((l) => l.id === currentId) ?? shown[0] ?? null;
   const move = (delta: number) => {
     if (shown.length === 0) return;
-    const index = Math.max(0, shown.findIndex((l) => l.id === currentId));
+    const index = Math.max(0, shown.findIndex((l) => l.id === current?.id));
     const next = shown[Math.min(shown.length - 1, Math.max(0, index + delta))];
     setCurrentId(next.id);
     document.getElementById(rowId(next.id))?.focus();
@@ -165,7 +173,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         setPicking(null);
         setEditing(null);
         setConfirming(false);
-        focusRow(currentId);
+        focusRow(current?.id ?? null);
       }
       return;
     }
@@ -221,7 +229,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const lineProps = (line: PurchaseLine): ReviewLineProps => ({
     line,
     itemLines,
-    current: line.id === currentId,
+    current: line.id === current?.id,
     picking: picking === line.id,
     editing: editing === line.id,
     busy,
@@ -604,7 +612,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
     <>
       {line.product ? (
         <>
-          <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+          <Link to={`/catalog/products/${line.product.id}`} className={`${touch ? tapTarget : ""} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
             {productTitle(line.product)}
           </Link>{" "}
           <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
