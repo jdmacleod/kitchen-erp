@@ -27,6 +27,11 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const debounced = useDebouncedValue(q, 150);
   const search = useSearch(debounced);
   const typed = q.trim().length > 0;
+  // The results on screen answer the text in the field: the debounce has caught
+  // up and the query is not still showing the previous search's answer.
+  const current = typed && debounced.trim() === q.trim() && !search.isPlaceholderData;
+  // Choosing a result navigates, so focus goes to the new page, not back here.
+  const returnFocus = useRef(true);
 
   // Groups in their fixed order, empty ones hidden; one flat list for the keys.
   const groups = useMemo(() => {
@@ -49,12 +54,13 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   });
 
   const open = (result: SearchResult) => {
+    returnFocus.current = false;
     onClose();
     navigate(result.route);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (flat.length === 0) return;
+    if (!current || flat.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive((i) => (i + 1) % flat.length);
@@ -67,10 +73,10 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const showResults = typed && flat.length > 0;
+  const showResults = current && flat.length > 0;
 
   return (
-    <Dialog open onClose={onClose} labelledBy={`${ids}-title`} initialFocus={input}>
+    <Dialog open onClose={onClose} labelledBy={`${ids}-title`} initialFocus={input} returnFocus={returnFocus}>
       <h2 id={`${ids}-title`} className="sr-only">
         Search
       </h2>
@@ -93,7 +99,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Search"
-          className="min-h-14 w-full bg-transparent text-base outline-none placeholder:text-neutral-500"
+          className={`my-2 min-h-10 w-full rounded-md bg-transparent px-1 text-base placeholder:text-neutral-500 ${focusRing}`}
         />
         <kbd className="shrink-0 rounded border border-neutral-300 px-1.5 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400">
           Esc
@@ -110,7 +116,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
               Try again
             </Button>
           </div>
-        ) : search.isPending || (search.isFetching && flat.length === 0) ? (
+        ) : !current ? (
           <p role="status" className={`px-2 py-3 ${muted}`}>
             Searching…
           </p>

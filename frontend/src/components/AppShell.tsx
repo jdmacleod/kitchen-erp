@@ -9,9 +9,9 @@ import { focusRing } from "./ui";
 const MENU_ID = "phone-menu";
 
 const chromeButton =
-  "inline-flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-medium text-neutral-800 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-800";
+  "inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-neutral-800 lg:min-h-10 hover:bg-neutral-200 dark:text-neutral-200 dark:hover:bg-neutral-800";
 const captureButton =
-  "inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700";
+  "inline-flex min-h-11 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 lg:min-h-10";
 // The shortcut as this platform writes it.
 const shortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
 
@@ -88,7 +88,7 @@ export function AppShell() {
           aria-expanded={open}
           aria-controls={MENU_ID}
           onClick={() => setOpen(!open)}
-          className={`min-h-10 rounded-md px-3 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-800 ${focusRing}`}
+          className={`min-h-11 rounded-md px-3 text-sm font-medium hover:bg-neutral-200 dark:hover:bg-neutral-800 ${focusRing}`}
         >
           {open ? "Close" : "Menu"}
         </button>
