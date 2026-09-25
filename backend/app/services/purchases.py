@@ -51,7 +51,10 @@ def computed_total(purchase: Purchase) -> Decimal:
 
 def _purchase_query():
     return select(Purchase).options(
-        selectinload(Purchase.lines).joinedload(PurchaseLine.product),
+        # The ingredient gives each line its category chip (UI-1.6).
+        selectinload(Purchase.lines)
+        .joinedload(PurchaseLine.product)
+        .joinedload(Product.ingredient),
         joinedload(Purchase.vendor_location),
     )
 

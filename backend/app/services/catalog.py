@@ -5,11 +5,13 @@ from __future__ import annotations
 import uuid
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, literal, select, text, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.catalog import categories
+from app.catalog.categories import CategoryKey
 from app.core.errors import ApiError
 from app.models.catalog import Ingredient, IngredientMeasure, Product
 from app.schemas.catalog import (
@@ -17,9 +19,11 @@ from app.schemas.catalog import (
     ConvertOut,
     IngredientCreate,
     IngredientUpdate,
+    LastPaid,
     MeasureCreate,
     MeasureUpdate,
     ProductCreate,
+    ProductListItem,
     ProductUpdate,
     ProvenanceOut,
     SearchHit,
@@ -240,20 +244,137 @@ async def list_products(
     *,
     ingredient_id: uuid.UUID | None = None,
     include_inactive: bool = False,
+    q: str | None = None,
+    category: CategoryKey | None = None,
+    barcode: str | None = None,
     limit: int = 50,
     cursor: str | None = None,
+) -> tuple[list[ProductListItem], str | None]:
+    """Products by name, a page at a time; with ``q``, the best ``limit`` matches by rank.
+
+    Both filter on the server, so a search or a category finds products beyond the
+    first page (D12). A ranked search has no next page, like the typeahead. A
+    ``barcode`` is an exact match and ignores the other filters.
+    """
+    category_values = await _category_values(db, category) if category else None
+    if barcode:
+        hits = await search_products(db, barcode, limit)
+        rows = await _products_by_id(db, [h.id for h in hits if h.barcode == barcode])
+        next_cursor = None
+    elif category_values == []:
+        return [], None
+    elif q:
+        hits = await search_products(
+            db,
+            q,
+            limit,
+            include_inactive=include_inactive,
+            ingredient_id=ingredient_id,
+            category_values=category_values,
+        )
+        rows, next_cursor = await _products_by_id(db, [h.id for h in hits]), None
+    else:
+        rows, next_cursor = await _product_page(
+            db,
+            ingredient_id=ingredient_id,
+            include_inactive=include_inactive,
+            category_values=category_values,
+            limit=limit,
+            cursor=cursor,
+        )
+    paid = await _last_paid(db, [r.id for r in rows])
+    items = [
+        ProductListItem.model_validate(r).model_copy(update={"last_paid": paid.get(r.id)})
+        for r in rows
+    ]
+    return items, next_cursor
+
+
+async def _product_page(
+    db: AsyncSession,
+    *,
+    ingredient_id: uuid.UUID | None,
+    include_inactive: bool,
+    category_values: list[str] | None,
+    limit: int,
+    cursor: str | None,
 ) -> tuple[list[Product], str | None]:
-    stmt = _product_query().order_by(Product.id).limit(limit + 1)
+    # Keyset on (lower(name), id). The cursor stays the last row's id, as on every
+    # other list, and its name is looked up rather than carried in the cursor.
+    order = (func.lower(Product.name), Product.id)
+    stmt = _product_query().order_by(*order).limit(limit + 1)
     if not include_inactive:
         stmt = stmt.where(Product.active.is_(True))
     if ingredient_id is not None:
         stmt = stmt.where(Product.ingredient_id == ingredient_id)
+    if category_values is not None:
+        stmt = stmt.join(Product.ingredient).where(Ingredient.category.in_(category_values))
     after = decode_cursor(cursor)
     if after is not None:
-        stmt = stmt.where(Product.id > after)
+        anchor = (
+            await db.execute(select(func.lower(Product.name)).where(Product.id == after))
+        ).scalar_one_or_none()
+        if anchor is None:
+            raise ApiError(400, "bad_cursor", "The cursor is not valid.")
+        stmt = stmt.where(tuple_(*order) > tuple_(literal(anchor), literal(after, Product.id.type)))
     rows = list((await db.execute(stmt)).scalars())
     next_cursor = encode_cursor(rows[limit - 1].id) if len(rows) > limit else None
     return rows[:limit], next_cursor
+
+
+async def _products_by_id(db: AsyncSession, ids: list[uuid.UUID]) -> list[Product]:
+    """Load products in one query, keeping the order of ``ids``."""
+    if not ids:
+        return []
+    found = {
+        p.id: p for p in (await db.execute(_product_query().where(Product.id.in_(ids)))).scalars()
+    }
+    return [found[i] for i in ids if i in found]
+
+
+async def _category_values(db: AsyncSession, key: CategoryKey) -> list[str]:
+    """The stored free-text categories that map to ``key``.
+
+    Filtering on these exact values keeps the synonym map in one place,
+    ``app/catalog/categories.py``, instead of a second copy in SQL.
+    """
+    stored = await db.execute(
+        select(Ingredient.category).where(Ingredient.category.is_not(None)).distinct()
+    )
+    return [c for c in stored.scalars() if categories.key(c) == key]
+
+
+_LAST_PAID_SQL = text(
+    """
+    SELECT DISTINCT ON (pc.product_id)
+           pc.product_id, pc.price, pc.qty, pc.unit, pc.is_promo,
+           v.id AS vendor_id, v.name AS vendor_name,
+           pu.id AS purchase_id, pu.purchased_at AS paid_at
+    FROM price_current pc
+    JOIN purchase_line pl ON pl.id = pc.purchase_line_id
+    JOIN purchase pu ON pu.id = pl.purchase_id
+    JOIN vendor_location vl ON vl.id = pc.vendor_location_id
+    JOIN vendor v ON v.id = vl.vendor_id
+    WHERE pc.product_id = ANY(CAST(:ids AS uuid[])) AND pu.status = 'committed'
+    ORDER BY pc.product_id, pu.purchased_at DESC, pc.observation_id DESC
+    """
+)
+
+
+async def _last_paid(db: AsyncSession, product_ids: list[uuid.UUID]) -> dict[uuid.UUID, LastPaid]:
+    """What each product last cost on a committed purchase, in one query for the page.
+
+    A reopened purchase keeps its observations live until it is recommitted, so
+    the purchase's status is checked here rather than trusting the observation.
+    Shelf prices have no purchase line and are not "paid".
+    """
+    if not product_ids:
+        return {}
+    rows = await db.execute(_LAST_PAID_SQL, {"ids": product_ids})
+    return {
+        r["product_id"]: LastPaid.model_validate({k: v for k, v in r.items() if k != "product_id"})
+        for r in rows.mappings()
+    }
 
 
 def _product_conflict(exc: IntegrityError) -> ApiError:
@@ -394,18 +515,17 @@ async def confirm_density_override(db: AsyncSession, product_id: uuid.UUID) -> P
 
 # --- typeahead --------------------------------------------------------------
 
-_SEARCH_SQL = text(
-    """
+_SEARCH_SQL = """
     SELECT p.id, p.name, p.brand, p.barcode, p.pack_qty, p.pack_unit, p.quality_rating,
            i.id AS ingredient_id, i.name AS ingredient_name, i.canonical_unit,
-           i.active AS ingredient_active,
-           (p.barcode = :q) AS barcode_hit,
+           i.active AS ingredient_active, i.category,
+           coalesce(p.barcode = :q, false) AS barcode_hit,  -- NULL would sort first
            word_similarity(:ql, lower(p.name)) AS s_name,
            word_similarity(:ql, lower(coalesce(p.brand, ''))) AS s_brand,
            word_similarity(:ql, lower(i.name)) AS s_ingredient
     FROM product p
     JOIN ingredient i ON i.id = p.ingredient_id
-    WHERE p.active AND i.active AND (
+    WHERE {filters} AND (
         p.barcode = :q
         OR lower(p.name) LIKE :like
         OR lower(coalesce(p.brand, '')) LIKE :like
@@ -420,18 +540,38 @@ _SEARCH_SQL = text(
              (lower(p.name) LIKE :prefix) DESC,
              p.name
     LIMIT :limit
-    """
-)
+"""
 
 
-async def search_products(db: AsyncSession, q: str, limit: int = 10) -> list[SearchHit]:
+async def search_products(
+    db: AsyncSession,
+    q: str,
+    limit: int = 10,
+    *,
+    include_inactive: bool = False,
+    ingredient_id: uuid.UUID | None = None,
+    category_values: list[str] | None = None,
+) -> list[SearchHit]:
     ql = q.strip().lower()
     if not ql:
         return []
-    rows = await db.execute(
-        _SEARCH_SQL,
-        {"q": q.strip(), "ql": ql, "like": f"%{ql}%", "prefix": f"{ql}%", "limit": limit},
-    )
+    params: dict[str, object] = {
+        "q": q.strip(),
+        "ql": ql,
+        "like": f"%{ql}%",
+        "prefix": f"{ql}%",
+        "limit": limit,
+    }
+    # Fixed fragments only; every value is a bound parameter.
+    filters = [] if include_inactive else ["p.active AND i.active"]
+    if ingredient_id is not None:
+        filters.append("p.ingredient_id = :ingredient_id")
+        params["ingredient_id"] = ingredient_id
+    if category_values is not None:
+        filters.append("i.category = ANY(CAST(:category_values AS text[]))")
+        params["category_values"] = category_values
+    sql = text(_SEARCH_SQL.format(filters=" AND ".join(filters) or "TRUE"))
+    rows = await db.execute(sql, params)
     hits: list[SearchHit] = []
     for r in rows.mappings():
         scores = {
@@ -458,6 +598,7 @@ async def search_products(db: AsyncSession, q: str, limit: int = 10) -> list[Sea
                     "name": r["ingredient_name"],
                     "canonical_unit": r["canonical_unit"],
                     "active": r["ingredient_active"],
+                    "category": r["category"],
                 },
                 match=match,
                 score=score.quantize(Decimal("0.001"), rounding=ROUND_HALF_EVEN),

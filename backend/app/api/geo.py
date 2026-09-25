@@ -23,6 +23,7 @@ from app.schemas.geo import (
     OsmCandidateOut,
     VendorCreate,
     VendorList,
+    VendorListItem,
     VendorLocationCreate,
     VendorLocationDetail,
     VendorLocationList,
@@ -99,7 +100,16 @@ async def list_vendors(
     include_inactive: bool = False,
 ) -> VendorList:
     found = await geo.list_vendors(db, q=q, include_inactive=include_inactive)
-    return VendorList(items=[VendorOut.model_validate(v) for v in found])
+    return VendorList(
+        items=[
+            VendorListItem(
+                **VendorOut.model_validate(f.vendor).model_dump(),
+                location_count=f.location_count,
+                last_visit=f.last_visit,
+            )
+            for f in found
+        ]
+    )
 
 
 @vendors.post("", response_model=VendorOut, status_code=status.HTTP_201_CREATED)

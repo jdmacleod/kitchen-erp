@@ -55,6 +55,7 @@ def observation_out(o) -> ObservationOut:
                 "id": o.product.ingredient.id,
                 "name": o.product.ingredient.name,
                 "canonical_unit": o.product.ingredient.canonical_unit,
+                "category": o.product.ingredient.category,
             },
         },
         vendor_location={
@@ -148,6 +149,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
                 "id": r["ingredient_id"],
                 "name": r["ingredient_name"],
                 "canonical_unit": r["canonical_unit"],
+                "category": r["category"],
             },
             product={
                 "id": r["product_id"],
@@ -159,6 +161,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
                     "id": r["ingredient_id"],
                     "name": r["ingredient_name"],
                     "canonical_unit": r["canonical_unit"],
+                    "category": r["category"],
                 },
             },
             status=r["status"],
@@ -193,6 +196,7 @@ async def purchase_out(db, purchase) -> PurchaseOut:
                     "brand": line.product.brand,
                     "pack_qty": line.product.pack_qty,
                     "pack_unit": line.product.pack_unit,
+                    "category": line.product.ingredient.category,
                 }
                 if line.product is not None
                 else None

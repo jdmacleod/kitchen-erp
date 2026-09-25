@@ -1603,6 +1603,29 @@
             ],
             "title": "Category"
           },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1689,9 +1712,9 @@
           }
         },
         "required": [
+          "category",
           "id",
           "name",
-          "category",
           "canonical_unit",
           "density_g_per_ml",
           "density_source",
@@ -1701,7 +1724,8 @@
           "active",
           "notes",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "category_key"
         ],
         "title": "IngredientOut",
         "type": "object"
@@ -1712,6 +1736,40 @@
           "canonical_unit": {
             "title": "Canonical Unit",
             "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
           },
           "id": {
             "format": "uuid",
@@ -1724,9 +1782,11 @@
           }
         },
         "required": [
+          "category",
           "id",
           "name",
-          "canonical_unit"
+          "canonical_unit",
+          "category_key"
         ],
         "title": "IngredientRef",
         "type": "object"
@@ -1747,6 +1807,40 @@
             "title": "Canonical Unit",
             "type": "string"
           },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1758,10 +1852,12 @@
           }
         },
         "required": [
+          "category",
           "id",
           "name",
           "canonical_unit",
-          "active"
+          "active",
+          "category_key"
         ],
         "title": "IngredientSummary",
         "type": "object"
@@ -1940,6 +2036,59 @@
           "effective_opening_hours"
         ],
         "title": "IsOpenOut",
+        "type": "object"
+      },
+      "LastPaid": {
+        "additionalProperties": false,
+        "description": "The latest committed purchase of a product: what was paid, where and when.",
+        "properties": {
+          "is_promo": {
+            "title": "Is Promo",
+            "type": "boolean"
+          },
+          "paid_at": {
+            "format": "date-time",
+            "title": "Paid At",
+            "type": "string"
+          },
+          "price": {
+            "title": "Price",
+            "type": "string"
+          },
+          "purchase_id": {
+            "format": "uuid",
+            "title": "Purchase Id",
+            "type": "string"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "price",
+          "qty",
+          "unit",
+          "is_promo",
+          "vendor_id",
+          "vendor_name",
+          "purchase_id",
+          "paid_at"
+        ],
+        "title": "LastPaid",
         "type": "object"
       },
       "LastUnitOut": {
@@ -2611,6 +2760,7 @@
       },
       "LineProductRef": {
         "additionalProperties": false,
+        "description": "A line's product; ``category`` and ``category_key`` are its ingredient's.",
         "properties": {
           "brand": {
             "anyOf": [
@@ -2622,6 +2772,40 @@
               }
             ],
             "title": "Brand"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
           },
           "id": {
             "format": "uuid",
@@ -2656,11 +2840,13 @@
           }
         },
         "required": [
+          "category",
           "id",
           "name",
           "brand",
           "pack_qty",
-          "pack_unit"
+          "pack_unit",
+          "category_key"
         ],
         "title": "LineProductRef",
         "type": "object"
@@ -3954,7 +4140,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/ProductOut"
+              "$ref": "#/components/schemas/ProductListItem"
             },
             "title": "Items",
             "type": "array"
@@ -3975,6 +4161,178 @@
           "items"
         ],
         "title": "ProductList",
+        "type": "object"
+      },
+      "ProductListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "barcode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "density_override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Density Override"
+          },
+          "density_override_confirmed": {
+            "title": "Density Override Confirmed",
+            "type": "boolean"
+          },
+          "density_override_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "usda",
+                  "label",
+                  "measured",
+                  "llm",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Density Override Source"
+          },
+          "exclusive_vendor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusive Vendor Id"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingredient": {
+            "$ref": "#/components/schemas/IngredientSummary"
+          },
+          "last_paid": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LastPaid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          },
+          "quality_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Rating"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "ingredient",
+          "brand",
+          "name",
+          "pack_qty",
+          "pack_unit",
+          "barcode",
+          "quality_rating",
+          "exclusive_vendor_id",
+          "density_override",
+          "density_override_source",
+          "density_override_confirmed",
+          "active",
+          "notes",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProductListItem",
         "type": "object"
       },
       "ProductOut": {
@@ -5218,6 +5576,109 @@
         "title": "SearchOut",
         "type": "object"
       },
+      "SearchResult": {
+        "additionalProperties": false,
+        "properties": {
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Key"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "ingredient",
+              "product",
+              "vendor"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "route": {
+            "title": "Route",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "label",
+          "detail",
+          "route"
+        ],
+        "title": "SearchResult",
+        "type": "object"
+      },
+      "SearchResults": {
+        "additionalProperties": false,
+        "description": "Grouped by type. The palette shows ingredients first and hides empty groups.",
+        "properties": {
+          "ingredients": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "title": "Ingredients",
+            "type": "array"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "vendors": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "title": "Vendors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ingredients",
+          "products",
+          "vendors"
+        ],
+        "title": "SearchResults",
+        "type": "object"
+      },
       "StageResultOut": {
         "additionalProperties": false,
         "properties": {
@@ -5684,7 +6145,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/VendorOut"
+              "$ref": "#/components/schemas/VendorListItem"
             },
             "title": "Items",
             "type": "array"
@@ -5694,6 +6155,99 @@
           "items"
         ],
         "title": "VendorList",
+        "type": "object"
+      },
+      "VendorListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "chain",
+              "independent",
+              "market",
+              "stand"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_visit": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Visit"
+          },
+          "location_count": {
+            "title": "Location Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "price_scope": {
+            "enum": [
+              "chain",
+              "location"
+            ],
+            "title": "Price Scope",
+            "type": "string"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "price_scope",
+          "website",
+          "notes",
+          "active",
+          "created_at",
+          "location_count",
+          "last_visit"
+        ],
+        "title": "VendorListItem",
         "type": "object"
       },
       "VendorLocationCreate": {
@@ -8509,21 +9063,50 @@
             }
           },
           {
-            "description": "typeahead text; ranks like /products/search",
+            "description": "name, brand, ingredient or barcode; ranks like /products/search, one page",
             "in": "query",
             "name": "q",
             "required": false,
             "schema": {
               "anyOf": [
                 {
+                  "maxLength": 200,
+                  "minLength": 1,
                   "type": "string"
                 },
                 {
                   "type": "null"
                 }
               ],
-              "description": "typeahead text; ranks like /products/search",
+              "description": "name, brand, ingredient or barcode; ranks like /products/search, one page",
               "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "produce",
+                    "dairy",
+                    "meat",
+                    "seafood",
+                    "bakery",
+                    "pantry",
+                    "spices",
+                    "beverages",
+                    "frozen"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category"
             }
           },
           {
@@ -9789,6 +10372,52 @@
         "summary": "Get Receipt Image",
         "tags": [
           "receipts"
+        ]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "operationId": "search_api_v1_search_get",
+        "parameters": [
+          {
+            "description": "ingredient, product, vendor or barcode",
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "description": "ingredient, product, vendor or barcode",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "search"
         ]
       }
     },

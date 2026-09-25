@@ -96,8 +96,13 @@ class VendorOut(VendorRef):
     created_at: datetime
 
 
+class VendorListItem(VendorOut):
+    location_count: int
+    last_visit: datetime | None
+
+
 class VendorList(ApiModel):
-    items: list[VendorOut]
+    items: list[VendorListItem]
 
 
 # --- vendor locations ----------------------------------------------------------
