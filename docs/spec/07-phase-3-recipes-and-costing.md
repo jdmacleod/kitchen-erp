@@ -238,7 +238,8 @@ bridges keep theirs; there is no separate review-queue endpoint or page.
 16. Negligible lines are excluded from the queue and from completeness counts.
 17. A pin is refused for a product that does not fulfil the line's ingredient,
     and survives a re-index that leaves the name unchanged.
-18. The receipt kind of the queue behaves exactly as the Phase 2 tests require;
+18. Receipt-line identification (the inbox's `identify` kind, and the Phase 2
+    to-identify endpoints and page) behaves exactly as the Phase 2 tests require;
     those tests run unchanged.
 
 ## 3D — Costing
