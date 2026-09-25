@@ -1,20 +1,46 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
-import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type PurchaseStatus } from "../../api/purchases";
-import { Badge, SelectField } from "../../components/catalog/fields";
+import { jobInFlight, useIngestJobs, type IngestJob } from "../../api/ingest";
+import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseStatus } from "../../api/purchases";
+import { Badge } from "../../components/catalog/fields";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
-const STATUSES: readonly PurchaseStatus[] = ["committed", "reviewed", "draft"];
+type Filter = PurchaseStatus | "all";
 
+/** Where a purchase came from, in the words spec 10 uses. */
+function fromLabel(p: Purchase): string {
+  if (p.source === "receipt") return "Receipt";
+  if (p.source === "manual") return "By hand";
+  return sourceLabel[p.source];
+}
+
+/** "3", or "50+" when there is a further page. */
+function countLabel(n: number, more: boolean): string {
+  return more ? `${n}+` : String(n);
+}
+
+/**
+ * Every purchase, newest first (docs/spec/10, Shop: purchases). Receipts still
+ * being read are rows too, with a Reading pill, so an upload never looks lost (G1).
+ */
 export function PurchasesPage() {
   usePageTitle("Purchases");
-  const [status, setStatus] = useState<PurchaseStatus | "">("");
+  const [filter, setFilter] = useState<Filter>("all");
+  const status = filter === "all" ? "" : filter;
   const purchases = usePurchases({ status });
   const items = purchases.data?.pages.flatMap((p) => p.items) ?? [];
+  // The Drafts count, from the first page of drafts.
+  const drafts = usePurchases({ status: "draft" });
+  const draftPage = drafts.data?.pages[0];
+  const draftCount = draftPage ? countLabel(draftPage.items.length, Boolean(draftPage.next_cursor)) : null;
+  // Receipts in flight belong with the drafts they are about to become.
+  const jobs = useIngestJobs();
+  const reading = filter === "all" || filter === "draft" ? (jobs.data ?? []).filter(jobInFlight) : [];
 
   return (
     <>
@@ -29,17 +55,34 @@ export function PurchasesPage() {
         </div>
       </PageHeader>
 
+      {/* The phone's drafts banner (10, Phone: purchases): one tap to the drafts. */}
+      {filter === "all" && draftPage && draftPage.items.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setFilter("draft")}
+          className={`mb-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-amber-400 px-4 text-left text-sm text-amber-900 lg:hidden dark:border-amber-600 dark:text-amber-200 ${focusRing}`}
+        >
+          <span className="font-medium">
+            {draftCount} {draftPage.items.length === 1 && !draftPage.next_cursor ? "draft" : "drafts"} to finish
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
+      ) : null}
+
       <Card>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-medium">All purchases</h2>
-          <SelectField id="purchases-status" label="Status" value={status} onChange={(e) => setStatus(e.target.value as PurchaseStatus | "")} className="w-40">
-            <option value="">Any</option>
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {purchaseStatusLabel[s]}
-              </option>
-            ))}
-          </SelectField>
+          <SegmentedControl
+            label="Status"
+            options={[
+              { value: "all", label: "All" },
+              { value: "draft", label: draftCount ? `Drafts ${draftCount}` : "Drafts" },
+              { value: "reviewed", label: purchaseStatusLabel.reviewed },
+              { value: "committed", label: purchaseStatusLabel.committed },
+            ]}
+            value={filter}
+            onChange={setFilter}
+          />
         </div>
 
         {purchases.isPending ? (
@@ -48,19 +91,19 @@ export function PurchasesPage() {
           </p>
         ) : purchases.isError ? (
           <Alert tone="error">{errorMessage(purchases.error)}</Alert>
-        ) : items.length === 0 && status ? (
+        ) : items.length === 0 && reading.length === 0 && status ? (
           // Filtered-empty and truly empty say different things (G11).
           <EmptyState
             title={`No ${purchaseStatusLabel[status].toLowerCase()} purchases`}
             action={
-              <Button variant="secondary" onClick={() => setStatus("")}>
+              <Button variant="secondary" onClick={() => setFilter("all")}>
                 Show all
               </Button>
             }
           >
             Nothing has this status right now.
           </EmptyState>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && reading.length === 0 ? (
           <EmptyState
             title="No purchases yet"
             action={
@@ -83,14 +126,17 @@ export function PurchasesPage() {
                 <thead>
                   <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                     <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Location</th>
+                    <th className="py-2 pr-3">Where</th>
+                    <th className="py-2 pr-3">From</th>
+                    <th className="py-2 pr-3 text-right">Lines</th>
                     <th className="py-2 pr-3 text-right">Total</th>
-                    <th className="py-2 pr-3">Status</th>
-                    <th className="py-2 pr-3">Source</th>
-                    <th className="py-2 text-right">Lines</th>
+                    <th className="py-2">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {reading.map((job) => (
+                    <ReadingRow key={job.id} job={job} />
+                  ))}
                   {items.map((p) => (
                     <tr key={p.id}>
                       <td className="py-2 pr-3 whitespace-nowrap">
@@ -106,16 +152,19 @@ export function PurchasesPage() {
                               <span className="text-neutral-600 dark:text-neutral-400"> — {p.vendor_location.name}</span>
                             ) : null}
                           </>
+                        ) : p.status === "committed" ? (
+                          <span className="text-neutral-600 italic dark:text-neutral-400">No location</span>
                         ) : (
-                          <span className="text-neutral-600 italic dark:text-neutral-400">No location yet</span>
+                          // A draft cannot commit without one; say so where it is missing.
+                          <span className="font-medium text-amber-800 dark:text-amber-300">Location needed</span>
                         )}
                       </td>
+                      <td className="py-2 pr-3">{fromLabel(p)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{itemLines(p).length}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(p.total ?? p.computed_total)}</td>
-                      <td className="py-2 pr-3">
+                      <td className="py-2">
                         <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
                       </td>
-                      <td className="py-2 pr-3">{sourceLabel[p.source]}</td>
-                      <td className="py-2 text-right tabular-nums">{itemLines(p).length}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -132,5 +181,25 @@ export function PurchasesPage() {
         )}
       </Card>
     </>
+  );
+}
+
+/** A receipt still being read: no purchase yet, so it links to its job (G1). */
+function ReadingRow({ job }: { job: IngestJob }) {
+  return (
+    <tr data-testid="reading-row">
+      <td className="py-2 pr-3 whitespace-nowrap">
+        <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+          {job.created_at ? formatDate(job.created_at) : "Just now"}
+        </Link>
+      </td>
+      <td className="py-2 pr-3 text-neutral-600 dark:text-neutral-400">Being read</td>
+      <td className="py-2 pr-3">Receipt</td>
+      <td className="py-2 pr-3 text-right text-neutral-600 dark:text-neutral-400">—</td>
+      <td className="py-2 pr-3 text-right text-neutral-600 dark:text-neutral-400">—</td>
+      <td className="py-2">
+        <Badge>Reading</Badge>
+      </td>
+    </tr>
   );
 }

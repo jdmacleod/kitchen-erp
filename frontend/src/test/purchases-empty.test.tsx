@@ -9,6 +9,7 @@ function routes() {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+    "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
   };
 }
 
@@ -28,13 +29,13 @@ describe("purchases: empty states (G11, UI-3.11)", () => {
     renderApp("/shop/purchases");
     await screen.findByRole("region", { name: "No purchases yet" });
 
-    await user.selectOptions(screen.getByLabelText("Status"), "draft");
+    await user.click(within(screen.getByRole("group", { name: "Status" })).getByRole("button", { name: /^Drafts/ }));
     const empty = await screen.findByRole("region", { name: "No draft purchases" });
     expect(screen.queryByRole("region", { name: "No purchases yet" })).toBeNull();
     expect(calls.some((c) => c.query.get("status") === "draft")).toBe(true);
 
     await user.click(within(empty).getByRole("button", { name: "Show all" }));
-    expect(screen.getByLabelText("Status")).toHaveValue("");
+    expect(within(screen.getByRole("group", { name: "Status" })).getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByRole("region", { name: "No purchases yet" })).toBeInTheDocument();
   });
 });
