@@ -27,7 +27,7 @@ import {
 import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -193,7 +193,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
           <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
             {adding ? "Cancel" : "Add a location"}
           </Button>
-          <Link to={`/map?place=location`} className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Link to={`/map?place=location`} className={secondaryLinkClass}>
             Add on the map
           </Link>
         </div>

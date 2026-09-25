@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type PurchaseStatus } from "../../api/purchases";
 import { Badge, SelectField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -20,7 +20,7 @@ export function PurchasesPage() {
     <>
       <PageHeader title="Purchases">
         <div className="flex flex-wrap gap-2">
-          <Link to="/prices/new" className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Link to="/prices/new" className={secondaryLinkClass}>
             Shelf price
           </Link>
           <Link to="/purchases/new" className={primaryLinkClass}>

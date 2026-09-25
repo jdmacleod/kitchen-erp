@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { purchaseStatusTone } from "../api/purchases";
+import { secondaryLinkClass } from "../components/ui";
 import { HEX, OKLCH, oklchToHex, parseOklch, type PaletteKey } from "../lib/palette";
 import themeCss from "../theme.css?raw";
 
@@ -46,6 +47,18 @@ describe("theme coverage (spec 08)", () => {
       .filter(({ text }) => /#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b(?![\w-])/.test(text))
       .map(({ path }) => path);
     expect(offenders).toEqual([]);
+  });
+
+  it("gives link-style secondary actions their own text colour", () => {
+    // Links are herb by default (theme.css). A bordered link that sets no text colour
+    // turns herb and reads as a primary action, so secondary links use secondaryLinkClass.
+    expect(secondaryLinkClass).toMatch(/\btext-neutral-900\b/);
+    expect(secondaryLinkClass).toMatch(/\bdark:text-neutral-100\b/);
+    const handRolled = files
+      .filter(({ path }) => path !== "components/ui.tsx")
+      .filter(({ text }) => /rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium/.test(text))
+      .map(({ path }) => path);
+    expect(handRolled).toEqual([]);
   });
 
   it("keeps blue for actions: no info or selection surface is tinted blue", () => {

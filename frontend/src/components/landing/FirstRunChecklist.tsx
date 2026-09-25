@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { focusRing, primaryLinkClass } from "../ui";
+import { primaryLinkClass, secondaryLinkClass } from "../ui";
 
 /**
  * The two-step first-run checklist.
@@ -23,8 +23,7 @@ import { focusRing, primaryLinkClass } from "../ui";
 const primaryAction =
   `${primaryLinkClass} w-full sm:w-auto`;
 
-const secondaryAction =
-  `inline-flex min-h-10 w-full items-center justify-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 sm:w-auto dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`;
+const secondaryAction = `${secondaryLinkClass} w-full sm:w-auto`;
 
 interface StepProps {
   done: boolean;

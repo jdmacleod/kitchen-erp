@@ -17,6 +17,12 @@ const buttonVariants = {
 /** The primary button's look, for a link that acts as the page's primary action. */
 export const primaryLinkClass = `inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
 
+/**
+ * The secondary button's look, for a link. It sets its own text colour, so the
+ * base rule that makes links herb (theme.css) cannot turn it into a primary action.
+ */
+export const secondaryLinkClass = `inline-flex min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.secondary} ${focusRing}`;
+
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: keyof typeof buttonVariants;
 };
