@@ -69,7 +69,7 @@ The most important detail page; search results and inbox items land here most of
 - **Breadcrumb:** Catalog / Ingredients.
 - **Header:** the ingredient name with its category chip, and a meta line of canonical unit and perishability. "Inventory tier" is omitted until Phase 5 (T16). "Log shelf price" is the primary action; "Add to list" is dormant until Phase 4.
 - **Summary strip:**
-  - **Best recent price:** the lowest normalized unit price in the last 90 days, with product, vendor and date, on an herb-tinted card. Prices that can't be compared are excluded (G8).
+  - **Best recent price:** the lowest normalized unit price in the last 90 days, with product, vendor and date, on an olive-tinted card, because olive marks the cheapest price. Prices that can't be compared are excluded (G8).
   - **Last 90 days:** a sparkline and the min–max range across vendors, from `GET /api/v1/ingredients/{id}/price-history?days=90` (D22). The sparkline hides with fewer than two points.
   - **Stock:** dormant until Phase 5. It is omitted, not shown empty.
 - **Prices by vendor** (left, wider):
@@ -130,7 +130,7 @@ The most important detail page; search results and inbox items land here most of
 
 - **Container:** a centred dialog, 640px wide, over a scrim.
 - **Input:** the search field with an Esc hint.
-- **Results:** grouped (Ingredients, Products, Vendors), with the selected result in an herb tint.
+- **Results:** grouped (Ingredients, Products, Vendors), with the selected result in a neutral tint; herb is kept for actions.
 - **Footer:** keyboard hints.
 - **States:**
   - Before typing: device recents or the hint (G15).
@@ -180,7 +180,7 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 
 **At the store (Phone: at the store).** Dormant until Phase 4 (T4; see TODOS.md). This screen is one stop of a trip plan:
 - **Header:** "Stop 1 of 2 · {kitchen} list", the store name, basket progress and the estimated cost here.
-- **"Get here" list:** 28px check circles. Each row's price is a 44px button, and editing it records a shelf price observation; edited prices show an herb tint.
+- **"Get here" list:** 28px check circles. Each row's price is a 44px button, and editing it records a shelf price observation; edited prices show a neutral tint.
 - **"Cheaper at stop 2":** lists deferred items, with a "Get here" override.
 - **Footer:** an anchored "Done here · record purchase" button creates a purchase linked to the trip plan.
 
