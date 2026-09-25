@@ -13,7 +13,8 @@ function baseRoutes(vendors: () => Vendor[]) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
-    "GET /vendors": () => jsonResponse(200, { items: vendors() }),
+    // The list carries each card's counts (T16).
+    "GET /vendors": () => jsonResponse(200, { items: vendors().map((v) => ({ location_count: 1, last_visit: null, ...v })) }),
     "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
   };
 }
@@ -32,11 +33,13 @@ describe("vendors", () => {
     const user = userEvent.setup();
     renderApp("/catalog/vendors");
 
-    expect(await screen.findByText("No vendors yet")).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Vendors" });
+    await user.click(screen.getAllByRole("button", { name: "Add vendor" })[0]);
+    await screen.findByRole("dialog", { name: "Add vendor" });
     await user.type(screen.getByLabelText("Name"), "Riverbend Grocers");
     await user.click(screen.getByRole("radio", { name: "Chain" }));
-    await user.click(screen.getByRole("radio", { name: "Chain-wide" }));
-    await user.click(screen.getByRole("button", { name: "Create vendor" }));
+    await user.click(screen.getByRole("radio", { name: "Same price at every location" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add vendor" }));
 
     const post = await waitFor(() => {
       const found = calls.find((c) => c.method === "POST" && c.path === "/vendors");
@@ -46,7 +49,11 @@ describe("vendors", () => {
     expect(post?.body).toEqual({ name: "Riverbend Grocers", kind: "chain", price_scope: "chain" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
     const list = await screen.findByRole("list", { name: "Vendors" });
-    expect(within(list).getByRole("link", { name: "Riverbend Grocers" })).toHaveAttribute("href", `/catalog/vendors/${created.id}`);
+    const card = within(list).getByRole("link", { name: "Riverbend Grocers" });
+    expect(card).toHaveAttribute("href", `/catalog/vendors/${created.id}`);
+    // The new card takes focus (G10), and the Notice still says what it needs next.
+    await waitFor(() => expect(card).toHaveFocus());
+    expect(screen.getByTestId("notice")).toHaveTextContent("until it has a location");
   });
 
   it("shows a quiet note when OpenStreetMap adoption is switched off", async () => {
@@ -58,8 +65,11 @@ describe("vendors", () => {
     renderApp("/catalog/vendors");
     await screen.findByRole("list", { name: "Vendors" });
 
-    await user.selectOptions(await screen.findByLabelText("Home base"), homeBaseId);
-    await user.click(screen.getByRole("button", { name: "Find candidates" }));
+    await user.click(screen.getByRole("button", { name: "Find nearby" }));
+    const dialog = await screen.findByRole("dialog", { name: "Find nearby" });
+    // The only home base is chosen already (UI-3.8).
+    await waitFor(() => expect(within(dialog).getByLabelText("Home base")).toHaveValue(homeBaseId));
+    await user.click(within(dialog).getByRole("button", { name: "Find candidates" }));
 
     expect(await screen.findByText("OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.")).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -79,8 +89,10 @@ describe("vendors", () => {
     const user = userEvent.setup();
     renderApp("/catalog/vendors");
     await screen.findByRole("list", { name: "Vendors" });
-    await user.selectOptions(await screen.findByLabelText("Home base"), homeBaseId);
-    await user.click(screen.getByRole("button", { name: "Find candidates" }));
+    await user.click(screen.getByRole("button", { name: "Find nearby" }));
+    const dialog = await screen.findByRole("dialog", { name: "Find nearby" });
+    await waitFor(() => expect(within(dialog).getByLabelText("Home base")).toHaveValue(homeBaseId));
+    await user.click(within(dialog).getByRole("button", { name: "Find candidates" }));
 
     const row = await screen.findByText("Pier Bakery");
     expect(row).toBeInTheDocument();
@@ -115,10 +127,10 @@ describe("vendors", () => {
     expect(within(stalls).getByText(/Saturday 08:00–13:00 \(inherited\)/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Edit vendor" }));
-    await user.click(screen.getByRole("radio", { name: "Chain-wide" }));
+    await user.click(screen.getByRole("radio", { name: "Same price at every location" }));
     await user.click(screen.getByRole("button", { name: "Save vendor" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ price_scope: "chain" }));
-    expect(await screen.findByText("Prices chain-wide")).toBeInTheDocument();
+    expect(await screen.findByText("Same price at every location")).toBeInTheDocument();
   });
 
   it("creates a location for a vendor without going to the map", async () => {
@@ -266,5 +278,68 @@ describe("vendors", () => {
     await user.click(within(list).getByRole("button", { name: "Delete Harbour flat" }));
     await user.click(within(list).getByRole("button", { name: "Confirm delete" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("This home base is the default for 2 locations. Reassign them first.");
+  });
+});
+
+describe("the Vendors page (UI-3.7, UI-3.8, G11)", () => {
+  const listed = (vendors: object[]) => ({
+    "GET /auth/me": () => jsonResponse(200, adminUser),
+    "GET /health": () => jsonResponse(200, { status: "ok" }),
+    "GET /vendors": () => jsonResponse(200, { items: vendors }),
+    "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+  });
+
+  it("shows a card per vendor with its kind, locations, last visit and pricing", async () => {
+    mockApi(listed([
+      { ...chainVendor, location_count: 3, last_visit: "2026-09-20T17:00:00Z" },
+      { ...marketVendor, location_count: 0, last_visit: null },
+    ]));
+    renderApp("/catalog/vendors");
+    const cards = await screen.findAllByTestId("vendor-card");
+    expect(cards[0]).toHaveTextContent("Chain");
+    expect(cards[0]).toHaveTextContent("3 locations");
+    expect(cards[0]).toHaveTextContent("Last visit Sep 20, 2026");
+    expect(cards[0]).toHaveTextContent("Same price at every location");
+    expect(cards[1]).toHaveTextContent("No locations yet");
+    expect(cards[1]).toHaveTextContent("Not visited yet");
+  });
+
+  it("narrows by kind, and names the filter when nothing matches", async () => {
+    mockApi(listed([{ ...chainVendor, location_count: 1, last_visit: null }]));
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors");
+    await screen.findAllByTestId("vendor-card");
+    await user.click(within(screen.getByRole("group", { name: "Kind" })).getByRole("button", { name: "Stands" }));
+    const empty = await screen.findByRole("region", { name: "No vendors match among stands" });
+    await user.click(within(empty).getByRole("button", { name: "Clear filters" }));
+    expect(await screen.findAllByTestId("vendor-card")).toHaveLength(1);
+  });
+
+  it("points an empty directory at the map, where a pin makes a vendor", async () => {
+    mockApi(listed([]));
+    renderApp("/catalog/vendors");
+    const empty = await screen.findByRole("region", { name: "No vendors yet. Drop a pin on the map" });
+    expect(within(empty).getByRole("link", { name: "Open the map" })).toHaveAttribute("href", "/catalog/vendors?view=map&place=location");
+  });
+
+  it("switches to the map view and back, keeping the view in the URL", async () => {
+    mockApi({ ...listed([]), "GET /vendor-locations": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors");
+    const view = await screen.findByRole("group", { name: "View" });
+    await user.click(within(view).getByRole("button", { name: "Map" }));
+    expect(await screen.findByRole("button", { name: "Add location here" })).toBeInTheDocument();
+    expect(within(view).getByRole("button", { name: "Map" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(view).getByRole("button", { name: "List" }));
+    expect(await screen.findByRole("region", { name: "No vendors yet. Drop a pin on the map" })).toBeInTheDocument();
+  });
+
+  it("asks for a kitchen first when there is none to search from (UI-3.8)", async () => {
+    mockApi({ ...listed([]), "GET /home-bases": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors");
+    await user.click(await screen.findByRole("button", { name: "Find nearby" }));
+    const dialog = await screen.findByRole("dialog", { name: "Find nearby" });
+    expect(await within(dialog).findByRole("link", { name: "Settings → Kitchens" })).toHaveAttribute("href", "/settings/kitchens");
   });
 });

@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import {
   PRICE_SCOPES,
@@ -15,93 +15,231 @@ import {
   vendorKindLabel,
   type OsmCandidate,
   type PriceScope,
-  type Vendor,
   type VendorCreateInput,
+  type VendorListItem,
   type VendorKind,
 } from "../../api/geo";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
+import { Dialog } from "../../components/Dialog";
+import { Drawer } from "../../components/Drawer";
+import { SegmentedControl } from "../../components/SegmentedControl";
+import { formatDate } from "../../lib/format";
+import { MapPage } from "./MapPage";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { useNotice } from "../../components/Notice";
 
+const KIND_OPTIONS: { value: VendorKind | ""; label: string }[] = [
+  { value: "", label: "All" },
+  { value: "chain", label: "Chains" },
+  { value: "independent", label: "Independents" },
+  { value: "market", label: "Markets" },
+  { value: "stand", label: "Stands" },
+];
+const isKind = (v: string | null): v is VendorKind => VENDOR_KINDS.includes(v as VendorKind);
+const muted = "text-neutral-600 dark:text-neutral-400";
+
+/**
+ * Vendors (docs/spec/10): search, the kind control and the list/map toggle, all
+ * kept in the URL (`?view=map`, T9). The map view keeps every map function,
+ * including dropping a pin to create a vendor and its location in one act.
+ */
 export function VendorsPage() {
-  usePageTitle("Vendors");
-  const [q, setQ] = useState("");
-  const [kind, setKind] = useState<VendorKind | "">("");
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const debouncedQ = useDebouncedValue(q.trim(), 250);
-  const vendors = useVendors(debouncedQ, includeInactive);
-  // The API has no kind filter for vendors; narrow the loaded list here.
-  const items = (vendors.data ?? []).filter((v) => !kind || v.kind === kind);
+  const [params, setParams] = useSearchParams();
+  const view = params.get("view") === "map" ? "map" : "list";
+  const q = params.get("q") ?? "";
+  const kind = isKind(params.get("kind")) ? (params.get("kind") as VendorKind) : "";
+  const includeInactive = params.get("inactive") === "1";
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+
+  const [adding, setAdding] = useState(false);
+  const [finding, setFinding] = useState(false);
 
   return (
     <>
-      <PageHeader title="Vendors">
-        {/* Until T6's list/map toggle: the map is the Vendors page's map view (T9). */}
-        <Link to="/catalog/vendors?view=map" className={secondaryLinkClass}>
-          Map view
-        </Link>
+      <PageHeader title="Vendors" description="The shops, markets and stands you buy from, and where they are.">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={() => setFinding(true)}>
+            Find nearby
+          </Button>
+          <Button onClick={() => setAdding(true)}>Add vendor</Button>
+        </div>
       </PageHeader>
-      <div className="flex flex-col gap-6">
-        <CreateVendorForm />
 
-        <Card>
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-lg font-medium">Vendor directory</h2>
-            <label className="inline-flex min-h-10 items-center gap-2 text-sm">
-              <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} className={`size-4 ${focusRing}`} />
-              Show inactive
-            </label>
-          </div>
-          <div className="mb-3 grid gap-3 sm:grid-cols-2">
-            <Field id="vendor-search" label="Search" type="search" autoComplete="off" placeholder="Part of a name" value={q} onChange={(e) => setQ(e.target.value)} />
-            <SelectField id="vendor-kind-filter" label="Kind" value={kind} onChange={(e) => setKind(e.target.value as VendorKind | "")}>
-              <option value="">All kinds</option>
-              {VENDOR_KINDS.map((k) => (
-                <option key={k} value={k}>
-                  {vendorKindLabel[k]}
-                </option>
-              ))}
-            </SelectField>
-          </div>
-          {vendors.isPending ? (
-            <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
-              Loading…
-            </p>
-          ) : vendors.isError ? (
-            <Alert tone="error">{errorMessage(vendors.error)}</Alert>
-          ) : items.length === 0 ? (
-            <EmptyState title={debouncedQ || kind ? "No vendors match" : "No vendors yet"}>
-              {debouncedQ || kind ? "Try a shorter search or another kind." : "Vendors are the shops, markets, and stands you buy from. Add one above, then give it a location on its page."}
-            </EmptyState>
-          ) : (
-            <ul aria-label="Vendors" className="divide-y divide-neutral-200 dark:divide-neutral-800">
-              {items.map((v) => (
-                <VendorRow key={v.id} vendor={v} />
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        <OsmAdoptionPanel />
+      <div className="mb-4">
+        <SegmentedControl
+          label="View"
+          options={[
+            { value: "list", label: "List" },
+            { value: "map", label: "Map" },
+          ]}
+          value={view}
+          onChange={(v) => setParam("view", v === "map" ? "map" : null)}
+        />
       </div>
+
+      {view === "map" ? (
+        <MapPage embedded />
+      ) : (
+        <VendorList q={q} kind={kind} includeInactive={includeInactive} setParam={setParam} onAdd={() => setAdding(true)} />
+      )}
+
+      {adding ? <AddVendorDrawer onClose={() => setAdding(false)} /> : null}
+      {finding ? <FindNearbyDialog onClose={() => setFinding(false)} /> : null}
     </>
   );
 }
 
-function VendorRow({ vendor }: { vendor: Vendor }) {
+function VendorList({
+  q,
+  kind,
+  includeInactive,
+  setParam,
+  onAdd,
+}: {
+  q: string;
+  kind: VendorKind | "";
+  includeInactive: boolean;
+  setParam: (key: string, value: string | null) => void;
+  onAdd: () => void;
+}) {
+  usePageTitle("Vendors");
+  const [text, setText] = useState(q);
+  const debounced = useDebouncedValue(text.trim(), 250);
+  useEffect(() => {
+    if (debounced !== q) setParam("q", debounced || null);
+    // Only the typed text drives the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced]);
+
+  const vendors = useVendors(q, includeInactive);
+  // The API has no kind filter for vendors, and the list is not paged, so
+  // narrowing the loaded list here is exact.
+  const items = (vendors.data ?? []).filter((v) => !kind || v.kind === kind);
+  const filtered = q !== "" || kind !== "";
+
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link to={`/catalog/vendors/${vendor.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
-        {vendor.name}
-      </Link>
-      <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-        <span>{vendorKindLabel[vendor.kind]}</span>
-        <Badge>{priceScopeLabel[vendor.price_scope]}</Badge>
-        {vendor.active ? null : <Badge tone="warn">inactive</Badge>}
-      </span>
+    <>
+      <div className="mb-4 flex flex-col gap-3">
+        <label htmlFor="vendor-search" className="sr-only">
+          Search vendors
+        </label>
+        <input
+          id="vendor-search"
+          type="text"
+          enterKeyHint="search"
+          autoComplete="off"
+          maxLength={200}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Search by name"
+          className={`min-h-12 w-full rounded-lg border border-neutral-300 bg-white px-4 text-base dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <SegmentedControl label="Kind" options={KIND_OPTIONS} value={kind} onChange={(v) => setParam("kind", v || null)} />
+          <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
+            <input
+              type="checkbox"
+              checked={includeInactive}
+              onChange={(e) => setParam("inactive", e.target.checked ? "1" : null)}
+              className={`size-4 ${focusRing}`}
+            />
+            Show inactive
+          </label>
+        </div>
+      </div>
+
+      {vendors.isPending ? (
+        <p role="status" className={`text-sm ${muted}`}>
+          Loading…
+        </p>
+      ) : vendors.isError ? (
+        <Alert tone="error">{errorMessage(vendors.error)}</Alert>
+      ) : items.length === 0 ? (
+        filtered ? (
+          <EmptyState
+            title={`No vendors match${q ? ` ‘${q}’` : ""}${kind ? ` among ${KIND_OPTIONS.find((o) => o.value === kind)?.label.toLowerCase()}` : ""}`}
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setText("");
+                  setParam("q", null);
+                  setParam("kind", null);
+                }}
+              >
+                Clear filters
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No vendors yet. Drop a pin on the map"
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link to="/catalog/vendors?view=map&place=location" className={primaryLinkClass}>
+                  Open the map
+                </Link>
+                <Button variant="secondary" onClick={onAdd}>
+                  Add vendor
+                </Button>
+              </div>
+            }
+          >
+            A pin names the vendor and its location in one step.
+          </EmptyState>
+        )
+      ) : (
+        <ul aria-label="Vendors" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((v) => (
+            <VendorCard key={v.id} vendor={v} />
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function VendorCard({ vendor }: { vendor: VendorListItem }) {
+  const locations = vendor.location_count;
+  return (
+    <li data-testid="vendor-card" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+      <div className="flex items-start justify-between gap-2">
+        <Link id={`vendor-row-${vendor.id}`} to={`/catalog/vendors/${vendor.id}`} className={`font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}>
+          {vendor.name}
+        </Link>
+        <Badge>{vendorKindLabel[vendor.kind]}</Badge>
+      </div>
+      <dl className={`grid gap-0.5 text-sm ${muted}`}>
+        <div>
+          <dt className="sr-only">Locations</dt>
+          <dd>{locations === 0 ? "No locations yet" : `${locations} ${locations === 1 ? "location" : "locations"}`}</dd>
+        </div>
+        <div>
+          <dt className="sr-only">Last visit</dt>
+          <dd>{vendor.last_visit ? `Last visit ${formatDate(vendor.last_visit)}` : "Not visited yet"}</dd>
+        </div>
+        <div>
+          <dt className="sr-only">Pricing</dt>
+          <dd>{priceScopeLabel[vendor.price_scope]}</dd>
+        </div>
+      </dl>
+      {vendor.active ? null : (
+        <span>
+          <Badge tone="warn">inactive</Badge>
+        </span>
+      )}
     </li>
   );
 }
@@ -110,12 +248,14 @@ function VendorRow({ vendor }: { vendor: Vendor }) {
 
 const emptyForm = { name: "", kind: "independent" as VendorKind, price_scope: "location" as PriceScope, website: "", notes: "" };
 
-function CreateVendorForm() {
+function AddVendorDrawer({ onClose }: { onClose: () => void }) {
   const create = useCreateVendor();
   const [form, setForm] = useState(emptyForm);
   const [invalid, setInvalid] = useState<string | null>(null);
   const notice = useNotice();
+  const vendors = useVendors();
   const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const dirty = JSON.stringify(form) !== JSON.stringify(emptyForm);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,24 +268,27 @@ function CreateVendorForm() {
     if (form.website.trim()) input.website = form.website.trim();
     if (form.notes.trim()) input.notes = form.notes.trim();
     create.mutate(input, {
-      onSuccess: (vendor) => {
-        notice.show({
-          tone: "success",
-          message: `Added ${vendor.name}. It can't be chosen for a purchase until it has a location; add one on its page.`,
-          action: { label: "Open it", to: `/catalog/vendors/${vendor.id}` },
+      onSuccess: async (vendor) => {
+        onClose();
+        await vendors.refetch();
+        // G10, and the one thing a new vendor needs said: it has no location yet.
+        requestAnimationFrame(() => {
+          const row = document.getElementById(`vendor-row-${vendor.id}`);
+          row?.focus();
+          notice.show({
+            tone: "success",
+            message: `Added ${vendor.name}. It can't be chosen for a purchase until it has a location; add one on its page.`,
+            action: { label: "Open it", to: `/catalog/vendors/${vendor.id}` },
+            focusAction: !row,
+          });
         });
-        setForm(emptyForm);
-        document.getElementById("new-vendor-name")?.focus();
       },
     });
   };
 
   return (
-    <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-vendor-heading" noValidate>
-        <h2 id="create-vendor-heading" className="text-lg font-medium">
-          Add a vendor
-        </h2>
+    <Drawer title="Add vendor" thing="vendor" dirty={dirty} onClose={onClose} formId="add-vendor" primaryLabel="Add vendor" busy={create.isPending} busyLabel="Adding…">
+      <form id="add-vendor" onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Add vendor" noValidate>
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
         <Field id="new-vendor-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
@@ -156,17 +299,30 @@ function CreateVendorForm() {
           options={PRICE_SCOPES.map((s) => ({ value: s, label: priceScopeLabel[s] }))}
           value={form.price_scope}
           onChange={(v) => set("price_scope", v)}
-          hint="Chain-wide: one price applies at every location. Per location: each location has its own prices."
+          hint="A chain usually charges the same everywhere; a market stall sets its own."
         />
         <Field id="new-vendor-website" label="Website" type="url" autoComplete="off" placeholder="https://" value={form.website} onChange={(e) => set("website", e.target.value)} />
         <TextAreaField id="new-vendor-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
-        <div>
-          <Button type="submit" disabled={create.isPending}>
-            {create.isPending ? "Creating…" : "Create vendor"}
-          </Button>
-        </div>
       </form>
-    </Card>
+    </Drawer>
+  );
+}
+
+/** Find nearby: the OpenStreetMap adoption flow in a dialog (UI-3.8). */
+function FindNearbyDialog({ onClose }: { onClose: () => void }) {
+  const titleId = useId();
+  return (
+    <Dialog open onClose={onClose} labelledBy={titleId} className="max-h-[80vh] overflow-y-auto p-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 id={titleId} className="font-display text-xl">
+          Find nearby
+        </h2>
+        <Button variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      <OsmAdoptionPanel bare />
+    </Dialog>
   );
 }
 
@@ -174,17 +330,34 @@ function CreateVendorForm() {
 
 const RADII = [500, 1000, 2000, 5000, 10000, 20000];
 
-export function OsmAdoptionPanel() {
+export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
   const homeBases = useHomeBases();
-  const [homeBaseId, setHomeBaseId] = useState("");
+  const [chosen, setChosen] = useState("");
+  // Pre-set to the only home base when there is exactly one (UI-3.8).
+  const only = homeBases.data?.length === 1 ? homeBases.data[0].id : "";
+  const homeBaseId = chosen || only;
+  const setHomeBaseId = setChosen;
   const [radius, setRadius] = useState(2000);
   const [searched, setSearched] = useState<{ homeBaseId: string; radius: number } | null>(null);
   const candidates = useOsmCandidates(searched?.homeBaseId ?? "", searched?.radius ?? 0, searched !== null);
   const disabled = candidates.isError && isIntegrationDisabled(candidates.error);
 
+  if (homeBases.data && homeBases.data.length === 0) {
+    return (
+      <p className={`text-sm ${muted}`}>
+        Finding nearby shops starts from one of your kitchens. Add one first, under{" "}
+        <Link to="/settings/kitchens" className={`rounded font-medium underline ${focusRing}`}>
+          Settings → Kitchens
+        </Link>
+        .
+      </p>
+    );
+  }
+
+  const Wrapper = bare ? "div" : Card;
   return (
-    <Card>
-      <h2 className="mb-1 text-lg font-medium">Adopt from OpenStreetMap</h2>
+    <Wrapper>
+      {bare ? null : <h2 className="mb-1 text-lg font-medium">Adopt from OpenStreetMap</h2>}
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
         Lists food shops and marketplaces near a home base so you can adopt the ones you use. Optional; needs
         the Overpass integration switched on. © OpenStreetMap contributors.
@@ -218,9 +391,6 @@ export function OsmAdoptionPanel() {
           </Button>
         </div>
       </form>
-      {homeBases.data && homeBases.data.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">Create a home base first, on the map or under Settings.</p>
-      ) : null}
       {disabled ? (
         <p role="status" className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
           OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.
@@ -240,7 +410,7 @@ export function OsmAdoptionPanel() {
           </ul>
         )
       ) : null}
-    </Card>
+    </Wrapper>
   );
 }
 
