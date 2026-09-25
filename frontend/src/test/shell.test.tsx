@@ -99,4 +99,22 @@ describe("app shell", () => {
     await user.click(within(screen.getByRole("dialog", { name: "Search" })).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
   });
+
+  it("closes More when the page changes underneath it, as Back does", async () => {
+    shellApi();
+    const user = userEvent.setup();
+    renderApp("/shop/purchases");
+    await screen.findByText("No purchases yet");
+
+    await user.click(within(tabs()).getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("dialog", { name: "More" })).toBeInTheDocument();
+    // A navigation that did not come from the sheet: the Home tab, standing in
+    // for the browser's Back button.
+    await user.click(within(tabs()).getByRole("link", { name: "Home" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "More" })).toBeNull());
+
+    // Opening again after the navigation still works.
+    await user.click(within(tabs()).getByRole("button", { name: "More" }));
+    expect(await screen.findByRole("dialog", { name: "More" })).toBeInTheDocument();
+  });
 });

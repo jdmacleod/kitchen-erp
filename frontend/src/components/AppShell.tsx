@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, Outlet } from "react-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link, Outlet, useLocation } from "react-router";
 import { useCurrentUser } from "../auth/context";
 import { CaptureSheet } from "./CaptureSheet";
 import { ChromeContext, type Chrome } from "./chrome";
@@ -34,12 +34,22 @@ type Overlay = "search" | "capture" | "more" | null;
  */
 export function AppShell() {
   const user = useCurrentUser();
-  // One overlay at a time: opening one replaces whichever is up.
-  const [overlay, setOverlay] = useState<Overlay>(null);
+  const location = useLocation();
+  // One overlay at a time: opening one replaces whichever is up. Each remembers
+  // the history entry it was opened on, so any navigation (a link, Back,
+  // Forward) closes it without an effect.
+  const [opened, setOpened] = useState<{ overlay: Overlay; on: string }>({ overlay: null, on: "" });
+  const overlay = opened.on === location.key ? opened.overlay : null;
+  // A ref, so the memoised chrome and the ⌘K listener open on the current entry.
+  const entry = useRef(location.key);
+  useEffect(() => {
+    entry.current = location.key;
+  }, [location.key]);
+  const setOverlay = useCallback((next: Overlay) => setOpened({ overlay: next, on: entry.current }), []);
   const close = () => setOverlay(null);
   const chrome = useMemo<Chrome>(
     () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search") }),
-    [],
+    [setOverlay],
   );
 
   // ⌘K / Ctrl+K opens search from any page (UI-2.8).
@@ -52,7 +62,7 @@ export function AppShell() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, []);
+  }, [setOverlay]);
 
   return (
     <div className="min-h-dvh lg:flex">
