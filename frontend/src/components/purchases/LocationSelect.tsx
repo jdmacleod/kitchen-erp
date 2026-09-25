@@ -21,13 +21,14 @@ export function rememberLocation(id: string): void {
   }
 }
 
-type GeoState = { status: "pending" } | { status: "ok"; near: string } | { status: "unavailable" };
+export type GeoState = { status: "pending" } | { status: "ok"; near: string } | { status: "unavailable" };
 
 /**
  * One position fix, asked for once. The coordinates go only to this
  * deployment's own API as the `near` filter; they are never stored or logged.
+ * `skip` gives up waiting, as if the browser had said no.
  */
-function useGeoPosition(enabled: boolean): GeoState {
+export function useGeoPosition(enabled: boolean): [GeoState, () => void] {
   const [state, setState] = useState<GeoState>(() =>
     enabled && typeof navigator !== "undefined" && navigator.geolocation ? { status: "pending" } : { status: "unavailable" },
   );
@@ -53,7 +54,7 @@ function useGeoPosition(enabled: boolean): GeoState {
       cancelled = true;
     };
   }, [state.status]);
-  return state;
+  return [state, () => setState({ status: "unavailable" })];
 }
 
 interface LocationSelectProps {
@@ -71,8 +72,13 @@ interface LocationSelectProps {
   hint?: string;
 }
 
+/** A location as people name it: the vendor, and the branch when it has its own name. */
+export function locationLabel(l: VendorLocation): string {
+  return l.name === l.vendor.name ? l.name : `${l.vendor.name} — ${l.name}`;
+}
+
 function optionLabel(l: VendorLocation): string {
-  const name = l.name === l.vendor.name ? l.name : `${l.vendor.name} — ${l.name}`;
+  const name = locationLabel(l);
   if (l.distance_m === null) return name;
   const metres = Number(l.distance_m);
   if (!Number.isFinite(metres)) return name;
@@ -93,10 +99,11 @@ export function LocationSelect({
   disabled,
   hint,
 }: LocationSelectProps) {
-  const geo = useGeoPosition(autoDefault);
+  const [geo] = useGeoPosition(autoDefault);
   const locations = useLocations(geo.status === "ok" ? { near: geo.near } : {});
   const items = useMemo(() => locations.data ?? [], [locations.data]);
-  const [touched, setTouched] = useState(false);
+  // A value handed in at the start (the store chosen in Capture) counts as chosen.
+  const [touched, setTouched] = useState(() => autoDefault && value !== "");
   // Which default has been applied so far, so the nearest location replaces
   // the remembered one exactly once and never a later user choice.
   const applied = useRef<"none" | "remembered" | "nearest">("none");
