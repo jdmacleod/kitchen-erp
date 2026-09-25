@@ -67,7 +67,11 @@ class IngredientPricePoint(ApiModel):
 
 
 class IngredientPriceHistory(ApiModel):
-    """Normalized prices for the ingredient hub's sparkline and range (D22), oldest first."""
+    """Normalized prices for the ingredient hub's sparkline and range (D22).
+
+    One point per day, oldest first: that day's cheapest price. ``low`` and ``high``
+    cover every price in the window.
+    """
 
     days: int
     points: list[IngredientPricePoint]
