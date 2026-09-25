@@ -37,8 +37,9 @@ from app.services import pricebook, resolution
 
 log = get_logger(__name__)
 
-# A draft whose job is still reading is counted under ``reading``; one whose job
-# failed is the ``receipt_failed`` row. Either way it is not also a receipt row.
+# A draft whose job is still reading is counted under ``reading``; a draft whose job
+# failed is the ``receipt_failed`` row. Either way it is not also a receipt row. Once
+# the purchase is past draft, its own status decides and the failed job is history.
 _RECEIPTS_SQL = text(
     """
     SELECT p.id, p.status, p.source, p.purchased_at, p.created_at,
@@ -49,13 +50,23 @@ _RECEIPTS_SQL = text(
     WHERE p.status IN ('draft', 'reviewed')
       AND NOT EXISTS (
           SELECT 1 FROM ingest_job j
-          WHERE j.purchase_id = p.id AND j.status IN ('pending', 'running', 'failed')
+          WHERE j.purchase_id = p.id
+            AND (j.status IN ('pending', 'running') OR (j.status = 'failed' AND p.status = 'draft'))
       )
     GROUP BY p.id
     """
 )
 
-_FAILED_SQL = text("SELECT id, created_at, last_error FROM ingest_job WHERE status = 'failed'")
+# A failed read needs a person only while its purchase is missing or still a draft:
+# committing the draft directly settles it without touching the job.
+_FAILED_SQL = text(
+    """
+    SELECT j.id, j.created_at, j.last_error
+    FROM ingest_job j
+    LEFT JOIN purchase p ON p.id = j.purchase_id
+    WHERE j.status = 'failed' AND (p.id IS NULL OR p.status = 'draft')
+    """
+)
 
 _READING_SQL = text(
     """
@@ -108,7 +119,8 @@ async def _failed_reads(db: AsyncSession) -> list[InboxItem]:
             title="A receipt couldn't be read",
             detail="Retry it, or enter it by hand.",
             action_label="Open receipt",
-            action_route="/receipts",
+            # The job itself: the Receipts list shows only the newest jobs.
+            action_route=f"/receipts?job={r['id']}",
             created_at=r["created_at"],
             error_code=r["last_error"],
         )

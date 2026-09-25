@@ -86,6 +86,36 @@ describe("receipts", () => {
     await waitFor(() => expect(within(screen.getByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
   });
 
+  it("pins the job an inbox item names, even when it is not among the newest listed", async () => {
+    mockApi({
+      ...baseRoutes(() => [reviewJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
+    });
+    renderApp(`/receipts?job=${failedJob.id}`);
+
+    const pinned = await screen.findByRole("heading", { name: "From your inbox" });
+    const card = pinned.parentElement as HTMLElement;
+    const row = await within(card).findByTestId("ingest-job");
+    expect(row).toHaveAttribute("data-status", "failed");
+    expect(within(row).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(within(row).getByRole("button", { name: "Enter by hand" })).toBeInTheDocument();
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    expect(within(list).getAllByTestId("ingest-job")).toHaveLength(1);
+  });
+
+  it("lists the pinned job once, above the others", async () => {
+    mockApi({
+      ...baseRoutes(() => [reviewJob, failedJob]),
+      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
+    });
+    renderApp(`/receipts?job=${failedJob.id}`);
+    await screen.findByRole("heading", { name: "From your inbox" });
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const rows = within(list).getAllByTestId("ingest-job");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveAttribute("data-status", "needs_review");
+  });
+
   it("says what a failure means and what to change, keeping the code for a bug report", async () => {
     // A model that was simply given too little time used to read `model_unavailable`,
     // which sends the owner to check a model server that is working (issue #14).

@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { jobInFlight, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
+import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
@@ -13,6 +13,11 @@ export function ReceiptsPage() {
   usePageTitle("Receipts");
   const upload = useUploadReceipt();
   const jobs = useIngestJobs();
+  // An inbox item names its job (?job=), which may be older than the newest jobs listed.
+  const [params] = useSearchParams();
+  const pinnedId = params.get("job") ?? undefined;
+  const pinned = useIngestJob(pinnedId, false);
+  const listed = (jobs.data ?? []).filter((j) => j.id !== pinnedId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -63,6 +68,21 @@ export function ReceiptsPage() {
           </form>
         </Card>
 
+        {pinnedId ? (
+          <Card>
+            <h2 className="mb-3 text-lg font-medium">From your inbox</h2>
+            {pinned.isPending ? (
+              <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+                Loading…
+              </p>
+            ) : pinned.isError ? (
+              <Alert tone="error">{errorMessage(pinned.error)}</Alert>
+            ) : (
+              <JobRow job={pinned.data} />
+            )}
+          </Card>
+        ) : null}
+
         <Card>
           <h2 className="mb-3 text-lg font-medium">Jobs</h2>
           {jobs.isPending ? (
@@ -71,11 +91,11 @@ export function ReceiptsPage() {
             </p>
           ) : jobs.isError ? (
             <Alert tone="error">{errorMessage(jobs.error)}</Alert>
-          ) : (jobs.data ?? []).length === 0 ? (
+          ) : listed.length === 0 && !pinnedId ? (
             <EmptyState title="No receipts yet">Upload a photo and its lines will be parsed for review.</EmptyState>
           ) : (
             <ul aria-label="Ingest jobs" className="divide-y divide-neutral-200 dark:divide-neutral-800">
-              {(jobs.data ?? []).map((j) => (
+              {listed.map((j) => (
                 <li key={j.id} className="py-2">
                   <JobRow job={j} />
                 </li>

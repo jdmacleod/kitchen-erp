@@ -128,8 +128,33 @@ async def test_a_failed_read_is_one_item_and_its_draft_is_not_repeated(
     [item] = body["items"]
     assert item["kind"] == "receipt_failed"
     assert item["error_code"] == "no_ocr_text"
-    assert (item["action_label"], item["action_route"]) == ("Open receipt", "/receipts")
+    assert (item["action_label"], item["action_route"]) == ("Open receipt", f"/receipts?job={job}")
     assert body["reading"]["count"] == 0
+
+
+async def test_a_failed_read_leaves_once_its_draft_is_committed(
+    admin_client, admin, receipts_dir: Path
+):
+    job = await upload_job(admin_client, "failed-then-committed")
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES)
+    await set_job(job, status="failed", last_error="no_ocr_text", purchase_id=uuid.UUID(pid))
+    await set_purchase(pid, status="committed")
+    kinds = [i["kind"] for i in (await get_inbox(admin_client))["items"]]
+    assert kinds == ["identify"]  # its unmatched lines, not the old failure
+
+    # Reopened, it is a purchase to finish again, not a failed read.
+    await set_purchase(pid, status="reviewed")
+    items = (await get_inbox(admin_client))["items"]
+    [item] = [i for i in items if i["kind"] != "identify"]
+    assert (item["kind"], item["action_route"]) == ("receipt", f"/purchases/{pid}")
+
+
+async def test_a_failed_read_without_a_purchase_is_an_item(admin_client, receipts_dir: Path):
+    job = await upload_job(admin_client, "failed-no-draft")
+    await set_job(job, status="failed", last_error="no_ocr_text", purchase_id=None)
+    [item] = (await get_inbox(admin_client))["items"]
+    assert (item["kind"], item["action_route"]) == ("receipt_failed", f"/receipts?job={job}")
 
 
 async def test_unmatched_lines_are_one_aggregate_item(admin_client, admin):
