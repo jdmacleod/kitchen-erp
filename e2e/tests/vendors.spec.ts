@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
 
 // Names carry a per-run stamp so repeated runs never collide on the
 // case-insensitive unique index.
-const stamp = Date.now().toString(36);
+const stamp = nextTag();
 
 test("create a vendor, open it, and change its price scope", async ({ page }) => {
   await login(page);

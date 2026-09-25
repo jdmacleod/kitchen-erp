@@ -60,6 +60,7 @@ export function MapPage() {
   const filtered = kind !== "" || homeBaseId !== "" || openAtOn;
 
   const [tilesPresent, setTilesPresent] = useState<boolean | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   // `?place=location` opens ready to drop a pin. MapView ignores map clicks
   // unless it is placing, so anything that sends a newcomer here to add their
   // first location has to turn placing on for them or the first click does
@@ -261,6 +262,7 @@ export function MapPage() {
           a new pin can be given its coordinates instead of being aimed at one.
         </Alert>
       ) : null}
+      {mapError ? <Alert tone="error">{mapError}</Alert> : null}
       {locations.isError ? <Alert tone="error">{errorMessage(locations.error)}</Alert> : null}
       {mode !== "browse" && !draft ? (
         <p role="status" className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -278,6 +280,7 @@ export function MapPage() {
           placing={mode !== "browse"}
           draft={draft}
           onTilesStatus={setTilesPresent}
+          onMapError={setMapError}
           initialView={initialView}
           centerOn={centerOn}
           onMapClick={(lat, lon) => {

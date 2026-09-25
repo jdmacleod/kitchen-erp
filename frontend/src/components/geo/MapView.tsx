@@ -3,16 +3,25 @@ import {
   Marker,
   NavigationControl,
   addProtocol,
+  setWorkerUrl,
   type LayerSpecification,
   type LngLatBoundsLike,
   type StyleSpecification,
 } from "maplibre-gl";
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { noLabels } from "protomaps-themes-base";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { VendorKind } from "../../api/geo";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./map.css";
+
+// MapLibre resolves its tile-parsing worker as a sibling of whichever chunk it
+// was bundled into (`new URL("./maplibre-gl-worker.mjs", import.meta.url)`), and
+// Vite never emits a file at that path, so every worker fetch 404s and no vector
+// tile is ever parsed. Nothing looks wrong until tiles are actually installed.
+// Point it at the worker Vite does build instead.
+setWorkerUrl(maplibreWorkerUrl);
 
 export const TILES_URL = "/tiles/basemap.pmtiles";
 export const ATTRIBUTION = "© OpenStreetMap contributors © Protomaps";
@@ -21,6 +30,25 @@ export const ATTRIBUTION = "© OpenStreetMap contributors © Protomaps";
 // home or shop is implied before the first pin exists.
 const EMPTY_CENTER_LON = -120.5;
 const EMPTY_CENTER_LAT = 33.5;
+
+/**
+ * MapLibre reports failures as plain Error objects with no code of their own,
+ * and the same `error` event covers both a single tile that would not load and
+ * a tile-parsing worker that never started. `ErrorEvent` exposes only
+ * `error: ErrorLike` plus an untyped `data` bag, so there is no supported way
+ * to tell those apart: keying off an undocumented `sourceId` would suppress the
+ * dead-worker case, which is the one this exists to catch, because a dead
+ * worker surfaces as its source failing to load tiles.
+ *
+ * So the wording claims only what is known. "Part of the map" is true of a lone
+ * failed tile and of a map that drew nothing, and the reload advice is hung on
+ * "if the map is blank", which is the one thing the viewer can check and the
+ * only case where reloading helps.
+ */
+export function mapErrorMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error ?? "unknown");
+  return `Part of the map could not be loaded. If the map is blank, reload the page — after an update the browser can keep a stale copy of the map code. (map_error: ${detail})`;
+}
 
 export type PinKind = VendorKind | "home";
 
@@ -47,6 +75,12 @@ export interface MapViewProps {
   draft?: { lat: string; lon: string } | null;
   /** Reports whether the tiles file is present, once checked. */
   onTilesStatus?: (present: boolean) => void;
+  /**
+   * Reports the first map failure, in words the viewer can act on. Without it a
+   * map whose tile-parsing worker never started renders an empty frame and says
+   * nothing, which is how #27 stayed invisible until a dogfood pass found it.
+   */
+  onMapError?: (message: string) => void;
   /** Accessible name for the map region. */
   label: string;
   className?: string;
@@ -146,7 +180,7 @@ function fix(value: number): string {
  * own origin, and when the extract is missing draws a plain ground instead.
  * Nothing here ever reaches another origin.
  */
-export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, label, className = "", initialView = null, centerOn = null }: MapViewProps) {
+export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const draftRef = useRef<Marker | null>(null);
@@ -154,9 +188,9 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
   const initialViewRef = useRef(initialView);
   const [ready, setReady] = useState<MapLibreMap | null>(null);
   // Latest callbacks, read by handlers registered once.
-  const callbacks = useRef({ onPinSelect, onMapClick, placing, onTilesStatus });
+  const callbacks = useRef({ onPinSelect, onMapClick, placing, onTilesStatus, onMapError });
   useEffect(() => {
-    callbacks.current = { onPinSelect, onMapClick, placing, onTilesStatus };
+    callbacks.current = { onPinSelect, onMapClick, placing, onTilesStatus, onMapError };
   });
 
   // Create the map once.
@@ -179,6 +213,14 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
         attributionControl: false,
       });
       created.addControl(new NavigationControl({ showCompass: false }), "top-right");
+      // Once per map: a failing worker fires on every tile, and one clear
+      // sentence is the point, not a stream of them.
+      let reportedError = false;
+      created.on("error", (event: { error?: unknown }) => {
+        if (reportedError) return;
+        reportedError = true;
+        callbacks.current.onMapError?.(mapErrorMessage(event?.error));
+      });
       created.on("click", (event) => {
         if (!callbacks.current.placing) return;
         callbacks.current.onMapClick?.(fix(event.lngLat.lat), fix(event.lngLat.lng));

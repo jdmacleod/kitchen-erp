@@ -1,12 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { login, watchExternalRequests } from "./helpers";
+import { login, watchExternalRequests, nextTag } from "./helpers";
 
 // The default stack has no tiles file, so the map draws a plain ground and says
 // so. Every coordinate used here sits in the synthetic Pacific box from
 // SECURITY.md (lat 33–34, lon -121 to -120); ?center= opens the map there so a
 // click on it lands in the box whatever else the dev database holds.
-const stamp = Date.now().toString(36);
+const stamp = nextTag();
 const BOX = "/map?center=33.500000,-120.500000&zoom=12";
 
 // The household zone; the open-at instants below are Saturdays 09:00 there.

@@ -55,7 +55,6 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://host.docker.internal:11434"
     llm_model: str = "gpt-oss:20b"
-    ocr_adapter: str = "tesseract"
     # Ingest (Phase 2C). OCR adapters are tried in order; `client` uses text sent
     # with the upload, `tesseract` runs the binary in the worker image. As an
     # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.

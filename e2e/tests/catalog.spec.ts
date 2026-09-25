@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
 
 // Each run invents its own names so repeated runs against the same dev
 // database never collide on the case-insensitive unique index.
-const stamp = Date.now().toString(36);
+const stamp = nextTag();
 
 test("create an ingredient with only a name, then a product for it", async ({ page }) => {
   await login(page);
