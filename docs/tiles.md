@@ -30,7 +30,10 @@ planet, because it reads the archive over HTTP range requests.
 
 The application looks for `data/tiles/basemap.pmtiles`. If the file is absent the
 map renders a plain background with pins in their correct relative positions and
-says that tiles are missing; nothing else is blocked.
+says that tiles are missing; nothing else is blocked. A map that fails to load for
+some other reason — most often a browser holding map code from an earlier build —
+says so above the map and asks you to reload, rather than leaving an empty frame
+with no explanation.
 
 ## Attribution
 

@@ -7,7 +7,7 @@ Compose stack and observing, with the command shown.
 
 | # | Criterion (short) | Evidence |
 |---|---|---|
-| 1 | Clean checkout, `docker compose up`, migrate, create-admin, log in through the browser | Manual on 2026-09-21; automated in `e2e/tests/login.spec.ts` on desktop and 390 px profiles; the CI `e2e` job repeats it from a clean checkout |
+| 1 | Clean checkout, `docker compose up`, migrate, create-admin, log in through the browser | Manual on 2026-09-21; automated in `e2e/tests/login.spec.ts` on the desktop, 390 px, and 375 px profiles; the CI `e2e` job repeats it from a clean checkout |
 | 2 | First migration enables postgis and pg_trgm, sets `kerp_app` privileges, reversible | `test_db_roles.py::test_extensions_enabled`, `::test_app_role_cannot_create_tables`, `::test_app_role_has_dml_on_ordinary_tables`; `test_migrations.py::test_downgrade_and_upgrade_round_trip` |
 | 3 | Health reports database, migration head, model server, queue depth; healthy when the model server is unreachable | `test_health.py` (both tests; model server unreachable in the harness) |
 | 4 | Admin creates a member, creates and revokes tokens; revoked token rejected; plaintext shown once | `test_users_tokens.py::test_admin_creates_member_and_member_cannot_manage_users`, `::test_token_lifecycle` |
@@ -42,7 +42,7 @@ Compose stack and observing, with the command shown.
 | 33 (1E-31) | "Open at" hides a closed seasonal market and shows it when open | `e2e/tests/map.spec.ts` (seasonal stall hidden in January, shown on a July Saturday); API level in `test_geo_locations.py::test_open_at_filter_and_is_open_flag`. Locations with unknown hours stay listed |
 | 34 (1E-32) | Kinds distinguishable without colour alone | `frontend/src/components/geo/MapView.tsx`: square, circle, diamond, triangle, and a house glyph per kind, plus colour; asserted in `frontend/src/test/map.test.tsx` |
 | 35 (1E-33) | Market lists stalls; stall shows inherited or own hours | `frontend/src/test/map.test.tsx` (market → stalls → inherited hours); `e2e/tests/map.spec.ts` |
-| 36 (1E-34) | 390 px: pin selected and detail read without horizontal scroll | `e2e/tests/map.spec.ts` in the `phone` project asserts `scrollWidth <= innerWidth` with the detail sheet open |
+| 36 (1E-34) | 390 px: pin selected and detail read without horizontal scroll | `e2e/tests/map.spec.ts` in the `phone` project asserts `scrollWidth <= innerWidth` with the detail sheet open; `e2e/tests/narrow-phone.spec.ts` repeats the no-sideways-scroll check for `/map` in the `phone-375` project, measured against the project's declared device width because `innerWidth` inflates when an overflowing page makes the browser zoom out |
 | 37 (1E-35) | OSM and Protomaps attribution shown | `e2e/tests/map.spec.ts` (attribution present with tiles absent) |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
