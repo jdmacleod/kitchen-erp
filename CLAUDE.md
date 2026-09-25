@@ -80,7 +80,7 @@ Keep routers thin and put logic in `services/`. Keep `app/units/` pure: no datab
 
 ## UI conventions
 
-- The visual system is specified in `docs/spec/08-ui-design-system.md`. Colours come only from the remapped Tailwind scales in `frontend/src/theme.css` (`neutral`, `blue` = herb green, `red` = tomato, `amber` = squash, `green` = olive). Never add raw hex values or other Tailwind colour scales; the chart series palette in `08` is the one exception.
+- The visual system is specified in `docs/spec/08-ui-design-system.md`. Colours come only from the remapped Tailwind scales in `frontend/src/theme.css` (`neutral`, `blue` = herb green, `red` = tomato, `amber` = squash, `green` = olive). Never add raw hex values or other Tailwind colour scales. The exceptions are the chart series palette and the basemap's water and park tints, both drift-tested hex mirrors in `frontend/src/lib/palette.ts` (`08`, rule 1).
 - Blue means "you can act on this" and nothing else. Information and selection use neutral; success, cheapest and sale use olive.
 - Produce-coloured accents are reserved for ingredient categories via `CategoryChip`, which renders the backend's `category_key`. Category normalization lives only in `backend/app/catalog/categories.py`.
 - Page titles are `h1` in Fraunces; everything else is Inter. Sentence case everywhere; no all-caps labels.

@@ -49,7 +49,7 @@ All values are OKLCH and live in `theme.css`. The roles:
 
 Rules:
 
-1. Never use a raw hex or a Tailwind colour outside these five scales in new code. The one exception is the chart series palette below.
+1. Never use a raw hex or a Tailwind colour outside these five scales in new code. There are two exceptions, both for drawing surfaces that cannot read CSS and both kept in `frontend/src/lib/palette.ts`: the chart series palette below, and the basemap's water and park tints under Map. Each hex there mirrors an OKLCH source and a test fails if they drift; the basemap's neutrals must equal theme.css's own values.
 2. Status is never conveyed by colour alone. Every badge carries a text label.
 3. Text on a tinted fill uses the dark end of the same scale (for example `bg-amber-100 text-amber-800`), and the light end in dark mode.
 4. Captions and secondary text use `neutral-600` on light surfaces and `neutral-400` on dark surfaces. `neutral-500` measures 3.8:1 on the dark card surface and fails (D19).
@@ -183,5 +183,6 @@ The map uses the self-hosted PMTiles extract from the Phase 1 spec. The basemap 
 - **Light:** land on `neutral-50`, parks in a desaturated leaf, water in a muted tide blue, roads in `neutral-200`/`neutral-300`.
 - **Dark:** the same roles on the espresso neutrals.
 - **Labels:** the map has none, because its label layers would need fonts from a CDN.
+- **Colours:** MapLibre parses only sRGB, so the basemap takes hex mirrors from `lib/palette.ts` (rule 1's second exception). Water and parks are its only colours outside the five scales, desaturated so the pins stay the loudest thing on the map.
 
 Vendor pins are walnut (`neutral-800`, and `neutral-200` in dark mode), with herb for the selected pin. They keep their shape per vendor kind, so kinds stay distinguishable without colour (T13): square for a chain, circle for an independent, diamond for a market, triangle for a stand. The existing `kerp-pin--{kind}` classes and their tests stay. The map legend shows the four shapes.
