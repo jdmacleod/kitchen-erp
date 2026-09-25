@@ -62,7 +62,7 @@ export function ComparePage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Price comparison">
                 <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:border-neutral-800">
+                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                     <th className="py-2 pr-3">Ingredient</th>
                     {compare.data.vendors.map((v) => (
                       <th key={v.id} className="py-2 pr-3">
@@ -78,7 +78,7 @@ export function ComparePage() {
                         <Link to={`/ingredients/${row.ingredient_id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {row.ingredient_name}
                         </Link>
-                        <span className="block text-xs font-normal text-neutral-500">per {row.canonical_unit}</span>
+                        <span className="block text-xs font-normal text-neutral-600 dark:text-neutral-400">per {row.canonical_unit}</span>
                       </th>
                       {compare.data.vendors.map((v) => {
                         const cell = row.cells[v.id];

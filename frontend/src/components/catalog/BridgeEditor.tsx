@@ -99,7 +99,7 @@ function DensityRow({ ingredient }: { ingredient: Ingredient }) {
 
   return (
     <section aria-labelledby="density-heading" className="border-b border-neutral-200 pb-4 dark:border-neutral-800">
-      <h3 id="density-heading" className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+      <h3 id="density-heading" className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
         Density
       </h3>
       {editing ? (
@@ -195,7 +195,7 @@ function MeasuresTable({ ingredient }: { ingredient: Ingredient }) {
   const unit = ingredient.canonical_unit;
   return (
     <section aria-labelledby="measures-heading" className="pt-4">
-      <h3 id="measures-heading" className="text-sm font-semibold uppercase tracking-wide text-neutral-500">
+      <h3 id="measures-heading" className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
         Named measures
       </h3>
       <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
@@ -207,7 +207,7 @@ function MeasuresTable({ ingredient }: { ingredient: Ingredient }) {
       ) : (
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm" aria-label="Named measures">
-            <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+            <thead className="text-left text-xs text-neutral-600 dark:text-neutral-400">
               <tr>
                 <th scope="col" className="py-2 pr-3 font-semibold">
                   Label

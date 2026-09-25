@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { useLocations } from "../../api/geo";
-import { EmptyState, focusRing } from "../ui";
+import { EmptyState, primaryLinkClass } from "../ui";
 
 /**
  * Blocks an entry form when the household has nowhere to shop yet.
@@ -29,7 +29,7 @@ export function LocationGuard({ children }: { children: ReactNode }) {
         action={
           <Link
             to="/map?place=location"
-            className={`inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 ${focusRing}`}
+            className={primaryLinkClass}
           >
             Open the map
           </Link>

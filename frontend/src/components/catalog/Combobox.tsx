@@ -163,7 +163,7 @@ export function Combobox<T>({
                 onMouseEnter={() => setActive(index)}
                 onClick={() => select(item)}
                 className={`cursor-pointer px-3 py-2 text-sm ${
-                  index === active ? "bg-blue-50 dark:bg-blue-950" : ""
+                  index === active ? "bg-neutral-200 dark:bg-neutral-800" : ""
                 }`}
               >
                 {renderItem(item)}

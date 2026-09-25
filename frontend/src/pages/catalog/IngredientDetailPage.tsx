@@ -23,7 +23,7 @@ import { BridgeEditor } from "../../components/catalog/BridgeEditor";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { TestBench } from "../../components/catalog/TestBench";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function IngredientDetailPage() {
@@ -246,7 +246,7 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
           </label>
           <Link
             to={`/products?ingredient_id=${encodeURIComponent(ingredient.id)}`}
-            className={`inline-flex min-h-10 items-center rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:hover:bg-neutral-800 ${focusRing}`}
+            className={secondaryLinkClass}
           >
             Add a product
           </Link>

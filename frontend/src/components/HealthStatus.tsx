@@ -9,21 +9,20 @@ import type { Health } from "../api/types";
  * arguably does not bite -- but the dot is what people actually scan, and every
  * -500 was under the floor against the page it sits on.
  *
- * Contrast against the page background, Tailwind 4's palette, light
- * (neutral-50) / dark (neutral-950):
+ * Contrast with the Market palette (theme.css), re-measured 2026-09-25, as
+ * light shade on the page (neutral-50) and sidebar (neutral-100), then dark
+ * shade on the page (neutral-950) and sidebar (neutral-900/60):
  *
- *   ok           green-500  2.13 x / 8.90     green-600  3.08 / 8.90
- *   degraded     amber-500  2.05 x / 9.23     amber-700  4.84 / 9.23
- *   failed       red-500    3.66   / 5.18     red-600    4.56 / 5.18
- *   unreachable  neutral-400 2.48 x / 7.63    neutral-500 4.53 / 7.63
+ *   ok           green-600    4.53 / 4.21    green-500    5.16 / 4.83
+ *   degraded     amber-700    4.79 / 4.45    amber-500    6.42 / 6.01
+ *   failed       red-600      4.60 / 4.27    red-500      4.68 / 4.38
+ *   unreachable  neutral-500  3.95 / 3.67    neutral-400  7.22 / 6.76
  *
- * Light gets the darker step and dark keeps -500, which is the pairing
- * FirstRunChecklist already settled on for its tick. Degraded goes one step
- * further than the others because amber-600 clears the floor by 0.06 against
- * neutral-50, which is close enough to round the wrong way on a palette tweak.
+ * Every pairing clears 3:1. Degraded stays a step darker than the others:
+ * amber-600 measures 3.45 on the page and 3.20 on the sidebar, too close to
+ * the floor to survive a palette tweak.
  *
- * Move this table to DESIGN.md when that exists; it has to document the palette
- * anyway, and these numbers should not have to be derived twice.
+ * The palette itself is documented in docs/spec/08-ui-design-system.md.
  */
 const dot: Record<string, string> = {
   ok: "bg-green-600 dark:bg-green-500",

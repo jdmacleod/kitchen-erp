@@ -130,7 +130,7 @@ function jobStatusText(job: IngestJob): string {
 function JobRow({ job }: { job: IngestJob }) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
-  const tone = job.status === "done" ? "good" : job.status === "failed" || job.last_error ? "warn" : "neutral";
+  const tone = job.status === "done" ? "good" : job.status === "failed" ? "danger" : job.last_error ? "warn" : "neutral";
   const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>

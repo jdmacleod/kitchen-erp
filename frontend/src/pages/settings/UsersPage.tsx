@@ -51,7 +51,7 @@ export function UsersPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
+                <thead className="text-left text-xs text-neutral-600 dark:text-neutral-400">
                   <tr>
                     <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
                     <th scope="col" className="py-2 pr-3 font-semibold">Email</th>

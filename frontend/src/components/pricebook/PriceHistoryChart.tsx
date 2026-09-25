@@ -2,10 +2,11 @@ import { useMemo } from "react";
 import type { PricePoint } from "../../api/pricebook";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
+import { SERIES_COLOURS } from "../../lib/palette";
 
 // Six strokes, each paired with its own dash pattern and marker shape, so
 // series are told apart without colour.
-const STROKES = ["#2563eb", "#d97706", "#15803d", "#7c3aed", "#dc2626", "#0f766e"];
+const STROKES = SERIES_COLOURS;
 const DASHES = ["", "6 3", "2 3", "8 3 2 3", "4 2", "10 4"];
 
 const W = 640;
@@ -121,7 +122,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
                     <>
                       <path
                         d={`M${p.x},${p.y - 6} L${p.x + 6},${p.y} L${p.x},${p.y + 6} L${p.x - 6},${p.y} Z`}
-                        fill="#fff"
+                        fill="var(--color-white)"
                         stroke={STROKES[i % STROKES.length]}
                         strokeWidth="2"
                       />
@@ -149,7 +150,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
         ))}
         <span className="inline-flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
           <svg width="14" height="14" aria-hidden="true">
-            <path d="M7,1 L13,7 L7,13 L1,7 Z" fill="#fff" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M7,1 L13,7 L7,13 L1,7 Z" fill="var(--color-white)" stroke="currentColor" strokeWidth="1.5" />
           </svg>
           sale price
         </span>
