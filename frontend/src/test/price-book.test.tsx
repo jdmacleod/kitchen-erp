@@ -91,7 +91,7 @@ describe("product price history", () => {
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
       [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, history),
     });
-    renderApp(`/products/${flourProductId}`);
+    renderApp(`/catalog/products/${flourProductId}`);
 
     const chart = await screen.findByTestId("price-history-chart");
     expect(chart).toHaveAccessibleName("Price per g over time, 2 series");
@@ -126,7 +126,7 @@ describe("product price history", () => {
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
       [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
     });
-    renderApp(`/products/${flourProductId}`);
+    renderApp(`/catalog/products/${flourProductId}`);
     expect(await screen.findByText("No prices recorded yet.")).toBeInTheDocument();
   });
 });
@@ -142,7 +142,7 @@ describe("ingredient offers", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/ingredients/${flourId}`);
+    renderApp(`/catalog/ingredients/${flourId}`);
 
     const table = await screen.findByRole("table", { name: "Offers" });
     let rows = within(table).getAllByTestId("offer");
@@ -174,14 +174,14 @@ describe("needs a bridge", () => {
       { ingredient: { id: hits[1].ingredient.id, name: hits[1].ingredient.name, canonical_unit: "g" }, product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: null, pack_unit: null }, status: "no_pack", observation_count: 1, latest_observed_at: "2026-09-10T15:00:00Z" },
     ];
     mockApi({ ...baseRoutes(), "GET /price-book/needs-bridge": () => jsonResponse(200, { items }) });
-    renderApp("/price-book/needs-bridge");
+    renderApp("/catalog/bridges");
 
     const table = await screen.findByRole("table", { name: "Needs a bridge" });
     const rows = within(table).getAllByTestId("needs-bridge");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("no density");
-    expect(within(rows[0]).getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/ingredients/${flourId}#density-heading`);
+    expect(within(rows[0]).getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/catalog/ingredients/${flourId}#density-heading`);
     expect(rows[1]).toHaveTextContent("no pack size");
-    expect(within(rows[1]).getByRole("link", { name: "Set the pack" })).toHaveAttribute("href", `/products/${hits[1].id}`);
+    expect(within(rows[1]).getByRole("link", { name: "Set the pack" })).toHaveAttribute("href", `/catalog/products/${hits[1].id}`);
   });
 });

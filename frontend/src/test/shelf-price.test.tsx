@@ -41,7 +41,7 @@ describe("shelf price", () => {
       "POST /price-observations": () => jsonResponse(201, observationOk),
     });
     const user = userEvent.setup();
-    renderApp("/prices/new");
+    renderApp("/shop/shelf-prices");
 
     const location = await screen.findByLabelText("Location");
     // No position in jsdom: the remembered location is the default.
@@ -82,7 +82,7 @@ describe("shelf price", () => {
       "POST /price-observations": () => jsonResponse(201, observationNoDensity),
     });
     const user = userEvent.setup();
-    renderApp("/prices/new");
+    renderApp("/shop/shelf-prices");
     await waitFor(() => expect(screen.getByLabelText("Location")).toHaveValue(chainLocationId));
 
     await user.type(screen.getByRole("combobox", { name: "Product" }), "flour");
@@ -94,7 +94,7 @@ describe("shelf price", () => {
 
     const note = await within(mainRegion()).findByRole("status", {}, { timeout: 2000 });
     await waitFor(() => expect(note).toHaveTextContent("has no density"));
-    expect(screen.getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/ingredients/${flourId}#density-heading`);
+    expect(screen.getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/catalog/ingredients/${flourId}#density-heading`);
     const post = calls.find((c) => c.method === "POST" && c.path === "/price-observations");
     expect(post?.body).toEqual({
       product_id: hits[0].id,
@@ -117,7 +117,7 @@ describe("shelf price", () => {
       },
     });
     const calls = mockApi(baseRoutes());
-    renderApp("/prices/new");
+    renderApp("/shop/shelf-prices");
 
     const location = await screen.findByLabelText("Location");
     await waitFor(() => expect(location).toHaveValue(marketLocationId));

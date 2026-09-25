@@ -44,13 +44,13 @@ export function NeedsBridgePage() {
                   return (
                     <tr key={`${item.product.id}-${item.status}`} data-testid="needs-bridge">
                       <td className="py-2 pr-3">
-                        <Link to={`/ingredients/${item.ingredient.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/catalog/ingredients/${item.ingredient.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {item.ingredient.name}
                         </Link>
                         <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {item.ingredient.canonical_unit}</span>
                       </td>
                       <td className="py-2 pr-3">
-                        <Link to={`/products/${item.product.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/catalog/products/${item.product.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {productTitle(item.product)}
                         </Link>
                         {formatPack(item.product.pack_qty, item.product.pack_unit) ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {formatPack(item.product.pack_qty, item.product.pack_unit)}</span> : null}

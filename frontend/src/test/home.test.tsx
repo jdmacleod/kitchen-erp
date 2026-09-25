@@ -1,8 +1,10 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { flourId, flourProductId } from "./catalog-fixtures";
 import { chainLocation } from "./geo-fixtures";
 import { manualPurchase } from "./purchase-fixtures";
+import type { Inbox, InboxItem } from "../api/inbox";
+import { ingestErrorText } from "../lib/ingestErrors";
 import { adminUser, errorResponse, jsonResponse, mainRegion, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
 
 /**
@@ -26,22 +28,64 @@ const CHECKLIST_STEP = "Add somewhere you shop";
 interface Routes {
   locations?: RouteHandler;
   purchases?: RouteHandler;
-  toIdentify?: RouteHandler;
-  needsBridge?: RouteHandler;
+  inbox?: RouteHandler;
 }
 
-function mount({ locations, purchases, toIdentify, needsBridge }: Routes = {}): RecordedCall[] {
+const quietInbox = { items: [], reading: { count: 0, oldest_at: null, stalled: false } };
+
+function mount({ locations, purchases, inbox }: Routes = {}): RecordedCall[] {
   const calls = mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /vendor-locations": locations ?? (() => jsonResponse(200, { items: [] })),
     "GET /purchases": purchases ?? (() => jsonResponse(200, { items: [], next_cursor: null })),
-    "GET /to-identify": toIdentify ?? (() => jsonResponse(200, { items: [] })),
-    "GET /price-book/needs-bridge": needsBridge ?? (() => jsonResponse(200, { items: [] })),
+    "GET /inbox": inbox ?? (() => jsonResponse(200, quietInbox)),
   });
   renderApp("/");
   return calls;
 }
+
+/** A set-up household: a location and a committed purchase. */
+function mountSetUp(inbox?: RouteHandler): RecordedCall[] {
+  return mount({
+    locations: () => jsonResponse(200, { items: [chainLocation] }),
+    purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
+    inbox,
+  });
+}
+
+function item(overrides: Partial<InboxItem> = {}): InboxItem {
+  return {
+    kind: "receipt",
+    title: "Finish the Sep 24 receipt",
+    detail: "4 lines ready to review and commit.",
+    action_label: "Review",
+    action_route: "/shop/purchases/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001",
+    created_at: "2026-09-24T18:00:00Z",
+    ...overrides,
+  };
+}
+
+function inboxOf(items: InboxItem[], reading: Partial<Inbox["reading"]> = {}): RouteHandler {
+  return () => jsonResponse(200, { items, reading: { count: 0, oldest_at: null, stalled: false, ...reading } });
+}
+
+describe("home page, first run, with the inbox", () => {
+  it("puts inbox rows above the checklist when there are any (G7)", async () => {
+    mount({ inbox: inboxOf([item()]) });
+
+    await screen.findByRole("heading", { name: "Set up your kitchen" });
+    const row = await screen.findByTestId("inbox-item");
+    const step = screen.getByText(CHECKLIST_STEP);
+    expect(row.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("says nothing about an empty inbox on a new kitchen", async () => {
+    mount();
+    await screen.findByRole("heading", { name: "Set up your kitchen" });
+    expect(screen.queryByText("Nothing needs you")).not.toBeInTheDocument();
+  });
+});
 
 describe("home page, first run", () => {
   it("shows both steps, neither done, on an empty deployment", async () => {
@@ -61,7 +105,7 @@ describe("home page, first run", () => {
 
     expect(await screen.findByRole("link", { name: "Open the map" })).toHaveAttribute(
       "href",
-      "/map?place=location",
+      "/catalog/vendors?view=map&place=location",
     );
   });
 
@@ -92,101 +136,100 @@ describe("home page, first run", () => {
 });
 
 describe("home page, set up", () => {
-  it("shows the home page and no checklist once a purchase exists", async () => {
-    mount({ purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }) });
+  it("greets without a name, summarizes, and shows no checklist", async () => {
+    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify", action_label: "Review lines", action_route: "/shop/receipts/identify" })]));
 
-    const main = within(await screen.findByRole("main"));
-    expect(await main.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+    const heading = await within(await screen.findByRole("main")).findByRole("heading", { level: 1 });
+    expect(heading.textContent).toMatch(/^Good (morning|afternoon|evening)$/);
+    expect(await within(await screen.findByRole("main")).findByText("2 things need you")).toBeInTheDocument();
     expect(screen.queryByText(CHECKLIST_STEP)).not.toBeInTheDocument();
-    // Scoped: the sidebar carries its own "New purchase" link.
-    expect(main.getByRole("link", { name: "New purchase" })).toHaveAttribute("href", "/purchases/new");
+    expect(within(mainRegion()).getByRole("button", { name: "Capture" })).toBeInTheDocument();
   });
 
-  it("lists recent purchases under Lately", async () => {
-    mount({ purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }) });
+  it("lists inbox rows with a kind badge, the title, and an action that opens the fix", async () => {
+    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify", detail: "Match them once.", action_label: "Review lines", action_route: "/shop/receipts/identify" })]));
 
-    const lately = await screen.findByLabelText("Lately");
-    expect(lately).toHaveTextContent("Pier Farmers Market");
-    expect(lately).toHaveTextContent("14.21");
+    const rows = await screen.findAllByTestId("inbox-item");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Receipt");
+    expect(rows[0]).toHaveTextContent("Finish the Sep 24 receipt");
+    expect(within(rows[0]).getByRole("link", { name: "Review" })).toHaveAttribute("href", "/shop/purchases/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001");
+    // An aggregate row carries its size in its title (G6).
+    expect(rows[1]).toHaveTextContent("23 receipt lines to identify");
+    expect(within(rows[1]).getByRole("link", { name: "Review lines" })).toHaveAttribute("href", "/shop/receipts/identify");
   });
 
-  it("hides Needs you when both queues are empty", async () => {
-    mount({ purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }) });
-
-    await screen.findByLabelText("Lately");
-    // Scoped: the sidebar health line is itself a role="status" live region.
-    await waitFor(() => expect(within(mainRegion()).queryByRole("status")).not.toBeInTheDocument());
-    expect(screen.queryByLabelText("Needs you")).not.toBeInTheDocument();
-  });
-
-  it("counts receipt lines rather than groups", async () => {
-    mount({
-      purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      toIdentify: () =>
-        jsonResponse(200, {
-          items: [
-            { vendor: { id: "v1", name: "Millstone Market" }, raw_text_norm: "oats", line_count: 2, lines: [] },
-            { vendor: { id: "v1", name: "Millstone Market" }, raw_text_norm: "rye", line_count: 1, lines: [] },
-          ],
-        }),
-    });
-
-    expect(await screen.findByText("3 receipt lines to identify")).toBeInTheDocument();
-  });
-
-  it("keeps Needs you on screen when a queue fails, and names it", async () => {
-    // A hidden section and a broken one must not look alike: dropping the section
-    // silently would leave receipt lines unreviewed behind a page that reads calm.
-    mount({
-      purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      toIdentify: () => errorResponse(500, "unavailable", "down"),
-    });
-
-    const section = await screen.findByLabelText("Needs you");
-    await waitFor(() => expect(section).toHaveTextContent("Could not load the to-identify queue"));
-  });
-
-  it("raises one alert, not one per queue, when both fail", async () => {
-    mount({
-      purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      toIdentify: () => errorResponse(500, "unavailable", "down"),
-      needsBridge: () => errorResponse(500, "unavailable", "down"),
-    });
-
-    await screen.findByLabelText("Needs you");
-    // Alert tone="error" is role="alert"; two of them would be two assertive live
-    // regions talking over each other.
-    await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(1));
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Could not load the to-identify queue or the needs-a-bridge queue",
+  it("marks a failed read in tomato and says what went wrong (G5)", async () => {
+    mountSetUp(
+      inboxOf([
+        item({ kind: "receipt_failed", title: "A receipt couldn't be read", detail: "Retry it, or enter it by hand.", action_label: "Open receipt", action_route: "/shop/receipts?job=j1", error_code: "no_ocr_text" }),
+      ]),
     );
+
+    const [row] = await screen.findAllByTestId("inbox-item");
+    expect(row).toHaveTextContent(ingestErrorText("no_ocr_text").message);
+    const badge = within(row).getByText("Couldn't read");
+    expect(badge.className).toMatch(/bg-red-100/);
+    expect(within(row).getByRole("link", { name: "Open receipt" })).toHaveAttribute("href", "/shop/receipts?job=j1");
+  });
+
+  it("says nothing needs you when the inbox is empty, with a way to capture", async () => {
+    mountSetUp();
+
+    expect(await within(await screen.findByRole("main")).findByText("Nothing needs you", { selector: "p.font-medium" })).toBeInTheDocument();
+    expect(within(mainRegion()).getAllByRole("button", { name: "Capture" }).length).toBeGreaterThan(0);
+  });
+
+  it("shows an error, never an empty inbox, when the inbox fails (D6)", async () => {
+    mountSetUp(() => errorResponse(500, "internal", "Something went wrong."));
+
+    const alert = await within(await screen.findByRole("main")).findByRole("alert");
+    expect(alert).toHaveTextContent("Couldn't load what needs you");
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByText("Nothing needs you")).not.toBeInTheDocument();
+    expect(await screen.findAllByRole("img", { name: "Couldn't check what needs you" })).not.toHaveLength(0);
+  });
+
+  it("lists recent purchases in the right column", async () => {
+    mountSetUp();
+    const recent = await screen.findByRole("region", { name: "Recent purchases" });
+    expect(within(recent).getByRole("link", { name: "All purchases" })).toHaveAttribute("href", "/shop/purchases");
+  });
+
+  it("shows receipts being read above Needs you, not as rows (G1)", async () => {
+    mountSetUp(inboxOf([], { count: 2, oldest_at: "2026-09-25T10:00:00Z" }));
+    expect(await within(await screen.findByRole("main")).findByText("Reading 2 receipts…")).toBeInTheDocument();
+    expect(screen.queryAllByTestId("inbox-item")).toHaveLength(0);
+  });
+
+  it("turns the reading line squash with a way to System once it has stalled (D21)", async () => {
+    mountSetUp(inboxOf([], { count: 1, oldest_at: "2026-09-25T10:00:00Z", stalled: true }));
+    const line = await within(await screen.findByRole("main")).findByText(/Reading is taking longer than usual/);
+    expect(within(line).getByRole("link", { name: "Check System" })).toHaveAttribute("href", "/settings/system");
+  });
+
+  it("shows three rows on a phone and expands the rest in place (G6)", async () => {
+    const items = [1, 2, 3, 4, 5].map((n) => item({ title: `Finish receipt ${n}`, action_route: `/shop/purchases/${n}` }));
+    mountSetUp(inboxOf(items));
+
+    const rows = await screen.findAllByTestId("inbox-item");
+    expect(rows.map((r) => r.className.includes("max-lg:hidden"))).toEqual([false, false, false, true, true]);
+    await userEvent.click(screen.getByRole("button", { name: "See all 5" }));
+    expect(screen.getAllByTestId("inbox-item").some((r) => r.className.includes("max-lg:hidden"))).toBe(false);
   });
 });
 
-describe("home page, review findings", () => {
-  it("counts distinct products needing a bridge, not response rows", async () => {
-    // `needs_bridge` groups by norm_status as well as product, so one product
-    // failing two ways comes back as two rows. Counting rows would tell the
-    // household there is twice as much waiting for them as there is.
-    const oneProductTwoStatuses = [
-      { ingredient: { id: flourId, name: "flour", canonical_unit: "g" }, product: { id: flourProductId, name: "Flour", brand: null, pack_qty: null, pack_unit: null }, status: "no_density", observation_count: 2, latest_observed_at: "2026-09-19T15:00:00Z" },
-      { ingredient: { id: flourId, name: "flour", canonical_unit: "g" }, product: { id: flourProductId, name: "Flour", brand: null, pack_qty: null, pack_unit: null }, status: "no_pack", observation_count: 1, latest_observed_at: "2026-09-18T15:00:00Z" },
-    ];
-    mount({
-      purchases: () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      needsBridge: () => jsonResponse(200, { items: oneProductTwoStatuses }),
-    });
-
-    expect(await screen.findByText("1 product needs a unit bridge")).toBeInTheDocument();
+describe("the Home nav badge", () => {
+  it("counts inbox rows, an aggregate once (G6)", async () => {
+    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify" })]));
+    expect((await screen.findAllByLabelText("2 things need you")).length).toBeGreaterThan(0);
   });
 
-  it("shows a failed lookup rather than waiting on the other one", async () => {
-    // A known error hidden behind "Loading…" leaves someone watching a spinner
-    // that can only ever resolve into that error.
-    mount({ locations: () => errorResponse(500, "unavailable", "down"), purchases: NEVER });
-
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-    expect(screen.queryByText(CHECKLIST_STEP)).not.toBeInTheDocument();
+  it("stays hidden until the inbox answers (G16)", async () => {
+    mountSetUp(NEVER);
+    await within(await screen.findByRole("main")).findByRole("heading", { level: 1 });
+    expect(screen.queryByLabelText(/things? needs? you/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "Couldn't check what needs you" })).not.toBeInTheDocument();
   });
 });
 

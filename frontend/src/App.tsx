@@ -1,8 +1,9 @@
-import { Route, Routes } from "react-router";
+import { Route, Routes, useSearchParams } from "react-router";
 import { AuthBridge } from "./auth/AuthBridge";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./components/AppShell";
+import { RedirectTo } from "./components/RedirectTo";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
@@ -22,10 +23,40 @@ import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { SystemPage } from "./pages/settings/SystemPage";
 import { TokensPage } from "./pages/settings/TokensPage";
 import { UsersPage } from "./pages/settings/UsersPage";
 
-/** Route table. Mounted inside a router and a QueryClientProvider by main.tsx and the tests. */
+/** Old paths and where they now live (docs/spec/09, Routes); parameters carry over. */
+export const REDIRECTS: { from: string; to: string; query?: Record<string, string> }[] = [
+  { from: "/purchases", to: "/shop/purchases" },
+  { from: "/purchases/new", to: "/shop/purchases/new" },
+  { from: "/purchases/:id", to: "/shop/purchases/:id" },
+  { from: "/receipts", to: "/shop/receipts" },
+  { from: "/to-identify", to: "/shop/receipts/identify" },
+  { from: "/prices/new", to: "/shop/shelf-prices" },
+  { from: "/compare", to: "/shop/compare" },
+  { from: "/ingredients", to: "/catalog/ingredients" },
+  { from: "/ingredients/:id", to: "/catalog/ingredients/:id" },
+  { from: "/products", to: "/catalog/products" },
+  { from: "/products/:id", to: "/catalog/products/:id" },
+  { from: "/vendors", to: "/catalog/vendors" },
+  { from: "/vendors/:id", to: "/catalog/vendors/:id" },
+  { from: "/map", to: "/catalog/vendors", query: { view: "map" } },
+  { from: "/price-book/needs-bridge", to: "/catalog/bridges" },
+  { from: "/settings/home-bases", to: "/settings/kitchens" },
+];
+
+/** Vendors has a list view and a map view, kept in the URL (T9). */
+function VendorsRoute() {
+  const [params] = useSearchParams();
+  return params.get("view") === "map" ? <MapPage /> : <VendorsPage />;
+}
+
+/**
+ * Route table (docs/spec/09-information-architecture.md, Routes). Mounted inside a
+ * router and a QueryClientProvider by main.tsx and the tests.
+ */
 export function App() {
   return (
     <>
@@ -35,27 +66,27 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
-            {/* Phase 1C: ingredients and products */}
-            <Route path="/ingredients" element={<IngredientsPage />} />
-            <Route path="/ingredients/:id" element={<IngredientDetailPage />} />
-            <Route path="/products" element={<ProductsPage />} />
-            <Route path="/products/:id" element={<ProductDetailPage />} />
-            {/* Phase 1D/1E: vendors, home bases, and the map */}
-            <Route path="/vendors" element={<VendorsPage />} />
-            <Route path="/vendors/:id" element={<VendorDetailPage />} />
-            <Route path="/map" element={<MapPage />} />
-            <Route path="/settings/home-bases" element={<HomeBasesPage />} />
-            {/* Phase 2A/2B: shelf prices and manual purchases */}
-            <Route path="/purchases" element={<PurchasesPage />} />
-            <Route path="/purchases/new" element={<NewPurchasePage />} />
-            <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
-            <Route path="/prices/new" element={<ShelfPricePage />} />
-            {/* Phase 2C/2D: receipt ingest, review, and the to-identify queue */}
-            <Route path="/receipts" element={<ReceiptsPage />} />
-            <Route path="/to-identify" element={<ToIdentifyPage />} />
-            {/* Phase 2E: price book views */}
-            <Route path="/compare" element={<ComparePage />} />
-            <Route path="/price-book/needs-bridge" element={<NeedsBridgePage />} />
+
+            {/* Shop */}
+            <Route path="/shop/purchases" element={<PurchasesPage />} />
+            <Route path="/shop/purchases/new" element={<NewPurchasePage />} />
+            <Route path="/shop/purchases/:id" element={<PurchaseDetailPage />} />
+            <Route path="/shop/receipts" element={<ReceiptsPage />} />
+            <Route path="/shop/receipts/identify" element={<ToIdentifyPage />} />
+            <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />
+            <Route path="/shop/compare" element={<ComparePage />} />
+
+            {/* Catalog */}
+            <Route path="/catalog/ingredients" element={<IngredientsPage />} />
+            <Route path="/catalog/ingredients/:id" element={<IngredientDetailPage />} />
+            <Route path="/catalog/products" element={<ProductsPage />} />
+            <Route path="/catalog/products/:id" element={<ProductDetailPage />} />
+            <Route path="/catalog/vendors" element={<VendorsRoute />} />
+            <Route path="/catalog/vendors/:id" element={<VendorDetailPage />} />
+            <Route path="/catalog/bridges" element={<NeedsBridgePage />} />
+
+            {/* Settings */}
+            <Route path="/settings/kitchens" element={<HomeBasesPage />} />
             <Route
               path="/settings/users"
               element={
@@ -65,6 +96,13 @@ export function App() {
               }
             />
             <Route path="/settings/tokens" element={<TokensPage />} />
+            <Route path="/settings/system" element={<SystemPage />} />
+
+            {/* Retired paths, kept as redirects for at least one release. */}
+            {REDIRECTS.map(({ from, to, query }) => (
+              <Route key={from} path={from} element={<RedirectTo to={to} query={query} />} />
+            ))}
+
             <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Route>

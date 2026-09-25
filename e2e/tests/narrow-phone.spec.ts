@@ -65,22 +65,22 @@ test("the purchase form fits the viewport even with a long location name", async
   });
   expect(created.status()).toBe(201);
 
-  await page.goto("/purchases/new");
+  await page.goto("/shop/purchases/new");
   // The select must actually carry the long option, or the assertion below is
   // passing for the wrong reason.
   await expect(page.getByLabel("Location")).toContainText(LONG_LOCATION);
 
-  await expectNoSidewaysScroll(page, "/purchases/new");
+  await expectNoSidewaysScroll(page, "/shop/purchases/new");
 });
 
 test("the receipt upload and map pages fit the viewport", async ({ page }) => {
   await login(page);
 
-  await page.goto("/receipts");
+  await page.goto("/shop/receipts");
   await expect(page.getByRole("heading", { name: "Receipts" })).toBeVisible();
-  await expectNoSidewaysScroll(page, "/receipts");
+  await expectNoSidewaysScroll(page, "/shop/receipts");
 
-  await page.goto("/map");
+  await page.goto("/catalog/vendors?view=map");
   await expect(page.getByRole("region", { name: /vendor locations/i })).toBeVisible();
-  await expectNoSidewaysScroll(page, "/map");
+  await expectNoSidewaysScroll(page, "/catalog/vendors?view=map");
 });

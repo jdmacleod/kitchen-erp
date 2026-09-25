@@ -40,7 +40,7 @@ describe("products", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp("/products");
+    renderApp("/catalog/products");
 
     expect(await screen.findByText("No products yet")).toBeInTheDocument();
     const form = screen.getByRole("form", { name: "Add a product" });
@@ -76,7 +76,7 @@ describe("products", () => {
       "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
     });
     const user = userEvent.setup();
-    renderApp("/products");
+    renderApp("/catalog/products");
 
     await screen.findByText("No products yet");
     const form = screen.getByRole("form", { name: "Add a product" });
@@ -97,7 +97,7 @@ describe("products", () => {
       "POST /products": () => errorResponse(409, "barcode_taken", "barcode taken"),
     });
     const user = userEvent.setup();
-    renderApp("/products");
+    renderApp("/catalog/products");
 
     await screen.findByText("No products yet");
     const form = screen.getByRole("form", { name: "Add a product" });
@@ -127,7 +127,7 @@ describe("products", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/products/${flourProductId}`);
+    renderApp(`/catalog/products/${flourProductId}`);
 
     expect(await screen.findByRole("heading", { name: "Millstone All-Purpose Flour" })).toBeInTheDocument();
     const form = screen.getByRole("form", { name: "Edit product" });

@@ -285,13 +285,13 @@ export function formatAge(ageDays: string | number | null | undefined, observedA
 export function bridgeFixLink(status: NormStatus, ingredientId: string, productId: string): { to: string; text: string } {
   switch (status) {
     case "no_density":
-      return { to: `/ingredients/${enc(ingredientId)}#density-heading`, text: "Add a density" };
+      return { to: `/catalog/ingredients/${enc(ingredientId)}#density-heading`, text: "Add a density" };
     case "unknown_measure":
-      return { to: `/ingredients/${enc(ingredientId)}#measures-heading`, text: "Add the measure" };
+      return { to: `/catalog/ingredients/${enc(ingredientId)}#measures-heading`, text: "Add the measure" };
     case "no_pack":
-      return { to: `/products/${enc(productId)}`, text: "Set the pack" };
+      return { to: `/catalog/products/${enc(productId)}`, text: "Set the pack" };
     default:
-      return { to: `/products/${enc(productId)}`, text: "Check the product" };
+      return { to: `/catalog/products/${enc(productId)}`, text: "Check the product" };
   }
 }
 

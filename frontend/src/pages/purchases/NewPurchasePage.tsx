@@ -34,7 +34,7 @@ export function NewPurchasePage() {
   return (
     <>
       <PageHeader title="New purchase">
-        <Link to="/prices/new" className={`rounded text-sm underline ${focusRing}`}>
+        <Link to="/shop/shelf-prices" className={`rounded text-sm underline ${focusRing}`}>
           Just noting a shelf price?
         </Link>
       </PageHeader>
@@ -53,7 +53,7 @@ export function NewPurchasePage() {
               create.mutate(input, {
                 onSuccess: (purchase) => {
                   rememberLocation(input.vendor_location_id);
-                  navigate(`/purchases/${purchase.id}`, firstPurchase ? { state: { firstPurchase: true } } : undefined);
+                  navigate(`/shop/purchases/${purchase.id}`, firstPurchase ? { state: { firstPurchase: true } } : undefined);
                 },
               })
             }

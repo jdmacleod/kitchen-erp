@@ -7,7 +7,7 @@ import { Alert, Button, Card, EmptyState, Field, PageHeader } from "../../compon
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function HomeBasesPage() {
-  usePageTitle("Home bases");
+  usePageTitle("Kitchens");
   const homeBases = useHomeBases();
   const [tilesPresent, setTilesPresent] = useState<boolean | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export function HomeBasesPage() {
 
   return (
     <>
-      <PageHeader title="Home bases" />
+      <PageHeader title="Kitchens" />
       <div className="flex flex-col gap-6">
         <Card>
           <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-home-heading" noValidate>

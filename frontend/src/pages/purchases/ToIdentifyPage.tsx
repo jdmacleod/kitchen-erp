@@ -67,7 +67,7 @@ function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) 
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 dark:text-neutral-300">
         {group.lines.map((l) => (
           <li key={l.line_id}>
-            <Link to={`/purchases/${l.purchase_id}`} className={`rounded underline ${focusRing}`}>
+            <Link to={`/shop/purchases/${l.purchase_id}`} className={`rounded underline ${focusRing}`}>
               {formatDate(l.purchased_at)}
             </Link>
             {l.raw_text && l.raw_text !== group.raw_text_norm ? <span className="font-mono"> {l.raw_text}</span> : null}

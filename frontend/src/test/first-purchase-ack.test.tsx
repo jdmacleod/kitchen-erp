@@ -81,7 +81,7 @@ describe("first-purchase acknowledgement", () => {
 
     // Step two, on a deployment that has a location but no committed purchase.
     const action = await screen.findByRole("link", { name: "New purchase" });
-    expect(action).toHaveAttribute("href", "/purchases/new");
+    expect(action).toHaveAttribute("href", "/shop/purchases/new");
     await user.click(action);
 
     // The flag rides in history state, not the URL, so there is nothing to read
@@ -125,7 +125,7 @@ describe("first-purchase acknowledgement", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation] }),
       "GET /units": () => jsonResponse(200, { items: [] }),
     });
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
 
     await screen.findByRole("button", { name: "Save purchase" });
     await waitFor(() => expect(calls.some((c) => c.path.startsWith("/vendor-locations"))).toBe(true));

@@ -40,7 +40,7 @@ describe("manual purchase entry", () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
 
     await pickFlour(user, 1);
@@ -66,7 +66,7 @@ describe("manual purchase entry", () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
 
     await pickFlour(user, 1);
@@ -86,7 +86,7 @@ describe("manual purchase entry", () => {
       [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
     });
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
     await waitFor(() => expect(screen.getByLabelText("Location")).toHaveValue(chainLocationId));
 
@@ -153,7 +153,7 @@ describe("manual purchase entry", () => {
       [`GET /products/${created.id}/last-purchase-unit`]: () => errorResponse(404, "not_found", "no purchases"),
     });
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
 
     await pickFlour(user, 1);
@@ -186,7 +186,7 @@ describe("manual purchase entry", () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
 
     await pickFlour(user, 1);
@@ -209,7 +209,7 @@ describe("manual purchase entry", () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
     await screen.findByRole("group", { name: "Line 1" });
 
     await pickFlour(user, 1);

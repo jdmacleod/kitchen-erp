@@ -54,7 +54,7 @@ export function VendorDetailPage() {
         <PageHeader title="Vendor" />
         {missing ? (
           <EmptyState title="No such vendor">
-            <Link to="/vendors" className={`rounded-md underline ${focusRing}`}>
+            <Link to="/catalog/vendors" className={`rounded-md underline ${focusRing}`}>
               Back to vendors
             </Link>
           </EmptyState>
@@ -84,7 +84,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
       </PageHeader>
       <div className="flex flex-col gap-6">
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/vendors" className={`rounded underline ${focusRing}`}>
+          <Link to="/catalog/vendors" className={`rounded underline ${focusRing}`}>
             All vendors
           </Link>
           <span aria-hidden="true">·</span>
@@ -193,7 +193,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
           <Button variant="secondary" onClick={() => setAdding((v) => !v)} aria-expanded={adding}>
             {adding ? "Cancel" : "Add a location"}
           </Button>
-          <Link to={`/map?place=location`} className={secondaryLinkClass}>
+          <Link to={`/catalog/vendors?view=map&place=location`} className={secondaryLinkClass}>
             Add on the map
           </Link>
         </div>
@@ -334,7 +334,7 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
         </div>
         <div className="flex flex-wrap gap-1">
-          <Link to={`/map?location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
+          <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
             Map
           </Link>
           <Button variant="ghost" className="min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${location.name}`}>

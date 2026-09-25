@@ -46,6 +46,11 @@ export interface RequestOptions {
   headers?: Record<string, string>;
   /** When true, a 401 does not trigger the global unauthenticated handler. */
   quiet401?: boolean;
+  /**
+   * Non-2xx statuses whose body is the answer rather than an error, such as the
+   * 503 that /health sends with its checks. An error envelope still throws.
+   */
+  acceptStatuses?: number[];
 }
 
 function isEnvelope(value: unknown): value is ErrorEnvelope {
@@ -64,7 +69,7 @@ function isEnvelope(value: unknown): value is ErrorEnvelope {
  * rejects with an ApiError carrying the server's envelope on any non-2xx.
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, headers = {}, quiet401 = false } = options;
+  const { method = "GET", body, headers = {}, quiet401 = false, acceptStatuses = [] } = options;
   const init: RequestInit = {
     method,
     credentials: "include",
@@ -89,6 +94,10 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     } catch {
       payload = undefined;
     }
+  }
+
+  if (!response.ok && acceptStatuses.includes(response.status) && payload !== undefined && !isEnvelope(payload)) {
+    return payload as T;
   }
 
   if (!response.ok) {

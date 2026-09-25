@@ -1,128 +1,181 @@
-import { NavLink } from "react-router";
-import { useLogout, useLogoutEverywhere } from "../api/queries";
+import { Link, NavLink, useLocation } from "react-router";
+import { useInbox } from "../api/inbox";
+import { useHealth, useLogout } from "../api/queries";
 import { useCurrentUser } from "../auth/context";
 import { HealthStatus } from "./HealthStatus";
 import { Button, focusRing } from "./ui";
 
-export const catalogLinks = [
-  { to: "/ingredients", label: "Ingredients" },
-  { to: "/products", label: "Products" },
-  { to: "/vendors", label: "Vendors" },
-  { to: "/map", label: "Map" },
-] as const;
+interface NavItem {
+  to: string;
+  label: string;
+  adminOnly?: boolean;
+}
 
-export const purchaseLinks = [
-  { to: "/purchases", label: "Purchases", end: true },
-  { to: "/purchases/new", label: "New purchase" },
-  { to: "/receipts", label: "Receipts" },
-  { to: "/to-identify", label: "To identify" },
-  { to: "/prices/new", label: "Shelf price" },
-] as const;
+export interface NavSection {
+  key: string;
+  label: string;
+  /** The section's own link: its first page. */
+  to: string;
+  /** Paths under this prefix belong to the section and expand it. */
+  prefix?: string;
+  /** The `/health` feature that builds it; no feature means always built. */
+  feature?: string;
+  items: NavItem[];
+}
 
-export const priceBookLinks = [
-  { to: "/compare", label: "Compare" },
-  { to: "/price-book/needs-bridge", label: "Needs a bridge" },
-] as const;
+/** The body of the sidebar, in the order of docs/spec/09 (Sections). */
+export const MAIN_SECTIONS: NavSection[] = [
+  { key: "home", label: "Home", to: "/", items: [] },
+  {
+    key: "shop",
+    label: "Shop",
+    to: "/shop/purchases",
+    prefix: "/shop",
+    feature: "shop",
+    items: [
+      { to: "/shop/purchases", label: "Purchases" },
+      { to: "/shop/receipts", label: "Receipts" },
+      { to: "/shop/shelf-prices", label: "Shelf prices" },
+      { to: "/shop/compare", label: "Compare prices" },
+    ],
+  },
+];
 
-function linkClass({ isActive }: { isActive: boolean }): string {
-  return `block rounded-md px-3 py-2 text-sm font-medium ${focusRing} ${
-    isActive
-      ? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-      : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800/60"
+/** The footer: Catalog, then Settings. */
+export const FOOTER_SECTIONS: NavSection[] = [
+  {
+    key: "catalog",
+    label: "Catalog",
+    to: "/catalog/ingredients",
+    prefix: "/catalog",
+    feature: "catalog",
+    items: [
+      { to: "/catalog/ingredients", label: "Ingredients" },
+      { to: "/catalog/products", label: "Products" },
+      { to: "/catalog/vendors", label: "Vendors" },
+    ],
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    to: "/settings/kitchens",
+    prefix: "/settings",
+    items: [
+      { to: "/settings/kitchens", label: "Kitchens" },
+      { to: "/settings/users", label: "Users", adminOnly: true },
+      { to: "/settings/tokens", label: "API tokens" },
+      { to: "/settings/system", label: "System" },
+    ],
+  },
+];
+
+/** Phases 1 and 2, shown before `/health` answers and while it fails (D11). */
+export const DEFAULT_FEATURES = ["catalog", "shop"] as const;
+
+/**
+ * The sections that are built. Features only add to the defaults, never remove,
+ * and a section keeps its fixed place however late its feature arrives (G16).
+ */
+export function visibleSections(sections: NavSection[], features: readonly string[] | undefined): NavSection[] {
+  const built = new Set<string>([...DEFAULT_FEATURES, ...(features ?? [])]);
+  return sections.filter((s) => !s.feature || built.has(s.feature));
+}
+
+function sectionClass(active: boolean): string {
+  return `flex min-h-10 items-center justify-between gap-2 rounded-md px-3 text-sm ${focusRing} ${
+    active
+      ? "bg-blue-100 font-semibold text-blue-800 dark:bg-blue-900 dark:text-blue-100"
+      : "font-medium text-neutral-700 hover:bg-neutral-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
   }`;
 }
 
-/** The full navigation list. Rendered in the desktop sidebar and the phone menu. */
+function itemClass({ isActive }: { isActive: boolean }): string {
+  return `flex min-h-9 items-center rounded-md px-3 text-sm ${focusRing} ${
+    isActive
+      ? "bg-white font-medium text-neutral-900 shadow-sm dark:bg-neutral-800 dark:text-neutral-100"
+      : "text-neutral-700 hover:bg-neutral-200/70 dark:text-neutral-300 dark:hover:bg-neutral-800"
+  }`;
+}
+
+/**
+ * The inbox count on Home (G6, G16, D6): hidden until the first answer, "!" when
+ * the inbox could not be checked, and nothing when nothing needs you.
+ */
+export function InboxBadge() {
+  const inbox = useInbox();
+  const pill = "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold";
+  if (inbox.isError && !inbox.data) {
+    return (
+      <span role="img" aria-label="Couldn't check what needs you" className={`${pill} bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100`}>
+        !
+      </span>
+    );
+  }
+  const count = inbox.data?.items.length ?? 0;
+  if (count === 0) return null;
+  return (
+    <span aria-label={`${count} ${count === 1 ? "thing needs" : "things need"} you`} className={`${pill} bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100`}>
+      {count}
+    </span>
+  );
+}
+
+function Section({ section, admin }: { section: NavSection; admin: boolean }) {
+  const { pathname } = useLocation();
+  const active = section.prefix ? pathname === section.prefix || pathname.startsWith(`${section.prefix}/`) : pathname === section.to;
+  const items = section.items.filter((i) => admin || !i.adminOnly);
+  return (
+    <li>
+      {/* A plain link: the section is "current" as a place, and the sub-page link
+          below is the one that is the current page. */}
+      <Link to={section.to} className={sectionClass(active)} aria-current={active ? (section.prefix ? "true" : "page") : undefined}>
+        <span>{section.label}</span>
+        {section.key === "home" ? <InboxBadge /> : null}
+      </Link>
+      {/* Only the active section expands (UI-2.1). */}
+      {active && items.length > 0 ? (
+        <ul className="mt-0.5 mb-1 ml-3 flex flex-col gap-0.5 border-l border-neutral-200 pl-2 dark:border-neutral-800">
+          {items.map((item) => (
+            <li key={item.to}>
+              <NavLink to={item.to} className={itemClass}>
+                {item.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
+/** The navigation. Rendered in the desktop sidebar and the phone menu. */
 export function Nav({ id }: { id?: string }) {
   const user = useCurrentUser();
   const logout = useLogout();
-  const logoutEverywhere = useLogoutEverywhere();
-  const busy = logout.isPending || logoutEverywhere.isPending;
-
-  const settingsLinks = [
-    ...(user.role === "admin" ? [{ to: "/settings/users", label: "Users" }] : []),
-    { to: "/settings/home-bases", label: "Home bases" },
-    { to: "/settings/tokens", label: "API tokens" },
-  ];
+  const health = useHealth();
+  const features = health.data?.features;
+  const admin = user.role === "admin";
 
   return (
-    <nav id={id} aria-label="Main" className="flex h-full flex-col gap-6">
-      {/* Ungrouped and above the first group label: Home belongs to no section,
-          and appending it to catalogLinks would file it under "Catalog". `end`
-          keeps it from matching every route, since every path starts with "/". */}
+    <nav id={id} aria-label="Main" className="flex h-full flex-col gap-4">
       <ul className="flex flex-col gap-0.5">
-        <li>
-          <NavLink to="/" end className={linkClass}>
-            Home
-          </NavLink>
-        </li>
+        {visibleSections(MAIN_SECTIONS, features).map((s) => (
+          <Section key={s.key} section={s} admin={admin} />
+        ))}
       </ul>
-      <div>
-        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Catalog</p>
+      <div className="mt-auto flex flex-col gap-3 border-t border-neutral-200 pt-3 dark:border-neutral-800">
         <ul className="flex flex-col gap-0.5">
-          {catalogLinks.map((link) => (
-            <li key={link.to}>
-              <NavLink to={link.to} className={linkClass}>
-                {link.label}
-              </NavLink>
-            </li>
+          {visibleSections(FOOTER_SECTIONS, features).map((s) => (
+            <Section key={s.key} section={s} admin={admin} />
           ))}
         </ul>
-      </div>
-      <div>
-        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Purchases</p>
-        <ul className="flex flex-col gap-0.5">
-          {purchaseLinks.map((link) => (
-            <li key={link.to}>
-              <NavLink to={link.to} end={"end" in link} className={linkClass}>
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Price book</p>
-        <ul className="flex flex-col gap-0.5">
-          {priceBookLinks.map((link) => (
-            <li key={link.to}>
-              <NavLink to={link.to} className={linkClass}>
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div>
-        <p className="mb-1 px-3 text-xs font-semibold text-neutral-600 dark:text-neutral-400">Settings</p>
-        <ul className="flex flex-col gap-0.5">
-          {settingsLinks.map((link) => (
-            <li key={link.to}>
-              <NavLink to={link.to} className={linkClass}>
-                {link.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="mt-auto flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
-        <p className="px-3 text-sm">
-          <span className="block truncate font-medium">{user.display_name}</span>
-          <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
-            {user.email} · {user.role}
+        <div className="flex items-center justify-between gap-2 px-3 text-sm">
+          <span className="min-w-0">
+            <span className="block truncate font-medium">{user.display_name}</span>
+            <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">{user.email}</span>
           </span>
-        </p>
-        <div className="flex flex-col gap-1 px-1">
-          <Button variant="ghost" className="justify-start" disabled={busy} onClick={() => logout.mutate()}>
+          <Button variant="ghost" className="shrink-0" disabled={logout.isPending} onClick={() => logout.mutate()}>
             Log out
-          </Button>
-          <Button
-            variant="ghost"
-            className="justify-start"
-            disabled={busy}
-            onClick={() => logoutEverywhere.mutate()}
-          >
-            Log out everywhere
           </Button>
         </div>
         <div className="px-3">

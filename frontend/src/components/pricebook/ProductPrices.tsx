@@ -39,7 +39,7 @@ export function ProductPrices({ product }: { product: Product }) {
                   {prices.data.latest.map((l) => (
                     <tr key={l.location_id} data-testid="latest-price">
                       <td className="py-2 pr-3">
-                        <Link to={`/map?location=${encodeURIComponent(l.location_id)}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(l.location_id)}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {l.location_name === l.vendor_name ? l.location_name : `${l.vendor_name} — ${l.location_name}`}
                         </Link>
                         {l.price_scope === "chain" ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · chain price</span> : null}

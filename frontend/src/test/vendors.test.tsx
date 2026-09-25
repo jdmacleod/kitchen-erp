@@ -30,7 +30,7 @@ describe("vendors", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
 
     expect(await screen.findByText("No vendors yet")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Name"), "Riverbend Grocers");
@@ -46,7 +46,7 @@ describe("vendors", () => {
     expect(post?.body).toEqual({ name: "Riverbend Grocers", kind: "chain", price_scope: "chain" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
     const list = await screen.findByRole("list", { name: "Vendors" });
-    expect(within(list).getByRole("link", { name: "Riverbend Grocers" })).toHaveAttribute("href", `/vendors/${created.id}`);
+    expect(within(list).getByRole("link", { name: "Riverbend Grocers" })).toHaveAttribute("href", `/catalog/vendors/${created.id}`);
   });
 
   it("shows a quiet note when OpenStreetMap adoption is switched off", async () => {
@@ -55,7 +55,7 @@ describe("vendors", () => {
       "GET /osm/candidates": () => errorResponse(409, "integration_disabled", "Overpass is disabled."),
     });
     const user = userEvent.setup();
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
     await screen.findByRole("list", { name: "Vendors" });
 
     await user.selectOptions(await screen.findByLabelText("Home base"), homeBaseId);
@@ -77,7 +77,7 @@ describe("vendors", () => {
       "POST /osm/adopt": () => jsonResponse(201, { ...chainLocation, stalls: [] }),
     });
     const user = userEvent.setup();
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
     await screen.findByRole("list", { name: "Vendors" });
     await user.selectOptions(await screen.findByLabelText("Home base"), homeBaseId);
     await user.click(screen.getByRole("button", { name: "Find candidates" }));
@@ -107,7 +107,7 @@ describe("vendors", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [marketLocation, { ...stallLocation, vendor: marketLocation.vendor }] }),
     });
     const user = userEvent.setup();
-    renderApp(`/vendors/${marketVendor.id}`);
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     expect(await screen.findByRole("heading", { name: "Pier Farmers Market" })).toBeInTheDocument();
     const stalls = await screen.findByRole("list", { name: "Stalls at Pier Farmers Market" });
@@ -139,7 +139,7 @@ describe("vendors", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/vendors/${marketVendor.id}`);
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     expect(await screen.findByText(/No locations yet, so this vendor cannot be chosen for a purchase/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Add a location" }));
@@ -179,7 +179,7 @@ describe("vendors", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
     });
     const user = userEvent.setup();
-    renderApp(`/vendors/${marketVendor.id}`);
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     await user.click(await screen.findByRole("button", { name: "Add a location" }));
     const field = screen.getByLabelText("Coordinates");
@@ -207,7 +207,7 @@ describe("vendors", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
     });
     const user = userEvent.setup();
-    renderApp(`/vendors/${marketVendor.id}`);
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     await user.click(await screen.findByRole("button", { name: "Add a location" }));
     await user.click(screen.getByRole("button", { name: "Use my location" }));
@@ -233,7 +233,7 @@ describe("vendors", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
     });
     const user = userEvent.setup();
-    renderApp(`/vendors/${marketVendor.id}`);
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     await user.click(await screen.findByRole("button", { name: "Add a location" }));
     await user.click(screen.getByRole("button", { name: "Use my location" }));
@@ -257,7 +257,7 @@ describe("vendors", () => {
         jsonResponse(409, { error: { code: "home_base_in_use", message: "in use", details: { locations: [chainVendorId, marketVendor.id] } } }),
     });
     const user = userEvent.setup();
-    renderApp("/settings/home-bases");
+    renderApp("/settings/kitchens");
 
     const list = await screen.findByRole("list", { name: "Home bases" });
     expect(within(list).getByText("Harbour flat")).toBeInTheDocument();

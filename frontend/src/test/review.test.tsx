@@ -194,7 +194,7 @@ describe("receipt review", () => {
     expect(lines[0]).toHaveTextContent("observed");
     expect(lines[1]).toHaveTextContent("unresolved");
     expect(lines[1]).toHaveTextContent("no observation");
-    expect(screen.getByRole("link", { name: "to-identify queue" })).toHaveAttribute("href", "/to-identify");
+    expect(screen.getByRole("link", { name: "to-identify queue" })).toHaveAttribute("href", "/shop/receipts/identify");
     // A receipt purchase has no entry-form Edit; the review screen is its editor.
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
 

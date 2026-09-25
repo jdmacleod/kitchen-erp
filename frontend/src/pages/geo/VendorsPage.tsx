@@ -20,7 +20,7 @@ import {
   type VendorKind,
 } from "../../api/geo";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -37,7 +37,12 @@ export function VendorsPage() {
 
   return (
     <>
-      <PageHeader title="Vendors" />
+      <PageHeader title="Vendors">
+        {/* Until T6's list/map toggle: the map is the Vendors page's map view (T9). */}
+        <Link to="/catalog/vendors?view=map" className={secondaryLinkClass}>
+          Map view
+        </Link>
+      </PageHeader>
       <div className="flex flex-col gap-6">
         <CreateVendorForm />
 
@@ -88,7 +93,7 @@ export function VendorsPage() {
 function VendorRow({ vendor }: { vendor: Vendor }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link to={`/vendors/${vendor.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
+      <Link to={`/catalog/vendors/${vendor.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
         {vendor.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
@@ -140,11 +145,11 @@ function CreateVendorForm() {
         {created ? (
           <Alert tone="success">
             Created{" "}
-            <Link to={`/vendors/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link to={`/catalog/vendors/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {created.name}
             </Link>
 . A vendor cannot be chosen for a purchase until it has a location, and{" "}
-            <Link to={`/vendors/${created.id}`} className={`rounded underline ${focusRing}`}>
+            <Link to={`/catalog/vendors/${created.id}`} className={`rounded underline ${focusRing}`}>
               its page
             </Link>{" "}
             is where you add one.

@@ -8,13 +8,13 @@ const stamp = nextTag();
 
 test("create an ingredient with only a name, then a product for it", async ({ page }) => {
   await login(page);
-  await page.goto("/ingredients");
+  await page.goto("/catalog/ingredients");
   const name = `E2E rigatoni ${stamp}`;
   await page.getByLabel(/^name/i).first().fill(name);
   await page.getByRole("button", { name: /create ingredient/i }).click();
   await expect(page.getByText(name).first()).toBeVisible();
 
-  await page.goto("/products");
+  await page.goto("/catalog/products");
   await page.getByLabel(/^name/i).first().fill(`E2E rigatoni box ${stamp}`);
   const picker = page.getByRole("combobox", { name: "Ingredient" });
   await picker.fill(name);

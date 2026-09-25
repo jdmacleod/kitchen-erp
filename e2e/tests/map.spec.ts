@@ -7,7 +7,7 @@ import { login, watchExternalRequests, nextTag } from "./helpers";
 // SECURITY.md (lat 33–34, lon -121 to -120); ?center= opens the map there so a
 // click on it lands in the box whatever else the dev database holds.
 const stamp = nextTag();
-const BOX = "/map?center=33.500000,-120.500000&zoom=12";
+const BOX = "/catalog/vendors?view=map&center=33.500000,-120.500000&zoom=12";
 
 // The household zone; the open-at instants below are Saturdays 09:00 there.
 test.use({ timezoneId: "America/Los_Angeles" });
@@ -95,7 +95,7 @@ test("open-at hides a seasonal stall in January and shows it on a July Saturday 
   });
   expect(stall.status()).toBe(201);
 
-  await page.goto(`/map?location=${marketId}&center=33.520000,-120.480000&zoom=13`);
+  await page.goto(`/catalog/vendors?view=map&location=${marketId}&center=33.520000,-120.480000&zoom=13`);
   const panel = page.getByTestId("location-panel");
   await expect(panel).toContainText(marketName);
   await expect(panel.getByRole("list", { name: "Stalls" })).toContainText(stallName);
@@ -120,7 +120,7 @@ test("the placing deep-link applies once and then leaves the URL alone", async (
   // change, so a lingering parameter would describe a mode the user may already
   // have left, and revisiting the URL would silently re-enter it.
   await login(page);
-  await page.goto("/map?place=location");
+  await page.goto("/catalog/vendors?view=map&place=location");
 
   await expect(page.getByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "true");
   await expect(page).not.toHaveURL(/place=/);

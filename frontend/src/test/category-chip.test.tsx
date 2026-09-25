@@ -52,7 +52,7 @@ describe("category chips on pages", () => {
       "GET /products": () => jsonResponse(200, { items: products, next_cursor: null }),
       "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
-    renderApp("/products");
+    renderApp("/catalog/products");
     const list = await screen.findByRole("list", { name: "Products" });
     expect(within(list).getByText("pantry")).toHaveClass("cat-pantry");
   });
@@ -64,7 +64,7 @@ describe("category chips on pages", () => {
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, manualPurchase),
     });
-    renderApp(`/purchases/${purchaseId}`);
+    renderApp(`/shop/purchases/${purchaseId}`);
     const table = await screen.findByRole("table", { name: "Lines" });
     const rows = within(table).getAllByRole("row").slice(1);
     expect(within(rows[0]).getByText("pantry")).toHaveClass("cat-pantry");

@@ -86,7 +86,7 @@ export function PurchaseDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
             <span className="text-sm text-neutral-600 dark:text-neutral-400">{sourceLabel[p.source]}</span>
-            <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+            <Link to="/shop/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
               All purchases
             </Link>
           </div>
@@ -144,7 +144,7 @@ function CommittedPurchase({
           <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
             {reopen.isPending ? "Reopening…" : "Reopen"}
           </Button>
-          <Link to="/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+          <Link to="/shop/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
             All purchases
           </Link>
         </div>
@@ -157,7 +157,7 @@ function CommittedPurchase({
             <Item label="Location">
               {p.vendor_location ? (
                 <>
-                  <Link to={`/vendors/${p.vendor_location.vendor.id}`} className={`rounded underline ${focusRing}`}>
+                  <Link to={`/catalog/vendors/${p.vendor_location.vendor.id}`} className={`rounded underline ${focusRing}`}>
                     {p.vendor_location.vendor.name}
                   </Link>
                   {p.vendor_location.name !== p.vendor_location.vendor.name ? ` — ${p.vendor_location.name}` : ""}
@@ -212,7 +212,7 @@ function CommittedPurchase({
           {p.lines.some((l) => l.line_kind === "item" && l.resolution === "unmatched") ? (
             <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
               Unidentified lines wait in the{" "}
-              <Link to="/to-identify" className={`rounded underline ${focusRing}`}>
+              <Link to="/shop/receipts/identify" className={`rounded underline ${focusRing}`}>
                 to-identify queue
               </Link>
               .
@@ -242,7 +242,7 @@ function LineRow({ line }: { line: PurchaseLine }) {
       <td className="py-2 pr-3">
         {line.product ? (
           <>
-            <Link to={`/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+            <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
               {productTitle(line.product)}
             </Link>
             {formatPack(line.product.pack_qty, line.product.pack_unit) ? (

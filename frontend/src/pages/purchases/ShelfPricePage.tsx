@@ -95,7 +95,7 @@ export function ShelfPricePage() {
   return (
     <>
       <PageHeader title="Shelf price">
-        <Link to="/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
+        <Link to="/shop/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
           Enter a purchase instead
         </Link>
       </PageHeader>
@@ -193,7 +193,7 @@ export function ObservationResult({ observation }: { observation: Observation })
   const recorded = (
     <>
       Recorded {formatMoney(observation.price)} for {stripZeros(observation.qty)} {observation.unit} of{" "}
-      <Link to={`/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
+      <Link to={`/catalog/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
         {productTitle(product)}
       </Link>
       {observation.is_promo ? " (sale)" : ""}.
@@ -222,12 +222,12 @@ export function ObservationResult({ observation }: { observation: Observation })
   }
 
   const ingredientLink = (hash: string, text: string) => (
-    <Link to={`/ingredients/${product.ingredient.id}#${hash}`} className={`rounded font-medium underline ${focusRing}`}>
+    <Link to={`/catalog/ingredients/${product.ingredient.id}#${hash}`} className={`rounded font-medium underline ${focusRing}`}>
       {text}
     </Link>
   );
   const productLink = (text: string) => (
-    <Link to={`/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
+    <Link to={`/catalog/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
       {text}
     </Link>
   );

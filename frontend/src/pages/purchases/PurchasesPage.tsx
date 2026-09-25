@@ -20,10 +20,10 @@ export function PurchasesPage() {
     <>
       <PageHeader title="Purchases">
         <div className="flex flex-wrap gap-2">
-          <Link to="/prices/new" className={secondaryLinkClass}>
+          <Link to="/shop/shelf-prices" className={secondaryLinkClass}>
             Shelf price
           </Link>
-          <Link to="/purchases/new" className={primaryLinkClass}>
+          <Link to="/shop/purchases/new" className={primaryLinkClass}>
             New purchase
           </Link>
         </div>
@@ -70,7 +70,7 @@ export function PurchasesPage() {
                   {items.map((p) => (
                     <tr key={p.id}>
                       <td className="py-2 pr-3 whitespace-nowrap">
-                        <Link to={`/purchases/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/shop/purchases/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                           {formatDate(p.purchased_at)}
                         </Link>
                       </td>

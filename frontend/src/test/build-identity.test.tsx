@@ -15,7 +15,7 @@ function mountWith(healthBody: unknown) {
       healthBody === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, healthBody),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });
-  renderApp("/purchases");
+  renderApp("/shop/purchases");
 }
 
 describe("build identity line", () => {
@@ -54,7 +54,7 @@ describe("build identity line", () => {
       "GET /health": () => new Promise<Response>(() => {}),
       "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
-    renderApp("/purchases");
+    renderApp("/shop/purchases");
 
     expect(await screen.findByTestId("health-status")).toHaveTextContent("checking");
     expect(screen.queryByTestId("build-identity")).not.toBeInTheDocument();

@@ -85,7 +85,7 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         done={hasLocation}
         next={!hasLocation}
         title="Add somewhere you shop"
-        to="/map?place=location"
+        to="/catalog/vendors?view=map&place=location"
         action="Open the map"
       >
         Dropping a pin names the shop and its location together, so this is one step rather
@@ -96,7 +96,7 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         done={false}
         next={hasLocation}
         title="Record your first purchase"
-        to="/purchases/new"
+        to="/shop/purchases/new"
         // Tells the entry form this is the first one, so the confirmation can say so
         // where the work finishes. Free, and true by construction: this link only
         // renders while no committed purchase exists.

@@ -61,7 +61,7 @@ async function seedReviewedPurchase(page: Page): Promise<Seeded> {
 test("review a reopened purchase by keyboard: move between lines, reattach a discount, commit, reopen", async ({ page }) => {
   await login(page);
   const { purchaseId } = await seedReviewedPurchase(page);
-  await page.goto(`/purchases/${purchaseId}`);
+  await page.goto(`/shop/purchases/${purchaseId}`);
 
   // The review screen, with its key legend and the receipt-less two-line table.
   await expect(page.getByLabel("Keyboard shortcuts")).toContainText("accept the top suggestion");
@@ -103,13 +103,13 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
 
 test("the receipts page uploads nothing by itself and lists jobs; the to-identify queue loads", async ({ page }) => {
   await login(page);
-  await page.goto("/receipts");
+  await page.goto("/shop/receipts");
   await expect(page.getByRole("heading", { name: "Upload a receipt" })).toBeVisible();
   // A PDF is named because the picker accepts one: an emailed receipt is not a photo.
   await expect(page.getByText("A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.")).toBeVisible();
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByRole("alert")).toContainText("Choose a photo of the receipt.");
 
-  await page.goto("/to-identify");
+  await page.goto("/shop/receipts/identify");
   await expect(page.getByRole("heading", { name: "To identify" })).toBeVisible();
 });
