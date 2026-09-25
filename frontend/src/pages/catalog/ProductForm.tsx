@@ -1,10 +1,12 @@
-import type { FormEvent, ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import {
   BRIDGE_SOURCES,
   catalogErrorMessage,
   isPositiveDecimal,
+  useUnits,
   type BridgeSource,
   type Product,
+  type Unit,
 } from "../../api/catalog";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
@@ -87,6 +89,28 @@ interface ProductFormProps {
   /** A notice rendered above the fields (e.g. success). */
   notice?: ReactNode;
   densityHint?: ReactNode;
+  /**
+   * "drawer": the drawer supplies the title and the submit button, which submits
+   * this form by `formId` from its sticky footer (spec 08, Drawer).
+   */
+  layout?: "page" | "drawer";
+  formId?: string;
+}
+
+const CANONICAL_DIMENSION: Record<string, string> = { g: "mass", ml: "volume", each: "count" };
+
+/**
+ * Why the density section should open, or null. Only a mass/volume mismatch is a
+ * density's job; a count needs a pack or a measure instead (UI-3.5).
+ */
+export function densityReason(packUnit: string, ingredient: IngredientChoice | null, units: Unit[]): string | null {
+  if (!packUnit || !ingredient) return null;
+  const canonical = ingredient.kind === "existing" ? ingredient.ingredient.canonical_unit : "g";
+  const from = units.find((u) => u.code === packUnit)?.dimension;
+  const to = CANONICAL_DIMENSION[canonical];
+  if (!from || !to || from === to || from === "count" || to === "count") return null;
+  const name = ingredient.kind === "existing" ? ingredient.ingredient.name : ingredient.name;
+  return `${packUnit} is a ${from} unit and ${name} is measured in ${canonical}, so this product's prices can't be compared until there is a density. You can add one here or later; saving without one is fine.`;
 }
 
 /** The product fields, shared by the create and edit pages. State lives in the page. */
@@ -105,7 +129,12 @@ export function ProductForm({
   children,
   notice,
   densityHint,
+  layout = "page",
+  formId,
 }: ProductFormProps) {
+  const units = useUnits();
+  const reason = densityReason(values.pack_unit, values.ingredient, units.data ?? []);
+  const [densityOpen, setDensityOpen] = useState(values.density_override !== "");
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
     onChange({ ...values, [key]: value });
   const headingId = `${idPrefix}-heading`;
@@ -116,10 +145,19 @@ export function ProductForm({
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4" aria-labelledby={headingId} noValidate>
-      <h2 id={headingId} className="text-lg font-medium">
-        {heading}
-      </h2>
+    <form
+      id={formId}
+      onSubmit={submit}
+      className="flex flex-col gap-4"
+      aria-labelledby={layout === "page" ? headingId : undefined}
+      aria-label={layout === "drawer" ? heading : undefined}
+      noValidate
+    >
+      {layout === "page" ? (
+        <h2 id={headingId} className="text-lg font-medium">
+          {heading}
+        </h2>
+      ) : null}
       {notice}
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {error ? <Alert tone="error">{catalogErrorMessage(error)}</Alert> : null}
@@ -188,7 +226,12 @@ export function ProductForm({
 
       <TextAreaField id={`${idPrefix}-notes`} label="Notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} />
 
-      <Disclosure summary="Density override" defaultOpen={values.density_override !== ""}>
+      <Disclosure summary="Density override" open={densityOpen || reason !== null} onOpenChange={setDensityOpen}>
+        {reason ? (
+          <p data-testid="density-reason" className="text-sm text-amber-900 dark:text-amber-200">
+            {reason}
+          </p>
+        ) : null}
         {densityHint}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -216,12 +259,14 @@ export function ProductForm({
         </div>
       </Disclosure>
 
-      <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={busy}>
-          {busy ? busyLabel : submitLabel}
-        </Button>
-        {children}
-      </div>
+      {layout === "page" ? (
+        <div className="flex flex-wrap gap-2">
+          <Button type="submit" disabled={busy}>
+            {busy ? busyLabel : submitLabel}
+          </Button>
+          {children}
+        </div>
+      ) : null}
     </form>
   );
 }

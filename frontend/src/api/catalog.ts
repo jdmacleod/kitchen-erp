@@ -100,6 +100,23 @@ export interface Product {
   updated_at: string;
 }
 
+/** The latest committed purchase of a product (T16): what was paid, where and when. */
+export interface LastPaid {
+  price: string;
+  qty: string;
+  unit: string;
+  is_promo: boolean;
+  vendor_id: string;
+  vendor_name: string;
+  purchase_id: string;
+  paid_at: string;
+}
+
+/** A row of the product list, which also says what the product last cost. */
+export interface ProductListItem extends Product {
+  last_paid: LastPaid | null;
+}
+
 export type MatchKind = "barcode" | "name" | "brand" | "ingredient";
 
 export interface SearchHit {
@@ -467,18 +484,33 @@ export function useUsdaSuggestions(name: string, limit = 5) {
 
 // --- products ---------------------------------------------------------------
 
+/**
+ * The product list, by name. `q` and `category` filter on the server, so a match
+ * beyond the first page is found (D12); a search returns one ranked page.
+ */
 export function useProducts(
-  options: { ingredientId?: string; includeInactive?: boolean; limit?: number; enabled?: boolean } = {},
+  options: {
+    ingredientId?: string;
+    includeInactive?: boolean;
+    q?: string;
+    category?: CategoryKey | null;
+    limit?: number;
+    enabled?: boolean;
+  } = {},
 ) {
   const { ingredientId, includeInactive = false, limit = 50, enabled = true } = options;
+  const q = options.q?.trim().slice(0, 200) || undefined;
+  const category = options.category ?? undefined;
   return useInfiniteQuery({
-    queryKey: catalogKeys.productList(ingredientId, includeInactive),
+    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? ""],
     queryFn: ({ pageParam }) =>
-      api<Page<Product>>(
-        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, limit, cursor: pageParam })}`,
+      api<Page<ProductListItem>>(
+        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, limit, cursor: pageParam })}`,
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
+    // Keep the rows on screen while a new search or filter loads.
+    placeholderData: (previous) => previous,
     enabled,
   });
 }

@@ -18,6 +18,14 @@ function baseRoutes(products: () => Product[]) {
   };
 }
 
+/** Open the add drawer from the page header and return its form. */
+async function openAddDrawer(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole("heading", { name: "Products" });
+  await user.click(screen.getAllByRole("button", { name: "Add product" })[0]);
+  const dialog = await screen.findByRole("dialog", { name: "Add product" });
+  return within(dialog).getByRole("form", { name: "Add product" });
+}
+
 describe("products", () => {
   it("creates a product with an inline new ingredient in one request", async () => {
     let products: Product[] = [];
@@ -42,8 +50,7 @@ describe("products", () => {
     const user = userEvent.setup();
     renderApp("/catalog/products");
 
-    expect(await screen.findByText("No products yet")).toBeInTheDocument();
-    const form = screen.getByRole("form", { name: "Add a product" });
+    const form = await openAddDrawer(user);
 
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "rolled oats");
     const option = await within(form).findByRole("option", { name: /Create new ingredient/ });
@@ -54,11 +61,12 @@ describe("products", () => {
     await user.type(within(form).getByLabelText("Pack quantity"), "1");
     await user.selectOptions(within(form).getByLabelText("Pack unit"), "kg");
     await user.click(within(form).getByRole("radio", { name: "3" }));
-    await user.click(within(form).getByRole("button", { name: "Create product" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
 
-    const notice = await screen.findByTestId("notice");
-    expect(notice).toHaveTextContent("Added Rolled Oats.");
-    expect(within(notice).getByRole("link", { name: "Open it" })).toHaveAttribute("href", `/catalog/products/${created.id}`);
+    // The drawer closes, and the new row is in the list, so it takes focus (G10).
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("link", { name: "Rolled Oats" })).toHaveFocus());
+    expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
     const post = calls.find((c) => c.method === "POST" && c.path === "/products");
     expect(post?.body).toEqual({
       name: "Rolled Oats",
@@ -68,8 +76,28 @@ describe("products", () => {
       quality_rating: 3,
     });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
-    // The ingredient stays selected for the next product.
-    expect(screen.getByTestId("new-product-ingredient-choice")).toHaveTextContent("rolled oats");
+  });
+
+  it("links a new product it cannot show from the Notice, with focus on the link (G10)", async () => {
+    // The list stays empty: the new row sorts onto a page not loaded yet.
+    mockApi({
+      ...baseRoutes(() => []),
+      "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
+      "POST /products": () => jsonResponse(201, { ...flourProduct, name: "Zucchini flour", brand: null }),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
+    await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
+    await user.type(within(form).getByLabelText("Name"), "Zucchini flour");
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent("Added Zucchini flour.");
+    const link = within(notice).getByRole("link", { name: "Open it" });
+    expect(link).toHaveAttribute("href", `/catalog/products/${flourProduct.id}`);
+    await waitFor(() => expect(link).toHaveFocus());
   });
 
   it("refuses a pack quantity without a unit before calling the API", async () => {
@@ -80,13 +108,12 @@ describe("products", () => {
     const user = userEvent.setup();
     renderApp("/catalog/products");
 
-    await screen.findByText("No products yet");
-    const form = screen.getByRole("form", { name: "Add a product" });
+    const form = await openAddDrawer(user);
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
     await user.type(within(form).getByLabelText("Name"), "Flour");
     await user.type(within(form).getByLabelText("Pack quantity"), "5");
-    await user.click(within(form).getByRole("button", { name: "Create product" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("both a pack quantity and a pack unit");
     expect(calls.some((c) => c.method === "POST")).toBe(false);
@@ -101,12 +128,11 @@ describe("products", () => {
     const user = userEvent.setup();
     renderApp("/catalog/products");
 
-    await screen.findByText("No products yet");
-    const form = screen.getByRole("form", { name: "Add a product" });
+    const form = await openAddDrawer(user);
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
     await user.type(within(form).getByLabelText("Name"), "Flour");
-    await user.click(within(form).getByRole("button", { name: "Create product" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Another product already has that barcode.");
   });

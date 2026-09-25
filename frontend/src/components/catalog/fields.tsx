@@ -161,3 +161,17 @@ export function Disclosure({ summary, children, defaultOpen = false, open, onOpe
 export function ConfirmedBadge({ confirmed }: { confirmed: boolean }) {
   return confirmed ? <Badge tone="good">confirmed</Badge> : <Badge tone="warn">unconfirmed</Badge>;
 }
+
+/**
+ * A quality rating as walnut stars (T13b). The label carries the number, so the
+ * stars are never the only signal; unrated reads as a dash.
+ */
+export function QualityStars({ rating }: { rating: number | null }) {
+  if (rating === null) return <span aria-label="Unrated">—</span>;
+  return (
+    <span role="img" aria-label={`${rating} of 5 stars`} className="tracking-tight whitespace-nowrap text-neutral-800 dark:text-neutral-200">
+      {"★".repeat(rating)}
+      <span className="text-neutral-300 dark:text-neutral-700">{"★".repeat(5 - rating)}</span>
+    </span>
+  );
+}

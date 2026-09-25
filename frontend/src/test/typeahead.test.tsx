@@ -6,7 +6,7 @@ import type { SearchHit } from "../api/catalog";
 import { ProductTypeahead } from "../components/catalog/ProductTypeahead";
 import { createQueryClient } from "../lib/queryClient";
 import { hits } from "./catalog-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
+import { jsonResponse, mockApi } from "./helpers";
 
 describe("ProductTypeahead", () => {
   it("lists ranked hits as the user types and selects with the keyboard", async () => {
@@ -71,37 +71,4 @@ describe("ProductTypeahead", () => {
     expect(box).toHaveValue("fl");
   });
 
-  it("opens the chosen product from the products page", async () => {
-    mockApi({
-      "GET /auth/me": () => jsonResponse(200, adminUser),
-      "GET /health": () => jsonResponse(200, { status: "ok" }),
-      "GET /units": () => jsonResponse(200, { items: [] }),
-      "GET /products": () => jsonResponse(200, { items: [], next_cursor: null }),
-      "GET /products/search": () => jsonResponse(200, { items: hits }),
-      [`GET /products/${hits[0].id}`]: () =>
-        jsonResponse(200, {
-          id: hits[0].id,
-          ingredient: hits[0].ingredient,
-          brand: hits[0].brand,
-          name: hits[0].name,
-          pack_qty: hits[0].pack_qty,
-          pack_unit: hits[0].pack_unit,
-          barcode: hits[0].barcode,
-          quality_rating: hits[0].quality_rating,
-          exclusive_vendor_id: null,
-          density_override: null,
-          density_override_source: null,
-          density_override_confirmed: false,
-          active: true,
-          notes: null,
-          created_at: "2026-03-02T00:00:00Z",
-          updated_at: "2026-03-02T00:00:00Z",
-        }),
-    });
-    const user = userEvent.setup();
-    renderApp("/catalog/products");
-    await user.type(await screen.findByRole("combobox", { name: "Search products" }), "flour");
-    await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
-    expect(await screen.findByRole("heading", { name: "Millstone All-Purpose Flour" })).toBeInTheDocument();
-  });
 });

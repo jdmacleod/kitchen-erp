@@ -92,10 +92,17 @@ export function Alert({ tone, children, className = "" }: AlertProps) {
   );
 }
 
-export function PageHeader({ title, children }: { title: string; children?: ReactNode }) {
+/**
+ * The page header (docs/spec/10, Desktop page pattern): the Fraunces title, a
+ * one-line description, and the page's actions, the primary one last.
+ */
+export function PageHeader({ title, description, children }: { title: string; description?: ReactNode; children?: ReactNode }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-      <h1 className="text-3xl leading-tight md:text-[2.5rem]">{title}</h1>
+      <div className="min-w-0">
+        <h1 className="text-3xl leading-tight md:text-[2.5rem]">{title}</h1>
+        {description ? <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{description}</p> : null}
+      </div>
       {children}
     </header>
   );
