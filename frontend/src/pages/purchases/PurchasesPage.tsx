@@ -8,6 +8,7 @@ import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 type Filter = PurchaseStatus | "all";
@@ -41,6 +42,8 @@ export function PurchasesPage() {
   // Receipts in flight belong with the drafts they are about to become.
   const jobs = useIngestJobs();
   const reading = filter === "all" || filter === "draft" ? (jobs.data ?? []).filter(jobInFlight) : [];
+  // The table at lg and wider, a list below it (G19).
+  const wide = useMediaQuery(LG_QUERY);
 
   return (
     <>
@@ -121,6 +124,7 @@ export function PurchasesPage() {
           </EmptyState>
         ) : (
           <>
+            {wide ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Purchases">
                 <thead>
@@ -170,6 +174,47 @@ export function PurchasesPage() {
                 </tbody>
               </table>
             </div>
+            ) : (
+              // Phone: purchases (10). One row per purchase: where, then the date
+              // and line count, with the total and status at the right.
+              <ul aria-label="Purchases" className="-mx-1 divide-y divide-neutral-200 dark:divide-neutral-800">
+                {reading.map((job) => (
+                  <li key={job.id} data-testid="reading-row">
+                    <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}>
+                      <span className="min-w-0">
+                        <span className="block font-medium">Receipt being read</span>
+                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">{job.created_at ? formatDate(job.created_at) : "Just now"}</span>
+                      </span>
+                      <Badge>Reading</Badge>
+                    </Link>
+                  </li>
+                ))}
+                {items.map((p) => (
+                  <li key={p.id}>
+                    <Link to={`/shop/purchases/${p.id}`} className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}>
+                      <span className="min-w-0">
+                        <span className="block truncate font-medium">
+                          {p.vendor_location ? (
+                            p.vendor_location.vendor.name
+                          ) : p.status === "committed" ? (
+                            "No location"
+                          ) : (
+                            <span className="text-amber-800 dark:text-amber-300">Location needed</span>
+                          )}
+                        </span>
+                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">
+                          {formatDate(p.purchased_at)} · {itemLines(p).length} {itemLines(p).length === 1 ? "line" : "lines"}
+                        </span>
+                      </span>
+                      <span className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-sm font-semibold tabular-nums">{formatMoney(p.total ?? p.computed_total)}</span>
+                        <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
             {purchases.hasNextPage ? (
               <div className="mt-3">
                 <Button variant="secondary" disabled={purchases.isFetchingNextPage} onClick={() => purchases.fetchNextPage()}>

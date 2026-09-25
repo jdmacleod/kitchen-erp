@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { IngestJob } from "../api/ingest";
 import type { Purchase } from "../api/purchases";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
@@ -74,4 +74,28 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
     expect(await screen.findByRole("region", { name: "No committed purchases" })).toBeInTheDocument();
     expect(screen.queryByTestId("reading-row")).toBeNull();
   });
+
+  it("lists purchases as rows below lg: where, date and lines, total and status (Phone: purchases)", async () => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+    });
+    mockApi(routes());
+    renderApp("/shop/purchases");
+
+    const list = await screen.findByRole("list", { name: "Purchases" });
+    expect(screen.queryByRole("table")).toBeNull();
+    const items = within(list).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("Receipt being read");
+    expect(items[0]).toHaveTextContent("Reading");
+    expect(items[1]).toHaveTextContent("Location needed");
+    expect(items[2]).toHaveTextContent("Pier Farmers Market");
+    expect(items[2]).toHaveTextContent("2 lines");
+    expect(items[2]).toHaveTextContent("$14.21");
+    expect(items[2]).toHaveTextContent("Committed");
+  });
+});
+
+afterEach(() => {
+  delete (window as { matchMedia?: unknown }).matchMedia;
 });
