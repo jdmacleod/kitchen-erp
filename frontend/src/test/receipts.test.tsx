@@ -53,7 +53,7 @@ describe("receipts", () => {
     // The JSON client is bypassed: no content type is forced, so the browser sets the multipart boundary.
     expect(post?.headers.get("Content-Type")).toBeNull();
     expect(post?.body).toBeUndefined();
-    expect(await screen.findByText(/Uploaded\. The receipt is being read/)).toBeInTheDocument();
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Receipt uploaded. It'll appear in Needs you once it's read.");
     const list = await screen.findByRole("list", { name: "Ingest jobs" });
     expect(within(list).getByTestId("ingest-job")).toHaveAttribute("data-status", "pending");
     expect(within(list).getByText("queued")).toBeInTheDocument();

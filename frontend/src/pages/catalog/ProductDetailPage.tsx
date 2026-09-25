@@ -19,6 +19,7 @@ import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 import { CategoryChip } from "../../components/CategoryChip";
+import { useNotice } from "../../components/Notice";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -128,10 +129,10 @@ function EditProductForm({ product }: { product: Product }) {
   const update = useUpdateProduct(product.id);
   const [values, setValues] = useState<ProductFormValues>(() => productValues(product));
   const [invalid, setInvalid] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
+  const notice = useNotice();
+  const saved = () => notice.show({ tone: "success", message: "Saved." });
 
   const onSubmit = () => {
-    setSaved(false);
     const problem = validateProductValues(values);
     setInvalid(problem);
     if (problem || !values.ingredient || values.ingredient.kind !== "existing") return;
@@ -168,10 +169,10 @@ function EditProductForm({ product }: { product: Product }) {
     }
 
     if (Object.keys(input).length === 0) {
-      setSaved(true);
+      saved();
       return;
     }
-    update.mutate(input, { onSuccess: () => setSaved(true) });
+    update.mutate(input, { onSuccess: saved });
   };
 
   return (
@@ -181,7 +182,7 @@ function EditProductForm({ product }: { product: Product }) {
       mode="edit"
       values={values}
       onChange={(next) => {
-        setSaved(false);
+        notice.dismiss();
         setValues(next);
       }}
       onSubmit={onSubmit}
@@ -190,7 +191,6 @@ function EditProductForm({ product }: { product: Product }) {
       busy={update.isPending}
       submitLabel="Save changes"
       busyLabel="Saving…"
-      notice={saved ? <Alert tone="success">Saved.</Alert> : null}
       densityHint={
         product.density_override !== null ? (
           <p className="text-xs text-neutral-600 dark:text-neutral-400">

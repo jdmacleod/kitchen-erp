@@ -9,6 +9,8 @@ import { discountLine, ingestJobId, receiptDocumentId, receiptPurchase, receiptP
 
 const base = `/purchases/${receiptPurchaseId}`;
 
+const NEXT_DRAFT = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8f99";
+
 function baseRoutes(purchase: () => Purchase) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
@@ -174,6 +176,8 @@ describe("receipt review", () => {
         purchase = { ...purchase, status: "reviewed" };
         return jsonResponse(200, purchase);
       },
+      // Another draft waits, so the commit notice offers it (G9).
+      "GET /purchases": () => jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }),
     });
     const user = userEvent.setup();
     renderApp(base);
@@ -197,10 +201,18 @@ describe("receipt review", () => {
     expect(screen.getByRole("link", { name: "to-identify queue" })).toHaveAttribute("href", "/shop/receipts/identify");
     // A receipt purchase has no entry-form Edit; the review screen is its editor.
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
+    // The page stays, with what the commit did and the way to the next draft (G9).
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent("Committed. 2 prices added to the price book.");
+    expect(within(notice).getByRole("link", { name: "Next draft" })).toHaveAttribute("href", `/shop/purchases/${NEXT_DRAFT}`);
+    const draftQuery = calls.find((c) => c.method === "GET" && c.path.startsWith("/purchases?"));
+    expect(draftQuery?.query.get("status")).toBe("draft");
 
     await user.click(screen.getByRole("button", { name: "Reopen" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `${base}/reopen`)).toBe(true));
     expect(await screen.findByTestId("review")).toBeInTheDocument();
+    // A confirmation about the commit does not outlive the reopen.
+    expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
   });
 
   it("Escape closes the commit dialog without committing", async () => {
@@ -272,5 +284,61 @@ describe("receipt review", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path === base)).toBe(true));
     expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ vendor_location_id: chainLocationId });
     expect(await screen.findByRole("heading", { name: /Millstone Market/ })).toBeInTheDocument();
+  });
+});
+
+describe("the commit notice (review follow-ups)", () => {
+  it("says so at once, and a reopen before the draft lookup answers keeps it away", async () => {
+    let purchase = receiptPurchase;
+    let answerDrafts: (r: Response) => void = () => {};
+    mockApi({
+      ...baseRoutes(() => purchase),
+      [`POST ${base}/commit`]: () => {
+        purchase = { ...purchase, status: "committed", lines: purchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)) };
+        return jsonResponse(200, purchase);
+      },
+      [`POST ${base}/reopen`]: () => {
+        purchase = { ...purchase, status: "reviewed" };
+        return jsonResponse(200, purchase);
+      },
+      "GET /purchases": () => new Promise<Response>((r) => (answerDrafts = r)),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    rows[1].focus();
+    await user.keyboard("c");
+    await user.keyboard("{Enter}");
+
+    // Shown before the draft lookup answers.
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Committed. 1 price added to the price book.");
+    await user.click(await screen.findByRole("button", { name: "Reopen" }));
+    await screen.findByTestId("review");
+    expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
+
+    answerDrafts(jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
+  });
+
+  it("does not count prices a recommit kept as added", async () => {
+    // Reopened with its observations live; committing again without changes adds none.
+    let purchase: Purchase = { ...receiptPurchase, status: "reviewed", lines: receiptPurchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)) };
+    mockApi({
+      ...baseRoutes(() => purchase),
+      [`POST ${base}/commit`]: () => {
+        purchase = { ...purchase, status: "committed" };
+        return jsonResponse(200, purchase);
+      },
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    rows[1].focus();
+    await user.keyboard("c");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Committed. Its prices were already in the price book.");
+    expect(within(screen.getByTestId("notice")).queryByRole("link", { name: "Next draft" })).not.toBeInTheDocument();
   });
 });

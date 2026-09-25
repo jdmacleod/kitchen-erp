@@ -3,7 +3,8 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it } from "vitest";
-import { NewPurchasePage } from "../pages/purchases/NewPurchasePage";
+import { NoticeProvider } from "../components/Notice";
+import { FIRST_PURCHASE_NOTICE, NewPurchasePage } from "../pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "../pages/purchases/PurchaseDetailPage";
 import { createQueryClient } from "../lib/queryClient";
 import { chainLocation } from "./geo-fixtures";
@@ -20,19 +21,19 @@ function StateProbe() {
   return <div data-testid="router-state">{JSON.stringify(useLocation().state)}</div>;
 }
 
-function renderWithProbe(entry: string, element: React.ReactNode, pattern = entry) {
+function renderWithProbe(entry: string, element: React.ReactNode, pattern = entry, state: unknown = { firstPurchase: true }) {
   const client = createQueryClient({ retry: false });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[{ pathname: entry, state: { firstPurchase: true } }]}>
+      <MemoryRouter initialEntries={[{ pathname: entry, state }]}>
         <Routes>
           <Route
             path={pattern}
             element={
-              <>
+              <NoticeProvider>
                 {element}
                 <StateProbe />
-              </>
+              </NoticeProvider>
             }
           />
         </Routes>
@@ -51,7 +52,10 @@ function renderWithProbe(entry: string, element: React.ReactNode, pattern = entr
  * travel, because `NewPurchasePage` unmounts on success, and it has to be
  * consumed once, or a reload congratulates the same purchase again.
  *
- *   checklist step 2 --state--> NewPurchasePage --state--> PurchaseDetailPage
+ *   checklist step 2 --firstPurchase--> NewPurchasePage --Notice--> PurchaseDetailPage
+ *
+ * The last hop is the shared Notice (D18): carried in router state and consumed on
+ * arrival. purchase-entry.test.tsx walks the whole save.
  */
 
 const ACK = /that is your kitchen set up/i;
@@ -62,7 +66,7 @@ function mountDetail(state?: Record<string, unknown>) {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
   });
-  return renderApp({ pathname: `/purchases/${manualPurchase.id}`, state });
+  return renderApp({ pathname: `/shop/purchases/${manualPurchase.id}`, state });
 }
 
 describe("first-purchase acknowledgement", () => {
@@ -90,7 +94,7 @@ describe("first-purchase acknowledgement", () => {
   });
 
   it("shows on the purchase it was earned on", async () => {
-    mountDetail({ firstPurchase: true });
+    mountDetail({ notice: FIRST_PURCHASE_NOTICE });
 
     expect(await screen.findByText(ACK)).toBeInTheDocument();
   });
@@ -110,7 +114,7 @@ describe("first-purchase acknowledgement", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
     });
-    renderWithProbe(`/purchases/${manualPurchase.id}`, <PurchaseDetailPage />, "/purchases/:id");
+    renderWithProbe(`/shop/purchases/${manualPurchase.id}`, <PurchaseDetailPage />, "/shop/purchases/:id", { notice: FIRST_PURCHASE_NOTICE });
 
     expect(await screen.findByText(ACK)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("router-state")).toHaveTextContent("null"));
@@ -142,7 +146,7 @@ describe("first-purchase acknowledgement", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation] }),
       "GET /units": () => jsonResponse(200, { items: [] }),
     });
-    renderWithProbe("/purchases/new", <NewPurchasePage />);
+    renderWithProbe("/shop/purchases/new", <NewPurchasePage />);
 
     await screen.findByRole("button", { name: "Save purchase" });
     await waitFor(() => expect(screen.getByTestId("router-state")).toHaveTextContent("null"));
@@ -164,12 +168,12 @@ describe("first-purchase acknowledgement", () => {
     });
     const user = userEvent.setup();
     const { client } = renderApp({
-      pathname: `/purchases/${manualPurchase.id}`,
-      state: { firstPurchase: true },
+      pathname: `/shop/purchases/${manualPurchase.id}`,
+      state: { notice: FIRST_PURCHASE_NOTICE },
     });
 
     expect(await screen.findByText(ACK)).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Reopen" }));
+    await user.click(await screen.findByRole("button", { name: "Reopen" }));
     await waitFor(() => expect(screen.queryByText(ACK)).not.toBeInTheDocument());
 
     // Commit it again. The household has not earned a second congratulation.
@@ -182,7 +186,7 @@ describe("first-purchase acknowledgement", () => {
   });
 
   it("names the milestone rather than the record", async () => {
-    mountDetail({ firstPurchase: true });
+    mountDetail({ notice: FIRST_PURCHASE_NOTICE });
 
     await screen.findByText(ACK);
     expect(mainRegion()).toHaveTextContent(/price book/i);

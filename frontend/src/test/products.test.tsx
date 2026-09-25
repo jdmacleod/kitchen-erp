@@ -56,7 +56,9 @@ describe("products", () => {
     await user.click(within(form).getByRole("radio", { name: "3" }));
     await user.click(within(form).getByRole("button", { name: "Create product" }));
 
-    expect(await screen.findByText(/Created/)).toBeInTheDocument();
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent("Added Rolled Oats.");
+    expect(within(notice).getByRole("link", { name: "Open it" })).toHaveAttribute("href", `/catalog/products/${created.id}`);
     const post = calls.find((c) => c.method === "POST" && c.path === "/products");
     expect(post?.body).toEqual({
       name: "Rolled Oats",

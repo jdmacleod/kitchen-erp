@@ -23,6 +23,7 @@ import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from ".
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
+import { useNotice } from "../../components/Notice";
 
 export function IngredientsPage() {
   usePageTitle("Ingredients");
@@ -116,12 +117,6 @@ function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
 
 // --- create form ------------------------------------------------------------
 
-interface Created {
-  ingredient: Ingredient;
-  measuresAdded: number;
-  measuresFailed: string[];
-}
-
 const emptyForm = {
   name: "",
   category: "",
@@ -138,7 +133,7 @@ function CreateIngredientForm() {
   const [form, setForm] = useState(emptyForm);
   const [queued, setQueued] = useState<QueuedMeasure[]>([]);
   const [invalid, setInvalid] = useState<string | null>(null);
-  const [created, setCreated] = useState<Created | null>(null);
+  const notice = useNotice();
   const [addingMeasures, setAddingMeasures] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const debouncedName = useDebouncedValue(form.name.trim(), 300);
@@ -147,7 +142,6 @@ function CreateIngredientForm() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setCreated(null);
     const name = form.name.trim();
     if (!name) {
       setInvalid("A name is required.");
@@ -196,7 +190,13 @@ function CreateIngredientForm() {
       }
       setAddingMeasures(false);
     }
-    setCreated({ ingredient, measuresAdded: added, measuresFailed: failed });
+    const withMeasures = added > 0 ? ` with ${added} ${added === 1 ? "measure" : "measures"}` : "";
+    const missed = failed.length > 0 ? ` Could not add: ${failed.join(", ")}. Add them on the ingredient page.` : "";
+    notice.show({
+      tone: failed.length > 0 ? "info" : "success",
+      message: `Added ${ingredient.name}${withMeasures}.${missed}`,
+      action: { label: "Open it", to: `/catalog/ingredients/${ingredient.id}` },
+    });
     setForm(emptyForm);
     setQueued([]);
     document.getElementById("new-ingredient-name")?.focus();
@@ -210,21 +210,6 @@ function CreateIngredientForm() {
         <h2 id="create-ingredient-heading" className="text-lg font-medium">
           Add an ingredient
         </h2>
-        {created ? (
-          <Alert tone="success">
-            Created{" "}
-            <Link to={`/catalog/ingredients/${created.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
-              {created.ingredient.name}
-            </Link>
-            {created.measuresAdded > 0
-              ? ` with ${created.measuresAdded} ${created.measuresAdded === 1 ? "measure" : "measures"}`
-              : ""}
-            .
-            {created.measuresFailed.length > 0
-              ? ` Could not add: ${created.measuresFailed.join(", ")}. Add them on the ingredient page.`
-              : ""}
-          </Alert>
-        ) : null}
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
 

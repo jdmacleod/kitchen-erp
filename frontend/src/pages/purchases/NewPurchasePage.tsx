@@ -6,11 +6,21 @@ import { rememberLocation } from "../../components/purchases/LocationSelect";
 import { PurchaseForm, emptyPurchaseValues } from "../../components/purchases/PurchaseForm";
 import { Card, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useNavigateWithNotice, type NoticeData } from "../../components/Notice";
+
+// The first-run arc closes where the work finished, rather than on a later visit
+// to Home that may be days away. The Notice carries it to the purchase page and
+// is consumed there, so Back and reload do not congratulate the same purchase.
+export const FIRST_PURCHASE_NOTICE: NoticeData = {
+  tone: "success",
+  message: "That is your kitchen set up. This purchase is in the price book, and the next one will have something to compare against.",
+};
 
 /** Manual entry for a purchase with no receipt. Saving commits it at once. */
 export function NewPurchasePage() {
   usePageTitle("New purchase");
   const navigate = useNavigate();
+  const navigateWithNotice = useNavigateWithNotice();
   const create = useCreatePurchase();
   const [values, setValues] = useState(emptyPurchaseValues);
   // Set by the first-run checklist's step two, and only there: that link exists
@@ -53,7 +63,9 @@ export function NewPurchasePage() {
               create.mutate(input, {
                 onSuccess: (purchase) => {
                   rememberLocation(input.vendor_location_id);
-                  navigate(`/shop/purchases/${purchase.id}`, firstPurchase ? { state: { firstPurchase: true } } : undefined);
+                  const to = `/shop/purchases/${purchase.id}`;
+                  if (firstPurchase) navigateWithNotice(to, FIRST_PURCHASE_NOTICE);
+                  else navigate(to);
                 },
               })
             }

@@ -7,11 +7,13 @@ import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../co
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useNotice } from "../../components/Notice";
 
 /** Upload a receipt photo and watch its job; a finished job links to its review. */
 export function ReceiptsPage() {
   usePageTitle("Receipts");
   const upload = useUploadReceipt();
+  const notice = useNotice();
   const jobs = useIngestJobs();
   // An inbox item names its job (?job=), which may be older than the newest jobs listed.
   const [params] = useSearchParams();
@@ -32,6 +34,7 @@ export function ReceiptsPage() {
       {
         onSuccess: () => {
           if (fileRef.current) fileRef.current.value = "";
+          notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
         },
       },
     );
@@ -48,9 +51,6 @@ export function ReceiptsPage() {
             </h2>
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {upload.error ? <Alert tone="error">{errorMessage(upload.error)}</Alert> : null}
-            {upload.isSuccess ? (
-              <Alert tone="success">Uploaded. The receipt is being read; its job is listed below and this page refreshes on its own.</Alert>
-            ) : null}
             <div className="flex flex-col gap-1">
               <label htmlFor="receipt-image" className="text-sm font-medium">
                 Photo

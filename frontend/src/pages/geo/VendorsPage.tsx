@@ -24,6 +24,7 @@ import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondar
 import { describeOpeningHours } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useNotice } from "../../components/Notice";
 
 export function VendorsPage() {
   usePageTitle("Vendors");
@@ -113,12 +114,11 @@ function CreateVendorForm() {
   const create = useCreateVendor();
   const [form, setForm] = useState(emptyForm);
   const [invalid, setInvalid] = useState<string | null>(null);
-  const [created, setCreated] = useState<Vendor | null>(null);
+  const notice = useNotice();
   const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setCreated(null);
     if (!form.name.trim()) {
       setInvalid("A name is required.");
       return;
@@ -129,7 +129,11 @@ function CreateVendorForm() {
     if (form.notes.trim()) input.notes = form.notes.trim();
     create.mutate(input, {
       onSuccess: (vendor) => {
-        setCreated(vendor);
+        notice.show({
+          tone: "success",
+          message: `Added ${vendor.name}. It can't be chosen for a purchase until it has a location; add one on its page.`,
+          action: { label: "Open it", to: `/catalog/vendors/${vendor.id}` },
+        });
         setForm(emptyForm);
         document.getElementById("new-vendor-name")?.focus();
       },
@@ -142,19 +146,6 @@ function CreateVendorForm() {
         <h2 id="create-vendor-heading" className="text-lg font-medium">
           Add a vendor
         </h2>
-        {created ? (
-          <Alert tone="success">
-            Created{" "}
-            <Link to={`/catalog/vendors/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
-              {created.name}
-            </Link>
-. A vendor cannot be chosen for a purchase until it has a location, and{" "}
-            <Link to={`/catalog/vendors/${created.id}`} className={`rounded underline ${focusRing}`}>
-              its page
-            </Link>{" "}
-            is where you add one.
-          </Alert>
-        ) : null}
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
         <Field id="new-vendor-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
