@@ -28,7 +28,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services.pagination import decode_cursor, encode_cursor
+from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
 from app.services.units import build_context
 from app.units import (
@@ -37,7 +37,16 @@ from app.units import (
     convert,
 )
 
-# --- cursors ---------------------------------------------------------------
+# --- text matching ---------------------------------------------------------
+
+
+def like_escape(text: str) -> str:
+    """Make text match literally inside a LIKE pattern.
+
+    Postgres's LIKE escapes with a backslash by default, so escaping it, % and _
+    is enough: a search for "%" then finds a "%" rather than everything.
+    """
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 # --- ingredients ------------------------------------------------------------
@@ -68,7 +77,7 @@ async def list_ingredients(
     if not include_inactive:
         stmt = stmt.where(Ingredient.active.is_(True))
     if q:
-        stmt = stmt.where(func.lower(Ingredient.name).like(f"%{q.lower()}%"))
+        stmt = stmt.where(func.lower(Ingredient.name).contains(q.lower(), autoescape=True))
     after = decode_cursor(cursor)
     if after is not None:
         stmt = stmt.where(Ingredient.id > after)
@@ -299,27 +308,28 @@ async def _product_page(
     limit: int,
     cursor: str | None,
 ) -> tuple[list[Product], str | None]:
-    # Keyset on (lower(name), id). The cursor stays the last row's id, as on every
-    # other list, and its name is looked up rather than carried in the cursor.
-    order = (func.lower(Product.name), Product.id)
-    stmt = _product_query().order_by(*order).limit(limit + 1)
+    # Keyset on (lower(name), id), with lower(name) as Postgres computes it, so
+    # the cursor compares exactly the way the ORDER BY sorts.
+    sort_name = func.lower(Product.name)
+    stmt = _product_query().add_columns(sort_name).order_by(sort_name, Product.id).limit(limit + 1)
     if not include_inactive:
         stmt = stmt.where(Product.active.is_(True))
     if ingredient_id is not None:
         stmt = stmt.where(Product.ingredient_id == ingredient_id)
     if category_values is not None:
         stmt = stmt.join(Product.ingredient).where(Ingredient.category.in_(category_values))
-    after = decode_cursor(cursor)
+    after = decode_keyset(cursor)
     if after is not None:
-        anchor = (
-            await db.execute(select(func.lower(Product.name)).where(Product.id == after))
-        ).scalar_one_or_none()
-        if anchor is None:
-            raise ApiError(400, "bad_cursor", "The cursor is not valid.")
-        stmt = stmt.where(tuple_(*order) > tuple_(literal(anchor), literal(after, Product.id.type)))
-    rows = list((await db.execute(stmt)).scalars())
-    next_cursor = encode_cursor(rows[limit - 1].id) if len(rows) > limit else None
-    return rows[:limit], next_cursor
+        name_after, id_after = after
+        stmt = stmt.where(
+            tuple_(sort_name, Product.id)
+            > tuple_(literal(name_after), literal(id_after, Product.id.type))
+        )
+    rows = (await db.execute(stmt)).all()
+    next_cursor = (
+        encode_keyset(rows[limit - 1][1], rows[limit - 1][0].id) if len(rows) > limit else None
+    )
+    return [product for product, _ in rows[:limit]], next_cursor
 
 
 async def _products_by_id(db: AsyncSession, ids: list[uuid.UUID]) -> list[Product]:
@@ -558,8 +568,8 @@ async def search_products(
     params: dict[str, object] = {
         "q": q.strip(),
         "ql": ql,
-        "like": f"%{ql}%",
-        "prefix": f"{ql}%",
+        "like": f"%{like_escape(ql)}%",
+        "prefix": f"{like_escape(ql)}%",
         "limit": limit,
     }
     # Fixed fragments only; every value is a bound parameter.

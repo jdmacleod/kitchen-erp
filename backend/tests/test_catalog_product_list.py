@@ -108,3 +108,37 @@ async def test_ingredient_shapes_carry_the_category_key(admin_client, db_session
     }
     hits = (await admin_client.get("/api/v1/products/search", params={"q": "hake"})).json()
     assert hits["items"][0]["ingredient"]["category_key"] == "seafood"
+
+
+async def test_a_rename_between_pages_does_not_move_the_boundary(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    grain = await make_ingredient(admin_client, "Millet")
+    made = {}
+    for name in ["Bread", "Corn", "Dates", "Eggs"]:
+        made[name] = await make_product(admin_client, grain["id"], name)
+
+    names, cursor = await _names(admin_client, limit=2)
+    assert names == ["Bread", "Corn"]
+    # The row the cursor points past is renamed to sort last before page two loads.
+    r = await admin_client.patch(
+        f"/api/v1/products/{made['Corn']['id']}", json={"name": "Zucchini"}
+    )
+    assert r.status_code == 200, r.text
+
+    names, _ = await _names(admin_client, limit=2, cursor=cursor)
+    assert names == ["Dates", "Eggs"]
+
+
+async def test_percent_and_underscore_match_literally(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    oats = await make_ingredient(admin_client, "Oats")
+    await make_ingredient(admin_client, "Rice_flour")
+    await make_product(admin_client, oats["id"], "Rolled oats")
+    await make_product(admin_client, oats["id"], "Oats 100% whole")
+
+    names, _ = await _names(admin_client, q="%")
+    assert names == ["Oats 100% whole"]
+    listed = (await admin_client.get("/api/v1/ingredients", params={"q": "_"})).json()["items"]
+    assert [i["name"] for i in listed] == ["Rice_flour"]
+    found = (await admin_client.get("/api/v1/search", params={"q": "_"})).json()
+    assert [i["label"] for i in found["ingredients"]] == ["Rice_flour"]
