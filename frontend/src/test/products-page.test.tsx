@@ -90,3 +90,49 @@ describe("the Products page (UI-3.4)", () => {
     expect(within(dialog).getByLabelText("Density (g/ml)")).toBeInTheDocument();
   });
 });
+
+describe("the Products page, review follow-ups", () => {
+  it("counts a half-typed ingredient search as typed input (D5)", async () => {
+    mount(() => jsonResponse(200, { items: [], next_cursor: null }));
+    const user = userEvent.setup();
+    await screen.findByRole("heading", { name: "Products" });
+    await user.click(screen.getAllByRole("button", { name: "Add product" })[0]);
+    const dialog = await screen.findByRole("dialog", { name: "Add product" });
+    await user.type(within(dialog).getByRole("combobox", { name: "Ingredient" }), "oat");
+    // The first Escape closes the suggestion list, as a combobox should; the
+    // second asks to close the drawer, and the typed text makes it ask first.
+    await user.keyboard("{Escape}");
+    await user.keyboard("{Escape}");
+    expect(await within(dialog).findByText("Discard this product? What you typed will be lost.")).toBeInTheDocument();
+  });
+
+  it("gives no density hint when the ingredient already has a density", async () => {
+    const dense = { ...flour, density_g_per_ml: "0.53", density_source: "usda" as const };
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /units": () => jsonResponse(200, { items: units }),
+      "GET /ingredients": () => jsonResponse(200, { items: [dense], next_cursor: null }),
+      [`GET /ingredients/${flour.id}`]: () => jsonResponse(200, dense),
+      "GET /products": () => jsonResponse(200, { items: [], next_cursor: null }),
+    });
+    renderApp(`/catalog/products?ingredient_id=${flour.id}`);
+    const user = userEvent.setup();
+    await waitFor(() => expect(within(screen.getByRole("dialog", { name: "Add product" })).getByTestId("new-product-ingredient-choice")).toBeInTheDocument());
+    const dialog = screen.getByRole("dialog", { name: "Add product" });
+    await user.selectOptions(within(dialog).getByLabelText("Pack unit"), "ml");
+    expect(within(dialog).queryByTestId("density-reason")).not.toBeInTheDocument();
+  });
+
+  it("keeps the search field in step with ?q= when a link changes it", async () => {
+    mount(() => jsonResponse(200, { items: [paidFlour], next_cursor: null }), "/catalog/products?q=oat");
+    const field = await screen.findByLabelText("Search products");
+    expect(field).toHaveValue("oat");
+    const user = userEvent.setup();
+    // The sidebar's Products link lands on the page with no search.
+    await user.click(within(screen.getAllByRole("navigation", { name: "Main" })[0]).getByRole("link", { name: "Products" }));
+    await waitFor(() => expect(screen.getByLabelText("Search products")).toHaveValue(""));
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.getByLabelText("Search products")).toHaveValue("");
+  });
+});

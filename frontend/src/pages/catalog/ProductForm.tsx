@@ -3,6 +3,7 @@ import {
   BRIDGE_SOURCES,
   catalogErrorMessage,
   isPositiveDecimal,
+  useIngredient,
   useUnits,
   type BridgeSource,
   type Product,
@@ -95,6 +96,8 @@ interface ProductFormProps {
    */
   layout?: "page" | "drawer";
   formId?: string;
+  /** Told what is typed in the ingredient search but not yet chosen. */
+  onIngredientText?: (text: string) => void;
 }
 
 const CANONICAL_DIMENSION: Record<string, string> = { g: "mass", ml: "volume", each: "count" };
@@ -103,8 +106,14 @@ const CANONICAL_DIMENSION: Record<string, string> = { g: "mass", ml: "volume", e
  * Why the density section should open, or null. Only a mass/volume mismatch is a
  * density's job; a count needs a pack or a measure instead (UI-3.5).
  */
-export function densityReason(packUnit: string, ingredient: IngredientChoice | null, units: Unit[]): string | null {
-  if (!packUnit || !ingredient) return null;
+export function densityReason(
+  packUnit: string,
+  ingredient: IngredientChoice | null,
+  units: Unit[],
+  ingredientHasDensity: boolean,
+): string | null {
+  // The ingredient's own density already bridges mass and volume for its products.
+  if (!packUnit || !ingredient || ingredientHasDensity) return null;
   const canonical = ingredient.kind === "existing" ? ingredient.ingredient.canonical_unit : "g";
   const from = units.find((u) => u.code === packUnit)?.dimension;
   const to = CANONICAL_DIMENSION[canonical];
@@ -131,9 +140,16 @@ export function ProductForm({
   densityHint,
   layout = "page",
   formId,
+  onIngredientText,
 }: ProductFormProps) {
   const units = useUnits();
-  const reason = densityReason(values.pack_unit, values.ingredient, units.data ?? []);
+  const existingId = values.ingredient?.kind === "existing" ? values.ingredient.ingredient.id : undefined;
+  const chosen = useIngredient(existingId);
+  // Until the chosen ingredient loads, say nothing rather than guess.
+  const reason =
+    existingId && !chosen.data
+      ? null
+      : densityReason(values.pack_unit, values.ingredient, units.data ?? [], chosen.data?.density_g_per_ml != null);
   const [densityOpen, setDensityOpen] = useState(values.density_override !== "");
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
     onChange({ ...values, [key]: value });
@@ -166,6 +182,7 @@ export function ProductForm({
         id={`${idPrefix}-ingredient`}
         value={values.ingredient}
         onChange={(choice) => set("ingredient", choice)}
+        onTextChange={onIngredientText}
         allowCreate={mode === "create"}
         disabled={busy}
         hint={

@@ -54,9 +54,17 @@ export function ProductsPage() {
     );
 
   const [text, setText] = useState(q);
+  // The field follows ?q= when it changes from outside (Back, a link), and the
+  // URL takes only text the debounce has settled on, so an old pending value
+  // cannot be written back over the new one.
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) {
+    setSeenQ(q);
+    setText(q);
+  }
   const debounced = useDebouncedValue(text, 250);
   useEffect(() => {
-    if (debounced.trim() !== q) setParam("q", debounced.trim() || null);
+    if (debounced === text && debounced.trim() !== q) setParam("q", debounced.trim() || null);
     // Only the typed text drives the URL; q changing on its own (Back) is read below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
@@ -308,8 +316,10 @@ function AddProductForm({
   const [initial] = useState(() => emptyProductValues(initialIngredient));
   const [values, setValues] = useState<ProductFormValues>(initial);
   const [invalid, setInvalid] = useState<string | null>(null);
+  // A half-typed ingredient search is typed input too (D5).
+  const [ingredientText, setIngredientText] = useState("");
   // Typed input, not a preselected ingredient, is what closing must ask about.
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial);
+  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || ingredientText.trim() !== "";
 
   const onSubmit = () => {
     const problem = validateProductValues(values);
@@ -339,6 +349,7 @@ function AddProductForm({
       <ProductForm
         layout="drawer"
         formId="add-product"
+        onIngredientText={setIngredientText}
         idPrefix="new-product"
         heading="Add product"
         mode="create"
