@@ -26,6 +26,7 @@ import {
   type Suggestion,
 } from "../../api/purchases";
 import { formatMoney, isNonNegativeDecimal } from "../../lib/decimal";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
@@ -33,6 +34,7 @@ import { Alert, Button, Card, Field, focusRing } from "../ui";
 import { ProductPicker } from "./ProductPicker";
 import { CategoryChip } from "../CategoryChip";
 import { useNotice } from "../Notice";
+import { SegmentedControl } from "../SegmentedControl";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm" };
 
@@ -81,6 +83,16 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const notice = useNotice();
+  // Cards below lg, the table at lg and wider (G18). One or the other is in the
+  // document, so each line's ids stay unique.
+  const wide = useMediaQuery(LG_QUERY);
+  const [filter, setFilter] = useState<"needs" | "all">("all");
+  const needing = lines.filter(needsYou);
+  // What is on screen, in order: on a phone the lines that need you come first.
+  const shown = useMemo(() => {
+    const visible = filter === "needs" ? lines.filter(needsYou) : lines;
+    return wide ? visible : [...visible.filter(needsYou), ...visible.filter((l) => !needsYou(l))];
+  }, [lines, filter, wide]);
 
   // The page stays and turns Committed, with how many prices the commit added and,
   // when drafts remain, a way to the next one (G9).
@@ -115,9 +127,9 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
   const current = lines.find((l) => l.id === currentId) ?? null;
   const move = (delta: number) => {
-    if (lines.length === 0) return;
-    const index = Math.max(0, lines.findIndex((l) => l.id === currentId));
-    const next = lines[Math.min(lines.length - 1, Math.max(0, index + delta))];
+    if (shown.length === 0) return;
+    const index = Math.max(0, shown.findIndex((l) => l.id === currentId));
+    const next = shown[Math.min(shown.length - 1, Math.max(0, index + delta))];
     setCurrentId(next.id);
     document.getElementById(rowId(next.id))?.focus();
   };
@@ -206,12 +218,50 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     }
   };
 
+  const lineProps = (line: PurchaseLine): ReviewLineProps => ({
+    line,
+    itemLines,
+    current: line.id === currentId,
+    picking: picking === line.id,
+    editing: editing === line.id,
+    busy,
+    onFocus: () => setCurrentId(line.id),
+    onAccept: (s) => accept(line, s),
+    onIgnore: () => ignore(line),
+    onOpenPicker: () => openPicker(line),
+    onClosePicker: () => {
+      setPicking(null);
+      focusRow(line.id);
+    },
+    onChoose: (productId) => choose(line, productId),
+    onReResolve: () => reResolve.mutate(line.id),
+    onEdit: () => {
+      setEditing(line.id);
+      pendingFocus.current = `review-edit-${line.id}-qty`;
+    },
+    onPatch: (input) =>
+      patchLine.mutate(
+        { lineId: line.id, ...input },
+        {
+          onSuccess: () => {
+            setEditing(null);
+            focusRow(line.id);
+          },
+        },
+      ),
+    onCancelEdit: () => {
+      setEditing(null);
+      focusRow(line.id);
+    },
+    onDelete: () => deleteLine.mutate(line.id),
+  });
+
   const unresolved = itemLines.filter((l) => l.resolution === "unmatched" || !l.product).length;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
 
   return (
     <div onKeyDown={onKeyDown} className="flex flex-col gap-4" data-testid="review">
-      <dl aria-label="Keyboard shortcuts" className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600 dark:text-neutral-400">
+      <dl aria-label="Keyboard shortcuts" className="hidden flex-wrap gap-x-4 lg:flex gap-y-1 text-xs text-neutral-600 dark:text-neutral-400">
         {SHORTCUTS.map(([key, what]) => (
           <div key={key} className="inline-flex items-center gap-1">
             <dt>
@@ -253,69 +303,53 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                 {itemLines.length} items · {unresolved} to identify
               </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Receipt lines">
-                <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
-                    <th className="py-2 pr-2">#</th>
-                    <th className="py-2 pr-2">Receipt says</th>
-                    <th className="py-2 pr-2">Parsed</th>
-                    <th className="py-2 pr-2">Product</th>
-                    <th className="py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                  {lines.map((line) => (
-                    <ReviewLine
-                      key={line.id}
-                      line={line}
-                      itemLines={itemLines}
-                      current={line.id === currentId}
-                      picking={picking === line.id}
-                      editing={editing === line.id}
-                      busy={busy}
-                      onFocus={() => setCurrentId(line.id)}
-                      onAccept={(s) => accept(line, s)}
-                      onIgnore={() => ignore(line)}
-                      onOpenPicker={() => openPicker(line)}
-                      onClosePicker={() => {
-                        setPicking(null);
-                        focusRow(line.id);
-                      }}
-                      onChoose={(productId) => choose(line, productId)}
-                      onReResolve={() => reResolve.mutate(line.id)}
-                      onEdit={() => {
-                        setEditing(line.id);
-                        pendingFocus.current = `review-edit-${line.id}-qty`;
-                      }}
-                      onPatch={(input) =>
-                        patchLine.mutate(
-                          { lineId: line.id, ...input },
-                          {
-                            onSuccess: () => {
-                              setEditing(null);
-                              focusRow(line.id);
-                            },
-                          },
-                        )
-                      }
-                      onCancelEdit={() => {
-                        setEditing(null);
-                        focusRow(line.id);
-                      }}
-                      onDelete={() => deleteLine.mutate(line.id)}
-                    />
-                  ))}
-                </tbody>
-              </table>
+            <div className="mb-3">
+              <SegmentedControl
+                label="Show lines"
+                options={[
+                  { value: "needs", label: `Needs you ${needing.length}` },
+                  { value: "all", label: `All ${lines.length}` },
+                ]}
+                value={filter}
+                onChange={setFilter}
+              />
             </div>
+            {shown.length === 0 ? (
+              <p className={`py-4 ${hintClass}`}>Nothing here needs you. Every line is matched or ignored.</p>
+            ) : wide ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" aria-label="Receipt lines">
+                  <thead>
+                    <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
+                      <th className="py-2 pr-2">#</th>
+                      <th className="py-2 pr-2">Receipt says</th>
+                      <th className="py-2 pr-2">Parsed</th>
+                      <th className="py-2 pr-2">Product</th>
+                      <th className="py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                    {shown.map((line) => (
+                      <ReviewLine key={line.id} {...lineProps(line)} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <ul aria-label="Receipt lines" className="flex flex-col gap-2">
+                {shown.map((line) => (
+                  <ReviewCard key={line.id} {...lineProps(line)} />
+                ))}
+              </ul>
+            )}
             <Disclosure summary="Add a line" className="mt-3">
               <AddLineForm itemLines={itemLines} busy={busy} onAdd={(input) => addLine.mutate(input)} />
             </Disclosure>
           </Card>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button onClick={() => setConfirming(true)} disabled={busy}>
+          {/* Below lg, Commit sits in the thumb zone just above the tab bar (G18). */}
+          <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:static lg:border-0 lg:shadow-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none dark:border-neutral-800 dark:bg-neutral-950/95 lg:dark:bg-transparent">
+            <Button onClick={() => setConfirming(true)} disabled={busy} className="min-h-12 flex-1 text-base lg:min-h-10 lg:flex-none lg:text-sm">
               Commit purchase
             </Button>
             <span className={hintClass}>
@@ -484,154 +518,268 @@ function lineTitle(l: PurchaseLine): string {
   return l.product ? productTitle(l.product) : (l.raw_text ?? `line ${l.seq}`);
 }
 
-function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus, onAccept, onIgnore, onOpenPicker, onClosePicker, onChoose, onReResolve, onEdit, onPatch, onCancelEdit, onDelete }: ReviewLineProps) {
+/**
+ * A line that needs a person: flagged, or an item with no product or with
+ * suggestions to weigh. Not ignored lines, and not ones matched automatically.
+ */
+export function needsYou(line: PurchaseLine): boolean {
+  if (isQuietLine(line)) return false;
+  const isItem = line.line_kind === "item";
+  return line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0));
+}
+
+/** The line's number, kind and flags. */
+function LineTags({ line }: { line: PurchaseLine }) {
+  return (
+    <>
+      <span className="tabular-nums">{line.seq}</span>
+      {line.line_kind !== "item" ? (
+        <>
+          {" "}
+          <Badge>{line.line_kind}</Badge>
+        </>
+      ) : null}
+      {line.flags.map((f) => (
+        <span key={f} className="mt-1 block">
+          <Badge tone="warn">{f.replaceAll("_", " ")}</Badge>
+        </span>
+      ))}
+    </>
+  );
+}
+
+/** What the receipt says, verbatim and normalized. */
+function LineRaw({ line }: { line: PurchaseLine }) {
+  return (
+    <>
+      <span className="font-mono text-xs break-all">{line.raw_text ?? "—"}</span>
+      {line.raw_text_norm && line.raw_text_norm !== line.raw_text ? (
+        <span className="block text-[11px] text-neutral-600 dark:text-neutral-400">{line.raw_text_norm}</span>
+      ) : null}
+    </>
+  );
+}
+
+/** What it was read as: quantity × unit, and the prices. */
+function LineParsed({ line }: { line: PurchaseLine }) {
+  return (
+    <>
+      <span className="tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</span>
+      <span className="block text-xs tabular-nums">
+        {line.unit_price !== null ? `${formatMoney(line.unit_price, 2, 4)} ea` : ""}
+        {line.unit_price !== null && line.line_total !== null ? " · " : ""}
+        {line.line_total !== null ? formatMoney(line.line_total) : ""}
+      </span>
+    </>
+  );
+}
+
+type LinePartProps = Omit<ReviewLineProps, "current" | "onFocus">;
+
+/**
+ * The product: the one chosen, or the suggestions and the picker. On a card
+ * (`touch`) each suggestion is one 44px button (G18).
+ */
+function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, onChoose, onPatch, touch }: LinePartProps & { touch?: boolean }) {
   const quiet = isQuietLine(line);
   const isItem = line.line_kind === "item";
-  // Draw the eye to flags, suggestions, and unidentified items; not to ignored or automatic lines.
-  const attention = !quiet && (line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0)));
   const suggestions = line.suggestions ?? [];
   const top = topSuggestion(line);
   const resolution = line.resolution as Resolution | null;
 
+  if (picking) {
+    return (
+      <div className="flex flex-col gap-1">
+        <ProductPicker id={`review-pick-${line.id}`} label={`Product for line ${line.seq}`} hideLabel value={null} onChange={(p) => p && onChoose(p.id)} disabled={busy} />
+        <Button variant="ghost" className="min-h-11 lg:min-h-8 self-start px-2 text-xs" onClick={onClosePicker}>
+          Cancel
+        </Button>
+      </div>
+    );
+  }
+
+  const kindLabel = (s: Suggestion) => (s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : "fuzzy");
+
+  return (
+    <>
+      {line.product ? (
+        <>
+          <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+            {productTitle(line.product)}
+          </Link>{" "}
+          <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
+        </>
+      ) : resolution === "ignored" ? (
+        <span className="italic">ignored</span>
+      ) : isItem ? (
+        <span className="font-medium text-amber-800 dark:text-amber-300">unidentified</span>
+      ) : (
+        <span>—</span>
+      )}
+      {resolution && isItem ? (
+        <span className="ml-1 text-xs">
+          <Badge tone={resolution === "unmatched" ? "warn" : quiet ? "neutral" : "good"}>{resolutionLabel[resolution] ?? resolution}</Badge>
+          {line.resolved_by ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by}</span> : null}
+        </span>
+      ) : null}
+      {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
+        <ul aria-label={`Suggestions for line ${line.seq}`} className={`mt-1 flex flex-col ${touch ? "gap-2" : "gap-1"}`}>
+          {suggestions.map((s, i) =>
+            touch ? (
+              <li key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onAccept(s)}
+                  aria-label={`Accept ${s.ignore ? "ignoring this line" : s.label}`}
+                  className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm disabled:opacity-50 ${focusRing} ${
+                    s === top ? "border-neutral-400 bg-neutral-100 font-medium dark:border-neutral-600 dark:bg-neutral-800" : "border-neutral-300 dark:border-neutral-700"
+                  }`}
+                >
+                  <span className="min-w-0">{s.ignore ? "Ignore this line" : s.label}</span>
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-neutral-600 dark:text-neutral-400">
+                    <Badge>{kindLabel(s)}</Badge>
+                    <span className="tabular-nums">{s.score}</span>
+                  </span>
+                </button>
+              </li>
+            ) : (
+              <li key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`} className="flex flex-wrap items-center gap-1 text-xs">
+                <span className={s === top ? "font-medium" : ""}>{s.ignore ? "Ignore this line" : s.label}</span>
+                <Badge>{kindLabel(s)}</Badge>
+                <span className="text-neutral-600 dark:text-neutral-400 tabular-nums">{s.score}</span>
+                <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
+                  {s === top ? "Accept (Enter)" : "Accept"}
+                </Button>
+              </li>
+            ),
+          )}
+        </ul>
+      ) : null}
+      {ATTACHABLE.has(line.line_kind) ? (
+        <label className="mt-1 flex items-center gap-1 text-xs">
+          Attach to
+          <select
+            aria-label={`Attach line ${line.seq} to`}
+            value={line.parent_line_id ?? ""}
+            disabled={busy}
+            onChange={(e) => onPatch(e.target.value ? { parent_line_id: e.target.value } : { clear_parent: true })}
+            className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+          >
+            <option value="">nothing</option>
+            {itemLines.map((i) => (
+              <option key={i.id} value={i.id}>
+                #{i.seq} {lineTitle(i)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+    </>
+  );
+}
+
+/** Choose, Ignore, Re-resolve, Edit and Delete. 44px on a card, compact in the table. */
+function LineActions({ line, picking, editing, busy, onOpenPicker, onIgnore, onReResolve, onEdit, onDelete, touch }: LinePartProps & { touch?: boolean }) {
+  const size = touch ? "min-h-11 px-3 text-sm" : "min-h-7 px-2 text-xs";
+  const resolution = line.resolution as Resolution | null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {line.line_kind === "item" ? (
+        <>
+          <Button variant="secondary" className={size} disabled={busy || picking} onClick={onOpenPicker}>
+            {line.product ? "Change" : "Choose…"}
+          </Button>
+          {resolution !== "ignored" ? (
+            <Button variant="secondary" className={size} disabled={busy} onClick={onIgnore}>
+              Ignore
+            </Button>
+          ) : null}
+          <Button variant="ghost" className={size} disabled={busy} onClick={onReResolve}>
+            Re-resolve
+          </Button>
+        </>
+      ) : null}
+      <Button variant="ghost" className={size} disabled={busy || editing} onClick={onEdit}>
+        Edit
+      </Button>
+      <Button variant="ghost" className={`${size} text-red-700 dark:text-red-300`} disabled={busy} onClick={onDelete} aria-label={`Delete line ${line.seq}`}>
+        Delete
+      </Button>
+    </div>
+  );
+}
+
+/** The attributes the table row and the card share: the roving focus and the label. */
+function lineAttributes(line: PurchaseLine, current: boolean, onFocus: () => void) {
+  return {
+    id: `review-line-${line.id}`,
+    tabIndex: current ? 0 : -1,
+    "aria-label": `Line ${line.seq}: ${lineTitle(line)}`,
+    "data-testid": "review-line",
+    "data-quiet": isQuietLine(line) ? "true" : undefined,
+    onFocus,
+  };
+}
+
+function ReviewLine(props: ReviewLineProps) {
+  const { line, current, editing, busy, onFocus, onPatch, onCancelEdit } = props;
+  const quiet = isQuietLine(line);
+  // Draw the eye to flags, suggestions, and unidentified items; not to ignored or automatic lines.
+  const attention = needsYou(line);
+
   return (
     <tr
-      id={`review-line-${line.id}`}
-      tabIndex={current ? 0 : -1}
+      {...lineAttributes(line, current, onFocus)}
       aria-selected={current}
-      aria-label={`Line ${line.seq}: ${lineTitle(line)}`}
-      data-testid="review-line"
-      data-quiet={quiet ? "true" : undefined}
-      onFocus={onFocus}
       className={`align-top ${focusRing} ${current ? "bg-neutral-100 dark:bg-neutral-900" : ""} ${quiet ? "text-neutral-600 dark:text-neutral-400" : ""} ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}
     >
-      <td className="py-2 pr-2 pl-1 tabular-nums">
-        {line.seq}
-        {!isItem ? (
-          <>
-            {" "}
-            <Badge>{line.line_kind}</Badge>
-          </>
-        ) : null}
-        {line.flags.map((f) => (
-          <span key={f} className="mt-1 block">
-            <Badge tone="warn">{f.replaceAll("_", " ")}</Badge>
-          </span>
-        ))}
+      <td className="py-2 pr-2 pl-1">
+        <LineTags line={line} />
       </td>
       <td className="py-2 pr-2">
-        <span className="font-mono text-xs break-all">{line.raw_text ?? "—"}</span>
-        {line.raw_text_norm && line.raw_text_norm !== line.raw_text ? (
-          <span className="block text-[11px] text-neutral-600 dark:text-neutral-400">{line.raw_text_norm}</span>
-        ) : null}
+        <LineRaw line={line} />
       </td>
       <td className="py-2 pr-2 whitespace-nowrap">
-        {editing ? (
-          <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
-        ) : (
-          <>
-            <span className="tabular-nums">
-              {line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}
-            </span>
-            <span className="block text-xs tabular-nums">
-              {line.unit_price !== null ? `${formatMoney(line.unit_price, 2, 4)} ea` : ""}
-              {line.unit_price !== null && line.line_total !== null ? " · " : ""}
-              {line.line_total !== null ? formatMoney(line.line_total) : ""}
-            </span>
-          </>
-        )}
+        {editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} />}
       </td>
       <td className="py-2 pr-2">
-        {picking ? (
-          <div className="flex flex-col gap-1">
-            <ProductPicker id={`review-pick-${line.id}`} label={`Product for line ${line.seq}`} hideLabel value={null} onChange={(p) => p && onChoose(p.id)} disabled={busy} />
-            <Button variant="ghost" className="min-h-11 lg:min-h-8 self-start px-2 text-xs" onClick={onClosePicker}>
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <>
-            {line.product ? (
-              <>
-                <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-                  {productTitle(line.product)}
-                </Link>{" "}
-                <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
-              </>
-            ) : resolution === "ignored" ? (
-              <span className="italic">ignored</span>
-            ) : isItem ? (
-              <span className="font-medium text-amber-800 dark:text-amber-300">unidentified</span>
-            ) : (
-              <span>—</span>
-            )}
-            {resolution && isItem ? (
-              <span className="ml-1 text-xs">
-                <Badge tone={resolution === "unmatched" ? "warn" : quiet ? "neutral" : "good"}>{resolutionLabel[resolution] ?? resolution}</Badge>
-                {line.resolved_by ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by}</span> : null}
-              </span>
-            ) : null}
-            {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
-              <ul aria-label={`Suggestions for line ${line.seq}`} className="mt-1 flex flex-col gap-1">
-                {suggestions.map((s, i) => (
-                  <li key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`} className="flex flex-wrap items-center gap-1 text-xs">
-                    <span className={s === top ? "font-medium" : ""}>{s.ignore ? "Ignore this line" : s.label}</span>
-                    <Badge>{s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : "fuzzy"}</Badge>
-                    <span className="text-neutral-600 dark:text-neutral-400 tabular-nums">{s.score}</span>
-                    <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
-                      {s === top ? "Accept (Enter)" : "Accept"}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {ATTACHABLE.has(line.line_kind) ? (
-              <label className="mt-1 flex items-center gap-1 text-xs">
-                Attach to
-                <select
-                  aria-label={`Attach line ${line.seq} to`}
-                  value={line.parent_line_id ?? ""}
-                  disabled={busy}
-                  onChange={(e) => onPatch(e.target.value ? { parent_line_id: e.target.value } : { clear_parent: true })}
-                  className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
-                >
-                  <option value="">nothing</option>
-                  {itemLines.map((i) => (
-                    <option key={i.id} value={i.id}>
-                      #{i.seq} {lineTitle(i)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-          </>
-        )}
+        <LineProduct {...props} />
       </td>
       <td className="py-2">
-        <div className="flex flex-wrap gap-1">
-          {isItem ? (
-            <>
-              <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy || picking} onClick={onOpenPicker}>
-                {line.product ? "Change" : "Choose…"}
-              </Button>
-              {resolution !== "ignored" ? (
-                <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={onIgnore}>
-                  Ignore
-                </Button>
-              ) : null}
-              <Button variant="ghost" className="min-h-7 px-2 text-xs" disabled={busy} onClick={onReResolve}>
-                Re-resolve
-              </Button>
-            </>
-          ) : null}
-          <Button variant="ghost" className="min-h-7 px-2 text-xs" disabled={busy || editing} onClick={onEdit}>
-            Edit
-          </Button>
-          <Button variant="ghost" className="min-h-7 px-2 text-xs text-red-700 dark:text-red-300" disabled={busy} onClick={onDelete} aria-label={`Delete line ${line.seq}`}>
-            Delete
-          </Button>
-        </div>
+        <LineActions {...props} />
       </td>
     </tr>
+  );
+}
+
+/** One line as a card, below lg (G18): the receipt text, what it was read as, then the product. */
+function ReviewCard(props: ReviewLineProps) {
+  const { line, current, editing, busy, onFocus, onPatch, onCancelEdit } = props;
+  const quiet = isQuietLine(line);
+  const attention = needsYou(line);
+  return (
+    <li
+      {...lineAttributes(line, current, onFocus)}
+      aria-current={current ? "true" : undefined}
+      className={`flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900 ${focusRing} ${quiet ? "text-neutral-600 dark:text-neutral-400" : ""} ${
+        attention ? "border-l-4 border-l-amber-400" : ""
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <LineRaw line={line} />
+        </div>
+        <div className="shrink-0 text-right text-xs text-neutral-600 dark:text-neutral-400">
+          <LineTags line={line} />
+        </div>
+      </div>
+      <div>{editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} />}</div>
+      <div>
+        <LineProduct {...props} touch />
+      </div>
+      <LineActions {...props} touch />
+    </li>
   );
 }
 
