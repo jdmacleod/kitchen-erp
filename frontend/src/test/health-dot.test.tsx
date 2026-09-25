@@ -9,7 +9,7 @@ function mountWith(body: Health | null) {
     "GET /health": () => (body === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, body)),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });
-  renderApp("/purchases");
+  renderApp("/shop/purchases");
 }
 
 /** The dot beside the status word; it is aria-hidden, so it is found by position. */

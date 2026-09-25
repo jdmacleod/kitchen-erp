@@ -18,7 +18,7 @@ describe("a backend that is not answering", () => {
   it("distinguishes a slow wait from an ordinary one", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     mockApi({ "GET /auth/me": () => new Promise<Response>(() => {}) });
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
 
     const status = await screen.findByRole("status");
     expect(status).toHaveTextContent("Loading…");
@@ -38,7 +38,7 @@ describe("a backend that is not answering", () => {
         return errorResponse(502, "bad_gateway", "Request failed with status 502.");
       },
     });
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Request failed with status 502.");
     // One attempt, not two: the guard's own Try again is the retry, and an
@@ -56,7 +56,7 @@ describe("a backend that is not answering", () => {
       "GET /home-bases": () => jsonResponse(200, { items: [] }),
     });
     const user = userEvent.setup();
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
 
     await screen.findByRole("alert");
     up = true;

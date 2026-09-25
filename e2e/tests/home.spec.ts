@@ -68,13 +68,16 @@ test("a set-up household lands on the home page and can start a purchase from it
 
   await page.goto("/");
 
-  await expect(page.getByLabel("Lately")).toBeVisible();
-  await expect(page.getByRole("main").getByRole("heading", { name: "Home" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Recent purchases" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(/^Good (morning|afternoon|evening)$/);
   // The regression that matters: an established household must never be told to
   // go and add a shop it already has.
   await expect(page.getByText("Add somewhere you shop")).toHaveCount(0);
 
-  await page.getByRole("main").getByRole("link", { name: "New purchase" }).click();
-  await expect(page).toHaveURL(/\/purchases\/new$/);
+  // New purchase lives under Capture now, not in the nav (UI-2.14).
+  // The header's primary action; an empty inbox offers Capture again in its card.
+  await page.getByRole("main").getByRole("button", { name: "Capture" }).first().click();
+  await page.getByRole("dialog", { name: "Capture" }).getByRole("link", { name: /Enter a purchase/ }).click();
+  await expect(page).toHaveURL(/\/shop\/purchases\/new$/);
   await expect(page.getByRole("button", { name: "Save purchase" })).toBeVisible();
 });

@@ -57,7 +57,7 @@ async def _ingredients(db: AsyncSession, ql: str) -> list[SearchResult]:
             id=r["id"],
             label=r["name"],
             detail=r["category"],
-            route=f"/ingredients/{r['id']}",
+            route=f"/catalog/ingredients/{r['id']}",
             category_key=categories.key(r["category"]),
         )
         for r in rows.mappings()
@@ -72,7 +72,7 @@ async def _products(db: AsyncSession, q: str) -> list[SearchResult]:
             id=h.id,
             label=h.name,
             detail=" · ".join(part for part in (h.brand, h.ingredient.name) if part),
-            route=f"/products/{h.id}",
+            route=f"/catalog/products/{h.id}",
             category_key=h.ingredient.category_key,
         )
         for h in hits
@@ -87,7 +87,7 @@ async def _vendors(db: AsyncSession, q: str) -> list[SearchResult]:
             id=f.vendor.id,
             label=f.vendor.name,
             detail=_VENDOR_KINDS.get(f.vendor.kind),
-            route=f"/vendors/{f.vendor.id}",
+            route=f"/catalog/vendors/{f.vendor.id}",
         )
         for f in found
     ]

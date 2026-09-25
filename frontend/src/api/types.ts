@@ -36,6 +36,9 @@ export interface Health {
   version?: string;
   commit?: string;
   is_dev?: boolean;
+  // The navigation sections whose migrations the database has applied (S4, D11),
+  // on the authenticated branch only. They add to the Phase 1–2 defaults.
+  features?: string[];
   // Per-check details arrive only when authenticated; their shape is the
   // backend's to define and the shell only shows the overall word.
   [key: string]: unknown;

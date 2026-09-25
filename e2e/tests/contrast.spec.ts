@@ -14,10 +14,10 @@ import { login } from "./helpers";
  */
 const PAGES = [
   { name: "Home", path: "/" },
-  { name: "Products", path: "/products" },
-  { name: "Ingredients", path: "/ingredients" },
-  { name: "Vendors", path: "/vendors" },
-  { name: "Purchases", path: "/purchases" },
+  { name: "Products", path: "/catalog/products" },
+  { name: "Ingredients", path: "/catalog/ingredients" },
+  { name: "Vendors", path: "/catalog/vendors" },
+  { name: "Purchases", path: "/shop/purchases" },
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {

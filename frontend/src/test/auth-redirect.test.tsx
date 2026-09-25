@@ -9,7 +9,7 @@ describe("route guards", () => {
     const calls = mockApi({
       "GET /auth/me": () => errorResponse(401, "unauthenticated", "Not signed in."),
     });
-    renderApp("/vendors");
+    renderApp("/catalog/vendors");
 
     expect(await screen.findByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.queryByText("No vendors yet")).not.toBeInTheDocument();
@@ -31,13 +31,12 @@ describe("route guards", () => {
       "GET /health": () => jsonResponse(200, { status: "degraded" }),
       "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation] }),
       "GET /purchases": () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      "GET /to-identify": () => jsonResponse(200, { items: [] }),
-      "GET /price-book/needs-bridge": () => jsonResponse(200, { items: [] }),
+      "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
     });
     renderApp("/");
 
-    expect(await screen.findByLabelText("Lately")).toBeInTheDocument();
-    expect(within(mainRegion()).getByRole("heading", { name: "Home" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Recent purchases" })).toBeInTheDocument();
+    expect(within(mainRegion()).getByRole("heading", { level: 1 }).textContent).toMatch(/^Good (morning|afternoon|evening)$/);
     expect(screen.queryByText("Add somewhere you shop")).not.toBeInTheDocument();
     expect(await screen.findByTestId("health-status")).toHaveTextContent("degraded");
   });

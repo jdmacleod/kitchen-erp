@@ -29,7 +29,7 @@ describe("ingredient detail", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp(`/ingredients/${flourId}`);
+    renderApp(`/catalog/ingredients/${flourId}`);
 
     expect(await screen.findByRole("heading", { name: "all-purpose flour" })).toBeInTheDocument();
     const bench = screen.getByRole("form", { name: "Conversion test bench" });
@@ -64,7 +64,7 @@ describe("ingredient detail", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp(`/ingredients/${flourId}`);
+    renderApp(`/catalog/ingredients/${flourId}`);
 
     await screen.findByRole("heading", { name: "all-purpose flour" });
     const bench = screen.getByRole("form", { name: "Conversion test bench" });
@@ -88,7 +88,7 @@ describe("ingredient detail", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/ingredients/${flourId}`);
+    renderApp(`/catalog/ingredients/${flourId}`);
 
     const table = await screen.findByRole("table", { name: "Named measures" });
     expect(within(table).getByText("unconfirmed")).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("ingredient detail", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/ingredients/${flourId}`);
+    renderApp(`/catalog/ingredients/${flourId}`);
 
     await user.click(await screen.findByRole("button", { name: "Add density" }));
     await user.type(screen.getByLabelText("Density (g/ml)"), "0.55");

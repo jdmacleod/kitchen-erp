@@ -55,7 +55,7 @@ describe("the New purchase form's widest control", () => {
       "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
       "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
-    renderApp("/purchases/new");
+    renderApp("/shop/purchases/new");
 
     const select = await screen.findByLabelText("Location");
     const item = select.parentElement;

@@ -38,7 +38,7 @@ export function ProductsPage() {
           <ProductTypeahead
             id="product-search"
             label="Search products"
-            onSelect={(hit) => navigate(`/products/${hit.id}`)}
+            onSelect={(hit) => navigate(`/catalog/products/${hit.id}`)}
             hint="Type part of a name, brand, or ingredient, or scan a barcode. Arrow keys move, Enter opens."
           />
         </Card>
@@ -117,11 +117,11 @@ function CreateProductForm({ initialIngredient }: { initialIngredient: Ingredien
         created ? (
           <Alert tone="success">
             Created{" "}
-            <Link to={`/products/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link to={`/catalog/products/${created.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {productTitle(created)}
             </Link>{" "}
             for{" "}
-            <Link to={`/ingredients/${created.ingredient.id}`} className={`rounded underline ${focusRing}`}>
+            <Link to={`/catalog/ingredients/${created.ingredient.id}`} className={`rounded underline ${focusRing}`}>
               {created.ingredient.name}
             </Link>
             .
@@ -164,7 +164,7 @@ function RecentProducts() {
           <ul aria-label="Products" className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {items.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <Link to={`/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                <Link to={`/catalog/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                   {productTitle(p)}
                 </Link>
                 <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">

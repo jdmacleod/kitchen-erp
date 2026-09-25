@@ -30,7 +30,7 @@ describe("map", () => {
     // parse and renders nothing at all. Before this, nothing on the page said
     // anything -- the map was simply blank, which is why the bug survived.
     mockApi(baseRoutes(() => [chainLocation]));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     act(() => map.fire("error", { error: new Error("Failed to load worker") }));
@@ -45,7 +45,7 @@ describe("map", () => {
 
   it("says the map failed only once, however many tiles fail", async () => {
     mockApi(baseRoutes(() => [chainLocation]));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     act(() => map.fire("error", { error: new Error("first") }));
@@ -58,7 +58,7 @@ describe("map", () => {
 
   it("says tiles are missing when HEAD returns 404 and still places the pins", async () => {
     mockApi(baseRoutes(() => [chainLocation, marketLocation, stallLocation]));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
 
     expect(await screen.findByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeInTheDocument();
     const map = await mapReady();
@@ -77,7 +77,7 @@ describe("map", () => {
   it("sends open_at only when the filter is on, at the chosen instant", async () => {
     const calls = mockApi(baseRoutes(() => [chainLocation]));
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     await screen.findByText("Millstone Harbour");
     expect(calls.filter((c) => c.path.startsWith("/vendor-locations")).every((c) => !c.query.has("open_at"))).toBe(true);
 
@@ -98,7 +98,7 @@ describe("map", () => {
       [`GET /vendor-locations/${marketLocationId}/price-panel`]: () => jsonResponse(200, { last_visit: null, spend: "0", visits: 0, period_days: 30, recent: [] }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
     await user.click(await within(map.container).findByRole("button", { name: "Pier Farmers Market (Market)" }));
 
@@ -130,7 +130,7 @@ describe("map", () => {
       "GET /vendor-locations/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009/is-open": () => jsonResponse(200, { id: "x", at: "x", is_open: null, effective_opening_hours: null }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     await user.click(screen.getByRole("button", { name: "Add location here" }));
@@ -176,7 +176,7 @@ describe("map", () => {
       "GET /vendor-locations/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009/is-open": () => jsonResponse(200, { id: "x", at: "x", is_open: null, effective_opening_hours: null }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     await user.click(screen.getByRole("button", { name: "Add location here" }));
@@ -210,7 +210,7 @@ describe("map", () => {
   // Report: .gstack/qa-reports/qa-report-localhost-8080-2026-09-24.md
   it("brings the map to a location opened by link", async () => {
     mockApi(baseRoutes(() => [chainLocation, marketLocation]));
-    renderApp(`/map?location=${chainLocation.id}`);
+    renderApp(`/catalog/vendors?view=map&location=${chainLocation.id}`);
     const map = await mapReady();
 
     await waitFor(() => {
@@ -225,7 +225,7 @@ describe("map", () => {
     // The other way of selecting that is not a click on the pin itself.
     mockApi(baseRoutes(() => [chainLocation, marketLocation]));
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     const before = map.jumps.length;
@@ -243,7 +243,7 @@ describe("map", () => {
   it("drops the pin when the coordinates stop reading as a pair", async () => {
     mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
     const user = userEvent.setup();
-    renderApp("/map?place=location");
+    renderApp("/catalog/vendors?view=map&place=location");
     await mapReady();
 
     // ?place=location already opened the draft form; clicking the button would
@@ -279,7 +279,7 @@ describe("map", () => {
       [`GET /vendor-locations/${marketLocationId}/is-open`]: () => jsonResponse(200, { id: marketLocationId, at: "x", is_open: null, effective_opening_hours: null }),
       [`GET /vendor-locations/${marketLocationId}/price-panel`]: () => jsonResponse(200, { last_visit: null, spend: "0", visits: 0, period_days: 30, recent: [] }),
     });
-    renderApp(`/map?location=${marketLocation.id}`);
+    renderApp(`/catalog/vendors?view=map&location=${marketLocation.id}`);
     const map = await mapReady();
 
     await waitFor(() => expect(map.jumps.at(-1)?.center).toEqual([Number(marketLocation.lon), Number(marketLocation.lat)]));
@@ -293,7 +293,7 @@ describe("map", () => {
   it("mirrors a map click back into the coordinates field", async () => {
     mockApi({ ...baseRoutes(() => []), "GET /vendors": () => jsonResponse(200, { items: [] }) });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
 
     await user.click(screen.getByRole("button", { name: "Add location here" }));
@@ -310,7 +310,7 @@ describe("map", () => {
       "POST /home-bases": (call) => jsonResponse(201, { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e09", ...(call.body as object) }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
     await user.click(screen.getByRole("button", { name: "Add home base here" }));
     act(() => map.fire("click", { lngLat: { lat: 33.25, lng: -120.75 } }));
@@ -336,7 +336,7 @@ describe("map price book (2E)", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
     await within(map.container).findByRole("button", { name: "Millstone Harbour (Chain)" });
 
@@ -373,7 +373,7 @@ describe("map price book (2E)", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
     await user.click(await within(map.container).findByRole("button", { name: "Millstone Harbour (Chain)" }));
 
@@ -381,7 +381,7 @@ describe("map price book (2E)", () => {
     await waitFor(() => expect(prices).toHaveTextContent("$41.20 over 2 visits in 30 days"));
     expect(prices).toHaveTextContent("Last visit");
     const recent = within(prices).getByRole("list", { name: "Recent prices" });
-    expect(within(recent).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/products/${flourProductId}`);
+    expect(within(recent).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/catalog/products/${flourProductId}`);
     expect(recent).toHaveTextContent("$4.99 / 1 each");
     expect(recent).toHaveTextContent("sale");
     expect(recent).toHaveTextContent("$0.0022/g");
@@ -395,21 +395,21 @@ describe("map price book (2E)", () => {
     // would land someone on a screen that swallows their first click. The guard
     // on the entry forms deep-links here instead.
     mockApi(baseRoutes(() => []));
-    renderApp("/map?place=location");
+    renderApp("/catalog/vendors?view=map&place=location");
 
     expect(await screen.findByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("opens in browse mode without the parameter", async () => {
     mockApi(baseRoutes(() => []));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
 
     expect(await screen.findByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("tells a first-time visitor what the pin does, not what is missing", async () => {
     mockApi(baseRoutes(() => []));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
 
     expect(await screen.findByText(/Use .Add location here., then click the map/)).toBeInTheDocument();
     expect(screen.getByText(/Naming the pin creates the vendor and the location together/)).toBeInTheDocument();
@@ -421,7 +421,7 @@ describe("map price book (2E)", () => {
     // failed depending on whether another spec had created a location first.
     // Whether tiles are installed has nothing to do with whether you have shops.
     mockApi(baseRoutes(() => []));
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
 
     expect(await screen.findByText(/No locations yet/)).toBeInTheDocument();
     expect(screen.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeInTheDocument();
@@ -437,7 +437,7 @@ describe("map price book (2E)", () => {
         jsonResponse(200, { items: call.query.get("kind") ? [] : [chainLocation] }),
     });
     const user = userEvent.setup();
-    renderApp("/map");
+    renderApp("/catalog/vendors?view=map");
     await mapReady();
 
     await user.selectOptions(screen.getByLabelText("Kind"), "market");
@@ -451,7 +451,7 @@ describe("map price book (2E)", () => {
     // where to click, so "use Add location here" describes a step that did not
     // happen.
     mockApi(baseRoutes(() => []));
-    renderApp("/map?place=location");
+    renderApp("/catalog/vendors?view=map&place=location");
 
     expect(await screen.findByText(/Naming the pin creates the vendor and the location together/)).toBeInTheDocument();
     expect(screen.queryByText(/Use .Add location here., then click the map/)).not.toBeInTheDocument();

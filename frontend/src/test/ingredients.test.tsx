@@ -29,7 +29,7 @@ describe("ingredients", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp("/ingredients");
+    renderApp("/catalog/ingredients");
 
     expect(await screen.findByText("No ingredients yet")).toBeInTheDocument();
     await user.type(screen.getByLabelText("Name"), "cumin");
@@ -45,7 +45,7 @@ describe("ingredients", () => {
 
     expect(await within(mainRegion()).findByRole("status")).toHaveTextContent(/Created/);
     const list = await screen.findByRole("list", { name: "Ingredients" });
-    expect(within(list).getByRole("link", { name: "cumin" })).toHaveAttribute("href", `/ingredients/${created.id}`);
+    expect(within(list).getByRole("link", { name: "cumin" })).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
     // The form reset for the next entry.
     expect(screen.getByLabelText("Name")).toHaveValue("");
   });
@@ -72,7 +72,7 @@ describe("ingredients", () => {
         jsonResponse(201, { ...flour.measures[0], ...(call.body as object) }),
     });
     const user = userEvent.setup();
-    renderApp("/ingredients");
+    renderApp("/catalog/ingredients");
 
     await screen.findByText("No ingredients yet");
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
@@ -103,7 +103,7 @@ describe("ingredients", () => {
   it("shows no suggestions panel when the USDA table is not loaded", async () => {
     mockApi(baseRoutes(() => []));
     const user = userEvent.setup();
-    renderApp("/ingredients");
+    renderApp("/catalog/ingredients");
     await screen.findByText("No ingredients yet");
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
     await waitFor(() => expect(screen.queryByText("Reference suggestions")).not.toBeInTheDocument());
@@ -121,7 +121,7 @@ describe("ingredients", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp("/ingredients");
+    renderApp("/catalog/ingredients");
 
     const list = await screen.findByRole("list", { name: "Ingredients" });
     expect(within(list).getByText("all-purpose flour")).toBeInTheDocument();

@@ -33,12 +33,12 @@ describe("to-identify queue", () => {
   it("applies a chosen product to every line in the group by default", async () => {
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/to-identify");
+    renderApp("/shop/receipts/identify");
 
     const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
     expect(card).toHaveTextContent("2 lines");
     expect(within(card).getByRole("checkbox", { name: "Apply to all 2" })).toBeChecked();
-    expect(within(card).getAllByRole("link")[0]).toHaveAttribute("href", `/purchases/${receiptPurchaseId}`);
+    expect(within(card).getAllByRole("link")[0]).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
 
     await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
     await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
@@ -55,7 +55,7 @@ describe("to-identify queue", () => {
   it("ignores only the chosen line when apply-to-all is off", async () => {
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/to-identify");
+    renderApp("/shop/receipts/identify");
 
     const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
     await user.click(within(card).getByRole("checkbox", { name: "Apply to all 2" }));
@@ -74,7 +74,7 @@ describe("to-identify queue", () => {
 
   it("says when there is nothing to identify", async () => {
     mockApi({ ...baseRoutes(), "GET /to-identify": () => jsonResponse(200, { items: [] }) });
-    renderApp("/to-identify");
+    renderApp("/shop/receipts/identify");
     expect(await screen.findByText("Nothing to identify")).toBeInTheDocument();
   });
 });

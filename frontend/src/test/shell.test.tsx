@@ -12,7 +12,7 @@ describe("app shell", () => {
       "POST /auth/logout": () => jsonResponse(204),
     });
     const user = userEvent.setup();
-    renderApp("/purchases");
+    renderApp("/shop/purchases");
 
     expect(await screen.findByText("No purchases yet")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Log out" }));
@@ -28,7 +28,7 @@ describe("app shell", () => {
       "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     const user = userEvent.setup();
-    renderApp("/purchases");
+    renderApp("/shop/purchases");
     await screen.findByText("No purchases yet");
 
     const button = screen.getByRole("button", { name: "Menu" });

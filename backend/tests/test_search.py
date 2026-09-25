@@ -31,7 +31,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "id": basil["id"],
             "label": "Basil",
             "detail": "Herbs",
-            "route": f"/ingredients/{basil['id']}",
+            "route": f"/catalog/ingredients/{basil['id']}",
             "category_key": "produce",
         }
     ]
@@ -41,7 +41,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "id": product["id"],
             "label": "Basil bunch",
             "detail": "Leafwise · Basil",
-            "route": f"/products/{product['id']}",
+            "route": f"/catalog/products/{product['id']}",
             "category_key": "produce",
         }
     ]
@@ -51,7 +51,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "id": stand["vendor"]["id"],
             "label": "Basil Barn",
             "detail": "Stand",
-            "route": f"/vendors/{stand['vendor']['id']}",
+            "route": f"/catalog/vendors/{stand['vendor']['id']}",
             "category_key": None,
         }
     ]

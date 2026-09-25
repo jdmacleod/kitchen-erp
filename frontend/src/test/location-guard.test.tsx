@@ -34,7 +34,7 @@ describe("LocationGuard", () => {
     // bare /map would send someone to a screen that ignores their first click.
     expect(screen.getByRole("link", { name: "Open the map" })).toHaveAttribute(
       "href",
-      "/map?place=location",
+      "/catalog/vendors?view=map&place=location",
     );
   });
 

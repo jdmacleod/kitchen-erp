@@ -75,7 +75,7 @@ export function ComparePage() {
                   {compare.data.rows.map((row) => (
                     <tr key={row.ingredient_id}>
                       <th scope="row" className="py-2 pr-3 text-left font-medium">
-                        <Link to={`/ingredients/${row.ingredient_id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/catalog/ingredients/${row.ingredient_id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
                           {row.ingredient_name}
                         </Link>
                         <span className="block text-xs font-normal text-neutral-600 dark:text-neutral-400">per {row.canonical_unit}</span>

@@ -96,7 +96,7 @@ export function IngredientsPage() {
 function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link to={`/ingredients/${ingredient.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
+      <Link to={`/catalog/ingredients/${ingredient.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
         {ingredient.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
@@ -213,7 +213,7 @@ function CreateIngredientForm() {
         {created ? (
           <Alert tone="success">
             Created{" "}
-            <Link to={`/ingredients/${created.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link to={`/catalog/ingredients/${created.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {created.ingredient.name}
             </Link>
             {created.measuresAdded > 0

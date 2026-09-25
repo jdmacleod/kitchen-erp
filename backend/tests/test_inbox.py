@@ -76,7 +76,7 @@ async def test_a_draft_receipt_is_an_item_with_its_day_and_line_count(admin_clie
     # 18:00 UTC is still Sep 24 in the household timezone.
     assert item["title"] == "Finish the Sep 24 receipt"
     assert item["detail"] == "2 lines ready to review and commit."
-    assert (item["action_label"], item["action_route"]) == ("Review", f"/purchases/{pid}")
+    assert (item["action_label"], item["action_route"]) == ("Review", f"/shop/purchases/{pid}")
 
 
 async def test_a_draft_without_a_location_asks_for_one(admin_client, admin):
@@ -128,7 +128,8 @@ async def test_a_failed_read_is_one_item_and_its_draft_is_not_repeated(
     [item] = body["items"]
     assert item["kind"] == "receipt_failed"
     assert item["error_code"] == "no_ocr_text"
-    assert (item["action_label"], item["action_route"]) == ("Open receipt", f"/receipts?job={job}")
+    assert item["action_label"] == "Open receipt"
+    assert item["action_route"] == f"/shop/receipts?job={job}"
     assert body["reading"]["count"] == 0
 
 
@@ -147,14 +148,14 @@ async def test_a_failed_read_leaves_once_its_draft_is_committed(
     await set_purchase(pid, status="reviewed")
     items = (await get_inbox(admin_client))["items"]
     [item] = [i for i in items if i["kind"] != "identify"]
-    assert (item["kind"], item["action_route"]) == ("receipt", f"/purchases/{pid}")
+    assert (item["kind"], item["action_route"]) == ("receipt", f"/shop/purchases/{pid}")
 
 
 async def test_a_failed_read_without_a_purchase_is_an_item(admin_client, receipts_dir: Path):
     job = await upload_job(admin_client, "failed-no-draft")
     await set_job(job, status="failed", last_error="no_ocr_text", purchase_id=None)
     [item] = (await get_inbox(admin_client))["items"]
-    assert (item["kind"], item["action_route"]) == ("receipt_failed", f"/receipts?job={job}")
+    assert (item["kind"], item["action_route"]) == ("receipt_failed", f"/shop/receipts?job={job}")
 
 
 async def test_unmatched_lines_are_one_aggregate_item(admin_client, admin):
@@ -170,7 +171,7 @@ async def test_unmatched_lines_are_one_aggregate_item(admin_client, admin):
     [item] = (await get_inbox(admin_client))["items"]
     assert item["kind"] == "identify"
     assert item["title"] == "3 receipt lines to identify"
-    assert item["action_route"] == "/to-identify"
+    assert item["action_route"] == "/shop/receipts/identify"
     assert item["created_at"].startswith("2026-09-10")
 
 
@@ -192,7 +193,8 @@ async def test_a_product_needing_a_bridge_is_one_item(admin_client):
     assert item["title"] == "Bulk flour"
     assert item["detail"] == "Its prices can't be compared until it has a density."
     assert item["action_label"] == "Add density"
-    assert item["action_route"] == f"/ingredients/{flour['ingredient']['id']}#density-heading"
+    ingredient_id = flour["ingredient"]["id"]
+    assert item["action_route"] == f"/catalog/ingredients/{ingredient_id}#density-heading"
 
 
 async def test_a_product_failing_two_ways_is_merged(admin_client):

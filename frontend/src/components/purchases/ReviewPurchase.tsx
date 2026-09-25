@@ -523,7 +523,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
           <>
             {line.product ? (
               <>
-                <Link to={`/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                   {productTitle(line.product)}
                 </Link>{" "}
                 <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />

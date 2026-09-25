@@ -49,7 +49,7 @@ export function IngredientDetailPage() {
         <PageHeader title="Ingredient" />
         {missing ? (
           <EmptyState title="No such ingredient">
-            <Link to="/ingredients" className={`rounded-md underline ${focusRing}`}>
+            <Link to="/catalog/ingredients" className={`rounded-md underline ${focusRing}`}>
               Back to ingredients
             </Link>
           </EmptyState>
@@ -84,7 +84,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
       </PageHeader>
       <div className="flex flex-col gap-6">
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/ingredients" className={`rounded underline ${focusRing}`}>
+          <Link to="/catalog/ingredients" className={`rounded underline ${focusRing}`}>
             All ingredients
           </Link>
           <span aria-hidden="true">·</span>
@@ -246,7 +246,7 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
             Show inactive
           </label>
           <Link
-            to={`/products?ingredient_id=${encodeURIComponent(ingredient.id)}`}
+            to={`/catalog/products?ingredient_id=${encodeURIComponent(ingredient.id)}`}
             className={secondaryLinkClass}
           >
             Add a product
@@ -266,7 +266,7 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
           <ul aria-label="Products of this ingredient" className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {items.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <Link to={`/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                <Link to={`/catalog/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                   {productTitle(p)}
                 </Link>
                 <span className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">

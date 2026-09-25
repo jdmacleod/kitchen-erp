@@ -8,7 +8,7 @@ const stamp = nextTag();
 
 test("create a vendor, open it, and change its price scope", async ({ page }) => {
   await login(page);
-  await page.goto("/vendors");
+  await page.goto("/catalog/vendors");
 
   const name = `E2E Riverbend Grocers ${stamp}`;
   await page.getByLabel(/^name/i).first().fill(name);
@@ -51,7 +51,7 @@ test("the OpenStreetMap panel says the integration is off rather than failing", 
   expect(created.status()).toBe(201);
   const home = (await created.json()) as { id: string };
 
-  await page.goto("/vendors");
+  await page.goto("/catalog/vendors");
   await page.getByLabel("Home base").selectOption(home.id);
   await page.getByRole("button", { name: "Find candidates" }).click();
   await expect(page.getByText("OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.")).toBeVisible();

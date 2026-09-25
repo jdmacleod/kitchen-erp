@@ -105,7 +105,7 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
                 title=f"Finish the {_day(r['purchased_at'])} {noun}",
                 detail=detail,
                 action_label=action,
-                action_route=f"/purchases/{r['id']}",
+                action_route=f"/shop/purchases/{r['id']}",
                 created_at=r["created_at"],
             )
         )
@@ -120,7 +120,7 @@ async def _failed_reads(db: AsyncSession) -> list[InboxItem]:
             detail="Retry it, or enter it by hand.",
             action_label="Open receipt",
             # The job itself: the Receipts list shows only the newest jobs.
-            action_route=f"/receipts?job={r['id']}",
+            action_route=f"/shop/receipts?job={r['id']}",
             created_at=r["created_at"],
             error_code=r["last_error"],
         )
@@ -143,7 +143,7 @@ async def _identify(db: AsyncSession) -> list[InboxItem]:
             title=f"{lines} {noun} to identify",
             detail="Match them once and each vendor's alias is learned for next time.",
             action_label="Review lines",
-            action_route="/to-identify",
+            action_route="/shop/receipts/identify",
             created_at=oldest,
         )
     ]
@@ -179,9 +179,9 @@ async def _bridges(db: AsyncSession) -> list[InboxItem]:
         needs = [_BRIDGE_FIX[s][0] for s in statuses if s in _BRIDGE_FIX]
         _, label, target, anchor = _BRIDGE_FIX.get(statuses[0], _BRIDGE_FIX["no_qty"])
         route = (
-            f"/ingredients/{row['ingredient_id']}{anchor}"
+            f"/catalog/ingredients/{row['ingredient_id']}{anchor}"
             if target == "ingredient"
-            else f"/products/{row['product_id']}"
+            else f"/catalog/products/{row['product_id']}"
         )
         title = f"{row['brand']} {row['name']}" if row["brand"] else row["name"]
         items.append(

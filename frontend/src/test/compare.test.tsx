@@ -54,7 +54,7 @@ describe("comparison matrix", () => {
   it("marks the cheapest cell and leaves an unknown cell blank rather than zero", async () => {
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/compare");
+    renderApp("/shop/compare");
 
     expect(await screen.findByText("Pick ingredients to compare")).toBeInTheDocument();
     await user.type(screen.getByRole("combobox", { name: "Add an ingredient" }), "flour");
@@ -81,7 +81,7 @@ describe("comparison matrix", () => {
   it("re-queries with the filters and lists the chosen ingredients with a remove button", async () => {
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();
-    renderApp("/compare");
+    renderApp("/shop/compare");
 
     await user.type(await screen.findByRole("combobox", { name: "Add an ingredient" }), "flour");
     await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));

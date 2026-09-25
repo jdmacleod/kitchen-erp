@@ -47,7 +47,7 @@ export function IngredientOffers({ ingredient }: { ingredient: Ingredient }) {
               {items.map((o) => (
                 <tr key={o.observation_id} data-testid="offer">
                   <td className="py-2 pr-3">
-                    <Link to={`/products/${o.product_id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                    <Link to={`/catalog/products/${o.product_id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                       {o.brand ? `${o.brand} ${o.product_name}` : o.product_name}
                     </Link>
                     {formatPack(o.pack_qty, o.pack_unit) ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {formatPack(o.pack_qty, o.pack_unit)}</span> : null}

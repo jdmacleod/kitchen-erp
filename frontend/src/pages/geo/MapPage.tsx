@@ -27,7 +27,7 @@ import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { VendorPicker, type VendorChoice } from "../../components/geo/VendorPicker";
 import { PriceAge, PromoBadge, formatUnitPrice } from "../../components/pricebook/PriceAge";
-import { Alert, Button, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { parseLatLon } from "../../lib/latlon";
@@ -209,6 +209,10 @@ export function MapPage() {
     <div className="flex flex-col gap-3">
       <PageHeader title="Map">
         <div className="flex flex-wrap gap-2">
+          {/* Until T6's list/map toggle: the way back to the Vendors list. */}
+          <Link to="/catalog/vendors" className={secondaryLinkClass}>
+            List view
+          </Link>
           <Button variant={mode === "location" ? "primary" : "secondary"} aria-pressed={mode === "location"} onClick={() => (mode === "location" ? stopPlacing() : startPlacing("location"))}>
             Add location here
           </Button>
@@ -516,7 +520,7 @@ function LocationPanel({ id, openAtIso, visibleIds, onClose }: { id: string; ope
     <div data-testid="location-panel">
       <PanelHeader title={l.name} onClose={onClose}>
         <p className="text-neutral-600 dark:text-neutral-400">
-          <Link to={`/vendors/${l.vendor.id}`} className={`rounded underline ${focusRing}`}>
+          <Link to={`/catalog/vendors/${l.vendor.id}`} className={`rounded underline ${focusRing}`}>
             {l.vendor.name}
           </Link>{" "}
           · {vendorKindLabel[l.vendor.kind]}
@@ -627,7 +631,7 @@ function LocationPrices({ id }: { id: string }) {
             <ul aria-label="Recent prices" className="mt-1 divide-y divide-neutral-200 dark:divide-neutral-800">
               {panel.data.recent.map((r) => (
                 <li key={r.observation_id} className="flex flex-wrap items-baseline justify-between gap-x-2 py-1">
-                  <Link to={`/products/${r.product_id}`} className={`min-w-0 truncate rounded underline-offset-2 hover:underline ${focusRing}`}>
+                  <Link to={`/catalog/products/${r.product_id}`} className={`min-w-0 truncate rounded underline-offset-2 hover:underline ${focusRing}`}>
                     {r.brand ? `${r.brand} ${r.product_name}` : r.product_name}
                   </Link>
                   <span className="text-xs whitespace-nowrap tabular-nums">
@@ -670,7 +674,7 @@ function StallPanel({ stall, market, at, onBack, onClose }: { stall: VendorLocat
         </dd>
         <dt className="text-neutral-600 dark:text-neutral-400">Vendor</dt>
         <dd>
-          <Link to={`/vendors/${stall.vendor.id}`} className={`rounded underline ${focusRing}`}>
+          <Link to={`/catalog/vendors/${stall.vendor.id}`} className={`rounded underline ${focusRing}`}>
             {stall.vendor.name}
           </Link>
         </dd>
@@ -697,7 +701,7 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
         <dt className="text-neutral-600 dark:text-neutral-400">Locations</dt>
         <dd>{count} shown default to this base</dd>
       </dl>
-      <Link to="/settings/home-bases" className={`mt-3 inline-block rounded underline ${focusRing}`}>
+      <Link to="/settings/kitchens" className={`mt-3 inline-block rounded underline ${focusRing}`}>
         Manage home bases
       </Link>
     </div>

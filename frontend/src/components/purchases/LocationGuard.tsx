@@ -28,7 +28,7 @@ export function LocationGuard({ children }: { children: ReactNode }) {
         title="No locations yet"
         action={
           <Link
-            to="/map?place=location"
+            to="/catalog/vendors?view=map&place=location"
             className={primaryLinkClass}
           >
             Open the map

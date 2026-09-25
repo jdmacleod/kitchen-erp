@@ -160,7 +160,9 @@ export function useRevokeToken() {
 export function useHealth() {
   return useQuery({
     queryKey: queryKeys.health,
-    queryFn: () => api<Health>("/health"),
+    // A failing check answers 503 with the same body, and the navigation still
+    // needs its `features` then (D11), so that body is data, not an error.
+    queryFn: () => api<Health>("/health", { acceptStatuses: [503] }),
     refetchInterval: 60_000,
     staleTime: 30_000,
     retry: false,

@@ -42,7 +42,7 @@ export function ProductDetailPage() {
         <PageHeader title="Product" />
         {missing ? (
           <EmptyState title="No such product">
-            <Link to="/products" className={`rounded-md underline ${focusRing}`}>
+            <Link to="/catalog/products" className={`rounded-md underline ${focusRing}`}>
               Back to products
             </Link>
           </EmptyState>
@@ -72,13 +72,13 @@ function ProductDetail({ product }: { product: Product }) {
       </PageHeader>
       <div className="flex flex-col gap-6">
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/products" className={`rounded underline ${focusRing}`}>
+          <Link to="/catalog/products" className={`rounded underline ${focusRing}`}>
             All products
           </Link>
           <span aria-hidden="true">·</span>
           <span>
             Ingredient{" "}
-            <Link to={`/ingredients/${product.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link to={`/catalog/ingredients/${product.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
               {product.ingredient.name}
             </Link>{" "}
             <CategoryChip category={product.ingredient.category} categoryKey={product.ingredient.category_key} />

@@ -36,7 +36,7 @@ describe("purchases", () => {
           : jsonResponse(200, { items: [manualPurchase], next_cursor: "page2" }),
     });
     const user = userEvent.setup();
-    renderApp("/purchases");
+    renderApp("/shop/purchases");
 
     const table = await screen.findByRole("table", { name: "Purchases" });
     const rows = within(table).getAllByRole("row").slice(1);
@@ -45,7 +45,7 @@ describe("purchases", () => {
     expect(rows[0]).toHaveTextContent("$14.21");
     expect(rows[0]).toHaveTextContent("Committed");
     expect(rows[0]).toHaveTextContent("Manual");
-    expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", `/purchases/${purchaseId}`);
+    expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
     expect(within(rows[0]).getAllByRole("cell").at(-1)).toHaveTextContent("2");
 
     await user.click(screen.getByRole("button", { name: "Load more" }));
@@ -63,13 +63,13 @@ describe("purchases", () => {
       ...baseRoutes(),
       [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, manualPurchase),
     });
-    renderApp(`/purchases/${purchaseId}`);
+    renderApp(`/shop/purchases/${purchaseId}`);
 
     expect(await screen.findByRole("heading", { name: /Pier Farmers Market/ })).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Lines" });
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/products/${flourProductId}`);
+    expect(within(rows[0]).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/catalog/products/${flourProductId}`);
     expect(rows[0]).toHaveTextContent("2.31 × lb");
     expect(rows[0]).toHaveTextContent("$3.99");
     expect(rows[0]).toHaveTextContent("$9.22");
@@ -95,7 +95,7 @@ describe("purchases", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/purchases/${purchaseId}`);
+    renderApp(`/shop/purchases/${purchaseId}`);
 
     await screen.findByRole("heading", { name: /Pier Farmers Market/ });
     await user.click(screen.getByRole("button", { name: "Edit" }));

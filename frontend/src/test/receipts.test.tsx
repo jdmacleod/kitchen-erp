@@ -33,7 +33,7 @@ describe("receipts", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp("/receipts");
+    renderApp("/shop/receipts");
     expect(await screen.findByText("No receipts yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upload" }));
@@ -69,13 +69,13 @@ describe("receipts", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp("/receipts");
+    renderApp("/shop/receipts");
 
     const list = await screen.findByRole("list", { name: "Ingest jobs" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("ready to review");
-    expect(within(rows[0]).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/purchases/${receiptPurchaseId}`);
+    expect(within(rows[0]).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
     expect(within(rows[0]).queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(rows[1]).toHaveTextContent("failed");
     expect(rows[1]).toHaveTextContent("ocr_unavailable");
@@ -91,7 +91,7 @@ describe("receipts", () => {
       ...baseRoutes(() => [reviewJob]),
       [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
     });
-    renderApp(`/receipts?job=${failedJob.id}`);
+    renderApp(`/shop/receipts?job=${failedJob.id}`);
 
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
     const card = pinned.parentElement as HTMLElement;
@@ -108,7 +108,7 @@ describe("receipts", () => {
       ...baseRoutes(() => [reviewJob, failedJob]),
       [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(200, failedJob),
     });
-    renderApp(`/receipts?job=${failedJob.id}`);
+    renderApp(`/shop/receipts?job=${failedJob.id}`);
     await screen.findByRole("heading", { name: "From your inbox" });
     const list = await screen.findByRole("list", { name: "Ingest jobs" });
     const rows = within(list).getAllByTestId("ingest-job");
@@ -121,7 +121,7 @@ describe("receipts", () => {
       ...baseRoutes(() => [reviewJob, failedJob]),
       [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(500, { error: { code: "internal", message: "Something went wrong." } }),
     });
-    renderApp(`/receipts?job=${failedJob.id}`);
+    renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
     expect(await within(pinned.parentElement as HTMLElement).findByRole("alert")).toBeInTheDocument();
     const list = await screen.findByRole("list", { name: "Ingest jobs" });
@@ -147,12 +147,12 @@ describe("receipts", () => {
       },
     });
     const user = userEvent.setup();
-    renderApp(`/receipts?job=${failedJob.id}`);
+    renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
     const card = pinned.parentElement as HTMLElement;
     await user.click(await within(card).findByRole("button", { name: "Retry" }));
     await waitFor(() => expect(within(card).getByTestId("ingest-job")).toHaveAttribute("data-status", "needs_review"), { timeout: 6000 });
-    expect(within(card).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/purchases/${receiptPurchaseId}`);
+    expect(within(card).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
   }, 10_000);
 
   it("says what a failure means and what to change, keeping the code for a bug report", async () => {
@@ -160,7 +160,7 @@ describe("receipts", () => {
     // which sends the owner to check a model server that is working (issue #14).
     const timedOut: IngestJob = { ...failedJob, stage: "lines", last_error: "model_timeout", last_error_detail: "ReadTimeout after 120s" };
     mockApi(baseRoutes(() => [timedOut]));
-    renderApp("/receipts");
+    renderApp("/shop/receipts");
 
     const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
     expect(row).toHaveTextContent("The model server answered too slowly");
@@ -173,7 +173,7 @@ describe("receipts", () => {
     // not started (issue #13).
     const retrying: IngestJob = { ...failedJob, status: "pending", attempts: 3, last_error: "model_unavailable", last_error_detail: "ConnectError" };
     mockApi(baseRoutes(() => [retrying, { ...failedJob, status: "pending", attempts: 0, last_error: null }]));
-    renderApp("/receipts");
+    renderApp("/shop/receipts");
 
     const rows = within(await screen.findByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job");
     expect(rows[0]).toHaveTextContent("retrying");
@@ -185,7 +185,7 @@ describe("receipts", () => {
     // Visible rather than hidden behind "something went wrong": an unprosed code
     // on screen is the prompt to add one.
     mockApi(baseRoutes(() => [{ ...failedJob, last_error: "a_code_from_the_future" }]));
-    renderApp("/receipts");
+    renderApp("/shop/receipts");
 
     const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
     expect(row).toHaveTextContent("a_code_from_the_future");

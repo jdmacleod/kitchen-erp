@@ -99,7 +99,7 @@ describe("ProductTypeahead", () => {
         }),
     });
     const user = userEvent.setup();
-    renderApp("/products");
+    renderApp("/catalog/products");
     await user.type(await screen.findByRole("combobox", { name: "Search products" }), "flour");
     await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
     expect(await screen.findByRole("heading", { name: "Millstone All-Purpose Flour" })).toBeInTheDocument();
