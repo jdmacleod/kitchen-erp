@@ -1,6 +1,6 @@
 # CLAUDE.md — Kitchen ERP
 
-Kitchen ERP is a self-hosted household kitchen system: vendors, products, purchases, price history, and later recipes, costing, shopping trips, and inventory. One deployment serves one household. The full specification lives in `docs/spec/`; read `00-README.md` first, then the document for the phase you are working on. Only Phases 1 and 2 are approved for implementation. `05-later-phase-design-notes.md` is context, not a work order.
+Kitchen ERP is a self-hosted household kitchen system: vendors, products, purchases, price history, and later recipes, costing, shopping trips, and inventory. One deployment serves one household. The full specification lives in `docs/spec/`; read `00-README.md` first, then the document for the phase you are working on. Only Phases 1 and 2 are approved for implementation, together with the UI work in `08`–`11` for the pages those phases build; UI criteria marked dormant wait for their phase. `05-later-phase-design-notes.md` is context, not a work order.
 
 ## Non-negotiables
 
@@ -77,3 +77,15 @@ On macOS, run Ollama natively on the host rather than in Docker, because contain
 ## Working agreements
 
 Keep routers thin and put logic in `services/`. Keep `app/units/` pure: no database access, no I/O, fully covered by property-based tests. Every migration is reversible. Every endpoint has a request and response schema and at least one test. When a specification detail proves unworkable, stop and surface it rather than diverging silently. Commit in small units that each leave the test suite green.
+
+## UI conventions
+
+- The visual system is specified in `docs/spec/08-ui-design-system.md`. Colours come only from the remapped Tailwind scales in `frontend/src/theme.css` (`neutral`, `blue` = herb green, `red` = tomato, `amber` = squash, `green` = olive). Never add raw hex values or other Tailwind colour scales. The exceptions are the chart series palette and the basemap's water and park tints, both drift-tested hex mirrors in `frontend/src/lib/palette.ts` (`08`, rule 1).
+- Blue means "you can act on this" and nothing else. Information and selection use neutral; success, cheapest and sale use olive.
+- Produce-coloured accents are reserved for ingredient categories via `CategoryChip`, which renders the backend's `category_key`. Category normalization lives only in `backend/app/catalog/categories.py`.
+- Page titles are `h1` in Fraunces; everything else is Inter. Sentence case everywhere; no all-caps labels.
+- Every page follows the header pattern in `10-page-layouts.md`: title, one-line description, one primary action. Create forms open in a right-side drawer, never above the list, and a drawer with typed input asks before discarding it.
+- Confirmations use the shared inline `Notice`, not floating toasts. A notice carried in router state is consumed and cleared so Back does not replay it.
+- Navigation and routes follow `09-information-architecture.md`. Show only sections whose phase is built, driven by the `features` list on `/health`; render the Phase 1–2 sections before it answers.
+- Anything the system cannot finish on its own becomes an inbox item or the inbox's reading line, not a new nav page. An error is never shown as an empty state.
+- Minimum 44px touch targets on phone and tablet layouts (below 1024px), 4.5:1 text contrast in both themes (dark captions use `neutral-400`), and visible focus on every interactive element.

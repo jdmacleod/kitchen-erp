@@ -122,9 +122,10 @@ rather than creating new ones. `recipe_cost_snapshot` is derived and rebuildable
 in the same sense as `price_norm`: `kerp recompute-costs` may truncate it.
 Pins and aliases are facts a person stated and are not derived.
 
-The to-identify queue from Phase 2 becomes a union view `review_queue` with a
-`kind` of `receipt_line`, `recipe_ingredient`, or `bridge`, each row carrying the
-identifiers its kind needs. Receipt behaviour is unchanged.
+The unified inbox (`GET /api/v1/inbox`, `09-information-architecture.md`) gains a
+`recipe` kind for unmapped recipe names, so the generalized queue is the inbox
+rather than a separate `review_queue` view (UI review T5, 2026-09-25). Receipt,
+identify and bridge behaviour is unchanged.
 
 ## 3A — Repository indexer
 
@@ -222,11 +223,11 @@ A recipe line may pin a product: `PUT /api/v1/recipes/{id}/pins/{name_norm}`
 with a product that fulfils the resolved ingredient. Pins survive re-indexing
 while the name in the file is unchanged.
 
-The queue: `GET /api/v1/review-queue?kind=` serves receipt lines (as today),
-unmapped recipe names grouped by normalized name with the recipes using them,
-and observations that need a bridge. `POST /api/v1/review-queue/apply` takes a
-kind-specific decision and applies it to every listed instance. The Phase 2
-to-identify endpoints remain as aliases of the receipt kind.
+The queue: the inbox's `recipe` kind lists unmapped recipe names grouped by
+normalized name with the recipes using them, one row per name. Its action opens
+a resolution page where one decision applies to every listed instance and writes
+one alias. Receipt lines keep the Phase 2 to-identify endpoints and page, and
+bridges keep theirs; there is no separate review-queue endpoint or page.
 
 ### Acceptance criteria
 
@@ -237,7 +238,8 @@ to-identify endpoints remain as aliases of the receipt kind.
 16. Negligible lines are excluded from the queue and from completeness counts.
 17. A pin is refused for a product that does not fulfil the line's ingredient,
     and survives a re-index that leaves the name unchanged.
-18. The receipt kind of the queue behaves exactly as the Phase 2 tests require;
+18. Receipt-line identification (the inbox's `identify` kind, and the Phase 2
+    to-identify endpoints and page) behaves exactly as the Phase 2 tests require;
     those tests run unchanged.
 
 ## 3D — Costing
@@ -249,6 +251,11 @@ successful normalization, from an active location, of a product that fulfils the
 line's ingredient with at least `min_quality` when given, restricted to the
 locations of a home base when one is given, and to the pinned product when the
 line has a pin. Stale prices are used and reported, never silently preferred.
+
+Open for this document's approval: the UI documents (08–11) were adopted
+without deciding whether costing is household-wide or restricted to a home base
+by default (UI review T8, 2026-09-25). This section's optional home-base filter
+stands until the Phase 3 review settles that.
 
 Each line's quantity converts to the ingredient's canonical unit through
 `convert`, using the pinned or chosen product's context where one exists. Yield
@@ -300,7 +307,8 @@ price used with its age and location, and line cost; totals with low and high;
 completeness and unconfirmed share; a basis selector and home-base selector; a
 history of committed snapshots as a chart with provisional points marked. Parse
 errors show the message and line. Relink proposals appear on `missing` recipes.
-The unified queue page replaces the to-identify page, with kind tabs.
+Unmapped recipe names reach the person through the Home inbox; the
+to-identify page stays for receipt lines.
 
 ### Acceptance criteria
 
