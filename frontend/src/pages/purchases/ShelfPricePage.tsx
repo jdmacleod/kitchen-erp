@@ -28,10 +28,16 @@ export interface ShelfPriceState {
   locationId?: string;
 }
 
-/** A barcode as a wedge scanner or a thumb types it: EAN-8 to GTIN-14. */
+/**
+ * What reads as a barcode someone scanned or typed, for offering to create a
+ * product with it: EAN-8 to GTIN-14. Matching needs no such rule; any exact
+ * barcode hit is taken, whatever its shape.
+ */
 const BARCODE = /^\d{8,14}$/;
 
 const RECENT_COUNT = 5;
+/** How many pages of this store's observations recents will read, 50 each. */
+const RECENT_PAGES = 10;
 
 /**
  * Log a shelf price (docs/spec/10, Shelf price; G2–G4, UI-4.4–4.7). One field
@@ -125,8 +131,13 @@ export function ShelfPricePage() {
         const message = `Saved ${formatMoney(observation.price)} at ${vendor}`;
         const normalized = observation.norm === null || observation.norm.status === "ok";
         if (!another) {
-          // Back to where Capture was opened; with nowhere recorded, Home.
-          navigateWithNotice(arrival.from ?? "/", { tone: "success", message });
+          // Back to where Capture was opened; with nowhere recorded, Home. A price
+          // that could not be normalized says what is missing, and links to it.
+          const fix = normalized ? null : bridgeFix(observation);
+          navigateWithNotice(
+            arrival.from ?? "/",
+            fix ? { tone: "info", message: `${message}. ${fix.reason}`, action: { label: fix.label, to: fix.to } } : { tone: "success", message },
+          );
           return;
         }
         // The store stays; everything about the last tag goes (G4).
@@ -331,9 +342,14 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, disabled
   const debounced = useDebouncedValue(text, 150);
   const search = useProductSearch(debounced, 8);
   const current = typed !== "" && debounced.trim() === typed && !search.isPlaceholderData && search.isSuccess;
-  const hits = typed ? (search.data ?? []) : [];
+  // Only results for the text in the field: while a new lookup is pending the
+  // last one's hits are for other words, and a tap on one would log the wrong
+  // product.
+  const hits = current ? (search.data ?? []) : [];
   const isBarcode = BARCODE.test(typed);
-  const barcodeHit = current && isBarcode ? hits.find((h) => h.match === "barcode") : undefined;
+  const barcodeHit = hits.find((h) => h.match === "barcode" && h.barcode === typed);
+  // No product has this barcode: offer to create one, even beside name matches.
+  const unknownBarcode = current && isBarcode && !barcodeHit;
 
   // A scanned barcode that matches is the product; there is nothing to choose.
   // Taken once per hit, however often the parent re-renders before this unmounts.
@@ -359,7 +375,7 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, disabled
         listLabel="Products"
         inputValue={text}
         onInputChange={setText}
-        items={isBarcode && current && !barcodeHit ? [] : hits}
+        items={barcodeHit ? [] : hits}
         getKey={(hit) => hit.id}
         status={status}
         disabled={disabled}
@@ -378,7 +394,7 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, disabled
             Retry
           </Button>
         </div>
-      ) : current && hits.length === 0 ? (
+      ) : unknownBarcode || (current && hits.length === 0) ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
           <span>{isBarcode ? `No product has barcode ${typed}.` : `Nothing called “${typed}” yet.`}</span>
           <Button variant="secondary" onClick={() => onCreate(isBarcode ? { barcode: typed } : { name: typed })}>
@@ -395,10 +411,11 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, disabled
 /** Before typing: the last five products logged at this store, newest first (G3). */
 function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undefined; storeName: string | null; onPick: (p: ProductRef) => void }) {
   const observations = useObservations({ vendor_location_id: storeId }, 50, Boolean(storeId));
+  const pages = observations.data?.pages ?? [];
   const recent = useMemo(() => {
     const seen = new Set<string>();
     const out: ProductRef[] = [];
-    for (const o of observations.data?.pages[0]?.items ?? []) {
+    for (const o of pages.flatMap((p) => p.items)) {
       if (seen.has(o.product.id)) continue;
       seen.add(o.product.id);
       const { id, name, brand, pack_qty, pack_unit, ingredient } = o.product;
@@ -406,7 +423,14 @@ function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undef
       if (out.length === RECENT_COUNT) break;
     }
     return out;
-  }, [observations.data]);
+  }, [pages]);
+
+  // One product logged fifty times would otherwise hide the four before it:
+  // read further back until there are five, within a bound.
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = observations;
+  useEffect(() => {
+    if (recent.length < RECENT_COUNT && hasNextPage && !isFetchingNextPage && pages.length < RECENT_PAGES) void fetchNextPage();
+  }, [recent.length, hasNextPage, isFetchingNextPage, pages.length, fetchNextPage]);
 
   if (!storeId || observations.isPending || observations.isError || recent.length === 0) return null;
   return (
@@ -445,8 +469,9 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
     // Paid means bought: a shelf price someone only saw is not what they paid.
     const paid = prices.data.points.filter((p) => p.location_id === store?.id && p.source !== "shelf").at(-1);
     if (paid) lastPaid = `${formatMoney(paid.price)} · ${formatDate(paid.observed_at)}`;
+    // Stale offers are left out: an old low price is not what the shelf costs now.
     const cheapest = prices.data.latest
-      .filter((l) => l.norm_unit_price !== null)
+      .filter((l) => l.norm_unit_price !== null && !l.stale)
       .reduce<(typeof prices.data.latest)[number] | null>((low, l) => (low === null || cmp(l.norm_unit_price!, low.norm_unit_price!) < 0 ? l : low), null);
     if (cheapest) best = `${formatMoney(cheapest.price)} · ${cheapest.vendor_name}`;
   }
@@ -464,6 +489,23 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
       </dl>
     </Card>
   );
+}
+
+/** What a price that could not be normalized is missing, in one sentence, and where to add it. */
+export function bridgeFix(observation: Observation): { reason: string; label: string; to: string } | null {
+  const { product, norm } = observation;
+  if (!norm || norm.status === "ok") return null;
+  const ingredient = `/catalog/ingredients/${product.ingredient.id}`;
+  switch (norm.status) {
+    case "no_density":
+      return { reason: `It can't be compared yet: ${product.ingredient.name} has no density.`, label: "Add a density", to: `${ingredient}#density-heading` };
+    case "unknown_measure":
+      return { reason: `It can't be compared yet: ${product.ingredient.name} has no measure named “${observation.unit}”.`, label: "Add the measure", to: `${ingredient}#measures-heading` };
+    case "no_pack":
+      return { reason: `It can't be compared yet: ${productTitle(product)} has no pack size.`, label: "Set the pack", to: `/catalog/products/${product.id}` };
+    default:
+      return { reason: "It can't be compared yet: the quantity could not be used.", label: "Check the product", to: `/catalog/products/${product.id}` };
+  }
 }
 
 /** What normalization made of the observation, or what it is missing and where to fix it. */

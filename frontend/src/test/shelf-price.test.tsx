@@ -367,3 +367,129 @@ describe("shelf price: entry and saving (G3, G4)", () => {
     expect(localStorage.getItem(LAST_LOCATION)).toBe(marketLocationId);
   });
 });
+
+describe("shelf price: review findings", () => {
+  it("never offers the previous lookup's results while a new one is pending", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    const pending: (() => void)[] = [];
+    const release = () => pending.splice(0).forEach((go) => go());
+    mockApi({
+      ...baseRoutes(),
+      "GET /products/search": (call: RecordedCall) => {
+        const q = call.query.get("q") ?? "";
+        if (q === "flour") return jsonResponse(200, { items: hits });
+        // The second lookup hangs until the test lets it go.
+        return new Promise((resolve) => pending.push(() => resolve(jsonResponse(200, { items: [] }))));
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/shelf-prices");
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+
+    await user.type(entry(), "flour");
+    expect(await screen.findByRole("option", { name: /All-Purpose Flour/ })).toBeInTheDocument();
+    await user.clear(entry());
+    await user.type(entry(), "oats");
+    await waitFor(() => expect(screen.getByText("Looking up…")).toBeInTheDocument());
+    expect(screen.queryByRole("option")).toBeNull();
+    // Let every lookup answer, including one the debounce has only now sent.
+    await waitFor(() => {
+      release();
+      expect(screen.getByText("Nothing called “oats” yet.")).toBeInTheDocument();
+    });
+  });
+
+  it("carries the missing bridge and its link to where plain Save returns", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi({
+      ...baseRoutes(),
+      "POST /price-observations": () => jsonResponse(201, observationNoDensity),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+    });
+    const user = userEvent.setup();
+    renderApp({ pathname: "/shop/shelf-prices", state: { from: "/shop/purchases" } });
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+
+    await user.type(entry(), "flour");
+    await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.type(screen.getByLabelText("Price on the shelf"), "1.25");
+    await user.click(screen.getByRole("button", { name: "Save price" }));
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Purchases" })).toBeInTheDocument();
+    expect(within(mainRegion()).getByText(/It can't be compared yet: all-purpose flour has no density\./)).toBeInTheDocument();
+    expect(within(mainRegion()).getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/catalog/ingredients/${flourId}#density-heading`);
+  });
+
+  it("offers to create a product for an unknown barcode even when names match it", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi({ ...baseRoutes(), "GET /products/search": () => jsonResponse(200, { items: [{ ...hits[1], match: "name" }] }) });
+    const user = userEvent.setup();
+    renderApp("/shop/shelf-prices");
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+
+    await user.type(entry(), "40063813");
+    expect(await screen.findByText("No product has barcode 40063813.")).toBeInTheDocument();
+    // The name match can still be chosen.
+    expect(screen.getByRole("option", { name: /Bread Flour/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create product" })).toBeInTheDocument();
+  });
+
+  it("takes an exact barcode match of any shape", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi({ ...baseRoutes(), "GET /products/search": () => jsonResponse(200, { items: [{ ...hits[0], barcode: "ABC-123", match: "barcode" }] }) });
+    const user = userEvent.setup();
+    renderApp("/shop/shelf-prices");
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+
+    await user.type(entry(), "ABC-123");
+    expect(await screen.findByTestId("shelf-product-choice")).toHaveTextContent("Millstone All-Purpose Flour");
+  });
+
+  it("reads further back for recents when one product fills the first page", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    const other = { ...observationOk, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7099", product: { ...observationOk.product, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6099", name: "Older Product", brand: null } };
+    mockApi({
+      ...baseRoutes(),
+      "GET /price-observations": (call: RecordedCall) =>
+        call.query.get("cursor")
+          ? jsonResponse(200, { items: [other], next_cursor: null })
+          : jsonResponse(200, { items: Array.from({ length: 50 }, () => observationOk), next_cursor: "page-2" }),
+    });
+    renderApp("/shop/shelf-prices");
+
+    const recent = await screen.findByRole("region", { name: `Recently logged at ${CHAIN}` });
+    await waitFor(() => expect(within(recent).getAllByRole("button")).toHaveLength(2));
+    expect(within(recent).getByRole("button", { name: /Older Product/ })).toBeInTheDocument();
+  });
+
+  it("leaves stale offers out of Best known", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    const latest = (price: string, vendor: string, stale: boolean) => ({
+      location_id: vendor,
+      location_name: vendor,
+      vendor_id: vendor,
+      vendor_name: vendor,
+      price_scope: "location" as const,
+      observation_id: `latest-${price}`,
+      observed_at: "2026-09-20T10:00:00Z",
+      price,
+      qty: "1",
+      unit: "each",
+      is_promo: false,
+      norm_unit_price: price === "1.99" ? "0.0010" : "0.0020",
+      norm_unit: "g",
+      norm_status: "ok" as const,
+      age_days: stale ? "400" : "3",
+      stale,
+    });
+    mockApi(baseRoutes({ prices: { points: [], latest: [latest("1.99", "Old Cheap Place", true), latest("4.19", "Current Place", false)] } }));
+    const user = userEvent.setup();
+    renderApp("/shop/shelf-prices");
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+    await user.type(entry(), "flour");
+    await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
+
+    const best = await screen.findByText("Best known");
+    await waitFor(() => expect(best.nextElementSibling).toHaveTextContent("$4.19 · Current Place"));
+  });
+});
