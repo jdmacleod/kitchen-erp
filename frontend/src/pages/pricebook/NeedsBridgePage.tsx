@@ -15,7 +15,7 @@ export function NeedsBridgePage() {
 
   return (
     <>
-      <PageHeader title="Needs a bridge" />
+      <PageHeader title="Needs a bridge" description="Products whose prices can't be compared until they have a density, a measure or a pack size." />
       {list.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…

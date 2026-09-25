@@ -53,7 +53,7 @@ describe("category chips on pages", () => {
       "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     renderApp("/catalog/products");
-    const list = await screen.findByRole("list", { name: "Products" });
+    const list = await screen.findByRole("table", { name: "Products" });
     expect(within(list).getByText("pantry")).toHaveClass("cat-pantry");
   });
 

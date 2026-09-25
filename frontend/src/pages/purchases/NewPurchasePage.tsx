@@ -43,7 +43,7 @@ export function NewPurchasePage() {
 
   return (
     <>
-      <PageHeader title="New purchase">
+      <PageHeader title="New purchase" description="A market or stand without a receipt, entered line by line.">
         <Link to="/shop/shelf-prices" className={`rounded text-sm underline ${focusRing}`}>
           Just noting a shelf price?
         </Link>

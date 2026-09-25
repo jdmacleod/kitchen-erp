@@ -19,7 +19,7 @@ export function ComparePage() {
 
   return (
     <>
-      <PageHeader title="Compare" />
+      <PageHeader title="Compare" description="What each ingredient costs at each vendor, per unit, cheapest marked." />
       <div className="flex flex-col gap-6">
         <Card>
           <div className="flex flex-col gap-3">

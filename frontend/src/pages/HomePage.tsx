@@ -94,10 +94,9 @@ export function HomePage() {
 
   return (
     <>
-      <PageHeader title={greeting()}>
+      <PageHeader title={greeting()} description={<span className="inline-block min-h-5">{summary}</span>}>
         <Button onClick={openCapture}>Capture</Button>
       </PageHeader>
-      <p className="-mt-4 mb-6 min-h-5 text-sm text-neutral-600 dark:text-neutral-400">{summary}</p>
 
       <div className="grid gap-8 lg:grid-cols-[1.65fr_1fr]">
         <section aria-labelledby="needs-you">

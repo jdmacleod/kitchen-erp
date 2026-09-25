@@ -94,7 +94,7 @@ export function ShelfPricePage() {
 
   return (
     <>
-      <PageHeader title="Shelf price">
+      <PageHeader title="Shelf price" description="A price you saw on the shelf, without buying.">
         <Link to="/shop/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
           Enter a purchase instead
         </Link>

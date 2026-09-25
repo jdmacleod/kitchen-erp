@@ -17,6 +17,13 @@ function baseRoutes(items: () => Ingredient[]) {
   };
 }
 
+/** Open the add drawer from the page header. */
+async function openAddDrawer(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole("heading", { name: "Ingredients" });
+  await user.click(screen.getAllByRole("button", { name: "Add ingredient" })[0]);
+  return screen.findByRole("dialog", { name: "Add ingredient" });
+}
+
 describe("ingredients", () => {
   it("creates an ingredient with only a name", async () => {
     let items: Ingredient[] = [];
@@ -31,9 +38,9 @@ describe("ingredients", () => {
     const user = userEvent.setup();
     renderApp("/catalog/ingredients");
 
-    expect(await screen.findByText("No ingredients yet")).toBeInTheDocument();
+    await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "cumin");
-    await user.click(screen.getByRole("button", { name: "Create ingredient" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
 
     const post = await waitFor(() => {
       const found = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
@@ -43,14 +50,12 @@ describe("ingredients", () => {
     expect(post?.body).toEqual({ name: "cumin", canonical_unit: "g" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
 
-    // The shared Notice (D18), with a way to the new ingredient (G10).
-    const notice = await screen.findByTestId("notice");
-    expect(notice).toHaveTextContent(/^Added cumin\./);
-    expect(within(notice).getByRole("link", { name: "Open it" })).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
+    // The drawer closes and the new row, now in the list, takes focus (G10).
     const list = await screen.findByRole("list", { name: "Ingredients" });
-    expect(within(list).getByRole("link", { name: "cumin" })).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
-    // The form reset for the next entry.
-    expect(screen.getByLabelText("Name")).toHaveValue("");
+    const row = within(list).getByRole("link", { name: "cumin" });
+    expect(row).toHaveAttribute("href", `/catalog/ingredients/${created.id}`);
+    await waitFor(() => expect(row).toHaveFocus());
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("fills the density from a USDA suggestion with source usda and queues a measure", async () => {
@@ -77,7 +82,7 @@ describe("ingredients", () => {
     const user = userEvent.setup();
     renderApp("/catalog/ingredients");
 
-    await screen.findByText("No ingredients yet");
+    await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
 
     await user.click(await screen.findByRole("button", { name: "Use density 0.528 g/ml (from 1 cup)" }));
@@ -87,8 +92,11 @@ describe("ingredients", () => {
     await user.click(screen.getByRole("button", { name: "Add measure cup = 125 g" }));
     expect(screen.getByRole("group", { name: "Measures to add" })).toHaveTextContent("cup = 125 g");
 
-    await user.click(screen.getByRole("button", { name: "Create ingredient" }));
-    expect(await screen.findByTestId("notice")).toHaveTextContent(/with 1 measure/);
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+    // The new row is not in this list, so the Notice links to it (G10).
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent(/with 1 measure/);
+    await waitFor(() => expect(within(notice).getByRole("link", { name: "Open it" })).toHaveFocus());
 
     const post = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
     expect(post?.body).toEqual({
@@ -105,7 +113,7 @@ describe("ingredients", () => {
     mockApi(baseRoutes(() => []));
     const user = userEvent.setup();
     renderApp("/catalog/ingredients");
-    await screen.findByText("No ingredients yet");
+    await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
     await waitFor(() => expect(screen.queryByText("Reference suggestions")).not.toBeInTheDocument());
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -128,11 +136,34 @@ describe("ingredients", () => {
     expect(within(list).getByText("all-purpose flour")).toBeInTheDocument();
     expect(within(list).queryByText("old flour")).not.toBeInTheDocument();
 
-    await user.type(screen.getByLabelText("Search"), "flour");
+    await user.type(screen.getByLabelText("Search ingredients"), "flour");
     await waitFor(() => expect(calls.some((c) => c.query.get("q") === "flour")).toBe(true));
 
     await user.click(screen.getByLabelText("Show inactive"));
     expect(await screen.findByText("old flour")).toBeInTheDocument();
     expect(screen.getByText("inactive")).toBeInTheDocument();
+  });
+});
+
+describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
+  it("offers the first ingredient on an empty catalog, and clears a search that matched nothing", async () => {
+    mockApi(baseRoutes(() => []));
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients?q=zzqx");
+    const empty = await screen.findByRole("region", { name: "No ingredients match ‘zzqx’" });
+    await user.click(within(empty).getByRole("button", { name: "Clear search" }));
+    expect(await screen.findByRole("region", { name: "Add your first ingredient" })).toBeInTheDocument();
+  });
+
+  it("suggests the nine known categories in the drawer", async () => {
+    mockApi(baseRoutes(() => []));
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients");
+    await openAddDrawer(user);
+    const field = screen.getByLabelText("Category");
+    const list = document.getElementById(field.getAttribute("list") ?? "");
+    expect([...(list?.querySelectorAll("option") ?? [])].map((o) => o.value)).toEqual([
+      "produce", "dairy", "meat", "seafood", "bakery", "pantry", "spices", "beverages", "frozen",
+    ]);
   });
 });

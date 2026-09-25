@@ -22,6 +22,8 @@ interface IngredientPickerProps {
   allowCreate?: boolean;
   disabled?: boolean;
   hint?: string;
+  /** Told what is typed in the search, so a form can count it as unsaved input. */
+  onTextChange?: (text: string) => void;
 }
 
 /**
@@ -37,8 +39,13 @@ export function IngredientPicker({
   allowCreate = true,
   disabled,
   hint,
+  onTextChange,
 }: IngredientPickerProps) {
-  const [text, setText] = useState("");
+  const [text, setTextState] = useState("");
+  const setText = (next: string) => {
+    setTextState(next);
+    onTextChange?.(next);
+  };
   const debounced = useDebouncedValue(text, 200);
   const search = useIngredientSearch(debounced);
   const trimmed = text.trim();

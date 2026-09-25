@@ -36,7 +36,7 @@ export function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" />
+      <PageHeader title="Users" description="The people in this household who can sign in." />
       <div className="flex flex-col gap-6">
         <Card>
           <h2 className="mb-3 text-lg font-medium">Household members</h2>

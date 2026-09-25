@@ -27,7 +27,7 @@ import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { VendorPicker, type VendorChoice } from "../../components/geo/VendorPicker";
 import { PriceAge, PromoBadge, formatUnitPrice } from "../../components/pricebook/PriceAge";
-import { Alert, Button, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import { Alert, Button, Field, PageHeader, focusRing } from "../../components/ui";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { parseLatLon } from "../../lib/latlon";
@@ -40,8 +40,12 @@ type Point = { lat: string; lon: string };
 
 const HOME_PREFIX = "home:";
 
-export function MapPage() {
-  usePageTitle("Map");
+/**
+ * The vendor map. `embedded` is the Vendors page's map view (T9): the page owns
+ * the title and the list/map toggle, and this renders its own actions and filters.
+ */
+export function MapPage({ embedded = false }: { embedded?: boolean }) {
+  usePageTitle(embedded ? "Vendors" : "Map");
   const [params, setParams] = useSearchParams();
   const homeBases = useHomeBases();
 
@@ -205,22 +209,20 @@ export function MapPage() {
     }
   }
 
+  const placingActions = (
+    <div className="flex flex-wrap gap-2">
+      <Button variant={mode === "location" ? "primary" : "secondary"} aria-pressed={mode === "location"} onClick={() => (mode === "location" ? stopPlacing() : startPlacing("location"))}>
+        Add location here
+      </Button>
+      <Button variant={mode === "home" ? "primary" : "secondary"} aria-pressed={mode === "home"} onClick={() => (mode === "home" ? stopPlacing() : startPlacing("home"))}>
+        Add home base here
+      </Button>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-3">
-      <PageHeader title="Map">
-        <div className="flex flex-wrap gap-2">
-          {/* Until T6's list/map toggle: the way back to the Vendors list. */}
-          <Link to="/catalog/vendors" className={secondaryLinkClass}>
-            List view
-          </Link>
-          <Button variant={mode === "location" ? "primary" : "secondary"} aria-pressed={mode === "location"} onClick={() => (mode === "location" ? stopPlacing() : startPlacing("location"))}>
-            Add location here
-          </Button>
-          <Button variant={mode === "home" ? "primary" : "secondary"} aria-pressed={mode === "home"} onClick={() => (mode === "home" ? stopPlacing() : startPlacing("home"))}>
-            Add home base here
-          </Button>
-        </div>
-      </PageHeader>
+      {embedded ? placingActions : <PageHeader title="Map">{placingActions}</PageHeader>}
 
       <Filters
         kind={kind}

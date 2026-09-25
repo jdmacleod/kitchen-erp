@@ -21,7 +21,7 @@ export function ToIdentifyPage() {
 
   return (
     <>
-      <PageHeader title="To identify" />
+      <PageHeader title="To identify" description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned." />
       {queue.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…

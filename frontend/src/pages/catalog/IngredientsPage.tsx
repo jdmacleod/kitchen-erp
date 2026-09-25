@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import {
   BRIDGE_SOURCES,
@@ -22,74 +22,135 @@ import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/Us
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { CategoryChip } from "../../components/CategoryChip";
-import { useNotice } from "../../components/Notice";
+import { CATEGORY_KEYS, CategoryChip } from "../../components/CategoryChip";
+import { Drawer } from "../../components/Drawer";
+import { useNotice, type NoticeData } from "../../components/Notice";
 
 export function IngredientsPage() {
   usePageTitle("Ingredients");
-  const [q, setQ] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(false);
-  const debouncedQ = useDebouncedValue(q.trim(), 250);
-  const list = useIngredients(debouncedQ, includeInactive);
+  const [params, setParams] = useSearchParams();
+  const q = params.get("q") ?? "";
+  const includeInactive = params.get("inactive") === "1";
+  const setParam = (key: string, value: string | null) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+
+  const [text, setText] = useState(q);
+  // The field follows ?q= when it changes from outside (Back, a link), and the
+  // URL takes only text the debounce has settled on, so an old pending value
+  // cannot be written back over the new one.
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) {
+    setSeenQ(q);
+    setText(q);
+  }
+  const debounced = useDebouncedValue(text.trim(), 250);
+  useEffect(() => {
+    if (debounced === text.trim() && debounced !== q) setParam("q", debounced || null);
+    // Only the typed text drives the URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced]);
+
+  const list = useIngredients(q, includeInactive);
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
+  const [adding, setAdding] = useState(false);
+
+  const notice = useNotice();
+  const onCreated = async (ingredient: Ingredient, message: NoticeData) => {
+    setAdding(false);
+    await list.refetch();
+    // G10: focus the new row when it is in the list; otherwise the Notice links to it.
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`ingredient-row-${ingredient.id}`);
+      if (row && message.tone === "success") row.focus();
+      else notice.show({ ...message, focusAction: true });
+    });
+  };
 
   return (
     <>
-      <PageHeader title="Ingredients" />
-      <div className="flex flex-col gap-6">
-        <CreateIngredientForm />
+      <PageHeader title="Ingredients" description="The things you cook with, each measured in one unit.">
+        <Button onClick={() => setAdding(true)}>Add ingredient</Button>
+      </PageHeader>
 
-        <Card>
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-lg font-medium">Ingredient catalog</h2>
-            <label className="inline-flex min-h-10 items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-                className={`size-4 ${focusRing}`}
-              />
-              Show inactive
-            </label>
-          </div>
-          <Field
-            id="ingredient-search"
-            label="Search"
-            type="search"
-            autoComplete="off"
-            placeholder="Part of a name"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            className="mb-3"
+      <div className="mb-4 flex flex-col gap-3">
+        <label htmlFor="ingredient-search" className="sr-only">
+          Search ingredients
+        </label>
+        <input
+          id="ingredient-search"
+          type="text"
+          enterKeyHint="search"
+          autoComplete="off"
+          maxLength={200}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Search by name"
+          className={`min-h-12 w-full rounded-lg border border-neutral-300 bg-white px-4 text-base dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+        />
+        <label className="inline-flex min-h-11 items-center gap-2 self-end text-sm lg:min-h-9">
+          <input
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(e) => setParam("inactive", e.target.checked ? "1" : null)}
+            className={`size-4 ${focusRing}`}
           />
-          {list.isPending ? (
-            <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
-              Loading…
-            </p>
-          ) : list.isError ? (
-            <Alert tone="error">{errorMessage(list.error)}</Alert>
-          ) : items.length === 0 ? (
-            <EmptyState title={debouncedQ ? "No ingredients match" : "No ingredients yet"}>
-              {debouncedQ ? "Try a shorter search." : "Ingredients are the things you cook with. Add one above."}
-            </EmptyState>
-          ) : (
-            <>
-              <ul aria-label="Ingredients" className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {items.map((i) => (
-                  <IngredientRow key={i.id} ingredient={i} />
-                ))}
-              </ul>
-              {list.hasNextPage ? (
-                <div className="mt-3">
-                  <Button variant="secondary" disabled={list.isFetchingNextPage} onClick={() => list.fetchNextPage()}>
-                    {list.isFetchingNextPage ? "Loading…" : "Load more"}
-                  </Button>
-                </div>
-              ) : null}
-            </>
-          )}
-        </Card>
+          Show inactive
+        </label>
       </div>
+
+      {list.isPending ? (
+        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+          Loading…
+        </p>
+      ) : list.isError ? (
+        <Alert tone="error">{errorMessage(list.error)}</Alert>
+      ) : items.length === 0 ? (
+        q ? (
+          <EmptyState
+            title={`No ingredients match ‘${q}’`}
+            action={
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setText("");
+                  setParam("q", null);
+                }}
+              >
+                Clear search
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState title="Add your first ingredient" action={<Button onClick={() => setAdding(true)}>Add ingredient</Button>}>
+            Ingredients are the things you cook with. Products are the packages they come in.
+          </EmptyState>
+        )
+      ) : (
+        <Card>
+          <ul aria-label="Ingredients" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {items.map((i) => (
+              <IngredientRow key={i.id} ingredient={i} />
+            ))}
+          </ul>
+          {list.hasNextPage ? (
+            <div className="mt-3">
+              <Button variant="secondary" disabled={list.isFetchingNextPage} onClick={() => list.fetchNextPage()}>
+                {list.isFetchingNextPage ? "Loading…" : "Load more"}
+              </Button>
+            </div>
+          ) : null}
+        </Card>
+      )}
+
+      {adding ? <AddIngredientDrawer onClose={() => setAdding(false)} onCreated={onCreated} /> : null}
     </>
   );
 }
@@ -97,7 +158,7 @@ export function IngredientsPage() {
 function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link to={`/catalog/ingredients/${ingredient.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
+      <Link id={`ingredient-row-${ingredient.id}`} to={`/catalog/ingredients/${ingredient.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
         {ingredient.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
@@ -128,12 +189,17 @@ const emptyForm = {
   notes: "",
 };
 
-function CreateIngredientForm() {
+function AddIngredientDrawer({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (ingredient: Ingredient, notice: NoticeData) => void;
+}) {
   const create = useCreateIngredient();
   const [form, setForm] = useState(emptyForm);
   const [queued, setQueued] = useState<QueuedMeasure[]>([]);
   const [invalid, setInvalid] = useState<string | null>(null);
-  const notice = useNotice();
   const [addingMeasures, setAddingMeasures] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const debouncedName = useDebouncedValue(form.name.trim(), 300);
@@ -192,24 +258,29 @@ function CreateIngredientForm() {
     }
     const withMeasures = added > 0 ? ` with ${added} ${added === 1 ? "measure" : "measures"}` : "";
     const missed = failed.length > 0 ? ` Could not add: ${failed.join(", ")}. Add them on the ingredient page.` : "";
-    notice.show({
+    onCreated(ingredient, {
       tone: failed.length > 0 ? "info" : "success",
       message: `Added ${ingredient.name}${withMeasures}.${missed}`,
       action: { label: "Open it", to: `/catalog/ingredients/${ingredient.id}` },
     });
-    setForm(emptyForm);
-    setQueued([]);
-    document.getElementById("new-ingredient-name")?.focus();
   };
 
   const busy = create.isPending || addingMeasures;
 
+  const dirty = JSON.stringify(form) !== JSON.stringify(emptyForm) || queued.length > 0;
+
   return (
-    <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-ingredient-heading" noValidate>
-        <h2 id="create-ingredient-heading" className="text-lg font-medium">
-          Add an ingredient
-        </h2>
+    <Drawer
+      title="Add ingredient"
+      thing="ingredient"
+      dirty={dirty}
+      onClose={onClose}
+      formId="add-ingredient"
+      primaryLabel="Add ingredient"
+      busy={busy}
+      busyLabel={addingMeasures ? "Adding measures…" : "Adding…"}
+    >
+      <form id="add-ingredient" onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Add ingredient" noValidate>
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
 
@@ -227,9 +298,16 @@ function CreateIngredientForm() {
             label="Category"
             autoComplete="off"
             placeholder="produce, dairy, pantry…"
+            list="ingredient-categories"
             value={form.category}
             onChange={(e) => set("category", e.target.value)}
           />
+          {/* The nine categories the chips colour (UI-3.6); free text still works. */}
+          <datalist id="ingredient-categories">
+            {CATEGORY_KEYS.map((key) => (
+              <option key={key} value={key} />
+            ))}
+          </datalist>
         </div>
         <RadioGroup
           name="new-ingredient-unit"
@@ -326,13 +404,7 @@ function CreateIngredientForm() {
             onChange={(e) => set("notes", e.target.value)}
           />
         </Disclosure>
-
-        <div>
-          <Button type="submit" disabled={busy}>
-            {create.isPending ? "Creating…" : addingMeasures ? "Adding measures…" : "Create ingredient"}
-          </Button>
-        </div>
       </form>
-    </Card>
+    </Drawer>
   );
 }

@@ -38,10 +38,7 @@ export function SystemPage() {
   const logoutEverywhere = useLogoutEverywhere();
   return (
     <>
-      <PageHeader title="System" />
-      <p className="-mt-4 mb-6 text-sm text-neutral-600 dark:text-neutral-400">
-        How this deployment is doing, and your sessions on it.
-      </p>
+      <PageHeader title="System" description="How this deployment is doing, and your sessions on it." />
       <div className="flex flex-col gap-6">
         <Card>
           <h2 className="font-display mb-3 text-lg">Status</h2>

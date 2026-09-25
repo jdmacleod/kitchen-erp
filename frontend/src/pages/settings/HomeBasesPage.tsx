@@ -44,7 +44,7 @@ export function HomeBasesPage() {
 
   return (
     <>
-      <PageHeader title="Kitchens" />
+      <PageHeader title="Kitchens" description="The places you cook from, so nearby shops and the nearest kitchen can be found." />
       <div className="flex flex-col gap-6">
         <Card>
           <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-home-heading" noValidate>

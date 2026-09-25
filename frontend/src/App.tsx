@@ -1,4 +1,4 @@
-import { Route, Routes, useSearchParams } from "react-router";
+import { Route, Routes } from "react-router";
 import { AuthBridge } from "./auth/AuthBridge";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { RequireAuth } from "./auth/RequireAuth";
@@ -8,7 +8,6 @@ import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
-import { MapPage } from "./pages/geo/MapPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
@@ -47,12 +46,6 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
   { from: "/settings/home-bases", to: "/settings/kitchens" },
 ];
 
-/** Vendors has a list view and a map view, kept in the URL (T9). */
-function VendorsRoute() {
-  const [params] = useSearchParams();
-  return params.get("view") === "map" ? <MapPage /> : <VendorsPage />;
-}
-
 /**
  * Route table (docs/spec/09-information-architecture.md, Routes). Mounted inside a
  * router and a QueryClientProvider by main.tsx and the tests.
@@ -81,7 +74,7 @@ export function App() {
             <Route path="/catalog/ingredients/:id" element={<IngredientDetailPage />} />
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/catalog/products/:id" element={<ProductDetailPage />} />
-            <Route path="/catalog/vendors" element={<VendorsRoute />} />
+            <Route path="/catalog/vendors" element={<VendorsPage />} />
             <Route path="/catalog/vendors/:id" element={<VendorDetailPage />} />
             <Route path="/catalog/bridges" element={<NeedsBridgePage />} />
 

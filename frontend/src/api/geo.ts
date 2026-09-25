@@ -24,9 +24,10 @@ export const vendorKindLabel: Record<VendorKind, string> = {
   stand: "Stand",
 };
 
+/** A vendor's pricing scope in plain words (T15). The one place this copy lives. */
 export const priceScopeLabel: Record<PriceScope, string> = {
-  location: "Per location",
-  chain: "Chain-wide",
+  location: "Price set per location",
+  chain: "Same price at every location",
 };
 
 export interface HomeBase {
@@ -50,6 +51,13 @@ export interface Vendor extends VendorRef {
   notes: string | null;
   active: boolean;
   created_at: string;
+}
+
+/** A row of the vendor list, with what its card shows (T16). */
+export interface VendorListItem extends Vendor {
+  location_count: number;
+  /** The latest committed purchase at any of its locations. */
+  last_visit: string | null;
 }
 
 export interface VendorLocation {
@@ -272,7 +280,7 @@ export function useVendors(q = "", includeInactive = false, enabled = true) {
   const trimmed = q.trim();
   return useQuery({
     queryKey: geoKeys.vendorList(trimmed, includeInactive),
-    queryFn: () => api<ListResponse<Vendor>>(`/vendors${qs({ q: trimmed, include_inactive: includeInactive })}`),
+    queryFn: () => api<ListResponse<VendorListItem>>(`/vendors${qs({ q: trimmed, include_inactive: includeInactive })}`),
     select: (data) => data.items,
     enabled,
     placeholderData: (previous) => previous,

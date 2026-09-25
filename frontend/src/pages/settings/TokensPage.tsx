@@ -35,7 +35,7 @@ export function TokensPage() {
 
   return (
     <>
-      <PageHeader title="API tokens" />
+      <PageHeader title="API tokens" description="Keys for apps that capture prices and receipts on your behalf." />
       <div className="flex flex-col gap-6">
         {reveal ? <NewTokenPanel reveal={reveal} onDismiss={() => setReveal(null)} /> : null}
 

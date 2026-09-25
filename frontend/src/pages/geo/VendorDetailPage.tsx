@@ -90,7 +90,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
           <span aria-hidden="true">·</span>
           <span>{vendorKindLabel[vendor.kind]}</span>
           <span aria-hidden="true">·</span>
-          <span>Prices {priceScopeLabel[vendor.price_scope].toLowerCase()}</span>
+          <span>{priceScopeLabel[vendor.price_scope]}</span>
           {vendor.website ? (
             <>
               <span aria-hidden="true">·</span>
