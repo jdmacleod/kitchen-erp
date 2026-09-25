@@ -96,4 +96,18 @@ describe("comparison matrix", () => {
     await user.click(screen.getByRole("button", { name: "Remove all-purpose flour" }));
     expect(await screen.findByText("Pick ingredients to compare")).toBeInTheDocument();
   });
+
+  it("says when the chosen ingredients have no prices, and offers a shelf price (G11)", async () => {
+    mockApi({ ...baseRoutes(), "POST /price-book/compare": () => jsonResponse(200, { ...result, vendors: [], rows: result.rows.map((r) => ({ ...r, cells: [] })) }) });
+    const user = userEvent.setup();
+    renderApp("/shop/compare");
+
+    await user.type(await screen.findByRole("combobox", { name: "Add an ingredient" }), "flour");
+    await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));
+
+    const empty = await screen.findByRole("region", { name: "No prices to compare yet" });
+    expect(empty).toHaveTextContent("This ingredient has no prices that pass the filters.");
+    expect(within(empty).getByRole("link", { name: "Log a shelf price" })).toHaveAttribute("href", "/shop/shelf-prices");
+    expect(screen.queryByRole("table")).toBeNull();
+  });
 });

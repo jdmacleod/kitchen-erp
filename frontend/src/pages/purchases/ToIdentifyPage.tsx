@@ -4,7 +4,7 @@ import { errorMessage } from "../../api/client";
 import { purchaseErrorMessage, useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
 import { SelectField } from "../../components/catalog/fields";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -29,7 +29,16 @@ export function ToIdentifyPage() {
       ) : queue.isError ? (
         <Alert tone="error">{errorMessage(queue.error)}</Alert>
       ) : groups.length === 0 ? (
-        <EmptyState title="Nothing to identify">Every committed receipt line has a product or is ignored.</EmptyState>
+        <EmptyState
+          title="All lines identified"
+          action={
+            <Link to="/" className={secondaryLinkClass}>
+              Back to Home
+            </Link>
+          }
+        >
+          Every committed receipt line has a product or is ignored.
+        </EmptyState>
       ) : (
         <ul aria-label="Lines to identify" className="flex flex-col gap-4">
           {groups.map((g, i) => (
