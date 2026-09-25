@@ -52,6 +52,34 @@ class ProductHistory(ApiModel):
     latest: list[LatestAtLocation]
 
 
+class IngredientPricePoint(ApiModel):
+    observation_id: uuid.UUID
+    observed_at: datetime
+    norm_unit_price: DecimalStr
+    norm_unit: str
+    is_promo: bool
+    source: str
+    product_id: uuid.UUID
+    product_name: str
+    location_id: uuid.UUID
+    vendor_id: uuid.UUID
+    vendor_name: str
+
+
+class IngredientPriceHistory(ApiModel):
+    """Normalized prices for the ingredient hub's sparkline and range (D22).
+
+    One point per day, oldest first: that day's cheapest price. ``low`` and ``high``
+    cover every price in the window.
+    """
+
+    days: int
+    points: list[IngredientPricePoint]
+    # The range across every point in the window; null when there are none.
+    low: DecimalStr | None
+    high: DecimalStr | None
+
+
 class Offer(ApiModel):
     product_id: uuid.UUID
     product_name: str

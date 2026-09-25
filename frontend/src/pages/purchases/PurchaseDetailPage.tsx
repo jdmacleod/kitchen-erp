@@ -23,6 +23,7 @@ import { Alert, Button, Card, PageHeader, focusRing } from "../../components/ui"
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { CategoryChip } from "../../components/CategoryChip";
 
 /**
  * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);
@@ -246,7 +247,8 @@ function LineRow({ line }: { line: PurchaseLine }) {
             </Link>
             {formatPack(line.product.pack_qty, line.product.pack_unit) ? (
               <span className="text-neutral-600 dark:text-neutral-400"> · {formatPack(line.product.pack_qty, line.product.pack_unit)}</span>
-            ) : null}
+            ) : null}{" "}
+            <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
           </>
         ) : (
           <span>

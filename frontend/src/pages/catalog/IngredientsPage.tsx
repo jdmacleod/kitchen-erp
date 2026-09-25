@@ -22,6 +22,7 @@ import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/Us
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { CategoryChip } from "../../components/CategoryChip";
 
 export function IngredientsPage() {
   usePageTitle("Ingredients");
@@ -99,7 +100,7 @@ function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
         {ingredient.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-        {ingredient.category ? <span>{ingredient.category}</span> : null}
+        <CategoryChip category={ingredient.category} categoryKey={ingredient.category_key} />
         <span>{ingredient.canonical_unit}</span>
         {ingredient.density_g_per_ml ? <Badge>density</Badge> : null}
         {ingredient.measures.length > 0 ? (

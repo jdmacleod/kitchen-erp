@@ -24,7 +24,7 @@ describe("products", () => {
     const created: Product = {
       ...flourProduct,
       id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d09",
-      ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09", name: "rolled oats", canonical_unit: "g", active: true },
+      ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09", name: "rolled oats", canonical_unit: "g", active: true, category: null, category_key: null },
       brand: null,
       name: "Rolled Oats",
       pack_qty: "1",

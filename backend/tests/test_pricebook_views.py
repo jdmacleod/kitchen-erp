@@ -296,3 +296,145 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
     layer = await admin_client.get("/api/v1/price-book/cheapest", params={"ingredient_id": ids[0]})
     assert layer.status_code == 200 and len(layer.json()["items"]) == 10
     assert uuid.UUID(layer.json()["items"][0]["location_id"])
+
+
+# --- ingredient price history (D22) ------------------------------------------
+
+
+async def _history(client: httpx.AsyncClient, ingredient_id: str, **params) -> dict:
+    r = await client.get(f"/api/v1/ingredients/{ingredient_id}/price-history", params=params)
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+async def test_ingredient_history_covers_the_window_oldest_first_with_its_range(admin_client):
+    _, _, indie = await three_locations(admin_client)
+    bag = await make_product(admin_client, "Farro", "Farro bag", pack_qty="500", pack_unit="g")
+    ingredient_id = bag["ingredient"]["id"]
+    now = datetime.now(UTC)
+    old = await shelf(
+        admin_client,
+        bag["id"],
+        indie["id"],
+        "9.00",
+        observed_at=(now - timedelta(days=100)).isoformat(),
+    )
+    await shelf(
+        admin_client,
+        bag["id"],
+        indie["id"],
+        "4.00",
+        observed_at=(now - timedelta(days=30)).isoformat(),
+    )
+    await shelf(admin_client, bag["id"], indie["id"], "5.00", is_promo=True)
+
+    h = await _history(admin_client, ingredient_id)
+    assert h["days"] == 90
+    assert [p["norm_unit_price"] for p in h["points"]] == ["0.008000", "0.010000"]
+    assert (h["low"], h["high"]) == ("0.008000", "0.010000")
+    first = h["points"][0]
+    assert first["norm_unit"] == "g" and first["product_name"] == "Farro bag"
+    assert first["vendor_name"] == "Indie Grocer" and first["source"] == "shelf"
+    assert [p["is_promo"] for p in h["points"]] == [False, True]
+
+    wider = await _history(admin_client, ingredient_id, days=120)
+    assert wider["points"][0]["observation_id"] == old["id"]
+    assert wider["high"] == "0.018000"
+
+
+async def test_ingredient_history_leaves_out_voided_uncomparable_and_inactive(admin_client):
+    _, _, indie = await three_locations(admin_client)
+    bag = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
+    ingredient_id = bag["ingredient"]["id"]
+    loose = await admin_client.post(
+        "/api/v1/products", json={"ingredient_id": ingredient_id, "name": "Loose barley"}
+    )
+    assert loose.status_code == 201, loose.text
+    retired = await admin_client.post(
+        "/api/v1/products",
+        json={
+            "ingredient_id": ingredient_id,
+            "name": "Old barley",
+            "pack_qty": "1",
+            "pack_unit": "kg",
+        },
+    )
+    assert retired.status_code == 201, retired.text
+
+    kept = await shelf(admin_client, bag["id"], indie["id"], "3.00")
+    voided = await shelf(admin_client, bag["id"], indie["id"], "1.00")
+    r = await admin_client.post(
+        f"/api/v1/price-observations/{voided['id']}/void", json={"reason": "typo"}
+    )
+    assert r.status_code == 200, r.text
+    await shelf(admin_client, loose.json()["id"], indie["id"], "2.00")  # no pack: can't compare
+    await shelf(admin_client, retired.json()["id"], indie["id"], "0.50")
+    r = await admin_client.post(f"/api/v1/products/{retired.json()['id']}/deactivate")
+    assert r.status_code == 200, r.text
+
+    h = await _history(admin_client, ingredient_id)
+    assert [p["observation_id"] for p in h["points"]] == [kept["id"]]
+    assert h["low"] == h["high"] == "0.003000"
+
+
+async def test_ingredient_history_counts_committed_purchases_only(admin_client):
+    _, _, indie = await three_locations(admin_client)
+    bag = await make_product(admin_client, "Spelt", "Spelt bag", pack_qty="1", pack_unit="kg")
+    r = await admin_client.post(
+        "/api/v1/purchases",
+        json={
+            "vendor_location_id": indie["id"],
+            "purchased_at": datetime.now(UTC).isoformat(),
+            "lines": [{"product_id": bag["id"], "qty": "1", "unit": "each", "line_total": "6.00"}],
+        },
+        headers={"Idempotency-Key": "spelt-1"},
+    )
+    assert r.status_code == 201, r.text
+    purchase_id = r.json()["id"]
+    ingredient_id = bag["ingredient"]["id"]
+    assert [p["source"] for p in (await _history(admin_client, ingredient_id))["points"]] == [
+        "manual"
+    ]
+
+    # Reopened, its prices are not settled until it is committed again.
+    r = await admin_client.post(f"/api/v1/purchases/{purchase_id}/reopen")
+    assert r.status_code == 200, r.text
+    h = await _history(admin_client, ingredient_id)
+    assert h == {"days": 90, "points": [], "low": None, "high": None}
+
+
+async def test_ingredient_history_bounds_and_errors(admin_client):
+    bag = await make_product(admin_client, "Millet", "Millet bag", pack_qty="1", pack_unit="kg")
+    path = f"/api/v1/ingredients/{bag['ingredient']['id']}/price-history"
+    for days in (0, 366):
+        assert (await admin_client.get(path, params={"days": days})).status_code == 422
+    assert (await admin_client.get(path, params={"days": 365})).status_code == 200
+    missing = await admin_client.get(f"/api/v1/ingredients/{uuid.uuid4()}/price-history")
+    assert missing.status_code == 404
+
+
+async def test_ingredient_history_needs_a_session(client):
+    r = await client.get(f"/api/v1/ingredients/{uuid.uuid4()}/price-history")
+    assert r.status_code == 401
+
+
+async def test_ingredient_history_keeps_the_cheapest_price_of_each_day(admin_client):
+    _, chain_b, indie = await three_locations(admin_client)
+    bag = await make_product(admin_client, "Quinoa", "Quinoa bag", pack_qty="1", pack_unit="kg")
+    noon = (datetime.now(UTC) - timedelta(days=5)).replace(
+        hour=19, minute=0, second=0, microsecond=0
+    )
+    await shelf(admin_client, bag["id"], indie["id"], "8.00", observed_at=noon.isoformat())
+    cheap = await shelf(
+        admin_client,
+        bag["id"],
+        chain_b["id"],
+        "6.00",
+        observed_at=(noon + timedelta(minutes=30)).isoformat(),
+    )
+
+    h = await _history(admin_client, bag["ingredient"]["id"])
+    [point] = h["points"]
+    assert point["observation_id"] == cheap["id"] and point["norm_unit_price"] == "0.006000"
+    # The range still covers every price in the window, not just the daily point.
+    assert (h["low"], h["high"]) == ("0.006000", "0.008000")

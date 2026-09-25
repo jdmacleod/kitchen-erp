@@ -23,6 +23,7 @@ from sqlalchemy.orm import contains_eager, selectinload
 
 from app.core.errors import ApiError
 from app.models.geo import HomeBase, Place, Vendor, VendorLocation, point_expr
+from app.models.purchases import Purchase
 from app.services import osm
 from app.services.opening_hours import OpeningHoursError, is_open_at, normalize_hours, to_household
 
@@ -206,10 +207,37 @@ async def create_vendor(
     return await _load_vendor(db, vendor.id)
 
 
+@dataclass(frozen=True)
+class VendorSummary:
+    """A vendor with what its card shows: active locations and the last committed visit."""
+
+    vendor: Vendor
+    location_count: int
+    last_visit: datetime | None
+
+
 async def list_vendors(
-    db: AsyncSession, *, q: str | None = None, include_inactive: bool = False
-) -> list[Vendor]:
-    stmt = select(Vendor)
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    include_inactive: bool = False,
+    limit: int | None = None,
+) -> list[VendorSummary]:
+    location_count = (
+        select(func.count())
+        .where(VendorLocation.vendor_id == Vendor.id, VendorLocation.active.is_(True))
+        .correlate(Vendor)
+        .scalar_subquery()
+    )
+    # Committed only: a draft or reopened purchase is not a visit yet.
+    last_visit = (
+        select(func.max(Purchase.purchased_at))
+        .join(VendorLocation, VendorLocation.id == Purchase.vendor_location_id)
+        .where(VendorLocation.vendor_id == Vendor.id, Purchase.status == "committed")
+        .correlate(Vendor)
+        .scalar_subquery()
+    )
+    stmt = select(Vendor, location_count, last_visit)
     if not include_inactive:
         stmt = stmt.where(Vendor.active.is_(True))
     needle = (q or "").strip().lower()
@@ -221,8 +249,10 @@ async def list_vendors(
         ).order_by(similarity.desc(), Vendor.name)
     else:
         stmt = stmt.order_by(Vendor.name)
+    if limit is not None:
+        stmt = stmt.limit(limit)
     result = await db.execute(stmt)
-    return list(result.scalars())
+    return [VendorSummary(v, count, visit) for v, count, visit in result.all()]
 
 
 async def get_vendor(db: AsyncSession, vendor_id: uuid.UUID) -> Vendor:

@@ -8,14 +8,14 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
-from app.schemas.catalog import ProductCreate
+from app.schemas.catalog import Categorized, ProductCreate
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import"]
 NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
 BridgeKind = Literal["none", "density", "density_override", "measure", "pack"]
 
 
-class IngredientRef(ApiModel):
+class IngredientRef(Categorized):
     id: uuid.UUID
     name: str
     canonical_unit: str
@@ -130,7 +130,9 @@ class ManualPurchaseIn(ApiModel):
     lines: list[LineIn] = Field(min_length=1)
 
 
-class LineProductRef(ApiModel):
+class LineProductRef(Categorized):
+    """A line's product; ``category`` and ``category_key`` are its ingredient's."""
+
     id: uuid.UUID
     name: str
     brand: str | None

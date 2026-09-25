@@ -253,7 +253,7 @@ async def needs_bridge(db: AsyncSession) -> list[dict]:
             """
             SELECT p.id AS product_id, p.name, p.brand, p.pack_qty, p.pack_unit,
                    i.id AS ingredient_id, i.name AS ingredient_name, i.canonical_unit,
-                   pc.norm_status AS status, count(*) AS observation_count,
+                   i.category, pc.norm_status AS status, count(*) AS observation_count,
                    min(pc.observed_at) AS first_observed_at,
                    max(pc.observed_at) AS latest_observed_at
             FROM price_current pc
@@ -261,7 +261,7 @@ async def needs_bridge(db: AsyncSession) -> list[dict]:
             JOIN ingredient i ON i.id = p.ingredient_id
             WHERE pc.norm_status IS NOT NULL AND pc.norm_status <> 'ok'
             GROUP BY p.id, p.name, p.brand, p.pack_qty, p.pack_unit, i.id, i.name,
-                     i.canonical_unit, pc.norm_status
+                     i.canonical_unit, i.category, pc.norm_status
             ORDER BY latest_observed_at DESC
             """
         )

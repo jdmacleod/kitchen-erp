@@ -12,6 +12,7 @@ from app.schemas.pricebook_views import (
     CheapestOut,
     CompareIn,
     CompareOut,
+    IngredientPriceHistory,
     LocationPanel,
     OfferList,
     ProductHistory,
@@ -55,6 +56,7 @@ def observation_out(o) -> ObservationOut:
                 "id": o.product.ingredient.id,
                 "name": o.product.ingredient.name,
                 "canonical_unit": o.product.ingredient.canonical_unit,
+                "category": o.product.ingredient.category,
             },
         },
         vendor_location={
@@ -148,6 +150,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
                 "id": r["ingredient_id"],
                 "name": r["ingredient_name"],
                 "canonical_unit": r["canonical_unit"],
+                "category": r["category"],
             },
             product={
                 "id": r["product_id"],
@@ -159,6 +162,7 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
                     "id": r["ingredient_id"],
                     "name": r["ingredient_name"],
                     "canonical_unit": r["canonical_unit"],
+                    "category": r["category"],
                 },
             },
             status=r["status"],
@@ -193,6 +197,7 @@ async def purchase_out(db, purchase) -> PurchaseOut:
                     "brand": line.product.brand,
                     "pack_qty": line.product.pack_qty,
                     "pack_unit": line.product.pack_unit,
+                    "category": line.product.ingredient.category,
                 }
                 if line.product is not None
                 else None
@@ -401,6 +406,19 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
 async def product_prices(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ProductHistory:
     await catalog.get_product(db, product_id)
     return ProductHistory(**await pricebook_views.product_history(db, product_id))
+
+
+@router.get("/ingredients/{ingredient_id}/price-history", response_model=IngredientPriceHistory)
+async def ingredient_price_history(
+    ingredient_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    days: int = Query(default=90, ge=1, le=365),
+) -> IngredientPriceHistory:
+    await catalog.get_ingredient(db, ingredient_id)
+    return IngredientPriceHistory(
+        **await pricebook_views.ingredient_history(db, ingredient_id, days)
+    )
 
 
 @router.get("/ingredients/{ingredient_id}/offers", response_model=OfferList)

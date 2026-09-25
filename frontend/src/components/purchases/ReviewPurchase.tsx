@@ -30,6 +30,7 @@ import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Card, Field, focusRing } from "../ui";
 import { ProductPicker } from "./ProductPicker";
+import { CategoryChip } from "../CategoryChip";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm" };
 
@@ -521,9 +522,12 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
         ) : (
           <>
             {line.product ? (
-              <Link to={`/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-                {productTitle(line.product)}
-              </Link>
+              <>
+                <Link to={`/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                  {productTitle(line.product)}
+                </Link>{" "}
+                <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
+              </>
             ) : resolution === "ignored" ? (
               <span className="italic">ignored</span>
             ) : isItem ? (

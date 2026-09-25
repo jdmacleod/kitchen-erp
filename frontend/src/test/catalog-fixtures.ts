@@ -29,6 +29,7 @@ export const flour: Ingredient = {
   id: flourId,
   name: "all-purpose flour",
   category: "pantry",
+  category_key: "pantry",
   canonical_unit: "g",
   density_g_per_ml: null,
   density_source: null,
@@ -46,7 +47,7 @@ export const flourProductId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d01";
 
 export const flourProduct: Product = {
   id: flourProductId,
-  ingredient: { id: flourId, name: flour.name, canonical_unit: "g", active: true },
+  ingredient: { id: flourId, name: flour.name, canonical_unit: "g", active: true, category: "pantry", category_key: "pantry" },
   brand: "Millstone",
   name: "All-Purpose Flour",
   pack_qty: "5",
@@ -84,7 +85,7 @@ export const hits: SearchHit[] = [
     pack_qty: "2",
     pack_unit: "kg",
     quality_rating: null,
-    ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b02", name: "bread flour", canonical_unit: "g", active: true },
+    ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b02", name: "bread flour", canonical_unit: "g", active: true, category: "Baking", category_key: "pantry" },
     match: "ingredient",
     score: "0.6",
   },

@@ -5,8 +5,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, computed_field, model_validator
 
+from app.catalog import categories
+from app.catalog.categories import CategoryKey
 from app.schemas.base import ApiModel, DecimalStr
 
 CanonicalUnit = Literal["g", "ml", "each"]
@@ -84,17 +86,27 @@ class IngredientUpdate(ApiModel):
         return self
 
 
-class IngredientSummary(ApiModel):
+class Categorized(ApiModel):
+    """An ingredient shape that carries its category and the display key for it (D12)."""
+
+    category: str | None
+
+    @computed_field
+    @property
+    def category_key(self) -> CategoryKey | None:
+        return categories.key(self.category)
+
+
+class IngredientSummary(Categorized):
     id: uuid.UUID
     name: str
     canonical_unit: CanonicalUnit
     active: bool
 
 
-class IngredientOut(ApiModel):
+class IngredientOut(Categorized):
     id: uuid.UUID
     name: str
-    category: str | None
     canonical_unit: CanonicalUnit
     density_g_per_ml: DecimalStr | None
     density_source: BridgeSource | None
@@ -193,8 +205,25 @@ class ProductOut(ApiModel):
     updated_at: datetime
 
 
+class LastPaid(ApiModel):
+    """The latest committed purchase of a product: what was paid, where and when."""
+
+    price: DecimalStr
+    qty: DecimalStr
+    unit: str
+    is_promo: bool
+    vendor_id: uuid.UUID
+    vendor_name: str
+    purchase_id: uuid.UUID
+    paid_at: datetime
+
+
+class ProductListItem(ProductOut):
+    last_paid: LastPaid | None = None
+
+
 class ProductList(ApiModel):
-    items: list[ProductOut]
+    items: list[ProductListItem]
     next_cursor: str | None = None
 
 

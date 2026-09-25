@@ -8,6 +8,7 @@ from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.catalog.categories import CategoryKey
 from app.schemas.catalog import (
     ConvertIn,
     ConvertOut,
@@ -143,25 +144,28 @@ async def list_products(
     db: DbSession,
     ingredient_id: uuid.UUID | None = None,
     include_inactive: bool = False,
-    q: str | None = Query(default=None, description="typeahead text; ranks like /products/search"),
+    q: str | None = Query(
+        default=None,
+        min_length=1,
+        max_length=200,
+        description="name, brand, ingredient or barcode; ranks like /products/search, one page",
+    ),
+    category: CategoryKey | None = None,
     barcode: str | None = Query(default=None, description="exact barcode match"),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
 ) -> ProductList:
-    if barcode or q:
-        hits = await catalog.search_products(db, barcode or q or "", limit)
-        if barcode:
-            hits = [h for h in hits if h.barcode == barcode]
-        rows = [await catalog.get_product(db, h.id) for h in hits]
-        return ProductList(items=[ProductOut.model_validate(r) for r in rows], next_cursor=None)
     rows, next_cursor = await catalog.list_products(
         db,
+        barcode=barcode,
         ingredient_id=ingredient_id,
         include_inactive=include_inactive,
+        q=q,
+        category=category,
         limit=limit,
         cursor=cursor,
     )
-    return ProductList(items=[ProductOut.model_validate(r) for r in rows], next_cursor=next_cursor)
+    return ProductList(items=rows, next_cursor=next_cursor)
 
 
 @router.get("/products/search", response_model=SearchOut)

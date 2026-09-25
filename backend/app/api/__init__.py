@@ -1,6 +1,18 @@
 from fastapi import APIRouter
 
-from app.api import api_tokens, auth, catalog, geo, health, inbox, purchases, receipts, units, users
+from app.api import (
+    api_tokens,
+    auth,
+    catalog,
+    geo,
+    health,
+    inbox,
+    purchases,
+    receipts,
+    search,
+    units,
+    users,
+)
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(health.router)
@@ -13,3 +25,4 @@ router.include_router(geo.router)
 router.include_router(purchases.router)
 router.include_router(receipts.router)
 router.include_router(inbox.router)
+router.include_router(search.router)
