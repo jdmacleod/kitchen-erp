@@ -17,7 +17,8 @@ export function ReceiptsPage() {
   const [params] = useSearchParams();
   const pinnedId = params.get("job") ?? undefined;
   const pinned = useIngestJob(pinnedId, false);
-  const listed = (jobs.data ?? []).filter((j) => j.id !== pinnedId);
+  // Listed once: the list drops the job only while the pinned card is showing it.
+  const listed = (jobs.data ?? []).filter((j) => !(pinned.data && j.id === pinned.data.id));
   const fileRef = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState<string | null>(null);
 

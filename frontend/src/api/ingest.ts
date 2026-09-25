@@ -82,6 +82,8 @@ export function useIngestJob(id: string | undefined, includeOutput = true) {
     queryKey: [...ingestKeys.job(id ?? ""), includeOutput],
     queryFn: () => api<IngestJob>(`/ingest-jobs/${enc(id ?? "")}${qs({ include_output: includeOutput })}`),
     enabled: Boolean(id),
+    // Poll while it is in flight, as the list does, so a retried job shows its outcome.
+    refetchInterval: (query) => (query.state.data && jobInFlight(query.state.data) ? 3_000 : false),
   });
 }
 
