@@ -18,7 +18,7 @@ import type { IngredientChoice } from "../../components/catalog/IngredientPicker
 import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, EmptyState, PageHeader, focusRing, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
@@ -141,7 +141,7 @@ export function ProductsPage() {
               type="button"
               aria-pressed={category === null}
               onClick={() => setParam("category", null)}
-              className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm lg:min-h-9 ${focusRing} ${
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm lg:min-h-9 ${focusRing} ${
                 category === null ? "bg-neutral-800 font-medium text-white dark:bg-neutral-200 dark:text-neutral-900" : "text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800"
               }`}
             >
@@ -235,7 +235,7 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
         {items.map((p) => (
           <tr key={p.id}>
             <td className="px-4 py-2 align-top">
-              <Link id={`product-row-${p.id}`} to={`/catalog/products/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+              <Link id={`product-row-${p.id}`} to={`/catalog/products/${p.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                 {p.name}
               </Link>
               {p.active ? null : (

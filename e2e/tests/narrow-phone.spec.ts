@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { login, nextTag } from "./helpers";
 
 // Names carry a per-run, per-worker stamp: repeated runs never collide on the
-// case-insensitive unique index, and neither do the three projects this spec
+// case-insensitive unique index, and neither do the five projects this spec
 // runs in, whose workers start within the same millisecond of each other.
 const stamp = nextTag();
 
@@ -83,4 +83,69 @@ test("the receipt upload and map pages fit the viewport", async ({ page }) => {
   await page.goto("/catalog/vendors?view=map");
   await expect(page.getByRole("region", { name: /vendor locations/i })).toBeVisible();
   await expectNoSidewaysScroll(page, "/catalog/vendors?view=map");
+});
+
+/** Every rendered control under `scope` smaller than 44×44, described for the failure message. */
+async function controlsUnder44(page: import("@playwright/test").Page, scope: string): Promise<string[]> {
+  return page.evaluate((scope) => {
+    const found: string[] = [];
+    const selectors = ["a", "button", "input", "select", "textarea", "[role=option]"];
+    const controls = document.querySelectorAll<HTMLElement>(
+      scope
+        .split(",")
+        .flatMap((root) => selectors.map((sel) => `${root.trim()} ${sel}`))
+        .join(", "),
+    );
+    for (const el of controls) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 && box.height === 0) continue; // not rendered
+      // A checkbox or radio is sized by its label, which is the target.
+      const target = el.matches("input[type=checkbox], input[type=radio]") ? (el.closest("label") ?? el) : el;
+      const t = target.getBoundingClientRect();
+      // Half a pixel of slack: map markers sit on subpixel transforms.
+      if (t.width < 43.5 || t.height < 43.5) {
+        found.push(`<${el.tagName.toLowerCase()}> "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 40)}" ${Math.round(t.width)}×${Math.round(t.height)}`);
+      }
+    }
+    return found;
+  }, scope);
+}
+
+/**
+ * Below lg the shell is the header and tab bar, and every control on the page
+ * is a 44px target (UI-4.1, UI-4.2). Measured on the pages people use in the
+ * store: Home, Purchases and a list page with filters.
+ */
+test("the phone shell shows the tab bar and every control is a 44px target", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "the phone shell is below lg");
+  await login(page);
+  const small: string[] = [];
+
+  const tabs = page.getByRole("navigation", { name: "Tabs" });
+  for (const path of ["/", "/shop/purchases", "/shop/receipts", "/catalog/products", "/catalog/ingredients", "/catalog/vendors", "/settings/kitchens"]) {
+    await page.goto(path);
+    await expect(tabs).toBeVisible();
+    await expect(page.locator("aside")).toBeHidden();
+    await page.waitForLoadState("networkidle");
+    await expectNoSidewaysScroll(page, path);
+
+    const found = await controlsUnder44(page, "header, nav[aria-label=Tabs], main");
+    small.push(...found.map((f) => `${path}: ${f}`));
+  }
+
+  // The overlays render outside main: measure each one open.
+  for (const [tab, dialog] of [["More", "More"], ["Search", "Search"], ["Capture", "Capture"]]) {
+    await tabs.getByRole("button", { name: tab }).click();
+    const open = page.getByRole("dialog", { name: dialog });
+    await expect(open).toBeVisible();
+    if (tab === "Search") {
+      // With results showing, so the option rows are measured too.
+      await page.keyboard.type("e2e");
+      await expect(open.getByRole("option").first()).toBeVisible();
+    }
+    small.push(...(await controlsUnder44(page, "[role=dialog]")).map((f) => `${tab} sheet: ${f}`));
+    await page.keyboard.press("Escape");
+    await expect(open).toBeHidden();
+  }
+  expect(small, "controls under 44px").toEqual([]);
 });

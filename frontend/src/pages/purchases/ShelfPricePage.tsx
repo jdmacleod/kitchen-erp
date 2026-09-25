@@ -157,7 +157,7 @@ export function ShelfPricePage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="inline-flex min-h-10 items-center gap-2 text-sm">
+              <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
                 <input type="checkbox" checked={promo} onChange={(e) => setPromo(e.target.checked)} disabled={busy} className={`size-4 ${focusRing}`} />
                 Sale price
               </label>

@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type PurchaseStatus } from "../../api/purchases";
 import { Badge, SelectField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -70,7 +70,7 @@ export function PurchasesPage() {
                   {items.map((p) => (
                     <tr key={p.id}>
                       <td className="py-2 pr-3 whitespace-nowrap">
-                        <Link to={`/shop/purchases/${p.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                        <Link to={`/shop/purchases/${p.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
                           {formatDate(p.purchased_at)}
                         </Link>
                       </td>

@@ -337,7 +337,7 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
           {measure.confirmed ? null : (
             <Button
               variant="secondary"
-              className="min-h-8 px-2 text-xs"
+              className="min-h-11 lg:min-h-8 px-2 text-xs"
               disabled={busy}
               onClick={() => confirm.mutate(measure.id)}
               aria-label={`Confirm ${measure.label}`}
@@ -347,7 +347,7 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
           )}
           <Button
             variant="ghost"
-            className="min-h-8 px-2 text-xs"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
             disabled={busy}
             onClick={startEdit}
             aria-label={`Edit ${measure.label}`}
@@ -358,20 +358,20 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
             <span className="flex gap-1" role="group" aria-label={`Confirm deleting ${measure.label}`}>
               <Button
                 variant="danger"
-                className="min-h-8 px-2 text-xs"
+                className="min-h-11 lg:min-h-8 px-2 text-xs"
                 disabled={busy}
                 onClick={() => remove.mutate(measure.id, { onSettled: () => setDeleting(false) })}
               >
                 {remove.isPending ? "Deleting…" : "Confirm delete"}
               </Button>
-              <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={() => setDeleting(false)}>
+              <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setDeleting(false)}>
                 Cancel
               </Button>
             </span>
           ) : (
             <Button
               variant="danger"
-              className="min-h-8 px-2 text-xs"
+              className="min-h-11 lg:min-h-8 px-2 text-xs"
               disabled={busy}
               onClick={() => setDeleting(true)}
               aria-label={`Delete ${measure.label}`}

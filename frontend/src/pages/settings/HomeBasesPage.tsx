@@ -122,20 +122,20 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(home.lat, home.lon)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${home.name}`}>
+          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${home.name}`}>
             Edit
           </Button>
           {confirming ? (
             <span className="flex gap-2" role="group" aria-label={`Confirm deleting ${home.name}`}>
-              <Button variant="danger" className="min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(home.id, { onSettled: () => setConfirming(false) })}>
+              <Button variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(home.id, { onSettled: () => setConfirming(false) })}>
                 {remove.isPending ? "Deleting…" : "Confirm delete"}
               </Button>
-              <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={() => setConfirming(false)}>
+              <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(false)}>
                 Cancel
               </Button>
             </span>
           ) : (
-            <Button variant="danger" className="min-h-8 px-2 text-xs" onClick={() => setConfirming(true)} aria-label={`Delete ${home.name}`}>
+            <Button variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(true)} aria-label={`Delete ${home.name}`}>
               Delete
             </Button>
           )}

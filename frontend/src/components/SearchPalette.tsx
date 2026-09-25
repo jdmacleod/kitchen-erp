@@ -76,7 +76,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const showResults = current && flat.length > 0;
 
   return (
-    <Dialog open onClose={onClose} labelledBy={`${ids}-title`} initialFocus={input} returnFocus={returnFocus}>
+    <Dialog open onClose={onClose} labelledBy={`${ids}-title`} placement="screen" initialFocus={input} returnFocus={returnFocus}>
       <h2 id={`${ids}-title`} className="sr-only">
         Search
       </h2>
@@ -99,14 +99,18 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder="Search"
-          className={`my-2 min-h-10 w-full rounded-md bg-transparent px-1 text-base placeholder:text-neutral-500 ${focusRing}`}
+          className={`my-2 min-h-11 lg:min-h-10 w-full rounded-md bg-transparent px-1 text-base placeholder:text-neutral-500 ${focusRing}`}
         />
-        <kbd className="shrink-0 rounded border border-neutral-300 px-1.5 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400">
+        {/* A phone has no Escape key: the full-screen palette closes here. */}
+        <Button variant="ghost" className="shrink-0 lg:hidden" onClick={onClose}>
+          Cancel
+        </Button>
+        <kbd className="hidden shrink-0 rounded border border-neutral-300 px-1.5 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400 lg:inline">
           Esc
         </kbd>
       </div>
 
-      <div className="max-h-[60vh] overflow-y-auto p-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2 lg:max-h-[60vh]">
         {!typed ? (
           <p className={`px-2 py-3 ${muted}`}>Type a product, ingredient, vendor or barcode.</p>
         ) : search.isError ? (
@@ -164,7 +168,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      <p className={`hidden border-t border-neutral-200 px-4 py-2 text-xs sm:block dark:border-neutral-800 ${muted}`}>
+      <p className={`hidden border-t border-neutral-200 px-4 py-2 text-xs lg:block dark:border-neutral-800 ${muted}`}>
         ↑ ↓ to move · Enter to open · Esc to close
       </p>
     </Dialog>

@@ -6,7 +6,7 @@ import { useInbox } from "../../api/inbox";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
 import { useChrome } from "../chrome";
-import { Alert, Button, Card, secondaryLinkClass } from "../ui";
+import { Alert, Button, Card, focusRing, secondaryLinkClass, tapTarget } from "../ui";
 
 const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   receipt: { label: "Receipt", tone: "neutral" },
@@ -130,7 +130,7 @@ export function ReadingLine() {
     return (
       <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
         Reading is taking longer than usual ·{" "}
-        <Link to="/settings/system" className="font-medium underline">
+        <Link to="/settings/system" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
           Check System
         </Link>
       </p>

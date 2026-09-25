@@ -29,7 +29,7 @@ export function SegmentedControl<T extends string>({
           type="button"
           aria-pressed={o.value === value}
           onClick={() => onChange(o.value)}
-          className={`inline-flex min-h-11 items-center rounded-md px-3 text-sm lg:min-h-9 ${focusRing} ${
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-md px-3 text-sm lg:min-h-9 ${focusRing} ${
             o.value === value
               ? "bg-white font-medium text-neutral-900 shadow-sm dark:bg-neutral-950 dark:text-neutral-100"
               : "text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100"

@@ -19,7 +19,7 @@ import {
 } from "../../api/catalog";
 import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CATEGORY_KEYS, CategoryChip } from "../../components/CategoryChip";
@@ -158,7 +158,7 @@ export function IngredientsPage() {
 function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link id={`ingredient-row-${ingredient.id}`} to={`/catalog/ingredients/${ingredient.id}`} className={`rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
+      <Link id={`ingredient-row-${ingredient.id}`} to={`/catalog/ingredients/${ingredient.id}`} className={`${tapTarget} rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
         {ingredient.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">

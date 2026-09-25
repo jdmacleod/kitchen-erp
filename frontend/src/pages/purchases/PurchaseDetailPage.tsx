@@ -72,7 +72,7 @@ export function PurchaseDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
             <span className="text-sm text-neutral-600 dark:text-neutral-400">{sourceLabel[p.source]}</span>
-            <Link to="/shop/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+            <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
               All purchases
             </Link>
           </div>
@@ -118,7 +118,7 @@ function CommittedPurchase({
           <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
             {reopen.isPending ? "Reopening…" : "Reopen"}
           </Button>
-          <Link to="/shop/purchases" className={`inline-flex min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+          <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
             All purchases
           </Link>
         </div>

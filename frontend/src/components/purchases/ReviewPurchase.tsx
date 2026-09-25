@@ -422,7 +422,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
               <li key={c.location_id}>
                 <Button
                   variant={form.vendor_location_id === c.location_id ? "primary" : "secondary"}
-                  className="min-h-8 px-2 text-xs"
+                  className="min-h-11 lg:min-h-8 px-2 text-xs"
                   onClick={() => set("vendor_location_id", c.location_id)}
                   aria-pressed={form.vendor_location_id === c.location_id}
                 >
@@ -544,7 +544,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
         {picking ? (
           <div className="flex flex-col gap-1">
             <ProductPicker id={`review-pick-${line.id}`} label={`Product for line ${line.seq}`} hideLabel value={null} onChange={(p) => p && onChoose(p.id)} disabled={busy} />
-            <Button variant="ghost" className="min-h-8 self-start px-2 text-xs" onClick={onClosePicker}>
+            <Button variant="ghost" className="min-h-11 lg:min-h-8 self-start px-2 text-xs" onClick={onClosePicker}>
               Cancel
             </Button>
           </div>
@@ -592,7 +592,7 @@ function ReviewLine({ line, itemLines, current, picking, editing, busy, onFocus,
                   value={line.parent_line_id ?? ""}
                   disabled={busy}
                   onChange={(e) => onPatch(e.target.value ? { parent_line_id: e.target.value } : { clear_parent: true })}
-                  className={`min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+                  className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-1 text-xs dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
                 >
                   <option value="">nothing</option>
                   {itemLines.map((i) => (
@@ -695,10 +695,10 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
         </SelectField>
       </div>
       <div className="flex gap-1">
-        <Button className="min-h-8 px-2 text-xs" disabled={busy} onClick={save}>
+        <Button className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={busy} onClick={save}>
           Save line
         </Button>
-        <Button variant="secondary" className="min-h-8 px-2 text-xs" onClick={onCancel}>
+        <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={onCancel}>
           Cancel
         </Button>
       </div>

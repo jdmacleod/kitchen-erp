@@ -20,7 +20,7 @@ import {
   type VendorKind,
 } from "../../api/geo";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, tapTarget } from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
 import { Drawer } from "../../components/Drawer";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -224,7 +224,7 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
   return (
     <li data-testid="vendor-card" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
       <div className="flex items-start justify-between gap-2">
-        <Link id={`vendor-row-${vendor.id}`} to={`/catalog/vendors/${vendor.id}`} className={`font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}>
+        <Link id={`vendor-row-${vendor.id}`} to={`/catalog/vendors/${vendor.id}`} className={`${tapTarget} font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}>
           {vendor.name}
         </Link>
         <Badge>{vendorKindLabel[vendor.kind]}</Badge>
@@ -354,7 +354,7 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
     return (
       <p className={`text-sm ${muted}`}>
         Finding nearby shops starts from one of your kitchens. Add one first, under{" "}
-        <Link to="/settings/kitchens" className={`rounded font-medium underline ${focusRing}`}>
+        <Link to="/settings/kitchens" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
           Settings → Kitchens
         </Link>
         .
@@ -449,7 +449,7 @@ function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandida
             <label htmlFor={selectId} className="text-xs font-medium">
               Kind
             </label>
-            <select id={selectId} value={kind} onChange={(e) => setKind(e.target.value as VendorKind)} className={`min-h-8 rounded-md border border-neutral-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
+            <select id={selectId} value={kind} onChange={(e) => setKind(e.target.value as VendorKind)} className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
               {VENDOR_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {vendorKindLabel[k]}
@@ -459,7 +459,7 @@ function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandida
           </div>
           <Button
             variant="secondary"
-            className="min-h-8 px-2"
+            className="min-h-11 lg:min-h-8 px-2"
             disabled={adopt.isPending}
             aria-label={`Adopt ${name}`}
             onClick={() => adopt.mutate({ osm_type: candidate.osm_type, osm_id: candidate.osm_id, home_base_id: homeBaseId, radius_m: radius, vendor_kind: kind })}

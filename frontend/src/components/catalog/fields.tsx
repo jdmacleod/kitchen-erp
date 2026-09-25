@@ -2,7 +2,7 @@ import { useId, useState, type ReactNode, type SelectHTMLAttributes, type Textar
 import { focusRing } from "../ui";
 
 /** The input chrome shared by Field, selects, and textareas. */
-export const inputClass = `min-w-0 min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`;
+export const inputClass = `min-w-0 min-h-11 lg:min-h-10 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 placeholder:text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`;
 
 export const labelClass = "text-sm font-medium";
 export const hintClass = "text-xs text-neutral-600 dark:text-neutral-400";
@@ -79,7 +79,7 @@ export function RadioGroup<V extends string>({ name, legend, options, value, onC
       <legend className={labelClass}>{legend}</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {options.map((option) => (
-          <label key={option.value} className="inline-flex min-h-10 items-center gap-2 text-sm">
+          <label key={option.value} className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
             <input
               type="radio"
               name={name}

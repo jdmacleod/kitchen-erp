@@ -11,8 +11,10 @@ interface DialogProps {
   /**
    * "center" is a dialog in the middle of the screen. "sheet" rises from the bottom
    * below lg (1024px, G19) and becomes a small centred dialog at lg and wider (G14).
+   * "screen" fills the screen below lg (the Search tab, docs/spec/09) and is a
+   * dialog in the middle of the screen at lg and wider.
    */
-  placement?: "center" | "sheet";
+  placement?: "center" | "sheet" | "screen";
   /** Where focus goes on open; the first focusable element otherwise. */
   initialFocus?: RefObject<HTMLElement | null>;
   /** Set to false before closing by navigating, so focus goes to the new page. */
@@ -84,14 +86,16 @@ export function Dialog({ open, onClose, labelledBy, placement = "center", initia
 
   if (!open) return null;
 
-  const position =
-    placement === "sheet"
-      ? "items-end lg:items-center lg:justify-center"
-      : "items-start justify-center pt-[12vh] px-4";
-  const shape =
-    placement === "sheet"
-      ? "w-full rounded-t-2xl lg:w-[28rem] lg:rounded-xl"
-      : "w-full max-w-[40rem] rounded-xl";
+  const position = {
+    sheet: "items-end lg:items-center lg:justify-center",
+    screen: "lg:items-start lg:justify-center lg:px-4 lg:pt-[12vh]",
+    center: "items-start justify-center pt-[12vh] px-4",
+  }[placement];
+  const shape = {
+    sheet: "w-full rounded-t-2xl lg:w-[28rem] lg:rounded-xl",
+    screen: "flex h-dvh w-full flex-col pt-[env(safe-area-inset-top)] lg:block lg:h-auto lg:max-w-[40rem] lg:rounded-xl lg:pt-0",
+    center: "w-full max-w-[40rem] rounded-xl",
+  }[placement];
 
   return (
     <div className={`fixed inset-0 z-50 flex ${position}`}>

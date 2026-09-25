@@ -17,7 +17,7 @@ export function RatingInput({ name, legend = "Quality rating", value, onChange, 
     <fieldset className="flex flex-col gap-1" aria-describedby={hint ? hintId : undefined}>
       <legend className={labelClass}>{legend}</legend>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <label className="inline-flex min-h-10 items-center gap-1.5 text-sm">
+        <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-1.5 text-sm">
           <input
             type="radio"
             name={name}
@@ -30,7 +30,7 @@ export function RatingInput({ name, legend = "Quality rating", value, onChange, 
           none
         </label>
         {[1, 2, 3, 4, 5].map((n) => (
-          <label key={n} className="inline-flex min-h-10 items-center gap-1.5 text-sm">
+          <label key={n} className="inline-flex min-h-11 lg:min-h-10 items-center gap-1.5 text-sm">
             <input
               type="radio"
               name={name}
