@@ -25,6 +25,35 @@ async function mapReady() {
 }
 
 describe("map", () => {
+  it("says so when the map itself fails, instead of rendering an empty frame", async () => {
+    // A tile-parsing worker that never starts (#27) makes every tile fail to
+    // parse and renders nothing at all. Before this, nothing on the page said
+    // anything -- the map was simply blank, which is why the bug survived.
+    mockApi(baseRoutes(() => [chainLocation]));
+    renderApp("/map");
+    const map = await mapReady();
+
+    act(() => map.fire("error", { error: new Error("Failed to load worker") }));
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/The map could not finish loading/);
+    expect(alert).toHaveTextContent(/Reload the page/);
+    expect(alert).toHaveTextContent(/map_error: Failed to load worker/);
+  });
+
+  it("says the map failed only once, however many tiles fail", async () => {
+    mockApi(baseRoutes(() => [chainLocation]));
+    renderApp("/map");
+    const map = await mapReady();
+
+    act(() => map.fire("error", { error: new Error("first") }));
+    act(() => map.fire("error", { error: new Error("second") }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]).toHaveTextContent(/map_error: first/);
+  });
+
   it("says tiles are missing when HEAD returns 404 and still places the pins", async () => {
     mockApi(baseRoutes(() => [chainLocation, marketLocation, stallLocation]));
     renderApp("/map");

@@ -10,6 +10,7 @@ export function HomeBasesPage() {
   usePageTitle("Home bases");
   const homeBases = useHomeBases();
   const [tilesPresent, setTilesPresent] = useState<boolean | null>(null);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ lat: string; lon: string } | null>(null);
   const [name, setName] = useState("");
   const [label, setLabel] = useState("");
@@ -54,7 +55,8 @@ export function HomeBasesPage() {
               Click the map where the base is, then give it a name. New vendor locations default to the nearest base.
             </p>
             {tilesPresent === false ? <Alert tone="info">Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates.</Alert> : null}
-            <MapView label="Home bases" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} />
+            {mapError ? <Alert tone="error">{mapError}</Alert> : null}
+            <MapView label="Home bases" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
             <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
               {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map."}
             </p>

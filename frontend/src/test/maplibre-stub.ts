@@ -81,6 +81,8 @@ export class NavigationControl {}
 
 export const addProtocol = vi.fn();
 
+export const setWorkerUrl = vi.fn();
+
 /** Every map created and not yet removed, oldest first. */
 export const instances: MapStub[] = [];
 
