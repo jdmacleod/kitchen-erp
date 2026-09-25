@@ -1730,6 +1730,122 @@
         "title": "IngredientOut",
         "type": "object"
       },
+      "IngredientPriceHistory": {
+        "additionalProperties": false,
+        "description": "Normalized prices for the ingredient hub's sparkline and range (D22), oldest first.",
+        "properties": {
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/IngredientPricePoint"
+            },
+            "title": "Points",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days",
+          "points",
+          "low",
+          "high"
+        ],
+        "title": "IngredientPriceHistory",
+        "type": "object"
+      },
+      "IngredientPricePoint": {
+        "additionalProperties": false,
+        "properties": {
+          "is_promo": {
+            "title": "Is Promo",
+            "type": "boolean"
+          },
+          "location_id": {
+            "format": "uuid",
+            "title": "Location Id",
+            "type": "string"
+          },
+          "norm_unit": {
+            "title": "Norm Unit",
+            "type": "string"
+          },
+          "norm_unit_price": {
+            "title": "Norm Unit Price",
+            "type": "string"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "observation_id",
+          "observed_at",
+          "norm_unit_price",
+          "norm_unit",
+          "is_promo",
+          "source",
+          "product_id",
+          "product_name",
+          "location_id",
+          "vendor_id",
+          "vendor_name"
+        ],
+        "title": "IngredientPricePoint",
+        "type": "object"
+      },
       "IngredientRef": {
         "additionalProperties": false,
         "properties": {
@@ -8362,6 +8478,61 @@
           }
         },
         "summary": "Ingredient Offers",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/price-history": {
+      "get": {
+        "operationId": "ingredient_price_history_api_v1_ingredients__ingredient_id__price_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 365,
+              "minimum": 1,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientPriceHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredient Price History",
         "tags": [
           "purchases"
         ]

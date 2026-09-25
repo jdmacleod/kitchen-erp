@@ -12,6 +12,7 @@ from app.schemas.pricebook_views import (
     CheapestOut,
     CompareIn,
     CompareOut,
+    IngredientPriceHistory,
     LocationPanel,
     OfferList,
     ProductHistory,
@@ -405,6 +406,19 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
 async def product_prices(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ProductHistory:
     await catalog.get_product(db, product_id)
     return ProductHistory(**await pricebook_views.product_history(db, product_id))
+
+
+@router.get("/ingredients/{ingredient_id}/price-history", response_model=IngredientPriceHistory)
+async def ingredient_price_history(
+    ingredient_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    days: int = Query(default=90, ge=1, le=365),
+) -> IngredientPriceHistory:
+    await catalog.get_ingredient(db, ingredient_id)
+    return IngredientPriceHistory(
+        **await pricebook_views.ingredient_history(db, ingredient_id, days)
+    )
 
 
 @router.get("/ingredients/{ingredient_id}/offers", response_model=OfferList)

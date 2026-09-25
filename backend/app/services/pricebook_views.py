@@ -109,6 +109,48 @@ async def product_history(db: AsyncSession, product_id: uuid.UUID) -> dict[str, 
     }
 
 
+_INGREDIENT_HISTORY_SQL = text(
+    """
+    SELECT pc.observation_id, pc.observed_at, pc.norm_unit_price, pc.norm_unit, pc.is_promo,
+           pc.source, p.id AS product_id, p.name AS product_name,
+           vl.id AS location_id, v.id AS vendor_id, v.name AS vendor_name
+    FROM price_current pc
+    JOIN product p ON p.id = pc.product_id AND p.active
+    JOIN vendor_location vl ON vl.id = pc.vendor_location_id
+    JOIN vendor v ON v.id = vl.vendor_id
+    LEFT JOIN purchase_line pl ON pl.id = pc.purchase_line_id
+    LEFT JOIN purchase pu ON pu.id = pl.purchase_id
+    WHERE p.ingredient_id = CAST(:iid AS uuid)
+      AND pc.observed_at >= CAST(:since AS timestamptz)
+      AND pc.norm_unit_price IS NOT NULL
+      AND (pc.purchase_line_id IS NULL OR pu.status = 'committed')
+    ORDER BY pc.observed_at, pc.observation_id
+    """
+)
+
+
+async def ingredient_history(
+    db: AsyncSession, ingredient_id: uuid.UUID, days: int
+) -> dict[str, Any]:
+    """Normalized unit prices of an ingredient's active products over the last ``days``.
+
+    Voided observations are already gone from ``price_current``. A price that
+    can't be compared has no normalized value and is left out (G8). Only shelf
+    prices and committed purchases count: a draft or reopened purchase is not
+    settled yet, and its prices may still change.
+    """
+    since = datetime.now(UTC) - timedelta(days=days)
+    rows = await db.execute(_INGREDIENT_HISTORY_SQL, {"iid": ingredient_id, "since": since})
+    points = [_row(r) for r in rows.mappings()]
+    prices = [pt["norm_unit_price"] for pt in points]
+    return {
+        "days": days,
+        "points": points,
+        "low": min(prices, default=None),
+        "high": max(prices, default=None),
+    }
+
+
 async def ingredient_offers(
     db: AsyncSession,
     ingredient_id: uuid.UUID,
