@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import { login, nextTag } from "./helpers";
 
 // Names carry a per-run, per-worker stamp: repeated runs never collide on the
-// case-insensitive unique index, and neither do the three projects this spec
+// case-insensitive unique index, and neither do the five projects this spec
 // runs in, whose workers start within the same millisecond of each other.
 const stamp = nextTag();
 
@@ -83,4 +83,44 @@ test("the receipt upload and map pages fit the viewport", async ({ page }) => {
   await page.goto("/catalog/vendors?view=map");
   await expect(page.getByRole("region", { name: /vendor locations/i })).toBeVisible();
   await expectNoSidewaysScroll(page, "/catalog/vendors?view=map");
+});
+
+/**
+ * Below lg the shell is the header and tab bar, and every control on the page
+ * is a 44px target (UI-4.1, UI-4.2). Measured on the pages people use in the
+ * store: Home, Purchases and a list page with filters.
+ */
+test("the phone shell shows the tab bar and every control is a 44px target", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name === "desktop", "the phone shell is below lg");
+  await login(page);
+  const small: string[] = [];
+
+  const tabs = page.getByRole("navigation", { name: "Tabs" });
+  for (const path of ["/", "/shop/purchases", "/shop/receipts", "/catalog/products", "/catalog/ingredients", "/catalog/vendors", "/settings/kitchens"]) {
+    await page.goto(path);
+    await expect(tabs).toBeVisible();
+    await expect(page.locator("aside")).toBeHidden();
+    await page.waitForLoadState("networkidle");
+    await expectNoSidewaysScroll(page, path);
+
+    const found = await page.evaluate(() => {
+      const found: string[] = [];
+      const controls = document.querySelectorAll<HTMLElement>(
+        "header a, header button, nav[aria-label=Tabs] a, nav[aria-label=Tabs] button, main a, main button, main input, main select, main textarea",
+      );
+      for (const el of controls) {
+        const box = el.getBoundingClientRect();
+        if (box.width === 0 && box.height === 0) continue; // not rendered
+        // A checkbox or radio is sized by its label, which is the target.
+        const target = el.matches("input[type=checkbox], input[type=radio]") ? (el.closest("label") ?? el) : el;
+        const t = target.getBoundingClientRect();
+        if (t.width < 44 || t.height < 44) {
+          found.push(`<${el.tagName.toLowerCase()}> "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 40)}" ${Math.round(t.width)}×${Math.round(t.height)}`);
+        }
+      }
+      return found;
+    });
+    small.push(...found.map((f) => `${path}: ${f}`));
+  }
+  expect(small, "controls under 44px").toEqual([]);
 });

@@ -16,11 +16,11 @@ import { login } from "./helpers";
 test("the sidebar names the build this stack was made from", async ({ page }) => {
   await login(page);
 
-  // On a phone the footer lives in the drawer, one tap away, and the desktop
-  // sidebar is still in the DOM behind `hidden md:flex`. Match the visible one
-  // so the spec covers both projects without a strict-mode collision.
-  const menu = page.getByRole("button", { name: "Menu" });
-  if (await menu.isVisible()) await menu.click();
+  // On a phone the status line lives in the More sheet, one tap away, and the
+  // desktop sidebar is still in the DOM behind `hidden lg:flex`. Match the
+  // visible one so the spec covers every project without a strict-mode collision.
+  const more = page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: "More" });
+  if (await more.isVisible()) await more.click();
 
   const line = page.locator('[data-testid="build-identity"]:visible');
   await expect(line).toBeVisible();

@@ -16,7 +16,7 @@ test("admin logs in and lands on the home route with no external requests", asyn
   // one backend and other specs create purchases in parallel, so whether this
   // household is "set up" flips mid-run. `home.spec.ts` seeds its own data to
   // assert the set-up branch deterministically.
-  // The phone project keeps the sidebar behind a menu, so the main landmark is
+  // The phone projects replace the sidebar with the tab bar, so the main landmark is
   // the one marker of the authenticated shell that holds at both viewports.
   await expect(page).toHaveURL(new URL("/", baseURL!).toString());
   await expect(page.getByRole("main")).toBeVisible();
