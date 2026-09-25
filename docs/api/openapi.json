@@ -1732,7 +1732,7 @@
       },
       "IngredientPriceHistory": {
         "additionalProperties": false,
-        "description": "Normalized prices for the ingredient hub's sparkline and range (D22), oldest first.",
+        "description": "Normalized prices for the ingredient hub's sparkline and range (D22).\n\nOne point per day, oldest first: that day's cheapest price. ``low`` and ``high``\ncover every price in the window.",
         "properties": {
           "days": {
             "title": "Days",
