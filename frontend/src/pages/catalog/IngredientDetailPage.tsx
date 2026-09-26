@@ -119,7 +119,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           >
             {setActive.isPending ? "Saving…" : ingredient.active ? "Deactivate" : "Activate"}
           </Button>
-          <Link to="/shop/shelf-prices" className={primaryLinkClass}>
+          <Link to="/shop/shelf-prices" state={{ from: `/catalog/ingredients/${ingredient.id}` }} className={primaryLinkClass}>
             Log shelf price
           </Link>
         </div>
@@ -140,7 +140,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           <EmptyState
             title="No prices yet"
             action={
-              <Link to="/shop/shelf-prices" className={primaryLinkClass}>
+              <Link to="/shop/shelf-prices" state={{ from: `/catalog/ingredients/${ingredient.id}` }} className={primaryLinkClass}>
                 Log shelf price
               </Link>
             }

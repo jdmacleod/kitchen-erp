@@ -162,7 +162,7 @@ export function Combobox<T>({
                 aria-selected={index === active}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => select(item)}
-                className={`cursor-pointer px-3 py-2 text-sm ${
+                className={`flex min-h-11 cursor-pointer flex-col justify-center px-3 py-2 text-sm lg:block lg:min-h-0 ${
                   index === active ? "bg-neutral-200 dark:bg-neutral-800" : ""
                 }`}
               >

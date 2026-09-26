@@ -28,6 +28,13 @@ function initials(name: string): string {
 type Overlay = "search" | "capture" | "more" | null;
 
 /**
+ * Task screens: below lg they take the whole screen, with their own back button
+ * and a footer in the thumb zone, so the header and tab bar step aside (10, Phone:
+ * shelf price).
+ */
+const TASK_PATHS = new Set(["/shop/shelf-prices"]);
+
+/**
  * Authenticated layout. At lg (1024px) and wider: a fixed sidebar. Below lg
  * (G19): a slim header with the wordmark and avatar, and the bottom tab bar.
  * Only the shell changes at lg; pages keep their own breakpoints (09).
@@ -35,6 +42,7 @@ type Overlay = "search" | "capture" | "more" | null;
 export function AppShell() {
   const user = useCurrentUser();
   const location = useLocation();
+  const task = TASK_PATHS.has(location.pathname);
   // One overlay at a time: opening one replaces whichever is up. Each remembers
   // the history entry it was opened on, so any navigation (a link, Back,
   // Forward) closes it without an effect.
@@ -74,7 +82,7 @@ export function AppShell() {
       </a>
 
       {/* Phone and tablet header (10, Phone: home) */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-neutral-200 bg-neutral-50/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95">
+      <header className={`sticky top-0 z-30 ${task ? "hidden" : "flex"} items-center justify-between border-b border-neutral-200 bg-neutral-50/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95`}>
         <Link to="/" className={`font-display flex min-h-11 items-center rounded-md text-lg font-semibold ${focusRing}`}>
           Kitchen ERP
         </Link>
@@ -107,11 +115,14 @@ export function AppShell() {
         </div>
       </aside>
 
-      {/* Below lg the tab bar covers the bottom 84px, so the page ends above it. */}
+      {/* Below lg the tab bar covers the bottom 84px, so the page ends above it.
+          A task screen has no header, so it clears the top safe area itself. */}
       <main
         id="main"
         tabIndex={-1}
-        className="mx-auto w-full max-w-4xl flex-1 px-4 pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))] md:px-8 lg:py-8"
+        className={`mx-auto w-full max-w-4xl flex-1 px-4 md:px-8 lg:py-8 ${
+          task ? "pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6" : "pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+        }`}
       >
         <ChromeContext.Provider value={chrome}>
           <NoticeProvider>
@@ -120,12 +131,14 @@ export function AppShell() {
         </ChromeContext.Provider>
       </main>
 
-      <TabBar
+      {task ? null : (
+        <TabBar
         onCapture={() => setOverlay("capture")}
         onSearch={() => setOverlay("search")}
         onMore={() => setOverlay(overlay === "more" ? null : "more")}
         moreOpen={overlay === "more"}
-      />
+        />
+      )}
 
       {overlay === "search" ? <SearchPalette onClose={close} /> : null}
       {overlay === "capture" ? <CaptureSheet onClose={close} /> : null}
