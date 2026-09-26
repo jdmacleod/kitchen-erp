@@ -138,22 +138,27 @@ async def test_typeahead_under_100ms_with_5000_products(
         r = await admin_client.get("/api/v1/products/search", params={"q": q})
         assert r.status_code == 200 and r.json()["items"], q
 
-    # Latency, measured so that load elsewhere on the machine cannot decide the
-    # result (#36): each query is timed REPEATS times and judged by its median,
-    # which one descheduled request cannot move, and the bar applies to the
-    # slowest query's median. A real regression slows every repeat; a busy
-    # Docker build in another terminal slows a few.
-    repeats = 7
-    medians = {}
-    for q in queries:
-        samples = []
-        for _ in range(repeats):
-            started = time.perf_counter()
-            await admin_client.get("/api/v1/products/search", params={"q": q})
-            samples.append((time.perf_counter() - started) * 1000)
-        medians[q] = statistics.median(samples)
-    slowest = max(medians, key=medians.get)
-    assert medians[slowest] < 100, f"median {medians[slowest]:.1f} ms for {slowest!r}: {medians}"
+    # Latency, as spec 03 states it: p95 under 100 ms, over every measured
+    # request, each of which must also have answered correctly. A burst of load
+    # elsewhere on the machine (#36) can push one round's p95 over the bar, so
+    # a second full round is measured before failing: a real regression slows
+    # both rounds, a busy Docker build in another terminal rarely both.
+    async def measured_p95() -> float:
+        timings = []
+        for _ in range(7):
+            for q in queries:
+                started = time.perf_counter()
+                r = await admin_client.get("/api/v1/products/search", params={"q": q})
+                timings.append((time.perf_counter() - started) * 1000)
+                assert r.status_code == 200 and r.json()["items"], q
+        return statistics.quantiles(timings, n=20)[18]
+
+    rounds = [await measured_p95()]
+    if rounds[0] >= 100:
+        rounds.append(await measured_p95())
+    assert min(rounds) < 100, f"p95 over {len(rounds)} round(s): " + ", ".join(
+        f"{p:.1f} ms" for p in rounds
+    )
     barcode = (
         await admin_client.get("/api/v1/products/search", params={"q": SAMPLE_BARCODE})
     ).json()["items"]
