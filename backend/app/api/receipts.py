@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.errors import ApiError
@@ -24,7 +24,7 @@ from app.schemas.receipts import (
     ReceiptUploadOut,
     StageResultOut,
 )
-from app.services import ingest
+from app.services import ingest, receipt_images
 
 router = APIRouter(tags=["receipts"])
 
@@ -100,17 +100,30 @@ async def get_receipt(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> 
     return ReceiptDocumentOut.from_model(await ingest.get_document(db, document_id))
 
 
-@router.get("/receipts/{document_id}/image")
-async def get_receipt_image(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> FileResponse:
+_IMAGE_HEADERS = {"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"}
+
+
+@router.get("/receipts/{document_id}/image", response_model=None)
+async def get_receipt_image(
+    document_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    width: Annotated[
+        int | None, Query(ge=receipt_images.THUMB_MIN, le=receipt_images.THUMB_MAX)
+    ] = None,
+) -> FileResponse | Response:
+    """The receipt as a browser can show it: the original, or page 1 as PNG (#30).
+
+    `width` asks for a PNG no wider than that, for a thumbnail in a list (#28).
+    """
     document = await ingest.get_document(db, document_id)
     path = document_path(document)
     if not path.is_file():
         raise ApiError(404, "image_missing", "The stored image is missing.")
-    return FileResponse(
-        path,
-        media_type=document.mime,
-        headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"},
-    )
+    shown = await receipt_images.displayable(path, document.mime, width)
+    if shown.path is not None:
+        return FileResponse(shown.path, media_type=shown.media_type, headers=_IMAGE_HEADERS)
+    return Response(content=shown.content, media_type=shown.media_type, headers=_IMAGE_HEADERS)
 
 
 @router.get("/ingest-jobs", response_model=IngestJobList)

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { Link } from "react-router";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
 import { useLocations } from "../../api/geo";
-import { locationCandidates, receiptImageUrl, useIngestJob, useIngestJobs } from "../../api/ingest";
+import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
 import {
   LINE_KINDS,
   isQuietLine,
@@ -32,6 +32,7 @@ import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
 import { ProductPicker } from "./ProductPicker";
+import { ReceiptImage } from "./ReceiptImage";
 import { CategoryChip } from "../CategoryChip";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
@@ -291,8 +292,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" : ""}`}>
         {purchase.receipt_document_id ? (
           <Disclosure summary="Receipt image" defaultOpen className="md:sticky md:top-4 md:self-start">
-            <img
-              src={receiptImageUrl(purchase.receipt_document_id)}
+            <ReceiptImage
+              documentId={purchase.receipt_document_id}
               alt="The receipt as photographed"
               className="max-h-[80dvh] w-full rounded-md border border-neutral-200 object-contain dark:border-neutral-800"
             />
