@@ -40,9 +40,12 @@
   }
 }
 /* Price labels for the "where is this cheapest" layer, drawn under the pin. */
-.kerp-pin {
-  position: relative;
-}
+/* No position here: MapLibre's .maplibregl-marker is position: absolute, which
+   is what places each pin at its coordinates, and it already anchors the price
+   label below. A "position: relative" here once overrode it (this sheet loads
+   after MapLibre's), which put every pin in normal flow, 36px lower for each
+   pin before it, so with a few hundred pins they were drawn far below the map
+   (#24). */
 .kerp-pin__label {
   display: none;
   position: absolute;

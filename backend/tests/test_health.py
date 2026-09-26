@@ -3,18 +3,41 @@ import pytest
 
 from app.api import health as health_api
 from app.core.config import DEV_VERSION, UNKNOWN_COMMIT, Settings, get_settings, is_dev_build
+from app.schemas.health import Check
+from app.services import health as health_service
 
 
-async def test_health_public_is_status_only(client: httpx.AsyncClient):
+@pytest.fixture(params=["up", "down"])
+def model_server(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    """The model server's state, set by the test rather than inherited from the host.
+
+    With Ollama running, as Phase 2 ingest expects, the real probe says ok; on CI
+    or a laptop without it, degraded. Each test runs both ways instead of
+    passing only in whichever state the machine happens to be in (#32).
+    """
+    up = request.param == "up"
+
+    async def probe() -> Check:
+        if up:
+            return Check(status="ok", detail={"model": "stub", "model_present": True})
+        return Check(status="degraded", detail={"error": "ConnectError", "model": "stub"})
+
+    monkeypatch.setattr(health_service, "check_model_server", probe)
+    return request.param
+
+
+async def test_health_public_is_status_only(client: httpx.AsyncClient, model_server: str):
     r = await client.get("/api/v1/health")
     assert r.status_code == 200
     body = r.json()
     assert set(body) == {"status"}
-    # The model server is unreachable in tests: healthy overall, marked degraded.
-    assert body["status"] == "degraded"
+    # An unreachable model server leaves the deployment healthy but degraded.
+    assert body["status"] == ("ok" if model_server == "up" else "degraded")
 
 
-async def test_health_details_when_authenticated(admin_client: httpx.AsyncClient):
+async def test_health_details_when_authenticated(
+    admin_client: httpx.AsyncClient, model_server: str
+):
     r = await admin_client.get("/api/v1/health")
     assert r.status_code == 200
     body = r.json()
@@ -22,10 +45,11 @@ async def test_health_details_when_authenticated(admin_client: httpx.AsyncClient
     assert checks["database"]["status"] == "ok"
     assert checks["migrations"]["status"] == "ok"
     assert checks["migrations"]["detail"]["current"] == checks["migrations"]["detail"]["expected"]
-    assert checks["model_server"]["status"] == "degraded"
+    expected = "ok" if model_server == "up" else "degraded"
+    assert checks["model_server"]["status"] == expected
     assert checks["ingest_queue"]["status"] == "ok"
     assert checks["ingest_queue"]["detail"]["depth"] == 0
-    assert body["status"] == "degraded"
+    assert body["status"] == expected
 
 
 async def test_health_public_hides_the_build_identity(client: httpx.AsyncClient):
@@ -43,12 +67,20 @@ async def test_health_public_hides_the_build_identity(client: httpx.AsyncClient)
 
 
 async def test_health_reports_the_build_identity_when_authenticated(
-    admin_client: httpx.AsyncClient,
+    admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ):
+    # Pinned to the sentinels: `make up` bakes real args into the image, and this
+    # test is about a build that honestly does not know (#32).
+    monkeypatch.setattr(
+        health_api,
+        "get_settings",
+        lambda: get_settings().model_copy(
+            update={"build_version": DEV_VERSION, "build_commit": UNKNOWN_COMMIT}
+        ),
+    )
     body = (await admin_client.get("/api/v1/health")).json()
     assert body["version"] == DEV_VERSION
     assert body["commit"] == UNKNOWN_COMMIT
-    # The test image is built without the args, so it honestly does not know.
     assert body["is_dev"] is True
 
 
