@@ -98,7 +98,8 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
   const lines = page.getByRole("table", { name: "Lines" }).getByRole("row");
   await expect(lines.nth(1)).toContainText("observed");
   await page.getByRole("button", { name: "Reopen" }).click();
-  await expect(page.getByLabel("Keyboard shortcuts")).toBeVisible();
+  // Back in review. (The shortcut legend is desktop-only, so the line filter is the marker.)
+  await expect(page.getByRole("group", { name: "Show lines" })).toBeVisible();
 });
 
 test("the receipts page uploads nothing by itself and lists jobs; the to-identify queue loads", async ({ page }) => {
