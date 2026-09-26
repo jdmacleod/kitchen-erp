@@ -75,7 +75,10 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
   await page.keyboard.press("k");
   await expect(rows.nth(0)).toBeFocused();
 
-  // Reattach the coupon to the item; the select is reachable by Tab from the row.
+  // Reattach the coupon to the item. Only the current line shows its controls
+  // (#35), so j makes line 2 current; its select is then reachable by Tab.
+  await page.keyboard.press("j");
+  await expect(rows.nth(1)).toBeFocused();
   const attach = page.getByRole("combobox", { name: "Attach line 2 to" });
   await attach.focus();
   const patched = page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().includes(`/purchases/${purchaseId}/lines/`));
