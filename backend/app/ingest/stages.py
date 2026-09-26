@@ -211,6 +211,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
                 lines_stage.LINES_TASK,
                 text,
                 timeout_seconds=lines_stage.lines_budget_seconds(text),
+                deadline_seconds=lines_stage.lines_deadline_seconds(),
             )
         except InvalidModelOutput:
             attempts, reason = 1 + max(ctx.llm.max_retries, 0), InvalidModelOutput.code

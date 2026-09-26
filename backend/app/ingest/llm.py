@@ -13,6 +13,7 @@ Tests inject :data:`http_transport` (an ``httpx`` transport such as
 from __future__ import annotations
 
 import json
+import time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar
 
@@ -171,7 +172,12 @@ class LlmClient:
         return content if isinstance(content, str) else ""
 
     async def extract(
-        self, model_cls: type[T], task: str, receipt_text: str, timeout_seconds: float | None = None
+        self,
+        model_cls: type[T],
+        task: str,
+        receipt_text: str,
+        timeout_seconds: float | None = None,
+        deadline_seconds: float | None = None,
     ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt text. Returns (value, attempts).
 
@@ -186,9 +192,19 @@ class LlmClient:
             "stream": False,
             "options": {"temperature": 0, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
         }
+        # A deadline bounds every attempt together, not each one: retries after
+        # slow, invalid replies must not outlast the job's lock (#34).
+        started = time.monotonic()
+        budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
         attempts = 0
         for attempts in range(1, 2 + max(self.max_retries, 0)):
-            content = await self.chat(payload, timeout_seconds)
+            this_budget = budget
+            if deadline_seconds is not None:
+                remaining = deadline_seconds - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise ModelTimeout(detail=f"stage deadline {deadline_seconds:g}s reached")
+                this_budget = min(budget, remaining)
+            content = await self.chat(payload, this_budget)
             parsed = parse_model_output(model_cls, content)
             if parsed is not None:
                 return parsed, attempts

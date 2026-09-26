@@ -70,4 +70,40 @@ def test_the_lines_budget_grows_with_the_receipt_and_stops_at_the_job_lock():
         == settings.llm_timeout_seconds + 4 * settings.llm_lines_seconds_per_line
     )
     long = "\n".join(f"ITEM {i} 1.00" for i in range(500))
-    assert lines_mod.lines_budget_seconds(long) == 0.8 * settings.ingest_lock_timeout_seconds
+    assert lines_mod.lines_budget_seconds(long) == lines_mod.lines_deadline_seconds()
+    assert lines_mod.lines_deadline_seconds() == 0.8 * settings.ingest_lock_timeout_seconds
+
+
+async def test_retries_share_one_stage_deadline(monkeypatch: pytest.MonkeyPatch):
+    """Three slow, invalid replies must not outlast the job lock between them."""
+    from app.ingest import llm as llm_mod
+    from app.ingest.errors import InvalidModelOutput
+    from app.ingest.schemas import ReceiptLines
+
+    clock = [1000.0]
+    monkeypatch.setattr(llm_mod.time, "monotonic", lambda: clock[0])
+    budgets: list[float] = []
+
+    async def slow_invalid(self, payload, timeout_seconds=None):
+        budgets.append(timeout_seconds)
+        clock[0] += 100  # every reply takes 100 s and fails validation
+        return "not json"
+
+    monkeypatch.setattr(LlmClient, "chat", slow_invalid)
+    client = LlmClient(max_retries=2)
+
+    # Room for all three: each gets its budget, the last what is left.
+    with pytest.raises(InvalidModelOutput):
+        await client.extract(
+            ReceiptLines, "task", "text", timeout_seconds=200, deadline_seconds=250
+        )
+    assert budgets == [200, 150, 50]
+
+    # Not enough room for a third: the deadline stops the stage instead.
+    budgets.clear()
+    with pytest.raises(ModelTimeout) as stopped:
+        await client.extract(
+            ReceiptLines, "task", "text", timeout_seconds=200, deadline_seconds=150
+        )
+    assert budgets == [150, 50]
+    assert "deadline" in str(stopped.value.detail)

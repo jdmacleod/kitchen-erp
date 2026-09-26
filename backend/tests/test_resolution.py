@@ -470,6 +470,12 @@ async def test_a_person_setting_the_quantity_clears_the_quantity_flags(admin_cli
     line_id = detail["lines"][0]["id"]
     assert detail["lines"][0]["flags"] == ["qty_assumed", "price_outlier"]
 
+    # A price alone says nothing about the quantity: the warning stays.
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{purchase_id}/lines/{line_id}", json={"unit_price": "1.49"}
+    )
+    assert r.json()["lines"][0]["flags"] == ["qty_assumed", "price_outlier"]
+
     # Editing something else leaves the flag: the quantity is still unsupported.
     r = await admin_client.patch(
         f"/api/v1/purchases/{purchase_id}/lines/{line_id}", json={"raw_text": "APPLES 2.10 lb 3.13"}

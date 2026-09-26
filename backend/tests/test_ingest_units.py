@@ -301,3 +301,17 @@ def test_the_printed_quantity_outranks_the_model_and_assumptions_are_flagged():
     # Discounts and tax carry no quantity and no quantity flag.
     tax = lines_mod.refine_line(5, _line("TAX 0.42", kind="tax", line_total="0.42"))
     assert tax.qty is None and tax.flags == []
+
+
+def test_the_printed_rate_goes_with_the_printed_quantity_and_grams_need_context():
+    # The model's own unit price would contradict the print it was corrected by.
+    cans = lines_mod.refine_line(
+        1, _line("SODA 3 @ 1.25 3.75", line_total="3.75", qty="1", unit_price="5.00")
+    )
+    assert (cans.qty, cans.unit_price) == (Decimal("3"), Decimal("1.25"))
+    # A gram weight with more after it is a weight...
+    cheese = lines_mod.refine_line(2, _line("CHEESE 250.5 g 3.10", line_total="3.10", qty="1"))
+    assert cheese.flags == ["qty_assumed"]
+    # ...but a trailing letter is as likely a tax code.
+    bread = lines_mod.refine_line(3, _line("BREAD 2.49 G", line_total="2.49", qty="1", unit="each"))
+    assert bread.flags == []

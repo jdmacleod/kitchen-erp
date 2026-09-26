@@ -76,7 +76,11 @@ WEIGHT_PATTERN = re.compile(
 COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*\$?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
 # A weight that is printed but did not survive OCR cleanly: "1.24 1b", "0.85 Ib", a
 # weight with no "@ price". Enough to know the line is weighed, not enough to read it.
-LOOSE_WEIGHT_PATTERN = re.compile(r"(?<![\d.])\d+\.\d+\s*(lbs?|[1i]bs?|kg|oz)\b", re.IGNORECASE)
+# Grams count only with more after them on the line: a trailing single letter is as
+# likely a tax code ("2.49 G") as a unit.
+LOOSE_WEIGHT_PATTERN = re.compile(
+    r"(?<![\d.])\d+\.\d+\s*(?:(?:lbs?|[1i]bs?|kg|oz)\b|g\b(?=\s*\S))", re.IGNORECASE
+)
 
 # Flags that say the quantity is not what a person or the printed line said.
 # qty_inferred: read from the printed pattern because the model gave none.
@@ -117,15 +121,22 @@ class ParsedLine:
 
 
 def lines_budget_seconds(receipt_text: str) -> float:
-    """How long the lines stage may wait for the model: the base budget plus a
-    little per line of receipt text, since generation time grows with the lines
-    it has to write out (#34)."""
+    """How long one lines-stage request may wait for the model: the base budget
+    plus a little per line of receipt text, since generation time grows with the
+    lines it has to write out (#34). Capped by the stage's deadline."""
     settings = get_settings()
     lines = sum(1 for row in receipt_text.splitlines() if row.strip())
     budget = settings.llm_timeout_seconds + settings.llm_lines_seconds_per_line * lines
-    # Never past the job's lock: a stage still waiting when the lock lapses could
-    # be claimed by another worker and read twice.
-    return min(budget, 0.8 * settings.ingest_lock_timeout_seconds)
+    return min(budget, lines_deadline_seconds())
+
+
+def lines_deadline_seconds() -> float:
+    """How long the whole lines stage may take, every retry included.
+
+    Under the job's lock: a stage still working when the lock lapses could be
+    claimed by a second worker and read twice.
+    """
+    return 0.8 * get_settings().ingest_lock_timeout_seconds
 
 
 def _unit(text: str | None) -> str | None:
@@ -164,7 +175,9 @@ def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
             elif qty != p_qty or (unit is not None and p_unit is not None and unit != p_unit):
                 flags.append("qty_corrected")
             qty, unit = p_qty, p_unit or unit or "each"
-            unit_price = unit_price if unit_price is not None else p_price
+            # The printed rate with the printed quantity, or the line contradicts
+            # itself: three at a model's 5.00 beside a printed 3 @ 1.25.
+            unit_price = p_price
         elif qty is None:
             qty, unit = (
                 Decimal("1"),
