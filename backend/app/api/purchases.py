@@ -182,9 +182,11 @@ async def recompute(_: CurrentUser, db: DbSession) -> RecomputeOut:
 # --- purchases --------------------------------------------------------------
 
 
-async def purchase_out(db, purchase) -> PurchaseOut:
+async def purchase_out(db, purchase, names: dict[uuid.UUID, str] | None = None) -> PurchaseOut:
+    """`names` maps resolver ids to display names; a list passes one lookup for its page."""
     live = await purchases.live_observations(db, purchase)
-    names = await purchases.resolver_names(db, purchase)
+    if names is None:
+        names = await purchases.resolver_names(db, [purchase])
     lines = [
         LineOut(
             id=line.id,
@@ -270,7 +272,10 @@ async def list_purchases(
         limit=limit,
         cursor=cursor,
     )
-    return PurchaseList(items=[await purchase_out(db, p) for p in rows], next_cursor=next_cursor)
+    names = await purchases.resolver_names(db, rows)
+    return PurchaseList(
+        items=[await purchase_out(db, p, names) for p in rows], next_cursor=next_cursor
+    )
 
 
 @router.post("/purchases", response_model=PurchaseOut, status_code=status.HTTP_201_CREATED)

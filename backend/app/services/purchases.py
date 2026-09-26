@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Iterable
 from decimal import ROUND_HALF_EVEN, Context, Decimal
 
 from sqlalchemy import select
@@ -114,9 +115,12 @@ async def live_observations(db: AsyncSession, purchase: Purchase) -> dict[uuid.U
     return dict((await db.execute(stmt)).all())
 
 
-async def resolver_names(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, str]:
-    """Map user id -> display name for everyone who resolved a line of this purchase."""
-    ids = {line.resolved_by for line in purchase.lines if line.resolved_by is not None}
+async def resolver_names(db: AsyncSession, purchases: Iterable[Purchase]) -> dict[uuid.UUID, str]:
+    """Map user id -> display name for everyone who resolved a line of these purchases.
+
+    One query for a whole page of purchases, none when nobody resolved anything.
+    """
+    ids = {line.resolved_by for p in purchases for line in p.lines if line.resolved_by is not None}
     if not ids:
         return {}
     stmt = select(AppUser.id, AppUser.display_name).where(AppUser.id.in_(ids))
