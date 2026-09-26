@@ -190,4 +190,17 @@ describe("receipts", () => {
     const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
     expect(row).toHaveTextContent("a_code_from_the_future");
   });
+
+  it("tells two failed receipts apart by their own thumbnails (#28)", async () => {
+    const otherDocument = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9002";
+    const second: IngestJob = { ...failedJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9103", receipt_document_id: otherDocument, created_at: "2026-09-20T18:06:30Z" };
+    mockApi(baseRoutes(() => [second, failedJob]));
+    renderApp("/shop/receipts");
+
+    const rows = await screen.findAllByTestId("ingest-job");
+    const thumbs = rows.map((row) => row.querySelector("img")?.getAttribute("src"));
+    expect(thumbs).toEqual([`/api/v1/receipts/${otherDocument}/image?width=96`, `/api/v1/receipts/${receiptDocumentId}/image?width=96`]);
+    const open = within(rows[0]).getByRole("link", { name: /^Open the receipt uploaded/ });
+    expect(open).toHaveAttribute("href", `/api/v1/receipts/${otherDocument}/image`);
+  });
 });
