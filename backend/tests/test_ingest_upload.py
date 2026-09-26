@@ -208,3 +208,23 @@ async def test_a_pdf_that_cannot_be_rendered_says_so(
     r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image")
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "image_unreadable"
+
+
+async def test_a_thumbnail_holds_the_same_pixel_ceiling_as_a_rendering(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A small file can declare an enormous image; it is refused from the header."""
+    from app.services import receipt_images
+
+    # 96x24 is 2,304 pixels; lower the ceiling under it rather than decode a bomb.
+    monkeypatch.setattr(receipt_images, "MAX_MEGAPIXELS", 0.001)
+    document = (await upload(admin_client, png_bytes("bomb"))).json()["document"]
+    r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 48})
+    assert r.status_code == 422
+    assert r.json()["error"]["details"]["reason"] == "image_too_large"
+
+
+async def test_the_image_endpoint_documents_image_responses(client: httpx.AsyncClient):
+    spec = (await client.get("/api/openapi.json")).json()
+    ok = spec["paths"]["/api/v1/receipts/{document_id}/image"]["get"]["responses"]["200"]
+    assert set(ok["content"]) == {"image/png", "image/jpeg", "image/webp"}

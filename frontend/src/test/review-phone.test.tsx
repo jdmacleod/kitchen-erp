@@ -223,4 +223,22 @@ describe("receipt review density on desktop (#35)", () => {
     expect(within(two).queryByRole("button", { name: /^Accept/ })).toBeNull();
     expect(two).toHaveTextContent("Suggested: Riverbend Bread Flour (+1)");
   });
+
+  it("does not open a line when Tab lands on its Open, and keeps focus when Open is used", async () => {
+    mockApi(routes(() => receiptPurchase));
+    const user = userEvent.setup();
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    const open4 = screen.getByRole("button", { name: "Open line 4" });
+    open4.focus();
+    // Still compact: focusing the button is not choosing the line.
+    expect(screen.getByRole("button", { name: "Open line 4" })).toHaveFocus();
+    expect(within(screen.getAllByTestId("review-line")[3]).queryByRole("button", { name: "Edit" })).toBeNull();
+
+    await user.click(open4);
+    const row = screen.getAllByTestId("review-line")[3];
+    expect(row).toHaveFocus();
+    expect(within(row).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
 });

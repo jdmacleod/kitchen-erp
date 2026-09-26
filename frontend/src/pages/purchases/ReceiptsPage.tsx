@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { jobInFlight, receiptImageUrl, useIngestJob, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
+import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -137,20 +137,13 @@ function JobRow({ job }: { job: IngestJob }) {
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>
       {/* Which receipt this is (#28): two failed jobs otherwise read the same. */}
       {job.receipt_document_id ? (
-        <a
-          href={receiptImageUrl(job.receipt_document_id)}
-          target="_blank"
-          rel="noopener"
-          aria-label={`Open the receipt uploaded ${job.created_at ? formatDateTime(job.created_at) : ""}`.trim()}
-          className={`shrink-0 rounded-md ${focusRing}`}
-        >
-          <ReceiptImage
-            documentId={job.receipt_document_id}
-            width={96}
-            alt=""
-            className="h-16 w-12 rounded border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
-          />
-        </a>
+        <ReceiptImage
+          documentId={job.receipt_document_id}
+          width={96}
+          alt=""
+          link={{ label: `Open the receipt uploaded ${job.created_at ? formatDateTime(job.created_at) : ""}`.trim() }}
+          className="h-16 w-12 rounded border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
+        />
       ) : null}
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <Badge tone={tone}>{jobStatusText(job)}</Badge>

@@ -26,7 +26,7 @@ import anyio
 from app.core.errors import ApiError
 from app.ingest.errors import StageFailure
 from app.ingest.formats import BY_MIME
-from app.ingest.raster import to_png
+from app.ingest.raster import MAX_MEGAPIXELS, to_png
 
 THUMB_MIN = 32
 THUMB_MAX = 1024
@@ -49,6 +49,13 @@ def _render(converter: str | None, source: Path, width: int | None) -> bytes:
         path = to_png(converter, source, Path(tmp) / "page.png") if converter else source
         try:
             with Image.open(path) as opened:
+                # The same ceiling the converters hold a PDF or HEIC to, checked
+                # from the header before any pixels are decoded: a small file can
+                # declare an enormous image.
+                if opened.width * opened.height > MAX_MEGAPIXELS * 1_000_000:
+                    raise StageFailure(
+                        code="image_too_large", detail=f"{opened.width}x{opened.height}"
+                    )
                 shown = opened
                 if width is not None and opened.width > width:
                     height = max(1, round(opened.height * width / opened.width))
@@ -56,7 +63,7 @@ def _render(converter: str | None, source: Path, width: int | None) -> bytes:
                 out = io.BytesIO()
                 shown.save(out, format="PNG")
                 return out.getvalue()
-        except (UnidentifiedImageError, OSError, ValueError) as exc:
+        except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as exc:
             raise StageFailure(code="image_unreadable", detail=type(exc).__name__) from None
 
 

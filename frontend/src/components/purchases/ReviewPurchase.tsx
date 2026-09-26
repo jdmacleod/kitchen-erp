@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
 import { useLocations } from "../../api/geo";
@@ -768,7 +768,12 @@ function lineAttributes(line: PurchaseLine, current: boolean, onFocus: () => voi
     "aria-label": `Line ${line.seq}: ${lineTitle(line)}`,
     "data-testid": "review-line",
     "data-quiet": isQuietLine(line) ? "true" : undefined,
-    onFocus,
+    // The line itself taking focus makes it current, not a control inside it:
+    // Tabbing onto a compact line's Open would otherwise open the line and
+    // replace the very button that had focus.
+    onFocus: (event: FocusEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) onFocus();
+    },
   };
 }
 
@@ -805,7 +810,9 @@ function ReviewLine(props: ReviewLineProps) {
           // compact row's height, which is the thing #35 is about.
           <button
             type="button"
-            onClick={onFocus}
+            // Focus moves to the line, which stays in the document and becomes
+            // current, so keyboard focus is never dropped.
+            onClick={(event) => event.currentTarget.closest<HTMLElement>("[data-testid=review-line]")?.focus()}
             aria-label={`Open line ${line.seq}`}
             className={`inline-flex min-h-11 items-center rounded-md px-2 text-xs text-neutral-700 hover:bg-neutral-200 lg:min-h-6 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}
           >

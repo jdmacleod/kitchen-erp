@@ -103,7 +103,20 @@ async def get_receipt(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> 
 _IMAGE_HEADERS = {"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"}
 
 
-@router.get("/receipts/{document_id}/image", response_model=None)
+@router.get(
+    "/receipts/{document_id}/image",
+    response_class=Response,
+    response_model=None,
+    responses={
+        200: {
+            "description": "The receipt as a browser can show it: the stored original, "
+            "or page 1 rendered to PNG (always PNG when `width` is given).",
+            "content": {"image/png": {}, "image/jpeg": {}, "image/webp": {}},
+        },
+        404: {"description": "No such receipt, or its stored file is missing."},
+        422: {"description": "The stored receipt could not be rendered (`image_unreadable`)."},
+    },
+)
 async def get_receipt_image(
     document_id: uuid.UUID,
     _: CurrentUser,
