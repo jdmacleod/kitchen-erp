@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import type { IngestJob } from "../api/ingest";
@@ -15,7 +15,8 @@ const readingJob: IngestJob = {
   last_error: null,
   created_at: "2026-09-25T09:00:00Z",
 };
-const doneJob: IngestJob = { ...readingJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a02", status: "done", purchase_id: draft.id };
+// Past the lines stage: its draft exists, though the job is still running.
+const runningWithDraft: IngestJob = { ...readingJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a02", stage: "resolve", status: "running", purchase_id: draft.id };
 
 function routes() {
   return {
@@ -28,7 +29,13 @@ function routes() {
       if (status) return jsonResponse(200, { items: [], next_cursor: null });
       return jsonResponse(200, { items: [draft, manualPurchase], next_cursor: null });
     },
-    "GET /ingest-jobs": () => jsonResponse(200, { items: [readingJob, doneJob] }),
+    "GET /ingest-jobs": (call: RecordedCall) => {
+      const status = call.query.get("status");
+      if (status === "pending") return jsonResponse(200, { items: [readingJob] });
+      if (status === "running") return jsonResponse(200, { items: [runningWithDraft] });
+      // Unfiltered, the newest 50 would not reach an old upload still being read.
+      return jsonResponse(200, { items: [] });
+    },
   };
 }
 
@@ -41,8 +48,9 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
 
     const reading = await screen.findByTestId("reading-row");
     expect(reading).toHaveTextContent("Reading");
+    expect(reading).toHaveTextContent("Uploaded Sep 25, 2026");
     expect(within(reading).getByRole("link")).toHaveAttribute("href", `/shop/receipts?job=${readingJob.id}`);
-    // Only jobs in flight: the finished one is its draft now.
+    // The running job that already made its draft is listed as that draft, once.
     expect(screen.getAllByTestId("reading-row")).toHaveLength(1);
     expect(rows()).toHaveLength(3);
   });
@@ -94,6 +102,39 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
     expect(items[2]).toHaveTextContent("$14.21");
     expect(items[2]).toHaveTextContent("Committed");
   });
+});
+
+describe("purchases: review findings on Reading rows", () => {
+  it("says it could not check for receipts being read, rather than that there are none", async () => {
+    mockApi({
+      ...routes(),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /ingest-jobs": () => jsonResponse(500, { error: { code: "internal", message: "boom" } }),
+    });
+    renderApp("/shop/purchases");
+
+    expect(await screen.findByText("Couldn't check for receipts being read.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "No purchases yet" })).toBeNull();
+  });
+
+  it("fetches the purchases again when a Reading row becomes a draft", async () => {
+    let read = false;
+    const calls = mockApi({
+      ...routes(),
+      "GET /purchases": (call: RecordedCall) =>
+        call.query.get("status") ? jsonResponse(200, { items: read ? [draft] : [], next_cursor: null }) : jsonResponse(200, { items: read ? [draft] : [], next_cursor: null }),
+      "GET /ingest-jobs": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("status") === "pending" && !read ? [readingJob] : [] }),
+    });
+    renderApp("/shop/purchases");
+    await screen.findByTestId("reading-row");
+    const before = calls.filter((c) => c.path.startsWith("/purchases")).length;
+
+    // The job finishes; the next poll (every 3 s while one is in flight) sees it gone.
+    read = true;
+    await waitFor(() => expect(screen.queryByTestId("reading-row")).toBeNull(), { timeout: 5000 });
+    await waitFor(() => expect(calls.filter((c) => c.path.startsWith("/purchases")).length).toBeGreaterThan(before));
+    expect(await screen.findByText("Location needed")).toBeInTheDocument();
+  }, 10_000);
 });
 
 afterEach(() => {

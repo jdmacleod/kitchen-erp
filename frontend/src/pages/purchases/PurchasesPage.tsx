@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { jobInFlight, useIngestJobs, type IngestJob } from "../../api/ingest";
-import { itemLines, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseStatus } from "../../api/purchases";
+import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseStatus } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
@@ -39,9 +40,31 @@ export function PurchasesPage() {
   const drafts = usePurchases({ status: "draft" });
   const draftPage = drafts.data?.pages[0];
   const draftCount = draftPage ? countLabel(draftPage.items.length, Boolean(draftPage.next_cursor)) : null;
-  // Receipts in flight belong with the drafts they are about to become.
-  const jobs = useIngestJobs();
-  const reading = filter === "all" || filter === "draft" ? (jobs.data ?? []).filter(jobInFlight) : [];
+  // Receipts in flight belong with the drafts they are about to become. Asked
+  // for by status, so an old upload still being read is never paged out by
+  // newer finished ones.
+  const pendingJobs = useIngestJobs("pending");
+  const runningJobs = useIngestJobs("running");
+  const inFlight = [...(pendingJobs.data ?? []), ...(runningJobs.data ?? [])].filter(jobInFlight);
+  // A job that has already made its draft is listed as that draft.
+  const readingJobs = inFlight.filter((j) => !j.purchase_id).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  const showsReading = filter === "all" || filter === "draft";
+  const reading = showsReading ? readingJobs : [];
+  // Could not check: never claim there is nothing being read (CLAUDE.md: an
+  // error is never an empty state).
+  const jobsFailed = showsReading && (pendingJobs.isError || runningJobs.isError);
+
+  // A Reading row that goes away has become a draft: fetch the purchases again
+  // so it appears, rather than vanishing until something else refetches.
+  const client = useQueryClient();
+  const readingIds = readingJobs.map((j) => j.id).join(",");
+  const lastReading = useRef(readingIds);
+  useEffect(() => {
+    const before = lastReading.current.split(",").filter(Boolean);
+    lastReading.current = readingIds;
+    const now = new Set(readingIds.split(","));
+    if (before.some((id) => !now.has(id))) void client.invalidateQueries({ queryKey: purchaseKeys.purchases });
+  }, [readingIds, client]);
   // The table at lg and wider, a list below it (G19).
   const wide = useMediaQuery(LG_QUERY);
 
@@ -94,6 +117,8 @@ export function PurchasesPage() {
           </p>
         ) : purchases.isError ? (
           <Alert tone="error">{errorMessage(purchases.error)}</Alert>
+        ) : items.length === 0 && reading.length === 0 && jobsFailed ? (
+          <JobsFailed onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])} />
         ) : items.length === 0 && reading.length === 0 && status ? (
           // Filtered-empty and truly empty say different things (G11).
           <EmptyState
@@ -124,6 +149,11 @@ export function PurchasesPage() {
           </EmptyState>
         ) : (
           <>
+            {jobsFailed ? (
+              <div className="mb-3">
+                <JobsFailed onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])} />
+              </div>
+            ) : null}
             {wide ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Purchases">
@@ -183,7 +213,7 @@ export function PurchasesPage() {
                     <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}>
                       <span className="min-w-0">
                         <span className="block font-medium">Receipt being read</span>
-                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">{job.created_at ? formatDate(job.created_at) : "Just now"}</span>
+                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">{uploaded(job)}</span>
                       </span>
                       <Badge>Reading</Badge>
                     </Link>
@@ -229,13 +259,35 @@ export function PurchasesPage() {
   );
 }
 
-/** A receipt still being read: no purchase yet, so it links to its job (G1). */
+function JobsFailed({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Alert tone="error">
+      <span className="flex flex-wrap items-center justify-between gap-2">
+        <span>Couldn&apos;t check for receipts being read.</span>
+        <Button variant="secondary" onClick={onRetry}>
+          Try again
+        </Button>
+      </span>
+    </Alert>
+  );
+}
+
+/** When it was uploaded: a receipt being read has no purchase date yet. */
+function uploaded(job: IngestJob): string {
+  return job.created_at ? `Uploaded ${formatDate(job.created_at)}` : "Uploaded just now";
+}
+
+/**
+ * A receipt still being read: no purchase yet, so it links to its job (G1).
+ * These lead the list rather than sort among dated purchases: the date a
+ * purchase has is when it was bought, and a receipt being read has none yet.
+ */
 function ReadingRow({ job }: { job: IngestJob }) {
   return (
     <tr data-testid="reading-row">
       <td className="py-2 pr-3 whitespace-nowrap">
         <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-          {job.created_at ? formatDate(job.created_at) : "Just now"}
+          {uploaded(job)}
         </Link>
       </td>
       <td className="py-2 pr-3 text-neutral-600 dark:text-neutral-400">Being read</td>

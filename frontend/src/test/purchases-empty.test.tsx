@@ -51,7 +51,7 @@ describe("purchases: empty states (G11, UI-3.11)", () => {
     renderApp("/shop/purchases");
     expect(await screen.findByRole("table", { name: "Purchases" })).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText("Status"), "draft");
+    await user.click(within(screen.getByRole("group", { name: "Status" })).getByRole("button", { name: /^Drafts/ }));
     const empty = await screen.findByRole("region", { name: "No draft purchases" });
     expect(screen.queryByRole("table")).toBeNull();
 
