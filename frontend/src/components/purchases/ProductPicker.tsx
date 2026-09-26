@@ -145,6 +145,10 @@ interface InlineProductCreateProps {
   onCreated: (product: ProductRef) => void;
   onCancel: () => void;
   disabled?: boolean;
+  /** A scanned or typed barcode no product has yet (UI-4.7); shows the barcode field. */
+  initialBarcode?: string;
+  /** What was typed in the search that found nothing. */
+  initialName?: string;
 }
 
 /**
@@ -152,11 +156,12 @@ interface InlineProductCreateProps {
  * (existing or new by name), brand, name, and pack. Enter creates; Escape
  * cancels. Everything else about the product can be edited later.
  */
-export function InlineProductCreate({ id, onCreated, onCancel, disabled }: InlineProductCreateProps) {
+export function InlineProductCreate({ id, onCreated, onCancel, disabled, initialBarcode, initialName = "" }: InlineProductCreateProps) {
   const create = useCreateProduct();
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const [brand, setBrand] = useState("");
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
+  const [barcode, setBarcode] = useState(initialBarcode ?? "");
   const [packQty, setPackQty] = useState("");
   const [packUnit, setPackUnit] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -174,6 +179,7 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled }: Inlin
     if (ingredient.kind === "existing") input.ingredient_id = ingredient.ingredient.id;
     else input.ingredient = { name: ingredient.name };
     if (brand.trim()) input.brand = brand.trim();
+    if (barcode.trim()) input.barcode = barcode.trim();
     if (hasQty) {
       input.pack_qty = packQty.trim();
       input.pack_unit = packUnit;
@@ -224,6 +230,17 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled }: Inlin
           disabled={busy}
         />
       </div>
+      {initialBarcode !== undefined ? (
+        <Field
+          id={`${id}-barcode`}
+          label="Barcode"
+          inputMode="numeric"
+          autoComplete="off"
+          value={barcode}
+          onChange={(e) => setBarcode(e.target.value)}
+          disabled={busy}
+        />
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
           id={`${id}-pack-qty`}
