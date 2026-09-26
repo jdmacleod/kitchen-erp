@@ -92,6 +92,14 @@ it through `host.docker.internal`. On a Linux host with a GPU, add
 `--profile llm` to run it in Docker and set `OLLAMA_BASE_URL=http://ollama:11434`.
 The system is fully usable for manual workflows with no model server running.
 
+Reading a receipt waits on the model. Connecting is bounded apart from the answer
+(`LLM_CONNECT_TIMEOUT_SECONDS`, 5 s), so a model server that is not running is
+reported within seconds. Each request may then take `LLM_TIMEOUT_SECONDS` (120),
+and the lines stage gets `LLM_LINES_SECONDS_PER_LINE` (3) more per line of receipt
+text, because it writes every line out: a 25-line receipt took 95 s on a 20B
+model on a LAN host. Raise the base for a larger model or a busier host; a job
+that runs out says `model_timeout`, which names the setting.
+
 ## Optional reference data
 
 Both are optional and local. The system works fully without them.

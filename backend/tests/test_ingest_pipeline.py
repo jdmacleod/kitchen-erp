@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.ingest import formats as ingest_formats
 from app.ingest import llm, parsers, raster
+from app.ingest.lines import lines_budget_seconds
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.stages import run_stage
@@ -108,6 +109,17 @@ async def test_fixture_advances_to_review(
         assert result["adapter"] and result["adapter_version"]
         assert result["duration_ms"] >= 0 and result["created_at"]
     assert [r["stage"] for r in transport.requests] == ["header", "lines"]
+    # Reaching the model is bounded apart from the answer, and the lines stage's
+    # budget grows with the receipt (#34).
+    header_req, lines_req = transport.requests
+    settings = get_settings()
+    connect = settings.llm_connect_timeout_seconds
+    # Connecting never takes longer than the budget it belongs to.
+    assert header_req["timeout"]["connect"] == min(connect, settings.llm_timeout_seconds)
+    assert header_req["timeout"]["read"] == settings.llm_timeout_seconds
+    assert lines_req["timeout"]["read"] == lines_budget_seconds(fixture.ocr_text)
+    assert lines_req["timeout"]["read"] > settings.llm_timeout_seconds
+    assert lines_req["timeout"]["connect"] == min(connect, lines_req["timeout"]["read"])
 
     outputs = await stage_outputs(admin_client, job["id"])
     assert outputs["ocr"]["text"] == fixture.ocr_text

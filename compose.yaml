@@ -45,6 +45,8 @@ services:
       # it does nothing: the container sees only what this block names, and the
       # application falls back to its code defaults in silence.
       LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-120}
+      LLM_CONNECT_TIMEOUT_SECONDS: ${LLM_CONNECT_TIMEOUT_SECONDS:-5}
+      LLM_LINES_SECONDS_PER_LINE: ${LLM_LINES_SECONDS_PER_LINE:-3}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
       OCR_ADAPTERS: ${OCR_ADAPTERS:-["client","tesseract"]}
       INGEST_MAX_ATTEMPTS: ${INGEST_MAX_ATTEMPTS:-5}

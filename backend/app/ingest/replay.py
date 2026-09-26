@@ -32,7 +32,15 @@ class RecordedTransport(httpx.AsyncBaseTransport):
         body = json.loads(request.content or b"{}")
         title = body.get("format", {}).get("title") if isinstance(body, dict) else None
         stage = STAGE_BY_SCHEMA_TITLE.get(title, title)
-        self.requests.append({"stage": stage, "url": str(request.url), "body": body})
+        self.requests.append(
+            {
+                "stage": stage,
+                "url": str(request.url),
+                "body": body,
+                # What httpx was told to wait: connect, read, write and pool, in seconds.
+                "timeout": request.extensions.get("timeout"),
+            }
+        )
         queue = self._queues.get(stage or "")
         if not queue:
             return httpx.Response(500, json={"error": f"no recorded response for {stage}"})

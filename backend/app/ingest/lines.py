@@ -46,6 +46,7 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.ids import new_id
 from app.ingest.errors import StageFailure
 from app.ingest.schemas import ReceiptLine, ReceiptLines
@@ -113,6 +114,18 @@ class ParsedLine:
             "parent_seq": self.parent_seq,
             "flags": list(self.flags),
         }
+
+
+def lines_budget_seconds(receipt_text: str) -> float:
+    """How long the lines stage may wait for the model: the base budget plus a
+    little per line of receipt text, since generation time grows with the lines
+    it has to write out (#34)."""
+    settings = get_settings()
+    lines = sum(1 for row in receipt_text.splitlines() if row.strip())
+    budget = settings.llm_timeout_seconds + settings.llm_lines_seconds_per_line * lines
+    # Never past the job's lock: a stage still waiting when the lock lapses could
+    # be claimed by another worker and read twice.
+    return min(budget, 0.8 * settings.ingest_lock_timeout_seconds)
 
 
 def _unit(text: str | None) -> str | None:
