@@ -627,7 +627,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
       {resolution && isItem ? (
         <span className="ml-1 text-xs">
           <Badge tone={resolution === "unmatched" ? "warn" : quiet ? "neutral" : "good"}>{resolutionLabel[resolution] ?? resolution}</Badge>
-          {line.resolved_by ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by}</span> : null}
+          {line.resolved_by_name ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by_name}</span> : null}
         </span>
       ) : null}
       {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (

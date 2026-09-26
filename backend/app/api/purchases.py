@@ -184,6 +184,7 @@ async def recompute(_: CurrentUser, db: DbSession) -> RecomputeOut:
 
 async def purchase_out(db, purchase) -> PurchaseOut:
     live = await purchases.live_observations(db, purchase)
+    names = await purchases.resolver_names(db, purchase)
     lines = [
         LineOut(
             id=line.id,
@@ -209,6 +210,7 @@ async def purchase_out(db, purchase) -> PurchaseOut:
             line_total=line.line_total,
             resolution=line.resolution,
             resolved_by=line.resolved_by,
+            resolved_by_name=names.get(line.resolved_by) if line.resolved_by else None,
             resolution_confidence=line.resolution_confidence,
             flags=line.flags,
             observation_id=live.get(line.id),

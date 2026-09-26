@@ -114,6 +114,15 @@ async def live_observations(db: AsyncSession, purchase: Purchase) -> dict[uuid.U
     return dict((await db.execute(stmt)).all())
 
 
+async def resolver_names(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, str]:
+    """Map user id -> display name for everyone who resolved a line of this purchase."""
+    ids = {line.resolved_by for line in purchase.lines if line.resolved_by is not None}
+    if not ids:
+        return {}
+    stmt = select(AppUser.id, AppUser.display_name).where(AppUser.id.in_(ids))
+    return dict((await db.execute(stmt)).all())
+
+
 async def _check_location(db: AsyncSession, location_id: uuid.UUID) -> VendorLocation:
     location = await db.get(VendorLocation, location_id)
     if location is None:

@@ -73,6 +73,7 @@ async def test_confirmed_alias_resolves_and_unconfirmed_only_suggests(
     line2 = body["lines"][0]
     assert line2["resolution"] == "alias" and line2["product"]["id"] == pep["id"]
     assert line2["resolved_by"] is None and line2["flags"] == []
+    assert line2["resolved_by_name"] is None
 
 
 async def test_unconfirmed_alias_does_not_auto_resolve(admin_client, admin, db_session, owner_conn):
@@ -153,6 +154,8 @@ async def test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rej
     )
     assert r.json()["lines"][0]["resolution"] == "llm"
     assert r.json()["lines"][0]["resolved_by"] == str(admin.id)
+    # The name to show, so the review page never prints the id.
+    assert r.json()["lines"][0]["resolved_by_name"] == admin.display_name
 
 
 async def test_barcode_rung_resolves_without_a_person(admin_client, admin, db_session):

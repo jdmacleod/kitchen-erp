@@ -170,3 +170,33 @@ describe("receipt review: review findings", () => {
     await waitFor(() => expect(screen.queryByRole("table")).toBeNull());
   });
 });
+
+describe("receipt review: who resolved a line", () => {
+  const byHand = (name: string | null): Purchase => ({
+    ...receiptPurchase,
+    lines: receiptPurchase.lines.map((l) =>
+      l.id === unmatchedLine.id
+        ? { ...l, product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit, category: null, category_key: null }, resolution: "manual", resolved_by: adminUser.id, resolved_by_name: name, suggestions: [] }
+        : l,
+    ),
+  });
+  const line2 = () => screen.getAllByTestId("review-line").find((el) => el.getAttribute("aria-label")?.startsWith("Line 2:"))!;
+
+  it("names the person, never their id", async () => {
+    mockApi(routes(() => byHand("Admin")));
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    expect(line2()).toHaveTextContent("by Admin");
+    expect(line2()).not.toHaveTextContent(adminUser.id);
+  });
+
+  it("says nothing about who when the name is not known", async () => {
+    mockApi(routes(() => byHand(null)));
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    expect(line2()).not.toHaveTextContent(" by ");
+    expect(line2()).not.toHaveTextContent(adminUser.id);
+  });
+});
