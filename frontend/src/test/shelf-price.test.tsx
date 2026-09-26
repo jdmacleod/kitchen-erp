@@ -343,6 +343,7 @@ describe("shelf price: entry and saving (G3, G4)", () => {
     mockApi({
       ...baseRoutes(),
       "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
       "POST /price-observations": () => jsonResponse(201, { ...observationOk, vendor_location: { id: marketLocationId, name: marketLocation.name, vendor: marketLocation.vendor } }),
     });
     const user = userEvent.setup();
