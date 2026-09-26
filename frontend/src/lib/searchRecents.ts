@@ -29,7 +29,18 @@ function valid(x: unknown): x is SearchResult {
 export function readRecents(): SearchResult[] {
   try {
     const parsed: unknown = JSON.parse(localStorage.getItem(KEY) ?? "[]");
-    return Array.isArray(parsed) ? parsed.filter(valid).slice(0, RECENT_LIMIT) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Each result once, even if storage holds it twice.
+    const seen = new Set<string>();
+    return parsed
+      .filter(valid)
+      .filter((r) => {
+        const key = `${r.kind}:${r.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, RECENT_LIMIT);
   } catch {
     return [];
   }

@@ -572,4 +572,41 @@ describe("shelf price in the desktop drawer (G14)", () => {
     await user.keyboard("{Escape}");
     expect(within(drawer).getByRole("alert")).toHaveTextContent("Discard this shelf price?");
   });
+
+  it("asks before discarding search text that was typed but not chosen", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi(drawerRoutes());
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "oat milk");
+    await user.click(within(drawer).getByRole("button", { name: "Cancel" }));
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("Discard this shelf price?");
+  });
+
+  it("stays open through a navigation and ⌘K, so only its own guard can discard", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi({ ...drawerRoutes(), "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }) });
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "oat milk");
+
+    await user.keyboard("{Control>}k{/Control}");
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+    // A route change underneath, as Back would make.
+    await user.click(within(screen.getAllByRole("navigation", { name: "Main" })[0]).getByRole("link", { name: /Home/ }));
+    expect(await screen.findByRole("heading", { level: 1 })).not.toHaveTextContent("Purchases");
+    expect(screen.getByRole("dialog", { name: "Log a shelf price" })).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog", { name: "Log a shelf price" })).getByRole("combobox", { name: "Barcode or product name" })).toHaveValue("oat milk");
+  });
+
+  it("offers only Close when there are no locations to price at", async () => {
+    mockApi({ ...drawerRoutes(), "GET /vendor-locations": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    expect(await within(drawer).findByRole("button", { name: "Close" })).toBeInTheDocument();
+    expect(within(drawer).queryByRole("button", { name: "Save price" })).toBeNull();
+    expect(within(drawer).queryByRole("button", { name: "Save and scan another" })).toBeNull();
+  });
 });

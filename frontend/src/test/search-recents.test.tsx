@@ -65,6 +65,9 @@ describe("search recents (G15)", () => {
       ]),
     );
     expect(readRecents().map((r) => r.id)).toEqual(["ok"]);
+    localStorage.setItem(KEY, JSON.stringify([basil, { ...basil, label: "Basil again" }, { ...basil, id: "i2" }]));
+    // Each result once, even if storage holds it twice.
+    expect(readRecents().map((r) => r.id)).toEqual(["i1", "i2"]);
     localStorage.setItem(KEY, "not json");
     expect(readRecents()).toEqual([]);
   });

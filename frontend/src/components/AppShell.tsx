@@ -46,9 +46,11 @@ export function AppShell() {
   const task = TASK_PATHS.has(location.pathname);
   // One overlay at a time: opening one replaces whichever is up. Each remembers
   // the history entry it was opened on, so any navigation (a link, Back,
-  // Forward) closes it without an effect.
+  // Forward) closes it without an effect. The shelf-price drawer is the
+  // exception: it can hold typed input, and only its own discard guard may
+  // throw that away (D5), so it stays open across a navigation.
   const [opened, setOpened] = useState<{ overlay: Overlay; on: string }>({ overlay: null, on: "" });
-  const overlay = opened.on === location.key ? opened.overlay : null;
+  const overlay = opened.overlay === "shelf" || opened.on === location.key ? opened.overlay : null;
   // A ref, so the memoised chrome and the ⌘K listener open on the current entry.
   const entry = useRef(location.key);
   useEffect(() => {
@@ -68,7 +70,8 @@ export function AppShell() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setOverlay("search");
+        // Never over the drawer: replacing it would drop what was typed there.
+        setOpened((prev) => (prev.overlay === "shelf" ? prev : { overlay: "search", on: entry.current }));
       }
     };
     document.addEventListener("keydown", onKey);

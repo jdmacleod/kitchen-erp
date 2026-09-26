@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type Keybo
 import { Link, useLocation, useNavigate } from "react-router";
 import { errorMessage } from "../../api/client";
 import { formatPack, isPositiveDecimal, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
-import type { VendorLocation } from "../../api/geo";
+import { useLocations, type VendorLocation } from "../../api/geo";
 import { useProductPrices } from "../../api/pricebook";
 import { purchaseErrorMessage, useCreateObservation, useObservations, type Observation, type ObservationCreateInput } from "../../api/purchases";
 import { Combobox } from "../../components/catalog/Combobox";
@@ -95,8 +95,12 @@ export function ShelfPriceDrawer({ arrival, onClose }: { arrival: ShelfPriceStat
   const notice = useNotice();
   const formId = useId();
   const [state, setState] = useState({ dirty: false, busy: false });
+  // With no locations LocationGuard shows its empty state in place of the form.
+  const locations = useLocations({});
+  const noLocations = locations.isSuccess && locations.data.length === 0;
   return (
     <Drawer
+      actions={!noLocations}
       title="Log a shelf price"
       thing="shelf price"
       dirty={state.dirty}
@@ -154,6 +158,8 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
   const source = chosen ? "chosen" : chosenId && locations.length === 0 ? "finding" : guess.status;
 
   const [product, setProduct] = useState<ProductRef | null>(null);
+  // What is in the entry field, for the discard guard; ProductEntry owns it.
+  const [entryText, setEntryText] = useState("");
   const [creating, setCreating] = useState<{ barcode?: string; name?: string } | null>(null);
   const [price, setPrice] = useState("");
   const [promo, setPromo] = useState(false);
@@ -176,6 +182,8 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
 
   const pick = (p: ProductRef) => {
     setProduct(p);
+    // The entry field unmounts; its text is spent.
+    setEntryText("");
     setCreating(null);
     setInvalid(null);
     // One "each" is one pack; loose goods change the amount under Details.
@@ -186,6 +194,8 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
 
   const clearProduct = () => {
     setProduct(null);
+    // The entry field mounts empty again.
+    setEntryText("");
     setPrice("");
     setPromo(false);
     setQty("1");
@@ -266,7 +276,9 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
 
   const busy = create.isPending;
   const pack = product ? formatPack(product.pack_qty, product.pack_unit) : "";
-  const dirty = product !== null || creating !== null || price.trim() !== "";
+  // Typed input of any kind, the search text included, is asked about before a
+  // drawer discards it (D5).
+  const dirty = product !== null || creating !== null || price.trim() !== "" || entryText.trim() !== "";
   useEffect(() => {
     onStateChange?.({ dirty, busy });
   }, [dirty, busy, onStateChange]);
@@ -308,7 +320,15 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
               disabled={busy}
             />
           ) : (
-            <ProductEntry storeId={store?.id} storeName={store ? locationLabel(store) : null} inputRef={entryRef} onPick={pick} onCreate={setCreating} disabled={busy} />
+            <ProductEntry
+              storeId={store?.id}
+              storeName={store ? locationLabel(store) : null}
+              inputRef={entryRef}
+              onPick={pick}
+              onCreate={setCreating}
+              onTextChange={setEntryText}
+              disabled={busy}
+            />
           )}
 
           {product ? (
@@ -417,6 +437,7 @@ interface ProductEntryProps {
   inputRef: React.RefObject<HTMLInputElement | null>;
   onPick: (product: ProductRef) => void;
   onCreate: (seed: { barcode?: string; name?: string }) => void;
+  onTextChange: (text: string) => void;
   disabled?: boolean;
 }
 
@@ -425,8 +446,12 @@ interface ProductEntryProps {
  * exact barcode match is taken at once, as a wedge scanner expects; a barcode no
  * product has offers to create one with it filled in (UI-4.7).
  */
-function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, disabled }: ProductEntryProps) {
-  const [text, setText] = useState("");
+function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, onTextChange, disabled }: ProductEntryProps) {
+  const [text, setTextState] = useState("");
+  const setText = (next: string) => {
+    setTextState(next);
+    onTextChange(next);
+  };
   const typed = text.trim();
   const debounced = useDebouncedValue(text, 150);
   const search = useProductSearch(debounced, 8);
