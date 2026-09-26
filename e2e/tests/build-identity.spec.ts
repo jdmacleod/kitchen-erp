@@ -19,8 +19,12 @@ test("the sidebar names the build this stack was made from", async ({ page }) =>
   // On a phone the status line lives in the More sheet, one tap away, and the
   // desktop sidebar is still in the DOM behind `hidden lg:flex`. Match the
   // visible one so the spec covers every project without a strict-mode collision.
-  const more = page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: "More" });
-  if (await more.isVisible()) await more.click();
+  // Decided by the viewport, not by whether the tab bar has rendered yet: an
+  // instant isVisible() raced the first paint and skipped the tap (phone-375).
+  if ((page.viewportSize()?.width ?? 1280) < 1024) {
+    const more = page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: "More" });
+    await more.click();
+  }
 
   const line = page.locator('[data-testid="build-identity"]:visible');
   await expect(line).toBeVisible();

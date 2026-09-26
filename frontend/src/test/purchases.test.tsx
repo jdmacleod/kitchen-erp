@@ -44,9 +44,10 @@ describe("purchases", () => {
     expect(rows[0]).toHaveTextContent("Pier Farmers Market");
     expect(rows[0]).toHaveTextContent("$14.21");
     expect(rows[0]).toHaveTextContent("Committed");
-    expect(rows[0]).toHaveTextContent("Manual");
+    expect(rows[0]).toHaveTextContent("By hand");
     expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
-    expect(within(rows[0]).getAllByRole("cell").at(-1)).toHaveTextContent("2");
+    // Date, Where, From, Lines, Total, Status (spec 10).
+    expect(within(rows[0]).getAllByRole("cell")[3]).toHaveTextContent("2");
 
     await user.click(screen.getByRole("button", { name: "Load more" }));
     await waitFor(() => expect(within(table).getAllByRole("row")).toHaveLength(3));

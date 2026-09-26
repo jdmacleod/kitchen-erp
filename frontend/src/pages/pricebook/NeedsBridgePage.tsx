@@ -3,7 +3,7 @@ import { formatPack, productTitle } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { bridgeFixLink, normStatusText, useNeedsBridge } from "../../api/pricebook";
 import { Badge } from "../../components/catalog/fields";
-import { Alert, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -23,7 +23,16 @@ export function NeedsBridgePage() {
       ) : list.isError ? (
         <Alert tone="error">{errorMessage(list.error)}</Alert>
       ) : items.length === 0 ? (
-        <EmptyState title="Every price is normalized">Nothing is waiting on a density, a measure, or a pack size.</EmptyState>
+        <EmptyState
+          title="Every price is normalized"
+          action={
+            <Link to="/" className={secondaryLinkClass}>
+              Back to Home
+            </Link>
+          }
+        >
+          Nothing is waiting on a density, a measure, or a pack size.
+        </EmptyState>
       ) : (
         <Card>
           <div className="overflow-x-auto">

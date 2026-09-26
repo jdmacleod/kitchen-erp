@@ -7,7 +7,7 @@ import { Badge } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { PriceAge, formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { PriceFilters } from "../../components/pricebook/PriceFilters";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 /** Vendors as columns, ingredients as rows, the best qualifying normalized price in each cell. */
@@ -57,6 +57,17 @@ export function ComparePage() {
           </p>
         ) : compare.isError ? (
           <Alert tone="error">{errorMessage(compare.error)}</Alert>
+        ) : compare.data.vendors.length === 0 ? (
+          <EmptyState
+            title="No prices to compare yet"
+            action={
+              <Link to="/shop/shelf-prices" className={secondaryLinkClass}>
+                Log a shelf price
+              </Link>
+            }
+          >
+            {chosen.length === 1 ? "This ingredient has" : "These ingredients have"} no prices that pass the filters.
+          </EmptyState>
         ) : (
           <Card>
             <div className="overflow-x-auto">

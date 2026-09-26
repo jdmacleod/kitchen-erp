@@ -9,6 +9,7 @@ describe("app shell", () => {
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
       "POST /auth/logout": () => jsonResponse(204),
     });
     const user = userEvent.setup();
