@@ -13,6 +13,7 @@ Tests inject :data:`http_transport` (an ``httpx`` transport such as
 from __future__ import annotations
 
 import json
+import time
 from decimal import Decimal
 from typing import Annotated, Any, Literal, TypeVar
 
@@ -119,23 +120,26 @@ class LlmClient:
             timeout_seconds if timeout_seconds is not None else settings.llm_timeout_seconds
         )
         self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
+        self.connect_timeout_seconds = settings.llm_connect_timeout_seconds
 
     @property
     def transport(self) -> httpx.AsyncBaseTransport | None:
         return self._transport if self._transport is not None else http_transport
 
-    async def chat(self, payload: dict[str, Any]) -> str:
+    async def chat(self, payload: dict[str, Any], timeout_seconds: float | None = None) -> str:
         """POST one chat request; return the assistant content.
 
         Raises :class:`ModelTimeout` when the server was reached but did not
-        answer in ``timeout_seconds``, and :class:`ModelUnavailable` when it
-        could not be reached, answered non-200, or answered with nonsense.
+        answer in the budget (``timeout_seconds``, else the client's), and
+        :class:`ModelUnavailable` when it could not be reached, answered
+        non-200, or answered with nonsense. Connecting has its own, much
+        shorter bound, so a server that is not there says so in seconds (#34).
         """
         url = f"{self.base_url}/api/chat"
+        budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
+        timeout = httpx.Timeout(budget, connect=min(self.connect_timeout_seconds, budget))
         try:
-            async with httpx.AsyncClient(
-                transport=self.transport, timeout=httpx.Timeout(self.timeout_seconds)
-            ) as client:
+            async with httpx.AsyncClient(transport=self.transport, timeout=timeout) as client:
                 response = await client.post(url, json=payload)
         except httpx.ReadTimeout as exc:
             # Connected, sent the request, and the server did not answer in time.
@@ -152,9 +156,7 @@ class LlmClient:
             # fail the job after a few attempts instead of waiting for it to come
             # back. WriteTimeout and PoolTimeout are likewise about getting the
             # request out, not about the answer, so they fall through below.
-            raise ModelTimeout(
-                detail=f"{type(exc).__name__} after {self.timeout_seconds:g}s"
-            ) from None
+            raise ModelTimeout(detail=f"{type(exc).__name__} after {budget:g}s") from None
         except httpx.HTTPError as exc:
             raise ModelUnavailable(detail=type(exc).__name__) from None
         if response.status_code != 200:
@@ -169,7 +171,14 @@ class LlmClient:
         content = message.get("content") if isinstance(message, dict) else None
         return content if isinstance(content, str) else ""
 
-    async def extract(self, model_cls: type[T], task: str, receipt_text: str) -> tuple[T, int]:
+    async def extract(
+        self,
+        model_cls: type[T],
+        task: str,
+        receipt_text: str,
+        timeout_seconds: float | None = None,
+        deadline_seconds: float | None = None,
+    ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt text. Returns (value, attempts).
 
         Retries a reply that fails validation up to ``max_retries`` extra times,
@@ -183,9 +192,19 @@ class LlmClient:
             "stream": False,
             "options": {"temperature": 0, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
         }
+        # A deadline bounds every attempt together, not each one: retries after
+        # slow, invalid replies must not outlast the job's lock (#34).
+        started = time.monotonic()
+        budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
         attempts = 0
         for attempts in range(1, 2 + max(self.max_retries, 0)):
-            content = await self.chat(payload)
+            this_budget = budget
+            if deadline_seconds is not None:
+                remaining = deadline_seconds - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise ModelTimeout(detail=f"stage deadline {deadline_seconds:g}s reached")
+                this_budget = min(budget, remaining)
+            content = await self.chat(payload, this_budget)
             parsed = parse_model_output(model_cls, content)
             if parsed is not None:
                 return parsed, attempts

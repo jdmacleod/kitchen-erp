@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     ingest_location_radius_m: int = 300
     llm_max_retries: int = 2  # extra attempts when model output fails schema validation
     llm_timeout_seconds: float = 120.0
+    # Reaching the model server is bounded apart from the answer: an unreachable
+    # host reports in seconds, not after a whole generation budget (#34).
+    llm_connect_timeout_seconds: float = 5.0
+    # The lines stage's budget grows with the receipt: llm_timeout_seconds plus
+    # this per line of receipt text. 25 item lines took 94.6 s against a flat 120.
+    llm_lines_seconds_per_line: float = 3.0
     enable_overpass: bool = False
     enable_nominatim: bool = False
 

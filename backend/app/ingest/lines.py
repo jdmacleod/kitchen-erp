@@ -46,6 +46,7 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.ids import new_id
 from app.ingest.errors import StageFailure
 from app.ingest.schemas import ReceiptLine, ReceiptLines
@@ -58,11 +59,14 @@ LINES_TASK = (
     "discounts or savings printed beneath an item, container deposits (CRV, redemption "
     "value, bottle deposit), fees (bag fee, surcharge), and the tax line(s) printed in "
     "the totals block. Exclude the store header, subtotal, total, tender, change, "
-    "loyalty summaries, and footer text. Keep raw_text exactly as printed."
+    "loyalty summaries, and footer text. Keep raw_text exactly as printed. "
+    "Give qty only when the line shows it or is a plain one-of item; when a weight or "
+    "count is printed but unreadable, give null rather than 1."
 )
 
 GENERIC_PARSER = "llm-generic"
-GENERIC_PARSER_VERSION = "1"
+# 2: printed weights and counts override the model's, and assumed quantities are flagged (#31).
+GENERIC_PARSER_VERSION = "2"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -70,6 +74,20 @@ WEIGHT_PATTERN = re.compile(
     r"(?<![\d.])(\d+(?:\.\d+)?)\s*(lbs?|kg|oz|g)\b\s*@\s*\$?\s*(\d+(?:\.\d+)?)", re.IGNORECASE
 )
 COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*\$?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+# A weight that is printed but did not survive OCR cleanly: "1.24 1b", "0.85 Ib", a
+# weight with no "@ price". Enough to know the line is weighed, not enough to read it.
+# Grams count only with more after them on the line: a trailing single letter is as
+# likely a tax code ("2.49 G") as a unit.
+LOOSE_WEIGHT_PATTERN = re.compile(
+    r"(?<![\d.])\d+\.\d+\s*(?:(?:lbs?|[1i]bs?|kg|oz)\b|g\b(?=\s*\S))", re.IGNORECASE
+)
+
+# Flags that say the quantity is not what a person or the printed line said.
+# qty_inferred: read from the printed pattern because the model gave none.
+# qty_corrected: the printed pattern disagreed with the model, and the print won.
+# qty_assumed: nothing supports the quantity; it is the 1-each default, or the line
+#   looks weighed but its weight could not be read.
+QTY_FLAGS = frozenset({"qty_inferred", "qty_corrected", "qty_assumed"})
 
 
 @dataclass
@@ -102,6 +120,25 @@ class ParsedLine:
         }
 
 
+def lines_budget_seconds(receipt_text: str) -> float:
+    """How long one lines-stage request may wait for the model: the base budget
+    plus a little per line of receipt text, since generation time grows with the
+    lines it has to write out (#34). Capped by the stage's deadline."""
+    settings = get_settings()
+    lines = sum(1 for row in receipt_text.splitlines() if row.strip())
+    budget = settings.llm_timeout_seconds + settings.llm_lines_seconds_per_line * lines
+    return min(budget, lines_deadline_seconds())
+
+
+def lines_deadline_seconds() -> float:
+    """How long the whole lines stage may take, every retry included.
+
+    Under the job's lock: a stage still working when the lock lapses could be
+    claimed by a second worker and read twice.
+    """
+    return 0.8 * get_settings().ingest_lock_timeout_seconds
+
+
 def _unit(text: str | None) -> str | None:
     if text is None or not text.strip():
         return None
@@ -117,23 +154,41 @@ def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
     if line.unit is not None and unit is None:
         flags.append("unknown_unit")
     if line.line_kind == "item":
+        # What the receipt prints outranks what the model says (non-negotiable 6:
+        # never guess): a printed weight or count is read from the text, and a
+        # quantity nothing supports is marked as assumed for review (#31).
         weighed = WEIGHT_PATTERN.search(line.raw_text)
         counted = COUNT_PATTERN.search(line.raw_text) if weighed is None else None
+        printed: tuple[Decimal, str | None, Decimal] | None = None
         if weighed is not None:
-            if qty is None:
-                qty = Decimal(weighed.group(1))
-                flags.append("qty_inferred")
-            unit = unit or _unit(weighed.group(2))
-            unit_price = unit_price if unit_price is not None else Decimal(weighed.group(3))
+            printed = (
+                Decimal(weighed.group(1)),
+                _unit(weighed.group(2)),
+                Decimal(weighed.group(3)),
+            )
         elif counted is not None:
+            printed = (Decimal(counted.group(1)), "each", Decimal(counted.group(2)))
+        if printed is not None:
+            p_qty, p_unit, p_price = printed
             if qty is None:
-                qty = Decimal(counted.group(1))
                 flags.append("qty_inferred")
-            unit = unit or "each"
-            unit_price = unit_price if unit_price is not None else Decimal(counted.group(2))
-        if qty is None:
-            qty, unit = Decimal("1"), "each"  # a plain item line is one pack
-        elif unit is None:
+            elif qty != p_qty or (unit is not None and p_unit is not None and unit != p_unit):
+                flags.append("qty_corrected")
+            qty, unit = p_qty, p_unit or unit or "each"
+            # The printed rate with the printed quantity, or the line contradicts
+            # itself: three at a model's 5.00 beside a printed 3 @ 1.25.
+            unit_price = p_price
+        elif qty is None:
+            qty, unit = (
+                Decimal("1"),
+                "each",
+            )  # a plain item line is one pack, if nothing says otherwise
+            flags.append("qty_assumed")
+        elif LOOSE_WEIGHT_PATTERN.search(line.raw_text):
+            # A weight is printed but could not be read: whatever the model said,
+            # nothing on the line supports it.
+            flags.append("qty_assumed")
+        if unit is None:
             unit = "each"
     return ParsedLine(
         seq=seq,
