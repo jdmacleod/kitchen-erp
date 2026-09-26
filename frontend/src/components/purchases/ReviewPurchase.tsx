@@ -537,6 +537,18 @@ export function needsYou(line: PurchaseLine): boolean {
   return line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0));
 }
 
+/** What a line flag means, in words; unknown flags fall back to their code. */
+const FLAG_LABELS: Record<string, string> = {
+  // #31: the quantity is the default, or the line looked weighed but could not be read.
+  qty_assumed: "quantity assumed",
+  qty_corrected: "quantity from the print",
+  qty_inferred: "quantity from the print",
+};
+
+function flagLabel(flag: string): string {
+  return FLAG_LABELS[flag] ?? flag.replaceAll("_", " ");
+}
+
 /** The line's number, kind and flags. */
 function LineTags({ line }: { line: PurchaseLine }) {
   return (
@@ -550,7 +562,7 @@ function LineTags({ line }: { line: PurchaseLine }) {
       ) : null}
       {line.flags.map((f) => (
         <span key={f} className="mt-1 block">
-          <Badge tone="warn">{f.replaceAll("_", " ")}</Badge>
+          <Badge tone="warn">{flagLabel(f)}</Badge>
         </span>
       ))}
     </>

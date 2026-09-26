@@ -242,3 +242,21 @@ describe("receipt review density on desktop (#35)", () => {
     expect(within(row).getByRole("button", { name: "Edit" })).toBeInTheDocument();
   });
 });
+
+describe("receipt review: quantity flags (#31)", () => {
+  it("says in words that a quantity was assumed, and counts the line as needing you", async () => {
+    const assumed: Purchase = {
+      ...receiptPurchase,
+      lines: receiptPurchase.lines.map((l) => (l.seq === 1 ? { ...l, flags: ["qty_assumed"] } : l)),
+    };
+    mockApi(routes(() => assumed));
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    const one = screen.getAllByTestId("review-line").find((el) => el.getAttribute("aria-label")?.startsWith("Line 1:"))!;
+    expect(one).toHaveTextContent("quantity assumed");
+    expect(one).not.toHaveTextContent("qty_assumed");
+    // Line 1 was a quiet alias match; the flag puts it in front of a person.
+    expect(within(screen.getByRole("group", { name: "Show lines" })).getByRole("button", { name: "Needs you 3" })).toBeInTheDocument();
+  });
+});

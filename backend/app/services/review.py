@@ -8,6 +8,7 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
+from app.ingest.lines import QTY_FLAGS
 from app.models import AppUser, Product, PurchaseLine
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
@@ -99,6 +100,10 @@ async def edit_line(
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")
     data = payload.model_dump(exclude_unset=True)
+    # A person has now said what the quantity is: it is no longer inferred,
+    # corrected from the print, or assumed (#31).
+    if {"qty", "unit", "unit_price", "clear_qty"} & data.keys():
+        line.flags = [f for f in line.flags if f not in QTY_FLAGS]
     if data.pop("clear_parent", False):
         line.parent_line_id = None
     if data.pop("clear_qty", False):

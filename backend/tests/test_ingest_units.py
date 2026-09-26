@@ -75,13 +75,17 @@ def test_refine_weighed_and_counted_patterns():
         "each",
         Decimal("1.99"),
     )
+    # The model gave no quantity: one each is the default, and it says so (#31).
     plain = lines_mod.refine_line(3, _line("BREAD 3.49", line_total="3.49"))
     assert (plain.qty, plain.unit, plain.unit_price, plain.flags) == (
         Decimal("1"),
         "each",
         None,
-        [],
+        ["qty_assumed"],
     )
+    # The model said one each for a plain line: nothing to flag.
+    one = lines_mod.refine_line(3, _line("BREAD 3.49", line_total="3.49", qty="1", unit="each"))
+    assert (one.qty, one.unit, one.flags) == (Decimal("1"), "each", [])
     kilo = lines_mod.refine_line(
         4, _line("ONIONS 0.85 kg @ 2.20/kg 1.87", line_total="1.87", qty="0.85", unit="KG")
     )
@@ -266,3 +270,34 @@ async def test_a_timeout_is_its_own_code_and_is_not_retried_for_ever():
     # to LLM_TIMEOUT_SECONDS rather than to "is Ollama running?".
     assert raised.value.detail == "ReadTimeout after 120s"
     assert not isinstance(raised.value, ModelUnavailable)
+
+
+def test_the_printed_quantity_outranks_the_model_and_assumptions_are_flagged():
+    """#31: every line came back as 1 each, with nothing saying it was not read."""
+    # The model said 1 each; the receipt prints a weight. The print wins.
+    bananas = lines_mod.refine_line(
+        1, _line("BANANAS 1.24 lb @ $0.68/lb 0.84", line_total="0.84", qty="1", unit="each")
+    )
+    assert (bananas.qty, bananas.unit, bananas.unit_price) == (
+        Decimal("1.24"),
+        "lb",
+        Decimal("0.68"),
+    )
+    assert bananas.flags == ["qty_corrected"]
+    # And a printed count.
+    cans = lines_mod.refine_line(2, _line("SODA 3 @ 1.25 3.75", line_total="3.75", qty="1"))
+    assert (cans.qty, cans.unit, cans.flags) == (Decimal("3"), "each", ["qty_corrected"])
+    # Agreeing with the print is not a correction.
+    agreed = lines_mod.refine_line(
+        3, _line("SODA 3 @ 1.25 3.75", line_total="3.75", qty="3", unit="each")
+    )
+    assert agreed.flags == []
+    # A weight OCR mangled ("1b"): weighed, but unreadable. Whatever the model
+    # said, nothing on the line supports it.
+    garbled = lines_mod.refine_line(
+        4, _line("APPLES 2.10 1b 3.13", line_total="3.13", qty="1", unit="each")
+    )
+    assert (garbled.qty, garbled.unit, garbled.flags) == (Decimal("1"), "each", ["qty_assumed"])
+    # Discounts and tax carry no quantity and no quantity flag.
+    tax = lines_mod.refine_line(5, _line("TAX 0.42", kind="tax", line_total="0.42"))
+    assert tax.qty is None and tax.flags == []

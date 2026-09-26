@@ -448,3 +448,38 @@ async def test_resolver_names_is_one_query_for_a_page_and_none_for_nobody():
         nobody, [SimpleNamespace(lines=[SimpleNamespace(resolved_by=None)])]
     )
     assert nobody.calls == 0
+
+
+async def test_a_person_setting_the_quantity_clears_the_quantity_flags(admin_client, admin):
+    """#31: qty_assumed says nothing supports the number; once someone sets it, it is theirs."""
+    loc = await make_location(admin_client, "Quay Grocer", "Quay Grocer")
+    purchase_id = await make_receipt_purchase(
+        admin.id,
+        loc["id"],
+        [
+            {
+                "raw_text": "APPLES 2.10 1b 3.13",
+                "line_total": "3.13",
+                "qty": "1",
+                "unit": "each",
+                "flags": ["qty_assumed", "price_outlier"],
+            },
+        ],
+    )
+    detail = (await admin_client.get(f"/api/v1/purchases/{purchase_id}")).json()
+    line_id = detail["lines"][0]["id"]
+    assert detail["lines"][0]["flags"] == ["qty_assumed", "price_outlier"]
+
+    # Editing something else leaves the flag: the quantity is still unsupported.
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{purchase_id}/lines/{line_id}", json={"raw_text": "APPLES 2.10 lb 3.13"}
+    )
+    assert r.json()["lines"][0]["flags"] == ["qty_assumed", "price_outlier"]
+
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{purchase_id}/lines/{line_id}", json={"qty": "2.10", "unit": "lb"}
+    )
+    assert r.status_code == 200
+    line = r.json()["lines"][0]
+    assert (line["qty"], line["unit"]) == ("2.10", "lb")
+    assert line["flags"] == ["price_outlier"]
