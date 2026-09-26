@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 import pytest
+from PIL import Image
 from sqlalchemy import func, select
 
 from app.core.config import get_settings
@@ -16,7 +18,7 @@ from app.core.db import get_sessionmaker
 from app.models import IngestJob, ReceiptDocument
 from tests import geo_helpers as gh
 from tests import ingest_helpers as ih
-from tests.ingest_helpers import png_bytes, upload
+from tests.ingest_helpers import png_bytes, render_receipt_as, upload
 
 no_network = gh.no_network
 receipts_dir = ih.receipts_dir
@@ -159,3 +161,70 @@ async def test_job_list_filters_by_status(admin_client: httpx.AsyncClient, recei
     assert (await admin_client.get("/api/v1/ingest-jobs", params={"status": "failed"})).json()[
         "items"
     ] == []
+
+
+# --- showing the receipt (#30, #28) ----------------------------------------------
+
+
+@pytest.mark.parametrize("mime", ["application/pdf", "image/heic"])
+async def test_a_receipt_a_browser_cannot_show_is_served_as_png(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, tmp_path: Path, mime: str
+):
+    """A PDF, or HEIC outside Safari, in an <img> is a blank panel on review."""
+    source = render_receipt_as(mime, "SYNTHETIC GROCER\nOATS 1KG  3.29", tmp_path / "receipt")
+    document = (await upload(admin_client, source.read_bytes(), content_type=mime)).json()[
+        "document"
+    ]
+    assert document["mime"] == mime
+
+    r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/png"
+    with Image.open(io.BytesIO(r.content)) as shown:
+        assert shown.format == "PNG" and shown.width > 100
+    # The original is untouched; the rendering is not stored beside it.
+    assert (await admin_client.get(f"/api/v1/receipts/{document['id']}")).json()[
+        "sha256"
+    ] == document["sha256"]
+
+
+async def test_a_thumbnail_is_a_scaled_png(admin_client: httpx.AsyncClient, receipts_dir: Path):
+    document = (await upload(admin_client, png_bytes("thumb"))).json()["document"]
+    r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 48})
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    with Image.open(io.BytesIO(r.content)) as thumb:
+        assert thumb.width == 48 and thumb.height == 12  # 96x24 scaled by half
+    too_big = await admin_client.get(
+        f"/api/v1/receipts/{document['id']}/image", params={"width": 5000}
+    )
+    assert too_big.status_code == 422
+
+
+async def test_a_pdf_that_cannot_be_rendered_says_so(
+    admin_client: httpx.AsyncClient, receipts_dir: Path
+):
+    pdf = b"%PDF-1.4\n%synthetic, and not a document\n"
+    document = (await upload(admin_client, pdf, content_type="application/pdf")).json()["document"]
+    r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image")
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "image_unreadable"
+
+
+async def test_a_thumbnail_holds_the_same_pixel_ceiling_as_a_rendering(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A small file can declare an enormous image; it is refused from the header."""
+    from app.services import receipt_images
+
+    # 96x24 is 2,304 pixels; lower the ceiling under it rather than decode a bomb.
+    monkeypatch.setattr(receipt_images, "MAX_MEGAPIXELS", 0.001)
+    document = (await upload(admin_client, png_bytes("bomb"))).json()["document"]
+    r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 48})
+    assert r.status_code == 422
+    assert r.json()["error"]["details"]["reason"] == "image_too_large"
+
+
+async def test_the_image_endpoint_documents_image_responses(client: httpx.AsyncClient):
+    spec = (await client.get("/api/openapi.json")).json()
+    ok = spec["paths"]["/api/v1/receipts/{document_id}/image"]["get"]["responses"]["200"]
+    assert set(ok["content"]) == {"image/png", "image/jpeg", "image/webp"}

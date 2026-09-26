@@ -10518,6 +10518,7 @@
     },
     "/api/v1/receipts/{document_id}/image": {
       "get": {
+        "description": "The receipt as a browser can show it: the original, or page 1 as PNG (#30).\n\n`width` asks for a PNG no wider than that, for a thumbnail in a list (#28).",
         "operationId": "get_receipt_image_api_v1_receipts__document_id__image_get",
         "parameters": [
           {
@@ -10529,26 +10530,40 @@
               "title": "Document Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "width",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1024,
+                  "minimum": 32,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Width"
+            }
           }
         ],
         "responses": {
           "200": {
             "content": {
-              "application/json": {
-                "schema": {}
-              }
+              "image/jpeg": {},
+              "image/png": {},
+              "image/webp": {}
             },
-            "description": "Successful Response"
+            "description": "The receipt as a browser can show it: the stored original, or page 1 rendered to PNG (always PNG when `width` is given)."
+          },
+          "404": {
+            "description": "No such receipt, or its stored file is missing."
           },
           "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
+            "description": "The stored receipt could not be rendered (`image_unreadable`)."
           }
         },
         "summary": "Get Receipt Image",

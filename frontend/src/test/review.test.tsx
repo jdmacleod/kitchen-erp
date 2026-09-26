@@ -152,6 +152,9 @@ describe("receipt review", () => {
     renderApp(base);
     await openReview();
 
+    // Only the line being worked on shows its controls (#35): open line 3.
+    expect(screen.queryByRole("combobox", { name: "Attach line 3 to" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Open line 3" }));
     const attach = screen.getByRole("combobox", { name: "Attach line 3 to" });
     expect(attach).toHaveValue("");
     await user.selectOptions(attach, unmatchedLine.id);

@@ -186,6 +186,10 @@ export function useUploadReceipt() {
 }
 
 /** The URL of a receipt's image on this origin; the browser sends the session cookie. */
-export function receiptImageUrl(documentId: string): string {
-  return `${API_BASE}/receipts/${enc(documentId)}/image`;
+/**
+ * The receipt as a browser can show it: the original, or page 1 as PNG for a PDF
+ * or HEIC (#30). `width` asks for a scaled PNG, for a thumbnail (#28).
+ */
+export function receiptImageUrl(documentId: string, width?: number): string {
+  return `${API_BASE}/receipts/${enc(documentId)}/image${width ? `?width=${width}` : ""}`;
 }

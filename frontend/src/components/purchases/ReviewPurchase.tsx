@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
 import { useLocations } from "../../api/geo";
-import { locationCandidates, receiptImageUrl, useIngestJob, useIngestJobs } from "../../api/ingest";
+import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
 import {
   LINE_KINDS,
   isQuietLine,
@@ -32,6 +32,7 @@ import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
 import { ProductPicker } from "./ProductPicker";
+import { ReceiptImage } from "./ReceiptImage";
 import { CategoryChip } from "../CategoryChip";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
@@ -291,8 +292,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" : ""}`}>
         {purchase.receipt_document_id ? (
           <Disclosure summary="Receipt image" defaultOpen className="md:sticky md:top-4 md:self-start">
-            <img
-              src={receiptImageUrl(purchase.receipt_document_id)}
+            <ReceiptImage
+              documentId={purchase.receipt_document_id}
               alt="The receipt as photographed"
               className="max-h-[80dvh] w-full rounded-md border border-neutral-200 object-contain dark:border-neutral-800"
             />
@@ -356,7 +357,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           </Card>
 
           {/* Below lg, Commit sits in the thumb zone just above the tab bar (G18). */}
-          <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:static lg:border-0 lg:shadow-none lg:bg-transparent lg:p-0 lg:backdrop-blur-none dark:border-neutral-800 dark:bg-neutral-950/95 lg:dark:bg-transparent">
+          <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
             <Button onClick={() => setConfirming(true)} disabled={busy} className="min-h-12 flex-1 text-base lg:min-h-10 lg:flex-none lg:text-sm">
               Commit purchase
             </Button>
@@ -556,8 +557,15 @@ function LineTags({ line }: { line: PurchaseLine }) {
   );
 }
 
-/** What the receipt says, verbatim and normalized. */
-function LineRaw({ line }: { line: PurchaseLine }) {
+/** What the receipt says, verbatim and normalized; one truncated line when compact. */
+function LineRaw({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
+  if (compact) {
+    return (
+      <span className="block max-w-[20rem] truncate font-mono text-xs" title={line.raw_text ?? undefined}>
+        {line.raw_text ?? "—"}
+      </span>
+    );
+  }
   return (
     <>
       <span className="font-mono text-xs break-all">{line.raw_text ?? "—"}</span>
@@ -568,8 +576,12 @@ function LineRaw({ line }: { line: PurchaseLine }) {
   );
 }
 
-/** What it was read as: quantity × unit, and the prices. */
-function LineParsed({ line }: { line: PurchaseLine }) {
+/** What it was read as: quantity × unit, and the prices; on one line when compact. */
+function LineParsed({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
+  if (compact) {
+    const qty = line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—";
+    return <span className="tabular-nums">{line.line_total !== null ? `${qty} · ${formatMoney(line.line_total)}` : qty}</span>;
+  }
   return (
     <>
       <span className="tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</span>
@@ -588,12 +600,42 @@ type LinePartProps = Omit<ReviewLineProps, "current" | "onFocus">;
  * The product: the one chosen, or the suggestions and the picker. On a card
  * (`touch`) each suggestion is one 44px button (G18).
  */
-function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, onChoose, onPatch, touch }: LinePartProps & { touch?: boolean }) {
+function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, onChoose, onPatch, touch, compact }: LinePartProps & { touch?: boolean; compact?: boolean }) {
   const quiet = isQuietLine(line);
   const isItem = line.line_kind === "item";
   const suggestions = line.suggestions ?? [];
   const top = topSuggestion(line);
   const resolution = line.resolution as Resolution | null;
+
+  // A line not being worked on is one scannable line (#35): what it is, or what
+  // is suggested. Its buttons appear when it becomes the current line.
+  if (compact && !picking) {
+    const parent = line.parent_line_id ? itemLines.find((i) => i.id === line.parent_line_id) : null;
+    return (
+      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+        {line.product ? (
+          <span className="min-w-0 truncate font-medium">{productTitle(line.product)}</span>
+        ) : resolution === "ignored" ? (
+          <span className="italic">ignored</span>
+        ) : isItem ? (
+          <span className="font-medium text-amber-800 dark:text-amber-300">unidentified</span>
+        ) : parent ? (
+          <span className="text-neutral-600 dark:text-neutral-400">on #{parent.seq}</span>
+        ) : (
+          <span>—</span>
+        )}
+        {resolution && isItem ? (
+          <Badge tone={resolution === "unmatched" ? "warn" : quiet ? "neutral" : "good"}>{resolutionLabel[resolution] ?? resolution}</Badge>
+        ) : null}
+        {top && !line.product && resolution !== "ignored" ? (
+          <span className="min-w-0 truncate text-xs text-neutral-600 dark:text-neutral-400">
+            Suggested: {top.ignore ? "ignore this line" : top.label}
+            {suggestions.length > 1 ? ` (+${suggestions.length - 1})` : ""}
+          </span>
+        ) : null}
+      </span>
+    );
+  }
 
   if (picking) {
     return (
@@ -726,15 +768,23 @@ function lineAttributes(line: PurchaseLine, current: boolean, onFocus: () => voi
     "aria-label": `Line ${line.seq}: ${lineTitle(line)}`,
     "data-testid": "review-line",
     "data-quiet": isQuietLine(line) ? "true" : undefined,
-    onFocus,
+    // The line itself taking focus makes it current, not a control inside it:
+    // Tabbing onto a compact line's Open would otherwise open the line and
+    // replace the very button that had focus.
+    onFocus: (event: FocusEvent<HTMLElement>) => {
+      if (event.target === event.currentTarget) onFocus();
+    },
   };
 }
 
 function ReviewLine(props: ReviewLineProps) {
-  const { line, current, editing, busy, onFocus, onPatch, onCancelEdit } = props;
+  const { line, current, picking, editing, busy, onFocus, onPatch, onCancelEdit } = props;
   const quiet = isQuietLine(line);
   // Draw the eye to flags, suggestions, and unidentified items; not to ignored or automatic lines.
   const attention = needsYou(line);
+  // Only the line being worked on opens up; the rest stay one line each (#35).
+  const compact = !current && !picking && !editing;
+  const pad = compact ? "py-1" : "py-2";
 
   return (
     <tr
@@ -742,20 +792,35 @@ function ReviewLine(props: ReviewLineProps) {
       aria-selected={current}
       className={`align-top ${focusRing} ${current ? "bg-neutral-100 dark:bg-neutral-900" : ""} ${quiet ? "text-neutral-600 dark:text-neutral-400" : ""} ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}
     >
-      <td className="py-2 pr-2 pl-1">
+      <td className={`${pad} pr-2 pl-1`}>
         <LineTags line={line} />
       </td>
-      <td className="py-2 pr-2">
-        <LineRaw line={line} />
+      <td className={`${pad} pr-2`}>
+        <LineRaw line={line} compact={compact} />
       </td>
-      <td className="py-2 pr-2 whitespace-nowrap">
-        {editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} />}
+      <td className={`${pad} pr-2 whitespace-nowrap`}>
+        {editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} compact={compact} />}
       </td>
-      <td className="py-2 pr-2">
-        <LineProduct {...props} />
+      <td className={`${pad} pr-2`}>
+        <LineProduct {...props} compact={compact} />
       </td>
-      <td className="py-2">
-        <LineActions {...props} />
+      <td className={pad}>
+        {compact ? (
+          // Not the shared Button: its desktop minimum height would set every
+          // compact row's height, which is the thing #35 is about.
+          <button
+            type="button"
+            // Focus moves to the line, which stays in the document and becomes
+            // current, so keyboard focus is never dropped.
+            onClick={(event) => event.currentTarget.closest<HTMLElement>("[data-testid=review-line]")?.focus()}
+            aria-label={`Open line ${line.seq}`}
+            className={`inline-flex min-h-11 items-center rounded-md px-2 text-xs text-neutral-700 hover:bg-neutral-200 lg:min-h-6 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}
+          >
+            Open
+          </button>
+        ) : (
+          <LineActions {...props} />
+        )}
       </td>
     </tr>
   );

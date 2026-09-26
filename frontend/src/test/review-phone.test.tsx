@@ -200,3 +200,45 @@ describe("receipt review: who resolved a line", () => {
     expect(line2()).not.toHaveTextContent(adminUser.id);
   });
 });
+
+describe("receipt review density on desktop (#35)", () => {
+  it("shows the current line in full and every other line compact, one line each", async () => {
+    mockApi(routes(() => receiptPurchase));
+    const user = userEvent.setup();
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    // Line 2 needs you first, so it is current and open: its suggestions and actions.
+    const rows = screen.getAllByTestId("review-line");
+    expect(within(rows[1]).getByRole("button", { name: "Accept (Enter)" })).toBeInTheDocument();
+    expect(within(rows[1]).getByRole("button", { name: "Ignore" })).toBeInTheDocument();
+    // Line 4 is compact: its product and a way to open it, no action buttons.
+    expect(within(rows[3]).queryByRole("button", { name: "Ignore" })).toBeNull();
+    expect(within(rows[3]).getByRole("button", { name: "Open line 4" })).toBeInTheDocument();
+
+    await user.click(within(rows[3]).getByRole("button", { name: "Open line 4" }));
+    expect(within(screen.getAllByTestId("review-line")[3]).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+    // And the one it replaced folds back to a line with its top suggestion.
+    const two = screen.getAllByTestId("review-line")[1];
+    expect(within(two).queryByRole("button", { name: /^Accept/ })).toBeNull();
+    expect(two).toHaveTextContent("Suggested: Riverbend Bread Flour (+1)");
+  });
+
+  it("does not open a line when Tab lands on its Open, and keeps focus when Open is used", async () => {
+    mockApi(routes(() => receiptPurchase));
+    const user = userEvent.setup();
+    renderApp(base);
+    await screen.findByTestId("review");
+
+    const open4 = screen.getByRole("button", { name: "Open line 4" });
+    open4.focus();
+    // Still compact: focusing the button is not choosing the line.
+    expect(screen.getByRole("button", { name: "Open line 4" })).toHaveFocus();
+    expect(within(screen.getAllByTestId("review-line")[3]).queryByRole("button", { name: "Edit" })).toBeNull();
+
+    await user.click(open4);
+    const row = screen.getAllByTestId("review-line")[3];
+    expect(row).toHaveFocus();
+    expect(within(row).getByRole("button", { name: "Edit" })).toBeInTheDocument();
+  });
+});

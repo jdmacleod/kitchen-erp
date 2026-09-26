@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
+import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
@@ -134,7 +135,17 @@ function JobRow({ job }: { job: IngestJob }) {
   const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>
-      <span className="flex flex-wrap items-center gap-2">
+      {/* Which receipt this is (#28): two failed jobs otherwise read the same. */}
+      {job.receipt_document_id ? (
+        <ReceiptImage
+          documentId={job.receipt_document_id}
+          width={96}
+          alt=""
+          link={{ label: `Open the receipt uploaded ${job.created_at ? formatDateTime(job.created_at) : ""}`.trim() }}
+          className="h-16 w-12 rounded border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
+        />
+      ) : null}
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <Badge tone={tone}>{jobStatusText(job)}</Badge>
         {job.stage && jobInFlight(job) ? <span className="text-neutral-600 dark:text-neutral-400">stage {job.stage}</span> : null}
         {job.created_at ? <time dateTime={job.created_at}>{formatDateTime(job.created_at)}</time> : null}
