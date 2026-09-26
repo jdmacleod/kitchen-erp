@@ -75,6 +75,7 @@ describe("to-identify queue", () => {
   it("says when there is nothing to identify", async () => {
     mockApi({ ...baseRoutes(), "GET /to-identify": () => jsonResponse(200, { items: [] }) });
     renderApp("/shop/receipts/identify");
-    expect(await screen.findByText("Nothing to identify")).toBeInTheDocument();
+    expect(await screen.findByText("All lines identified")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to Home" })).toHaveAttribute("href", "/");
   });
 });

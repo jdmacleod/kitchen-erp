@@ -48,9 +48,33 @@ export function PurchasesPage() {
           </p>
         ) : purchases.isError ? (
           <Alert tone="error">{errorMessage(purchases.error)}</Alert>
+        ) : items.length === 0 && status ? (
+          // Filtered-empty and truly empty say different things (G11).
+          <EmptyState
+            title={`No ${purchaseStatusLabel[status].toLowerCase()} purchases`}
+            action={
+              <Button variant="secondary" onClick={() => setStatus("")}>
+                Show all
+              </Button>
+            }
+          >
+            Nothing has this status right now.
+          </EmptyState>
         ) : items.length === 0 ? (
-          <EmptyState title="No purchases yet">
-            Enter a market or stand purchase by hand, or note a shelf price. Receipts arrive with the ingest pipeline.
+          <EmptyState
+            title="No purchases yet"
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                <Link to="/shop/receipts" className={secondaryLinkClass}>
+                  Scan a receipt
+                </Link>
+                <Link to="/shop/purchases/new" className={primaryLinkClass}>
+                  New purchase
+                </Link>
+              </div>
+            }
+          >
+            Scan a receipt or enter one by hand, and its prices start your price book.
           </EmptyState>
         ) : (
           <>
