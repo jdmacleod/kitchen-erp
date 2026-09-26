@@ -94,6 +94,8 @@ export interface PurchaseLine {
   line_total: string | null;
   resolution: Resolution | string | null;
   resolved_by?: string | null;
+  /** The resolver's display name; the id is never shown. */
+  resolved_by_name?: string | null;
   resolution_confidence?: string | null;
   flags: string[];
   suggestions?: Suggestion[];

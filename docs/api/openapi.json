@@ -2818,6 +2818,17 @@
             ],
             "title": "Resolved By"
           },
+          "resolved_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved By Name"
+          },
           "seq": {
             "title": "Seq",
             "type": "integer"
