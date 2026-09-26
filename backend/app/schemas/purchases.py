@@ -153,6 +153,8 @@ class LineOut(ApiModel):
     line_total: DecimalStr
     resolution: str
     resolved_by: uuid.UUID | None
+    # Who, as people read it; the id alone is not something to show.
+    resolved_by_name: str | None = None
     resolution_confidence: DecimalStr | None
     flags: list[str]
     observation_id: uuid.UUID | None

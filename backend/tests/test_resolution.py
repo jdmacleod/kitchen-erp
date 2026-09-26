@@ -73,6 +73,7 @@ async def test_confirmed_alias_resolves_and_unconfirmed_only_suggests(
     line2 = body["lines"][0]
     assert line2["resolution"] == "alias" and line2["product"]["id"] == pep["id"]
     assert line2["resolved_by"] is None and line2["flags"] == []
+    assert line2["resolved_by_name"] is None
 
 
 async def test_unconfirmed_alias_does_not_auto_resolve(admin_client, admin, db_session, owner_conn):
@@ -153,6 +154,12 @@ async def test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rej
     )
     assert r.json()["lines"][0]["resolution"] == "llm"
     assert r.json()["lines"][0]["resolved_by"] == str(admin.id)
+    # The name to show, so the review page never prints the id.
+    assert r.json()["lines"][0]["resolved_by_name"] == admin.display_name
+    # The list carries it too, from one lookup for the whole page.
+    listed = (await admin_client.get("/api/v1/purchases")).json()["items"]
+    mine = next(p for p in listed if p["id"] == str(p4))
+    assert mine["lines"][0]["resolved_by_name"] == admin.display_name
 
 
 async def test_barcode_rung_resolves_without_a_person(admin_client, admin, db_session):
@@ -409,3 +416,35 @@ async def test_review_edits_lines_and_header(admin_client, admin, db_session):
     r = await admin_client.delete(f"/api/v1/purchases/{p}/lines/{coupon['id']}")
     assert r.status_code == 200 and len(r.json()["lines"]) == 1
     assert r.json()["computed_total"] == "1.0000"
+
+
+async def test_resolver_names_is_one_query_for_a_page_and_none_for_nobody():
+    """A page of purchases looks resolvers up once, not once per purchase."""
+    from types import SimpleNamespace
+    from uuid import uuid4
+
+    from app.services import purchases as purchase_service
+
+    class Recorder:
+        def __init__(self):
+            self.calls = 0
+
+        async def execute(self, stmt):
+            self.calls += 1
+            return SimpleNamespace(all=lambda: [])
+
+    a, b = uuid4(), uuid4()
+    page = [
+        SimpleNamespace(lines=[SimpleNamespace(resolved_by=a), SimpleNamespace(resolved_by=None)]),
+        SimpleNamespace(lines=[SimpleNamespace(resolved_by=b)]),
+        SimpleNamespace(lines=[SimpleNamespace(resolved_by=a)]),
+    ]
+    db = Recorder()
+    await purchase_service.resolver_names(db, page)
+    assert db.calls == 1
+
+    nobody = Recorder()
+    await purchase_service.resolver_names(
+        nobody, [SimpleNamespace(lines=[SimpleNamespace(resolved_by=None)])]
+    )
+    assert nobody.calls == 0
