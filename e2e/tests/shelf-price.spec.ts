@@ -95,3 +95,19 @@ test("below lg the shelf price is a task screen: no tab bar, Save in the thumb z
   const viewport = page.viewportSize();
   expect(box && viewport && box.height >= 56 && box.y > viewport.height * 0.7).toBe(true);
 });
+
+test("at lg Capture opens the shelf price in a drawer over the page (G14)", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "the drawer is the desktop layout");
+  await login(page);
+  await page.goto("/shop/purchases");
+  await page.locator("aside").getByRole("button", { name: "Capture" }).click();
+  await page.getByRole("dialog", { name: "Capture" }).getByRole("link", { name: /Log a shelf price/ }).click();
+
+  const drawer = page.getByRole("dialog", { name: "Log a shelf price" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByRole("combobox", { name: "Barcode or product name" })).toBeVisible();
+  // The page underneath stays where Capture was opened.
+  await expect(page).toHaveURL(/\/shop\/purchases$/);
+  await drawer.getByRole("button", { name: "Cancel" }).click();
+  await expect(drawer).toHaveCount(0);
+});

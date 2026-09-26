@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { REDIRECTS } from "../App";
 import type { SearchResults } from "../api/search";
 import { DEFAULT_FEATURES, FOOTER_SECTIONS, MAIN_SECTIONS, visibleSections, type NavSection } from "../components/Nav";
@@ -22,6 +22,9 @@ function mount(routes: Record<string, RouteHandler> = {}, path = "/settings/syst
   renderApp(path);
   return calls;
 }
+
+// Opening a search result remembers it (G15); each test starts with none.
+afterEach(() => localStorage.clear());
 
 const sidebar = () => screen.getAllByRole("navigation", { name: "Main" })[0];
 

@@ -7,6 +7,7 @@ import { Nav } from "./Nav";
 import { NoticeProvider } from "./Notice";
 import { SearchPalette } from "./SearchPalette";
 import { MoreSheet, TabBar } from "./TabBar";
+import { ShelfPriceDrawer, type ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { focusRing } from "./ui";
 
 const chromeButton =
@@ -25,7 +26,7 @@ function initials(name: string): string {
     .join("");
 }
 
-type Overlay = "search" | "capture" | "more" | null;
+type Overlay = "search" | "capture" | "more" | "shelf" | null;
 
 /**
  * Task screens: below lg they take the whole screen, with their own back button
@@ -45,9 +46,11 @@ export function AppShell() {
   const task = TASK_PATHS.has(location.pathname);
   // One overlay at a time: opening one replaces whichever is up. Each remembers
   // the history entry it was opened on, so any navigation (a link, Back,
-  // Forward) closes it without an effect.
+  // Forward) closes it without an effect. The shelf-price drawer is the
+  // exception: it can hold typed input, and only its own discard guard may
+  // throw that away (D5), so it stays open across a navigation.
   const [opened, setOpened] = useState<{ overlay: Overlay; on: string }>({ overlay: null, on: "" });
-  const overlay = opened.on === location.key ? opened.overlay : null;
+  const overlay = opened.overlay === "shelf" || opened.on === location.key ? opened.overlay : null;
   // A ref, so the memoised chrome and the ⌘K listener open on the current entry.
   const entry = useRef(location.key);
   useEffect(() => {
@@ -55,6 +58,8 @@ export function AppShell() {
   }, [location.key]);
   const setOverlay = useCallback((next: Overlay) => setOpened({ overlay: next, on: entry.current }), []);
   const close = () => setOverlay(null);
+  // What Capture handed the desktop shelf-price drawer (G14).
+  const [shelfArrival, setShelfArrival] = useState<ShelfPriceState>({});
   const chrome = useMemo<Chrome>(
     () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search") }),
     [setOverlay],
@@ -65,7 +70,8 @@ export function AppShell() {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setOverlay("search");
+        // Never over the drawer: replacing it would drop what was typed there.
+        setOpened((prev) => (prev.overlay === "shelf" ? prev : { overlay: "search", on: entry.current }));
       }
     };
     document.addEventListener("keydown", onKey);
@@ -127,6 +133,8 @@ export function AppShell() {
         <ChromeContext.Provider value={chrome}>
           <NoticeProvider>
             <Outlet />
+            {/* Inside the provider, so its Save can show the notice on this page. */}
+            {overlay === "shelf" ? <ShelfPriceDrawer arrival={shelfArrival} onClose={close} /> : null}
           </NoticeProvider>
         </ChromeContext.Provider>
       </main>
@@ -141,7 +149,15 @@ export function AppShell() {
       )}
 
       {overlay === "search" ? <SearchPalette onClose={close} /> : null}
-      {overlay === "capture" ? <CaptureSheet onClose={close} /> : null}
+      {overlay === "capture" ? (
+        <CaptureSheet
+          onClose={close}
+          onShelfPrice={(state) => {
+            setShelfArrival(state);
+            setOverlay("shelf");
+          }}
+        />
+      ) : null}
       {overlay === "more" ? <MoreSheet onClose={close} /> : null}
     </div>
   );

@@ -14,6 +14,13 @@ interface DrawerProps {
   primaryLabel: string;
   busy?: boolean;
   busyLabel?: string;
+  /** Another action beside the primary, e.g. "Save and scan another". */
+  secondaryAction?: ReactNode;
+  /**
+   * False when there is no form to act on (e.g. an empty state in its place):
+   * the footer offers only Close, never buttons that cannot work.
+   */
+  actions?: boolean;
   children: ReactNode;
 }
 
@@ -25,7 +32,7 @@ interface DrawerProps {
  * With typed input, Escape, a backdrop click and Cancel do not close it: they show
  * an inline squash bar asking to discard, and focus goes to Keep editing (D5).
  */
-export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, busy = false, busyLabel, children }: DrawerProps) {
+export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, busy = false, busyLabel, secondaryAction, actions = true, children }: DrawerProps) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const keepEditing = useRef<HTMLButtonElement>(null);
@@ -70,13 +77,18 @@ export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, bus
               </div>
             </div>
           ) : null}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={requestClose}>
-              Cancel
+              {actions ? "Cancel" : "Close"}
             </Button>
-            <Button type="submit" form={formId} disabled={busy}>
-              {busy ? (busyLabel ?? primaryLabel) : primaryLabel}
-            </Button>
+            {actions ? (
+              <>
+                {secondaryAction}
+                <Button type="submit" form={formId} disabled={busy}>
+                  {busy ? (busyLabel ?? primaryLabel) : primaryLabel}
+                </Button>
+              </>
+            ) : null}
           </div>
         </footer>
       </div>

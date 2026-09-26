@@ -52,9 +52,18 @@ function withPosition(latitude = 33.45, longitude = -120.55) {
 
 const entry = () => screen.getByRole("combobox", { name: "Barcode or product name" });
 
+/** Narrower than lg (1024px), as a phone is. jsdom has no matchMedia, which reads as wide. */
+function phoneWidth() {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+  });
+}
+
 afterEach(() => {
   localStorage.clear();
   delete (navigator as { geolocation?: unknown }).geolocation;
+  delete (window as { matchMedia?: unknown }).matchMedia;
 });
 
 describe("shelf price: the store (G2)", () => {
@@ -339,6 +348,7 @@ describe("shelf price: entry and saving (G3, G4)", () => {
   });
 
   it("starts from Capture: the sheet labels the store, a store changed there carries in, and Save returns (UI-2.10, UI-4.4)", async () => {
+    phoneWidth();
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     mockApi({
       ...baseRoutes(),
@@ -356,6 +366,8 @@ describe("shelf price: entry and saving (G3, G4)", () => {
     await user.selectOptions(within(sheet).getByLabelText("Store"), marketLocationId);
     await user.click(within(sheet).getByRole("link", { name: /Log a shelf price/ }));
 
+    // Below lg it is the page, a task screen of its own.
+    expect(await screen.findByRole("heading", { level: 1, name: "Shelf price" })).toBeInTheDocument();
     expect(await screen.findByRole("button", { name: "Pier Farmers Market. Change store" })).toBeInTheDocument();
     await user.type(entry(), "flour");
     await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
@@ -492,5 +504,110 @@ describe("shelf price: review findings", () => {
 
     const best = await screen.findByText("Best known");
     await waitFor(() => expect(best.nextElementSibling).toHaveTextContent("$4.19 · Current Place"));
+  });
+});
+
+describe("shelf price in the desktop drawer (G14)", () => {
+  async function openDrawer(user: ReturnType<typeof userEvent.setup>) {
+    renderApp("/shop/purchases");
+    await screen.findByText("No purchases yet");
+    await user.click(within(screen.getAllByRole("navigation", { name: "Main" })[0].closest("aside")!).getByRole("button", { name: "Capture" }));
+    await user.click(within(await screen.findByRole("dialog", { name: "Capture" })).getByRole("link", { name: /Log a shelf price/ }));
+    return screen.findByRole("dialog", { name: "Log a shelf price" });
+  }
+
+  function drawerRoutes() {
+    return {
+      ...baseRoutes(),
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+      "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
+      "POST /price-observations": () => jsonResponse(201, observationOk),
+    };
+  }
+
+  it("opens over the page Capture was opened on, and plain Save closes it with the notice there", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi(drawerRoutes());
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    // Still on Purchases underneath.
+    expect(screen.getByRole("heading", { level: 1, name: "Purchases" })).toBeInTheDocument();
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "flour");
+    await user.click(await within(drawer).findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.type(within(drawer).getByLabelText("Price on the shelf"), "4.99");
+    await user.click(within(drawer).getByRole("button", { name: "Save price" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Log a shelf price" })).toBeNull());
+    expect(within(mainRegion()).getByText(`Saved $4.99 at ${CHAIN}`)).toBeInTheDocument();
+  });
+
+  it("stays open for the next tag on Save and scan another, and on Enter", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    const calls = mockApi(drawerRoutes());
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "flour");
+    await user.click(await within(drawer).findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.type(within(drawer).getByLabelText("Price on the shelf"), "4.99");
+    await user.click(within(drawer).getByRole("button", { name: "Save and scan another" }));
+    await waitFor(() => expect(within(drawer).getByRole("combobox", { name: "Barcode or product name" })).toHaveFocus());
+    expect(screen.getByRole("dialog", { name: "Log a shelf price" })).toBeInTheDocument();
+
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "flour");
+    await user.click(await within(drawer).findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.type(within(drawer).getByLabelText("Price on the shelf"), "3.99{Enter}");
+    await waitFor(() => expect(calls.filter((c) => c.method === "POST")).toHaveLength(2));
+    expect(screen.getByRole("dialog", { name: "Log a shelf price" })).toBeInTheDocument();
+  });
+
+  it("asks before discarding a typed price", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi(drawerRoutes());
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "flour");
+    await user.click(await within(drawer).findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.keyboard("{Escape}");
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("Discard this shelf price?");
+  });
+
+  it("asks before discarding search text that was typed but not chosen", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi(drawerRoutes());
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "oat milk");
+    await user.click(within(drawer).getByRole("button", { name: "Cancel" }));
+    expect(within(drawer).getByRole("alert")).toHaveTextContent("Discard this shelf price?");
+  });
+
+  it("stays open through a navigation and ⌘K, so only its own guard can discard", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    mockApi({ ...drawerRoutes(), "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }) });
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+    await user.type(within(drawer).getByRole("combobox", { name: "Barcode or product name" }), "oat milk");
+
+    await user.keyboard("{Control>}k{/Control}");
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+    // A route change underneath, as Back would make.
+    await user.click(within(screen.getAllByRole("navigation", { name: "Main" })[0]).getByRole("link", { name: /Home/ }));
+    expect(await screen.findByRole("heading", { level: 1 })).not.toHaveTextContent("Purchases");
+    expect(screen.getByRole("dialog", { name: "Log a shelf price" })).toBeInTheDocument();
+    expect(within(screen.getByRole("dialog", { name: "Log a shelf price" })).getByRole("combobox", { name: "Barcode or product name" })).toHaveValue("oat milk");
+  });
+
+  it("offers only Close when there are no locations to price at", async () => {
+    mockApi({ ...drawerRoutes(), "GET /vendor-locations": () => jsonResponse(200, { items: [] }) });
+    const user = userEvent.setup();
+    const drawer = await openDrawer(user);
+
+    expect(await within(drawer).findByRole("button", { name: "Close" })).toBeInTheDocument();
+    expect(within(drawer).queryByRole("button", { name: "Save price" })).toBeNull();
+    expect(within(drawer).queryByRole("button", { name: "Save and scan another" })).toBeNull();
   });
 });

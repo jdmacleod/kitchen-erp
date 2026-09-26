@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { SEARCH_MAX, useSearch, type SearchResult, type SearchResults } from "../api/search";
+import { readRecents, rememberRecent } from "../lib/searchRecents";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { CategoryChip } from "./CategoryChip";
 import { Dialog } from "./Dialog";
@@ -33,12 +34,19 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   // Choosing a result navigates, so focus goes to the new page, not back here.
   const returnFocus = useRef(true);
 
+  // Before typing, the last five results opened on this device (G15).
+  const [recents] = useState(readRecents);
+
   // Groups in their fixed order, empty ones hidden; one flat list for the keys.
   const groups = useMemo(() => {
-    const shown = GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter((g) => g.items.length > 0);
+    const shown: { key: string; label: string; items: SearchResult[] }[] = typed
+      ? GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter((g) => g.items.length > 0)
+      : recents.length > 0
+        ? [{ key: "recent", label: "Recent", items: recents }]
+        : [];
     // Each group's offset into the flat list the arrow keys walk.
     return shown.map((g, i) => ({ ...g, start: shown.slice(0, i).reduce((n, prev) => n + prev.items.length, 0) }));
-  }, [search.data]);
+  }, [search.data, typed, recents]);
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const [active, setActive] = useState(0);
   const [shownFor, setShownFor] = useState(flat);
@@ -54,13 +62,17 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   });
 
   const open = (result: SearchResult) => {
+    rememberRecent(result);
     returnFocus.current = false;
     onClose();
     navigate(result.route);
   };
 
+  // The list on screen can be walked: results for the text, or the recents.
+  const listing = typed ? current : true;
+
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (!current || flat.length === 0) return;
+    if (!listing || flat.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive((i) => (i + 1) % flat.length);
@@ -73,7 +85,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const showResults = current && flat.length > 0;
+  const showResults = listing && flat.length > 0;
 
   return (
     <Dialog open onClose={onClose} labelledBy={`${ids}-title`} placement="screen" initialFocus={input} returnFocus={returnFocus}>
@@ -111,20 +123,20 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2 lg:max-h-[60vh]">
-        {!typed ? (
+        {!typed && recents.length === 0 ? (
           <p className={`px-2 py-3 ${muted}`}>Type a product, ingredient, vendor or barcode.</p>
-        ) : search.isError ? (
+        ) : typed && search.isError ? (
           <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-2 py-3 text-sm">
             <span>Search isn&apos;t working right now.</span>
             <Button variant="secondary" onClick={() => void search.refetch()}>
               Try again
             </Button>
           </div>
-        ) : !current ? (
+        ) : typed && !current ? (
           <p role="status" className={`px-2 py-3 ${muted}`}>
             Searching…
           </p>
-        ) : flat.length === 0 ? (
+        ) : typed && flat.length === 0 ? (
           <p role="status" className={`flex flex-wrap items-center gap-2 px-2 py-3 ${muted}`}>
             <span>No matches for &lsquo;{q.trim()}&rsquo;.</span>
             <Link to="/catalog/products" onClick={onClose} className={`rounded font-medium underline ${focusRing}`}>
