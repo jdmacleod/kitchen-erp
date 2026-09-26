@@ -12,18 +12,37 @@ const BOX = "/catalog/vendors?view=map&center=33.500000,-120.500000&zoom=12";
 // The household zone; the open-at instants below are Saturdays 09:00 there.
 test.use({ timezoneId: "America/Los_Angeles" });
 
-async function clickMap(page: Page, fx = 0.5, fy = 0.35) {
+/** Click the map at a fraction of its size; returns the point within the map. */
+async function clickMap(page: Page, fx = 0.5, fy = 0.35): Promise<{ x: number; y: number }> {
   const canvas = page.getByTestId("map-canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("map has no size");
   // Above the phone bottom sheet (which takes at most 45% of the height).
-  await canvas.click({ position: { x: box.width * fx, y: box.height * fy } });
+  const at = { x: box.width * fx, y: box.height * fy };
+  await canvas.click({ position: at });
+  return at;
+}
+
+/**
+ * A map view of the synthetic box centred somewhere new on each run.
+ *
+ * Every run drops a pin at the same fraction of the view, so opening the same
+ * view each time stacked a new pin on every earlier run's: a dev database with a
+ * few hundred of them buried the one the test then tapped (#24). CI's fresh
+ * database never saw it. A random centre, inside lat 33.2–33.8 and lon
+ * -120.8 to -120.2 (SECURITY.md's box), gives each run its own spot.
+ */
+function freshView(): string {
+  const lat = 33.2 + Math.random() * 0.6;
+  const lon = -120.8 + Math.random() * 0.6;
+  return `/catalog/vendors?view=map&center=${lat.toFixed(6)},${lon.toFixed(6)}&zoom=12`;
 }
 
 test("with no tiles: notice, pins, no external requests, create by pin drop, readable detail", async ({ page, baseURL }) => {
   const external = watchExternalRequests(page, baseURL ?? "http://127.0.0.1:8080");
   await login(page);
-  await page.goto(BOX);
+  const view = freshView();
+  await page.goto(view);
 
   await expect(page.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeVisible();
   await expect(page.getByTestId("map-attribution")).toHaveText("© OpenStreetMap contributors © Protomaps");
@@ -42,7 +61,7 @@ test("with no tiles: notice, pins, no external requests, create by pin drop, rea
   const vendorName = `E2E coast stand ${stamp}`;
   const locationName = `E2E stand by the pier ${stamp}`;
   await page.getByRole("button", { name: "Add location here" }).click();
-  await clickMap(page, 0.55, 0.3);
+  const dropped = await clickMap(page, 0.55, 0.3);
   await expect(page.getByTestId("draft-point")).toHaveText(/^33\.\d+, -120\.\d+$/);
   const form = page.getByRole("form", { name: "Add location here" });
   await form.getByRole("combobox", { name: "Vendor" }).fill(vendorName);
@@ -61,8 +80,19 @@ test("with no tiles: notice, pins, no external requests, create by pin drop, rea
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   // Selecting again from a fresh load also works by tapping the pin itself.
-  await page.goto(BOX);
-  await page.getByRole("button", { name: `${locationName} (Stand)` }).click();
+  // The same view as the drop, so the pin is drawn exactly where it was
+  // dropped. Pins once sat in normal flow instead of being positioned by
+  // MapLibre, which drew each one 36px lower per pin before it (#24).
+  await page.goto(view);
+  const again = page.getByRole("button", { name: `${locationName} (Stand)` });
+  await expect(again).toBeVisible();
+  // Measured within the map: the placing hint above it has gone, so the map
+  // itself sits higher on the page than it did at the drop.
+  const [drawn, map] = await Promise.all([again.boundingBox(), page.getByTestId("map-canvas").boundingBox()]);
+  expect(drawn && map, "the pin and the map have boxes").toBeTruthy();
+  expect(Math.abs(drawn!.x + drawn!.width / 2 - map!.x - dropped.x), "pin x against the drop").toBeLessThan(6);
+  expect(Math.abs(drawn!.y + drawn!.height / 2 - map!.y - dropped.y), "pin y against the drop").toBeLessThan(6);
+  await again.click();
   await expect(page.getByTestId("location-panel")).toContainText(locationName);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
