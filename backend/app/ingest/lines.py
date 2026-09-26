@@ -59,14 +59,15 @@ LINES_TASK = (
     "discounts or savings printed beneath an item, container deposits (CRV, redemption "
     "value, bottle deposit), fees (bag fee, surcharge), and the tax line(s) printed in "
     "the totals block. Exclude the store header, subtotal, total, tender, change, "
-    "loyalty summaries, and footer text. Keep raw_text exactly as printed. "
-    "Give qty only when the line shows it or is a plain one-of item; when a weight or "
-    "count is printed but unreadable, give null rather than 1."
+    "loyalty summaries, and footer text. Keep raw_text exactly as printed."
 )
 
 GENERIC_PARSER = "llm-generic"
 # 2: printed weights and counts override the model's, and assumed quantities are flagged (#31).
-GENERIC_PARSER_VERSION = "2"
+# 3: the #31 prompt wording is withdrawn and a null quantity on a plain line is not flagged,
+#    after a live run against gpt-oss:20b: the model gives no quantity for any line under
+#    either prompt, and the new wording made it read pack sizes ("EGGS 12") as quantities.
+GENERIC_PARSER_VERSION = "3"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -85,8 +86,10 @@ LOOSE_WEIGHT_PATTERN = re.compile(
 # Flags that say the quantity is not what a person or the printed line said.
 # qty_inferred: read from the printed pattern because the model gave none.
 # qty_corrected: the printed pattern disagreed with the model, and the print won.
-# qty_assumed: nothing supports the quantity; it is the 1-each default, or the line
-#   looks weighed but its weight could not be read.
+# qty_assumed: the line looks weighed but its weight could not be read, so whatever
+#   quantity it carries is unsupported. A plain line with no quantity is one each and
+#   is not flagged: nothing printed says otherwise, and flagging it flagged every line,
+#   since the model gives no quantity for plain lines at all.
 QTY_FLAGS = frozenset({"qty_inferred", "qty_corrected", "qty_assumed"})
 
 
@@ -178,16 +181,15 @@ def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
             # The printed rate with the printed quantity, or the line contradicts
             # itself: three at a model's 5.00 beside a printed 3 @ 1.25.
             unit_price = p_price
-        elif qty is None:
-            qty, unit = (
-                Decimal("1"),
-                "each",
-            )  # a plain item line is one pack, if nothing says otherwise
-            flags.append("qty_assumed")
         elif LOOSE_WEIGHT_PATTERN.search(line.raw_text):
             # A weight is printed but could not be read: whatever the model said,
-            # nothing on the line supports it.
+            # or the one-each default, nothing on the line supports it.
+            if qty is None:
+                qty, unit = Decimal("1"), "each"
             flags.append("qty_assumed")
+        elif qty is None:
+            # A plain item line is one pack.
+            qty, unit = Decimal("1"), "each"
         if unit is None:
             unit = "each"
     return ParsedLine(

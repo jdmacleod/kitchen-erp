@@ -13,7 +13,12 @@ from decimal import Decimal
 import pytest
 
 from app.ingest.header import HEADER_TASK
-from app.ingest.lines import LINES_TASK, parse_model_lines
+from app.ingest.lines import (
+    LINES_TASK,
+    lines_budget_seconds,
+    lines_deadline_seconds,
+    parse_model_lines,
+)
 from app.ingest.llm import LlmClient
 from app.ingest.schemas import ReceiptHeader, ReceiptLines
 from tests.ingest_helpers import fixture_names, load_fixture
@@ -38,7 +43,15 @@ async def test_corpus_accuracy_report(capsys):
             want = fixture.expected_header.get(key)
             if (str(got) if got is not None else None) == want:
                 header_hits += 1
-        parsed, _ = await client.extract(ReceiptLines, LINES_TASK, fixture.ocr_text)
+        # With the lines stage's own budget and deadline: the stage waits longer for a
+        # longer receipt (#34), and a flat 120 s timed out on the 52-line fixture.
+        parsed, _ = await client.extract(
+            ReceiptLines,
+            LINES_TASK,
+            fixture.ocr_text,
+            timeout_seconds=lines_budget_seconds(fixture.ocr_text),
+            deadline_seconds=lines_deadline_seconds(),
+        )
         lines = parse_model_lines(parsed)
         for exp, line in zip(fixture.expected_lines, lines, strict=False):
             kind_total += 1

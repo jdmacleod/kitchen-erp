@@ -75,14 +75,20 @@ def test_refine_weighed_and_counted_patterns():
         "each",
         Decimal("1.99"),
     )
-    # The model gave no quantity: one each is the default, and it says so (#31).
+    # A plain line with no quantity is one each, unflagged: nothing printed says
+    # otherwise, and the live model gives no quantity for plain lines at all, so a
+    # flag here flagged every line.
     plain = lines_mod.refine_line(3, _line("BREAD 3.49", line_total="3.49"))
     assert (plain.qty, plain.unit, plain.unit_price, plain.flags) == (
         Decimal("1"),
         "each",
         None,
-        ["qty_assumed"],
+        [],
     )
+    # A line that looks weighed with no readable weight and no model quantity is
+    # still assumed, and still says so.
+    heavy = lines_mod.refine_line(3, _line("APPLES 2.10 1b 3.13", line_total="3.13"))
+    assert (heavy.qty, heavy.unit, heavy.flags) == (Decimal("1"), "each", ["qty_assumed"])
     # The model said one each for a plain line: nothing to flag.
     one = lines_mod.refine_line(3, _line("BREAD 3.49", line_total="3.49", qty="1", unit="each"))
     assert (one.qty, one.unit, one.flags) == (Decimal("1"), "each", [])

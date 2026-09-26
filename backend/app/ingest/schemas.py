@@ -68,9 +68,7 @@ class ReceiptLine(ModelOutput):
     qty: Money | None = Field(
         default=None,
         description="Quantity bought: the weight for weighed items (2.31 for '2.31 lb @ "
-        "3.99/lb'), the count for '2 @ 1.99' (2), 1 for a plain item that shows no weight "
-        "or count. null when the quantity or its unit is unknown or unreadable; never 1 for "
-        "a line that shows a weight.",
+        "3.99/lb'), the count for '2 @ 1.99' (2), 1 for a plain item, null when unknown.",
     )
     unit: str | None = Field(
         default=None,
