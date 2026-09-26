@@ -1,6 +1,8 @@
 import { useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { VendorLocation } from "../api/geo";
+import type { ShelfPriceState } from "../pages/purchases/ShelfPricePage";
+import { LG_QUERY, useMediaQuery } from "../lib/useMediaQuery";
 import { Dialog } from "./Dialog";
 import { rememberLocation } from "./purchases/LocationSelect";
 import { StoreChip, useStoreGuess } from "./purchases/StoreChip";
@@ -32,7 +34,9 @@ const MODES = [
  * from the bottom on phone and tablet, a small centred dialog on desktop (G14).
  * Mounted only while open.
  */
-export function CaptureSheet({ onClose }: { onClose: () => void }) {
+export function CaptureSheet({ onClose, onShelfPrice }: { onClose: () => void; onShelfPrice?: (state: ShelfPriceState) => void }) {
+  // At lg the shelf price opens in the right drawer over this page (G14).
+  const wide = useMediaQuery(LG_QUERY);
   const titleId = useId();
   const location = useLocation();
   // The store, detected or last used and labelled as which (UI-2.10, G2). A store
@@ -76,7 +80,15 @@ export function CaptureSheet({ onClose }: { onClose: () => void }) {
             <Link
               to={m.to}
               state={stateFor(m.to)}
-              onClick={leave}
+              onClick={(event) => {
+                if (wide && onShelfPrice && m.to === "/shop/shelf-prices") {
+                  event.preventDefault();
+                  onClose();
+                  onShelfPrice(stateFor(m.to) as ShelfPriceState);
+                  return;
+                }
+                leave();
+              }}
               className={`flex min-h-[4.75rem] items-center gap-3 rounded-lg border border-neutral-200 px-3 text-neutral-900 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
             >
               <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">

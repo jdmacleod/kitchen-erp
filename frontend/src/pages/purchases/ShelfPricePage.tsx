@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { errorMessage } from "../../api/client";
 import { formatPack, isPositiveDecimal, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
@@ -8,7 +8,8 @@ import { purchaseErrorMessage, useCreateObservation, useObservations, type Obser
 import { Combobox } from "../../components/catalog/Combobox";
 import { HitRow } from "../../components/catalog/ProductTypeahead";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { useNavigateWithNotice, useNotice } from "../../components/Notice";
+import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
+import { Drawer } from "../../components/Drawer";
 import { LocationGuard } from "../../components/purchases/LocationGuard";
 import { locationLabel, rememberLocation } from "../../components/purchases/LocationSelect";
 import { InlineProductCreate, productRefFromHit, type ProductRef } from "../../components/purchases/ProductPicker";
@@ -40,18 +41,109 @@ const RECENT_COUNT = 5;
 const RECENT_PAGES = 10;
 
 /**
- * Log a shelf price (docs/spec/10, Shelf price; G2–G4, UI-4.4–4.7). One field
- * takes a barcode or a product name; before typing it offers the last five
- * products logged at this store. Enter saves and readies the next tag.
+ * The shelf price page (docs/spec/10, Shelf price): below lg a task screen with
+ * its own Back and a thumb-zone footer. Plain Save returns to where Capture was
+ * opened, or Home.
  */
 export function ShelfPricePage() {
   usePageTitle("Shelf price");
   const navigate = useNavigate();
   const navigateWithNotice = useNavigateWithNotice();
-  const notice = useNotice();
   const routerLocation = useLocation();
   // Read once: the state belongs to the arrival, not to later renders.
   const [arrival] = useState(() => (routerLocation.state as ShelfPriceState | null) ?? {});
+
+  // Back is Back when there is somewhere to go back to in this app.
+  const goBack = () => {
+    if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1);
+    else navigate(arrival.from ?? "/");
+  };
+
+  return (
+    <>
+      {/* Below lg this is a task screen: no tab bar, so it carries its own way back. */}
+      <div className="-mt-3 mb-1 lg:hidden">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Back"
+          className={`-ml-3 inline-flex size-11 items-center justify-center rounded-md text-neutral-800 dark:text-neutral-200 ${focusRing}`}
+        >
+          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </button>
+      </div>
+      <PageHeader title="Shelf price" description="A price you saw on the shelf, without buying.">
+        <Link to="/shop/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
+          Enter a purchase instead
+        </Link>
+      </PageHeader>
+      <LocationGuard>
+        <ShelfPriceForm arrival={arrival} variant="page" onSaved={(notice) => navigateWithNotice(arrival.from ?? "/", notice)} />
+      </LocationGuard>
+    </>
+  );
+}
+
+/**
+ * The shelf price at lg and wider, opened from Capture over the page it was
+ * opened on (G14). Plain Save closes it and shows the notice on that page;
+ * typed input asks before it is discarded (D5).
+ */
+export function ShelfPriceDrawer({ arrival, onClose }: { arrival: ShelfPriceState; onClose: () => void }) {
+  const notice = useNotice();
+  const formId = useId();
+  const [state, setState] = useState({ dirty: false, busy: false });
+  return (
+    <Drawer
+      title="Log a shelf price"
+      thing="shelf price"
+      dirty={state.dirty}
+      onClose={onClose}
+      formId={formId}
+      primaryLabel="Save price"
+      busy={state.busy}
+      busyLabel="Saving…"
+      secondaryAction={
+        <Button type="submit" form={formId} variant="secondary" data-action="another" disabled={state.busy}>
+          Save and scan another
+        </Button>
+      }
+    >
+      <LocationGuard>
+        <ShelfPriceForm
+          arrival={arrival}
+          variant="drawer"
+          formId={formId}
+          onStateChange={setState}
+          onSaved={(saved) => {
+            onClose();
+            notice.show(saved);
+          }}
+        />
+      </LocationGuard>
+    </Drawer>
+  );
+}
+
+interface ShelfPriceFormProps {
+  arrival: ShelfPriceState;
+  /** The page carries its own thumb-zone footer; the drawer's footer is the Drawer's. */
+  variant: "page" | "drawer";
+  formId?: string;
+  /** Plain Save succeeded: what to say, wherever the person lands. */
+  onSaved: (notice: NoticeData) => void;
+  onStateChange?: (state: { dirty: boolean; busy: boolean }) => void;
+}
+
+/**
+ * Log a shelf price (docs/spec/10, Shelf price; G2–G4, UI-4.4–4.7). One field
+ * takes a barcode or a product name; before typing it offers the last five
+ * products logged at this store. Enter saves and readies the next tag.
+ */
+function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: ShelfPriceFormProps) {
+  const notice = useNotice();
   const create = useCreateObservation();
 
   const { guess, skip, locations } = useStoreGuess();
@@ -134,10 +226,7 @@ export function ShelfPricePage() {
           // Back to where Capture was opened; with nowhere recorded, Home. A price
           // that could not be normalized says what is missing, and links to it.
           const fix = normalized ? null : bridgeFix(observation);
-          navigateWithNotice(
-            arrival.from ?? "/",
-            fix ? { tone: "info", message: `${message}. ${fix.reason}`, action: { label: fix.label, to: fix.to } } : { tone: "success", message },
-          );
+          onSaved(fix ? { tone: "info", message: `${message}. ${fix.reason}`, action: { label: fix.label, to: fix.to } } : { tone: "success", message });
           return;
         }
         // The store stays; everything about the last tag goes (G4).
@@ -150,47 +239,47 @@ export function ShelfPricePage() {
   };
 
   // Enter anywhere in the form is the stream action: save and ready the next tag.
+  // In the drawer, its footer's Save price submits too, and means plain Save;
+  // the button that submitted says which (Enter uses the first, "another").
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    save(true);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    save(variant === "page" || submitter?.dataset.action === "another");
   };
   // Except in the entry field: a wedge scanner ends every barcode with Enter,
   // which arrives before the lookup does. The match is taken when it lands.
   const onKeyDown = (event: KeyboardEvent<HTMLFormElement>) => {
-    if (event.key === "Enter" && (event.target as HTMLElement).getAttribute("role") === "combobox") event.preventDefault();
-  };
-
-  // Back is Back when there is somewhere to go back to in this app.
-  const goBack = () => {
-    if ((window.history.state as { idx?: number } | null)?.idx) navigate(-1);
-    else navigate(arrival.from ?? "/");
+    if (event.key !== "Enter" || event.isDefaultPrevented()) return;
+    const target = event.target as HTMLElement;
+    if (target.getAttribute("role") === "combobox") {
+      event.preventDefault();
+      return;
+    }
+    // In the drawer the submit buttons sit in the Drawer's footer, outside this
+    // form's markup, so Enter in a field is handled here rather than left to
+    // implicit submission.
+    if (variant === "drawer" && target.tagName === "INPUT" && (target as HTMLInputElement).type !== "checkbox") {
+      event.preventDefault();
+      save(true);
+    }
   };
 
   const busy = create.isPending;
   const pack = product ? formatPack(product.pack_qty, product.pack_unit) : "";
+  const dirty = product !== null || creating !== null || price.trim() !== "";
+  useEffect(() => {
+    onStateChange?.({ dirty, busy });
+  }, [dirty, busy, onStateChange]);
 
   return (
-    <>
-      {/* Below lg this is a task screen: no tab bar, so it carries its own way back. */}
-      <div className="-mt-3 mb-1 lg:hidden">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label="Back"
-          className={`-ml-3 inline-flex size-11 items-center justify-center rounded-md text-neutral-800 dark:text-neutral-200 ${focusRing}`}
+        <form
+          id={formId}
+          onSubmit={onSubmit}
+          onKeyDown={onKeyDown}
+          aria-label="Log a shelf price"
+          noValidate
+          className={`flex flex-col gap-4 ${variant === "page" ? "pb-36 lg:max-w-xl lg:pb-0" : ""}`}
         >
-          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-        </button>
-      </div>
-      <PageHeader title="Shelf price" description="A price you saw on the shelf, without buying.">
-        <Link to="/shop/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
-          Enter a purchase instead
-        </Link>
-      </PageHeader>
-      <LocationGuard>
-        <form onSubmit={onSubmit} onKeyDown={onKeyDown} aria-label="Log a shelf price" noValidate className="flex flex-col gap-4 pb-36 lg:max-w-xl lg:pb-0">
           <StoreChip
             value={store}
             source={source}
@@ -285,7 +374,8 @@ export function ShelfPricePage() {
 
           {/* The thumb zone (G4): pinned to the bottom edge below lg, where this
               task screen has no tab bar. The form's bottom padding keeps the last
-              field clear of it. */}
+              field clear of it. The drawer has its own footer. */}
+          {variant === "page" ? (
           <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-1 border-t border-neutral-200 bg-neutral-50 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-8 lg:static lg:flex-row lg:gap-2 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2 lg:pb-0 dark:border-neutral-800 dark:bg-neutral-950 lg:dark:bg-transparent">
             <Button onClick={() => save(false)} disabled={busy} className="min-h-14 w-full rounded-2xl text-base lg:min-h-10 lg:w-auto lg:rounded-md lg:text-sm">
               {busy ? "Saving…" : "Save price"}
@@ -299,9 +389,8 @@ export function ShelfPricePage() {
               Save and scan another
             </button>
           </div>
+          ) : null}
         </form>
-      </LocationGuard>
-    </>
   );
 }
 

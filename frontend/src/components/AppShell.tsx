@@ -7,6 +7,7 @@ import { Nav } from "./Nav";
 import { NoticeProvider } from "./Notice";
 import { SearchPalette } from "./SearchPalette";
 import { MoreSheet, TabBar } from "./TabBar";
+import { ShelfPriceDrawer, type ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { focusRing } from "./ui";
 
 const chromeButton =
@@ -25,7 +26,7 @@ function initials(name: string): string {
     .join("");
 }
 
-type Overlay = "search" | "capture" | "more" | null;
+type Overlay = "search" | "capture" | "more" | "shelf" | null;
 
 /**
  * Task screens: below lg they take the whole screen, with their own back button
@@ -55,6 +56,8 @@ export function AppShell() {
   }, [location.key]);
   const setOverlay = useCallback((next: Overlay) => setOpened({ overlay: next, on: entry.current }), []);
   const close = () => setOverlay(null);
+  // What Capture handed the desktop shelf-price drawer (G14).
+  const [shelfArrival, setShelfArrival] = useState<ShelfPriceState>({});
   const chrome = useMemo<Chrome>(
     () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search") }),
     [setOverlay],
@@ -127,6 +130,8 @@ export function AppShell() {
         <ChromeContext.Provider value={chrome}>
           <NoticeProvider>
             <Outlet />
+            {/* Inside the provider, so its Save can show the notice on this page. */}
+            {overlay === "shelf" ? <ShelfPriceDrawer arrival={shelfArrival} onClose={close} /> : null}
           </NoticeProvider>
         </ChromeContext.Provider>
       </main>
@@ -141,7 +146,15 @@ export function AppShell() {
       )}
 
       {overlay === "search" ? <SearchPalette onClose={close} /> : null}
-      {overlay === "capture" ? <CaptureSheet onClose={close} /> : null}
+      {overlay === "capture" ? (
+        <CaptureSheet
+          onClose={close}
+          onShelfPrice={(state) => {
+            setShelfArrival(state);
+            setOverlay("shelf");
+          }}
+        />
+      ) : null}
       {overlay === "more" ? <MoreSheet onClose={close} /> : null}
     </div>
   );
