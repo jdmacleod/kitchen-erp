@@ -46,7 +46,7 @@ export function TestBench({ ingredient }: { ingredient: Ingredient }) {
     <Card>
       <h2 className="mb-1 text-lg font-medium">Test bench</h2>
       <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-        Runs the same conversion Phase 2 will run on a receipt line. Leave the quantity blank to see the
+        Runs the same conversion a receipt line goes through. Leave the quantity blank to see the
         “no quantity” failure.
       </p>
       <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Conversion test bench">

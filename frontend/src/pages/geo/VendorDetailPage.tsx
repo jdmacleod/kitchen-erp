@@ -479,7 +479,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
           onChange={(e) => set("receipt_identifiers", e.target.value)}
           hint="The store number this location prints on receipts and in retailer exports, e.g. 0217. One per line. Receipts and imports are matched to the location by it."
         />
-        <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on. Used by later phases." />
+        <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on." />
       </div>
       <OpeningHoursInput idPrefix={prefix} value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} noneHint={location.parent_location_id ? "A stall without hours inherits the market's." : undefined} />
       <div className="flex flex-wrap gap-2">
