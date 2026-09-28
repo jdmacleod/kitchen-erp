@@ -115,6 +115,21 @@ async def live_observations(db: AsyncSession, purchase: Purchase) -> dict[uuid.U
     return dict((await db.execute(stmt)).all())
 
 
+async def recorded_lines(db: AsyncSession, lines: Iterable[PurchaseLine]) -> set[uuid.UUID]:
+    """Lines that have ever emitted an observation, voided or not.
+
+    Observations are append-only and keep their line as provenance, so such a
+    line can be ignored but never deleted.
+    """
+    line_ids = [line.id for line in lines]
+    if not line_ids:
+        return set()
+    stmt = select(PriceObservation.purchase_line_id).where(
+        PriceObservation.purchase_line_id.in_(line_ids)
+    )
+    return set((await db.execute(stmt)).scalars())
+
+
 async def resolver_names(db: AsyncSession, purchases: Iterable[Purchase]) -> dict[uuid.UUID, str]:
     """Map user id -> display name for everyone who resolved a line of these purchases.
 
@@ -236,6 +251,13 @@ async def update_manual(
         or purchase.purchased_at != payload.purchased_at
     )
     existing = list(purchase.lines)
+    if await recorded_lines(db, existing[len(payload.lines) :]):
+        raise ApiError(
+            409,
+            "line_recorded",
+            "A line already in the price book can't be removed. "
+            "Reopen the purchase and mark the line ignored instead.",
+        )
     subtotal = Decimal("0")
     to_emit: list[PurchaseLine] = []
     for seq, line_in in enumerate(payload.lines, start=1):
