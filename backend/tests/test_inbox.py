@@ -88,6 +88,29 @@ async def test_a_draft_without_a_location_asks_for_one(admin_client, admin):
     assert item["action_label"] == "Choose location"
 
 
+async def test_a_receipt_with_no_lines_read_asks_for_the_lines(admin_client, admin):
+    # Not "0 lines read. Choose where you shopped": the location is not the problem.
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], [], total="0")
+    await set_purchase(pid, vendor_location_id=None)
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["detail"] == "No lines could be read. Add them from the receipt image."
+    assert (item["action_label"], item["action_route"]) == ("Add lines", f"/shop/purchases/{pid}")
+
+
+async def test_committing_a_read_receipt_finishes_its_job(admin_client, admin, receipts_dir: Path):
+    # The Receipts page reads the job; a job left at needs_review kept saying
+    # "ready to review" for a purchase already in the price book.
+    job = await upload_job(admin_client, "committed receipt")
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES[:1])
+    await set_job(job, purchase_id=uuid.UUID(pid), status="needs_review", stage="review")
+    r = await admin_client.post(f"/api/v1/purchases/{pid}/commit")
+    assert r.status_code == 200, r.text
+    listed = (await admin_client.get(f"/api/v1/ingest-jobs/{job}")).json()
+    assert (listed["status"], listed["stage"]) == ("done", "committed")
+
+
 async def test_committed_purchases_are_not_items(admin_client, admin):
     loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
     pid = await make_receipt_purchase(admin.id, loc["id"], [{**LINES[0], "line_kind": "fee"}])
@@ -115,6 +138,22 @@ async def test_reading_says_when_it_has_stalled(admin_client, receipts_dir: Path
     reading = (await get_inbox(admin_client))["reading"]
     assert reading["count"] == 1
     assert reading["stalled"] is True
+
+
+async def test_a_long_queue_that_is_moving_has_not_stalled(
+    admin_client, receipts_dir: Path, owner_conn
+):
+    # The last of a batch has waited 20 minutes, but a stage finished a minute ago.
+    job = await upload_job(admin_client, "queued behind others")
+    await set_job(job, created_at=datetime.now(UTC) - timedelta(minutes=20))
+    await owner_conn.execute(
+        "INSERT INTO ingest_stage_result (id, job_id, stage, adapter, adapter_version, output,"
+        " duration_ms, created_at) VALUES ($1, $2::uuid, 'ocr', 'tesseract', '5', '{}', 900,"
+        " now() - interval '1 minute')",
+        uuid.uuid4(),
+        job,
+    )
+    assert (await get_inbox(admin_client))["reading"]["stalled"] is False
 
 
 async def test_a_failed_read_is_one_item_and_its_draft_is_not_repeated(

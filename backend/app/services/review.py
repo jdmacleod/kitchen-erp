@@ -14,7 +14,7 @@ from app.models.geo import VendorLocation
 from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
 from app.services import pricebook
 from app.services.normalize import normalize_receipt_text
-from app.services.purchases import get_purchase, live_observations
+from app.services.purchases import TOTAL_TOLERANCE, computed_total, get_purchase, live_observations
 from app.services.resolution import resolve_line
 
 _FOUR = Decimal("0.0001")
@@ -37,8 +37,38 @@ async def edit_header(db: AsyncSession, purchase_id: uuid.UUID, payload: Purchas
     for key, value in data.items():
         if value is not None:
             setattr(purchase, key, value)
+    # A value the reader could not find, now given by a person, is no longer
+    # missing; the flag would otherwise follow the purchase past commit.
+    answered = {
+        flag
+        for field, flag in (("purchased_at", "purchased_at_missing"), ("total", "total_missing"))
+        if data.get(field) is not None
+    }
+    if answered:
+        purchase.flags = [f for f in purchase.flags if f not in answered]
+    if data.get("total") is not None or data.get("tax") is not None:
+        purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
+
+
+def _rechecked_total(purchase) -> list[str]:
+    """The flags with the total checked again against the lines.
+
+    The reader compares the printed total with the lines only when it could read
+    one. A total typed in review is the first chance to catch a misread line on
+    such a receipt, so it is checked the same way (header tax counts only when no
+    line carries tax, as at ingest).
+    """
+    flags = [f for f in purchase.flags if f not in ("reconcile_mismatch", "total_mismatch")]
+    if purchase.total is None:
+        return flags
+    expected = computed_total(purchase)
+    if purchase.tax is not None and not any(line.line_kind == "tax" for line in purchase.lines):
+        expected += purchase.tax
+    if abs(expected - purchase.total) > TOTAL_TOLERANCE:
+        flags.append("total_mismatch")
+    return flags
 
 
 def _parent_ok(purchase, line: PurchaseLine, parent_id: uuid.UUID | None) -> None:

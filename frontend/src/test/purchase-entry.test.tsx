@@ -182,6 +182,20 @@ describe("manual purchase entry", () => {
     expect(within(second).getByLabelText("Unit 2")).toHaveValue("each");
   });
 
+  it("starts a new product from what was typed in the search", async () => {
+    // Searching "Rolled oats", finding nothing and pressing New product used to
+    // open an empty Name field, so the same words were typed twice.
+    mockApi(baseRoutes());
+    const user = userEvent.setup();
+    renderApp("/shop/purchases/new");
+    const first = await screen.findByRole("group", { name: "Line 1" });
+
+    await user.type(within(first).getByRole("combobox", { name: /Product/ }), "  Rolled oats ");
+    await user.click(within(first).getByRole("button", { name: "New product" }));
+    const form = within(first).getByRole("group", { name: "New product" });
+    expect(within(form).getByLabelText("Name")).toHaveValue("Rolled oats");
+  });
+
   it("reconciles an entered total against the running total", async () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     mockApi(baseRoutes());

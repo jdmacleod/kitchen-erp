@@ -30,6 +30,23 @@ async function openReview() {
 }
 
 describe("receipt review", () => {
+  it("says when the date and total are stand-ins for what the reader could not find", async () => {
+    // The upload time and the line sum fill the header fields and look like
+    // answers; nothing on the screen said they were not read from the receipt.
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["purchased_at_missing", "total_missing"] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.getByText(/The date could not be read from the receipt, so Purchased at is when it was uploaded/)).toBeInTheDocument();
+    expect(screen.getByText(/The total could not be read from the receipt, so Total is what the lines add up to/)).toBeInTheDocument();
+  });
+
+  it("says nothing about the date or total when both were read", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.queryByText(/could not be read from the receipt/)).not.toBeInTheDocument();
+  });
+
   it("moves between lines with j/k and the arrows, accepts the top suggestion with Enter, and ignores with i", async () => {
     let purchase = receiptPurchase;
     const calls = mockApi({

@@ -163,7 +163,7 @@ function JobRow({ job }: { job: IngestJob }) {
       <span className="flex flex-wrap gap-1">
         {job.purchase_id ? (
           <Link to={`/shop/purchases/${job.purchase_id}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-sm font-medium underline ${focusRing}`}>
-            Review purchase
+            {job.status === "done" ? "View purchase" : "Review purchase"}
           </Link>
         ) : null}
         {job.status === "failed" ? (

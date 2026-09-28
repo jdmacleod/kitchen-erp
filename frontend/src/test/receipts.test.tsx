@@ -59,6 +59,15 @@ describe("receipts", () => {
     expect(within(list).getByText("queued")).toBeInTheDocument();
   });
 
+  it("offers to view, not review, the purchase of a finished job", async () => {
+    mockApi(baseRoutes(() => [{ ...reviewJob, status: "done", stage: "committed" }]));
+    renderApp("/shop/receipts");
+    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const [row] = within(list).getAllByTestId("ingest-job");
+    expect(row).toHaveTextContent("done");
+    expect(within(row).getByRole("link", { name: "View purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
+  });
+
   it("links a job that is ready to review to its purchase and offers retry on a failed one", async () => {
     let jobs = [reviewJob, failedJob];
     const calls = mockApi({

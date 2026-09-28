@@ -267,6 +267,10 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
   const unresolved = itemLines.filter((l) => l.resolution === "unmatched" || !l.product).length;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
+  // What the reader could not find is filled with a stand-in, and a stand-in
+  // looks like an answer in the header fields. Saving the header clears these.
+  const dateMissing = purchase.flags.includes("purchased_at_missing");
+  const totalMissing = purchase.flags.includes("total_missing");
 
   return (
     <div onKeyDown={onKeyDown} className="flex flex-col gap-4" data-testid="review">
@@ -286,6 +290,16 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         <Alert tone="info">
           The receipt says {purchase.total !== null ? formatMoney(purchase.total) : "—"} but the lines add up to{" "}
           {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}. Check the lines or the header.
+        </Alert>
+      ) : null}
+      {dateMissing ? (
+        <Alert tone="info">
+          The date could not be read from the receipt, so Purchased at is when it was uploaded. Set it from the receipt and save the header: every price here is recorded on that date.
+        </Alert>
+      ) : null}
+      {totalMissing ? (
+        <Alert tone="info">
+          The total could not be read from the receipt, so Total is what the lines add up to. Enter the printed total and save the header, and a line that was misread will show up as a mismatch.
         </Alert>
       ) : null}
 
@@ -562,7 +576,11 @@ function LineTags({ line }: { line: PurchaseLine }) {
       ) : null}
       {line.flags.map((f) => (
         <span key={f} className="mt-1 block">
-          <Badge tone="warn">{flagLabel(f)}</Badge>
+          {/* Wrapping: an unbroken "quantity from the print" made the # column
+              wider than the text, pushing Product and Actions out of view. */}
+          <Badge tone="warn" wrap>
+            {flagLabel(f)}
+          </Badge>
         </span>
       ))}
     </>
@@ -807,7 +825,10 @@ function ReviewLine(props: ReviewLineProps) {
       <td className={`${pad} pr-2 pl-1`}>
         <LineTags line={line} />
       </td>
-      <td className={`${pad} pr-2`}>
+      {/* max-w-0 + w-full: this column takes what the others leave and the
+          compact text truncates inside it. Without it each truncated (nowrap)
+          line set the column's minimum, and Product and Actions scrolled away. */}
+      <td className={`${pad} pr-2 w-full max-w-0`}>
         <LineRaw line={line} compact={compact} />
       </td>
       <td className={`${pad} pr-2 whitespace-nowrap`}>

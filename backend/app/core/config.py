@@ -84,8 +84,9 @@ class Settings(BaseSettings):
     household_timezone: str = "America/Los_Angeles"
     currency: str = "USD"
     ingest_lock_timeout_seconds: int = 600
-    # After this long in flight, Home says reading has stalled rather than implying
-    # progress: a stopped worker must not look like a busy one (D21).
+    # After this long with receipts waiting and no stage finished, Home says reading
+    # has stalled rather than implying progress: a stopped worker must not look
+    # like a busy one (D21), nor a busy one like a stopped one.
     ingest_stall_minutes: int = 10
 
     # Resolution ladder.
