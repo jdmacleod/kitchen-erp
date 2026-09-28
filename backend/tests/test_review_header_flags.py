@@ -64,3 +64,32 @@ async def test_a_typed_total_that_disagrees_with_the_lines_is_a_mismatch(
     # Header tax counts when no line carries it.
     r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"total": "3.79", "tax": "0.30"})
     assert r.json()["flags"] == []
+
+
+async def test_tax_alone_does_not_check_against_a_stand_in_total(admin_client, admin, owner_conn):
+    # With total_missing the total is the line sum, not a printed figure; adding
+    # the header tax to the lines would "disagree" with it every time.
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    await owner_conn.execute(
+        "UPDATE purchase SET flags = $1 WHERE id = $2::uuid", ["total_missing"], p
+    )
+    r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"tax": "0.30"})
+    assert r.status_code == 200, r.text
+    assert r.json()["flags"] == ["total_missing"]
+
+
+async def test_correcting_the_misread_line_clears_the_mismatch(admin_client, admin, owner_conn):
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    await owner_conn.execute("UPDATE purchase SET flags = $1 WHERE id = $2::uuid", [], p)
+    # The line was read as 349 where the receipt prints 3.49.
+    [line] = (await admin_client.get(f"/api/v1/purchases/{p}")).json()["lines"]
+    await admin_client.patch(
+        f"/api/v1/purchases/{p}/lines/{line['id']}", json={"line_total": "349"}
+    )
+    r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"total": "3.49"})
+    assert r.json()["flags"] == ["total_mismatch"]
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{p}/lines/{line['id']}", json={"line_total": "3.49"}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["flags"] == []

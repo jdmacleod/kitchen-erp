@@ -310,6 +310,8 @@ describe("vendors", () => {
     await user.type(screen.getByLabelText("Name"), "The cabin");
     await user.click(screen.getByRole("button", { name: "Create home base" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/home-bases")?.body).toEqual({ name: "The cabin", lat: "33.25", lon: "-120.75" }));
+    // The form is ready for the next one: no leftover pair without a pin.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue(""));
   });
 });
 

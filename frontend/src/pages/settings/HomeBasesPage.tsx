@@ -17,6 +17,9 @@ export function HomeBasesPage() {
   const [label, setLabel] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
   const create = useCreateHomeBase();
+  // Bumped after each create so the coordinates field starts empty again: it
+  // keeps its own text when the pin is cleared, to spare a half-typed pair.
+  const [formRound, setFormRound] = useState(0);
 
   const pins: MapPin[] = (homeBases.data ?? []).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (home base)` }));
 
@@ -38,6 +41,7 @@ export function HomeBasesPage() {
           setDraft(null);
           setName("");
           setLabel("");
+          setFormRound((n) => n + 1);
         },
       },
     );
@@ -58,7 +62,7 @@ export function HomeBasesPage() {
             {tilesPresent === false ? <Alert tone="info">Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates.</Alert> : null}
             {mapError ? <Alert tone="error">{mapError}</Alert> : null}
             <MapView label="Home bases" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
-            <DraftPointControl draft={draft} onPoint={setDraft} disabled={create.isPending} />
+            <DraftPointControl key={formRound} draft={draft} onPoint={setDraft} disabled={create.isPending} />
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
             <div className="grid gap-4 sm:grid-cols-2">

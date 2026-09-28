@@ -60,9 +60,11 @@ def _rechecked_total(purchase) -> list[str]:
     such a receipt, so it is checked the same way (header tax counts only when no
     line carries tax, as at ingest).
     """
+    if "total_missing" in purchase.flags or purchase.total is None:
+        # The total is the line sum standing in for one nobody has read yet:
+        # there is nothing to check the lines against, only themselves.
+        return list(purchase.flags)
     flags = [f for f in purchase.flags if f not in ("reconcile_mismatch", "total_mismatch")]
-    if purchase.total is None:
-        return flags
     expected = computed_total(purchase)
     if purchase.tax is not None and not any(line.line_kind == "tax" for line in purchase.lines):
         expected += purchase.tax
@@ -117,6 +119,8 @@ async def add_line(db: AsyncSession, purchase_id: uuid.UUID, payload: LineAdd):
     await db.flush()
     _parent_ok(purchase, line, payload.parent_line_id)
     line.parent_line_id = payload.parent_line_id
+    # A corrected line can settle (or raise) a mismatch with the printed total.
+    purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
 
@@ -154,6 +158,8 @@ async def edit_line(
     for key, value in data.items():
         if value is not None:
             setattr(line, key, value if key != "line_total" else value.quantize(_FOUR))
+    # A corrected line can settle (or raise) a mismatch with the printed total.
+    purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
 
@@ -171,6 +177,8 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
         if other.parent_line_id == line.id:
             other.parent_line_id = None
     purchase.lines.remove(line)
+    # A corrected line can settle (or raise) a mismatch with the printed total.
+    purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
 
