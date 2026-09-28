@@ -38,6 +38,23 @@ TESSERACT_TIMEOUT_SECONDS = 120.0
 # till receipt renders in well under a second.
 RASTER_TIMEOUT_SECONDS = 60.0
 
+# How Tesseract reads a receipt: --psm 6, one uniform block of text, on the page
+# rendered at app.ingest.raster.PDF_RENDER_DPI (200). Measured against the
+# alternatives #65 proposed with scripts/ocr_benchmark.py, on eight real phone
+# document-scan receipts with their printed totals known, as header reads (two
+# per receipt per run) that returned exactly the printed total, since the total
+# is what every line is checked against:
+#   current (200 dpi)     35/48 over three runs
+#   300 dpi               38/48, but its worst miss dropped the leading digit of a
+#                         total; the current setting's is a steady one-dollar misread
+#   --psm 4               24/32 over two runs, and 32% of prices on synthetic scans
+#   Sauvola thresholding  20/32 over two runs, though 48% of prices on synthetic
+#                         scans against 42% for the current setting
+# Otsu first and a 1.5x upscale read fewer prices even on synthetic scans. The
+# spread is within the model's run-to-run noise on eight receipts, so nothing is
+# changed; 300 dpi is the candidate to measure again with more receipts.
+TESSERACT_CONFIG = ("--psm", "6")
+
 
 class OcrAdapter(Protocol):
     name: str
@@ -138,8 +155,7 @@ class TesseractAdapter:
                 "stdout",
                 "-l",
                 "eng",
-                "--psm",
-                "6",
+                *TESSERACT_CONFIG,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )

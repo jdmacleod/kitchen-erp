@@ -312,7 +312,8 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 #   digits ("OAT MILK 349", "CRV 30") and is what the line was read as. Tills
 #   print cents, so this is almost always a decimal point OCR lost; the likely
 #   price is a hundredth of it. On the real receipts behind #59 the two-digit
-#   case caught a $30.00 container deposit and a $69.00 item, and nothing else.
+#   case caught a container deposit and an item, both read at 100 times their price,
+#   and nothing else.
 #   A single digit is left alone: its hundredth is rarely a price.
 # exceeds_total: one line costs more than the whole printed receipt.
 PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total"})
