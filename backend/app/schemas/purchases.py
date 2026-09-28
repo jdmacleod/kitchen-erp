@@ -60,6 +60,7 @@ class ObservationOut(ApiModel):
     product: ProductRef
     vendor_location: LocationRef
     purchase_line_id: uuid.UUID | None
+    purchase_id: uuid.UUID | None = None
     observed_at: datetime
     price: DecimalStr
     qty: DecimalStr

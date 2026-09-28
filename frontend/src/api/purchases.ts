@@ -44,6 +44,8 @@ export interface Observation {
   product: ObservationProduct;
   vendor_location: ObservationLocation;
   purchase_line_id: string | null;
+  /** The purchase a line-derived price came from; null for a shelf price. */
+  purchase_id?: string | null;
   observed_at: string;
   price: string;
   qty: string;
@@ -51,6 +53,7 @@ export interface Observation {
   is_promo: boolean;
   source: ObservationSource;
   voided: boolean;
+  void_reason?: string | null;
   norm: PriceNorm | null;
   created_at: string;
 }
@@ -323,7 +326,13 @@ export function useVoidObservation() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
       api<Observation>(`/price-observations/${enc(id)}/void`, { method: "POST", body: { reason } }),
-    onSuccess: () => invalidateObservations(client),
+    onSuccess: () => {
+      invalidateObservations(client);
+      // A voided price leaves the charts, cheapest and compare too, and the
+      // ingredient page's history, which is cached under its own key.
+      void client.invalidateQueries({ queryKey: ["price-book"] });
+      void client.invalidateQueries({ queryKey: ["price-history"] });
+    },
   });
 }
 
