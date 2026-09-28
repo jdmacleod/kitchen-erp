@@ -580,3 +580,30 @@ def test_an_item_named_like_a_price_row_is_not_one():
     ]
     kept, dropped = lines_mod.fold_regular_prices(lines)
     assert dropped == [] and len(kept) == 2
+
+
+def test_an_item_named_like_a_saving_is_never_consumed_as_one():
+    # Review of #68: with the real saving row missing, SAVORY CRACKERS followed
+    # the regular price and was dropped as its saving.
+    lines = [
+        _row(1, "SMOKED TROUT 7.25 S", "7.25"),
+        _row(2, "Regular Price 9.00", "9.00"),
+        _row(3, "SAVORY CRACKERS 3.00", "3.00"),
+    ]
+    kept, dropped = lines_mod.fold_regular_prices(lines)
+    assert dropped == ["Regular Price 9.00"]
+    assert [k.raw_text for k in kept] == ["SMOKED TROUT 7.25 S", "SAVORY CRACKERS 3.00"]
+
+
+def test_a_folded_item_is_checked_against_the_total_at_the_price_paid():
+    # Review of #68: a lone item folded to its 9.00 regular price, with its 1.75
+    # saving attached, was flagged as more than the 7.25 receipt.
+    kept, _ = lines_mod.fold_regular_prices(
+        [
+            _row(1, "SMOKED TROUT 7.25 S", "7.25"),
+            _row(2, "Regular Price 9.00", "9.00"),
+            _row(3, "Card Savings 1.75-", "1.75", kind="discount", parent=1),
+        ]
+    )
+    lines_mod.check_prices(kept, Decimal("7.25"))
+    assert all("exceeds_total" not in k.flags for k in kept)

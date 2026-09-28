@@ -328,6 +328,15 @@ def restored(amount: Decimal) -> Decimal:
 
 def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None:
     """Flag lines whose price looks misread. Never changes a price."""
+    # What was paid for a line: its total less the discounts attached to it. A
+    # regular price folded onto an item with its saving can exceed the receipt's
+    # total on its own while the price paid does not.
+    discounts: dict[int, Decimal] = {}
+    for line in lines:
+        if line.line_kind == "discount" and line.parent_seq is not None:
+            discounts[line.parent_seq] = (
+                discounts.get(line.parent_seq, Decimal("0")) + line.line_total
+            )
     for line in lines:
         if line.line_kind == "discount":
             continue
@@ -335,7 +344,8 @@ def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None
         token = match.group(1) if match else ""
         if len(token) >= 2 and token.isdigit() and Decimal(token) == line.line_total:
             line.flags.append("decimal_missing")
-        if printed_total is not None and line.line_total > printed_total + RECONCILE_TOLERANCE:
+        paid = line.line_total - discounts.get(line.seq, Decimal("0"))
+        if printed_total is not None and paid > printed_total + RECONCILE_TOLERANCE:
             line.flags.append("exceeds_total")
 
 
@@ -374,6 +384,12 @@ _AMOUNT = re.compile(r"(\d+)[.,](\d{2})")
 
 def _amounts(text: str) -> list[Decimal]:
     return [Decimal(f"{whole}.{cents}") for whole, cents in _AMOUNT.findall(text)]
+
+
+def _looks_like_a_saving(line: ParsedLine) -> bool:
+    """A saving, not an item whose name happens to start "sav" (SAVORY CRACKERS):
+    the model read it as a discount, or its amount is printed negative."""
+    return line.line_kind == "discount" or bool(re.search(r"\d-\s*\S{0,2}\s*$", line.raw_text))
 
 
 def fold_regular_prices(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list[str]]:
@@ -416,7 +432,11 @@ def fold_regular_prices(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list
         saving: Decimal | None = None
         if _SAVING.search(line.raw_text) and len(regular) >= 2:
             saving = regular[1]
-        elif i + 1 < len(lines) and _SAVING.search(lines[i + 1].raw_text):
+        elif (
+            i + 1 < len(lines)
+            and _SAVING.search(lines[i + 1].raw_text)
+            and _looks_like_a_saving(lines[i + 1])
+        ):
             saving_line = lines[i + 1]
             found = _amounts(saving_line.raw_text)
             saving = found[-1] if found else None
