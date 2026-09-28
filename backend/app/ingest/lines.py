@@ -85,7 +85,8 @@ GENERIC_PARSER = "llm-generic"
 #    after a live run against gpt-oss:20b: the model gives no quantity for any line under
 #    either prompt, and the new wording made it read pack sizes ("EGGS 12") as quantities.
 # 4: long receipts are read in parts of LINES_CHUNK_ROWS rows (#60).
-GENERIC_PARSER_VERSION = "4"
+# 5: regular-price rows are folded into the item and its saving (#64).
+GENERIC_PARSER_VERSION = "5"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -355,6 +356,110 @@ def restoring_decimals_reconciles(
         for line in lines
     ]
     return not reconcile(fixed, printed_total, header_tax)["mismatch"]
+
+
+# A shelf-price row: "Regular Price 3.29", OCR's "Resular Price", "Reg. Price",
+# "Original Price". It says what the item would have cost; it is never a
+# purchased line (#64).
+_REGULAR_PRICE = re.compile(
+    r"^\W*(?:re[gs]ular|reg\.?|orig(?:inal)?\.?)\s+pr[il1]ce\b", re.IGNORECASE
+)
+# A saving printed beneath it: "Card Savings 0.30-", or "You saved 0.30" on the
+# same row as the regular price.
+# OCR spells it "Savinss" and "Yau saved" too; only ever read beside a
+# regular-price row, so a looser match cannot catch an item.
+_SAVING = re.compile(r"sav\w*|discount", re.IGNORECASE)
+_AMOUNT = re.compile(r"(\d+)[.,](\d{2})")
+
+
+def _amounts(text: str) -> list[Decimal]:
+    return [Decimal(f"{whole}.{cents}") for whole, cents in _AMOUNT.findall(text)]
+
+
+def fold_regular_prices(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list[str]]:
+    """Normalize loyalty-card layouts; return the kept lines and the dropped rows.
+
+    Such receipts print an item at what was paid, then its regular price, then
+    the saving (#64)::
+
+        PORK SHOULDER ROAST      14.56 S
+        Regular Price            17.00
+        Card Savings              2.44-
+
+    Read row by row, the regular price became another item and the saving a
+    discount taken off an amount that was already net. The regular-price row is
+    dropped: it is never a purchased line. When the printed numbers agree (the
+    regular price less the saving is what the item line says), the item takes
+    the regular price and the saving attaches to it as a discount, which is how
+    every other receipt's savings are stored: the observation price is still
+    the net amount, now marked as a promotion, and the lines reconcile. When
+    they do not agree (OCR misread one of the three, or the regular price is
+    per unit of a multi-buy), the regular-price row and its saving are both
+    dropped: the item line is already what was paid, so subtracting the saving
+    from it would count it twice. The money stays right; only the promotion
+    marker is lost.
+    """
+    dropped: list[str] = []
+    kept: list[ParsedLine] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not _REGULAR_PRICE.search(line.raw_text):
+            kept.append(line)
+            i += 1
+            continue
+        dropped.append(line.raw_text)
+        item = next((k for k in reversed(kept) if k.line_kind == "item"), None)
+        regular = _amounts(line.raw_text)
+        # The saving: on this row after the price, or the next row.
+        saving_line: ParsedLine | None = None
+        saving: Decimal | None = None
+        if _SAVING.search(line.raw_text) and len(regular) >= 2:
+            saving = regular[1]
+        elif i + 1 < len(lines) and _SAVING.search(lines[i + 1].raw_text):
+            saving_line = lines[i + 1]
+            found = _amounts(saving_line.raw_text)
+            saving = found[-1] if found else None
+        if (
+            item is not None
+            and kept
+            and kept[-1] is item
+            and regular
+            and saving is not None
+            and abs(regular[0] - saving - item.line_total) <= RECONCILE_TOLERANCE
+        ):
+            item.line_total = regular[0]
+            if (
+                item.unit_price is not None
+                and item.qty is not None
+                and abs(item.unit_price * item.qty - item.line_total) > RECONCILE_TOLERANCE
+            ):
+                item.unit_price = None  # the printed rate was the sale rate
+            discount = saving_line or replace(line, flags=[])
+            discount.line_kind = "discount"
+            discount.line_total = saving
+            discount.parent_seq = item.seq
+            discount.qty = discount.unit = discount.unit_price = None
+            if saving_line is None:
+                dropped.pop()  # the one-row form is kept, as the discount
+            kept.append(discount)
+            i += 2 if saving_line is not None else 1
+            continue
+        if saving_line is not None:
+            dropped.append(saving_line.raw_text)
+            i += 2
+            continue
+        i += 1
+    return _renumber(kept), dropped
+
+
+def _renumber(lines: list[ParsedLine]) -> list[ParsedLine]:
+    """Sequence numbers 1..n again, with parents following their items."""
+    new_seq = {line.seq: n for n, line in enumerate(lines, start=1)}
+    for n, line in enumerate(lines, start=1):
+        line.parent_seq = new_seq.get(line.parent_seq) if line.parent_seq is not None else None
+        line.seq = n
+    return lines
 
 
 def parse_model_lines(result: ReceiptLines) -> list[ParsedLine]:

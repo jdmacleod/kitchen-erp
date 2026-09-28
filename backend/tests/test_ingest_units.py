@@ -484,3 +484,99 @@ def test_item_names_containing_tender_words_still_count_as_items():
     # Review of #66: "card" excluded CARDAMOM and "cash" CASHMERE.
     part = "GROUND CARDAMOM 5.49\nCASHEWS ROASTED 7.99\nCASHMERE SOCKS 12.00\nVISA 25.48"
     assert lines_mod.item_like_rows(part) == 3
+
+
+def _row(seq: int, raw: str, total: str, kind: str = "item", parent: int | None = None):
+    line = _parsed(raw, total, kind=kind)
+    line.seq, line.parent_seq = seq, parent
+    if kind == "item":
+        line.qty, line.unit = Decimal("1"), "each"
+    return line
+
+
+def test_a_regular_price_row_and_its_saving_fold_into_the_item():
+    # #64: the model read the shelf price as another item and took the saving
+    # off an amount that was already net.
+    lines = [
+        _row(1, "SMOKED TROUT 7.25 S", "7.25"),
+        _row(2, "Regular Price 9.00", "9.00"),
+        _row(3, "Card Savings 1.75-", "1.75", kind="discount", parent=1),
+        _row(4, "RYE BREAD 4.25", "4.25"),
+    ]
+    kept, dropped = lines_mod.fold_regular_prices(lines)
+    assert dropped == ["Regular Price 9.00"]
+    assert [(k.seq, k.raw_text, k.line_kind, k.line_total, k.parent_seq) for k in kept] == [
+        (1, "SMOKED TROUT 7.25 S", "item", Decimal("9.00"), None),
+        (2, "Card Savings 1.75-", "discount", Decimal("1.75"), 1),
+        (3, "RYE BREAD 4.25", "item", Decimal("4.25"), None),
+    ]
+
+
+def test_the_one_row_form_becomes_the_discount():
+    lines = [
+        _row(1, "GREEN CABBAGE 1.29 F", "1.29"),
+        _row(2, "Regular Price 1.59 , You saved 0.30", "0.30", kind="discount", parent=1),
+    ]
+    kept, dropped = lines_mod.fold_regular_prices(lines)
+    assert dropped == []
+    assert [(k.line_kind, k.line_total, k.parent_seq) for k in kept] == [
+        ("item", Decimal("1.59"), None),
+        ("discount", Decimal("0.30"), 1),
+    ]
+
+
+def test_ocr_spellings_are_regular_price_rows_too():
+    for raw in (
+        "Resular Price 17.00",
+        "REG. PRICE 17.00",
+        "Original Price 17.00",
+        "Regular Pr1ce 17.00",
+    ):
+        kept, dropped = lines_mod.fold_regular_prices(
+            [_row(1, "PORK ROAST 14.56", "14.56"), _row(2, raw, "17.00")]
+        )
+        assert dropped == [raw] and len(kept) == 1, raw
+
+
+def test_numbers_that_disagree_drop_the_shelf_price_and_its_saving():
+    # 9.00 - 1.00 is not 7.25: OCR misread one of them. The item line is what
+    # was paid on this layout, so the saving must not come off it again.
+    lines = [
+        _row(1, "SMOKED TROUT 7.25 S", "7.25"),
+        _row(2, "Regular Price 9.00", "9.00"),
+        _row(3, "Card Savinss 1.00-", "1.00", kind="discount", parent=1),
+        _row(4, "OAT MILK 2.49 F", "2.49"),
+        _row(5, "Regular Price 0.99 , Yau saved 1 83", "1.83", kind="discount", parent=4),
+    ]
+    kept, dropped = lines_mod.fold_regular_prices(lines)
+    assert dropped == [
+        "Regular Price 9.00",
+        "Card Savinss 1.00-",
+        "Regular Price 0.99 , Yau saved 1 83",
+    ]
+    assert [(k.seq, k.raw_text, k.line_total) for k in kept] == [
+        (1, "SMOKED TROUT 7.25 S", Decimal("7.25")),
+        (2, "OAT MILK 2.49 F", Decimal("2.49")),
+    ]
+
+
+def test_an_ocr_spelled_saving_still_folds():
+    lines = [
+        _row(1, "PORK ROAST 14.56 S", "14.56"),
+        _row(2, "Resular Price 17.00", "17.00"),
+        _row(3, "i Card Savinss 2.44-", "2.44", kind="discount"),
+    ]
+    kept, _ = lines_mod.fold_regular_prices(lines)
+    assert [(k.line_kind, k.line_total, k.parent_seq) for k in kept] == [
+        ("item", Decimal("17.00"), None),
+        ("discount", Decimal("2.44"), 1),
+    ]
+
+
+def test_an_item_named_like_a_price_row_is_not_one():
+    lines = [
+        _row(1, "REGULAR PRICED COFFEE 5.99", "5.99"),
+        _row(2, "RESTAURANT PRICE MENU 3.00", "3.00"),
+    ]
+    kept, dropped = lines_mod.fold_regular_prices(lines)
+    assert dropped == [] and len(kept) == 2
