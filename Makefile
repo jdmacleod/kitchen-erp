@@ -54,17 +54,18 @@ E2E_WEB_PORT ?= 8082
 e2e-up:  ## Start a fresh stack for the browser tests (web on :8082, its own volumes)
 	$(E2E) down -v --remove-orphans
 	$(E2E) up -d --build
-	@for i in $$(seq 1 60); do curl -sf http://127.0.0.1:$(E2E_WEB_PORT)/api/v1/health >/dev/null && break; sleep 2; done
-	$(E2E) exec -T api kerp migrate
+	@# Migrate first: health reports "failed" until the schema exists.
+	@for i in $$(seq 1 30); do $(E2E) exec -T api kerp migrate && exit 0; sleep 2; done; echo "e2e stack: migrate never succeeded" >&2; exit 1
 	$(E2E) exec -T api kerp create-admin --email admin@example.com --display-name Admin --password local-dev-admin-pw
+	@for i in $$(seq 1 60); do curl -sf http://127.0.0.1:$(E2E_WEB_PORT)/api/v1/health >/dev/null && exit 0; sleep 2; done; echo "e2e stack: not healthy after 2 minutes" >&2; exit 1
 
 e2e-down:  ## Stop the browser-test stack and delete its volumes
 	$(E2E) down -v --remove-orphans
 
 e2e:  ## Run the Playwright suite on a throwaway stack, then delete it
 	cd e2e && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install chromium
-	$(MAKE) e2e-up
-	cd e2e && E2E_BASE_URL=http://127.0.0.1:$(E2E_WEB_PORT) corepack pnpm test; status=$$?; cd .. && $(MAKE) e2e-down; exit $$status
+	@# One shell, so the stack is deleted whether setup or the suite fails.
+	$(MAKE) e2e-up && (cd e2e && E2E_BASE_URL=http://127.0.0.1:$(E2E_WEB_PORT) corepack pnpm test); status=$$?; $(MAKE) e2e-down; exit $$status
 
 DEMO := docker compose -f compose.yaml -f compose.demo.yaml
 

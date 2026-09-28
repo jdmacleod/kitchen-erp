@@ -13,12 +13,37 @@
 # port binds to 127.0.0.1.
 name: kerp-e2e
 
-x-e2e-db-urls: &e2e-db-urls
+# Every application setting is pinned here, not taken from the household's .env:
+# Compose merges this block over the base one, so anything left out would
+# inherit that household's values (an outbound integration turned on, another
+# timezone), and the suite would behave differently on each machine. These are
+# the .env.example defaults, which is also what CI runs with.
+x-e2e-env: &e2e-env
   DATABASE_URL: postgresql+asyncpg://kerp_app:e2e-only-not-a-secret@db:5432/kerp
   MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:e2e-only-not-a-secret@db:5432/kerp
   # No model server, as in CI: a test must never read a receipt with a live
   # model, and the household's OLLAMA_BASE_URL may point at one.
   OLLAMA_BASE_URL: http://127.0.0.1:9
+  LLM_MODEL: gpt-oss:20b
+  ENABLE_OVERPASS: "false"
+  ENABLE_NOMINATIM: "false"
+  HOUSEHOLD_TIMEZONE: America/Los_Angeles
+  RECEIPT_DATE_ORDER: MDY
+  CURRENCY: USD
+  INGEST_LOCK_TIMEOUT_SECONDS: "600"
+  INGEST_STALL_MINUTES: "10"
+  LLM_TIMEOUT_SECONDS: "120"
+  LLM_CONNECT_TIMEOUT_SECONDS: "5"
+  LLM_LINES_SECONDS_PER_LINE: "3"
+  LLM_MAX_RETRIES: "2"
+  OCR_ADAPTERS: '["client","tesseract"]'
+  INGEST_MAX_ATTEMPTS: "5"
+  INGEST_BACKOFF_BASE_SECONDS: "5"
+  INGEST_BACKOFF_FACTOR: "4"
+  INGEST_BACKOFF_MAX_SECONDS: "300"
+  INGEST_LOCATION_RADIUS_M: "300"
+  COOKIE_SECURE: "false"
+  LOG_LEVEL: INFO
 
 services:
   db:
@@ -32,7 +57,7 @@ services:
       - "127.0.0.1:${E2E_DB_PORT:-5435}:5432"
 
   api:
-    environment: *e2e-db-urls
+    environment: *e2e-env
     volumes: !override
       - e2e-data:/data
       - ./docs:/srv/docs:ro
@@ -40,7 +65,7 @@ services:
       - "127.0.0.1:${E2E_API_PORT:-8002}:8000"
 
   worker:
-    environment: *e2e-db-urls
+    environment: *e2e-env
     volumes: !override
       - e2e-data:/data
 
