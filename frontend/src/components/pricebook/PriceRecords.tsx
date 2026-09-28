@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { sourceLabel, useObservations, useVoidObservation, type Observation } from "../../api/purchases";
@@ -63,6 +63,16 @@ function PriceRecord({ record }: { record: Observation }) {
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
   const voidPrice = useVoidObservation();
+  const voidButton = useRef<HTMLButtonElement>(null);
+  const cancelled = useRef(false);
+  // After Cancel, Void renders again: return focus to it so a keyboard user
+  // keeps their place in the list.
+  useEffect(() => {
+    if (!voiding && cancelled.current) {
+      cancelled.current = false;
+      voidButton.current?.focus();
+    }
+  }, [voiding]);
   const where = record.vendor_location.name === record.vendor_location.vendor.name ? record.vendor_location.name : `${record.vendor_location.vendor.name} — ${record.vendor_location.name}`;
   const fieldId = `void-reason-${record.id}`;
 
@@ -90,7 +100,7 @@ function PriceRecord({ record }: { record: Observation }) {
             Correct in its purchase
           </Link>
         ) : voiding ? null : (
-          <Button variant="danger" onClick={() => setVoiding(true)} aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}>
+          <Button ref={voidButton} variant="danger" onClick={() => setVoiding(true)} aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}>
             Void
           </Button>
         )}
@@ -112,7 +122,13 @@ function PriceRecord({ record }: { record: Observation }) {
             <Button type="submit" variant="danger" disabled={voidPrice.isPending || reason.trim() === ""}>
               {voidPrice.isPending ? "Voiding…" : "Void price"}
             </Button>
-            <Button variant="secondary" onClick={() => setVoiding(false)}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                cancelled.current = true;
+                setVoiding(false);
+              }}
+            >
               Cancel
             </Button>
           </div>

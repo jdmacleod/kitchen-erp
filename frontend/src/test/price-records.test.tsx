@@ -73,4 +73,17 @@ describe("price records on the product page", () => {
     const voided = screen.getAllByTestId("price-record").find((r) => r.textContent?.includes("Voided"))!;
     expect(within(voided).queryByRole("button")).not.toBeInTheDocument();
   });
+
+  it("returns focus to Void when the void form is cancelled", async () => {
+    // Review of #79: Cancel removed the form and left keyboard focus nowhere.
+    mockApi(routes({ voided: new Set() }));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/${flourProductId}`);
+
+    const list = await screen.findByRole("list", { name: "Price records" });
+    await user.click(await within(list).findByRole("button", { name: /^Void the \$4\.99/ }));
+    expect(screen.getByLabelText("Why is it wrong?")).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(within(list).getByRole("button", { name: /^Void the \$4\.99/ })).toHaveFocus());
+  });
 });

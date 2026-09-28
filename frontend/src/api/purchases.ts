@@ -328,8 +328,10 @@ export function useVoidObservation() {
       api<Observation>(`/price-observations/${enc(id)}/void`, { method: "POST", body: { reason } }),
     onSuccess: () => {
       invalidateObservations(client);
-      // A voided price leaves the charts, cheapest and compare too.
+      // A voided price leaves the charts, cheapest and compare too, and the
+      // ingredient page's history, which is cached under its own key.
       void client.invalidateQueries({ queryKey: ["price-book"] });
+      void client.invalidateQueries({ queryKey: ["price-history"] });
     },
   });
 }
