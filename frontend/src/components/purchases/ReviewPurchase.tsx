@@ -268,7 +268,10 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     onDelete: () => deleteLine.mutate(line.id),
   });
 
-  const unresolved = itemLines.filter((l) => l.resolution === "unmatched" || !l.product).length;
+  // An ignored line has no product on purpose; it never joins the to-identify queue.
+  const unresolved = itemLines.filter(
+    (l) => l.resolution !== "ignored" && (l.resolution === "unmatched" || !l.product),
+  ).length;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
