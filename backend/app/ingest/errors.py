@@ -69,9 +69,15 @@ class ModelTimeout(IngestError):
 
 
 class InvalidModelOutput(IngestError):
-    """The model answered, but nothing it said validated against the schema."""
+    """The model answered, but nothing it said validated against the schema.
+
+    ``model_out_of_room`` (same class, another code): the reply stopped because
+    the context filled, so it was not retried. ``attempts`` says how many
+    requests were made when fewer than the retry limit.
+    """
 
     code = "invalid_model_output"
+    attempts: int | None = None
 
 
 class OcrUnavailable(IngestError):

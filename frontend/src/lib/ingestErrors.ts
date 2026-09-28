@@ -19,6 +19,7 @@ const MESSAGES: Record<string, string> = {
   model_timeout: "The model server answered too slowly. Raise LLM_TIMEOUT_SECONDS, or use a smaller model.",
   model_unavailable: "The model server could not be reached. Check that Ollama is running and that the model is pulled.",
   invalid_model_output: "The model's answer did not fit the expected shape. Retry, or enter this receipt by hand.",
+  model_out_of_room: "The model ran out of room before it finished answering; this receipt is too long for it in one go. Enter the lines by hand.",
 
   // Reading the document
   no_ocr_text: "No text could be read from this receipt.",
