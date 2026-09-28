@@ -522,7 +522,9 @@ function PriceInput({ id, label, field, value, onChange, computed = false, disab
           className={`w-full tabular-nums ${inputClass} ${computed ? "bg-neutral-50 text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300" : ""}`}
         />
         {computed ? (
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" data-testid={`${id}-computed`}>
+          // Inside the field on a phone, where it is full width; under it in the
+          // narrow price columns of wider screens, where it covered the value.
+          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 sm:static sm:mt-1 sm:block sm:translate-y-0" data-testid={`${id}-computed`}>
             <Badge>computed</Badge>
           </span>
         ) : null}
