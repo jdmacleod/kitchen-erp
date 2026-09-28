@@ -25,7 +25,7 @@ import {
   type Resolution,
   type Suggestion,
 } from "../../api/purchases";
-import { div, formatMoney, isNonNegativeDecimal } from "../../lib/decimal";
+import { cmp, div, formatMoney, isDecimal, isNonNegativeDecimal, stripZeros } from "../../lib/decimal";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
@@ -477,9 +477,9 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
   const [form, setForm] = useState({
     vendor_location_id: purchase.vendor_location?.id ?? "",
     purchased_at: toDateTimeLocal(new Date(purchase.purchased_at)),
-    subtotal: purchase.subtotal ?? "",
-    tax: purchase.tax ?? "",
-    total: purchase.total ?? "",
+    subtotal: editableMoney(purchase.subtotal),
+    tax: editableMoney(purchase.tax),
+    total: editableMoney(purchase.total),
   });
   const [invalid, setInvalid] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -493,7 +493,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
     for (const key of ["subtotal", "tax", "total"] as const) {
       const value = form[key].trim();
       if (value !== "" && !isNonNegativeDecimal(value)) return setInvalid(`${key[0].toUpperCase()}${key.slice(1)} must be a number.`);
-      if (value !== "" && value !== (purchase[key] ?? "")) input[key] = value;
+      if (value !== "" && !sameAmount(value, purchase[key])) input[key] = value;
     }
     setInvalid(null);
     if (Object.keys(input).length > 0) patch.mutate(input);
@@ -587,6 +587,20 @@ export function needsYou(line: PurchaseLine): boolean {
   if (isQuietLine(line)) return false;
   const isItem = line.line_kind === "item";
   return line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0));
+}
+
+/** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
+function editableMoney(stored: string | null | undefined): string {
+  return stored === null || stored === undefined ? "" : stripZeros(stored, 2);
+}
+
+/**
+ * Whether typed text is the stored amount. Compared as numbers, so "6.98"
+ * against "6.9800" is not an edit: sending it would clear the line's price
+ * flags, or the header's missing-total flag, that nobody answered.
+ */
+function sameAmount(text: string, stored: string | null | undefined): boolean {
+  return stored !== null && stored !== undefined && isDecimal(text) && cmp(text, stored) === 0;
 }
 
 /** What a line flag means, in words; unknown flags fall back to their code. */
@@ -982,8 +996,8 @@ function ReviewCard(props: ReviewLineProps) {
 function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; busy: boolean; onPatch: (input: LinePatchInput) => void; onCancel: () => void }) {
   const [qty, setQty] = useState(line.qty ?? "");
   const [unit, setUnit] = useState(line.unit ?? "");
-  const [unitPrice, setUnitPrice] = useState(line.unit_price ?? "");
-  const [total, setTotal] = useState(line.line_total ?? "");
+  const [unitPrice, setUnitPrice] = useState(editableMoney(line.unit_price));
+  const [total, setTotal] = useState(editableMoney(line.line_total));
   const [kind, setKind] = useState(line.line_kind);
   const [invalid, setInvalid] = useState<string | null>(null);
   const base = `review-edit-${line.id}`;
@@ -996,11 +1010,11 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
       if (qty.trim() !== line.qty) input.qty = qty.trim();
       if (unit !== (line.unit ?? "")) input.unit = unit;
     }
-    if (unitPrice.trim() !== "" && unitPrice.trim() !== line.unit_price) {
+    if (unitPrice.trim() !== "" && !sameAmount(unitPrice.trim(), line.unit_price)) {
       if (!isNonNegativeDecimal(unitPrice)) return setInvalid("Unit price must be a number.");
       input.unit_price = unitPrice.trim();
     }
-    if (total.trim() !== "" && total.trim() !== line.line_total) {
+    if (total.trim() !== "" && !sameAmount(total.trim(), line.line_total)) {
       if (!isNonNegativeDecimal(total)) return setInvalid("Line total must be a number.");
       input.line_total = total.trim();
     }

@@ -64,15 +64,15 @@ export function purchaseValues(p: Purchase): PurchaseFormValues {
       qty: l.qty ?? "",
       unit: l.unit ?? "",
       unitTouched: true,
-      unit_price: useTotal ? "" : (l.unit_price ?? ""),
-      line_total: useTotal ? l.line_total! : "",
+      unit_price: useTotal || l.unit_price === null ? "" : stripZeros(l.unit_price, 2),
+      line_total: useTotal ? stripZeros(l.line_total!, 2) : "",
       driver: useTotal ? "line_total" : l.unit_price !== null ? "unit_price" : null,
     };
   });
   return {
     vendor_location_id: p.vendor_location?.id ?? "",
     date: toLocalDate(new Date(p.purchased_at)),
-    total: p.total ?? "",
+    total: p.total === null ? "" : stripZeros(p.total, 2),
     lines: lines.length > 0 ? [...lines, newLine()] : [newLine()],
   };
 }
