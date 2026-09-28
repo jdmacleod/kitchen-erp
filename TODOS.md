@@ -65,4 +65,68 @@ source is named so it can be traced back.
 **Priority:** P2
 **Depends on:** Phase 3 review
 
+### One name for home bases
+
+**What:** Pick one of "kitchen" and "home base" and use it everywhere. Today the Settings page title and nav item say Kitchens, while its form, list, empty state, the map's "Add home base here" button and the Vendors filter all say home base.
+
+**Why:** A new user reads two names and wonders whether they are two things.
+
+**Context:** Found in the fresh-install DX pass on 2026-09-27. The rename was left out of #57 because a partial rename would only move the inconsistency somewhere else. Spec 09 names the page Kitchens.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** A naming decision
+
+## Receipts and import
+
+### Edit a location's receipt identifiers in the UI
+
+**What:** A field on the location form for the store codes a receipt or retailer export prints (`receipt_identifiers`).
+
+**Why:** Header matching and `kerp import purchases` both match on these codes, but only the API can set them. Without them, an import imports nothing unless the vendor has exactly one location or `--location` is passed. `import purchases` now says so (#57).
+
+**Context:** Found in the fresh-install DX pass on 2026-09-27. `frontend/src/api/geo.ts` already carries the field on create and update; no page renders it.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P2
+**Depends on:** None
+
+### Upload several receipts at once
+
+**What:** Let the Receipts upload take several files (`multiple`), one ingest job each.
+
+**Why:** A backlog of receipts, the normal first import, means one file-picker round trip per receipt today.
+
+**Context:** Found in the fresh-install DX pass on 2026-09-27 with eight receipts. The worker runs one job at a time, so a batch also makes #60 more visible.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P2
+**Depends on:** None
+
+## Operations
+
+### Backup refuses to overwrite an existing backup
+
+**What:** `kerp backup --out DIR` should refuse a directory that already holds a `manifest.json`, unless given `--force`.
+
+**Why:** A second backup to the same directory silently replaces the first one's dump and manifest. If the second backup fails partway, the last good backup is gone. The README's `$(date +%F)` example does this on any day with two runs.
+
+**Context:** Found in the fresh-install DX pass on 2026-09-27. It was left as a policy call, because scripts that write to a fixed "latest" directory would break.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P2
+**Depends on:** None
+
+### A fresh clone creates an empty ../cooklang-recipes
+
+**What:** Stop Compose's default `RECIPES_PATH=../cooklang-recipes` bind mount from creating a directory beside a fresh clone.
+
+**Why:** `make up` on a new checkout leaves an empty `cooklang-recipes/` next to the repository, outside anything the user chose. Nothing reads the mount until Phase 3.
+
+**Context:** Found in the fresh-install DX pass on 2026-09-27. The options are to default to `./data/recipes`, or to add the mount only once Phase 3 is approved. Either one changes the default for existing deployments that rely on the sibling path.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval, or a decision on the default
+
 ## Completed
