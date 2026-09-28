@@ -65,6 +65,9 @@ docker compose exec -T api kerp create-admin \
   --email you@example.com --display-name "Your Name" --password '<password>'
 ```
 
+`make down` stops the stack and removes its containers. The database volume and
+the receipt files under `data/` are kept, so `make up` brings everything back.
+
 `make up` is `docker compose up -d --build` with the build identity resolved from
 git and passed in, so the running deployment can tell you which commit it is. Plain
 `docker compose up -d --build` works too and reports `dev` — Compose cannot run git
