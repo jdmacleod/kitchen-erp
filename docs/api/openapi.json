@@ -3125,6 +3125,82 @@
         "title": "ManualPurchaseIn",
         "type": "object"
       },
+      "MapPlaceList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MapPlaceOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "MapPlaceList",
+        "type": "object"
+      },
+      "MapPlaceOut": {
+        "additionalProperties": false,
+        "description": "A named place in the deployment's own map extract (#62).",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "distance_m": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance M"
+          },
+          "kind": {
+            "enum": [
+              "town",
+              "neighbourhood",
+              "poi"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lat": {
+            "title": "Lat",
+            "type": "string"
+          },
+          "lon": {
+            "title": "Lon",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "detail",
+          "lat",
+          "lon",
+          "distance_m"
+        ],
+        "title": "MapPlaceOut",
+        "type": "object"
+      },
       "MeasureCreate": {
         "additionalProperties": false,
         "properties": {
@@ -8546,6 +8622,96 @@
         "summary": "Ingredient Price History",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/map/places": {
+      "get": {
+        "description": "Places by name from the map extract: towns anywhere in it, and with lat and\nlon, neighbourhoods and shops near that point. Nothing leaves the deployment.",
+        "operationId": "map_places_api_v1_map_places_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 100,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lat",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 90.0,
+                  "minimum": -90.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lat"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lon",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 180.0,
+                  "minimum": -180.0,
+                  "type": "number"
+                },
+                {
+                  "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lon"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapPlaceList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Map Places",
+        "tags": [
+          "geo",
+          "geo"
         ]
       }
     },

@@ -263,3 +263,18 @@ class OsmAdoptIn(ApiModel):
     home_base_id: uuid.UUID
     radius_m: int = Field(ge=100, le=50000)
     vendor_kind: VendorKind | None = None
+
+
+class MapPlaceOut(ApiModel):
+    """A named place in the deployment's own map extract (#62)."""
+
+    name: str
+    kind: Literal["town", "neighbourhood", "poi"]
+    detail: str | None
+    lat: DecimalStr
+    lon: DecimalStr
+    distance_m: int | None
+
+
+class MapPlaceList(ApiModel):
+    items: list[MapPlaceOut]

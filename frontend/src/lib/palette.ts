@@ -94,6 +94,37 @@ export function basemapColours(dark: boolean) {
   };
 }
 
+/**
+ * Map label colours (#62): the theme's text and halo keys, all from the neutral
+ * scale so no label competes with the pins or reads as a category colour.
+ */
+export function basemapLabelColours(dark: boolean) {
+  const text = dark ? HEX["neutral-200"] : HEX["neutral-800"];
+  const quiet = dark ? HEX["neutral-300"] : HEX["neutral-700"];
+  const strong = dark ? HEX["neutral-100"] : HEX["neutral-900"];
+  const halo = dark ? HEX["neutral-950"] : HEX["neutral-50"];
+  const poi = { blue: text, green: text, lapis: text, pink: text, red: text, slategray: text, tangerine: text, turquoise: text };
+  return {
+    roads_label_minor: quiet,
+    roads_label_minor_halo: halo,
+    roads_label_major: text,
+    roads_label_major_halo: halo,
+    ocean_label: quiet,
+    subplace_label: quiet,
+    subplace_label_halo: halo,
+    city_label: strong,
+    city_label_halo: halo,
+    state_label: quiet,
+    state_label_halo: halo,
+    country_label: text,
+    address_label: quiet,
+    address_label_halo: halo,
+    peak_label: quiet,
+    waterway_label: quiet,
+    pois: poi,
+  };
+}
+
 /** The three numbers of an "L C H" string. */
 export function parseOklch(value: string): [number, number, number] {
   const [l, c, h] = value.split(" ").map(Number);
