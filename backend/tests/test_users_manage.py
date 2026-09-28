@@ -7,7 +7,6 @@ alike, and the household must never lose its last active admin.
 import asyncio
 
 import httpx
-import pytest
 
 from app.core.db import get_sessionmaker
 from app.core.errors import ApiError
@@ -180,9 +179,8 @@ async def test_two_admins_removing_each_other_at_once_leave_one(admin):
         assert not racing.done(), "the second edit should wait on the admin rows"
         await first.commit()
 
-        with pytest.raises(ApiError) as refused:
-            await racing
-        assert refused.value.code == "last_admin"
+        (outcome,) = await asyncio.gather(racing, return_exceptions=True)
+        assert isinstance(outcome, ApiError) and outcome.code == "last_admin"
 
     async with maker() as check:
         assert await identity._lock_active_admins(check) == 1
