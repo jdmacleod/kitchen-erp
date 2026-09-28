@@ -153,11 +153,35 @@ describe("vendors", () => {
 
     await user.click(await screen.findByRole("button", { name: `Edit ${chainLocation.name}` }));
     const form = screen.getByRole("form", { name: `Edit location ${chainLocation.name}` });
-    await user.type(within(form).getByLabelText("Store codes on receipts"), "0217, 17 ,, 0217");
+    await user.type(within(form).getByLabelText("Store codes on receipts"), "0217{Enter} 17 {Enter}{Enter}0217");
     await user.click(within(form).getByRole("button", { name: "Save location" }));
 
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ receipt_identifiers: ["0217", "17"] }));
     expect(await screen.findByText("Store codes on receipts: 0217, 17")).toBeInTheDocument();
+  });
+
+  it("leaves the store codes alone when only another field is edited", async () => {
+    // Review of #71: a code containing a comma was split by the round trip
+    // through a comma-separated field, even when only the name changed.
+    const location = { ...chainLocation, receipt_identifiers: ["0217,B"] };
+    const calls = mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${chainVendorId}`]: () => jsonResponse(200, chainVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [location] }),
+      [`PATCH /vendor-locations/${chainLocation.id}`]: (call) => jsonResponse(200, { ...location, ...(call.body as object), stalls: [] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/vendors/${chainVendorId}`);
+    await user.click(await screen.findByRole("button", { name: `Edit ${chainLocation.name}` }));
+    const form = screen.getByRole("form", { name: `Edit location ${chainLocation.name}` });
+    expect(within(form).getByLabelText("Store codes on receipts")).toHaveValue("0217,B");
+    const name = within(form).getByLabelText("Name");
+    await user.clear(name);
+    await user.type(name, "Millstone Quay");
+    await user.click(within(form).getByRole("button", { name: "Save location" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ name: "Millstone Quay" }));
   });
 
   it("creates a location for a vendor without going to the map", async () => {
