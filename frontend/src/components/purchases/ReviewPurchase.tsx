@@ -591,6 +591,9 @@ export function needsYou(line: PurchaseLine): boolean {
   return line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0));
 }
 
+/** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total"];
+
 /** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
 function editableMoney(stored: string | null | undefined): string {
   return stored === null || stored === undefined ? "" : stripZeros(stored, 2);
@@ -1016,7 +1019,10 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
       if (!isNonNegativeDecimal(unitPrice)) return setInvalid("Unit price must be a number.");
       input.unit_price = unitPrice.trim();
     }
-    if (total.trim() !== "" && !sameAmount(total.trim(), line.line_total)) {
+    // Saving a flagged price as it stands confirms it, which is what clears the
+    // warning (the server clears it only when it is sent).
+    const confirmsFlaggedPrice = line.flags.some((f) => PRICE_FLAGS.includes(f));
+    if (total.trim() !== "" && (confirmsFlaggedPrice || !sameAmount(total.trim(), line.line_total))) {
       if (!isNonNegativeDecimal(total)) return setInvalid("Line total must be a number.");
       input.line_total = total.trim();
     }
