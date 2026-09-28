@@ -45,6 +45,8 @@ services:
       MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:${DB_OWNER_PASSWORD:-demo-only-not-a-secret}@db:5432/kerp
     volumes: !override
       - demo-data:/data
+      # The extract the demo map draws, so place search reads the same one.
+      - demo-tiles:/data/tiles:ro
       - ./docs:/srv/docs:ro
     ports: !override
       - "127.0.0.1:${DEMO_API_PORT:-8001}:8000"

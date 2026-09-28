@@ -27,13 +27,17 @@ export function PlaceSearch({
   const around = near ? { lat: Number(near.lat).toFixed(3), lon: Number(near.lon).toFixed(3) } : null;
   const places = useMapPlaces(debounced, around);
   const trimmed = text.trim();
-  const found = trimmed.length >= 2 ? (places.data ?? []) : [];
+  // Only the answer to what is typed now: the previous search's results stay in
+  // the cache while the next one is pending, and picking one of those would move
+  // the map (and the draft pin) to a place from the last search.
+  const current = debounced === text && !places.isPlaceholderData;
+  const found = trimmed.length >= 2 && current ? (places.data ?? []) : [];
 
   let status: string | undefined;
   if (trimmed.length >= 2) {
     if (places.isError) {
       status = isApiError(places.error) && places.error.code === "tiles_missing" ? "No map extract is installed to search." : errorMessage(places.error);
-    } else if (debounced !== text || places.isFetching) status = "Searching…";
+    } else if (!current || places.isFetching) status = "Searching…";
     else if (found.length === 0) status = "Nothing by that name here. Search for the town first to bring the map to it.";
   }
 

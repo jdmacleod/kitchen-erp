@@ -12,7 +12,7 @@ from app.core.config import get_settings
 from app.services import mvt, place_search
 from tests.tile_helpers import write_extract
 
-TOWN_ZOOMS = (8, 12, 15)
+TOWN_ZOOMS = (10, 12, 15)
 POI_ZOOMS = (15,)
 
 # Invented names, all in the synthetic box from SECURITY.md.
@@ -35,6 +35,16 @@ FEATURES = [
     ("pois", 33.5010, -120.5010, {"kind": "supermarket", "name": "Tideline Grocers"}, POI_ZOOMS),
     ("pois", 33.5100, -120.5100, {"kind": "supermarket", "name": "Harbourside Grocery"}, POI_ZOOMS),
     ("pois", 33.5020, -120.4990, {"kind": "cafe", "name": "Café Saltmarsh"}, POI_ZOOMS),
+    # 3.1 km from the harbour centre: inside a searched tile, outside the radius.
+    ("pois", 33.5200, -120.4760, {"kind": "supermarket", "name": "Breakwater Grocers"}, POI_ZOOMS),
+    # A village the z10 tiles leave out: only near the map is it a result.
+    (
+        "places",
+        33.53,
+        -120.47,
+        {"kind": "locality", "kind_detail": "hamlet", "name": "Gull Cove"},
+        (12, 15),
+    ),
     # Far from the harbour: found only when searching near Kelp Point.
     ("pois", 33.2000, -120.8000, {"kind": "supermarket", "name": "Kelp Point Grocers"}, POI_ZOOMS),
 ]
@@ -102,3 +112,25 @@ def test_a_malformed_tile_is_an_error_not_a_hang():
         mvt.points(b"\x1a\xff\xff\xff\xff\x0f", {"pois"})
     with pytest.raises(ValueError):
         mvt.points(b"\x1a\x05\x0a\x03", {"pois"})
+
+
+async def test_a_shop_past_the_radius_is_left_out_even_in_a_searched_tile(admin_client, extract):
+    # Review of #70: tiles are squares, and a tile's far corner is beyond 3 km.
+    r = await admin_client.get(
+        "/api/v1/map/places", params={"q": "breakwater", "lat": "33.5", "lon": "-120.5"}
+    )
+    assert r.json()["items"] == []
+
+
+async def test_a_village_only_in_detailed_tiles_is_found_near_the_map(admin_client, extract):
+    # Review of #70: towns that appear only above the town zoom were never indexed.
+    near = {"lat": "33.5", "lon": "-120.5"}
+    r = await admin_client.get("/api/v1/map/places", params={"q": "gull cove", **near})
+    assert [(i["name"], i["kind"]) for i in r.json()["items"]] == [("Gull Cove", "town")]
+    r = await admin_client.get("/api/v1/map/places", params={"q": "gull cove"})
+    assert r.json()["items"] == []
+
+
+def test_tile_columns_wrap_at_the_antimeridian():
+    columns = {x for x, _y in place_search._tiles_around(0.0, 179.999, 3_000, 15)}
+    assert 0 in columns and 2**15 - 1 in columns

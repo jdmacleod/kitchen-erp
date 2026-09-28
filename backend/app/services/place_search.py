@@ -5,9 +5,10 @@ the map meant finding it in another map application and copying coordinates.
 This reads the PMTiles extract the map already draws, so nothing leaves the
 deployment (non-negotiable 9):
 
-- towns and cities from the extract's low-zoom tiles, across the whole extract,
-  read once and kept;
-- neighbourhoods from z12 tiles within NEIGHBOURHOOD_RADIUS_M of the map centre;
+- cities and towns from the extract's z10 tiles, across the whole extract, read
+  once and kept (about two seconds, the first time);
+- villages that only appear closer in, and neighbourhoods, from z12 tiles within
+  NEIGHBOURHOOD_RADIUS_M of the map centre;
 - shops and other points of interest from the most detailed tiles within
   POI_RADIUS_M of the map centre.
 
@@ -37,11 +38,13 @@ from app.services import mvt
 log = get_logger(__name__)
 
 TILES_FILE = "basemap.pmtiles"
-TOWN_ZOOM = 8
+TOWN_ZOOM = 10
 NEIGHBOURHOOD_ZOOM = 12
 NEIGHBOURHOOD_RADIUS_M = 10_000
 POI_RADIUS_M = 3_000
 MAX_RESULTS = 10
+# How far from the map centre each kind is looked for; towns are not limited.
+RADIUS_BY_KIND = {"neighbourhood": NEIGHBOURHOOD_RADIUS_M, "poi": POI_RADIUS_M}
 TILE_CACHE = 512
 EARTH_RADIUS_M = 6_371_008.8
 
@@ -89,11 +92,17 @@ def _distance_m(a: tuple[float, float], b: tuple[float, float]) -> float:
 
 
 def _tiles_around(lat: float, lon: float, radius_m: float, z: int) -> list[tuple[int, int]]:
+    n = 2**z
     dlat = math.degrees(radius_m / EARTH_RADIUS_M)
-    dlon = dlat / max(math.cos(math.radians(lat)), 0.01)
-    x0, y1 = _tile_of(lat - dlat, lon - dlon, z)
-    x1, y0 = _tile_of(lat + dlat, lon + dlon, z)
-    return [(x, y) for x in range(x0, x1 + 1) for y in range(y0, y1 + 1)]
+    dlon = min(dlat / max(math.cos(math.radians(lat)), 0.01), 180.0)
+    _, y1 = _tile_of(lat - dlat, lon, z)
+    _, y0 = _tile_of(lat + dlat, lon, z)
+    # Columns wrap at the antimeridian: a centre at 179.99 E also needs tiles
+    # just west of 180 W.
+    first = math.floor((lon - dlon + 180.0) / 360.0 * n)
+    last = math.floor((lon + dlon + 180.0) / 360.0 * n)
+    columns = sorted({x % n for x in range(first, last + 1)})
+    return [(x, y) for x in columns for y in range(y0, y1 + 1)]
 
 
 class Extract:
@@ -181,6 +190,8 @@ class Extract:
         zn = min(NEIGHBOURHOOD_ZOOM, self.max_zoom)
         for x, y in _tiles_around(lat, lon, NEIGHBOURHOOD_RADIUS_M, zn):
             hits.extend(self._hits(zn, x, y, {"neighbourhood", "macrohood"}, "neighbourhood", None))
+            # A village the z10 tiles leave out still turns up when the map is near it.
+            hits.extend(self._hits(zn, x, y, {"locality"}, "town", None))
         zp = self.max_zoom
         for x, y in _tiles_around(lat, lon, POI_RADIUS_M, zp):
             hits.extend(self._hits(zp, x, y, None, "poi", "pois"))
@@ -250,6 +261,10 @@ def _search(tiles_path: str, query: str, lat: float | None, lon: float | None) -
             if lat is not None and lon is not None
             else None
         )
+        # Tiles are squares; the promise is a radius. A tile's far corner is out.
+        limit = RADIUS_BY_KIND.get(hit.kind)
+        if limit is not None and distance is not None and distance > limit:
+            continue
         found.append(PlaceHit(hit.name, hit.kind, hit.detail, hit.lat, hit.lon, distance))
     phrase = " ".join(words)
     found.sort(key=lambda h: _rank(h, phrase))

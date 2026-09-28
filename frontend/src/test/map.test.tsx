@@ -130,6 +130,28 @@ describe("map", () => {
     expect(screen.getByLabelText("Name", { selector: "input" })).toHaveValue("Tideline Grocers");
   });
 
+  it("never offers the last search's results while the next one is pending", async () => {
+    // Review of #70: picking a stale result moved the map to a place from the
+    // previous search.
+    mockApi({
+      ...withTiles(),
+      "GET /map/places": (call) => (call.query.get("q") === "grocer" ? jsonResponse(200, places) : new Promise<Response>(() => {})),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors?view=map");
+    const map = await mapReady();
+    act(() => map.fire("load", {}));
+    const box = await screen.findByRole("combobox", { name: "Find a place" });
+    await user.type(box, "grocer");
+    await screen.findByRole("option", { name: /Tideline Grocers/ });
+
+    await user.type(box, "y");
+    await waitFor(() => expect(screen.queryByRole("option", { name: /Tideline Grocers/ })).not.toBeInTheDocument());
+    await new Promise((resolve) => setTimeout(resolve, 400)); // past the debounce, answer still pending
+    expect(screen.queryByRole("option", { name: /Tideline Grocers/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Searching…")).toBeInTheDocument();
+  });
+
   it("offers no place search without a map extract", async () => {
     mockApi(baseRoutes(() => [chainLocation]));
     renderApp("/catalog/vendors?view=map");

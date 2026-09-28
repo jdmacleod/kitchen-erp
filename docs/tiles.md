@@ -47,8 +47,10 @@ are served from `/fonts/` on this origin; nothing is fetched while the map is
 in use. A development server without them draws the map unlabelled.
 
 "Find a place", above the vendor map, searches the same extract through the
-API (`GET /api/v1/map/places`): towns anywhere in it, and neighbourhoods and
-shops near the middle of the map. Search for the town first to bring the map
+API (`GET /api/v1/map/places`): cities and towns anywhere in it, and villages,
+neighbourhoods (within 10 km) and shops (within 3 km) near the middle of the
+map. The first search after the API starts reads the town index, about two
+seconds on a regional extract. Search for the town first to bring the map
 close enough for its shops. While adding a location, picking a shop puts the
 pin on it and names the location after it. Nothing is sent to another server;
 Nominatim stays off.
