@@ -60,8 +60,9 @@ export function AppShell() {
   const close = () => setOverlay(null);
   // What Capture handed the desktop shelf-price drawer (G14).
   const [shelfArrival, setShelfArrival] = useState<ShelfPriceState>({});
+  const [wide, setWide] = useState(false);
   const chrome = useMemo<Chrome>(
-    () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search") }),
+    () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search"), setWide }),
     [setOverlay],
   );
 
@@ -126,7 +127,8 @@ export function AppShell() {
       <main
         id="main"
         tabIndex={-1}
-        className={`mx-auto w-full max-w-4xl flex-1 px-4 md:px-8 lg:py-8 ${
+        data-wide={wide || undefined}
+        className={`mx-auto w-full ${wide ? "max-w-7xl" : "max-w-4xl"} flex-1 px-4 md:px-8 lg:py-8 ${
           task ? "pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6" : "pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
         }`}
       >

@@ -66,6 +66,44 @@ describe("receipt review", () => {
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({ line_total: "4.25" }));
   });
 
+  it("opens the product picker in a full-width row under its line", async () => {
+    // #61: inside the Product cell the picker made the table wider than its
+    // column, and the receipt text scrolled or squeezed out of view.
+    mockApi(baseRoutes(() => receiptPurchase));
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    rows[1].focus();
+    await user.keyboard("/");
+    const box = await screen.findByRole("combobox", { name: "Product for line 2" });
+    const pickRow = box.closest("tr")!;
+    expect(pickRow).toHaveAttribute("data-testid", "review-pick-row");
+    expect(pickRow.querySelector("td")).toHaveAttribute("colspan", "5");
+    const current = screen.getAllByTestId("review-line").find((r) => r.getAttribute("aria-selected") === "true")!;
+    expect(pickRow.previousElementSibling).toBe(current);
+    expect(within(current).getByText("Choosing below")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByTestId("review-pick-row")).not.toBeInTheDocument());
+  });
+
+  it("widens the page for review, and only for review", async () => {
+    // #61: at reading width the lines table scrolled sideways under the picker.
+    mockApi(baseRoutes(() => receiptPurchase));
+    const { unmount } = renderApp(base);
+    await openReview();
+    expect(document.getElementById("main")).toHaveAttribute("data-wide");
+    expect(document.getElementById("main")).toHaveClass("max-w-7xl");
+    unmount();
+
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, status: "committed" })));
+    renderApp(base);
+    await screen.findByRole("heading", { level: 1 });
+    await waitFor(() => expect(screen.queryByTestId("review")).not.toBeInTheDocument());
+    expect(document.getElementById("main")).not.toHaveAttribute("data-wide");
+    expect(document.getElementById("main")).toHaveClass("max-w-4xl");
+  });
+
   it("says when part of a long receipt could not be read", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["lines_partial"] })));
     renderApp(base);
