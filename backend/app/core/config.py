@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -82,6 +83,10 @@ class Settings(BaseSettings):
     recipes_path: str = "/data/recipes"  # read-only mount of the cooklang-recipes checkout
 
     household_timezone: str = "America/Los_Angeles"
+    # The order the household's tills print dates in, for a receipt date the model
+    # returns as printed rather than as ISO (#58). One order per deployment: a
+    # date like 07/04/26 is never guessed receipt by receipt.
+    receipt_date_order: Literal["MDY", "DMY", "YMD"] = "MDY"
     currency: str = "USD"
     ingest_lock_timeout_seconds: int = 600
     # After this long with receipts waiting and no stage finished, Home says reading

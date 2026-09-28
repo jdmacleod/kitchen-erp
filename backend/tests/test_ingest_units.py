@@ -156,8 +156,8 @@ def test_local_time_interpreted_in_household_zone():
         2026, 3, 11, 16, 15, tzinfo=UTC
     )
     assert parse_local_datetime("2026-03-11", zone) == datetime(2026, 3, 11, 7, 0, tzinfo=UTC)
-    assert parse_local_datetime("03/11/2026", zone) is None
     assert parse_local_datetime(None, zone) is None
+    assert parse_local_datetime("not a date", zone) is None
     assert parse_local_datetime("2026-03-11 09:15", "Europe/Berlin") == datetime(
         2026, 3, 11, 8, 15, tzinfo=UTC
     )
@@ -321,3 +321,35 @@ def test_the_printed_rate_goes_with_the_printed_quantity_and_grams_need_context(
     # ...but a trailing letter is as likely a tax code.
     bread = lines_mod.refine_line(3, _line("BREAD 2.49 G", line_total="2.49", qty="1", unit="each"))
     assert bread.flags == []
+
+
+# The shapes gpt-oss:20b returned for real receipts in place of ISO (#58), digits
+# invented: all four were discarded before RECEIPT_DATE_ORDER.
+PRINTED = [
+    ("07/04/26 17:42:09", datetime(2026, 7, 5, 0, 42, 9, tzinfo=UTC)),
+    ("07/04/26 17:42", datetime(2026, 7, 5, 0, 42, tzinfo=UTC)),
+    ("07/04/26", datetime(2026, 7, 4, 7, 0, tzinfo=UTC)),
+    ("07/04/2026 05:42 PM", datetime(2026, 7, 5, 0, 42, tzinfo=UTC)),
+    ("07-04-2026 05:42PM", datetime(2026, 7, 5, 0, 42, tzinfo=UTC)),
+    (" 07/04/26   17:42 ", datetime(2026, 7, 5, 0, 42, tzinfo=UTC)),
+]
+
+
+@pytest.mark.parametrize(("printed", "expected"), PRINTED)
+def test_a_printed_us_date_is_read_month_first_by_default(printed, expected):
+    assert parse_local_datetime(printed, "America/Los_Angeles") == expected
+
+
+def test_the_declared_order_is_the_only_one_tried():
+    zone = "America/Los_Angeles"
+    # The same print, three households.
+    assert parse_local_datetime("07/04/26", zone, "MDY") == datetime(2026, 7, 4, 7, tzinfo=UTC)
+    assert parse_local_datetime("07/04/26", zone, "DMY") == datetime(2026, 4, 7, 7, tzinfo=UTC)
+    assert parse_local_datetime("26/07/04", zone, "YMD") == datetime(2026, 7, 4, 7, tzinfo=UTC)
+    # A day-first date that cannot be month-first is refused, not reinterpreted.
+    assert parse_local_datetime("30/07/26", zone, "MDY") is None
+    assert parse_local_datetime("07/30/26", zone, "DMY") is None
+    # ISO is ISO whatever the order.
+    assert parse_local_datetime("2026-07-04 17:42", zone, "DMY") == datetime(
+        2026, 7, 5, 0, 42, tzinfo=UTC
+    )

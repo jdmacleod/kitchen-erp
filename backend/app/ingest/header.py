@@ -68,14 +68,38 @@ MAX_CANDIDATES = 10
 _DATETIME_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M")
 _DATE_FORMATS = ("%Y-%m-%d",)
 
+# The model is asked for ISO but often echoes the till's own format (#58), and a
+# till prints its date in one order. RECEIPT_DATE_ORDER says which, so "07/04/26"
+# is read one way on every receipt and never guessed per receipt.
+_DATE_ORDERS = {
+    "MDY": ("%m{s}%d{s}%Y", "%m{s}%d{s}%y"),
+    "DMY": ("%d{s}%m{s}%Y", "%d{s}%m{s}%y"),
+    "YMD": ("%Y{s}%m{s}%d", "%y{s}%m{s}%d"),
+}
+_SEPARATORS = ("/", "-", ".")
+_TIMES = ("", " %H:%M:%S", " %H:%M", " %I:%M:%S %p", " %I:%M %p", " %I:%M:%S%p", " %I:%M%p")
 
-def parse_local_datetime(text: str | None, timezone: str) -> datetime | None:
-    """A printed local time (no zone) interpreted in the household zone, returned in UTC."""
+
+def _printed_formats(order: str) -> tuple[str, ...]:
+    return tuple(
+        date.format(s=sep) + time
+        for date in _DATE_ORDERS[order]
+        for sep in _SEPARATORS
+        for time in _TIMES
+    )
+
+
+def parse_local_datetime(text: str | None, timezone: str, order: str = "MDY") -> datetime | None:
+    """A printed local time (no zone) interpreted in the household zone, returned in UTC.
+
+    ISO forms are always accepted. A printed date such as ``07/30/20 17:08`` is
+    read in ``order`` (the deployment's RECEIPT_DATE_ORDER) and in no other.
+    """
     if not text:
         return None
-    value = text.strip()
+    value = " ".join(text.split())
     zone = ZoneInfo(timezone)
-    for fmt in _DATETIME_FORMATS + _DATE_FORMATS:
+    for fmt in _DATETIME_FORMATS + _DATE_FORMATS + _printed_formats(order):
         try:
             local = datetime.strptime(value, fmt)
         except ValueError:
