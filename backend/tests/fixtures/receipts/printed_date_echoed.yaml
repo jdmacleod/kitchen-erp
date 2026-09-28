@@ -1,0 +1,43 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: printed_date_echoed
+notes: |
+  The model returns the purchase date as the till printed it (MM/DD/YY with
+  seconds) instead of the ISO form it was asked for. This is what gpt-oss:20b
+  did on most real receipts (#58). Read with RECEIPT_DATE_ORDER=MDY, the
+  default, the purchase keeps its date instead of taking the upload time.
+ocr_text: |
+  HARBOURSIDE PROVISIONS
+  STORE 0217
+  OAT MILK 1L            3.49
+  RYE BREAD              4.25
+  SUBTOTAL               7.74
+  TOTAL                  7.74
+  07/04/26 17:42:09  0217 03 1181
+expected_header:
+  merchant_name: HARBOURSIDE PROVISIONS
+  store_identifier: "0217"
+  purchased_at_local: "07/04/26 17:42:09"
+  purchased_at: "2026-07-05T00:42:09+00:00"
+  flags: []
+  subtotal: "7.74"
+  tax: null
+  total: "7.74"
+expected_lines:
+  - {seq: 1, raw_text: "OAT MILK 1L            3.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_seq: null}
+  - {seq: 2, raw_text: "RYE BREAD              4.25", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.25", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "HARBOURSIDE PROVISIONS"
+    store_identifier: "0217"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "07/04/26 17:42:09"
+    subtotal: "7.74"
+    tax: null
+    total: "7.74"
+  lines:
+    lines:
+      - {raw_text: "OAT MILK 1L            3.49", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_index: null}
+      - {raw_text: "RYE BREAD              4.25", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "4.25", parent_index: null}

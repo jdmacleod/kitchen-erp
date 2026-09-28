@@ -150,7 +150,7 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
     purchased_at = None
     if header is not None:
         purchased_at = header_stage.parse_local_datetime(
-            header.purchased_at_local, settings.household_timezone
+            header.purchased_at_local, settings.household_timezone, settings.receipt_date_order
         )
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
