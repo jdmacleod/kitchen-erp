@@ -4,18 +4,23 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Literal
+from decimal import Decimal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.core.config import get_settings
 from app.schemas.geo import (
     HomeBaseCreate,
     HomeBaseList,
     HomeBaseOut,
     HomeBaseUpdate,
     IsOpenOut,
+    MapPlaceList,
+    MapPlaceOut,
     OpeningHoursValidateIn,
     OpeningHoursValidateOut,
     OsmAdoptIn,
@@ -32,7 +37,7 @@ from app.schemas.geo import (
     VendorOut,
     VendorUpdate,
 )
-from app.services import geo
+from app.services import geo, place_search
 from app.services.opening_hours import is_open_at, to_household, validate_hours
 
 router = APIRouter(tags=["geo"])
@@ -305,6 +310,36 @@ async def osm_adopt(
     return await guard.commit(201, body.model_dump(mode="json"))
 
 
+map_router = APIRouter(prefix="/map", tags=["geo"])
+
+
+@map_router.get("/places", response_model=MapPlaceList)
+async def map_places(
+    user: CurrentUser,
+    q: Annotated[str, Query(min_length=2, max_length=100)],
+    lat: Annotated[Decimal | None, Query(ge=-90, le=90)] = None,
+    lon: Annotated[Decimal | None, Query(ge=-180, le=180)] = None,
+) -> MapPlaceList:
+    """Places by name from the map extract: towns anywhere in it, and with lat and
+    lon, neighbourhoods and shops near that point. Nothing leaves the deployment."""
+    near = (float(lat), float(lon)) if lat is not None and lon is not None else (None, None)
+    hits = await run_in_threadpool(place_search.search, get_settings().tiles_path, q, *near)
+    return MapPlaceList(
+        items=[
+            MapPlaceOut(
+                name=h.name,
+                kind=h.kind,  # type: ignore[arg-type]
+                detail=h.detail,
+                lat=Decimal(f"{h.lat:.6f}"),
+                lon=Decimal(f"{h.lon:.6f}"),
+                distance_m=None if h.distance_m is None else round(h.distance_m),
+            )
+            for h in hits
+        ]
+    )
+
+
+router.include_router(map_router)
 router.include_router(home_bases)
 router.include_router(vendors)
 router.include_router(locations)
