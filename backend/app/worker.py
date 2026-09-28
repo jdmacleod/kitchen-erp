@@ -70,6 +70,24 @@ async def run_once(db: AsyncSession, *, locked_by: str | None = None, **kwargs: 
     return True
 
 
+def loop_error_fields(exc: BaseException) -> dict[str, str]:
+    """What to log when a loop iteration fails, with a next step when one is known.
+
+    Compose starts the worker alongside the API, so on a fresh install it polls
+    before anyone has run `kerp migrate` and every poll fails on a missing table.
+    A bare "ProgrammingError" every five seconds reads like a broken install.
+    """
+    fields = {"exc_type": type(exc).__name__}
+    seen: BaseException | None = exc
+    while seen is not None:
+        for candidate in (seen, getattr(seen, "orig", None)):
+            if getattr(candidate, "sqlstate", None) == "42P01":  # undefined_table
+                fields["hint"] = "the database has no schema yet; run `kerp migrate`"
+                return fields
+        seen = seen.__cause__
+    return fields
+
+
 async def run(poll_seconds: float = 5.0) -> None:
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -83,7 +101,7 @@ async def run(poll_seconds: float = 5.0) -> None:
             async with sessionmaker() as db:
                 ran = await run_once(db, locked_by=me)
         except Exception as exc:  # the database itself is unreachable, most likely
-            log.error("worker loop error", extra={"exc_type": type(exc).__name__})
+            log.error("worker loop error", extra=loop_error_fields(exc))
             ran = False
         if ran:
             continue
