@@ -272,6 +272,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const unresolved = itemLines.filter(
     (l) => l.resolution !== "ignored" && (l.resolution === "unmatched" || !l.product),
   ).length;
+  // Neither does it emit a price: what commits is the item lines less both.
+  const emitting = itemLines.filter((l) => l.resolution !== "ignored").length - unresolved;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
@@ -433,7 +435,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               Commit this purchase?
             </h2>
             <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
-              {itemLines.length - unresolved} {itemLines.length - unresolved === 1 ? "line emits" : "lines emit"} a price observation now.
+              {emitting} {emitting === 1 ? "line emits" : "lines emit"} a price observation now.
               {unresolved > 0 ? ` ${unresolved} unidentified ${unresolved === 1 ? "line waits" : "lines wait"} in the to-identify queue.` : ""}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
