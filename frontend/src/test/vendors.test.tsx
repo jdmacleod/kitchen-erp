@@ -133,6 +133,33 @@ describe("vendors", () => {
     expect(await screen.findByText("Same price at every location")).toBeInTheDocument();
   });
 
+  it("records the store codes a location prints on its receipts", async () => {
+    // Receipt headers and retailer imports match a location by its store code,
+    // and until now only the API could set one (TODOS).
+    let location = { ...chainLocation };
+    const calls = mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${chainVendorId}`]: () => jsonResponse(200, chainVendor),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [location] }),
+      [`PATCH /vendor-locations/${chainLocation.id}`]: (call) => {
+        location = { ...location, ...(call.body as object) };
+        return jsonResponse(200, { ...location, stalls: [] });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/vendors/${chainVendorId}`);
+
+    await user.click(await screen.findByRole("button", { name: `Edit ${chainLocation.name}` }));
+    const form = screen.getByRole("form", { name: `Edit location ${chainLocation.name}` });
+    await user.type(within(form).getByLabelText("Store codes on receipts"), "0217, 17 ,, 0217");
+    await user.click(within(form).getByRole("button", { name: "Save location" }));
+
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ receipt_identifiers: ["0217", "17"] }));
+    expect(await screen.findByText("Store codes on receipts: 0217, 17")).toBeInTheDocument();
+  });
+
   it("creates a location for a vendor without going to the map", async () => {
     // useCreateLocation used to have one caller, the map's pin-drop flow, so a
     // vendor added on the Vendors page could not be used for a purchase until

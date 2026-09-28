@@ -79,18 +79,6 @@ source is named so it can be traced back.
 
 ## Receipts and import
 
-### Edit a location's receipt identifiers in the UI
-
-**What:** A field on the location form for the store codes a receipt or retailer export prints (`receipt_identifiers`).
-
-**Why:** Header matching and `kerp import purchases` both match on these codes, but only the API can set them. Without them, an import imports nothing unless the vendor has exactly one location or `--location` is passed. `import purchases` now says so (#57).
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27. `frontend/src/api/geo.ts` already carries the field on create and update; no page renders it.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** None
-
 ### Upload several receipts at once
 
 **What:** Let the Receipts upload take several files (`multiple`), one ingest job each.
@@ -130,3 +118,5 @@ source is named so it can be traced back.
 **Depends on:** Phase 3 approval, or a decision on the default
 
 ## Completed
+
+- **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).

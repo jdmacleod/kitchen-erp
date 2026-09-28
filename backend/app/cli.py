@@ -353,7 +353,7 @@ def import_purchases(
                 f"{result['unlocated']} transaction(s) matched no location of "
                 f"{export.retailer!r}. Give that vendor one location (a vendor with a "
                 "single location is used automatically), pass --location <location id>, "
-                "or add the store code to a location's receipt_identifiers through the API.",
+                "or add the store code to a location (vendor page, Edit, Store codes on receipts).",
                 err=True,
             )
 
