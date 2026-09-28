@@ -9,6 +9,11 @@ export class MapStub {
   container: HTMLElement;
   private handlers = new globalThis.Map<string, Handler[]>();
   constructor(options: { container: HTMLElement }) {
+    if (constructionFailure.next) {
+      const error = constructionFailure.next;
+      constructionFailure.next = null;
+      throw error;
+    }
     this.container = options.container;
     instances.push(this);
   }
@@ -85,5 +90,7 @@ export const setWorkerUrl = vi.fn();
 
 /** Every map created and not yet removed, oldest first. */
 export const instances: MapStub[] = [];
+/** Set `next` to make the next map construction throw, as MapLibre does with no WebGL. */
+export const constructionFailure: { next: Error | null } = { next: null };
 
 export { MapStub as Map };

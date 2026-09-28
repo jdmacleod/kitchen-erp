@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { errorMessage } from "../../api/client";
 import { formatLatLon, geoErrorMessage, useCreateHomeBase, useDeleteHomeBase, useHomeBases, useUpdateHomeBase, type HomeBase } from "../../api/geo";
+import { DraftPointControl } from "../../components/geo/DraftPointControl";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
 import { Alert, Button, Card, EmptyState, Field, PageHeader } from "../../components/ui";
@@ -22,7 +23,7 @@ export function HomeBasesPage() {
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!draft) {
-      setInvalid("Drop a pin on the map first.");
+      setInvalid("Click the map, or give the coordinates, so the base has a place.");
       return;
     }
     if (!name.trim()) {
@@ -52,14 +53,12 @@ export function HomeBasesPage() {
               Add a home base
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Click the map where the base is, then give it a name. New vendor locations default to the nearest base.
+              Click the map where the base is, or give its coordinates, then name it. New vendor locations default to the nearest base.
             </p>
             {tilesPresent === false ? <Alert tone="info">Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates.</Alert> : null}
             {mapError ? <Alert tone="error">{mapError}</Alert> : null}
             <MapView label="Home bases" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
-            <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
-              {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map."}
-            </p>
+            <DraftPointControl draft={draft} onPoint={setDraft} disabled={create.isPending} />
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
             <div className="grid gap-4 sm:grid-cols-2">
@@ -103,7 +102,10 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [name, setName] = useState(home.name);
-  const [label, setLabel] = useState(home.label ?? "");
+  // The API gives the name as the label when none was set; that is not a label
+  // anyone chose, so it is neither shown beside the name nor saved back as one.
+  const ownLabel = home.label && home.label !== home.name ? home.label : null;
+  const [label, setLabel] = useState(ownLabel ?? "");
 
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -117,7 +119,7 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
         <div className="min-w-0">
           <p className="font-medium">
             {home.name}
-            {home.label ? <span className="text-neutral-600 dark:text-neutral-400"> · {home.label}</span> : null}
+            {ownLabel ? <span className="text-neutral-600 dark:text-neutral-400"> · {ownLabel}</span> : null}
           </p>
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(home.lat, home.lon)}</p>
         </div>
