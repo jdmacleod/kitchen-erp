@@ -93,3 +93,27 @@ async def test_correcting_the_misread_line_clears_the_mismatch(admin_client, adm
     )
     assert r.status_code == 200, r.text
     assert r.json()["flags"] == []
+
+
+async def test_giving_a_flagged_line_its_price_clears_the_price_flags(
+    admin_client, admin, owner_conn
+):
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    [line] = (await admin_client.get(f"/api/v1/purchases/{p}")).json()["lines"]
+    await owner_conn.execute(
+        "UPDATE purchase_line SET flags = $1, line_total = 349 WHERE id = $2::uuid",
+        ["decimal_missing", "exceeds_total", "qty_assumed"],
+        line["id"],
+    )
+    await owner_conn.execute(
+        "UPDATE purchase SET flags = $1, total = 3.49 WHERE id = $2::uuid",
+        ["reconcile_mismatch", "decimals_restore_total"],
+        p,
+    )
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{p}/lines/{line['id']}", json={"line_total": "3.49"}
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["lines"][0]["flags"] == ["qty_assumed"]  # not a price flag: stays
+    assert body["flags"] == []  # reconciles now, and nothing is left to restore

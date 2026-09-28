@@ -1,0 +1,50 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: decimal_points_lost
+notes: |
+  A phone document scan where OCR lost two decimal points: "OAT MILK 1L 3.49"
+  came through as "349" and "RYE BREAD 4.25" as "425" (#59). The model copies
+  what it sees, so those lines read $349.00 and $425.00. Both get
+  decimal_missing, and both exceed the printed total. Restoring the two
+  decimals makes the lines add up to the printed 9.49, so the purchase also
+  gets decimals_restore_total. Nothing is changed automatically.
+ocr_text: |
+  HARBOURSIDE PROVISIONS
+  STORE 0217
+  OAT MILK 1L            349
+  RYE BREAD              425
+  BAG FEE               0.10
+  EGGS DOZEN 18CT       1.65
+  TOTAL                 9.49
+  07/04/26 17:42
+expected_header:
+  merchant_name: HARBOURSIDE PROVISIONS
+  store_identifier: "0217"
+  purchased_at_local: "2026-07-04 17:42"
+  purchased_at: "2026-07-05T00:42:00+00:00"
+  subtotal: null
+  tax: null
+  total: "9.49"
+expected_lines:
+  - {seq: 1, raw_text: "OAT MILK 1L            349", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "349", parent_seq: null, price_flags: [decimal_missing, exceeds_total]}
+  - {seq: 2, raw_text: "RYE BREAD              425", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "425", parent_seq: null, price_flags: [decimal_missing, exceeds_total]}
+  - {seq: 3, raw_text: "BAG FEE               0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_seq: null}
+  - {seq: 4, raw_text: "EGGS DOZEN 18CT       1.65", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.65", parent_seq: null}
+expected_reconciliation:
+  mismatch: true
+expected_purchase_flags: [reconcile_mismatch, decimals_restore_total]
+llm_responses:
+  header:
+    merchant_name: "HARBOURSIDE PROVISIONS"
+    store_identifier: "0217"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-07-04 17:42"
+    subtotal: null
+    tax: null
+    total: "9.49"
+  lines:
+    lines:
+      - {raw_text: "OAT MILK 1L            349", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "349", parent_index: null}
+      - {raw_text: "RYE BREAD              425", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "425", parent_index: null}
+      - {raw_text: "BAG FEE               0.10", line_kind: fee, qty: null, unit: null, unit_price: null, line_total: "0.10", parent_index: null}
+      - {raw_text: "EGGS DOZEN 18CT       1.65", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.65", parent_index: null}

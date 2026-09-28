@@ -224,9 +224,12 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         purchase_flags.append("lines_unparsed")
     printed_total = _decimal(header.get("total"))
     header_tax = _decimal(header.get("tax"))
+    lines_stage.check_prices(parsed, printed_total)
     reconciliation = lines_stage.reconcile(parsed, printed_total, header_tax)
     if reconciliation["mismatch"]:
         purchase_flags.append("reconcile_mismatch")
+        if lines_stage.restoring_decimals_reconciles(parsed, printed_total, header_tax):
+            purchase_flags.append("decimals_restore_total")
 
     purchased_at = None
     if header.get("purchased_at"):

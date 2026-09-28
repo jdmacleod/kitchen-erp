@@ -8,7 +8,7 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.ingest.lines import QTY_FLAGS
+from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS
 from app.models import AppUser, Product, PurchaseLine
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
@@ -60,6 +60,11 @@ def _rechecked_total(purchase) -> list[str]:
     such a receipt, so it is checked the same way (header tax counts only when no
     line carries tax, as at ingest).
     """
+    if "decimals_restore_total" in purchase.flags and not any(
+        "decimal_missing" in line.flags for line in purchase.lines
+    ):
+        # Nothing left to restore: the hint that restoring would reconcile is done.
+        purchase.flags = [f for f in purchase.flags if f != "decimals_restore_total"]
     if "total_missing" in purchase.flags or purchase.total is None:
         # The total is the line sum standing in for one nobody has read yet:
         # there is nothing to check the lines against, only themselves.
@@ -139,6 +144,9 @@ async def edit_line(
     # the quantity, so it leaves the warning in place.
     if {"qty", "unit", "clear_qty"} & data.keys():
         line.flags = [f for f in line.flags if f not in QTY_FLAGS]
+    # A person has now given the price: it is no longer a suspected misreading (#59).
+    if data.get("line_total") is not None:
+        line.flags = [f for f in line.flags if f not in PRICE_FLAGS]
     if data.pop("clear_parent", False):
         line.parent_line_id = None
     if data.pop("clear_qty", False):

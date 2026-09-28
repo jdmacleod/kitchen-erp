@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.ingest import formats as ingest_formats
 from app.ingest import llm, parsers, raster
-from app.ingest.lines import lines_budget_seconds
+from app.ingest.lines import PRICE_FLAGS, lines_budget_seconds
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.stages import run_stage
@@ -84,6 +84,10 @@ def _assert_lines_match(lines: list[PurchaseLine], expected: list[dict]) -> None
         assert parent_seq == exp["parent_seq"], exp["seq"]
         assert line.resolution == "unmatched"
         assert line.product_id is None
+        # Price flags only where a fixture expects them: the rest of the corpus
+        # is the false-positive check for #59's misread-price detection.
+        price_flags = sorted(set(line.flags) & PRICE_FLAGS)
+        assert price_flags == sorted(exp.get("price_flags", [])), exp["seq"]
 
 
 @pytest.mark.parametrize("name", fixture_names())
@@ -147,6 +151,8 @@ async def test_fixture_advances_to_review(
     assert purchase.tax == _dec(fixture.expected_header["tax"])
     assert purchase.purchased_at.isoformat() == fixture.expected_header["purchased_at"]
     assert ("reconcile_mismatch" in purchase.flags) == recon["mismatch"]
+    for flag in fixture.expected_purchase_flags:
+        assert flag in purchase.flags, flag
     _assert_lines_match(lines, fixture.expected_lines)
     assert [entry["raw_text"] for entry in lines_out["lines"]] == [
         e["raw_text"] for e in fixture.expected_lines

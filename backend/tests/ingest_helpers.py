@@ -42,6 +42,7 @@ class ReceiptFixture:
     expected_lines: list[dict[str, Any]]
     expected_reconciliation: dict[str, Any]
     llm_responses: dict[str, Any]
+    expected_purchase_flags: list[str] = field(default_factory=list)
 
 
 def fixture_names() -> list[str]:
@@ -58,6 +59,7 @@ def load_fixture(name: str) -> ReceiptFixture:
         expected_lines=data.get("expected_lines", []),
         expected_reconciliation=data.get("expected_reconciliation", {}),
         llm_responses=data["llm_responses"],
+        expected_purchase_flags=data.get("expected_purchase_flags", []),
     )
 
 

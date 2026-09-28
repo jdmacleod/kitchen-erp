@@ -353,3 +353,53 @@ def test_the_declared_order_is_the_only_one_tried():
     assert parse_local_datetime("2026-07-04 17:42", zone, "DMY") == datetime(
         2026, 7, 5, 0, 42, tzinfo=UTC
     )
+
+
+def _parsed(raw: str, total: str, kind: str = "item") -> lines_mod.ParsedLine:
+    return lines_mod.ParsedLine(
+        seq=1,
+        raw_text=raw,
+        line_kind=kind,
+        qty=None,
+        unit=None,
+        unit_price=None,
+        line_total=Decimal(total),
+    )
+
+
+@pytest.mark.parametrize(
+    ("raw", "total", "flagged"),
+    [
+        ("OAT MILK 1L 349", "349", True),  # the decimal point OCR lost (#59)
+        ("OAT MILK 1L 349 F", "349", True),  # a tax code after the amount
+        ("OAT MILK 1L 349*", "349", True),
+        ("OAT MILK 1L 3.49", "3.49", False),
+        ("OAT MILK 1L 3,49", "3.49", False),  # a comma is a decimal separator too
+        ("OAT MILK 1L 99", "99", False),  # two digits: too short to say
+        ("OAT MILK 1L 349", "3.49", False),  # the model already read it right
+        ("012345678905 OAT MILK 3.49", "3.49", False),  # a code earlier on the line
+    ],
+)
+def test_a_price_printed_without_its_decimal_point_is_flagged(raw, total, flagged):
+    line = _parsed(raw, total)
+    lines_mod.check_prices([line], None)
+    assert ("decimal_missing" in line.flags) is flagged
+
+
+def test_discounts_are_not_checked_and_a_line_over_the_total_is():
+    discount = _parsed("MEMBER SAVINGS 125", "125", kind="discount")
+    big = _parsed("CAST IRON PAN 45.00", "45.00")
+    lines_mod.check_prices([discount, big], Decimal("12.00"))
+    assert discount.flags == []
+    assert big.flags == ["exceeds_total"]
+
+
+def test_restoring_decimals_reconciles_only_when_it_actually_does():
+    lines = [_parsed("OAT MILK 349", "349"), _parsed("RYE BREAD 4.25", "4.25")]
+    lines_mod.check_prices(lines, Decimal("7.74"))
+    assert lines_mod.restoring_decimals_reconciles(lines, Decimal("7.74"), None) is True
+    # The same misreading, but the total says something else is wrong too.
+    assert lines_mod.restoring_decimals_reconciles(lines, Decimal("9.99"), None) is False
+    # No printed total: nothing to reconcile against.
+    assert lines_mod.restoring_decimals_reconciles(lines, None, None) is False
+    assert lines_mod.restored(Decimal("349")) == Decimal("3.49")

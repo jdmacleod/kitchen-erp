@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -227,6 +227,56 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
             if j >= 0 and parsed[j].line_kind == "item":
                 line.parent_seq = parsed[j].seq
                 line.flags.append("parent_inferred")
+
+
+# Flags that say a line's price is probably misread (#59). Suggestions only: a
+# person confirms any change, and editing the line's total clears them.
+# decimal_missing: the amount printed at the end of the line is three or more bare
+#   digits ("OAT MILK 349") and is what the line was read as. Tills print cents,
+#   so this is almost always a decimal point OCR lost; the likely price is a
+#   hundredth of it.
+# exceeds_total: one line costs more than the whole printed receipt.
+PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total"})
+
+# The last amount on a line, and whatever tax or flag letters follow it.
+_TRAILING_AMOUNT = re.compile(r"(\d[\d.,]*)\s*(?:[A-Za-z*]{1,2}\s*)?$")
+
+
+def restored(amount: Decimal) -> Decimal:
+    """What a decimal_missing amount most likely was: its hundredth."""
+    return (amount / 100).quantize(CENTS)
+
+
+def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None:
+    """Flag lines whose price looks misread. Never changes a price."""
+    for line in lines:
+        if line.line_kind == "discount":
+            continue
+        match = _TRAILING_AMOUNT.search(line.raw_text.strip())
+        token = match.group(1) if match else ""
+        if len(token) >= 3 and token.isdigit() and Decimal(token) == line.line_total:
+            line.flags.append("decimal_missing")
+        if printed_total is not None and line.line_total > printed_total + RECONCILE_TOLERANCE:
+            line.flags.append("exceeds_total")
+
+
+def restoring_decimals_reconciles(
+    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None
+) -> bool:
+    """True when the lines miss the printed total but match it once every
+    decimal_missing amount is read as its hundredth."""
+    suspects = [line for line in lines if "decimal_missing" in line.flags]
+    if printed_total is None or not suspects:
+        return False
+    if not reconcile(lines, printed_total, header_tax)["mismatch"]:
+        return False
+    fixed = [
+        replace(line, line_total=restored(line.line_total))
+        if "decimal_missing" in line.flags
+        else line
+        for line in lines
+    ]
+    return not reconcile(fixed, printed_total, header_tax)["mismatch"]
 
 
 def parse_model_lines(result: ReceiptLines) -> list[ParsedLine]:
