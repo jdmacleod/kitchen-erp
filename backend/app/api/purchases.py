@@ -125,6 +125,7 @@ async def create_observation(
         is_promo=payload.is_promo,
         observed_at=payload.observed_at,
     )
+    await db.commit()
     return await guard.commit(201, observation_out(o).model_dump(mode="json"))
 
 

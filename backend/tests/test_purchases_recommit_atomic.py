@@ -54,6 +54,48 @@ async def test_failure_while_re_emitting_rolls_back_the_void(admin_client, monke
     assert again["lines"][0]["unit_price"] == "3.0000"
 
 
+async def test_failure_on_a_later_line_rolls_back_earlier_replacements(admin_client, monkeypatch):
+    # Review of #76: observe() committed too, so the first replacement made the
+    # voids of every changed line permanent before the second one failed.
+    p, body = await _two_line_purchase(admin_client)
+    before = await _live_ids(admin_client)
+    real_emit = purchases_service._emit
+    calls = 0
+
+    async def second_fails(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("emit failed")
+        await real_emit(*args, **kwargs)
+
+    monkeypatch.setattr(purchases_service, "_emit", second_fails)
+    body["lines"][0]["unit_price"] = "3.50"
+    body["lines"][1]["unit_price"] = "2.50"
+    with pytest.raises(RuntimeError):
+        await admin_client.put(f"/api/v1/purchases/{p['id']}", json=body)
+
+    assert calls == 2
+    assert await _live_ids(admin_client) == before
+
+
+async def test_shelf_price_endpoint_still_commits(admin_client):
+    p, _ = await _two_line_purchase(admin_client)
+    line = p["lines"][0]
+    r = await admin_client.post(
+        "/api/v1/price-observations",
+        json={
+            "product_id": line["product"]["id"],
+            "vendor_location_id": p["vendor_location"]["id"],
+            "price": "3.25",
+            "qty": "1",
+            "unit": "lb",
+        },
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["id"] in await _live_ids(admin_client)
+
+
 async def test_void_endpoint_still_commits(admin_client):
     p, _ = await _two_line_purchase(admin_client)
     obs_id = p["lines"][0]["observation_id"]
