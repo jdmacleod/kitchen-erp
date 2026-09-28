@@ -15,8 +15,9 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.ingest import formats as ingest_formats
 from app.ingest import llm, parsers, raster
-from app.ingest.lines import lines_budget_seconds
+from app.ingest.lines import PRICE_FLAGS, lines_budget_seconds, split_receipt
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
+from app.ingest.replay import RecordedTransport
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.stages import run_stage
 from app.models import IngestJob, IngestStageResult, Purchase, PurchaseLine
@@ -84,6 +85,10 @@ def _assert_lines_match(lines: list[PurchaseLine], expected: list[dict]) -> None
         assert parent_seq == exp["parent_seq"], exp["seq"]
         assert line.resolution == "unmatched"
         assert line.product_id is None
+        # Price flags only where a fixture expects them: the rest of the corpus
+        # is the false-positive check for #59's misread-price detection.
+        price_flags = sorted(set(line.flags) & PRICE_FLAGS)
+        assert price_flags == sorted(exp.get("price_flags", [])), exp["seq"]
 
 
 @pytest.mark.parametrize("name", fixture_names())
@@ -108,16 +113,18 @@ async def test_fixture_advances_to_review(
         assert result["output"] is None  # output only on request
         assert result["adapter"] and result["adapter_version"]
         assert result["duration_ms"] >= 0 and result["created_at"]
-    assert [r["stage"] for r in transport.requests] == ["header", "lines"]
+    # A long receipt is read in parts (#60): one lines request per part.
+    parts = split_receipt(fixture.ocr_text)
+    assert [r["stage"] for r in transport.requests] == ["header"] + ["lines"] * len(parts)
     # Reaching the model is bounded apart from the answer, and the lines stage's
-    # budget grows with the receipt (#34).
-    header_req, lines_req = transport.requests
+    # budget grows with the part it is reading (#34).
+    header_req, lines_req = transport.requests[:2]
     settings = get_settings()
     connect = settings.llm_connect_timeout_seconds
     # Connecting never takes longer than the budget it belongs to.
     assert header_req["timeout"]["connect"] == min(connect, settings.llm_timeout_seconds)
     assert header_req["timeout"]["read"] == settings.llm_timeout_seconds
-    assert lines_req["timeout"]["read"] == lines_budget_seconds(fixture.ocr_text)
+    assert lines_req["timeout"]["read"] == lines_budget_seconds(parts[0])
     assert lines_req["timeout"]["read"] > settings.llm_timeout_seconds
     assert lines_req["timeout"]["connect"] == min(connect, lines_req["timeout"]["read"])
 
@@ -147,6 +154,8 @@ async def test_fixture_advances_to_review(
     assert purchase.tax == _dec(fixture.expected_header["tax"])
     assert purchase.purchased_at.isoformat() == fixture.expected_header["purchased_at"]
     assert ("reconcile_mismatch" in purchase.flags) == recon["mismatch"]
+    for flag in fixture.expected_purchase_flags:
+        assert flag in purchase.flags, flag
     _assert_lines_match(lines, fixture.expected_lines)
     assert [entry["raw_text"] for entry in lines_out["lines"]] == [
         e["raw_text"] for e in fixture.expected_lines
@@ -658,3 +667,126 @@ async def test_single_independent_matched_by_name(
     out = (await stage_outputs(admin_client, job["id"]))["header"]["location"]
     assert out["matched"] is True and out["vendor_location_id"] == location["id"]
     assert len(out["candidates"]) == 1
+
+
+async def test_a_part_that_cannot_be_read_costs_only_its_own_lines(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # #60: a long receipt is read in parts. When the middle part never answers
+    # validly, the other parts' lines are kept and the purchase says lines are
+    # missing, instead of the whole receipt ending with none.
+    monkeypatch.setattr(get_settings(), "llm_max_retries", 0)
+    fixture = load_fixture("long_till_receipt")
+    first, _middle, last = fixture.llm_responses["lines"]
+    recorded({"header": fixture.llm_responses["header"], "lines": [first, "{cut off", last]})
+    _, job = await upload_fixture(admin_client, fixture)
+    final = await run_job(job["id"])
+    assert (final.stage, final.status) == ("review", "needs_review")
+    outputs = await stage_outputs(admin_client, job["id"])
+    lines_out = outputs["lines"]
+    assert lines_out["parts"] == 3 and lines_out["unread_parts"] == [2]
+    assert lines_out["reason"] == "invalid_model_output"
+    assert lines_out["line_count"] == len(first["lines"]) + len(last["lines"])
+    purchase, lines = await _purchase_with_lines(lines_out["purchase_id"])
+    assert "lines_partial" in purchase.flags and "lines_unparsed" not in purchase.flags
+    assert [line.raw_text for line in lines][-1] == last["lines"][-1]["raw_text"]
+
+
+async def test_a_parent_index_points_within_its_own_part(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    # Each part numbers its lines from 0. A saving in part 2 that names the item
+    # above it by index 0 of part 2 must attach to that item, not to line 0 of
+    # the receipt.
+    fixture = load_fixture("long_till_receipt")
+    first, middle, last = fixture.llm_responses["lines"]
+    item, saving = dict(middle["lines"][0]), dict(middle["lines"][1])
+    saving.update(line_kind="discount", parent_index=0)
+    edited = {"lines": [item, saving, *middle["lines"][2:]]}
+    recorded({"header": fixture.llm_responses["header"], "lines": [first, edited, last]})
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    outputs = await stage_outputs(admin_client, job["id"])
+    by_raw = {line["raw_text"]: line for line in outputs["lines"]["lines"]}
+    assert by_raw[saving["raw_text"]]["parent_seq"] == by_raw[item["raw_text"]]["seq"]
+    assert by_raw[item["raw_text"]]["seq"] == len(first["lines"]) + 1
+
+
+async def test_an_empty_answer_for_a_part_with_items_is_asked_again(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    # A valid {"lines": []} for the part holding a receipt's items happened on a
+    # real receipt (#60) and would pass unseen. It is asked once more, warmer.
+    fixture = load_fixture("long_till_receipt")
+    first, middle, last = fixture.llm_responses["lines"]
+    transport = recorded(
+        {"header": fixture.llm_responses["header"], "lines": [{"lines": []}, first, middle, last]}
+    )
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    outputs = await stage_outputs(admin_client, job["id"])
+    assert outputs["lines"]["unread_parts"] == []
+    assert outputs["lines"]["line_count"] == len(fixture.expected_lines)
+    lines_requests = [r for r in transport.requests if r["stage"] == "lines"]
+    temperatures = [r["body"]["options"]["temperature"] for r in lines_requests]
+    assert temperatures == [0, 0.3, 0, 0]
+
+
+async def test_a_part_with_items_that_stays_empty_is_unread_not_empty(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    fixture = load_fixture("long_till_receipt")
+    _first, middle, last = fixture.llm_responses["lines"]
+    recorded(
+        {
+            "header": fixture.llm_responses["header"],
+            "lines": [{"lines": []}, {"lines": []}, middle, last],
+        }
+    )
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    outputs = await stage_outputs(admin_client, job["id"])
+    assert outputs["lines"]["unread_parts"] == [1]
+    assert outputs["lines"]["reason"] == "empty_part"
+    purchase, _ = await _purchase_with_lines(outputs["lines"]["purchase_id"])
+    assert "lines_partial" in purchase.flags
+
+
+class _TimesOutOnLinesRequest(RecordedTransport):
+    """Answers from the recording, but the Nth lines request never answers."""
+
+    def __init__(self, responses, nth: int) -> None:
+        super().__init__(responses)
+        self.nth, self.seen = nth, 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if b'"ReceiptLines"' in (request.content or b""):
+            self.seen += 1
+            if self.seen == self.nth:
+                raise httpx.ReadTimeout("no answer", request=request)
+        return await super().handle_async_request(request)
+
+
+async def test_a_part_that_times_out_keeps_the_parts_already_read(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Review of #66: a timeout on part 2 used to roll the stage back, dropping part 1.
+    fixture = load_fixture("long_till_receipt")
+    monkeypatch.setattr(llm, "http_transport", _TimesOutOnLinesRequest(fixture.llm_responses, 2))
+    _, job = await upload_fixture(admin_client, fixture)
+    final = await run_job(job["id"])
+    assert (final.stage, final.status) == ("review", "needs_review")
+    lines_out = (await stage_outputs(admin_client, job["id"]))["lines"]
+    assert lines_out["unread_parts"] == [2, 3] and lines_out["reason"] == "model_timeout"
+    assert lines_out["line_count"] == len(fixture.llm_responses["lines"][0]["lines"])

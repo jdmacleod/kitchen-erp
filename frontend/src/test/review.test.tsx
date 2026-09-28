@@ -40,6 +40,39 @@ describe("receipt review", () => {
     expect(screen.getByText(/The total could not be read from the receipt, so Total is what the lines add up to/)).toBeInTheDocument();
   });
 
+  it("offers a lost decimal point back, one line or all of them, and applies nothing unasked", async () => {
+    // #59: OCR read "3.49" as "349". The first misread line is the current one.
+    const misread = (l: typeof unmatchedLine, total: string) => ({ ...l, raw_text: `${l.raw_text} ${total}`, unit_price: null, line_total: `${total}.0000`, flags: ["decimal_missing", "exceeds_total"] });
+    const first = misread(unmatchedLine, "349");
+    const second = { ...misread({ ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299", seq: 5, suggestions: [] }, "425") };
+    const purchase = { ...receiptPurchase, flags: ["reconcile_mismatch", "decimals_restore_total"], lines: [...receiptPurchase.lines.filter((l) => l.id !== unmatchedLine.id), first, second] };
+    const calls = mockApi({
+      ...baseRoutes(() => purchase),
+      [`PATCH ${base}/lines/${first.id}`]: () => jsonResponse(200, purchase),
+      [`PATCH ${base}/lines/${second.id}`]: () => jsonResponse(200, purchase),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    await openReview();
+    expect(screen.getByText(/2 lines look like they lost their decimal points \(\$349\.00 for \$3\.49\)/)).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+
+    const current = screen.getAllByTestId("review-line").find((r) => r.getAttribute("aria-selected") === "true")!;
+    expect(within(current).getByText("decimal point missing?")).toBeInTheDocument();
+    await user.click(within(current).getByRole("button", { name: "Use $3.49" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(first.id))?.body).toEqual({ line_total: "3.49" }));
+
+    await user.click(screen.getByRole("button", { name: "Restore 2 decimal points" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({ line_total: "4.25" }));
+  });
+
+  it("says when part of a long receipt could not be read", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["lines_partial"] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.getByText(/Part of this receipt could not be read, so some of its lines are missing/)).toBeInTheDocument();
+  });
+
   it("says nothing about the date or total when both were read", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
     renderApp(base);

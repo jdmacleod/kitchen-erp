@@ -25,7 +25,7 @@ import {
   type Resolution,
   type Suggestion,
 } from "../../api/purchases";
-import { formatMoney, isNonNegativeDecimal } from "../../lib/decimal";
+import { div, formatMoney, isNonNegativeDecimal } from "../../lib/decimal";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
@@ -270,6 +270,22 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
   const dateMissing = purchase.flags.includes("purchased_at_missing");
+  // A long receipt is read in parts; one that never answered leaves a gap (#60).
+  const linesPartial = purchase.flags.includes("lines_partial");
+  // Lines read without their decimal point, when putting it back makes the lines
+  // match the printed total (#59). Offered, never applied without a click.
+  const decimalSuspects = purchase.flags.includes("decimals_restore_total")
+    ? lines.filter((l) => l.flags.includes("decimal_missing") && l.line_total !== null)
+    : [];
+  const [restoring, setRestoring] = useState(false);
+  const restoreDecimals = async () => {
+    setRestoring(true);
+    try {
+      for (const l of decimalSuspects) await patchLine.mutateAsync({ lineId: l.id, line_total: restoredTotal(l.line_total!) });
+    } finally {
+      setRestoring(false);
+    }
+  };
   const totalMissing = purchase.flags.includes("total_missing");
 
   return (
@@ -290,6 +306,22 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         <Alert tone="info">
           The receipt says {purchase.total !== null ? formatMoney(purchase.total) : "—"} but the lines add up to{" "}
           {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}. Check the lines or the header.
+        </Alert>
+      ) : null}
+      {decimalSuspects.length > 0 ? (
+        <Alert tone="info">
+          <span className="block">
+            {decimalSuspects.length === 1 ? "1 line looks like it lost its decimal point" : `${decimalSuspects.length} lines look like they lost their decimal points`} ({formatMoney(decimalSuspects[0].line_total)} for{" "}
+            {formatMoney(restoredTotal(decimalSuspects[0].line_total!))}). With the decimal points back, the lines add up to the receipt total.
+          </span>
+          <Button variant="secondary" className="mt-2" disabled={busy || restoring} onClick={() => void restoreDecimals()}>
+            {restoring ? "Restoring…" : decimalSuspects.length === 1 ? "Restore the decimal point" : `Restore ${decimalSuspects.length} decimal points`}
+          </Button>
+        </Alert>
+      ) : null}
+      {linesPartial ? (
+        <Alert tone="info">
+          Part of this receipt could not be read, so some of its lines are missing. Compare the lines with the receipt image and add the ones that are not here.
         </Alert>
       ) : null}
       {dateMissing ? (
@@ -557,7 +589,26 @@ const FLAG_LABELS: Record<string, string> = {
   qty_assumed: "quantity assumed",
   qty_corrected: "quantity from the print",
   qty_inferred: "quantity from the print",
+  // #59: a price printed with no decimal point, or a line over the whole receipt.
+  decimal_missing: "decimal point missing?",
+  exceeds_total: "more than the receipt total",
 };
+
+/** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */
+function restoredTotal(lineTotal: string): string {
+  return div(lineTotal, "100", 2);
+}
+
+/** On the line being worked on, the one-click fix for a lost decimal point. */
+function DecimalFix({ line, busy, onPatch }: { line: PurchaseLine; busy: boolean; onPatch: (input: LinePatchInput) => void }) {
+  if (!line.flags.includes("decimal_missing") || line.line_total === null) return null;
+  const fixed = restoredTotal(line.line_total);
+  return (
+    <Button variant="secondary" className="mt-1 min-h-11 lg:min-h-8 px-2 text-xs" disabled={busy} onClick={() => onPatch({ line_total: fixed })}>
+      Use {formatMoney(fixed)}
+    </Button>
+  );
+}
 
 function flagLabel(flag: string): string {
   return FLAG_LABELS[flag] ?? flag.replaceAll("_", " ");
@@ -832,7 +883,14 @@ function ReviewLine(props: ReviewLineProps) {
         <LineRaw line={line} compact={compact} />
       </td>
       <td className={`${pad} pr-2 whitespace-nowrap`}>
-        {editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} compact={compact} />}
+        {editing ? (
+          <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
+        ) : (
+          <>
+            <LineParsed line={line} compact={compact} />
+            {compact ? null : <DecimalFix line={line} busy={busy} onPatch={onPatch} />}
+          </>
+        )}
       </td>
       <td className={`${pad} pr-2`}>
         <LineProduct {...props} compact={compact} />
@@ -880,7 +938,16 @@ function ReviewCard(props: ReviewLineProps) {
           <LineTags line={line} />
         </div>
       </div>
-      <div>{editing ? <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} /> : <LineParsed line={line} />}</div>
+      <div>
+        {editing ? (
+          <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
+        ) : (
+          <>
+            <LineParsed line={line} />
+            <DecimalFix line={line} busy={busy} onPatch={onPatch} />
+          </>
+        )}
+      </div>
       <div>
         <LineProduct {...props} touch />
       </div>

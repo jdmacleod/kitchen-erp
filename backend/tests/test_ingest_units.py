@@ -353,3 +353,134 @@ def test_the_declared_order_is_the_only_one_tried():
     assert parse_local_datetime("2026-07-04 17:42", zone, "DMY") == datetime(
         2026, 7, 5, 0, 42, tzinfo=UTC
     )
+
+
+def _parsed(raw: str, total: str, kind: str = "item") -> lines_mod.ParsedLine:
+    return lines_mod.ParsedLine(
+        seq=1,
+        raw_text=raw,
+        line_kind=kind,
+        qty=None,
+        unit=None,
+        unit_price=None,
+        line_total=Decimal(total),
+    )
+
+
+@pytest.mark.parametrize(
+    ("raw", "total", "flagged"),
+    [
+        ("OAT MILK 1L 349", "349", True),  # the decimal point OCR lost (#59)
+        ("OAT MILK 1L 349 F", "349", True),  # a tax code after the amount
+        ("OAT MILK 1L 349*", "349", True),
+        ("OAT MILK 1L 3.49", "3.49", False),
+        ("OAT MILK 1L 3,49", "3.49", False),  # a comma is a decimal separator too
+        ("CRV 30 F", "30", True),  # a 0.30 container deposit read as $30.00
+        ("OAT MILK 1L 7", "7", False),  # one digit: its hundredth is rarely a price
+        ("OAT MILK 1L 349", "3.49", False),  # the model already read it right
+        ("012345678905 OAT MILK 3.49", "3.49", False),  # a code earlier on the line
+    ],
+)
+def test_a_price_printed_without_its_decimal_point_is_flagged(raw, total, flagged):
+    line = _parsed(raw, total)
+    lines_mod.check_prices([line], None)
+    assert ("decimal_missing" in line.flags) is flagged
+
+
+def test_discounts_are_not_checked_and_a_line_over_the_total_is():
+    discount = _parsed("MEMBER SAVINGS 125", "125", kind="discount")
+    big = _parsed("CAST IRON PAN 45.00", "45.00")
+    lines_mod.check_prices([discount, big], Decimal("12.00"))
+    assert discount.flags == []
+    assert big.flags == ["exceeds_total"]
+
+
+def test_restoring_decimals_reconciles_only_when_it_actually_does():
+    lines = [_parsed("OAT MILK 349", "349"), _parsed("RYE BREAD 4.25", "4.25")]
+    lines_mod.check_prices(lines, Decimal("7.74"))
+    assert lines_mod.restoring_decimals_reconciles(lines, Decimal("7.74"), None) is True
+    # The same misreading, but the total says something else is wrong too.
+    assert lines_mod.restoring_decimals_reconciles(lines, Decimal("9.99"), None) is False
+    # No printed total: nothing to reconcile against.
+    assert lines_mod.restoring_decimals_reconciles(lines, None, None) is False
+    assert lines_mod.restored(Decimal("349")) == Decimal("3.49")
+
+
+def _answering(content: str, done_reason: str) -> tuple[httpx.MockTransport, list[int]]:
+    calls: list[int] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(
+            200, json={"message": {"content": content}, "done": True, "done_reason": done_reason}
+        )
+
+    return httpx.MockTransport(handle), calls
+
+
+async def test_a_reply_that_ran_out_of_room_is_not_retried():
+    # #60: the context filled before the answer did, and the same request at
+    # temperature 0 filled it the same way twice more, about 140 s each time.
+    transport, calls = _answering("", "length")
+    client = LlmClient(transport=transport, max_retries=2)
+    with pytest.raises(InvalidModelOutput) as caught:
+        await client.extract(ReceiptLines, "task", "OAT MILK 3.49")
+    assert caught.value.code == "model_out_of_room"
+    assert caught.value.attempts == 1
+    assert len(calls) == 1
+
+
+async def test_a_finished_but_invalid_reply_is_still_retried():
+    transport, calls = _answering('{"lines": "not a list"}', "stop")
+    client = LlmClient(transport=transport, max_retries=2)
+    with pytest.raises(InvalidModelOutput) as caught:
+        await client.extract(ReceiptLines, "task", "OAT MILK 3.49")
+    assert caught.value.code == "invalid_model_output"
+    assert len(calls) == 3
+
+
+def test_a_short_receipt_is_one_part_and_a_long_one_is_split():
+    short = "\n".join(f"ITEM {i} 1.00" for i in range(25))
+    assert lines_mod.split_receipt(short) == [short]
+    long = "\n".join(f"ITEM {i} 1.00" for i in range(60))
+    parts = lines_mod.split_receipt(long)
+    assert [len(p.splitlines()) for p in parts] == [25, 25, 10]
+    assert "\n".join(parts) == long  # nothing lost, nothing repeated
+
+
+def test_a_part_never_starts_with_a_row_that_belongs_to_the_one_above():
+    rows = [f"ITEM {i} 1.00" for i in range(24)]
+    rows += ["BANANAS", "2.31 lb @ 0.69/lb 1.59", "MEMBER SAVINGS -0.20", "OAT MILK 3.49"]
+    parts = lines_mod.split_receipt("\n".join(rows + [f"MORE {i} 2.00" for i in range(10)]))
+    # BANANAS is row 25; its weight line and saving follow it into part 1.
+    assert parts[0].splitlines()[-3:] == [
+        "BANANAS",
+        "2.31 lb @ 0.69/lb 1.59",
+        "MEMBER SAVINGS -0.20",
+    ]
+    assert parts[1].splitlines()[0] == "OAT MILK 3.49"
+    assert "part 2 of 3" in lines_mod.part_task(2, 3)
+    assert lines_mod.part_task(1, 1) == lines_mod.LINES_TASK
+
+
+def test_item_like_rows_counts_items_not_totals_or_tender():
+    part = "\n".join(
+        [
+            "HARBOURSIDE PROVISIONS",
+            "OAT MILK 1L 3.49 F",
+            "RYE BREAD 4.25",
+            "EGGS DOZEN 1.65-",
+            "SUBTOTAL 9.39",
+            "TAX 0.51",
+            "VISA 9.90",
+            "Card Savings 0.30-",
+        ]
+    )
+    assert lines_mod.item_like_rows(part) == 3
+    assert "return an empty list" in lines_mod.part_task(3, 3)
+
+
+def test_item_names_containing_tender_words_still_count_as_items():
+    # Review of #66: "card" excluded CARDAMOM and "cash" CASHMERE.
+    part = "GROUND CARDAMOM 5.49\nCASHEWS ROASTED 7.99\nCASHMERE SOCKS 12.00\nVISA 25.48"
+    assert lines_mod.item_like_rows(part) == 3

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -62,12 +62,30 @@ LINES_TASK = (
     "loyalty summaries, and footer text. Keep raw_text exactly as printed."
 )
 
+# A receipt longer than this many rows is read in parts of about this size (#60).
+# gpt-oss reasons before it answers, and on a long receipt the reasoning can run
+# until the context is full, leaving no answer at all: a 77-row receipt failed
+# that way every time, deterministically, while its four 25-row parts all
+# answered (28 lines, in less total time). A bigger context only let the
+# reasoning run longer (16k filled too, after 330 s), and less reasoning
+# ("think: low") returned 2 of 28 lines. Small parts keep each answer, and each
+# runaway, small; a part that still fails costs only its own lines.
+LINES_CHUNK_ROWS = 25
+# A row that belongs to the one above it: the weight or count line of a weighed
+# item, or a saving or deposit printed beneath it. A part never starts with one.
+_CONTINUATION = re.compile(
+    r"^\s*(?:\d+(?:\.\d+)?\s*(?:lbs?|kg|oz|g|ea)?\s*@|.*\b(?:savings?|discount|coupon|you saved|"
+    r"member|crv|deposit|redemption)\b)",
+    re.IGNORECASE,
+)
+
 GENERIC_PARSER = "llm-generic"
 # 2: printed weights and counts override the model's, and assumed quantities are flagged (#31).
 # 3: the #31 prompt wording is withdrawn and a null quantity on a plain line is not flagged,
 #    after a live run against gpt-oss:20b: the model gives no quantity for any line under
 #    either prompt, and the new wording made it read pack sizes ("EGGS 12") as quantities.
-GENERIC_PARSER_VERSION = "3"
+# 4: long receipts are read in parts of LINES_CHUNK_ROWS rows (#60).
+GENERIC_PARSER_VERSION = "4"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -121,6 +139,64 @@ class ParsedLine:
             "parent_seq": self.parent_seq,
             "flags": list(self.flags),
         }
+
+
+def split_receipt(receipt_text: str) -> list[str]:
+    """The receipt as one part, or as parts of about LINES_CHUNK_ROWS rows.
+
+    Blank rows are dropped. A part is extended by up to three rows rather than
+    end just above a row that continues the one before it, so an item keeps its
+    weight line and its saving.
+    """
+    rows = [row for row in receipt_text.splitlines() if row.strip()]
+    if len(rows) <= LINES_CHUNK_ROWS:
+        return [receipt_text]
+    parts: list[str] = []
+    start = 0
+    while start < len(rows):
+        end = min(start + LINES_CHUNK_ROWS, len(rows))
+        grow = 0
+        while end < len(rows) and grow < 3 and _CONTINUATION.match(rows[end]):
+            end += 1
+            grow += 1
+        parts.append("\n".join(rows[start:end]))
+        start = end
+    return parts
+
+
+def part_task(index: int, count: int) -> str:
+    """The lines task for part ``index`` (1-based) of ``count``."""
+    if count == 1:
+        return LINES_TASK
+    # Without the rest of the receipt around it, a footer part's savings summary
+    # looked like purchased lines to the model; say that a part may have none.
+    return (
+        f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
+        "list only the lines in this part. A part may hold only the store header, the "
+        "totals, the payment or the footer; then return an empty list."
+    )
+
+
+# A row that ends in an amount and is not a total, tax or tender row: what an item
+# looks like on a till receipt. Only counted, to tell a part that plainly holds
+# items from one that is all header or footer.
+_PRICED_ROW = re.compile(r"\d+[.,]\d{2}\s*-?\s*[A-Za-z*$]{0,2}\s*$")
+# Whole words only: "card" must not exclude CARDAMOM, nor "cash" CASHMERE.
+_NOT_AN_ITEM = re.compile(
+    r"sub\s*total|\b(?:total|tax|visa|mastercard|master|amex|debit|credit|change|cash|"
+    r"balance|amount|approved|tender(?:ed)?|auth|card|purchase|usd|bal|savings?)\b",
+    re.IGNORECASE,
+)
+# A part with at least this many item-like rows that comes back with no items was
+# not read, whatever the reply says: a valid, empty answer for a part holding a
+# receipt's every item happened on a real receipt, and would otherwise pass unseen.
+EMPTY_PART_MIN_ROWS = 3
+
+
+def item_like_rows(part: str) -> int:
+    return sum(
+        1 for row in part.splitlines() if _PRICED_ROW.search(row) and not _NOT_AN_ITEM.search(row)
+    )
 
 
 def lines_budget_seconds(receipt_text: str) -> float:
@@ -227,6 +303,58 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
             if j >= 0 and parsed[j].line_kind == "item":
                 line.parent_seq = parsed[j].seq
                 line.flags.append("parent_inferred")
+
+
+# Flags that say a line's price is probably misread (#59). Suggestions only: a
+# person confirms any change, and editing the line's total clears them.
+# decimal_missing: the amount printed at the end of the line is two or more bare
+#   digits ("OAT MILK 349", "CRV 30") and is what the line was read as. Tills
+#   print cents, so this is almost always a decimal point OCR lost; the likely
+#   price is a hundredth of it. On the real receipts behind #59 the two-digit
+#   case caught a $30.00 container deposit and a $69.00 item, and nothing else.
+#   A single digit is left alone: its hundredth is rarely a price.
+# exceeds_total: one line costs more than the whole printed receipt.
+PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total"})
+
+# The last amount on a line, and whatever tax or flag letters follow it.
+_TRAILING_AMOUNT = re.compile(r"(\d[\d.,]*)\s*(?:[A-Za-z*]{1,2}\s*)?$")
+
+
+def restored(amount: Decimal) -> Decimal:
+    """What a decimal_missing amount most likely was: its hundredth."""
+    return (amount / 100).quantize(CENTS)
+
+
+def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None:
+    """Flag lines whose price looks misread. Never changes a price."""
+    for line in lines:
+        if line.line_kind == "discount":
+            continue
+        match = _TRAILING_AMOUNT.search(line.raw_text.strip())
+        token = match.group(1) if match else ""
+        if len(token) >= 2 and token.isdigit() and Decimal(token) == line.line_total:
+            line.flags.append("decimal_missing")
+        if printed_total is not None and line.line_total > printed_total + RECONCILE_TOLERANCE:
+            line.flags.append("exceeds_total")
+
+
+def restoring_decimals_reconciles(
+    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None
+) -> bool:
+    """True when the lines miss the printed total but match it once every
+    decimal_missing amount is read as its hundredth."""
+    suspects = [line for line in lines if "decimal_missing" in line.flags]
+    if printed_total is None or not suspects:
+        return False
+    if not reconcile(lines, printed_total, header_tax)["mismatch"]:
+        return False
+    fixed = [
+        replace(line, line_total=restored(line.line_total))
+        if "decimal_missing" in line.flags
+        else line
+        for line in lines
+    ]
+    return not reconcile(fixed, printed_total, header_tax)["mismatch"]
 
 
 def parse_model_lines(result: ReceiptLines) -> list[ParsedLine]:

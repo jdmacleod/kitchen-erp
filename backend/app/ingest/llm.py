@@ -172,6 +172,7 @@ class LlmClient:
         )
         self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
         self.connect_timeout_seconds = settings.llm_connect_timeout_seconds
+        self.last_done_reason: str | None = None
 
     @property
     def transport(self) -> httpx.AsyncBaseTransport | None:
@@ -220,6 +221,9 @@ class LlmClient:
             raise ModelUnavailable(detail="malformed_response") from None
         message = body.get("message") if isinstance(body, dict) else None
         content = message.get("content") if isinstance(message, dict) else None
+        # "length" means the reply stopped because the context or num_predict ran
+        # out, not because the model finished. Read by extract().
+        self.last_done_reason = body.get("done_reason") if isinstance(body, dict) else None
         return content if isinstance(content, str) else ""
 
     async def extract(
@@ -229,6 +233,7 @@ class LlmClient:
         receipt_text: str,
         timeout_seconds: float | None = None,
         deadline_seconds: float | None = None,
+        temperature: float = 0,
     ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt text. Returns (value, attempts).
 
@@ -241,7 +246,7 @@ class LlmClient:
             "messages": build_messages(task, receipt_text),
             "format": model_cls.model_json_schema(),
             "stream": False,
-            "options": {"temperature": 0, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
+            "options": {"temperature": temperature, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
         }
         # A deadline bounds every attempt together, not each one: retries after
         # slow, invalid replies must not outlast the job's lock (#34).
@@ -259,14 +264,26 @@ class LlmClient:
             parsed = parse_model_output(model_cls, content)
             if parsed is not None:
                 return parsed, attempts
+            reason = rejection_reason(model_cls, content)
             log.info(
                 "model output rejected",
                 extra={
                     "schema": model_cls.__name__,
                     "attempt": attempts,
-                    "reason": rejection_reason(model_cls, content),
+                    "reason": reason,
+                    "done_reason": self.last_done_reason,
                 },
             )
+            if self.last_done_reason == "length":
+                # Out of room: the context (or num_predict) filled before the
+                # answer did. At temperature 0 the same request fills it the same
+                # way, so a retry is minutes spent to get the identical reply (#60:
+                # three empty replies of about 140 s each on a 77-line receipt).
+                error = InvalidModelOutput(
+                    code="model_out_of_room", detail=f"{reason} after {attempts} attempt(s)"
+                )
+                error.attempts = attempts
+                raise error
         raise InvalidModelOutput()
 
 

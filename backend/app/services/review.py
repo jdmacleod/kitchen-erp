@@ -8,7 +8,8 @@ from decimal import Decimal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.ingest.lines import QTY_FLAGS
+from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS
+from app.ingest.lines import restored as restored_amount
 from app.models import AppUser, Product, PurchaseLine
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
@@ -64,12 +65,30 @@ def _rechecked_total(purchase) -> list[str]:
         # The total is the line sum standing in for one nobody has read yet:
         # there is nothing to check the lines against, only themselves.
         return list(purchase.flags)
-    flags = [f for f in purchase.flags if f not in ("reconcile_mismatch", "total_mismatch")]
-    expected = computed_total(purchase)
-    if purchase.tax is not None and not any(line.line_kind == "tax" for line in purchase.lines):
-        expected += purchase.tax
+    flags = [
+        f
+        for f in purchase.flags
+        if f not in ("reconcile_mismatch", "total_mismatch", "decimals_restore_total")
+    ]
+    header_tax = purchase.tax is not None and not any(
+        line.line_kind == "tax" for line in purchase.lines
+    )
+    expected = computed_total(purchase) + (purchase.tax if header_tax else 0)
     if abs(expected - purchase.total) > TOTAL_TOLERANCE:
         flags.append("total_mismatch")
+        # The hint that restoring the lost decimal points reconciles is only as
+        # good as the total it was checked against: check it again (#59).
+        restored = expected - sum(
+            line.line_total - restored_amount(line.line_total)
+            for line in purchase.lines
+            if "decimal_missing" in line.flags
+        )
+        if restored != expected and abs(restored - purchase.total) <= TOTAL_TOLERANCE:
+            flags.append("decimals_restore_total")
+    else:
+        # The lines match the printed total, so none can still be missing: the
+        # warning that part of the receipt was unread has been answered (#60).
+        flags = [f for f in flags if f != "lines_partial"]
     return flags
 
 
@@ -139,6 +158,9 @@ async def edit_line(
     # the quantity, so it leaves the warning in place.
     if {"qty", "unit", "clear_qty"} & data.keys():
         line.flags = [f for f in line.flags if f not in QTY_FLAGS]
+    # A person has now given the price: it is no longer a suspected misreading (#59).
+    if data.get("line_total") is not None:
+        line.flags = [f for f in line.flags if f not in PRICE_FLAGS]
     if data.pop("clear_parent", False):
         line.parent_line_id = None
     if data.pop("clear_qty", False):
