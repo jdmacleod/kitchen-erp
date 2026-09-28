@@ -178,7 +178,8 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
   const items = locations.data ?? [];
   // With none active, ask whether any are only deactivated: "no locations yet"
   // was wrong for a vendor whose one location had just been deactivated.
-  const inactiveOnly = useLocations({ vendor_id: vendor.id, include_inactive: true }, !includeInactive && locations.isSuccess && items.length === 0);
+  const checkInactive = !includeInactive && locations.isSuccess && items.length === 0;
+  const inactiveOnly = useLocations({ vendor_id: vendor.id, include_inactive: true }, checkInactive);
   const hiddenInactive = inactiveOnly.data?.length ?? 0;
   const top = items.filter((l) => !l.parent_location_id);
   const stallsOf = (id: string) => items.filter((l) => l.parent_location_id === id);
@@ -209,6 +210,12 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
         </p>
       ) : locations.isError ? (
         <Alert tone="error">{errorMessage(locations.error)}</Alert>
+      ) : checkInactive && inactiveOnly.isPending ? (
+        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+          Loading…
+        </p>
+      ) : checkInactive && inactiveOnly.isError ? (
+        <Alert tone="error">{errorMessage(inactiveOnly.error)}</Alert>
       ) : items.length === 0 && hiddenInactive > 0 ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           No active locations, so this vendor cannot be chosen for a purchase. {hiddenInactive === 1 ? "One is" : `${hiddenInactive} are`} deactivated; tick Show inactive to see {hiddenInactive === 1 ? "it" : "them"}.

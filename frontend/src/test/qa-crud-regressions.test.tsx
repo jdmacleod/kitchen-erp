@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import type { VendorLocation } from "../api/geo";
 import type { ApiToken } from "../api/types";
 import { homeBase, marketLocation, marketVendor } from "./geo-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
+import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
 describe("after a deactivate or a revoke", () => {
   it("does not call a vendor with only a deactivated location one with none yet", async () => {
@@ -23,6 +23,23 @@ describe("after a deactivate or a revoke", () => {
     renderApp(`/catalog/vendors/${marketVendor.id}`);
 
     expect(await screen.findByText(/No active locations, so this vendor cannot be chosen for a purchase\. One is deactivated/)).toBeInTheDocument();
+    expect(screen.queryByText(/No locations yet/)).not.toBeInTheDocument();
+  });
+
+  it("shows the lookup's error rather than a wrong empty state", async () => {
+    // Review of #76: while the inactive lookup failed, the page fell back to
+    // "No locations yet" for a vendor that has a deactivated one.
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
+      [`GET /vendors/${marketVendor.id}`]: () => jsonResponse(200, marketVendor),
+      "GET /vendor-locations": (call: RecordedCall) =>
+        call.query.get("include_inactive") === "true" ? errorResponse(500, "internal", "Lookup failed.") : jsonResponse(200, { items: [] }),
+    });
+    renderApp(`/catalog/vendors/${marketVendor.id}`);
+
+    expect(await screen.findByText(/Lookup failed/)).toBeInTheDocument();
     expect(screen.queryByText(/No locations yet/)).not.toBeInTheDocument();
   });
 
