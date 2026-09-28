@@ -332,6 +332,9 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
             {location.osm_id ? ` · OSM ${location.osm_type} ${location.osm_id}` : ""}
           </p>
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
+          {location.receipt_identifiers.length > 0 ? (
+            <p className="break-all text-xs text-neutral-600 dark:text-neutral-400">Store codes on receipts: {location.receipt_identifiers.join(", ")}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-1">
           <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
@@ -365,6 +368,23 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
   );
 }
 
+/**
+ * One code per line, trimmed, blanks dropped, each once, in order. Lines rather
+ * than commas, because a code may itself contain a comma.
+ */
+function parseStoreCodes(text: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of text.split("\n")) {
+    const code = part.trim();
+    if (code && !seen.has(code)) {
+      seen.add(code);
+      out.push(code);
+    }
+  }
+  return out;
+}
+
 function EditLocationForm({ location, homeBases, markets, onDone }: { location: VendorLocation; homeBases: { id: string; name: string }[]; markets: VendorLocation[]; onDone: () => void }) {
   const update = useUpdateLocation(location.id);
   const [form, setForm] = useState({
@@ -374,6 +394,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
     home_base_id: location.home_base_id ?? "",
     parent_location_id: location.parent_location_id ?? "",
     stop_overhead_min: location.stop_overhead_min === null ? "" : String(location.stop_overhead_min),
+    receipt_identifiers: location.receipt_identifiers.join("\n"),
   });
   const [hoursValid, setHoursValid] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -394,8 +415,17 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
       setInvalid("Stop overhead must be a whole number of minutes.");
       return;
     }
+    const codes = parseStoreCodes(form.receipt_identifiers);
+    // Sent only when this field was edited: saving the name must never rewrite
+    // the codes, which is what a lossy round trip through the text would do.
+    const codesEdited = form.receipt_identifiers !== location.receipt_identifiers.join("\n");
+    if (codes.length > 50 || codes.some((c) => c.length > 200)) {
+      setInvalid("At most 50 store codes, each up to 200 characters.");
+      return;
+    }
     setInvalid(null);
     const input: LocationUpdateInput = {};
+    if (codesEdited && codes.join("\n") !== location.receipt_identifiers.join("\n")) input.receipt_identifiers = codes;
     if (form.name.trim() !== location.name) input.name = form.name.trim();
     if ((form.address.trim() || null) !== location.address) input.address = form.address.trim() || null;
     if ((form.opening_hours.trim() || null) !== location.opening_hours) input.opening_hours = form.opening_hours.trim() || null;
@@ -433,6 +463,14 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
             </option>
           ))}
         </SelectField>
+        <TextAreaField
+          id={`${prefix}-codes`}
+          label="Store codes on receipts"
+          autoComplete="off"
+          value={form.receipt_identifiers}
+          onChange={(e) => set("receipt_identifiers", e.target.value)}
+          hint="The store number this location prints on receipts and in retailer exports, e.g. 0217. One per line. Receipts and imports are matched to the location by it."
+        />
         <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on. Used by later phases." />
       </div>
       <OpeningHoursInput idPrefix={prefix} value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} noneHint={location.parent_location_id ? "A stall without hours inherits the market's." : undefined} />
