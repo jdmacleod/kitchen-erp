@@ -375,7 +375,7 @@ def _parsed(raw: str, total: str, kind: str = "item") -> lines_mod.ParsedLine:
         ("OAT MILK 1L 349*", "349", True),
         ("OAT MILK 1L 3.49", "3.49", False),
         ("OAT MILK 1L 3,49", "3.49", False),  # a comma is a decimal separator too
-        ("CRV 30 F", "30", True),  # a 0.30 container deposit read as $30.00
+        ("CRV 30 F", "30", True),  # a container deposit read at 100 times its price
         ("OAT MILK 1L 7", "7", False),  # one digit: its hundredth is rarely a price
         ("OAT MILK 1L 349", "3.49", False),  # the model already read it right
         ("012345678905 OAT MILK 3.49", "3.49", False),  # a code earlier on the line
@@ -607,3 +607,29 @@ def test_a_folded_item_is_checked_against_the_total_at_the_price_paid():
     )
     lines_mod.check_prices(kept, Decimal("7.25"))
     assert all("exceeds_total" not in k.flags for k in kept)
+
+
+async def test_tesseract_reads_with_the_measured_config(monkeypatch, tmp_path):
+    # #65: the settings are the ones scripts/ocr_benchmark.py measured as best
+    # on real receipts; the worker must pass exactly those.
+    import asyncio
+
+    from app.ingest import ocr
+
+    seen: list[tuple] = []
+
+    class _Done:
+        returncode = 0
+
+        async def communicate(self):
+            return b"OAT MILK 3.49\n", b""
+
+    async def fake_exec(*args, **kwargs):
+        seen.append(args)
+        return _Done()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_exec)
+    text = await ocr.TesseractAdapter()._recognize(tmp_path / "page.png")
+    assert text.strip() == "OAT MILK 3.49"
+    assert seen[0][-len(ocr.TESSERACT_CONFIG) :] == ocr.TESSERACT_CONFIG
+    assert ocr.TESSERACT_CONFIG == ("--psm", "6")
