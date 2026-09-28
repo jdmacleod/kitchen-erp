@@ -17,6 +17,7 @@ from app.ingest import formats as ingest_formats
 from app.ingest import llm, parsers, raster
 from app.ingest.lines import PRICE_FLAGS, lines_budget_seconds, split_receipt
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
+from app.ingest.replay import RecordedTransport
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.stages import run_stage
 from app.models import IngestJob, IngestStageResult, Purchase, PurchaseLine
@@ -758,3 +759,34 @@ async def test_a_part_with_items_that_stays_empty_is_unread_not_empty(
     assert outputs["lines"]["reason"] == "empty_part"
     purchase, _ = await _purchase_with_lines(outputs["lines"]["purchase_id"])
     assert "lines_partial" in purchase.flags
+
+
+class _TimesOutOnLinesRequest(RecordedTransport):
+    """Answers from the recording, but the Nth lines request never answers."""
+
+    def __init__(self, responses, nth: int) -> None:
+        super().__init__(responses)
+        self.nth, self.seen = nth, 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if b'"ReceiptLines"' in (request.content or b""):
+            self.seen += 1
+            if self.seen == self.nth:
+                raise httpx.ReadTimeout("no answer", request=request)
+        return await super().handle_async_request(request)
+
+
+async def test_a_part_that_times_out_keeps_the_parts_already_read(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # Review of #66: a timeout on part 2 used to roll the stage back, dropping part 1.
+    fixture = load_fixture("long_till_receipt")
+    monkeypatch.setattr(llm, "http_transport", _TimesOutOnLinesRequest(fixture.llm_responses, 2))
+    _, job = await upload_fixture(admin_client, fixture)
+    final = await run_job(job["id"])
+    assert (final.stage, final.status) == ("review", "needs_review")
+    lines_out = (await stage_outputs(admin_client, job["id"]))["lines"]
+    assert lines_out["unread_parts"] == [2, 3] and lines_out["reason"] == "model_timeout"
+    assert lines_out["line_count"] == len(fixture.llm_responses["lines"][0]["lines"])

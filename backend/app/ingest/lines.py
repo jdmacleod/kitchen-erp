@@ -181,9 +181,10 @@ def part_task(index: int, count: int) -> str:
 # looks like on a till receipt. Only counted, to tell a part that plainly holds
 # items from one that is all header or footer.
 _PRICED_ROW = re.compile(r"\d+[.,]\d{2}\s*-?\s*[A-Za-z*$]{0,2}\s*$")
+# Whole words only: "card" must not exclude CARDAMOM, nor "cash" CASHMERE.
 _NOT_AN_ITEM = re.compile(
-    r"sub\s*total|total|\btax|visa|master|amex|debit|credit|change|cash|balance|amount|"
-    r"approved|tend|auth|card|purchase|usd|\bbal\b|savings",
+    r"sub\s*total|\b(?:total|tax|visa|mastercard|master|amex|debit|credit|change|cash|"
+    r"balance|amount|approved|tender(?:ed)?|auth|card|purchase|usd|bal|savings?)\b",
     re.IGNORECASE,
 )
 # A part with at least this many item-like rows that comes back with no items was

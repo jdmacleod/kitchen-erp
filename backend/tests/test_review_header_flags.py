@@ -117,3 +117,36 @@ async def test_giving_a_flagged_line_its_price_clears_the_price_flags(
     body = r.json()
     assert body["lines"][0]["flags"] == ["qty_assumed"]  # not a price flag: stays
     assert body["flags"] == []  # reconciles now, and nothing is left to restore
+
+
+async def test_the_restore_hint_follows_the_total(admin_client, admin, owner_conn):
+    # Review of #66: after the total changed, the hint that restoring decimal
+    # points reconciles was left standing without being checked again.
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    [line] = (await admin_client.get(f"/api/v1/purchases/{p}")).json()["lines"]
+    await owner_conn.execute(
+        "UPDATE purchase_line SET flags = $1, line_total = 349 WHERE id = $2::uuid",
+        ["decimal_missing"],
+        line["id"],
+    )
+    await owner_conn.execute("UPDATE purchase SET flags = $1 WHERE id = $2::uuid", [], p)
+    r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"total": "3.49"})
+    assert set(r.json()["flags"]) == {"total_mismatch", "decimals_restore_total"}
+    r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"total": "5.00"})
+    assert r.json()["flags"] == ["total_mismatch"]
+
+
+async def test_lines_that_match_the_total_answer_the_missing_lines_warning(
+    admin_client, admin, owner_conn
+):
+    # Review of #66: adding the missing lines never cleared lines_partial.
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    await owner_conn.execute(
+        "UPDATE purchase SET flags = $1, total = 5.00 WHERE id = $2::uuid", ["lines_partial"], p
+    )
+    r = await admin_client.post(
+        f"/api/v1/purchases/{p}/lines",
+        json={"raw_text": "RYE BREAD 1.51", "line_kind": "item", "line_total": "1.51"},
+    )
+    assert r.status_code in (200, 201), r.text
+    assert r.json()["flags"] == []

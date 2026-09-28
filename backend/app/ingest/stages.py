@@ -35,7 +35,7 @@ from app.core.logging import get_logger, job_id_var
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
 from app.ingest import parsers
-from app.ingest.errors import IngestError, InvalidModelOutput, RetryableError
+from app.ingest.errors import IngestError, InvalidModelOutput, ModelTimeout, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
 from app.ingest.paths import document_path
@@ -222,6 +222,15 @@ async def _read_lines_in_parts(
             reason = exc.code
             unread.append(index)
             continue
+        except ModelTimeout:
+            if not joined:
+                raise  # nothing read yet: the job's own retry policy applies
+            # Parts already read are kept; the one that timed out and the rest are
+            # unread. A server that is not there (ModelUnavailable) still raises,
+            # so the job waits and reads the whole receipt when it is back.
+            unread.extend(range(index, len(parts) + 1))
+            reason = ModelTimeout.code
+            break
         attempts += used
         if (
             not any(line.line_kind == "item" for line in answer.lines)

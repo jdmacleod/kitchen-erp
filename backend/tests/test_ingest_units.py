@@ -478,3 +478,9 @@ def test_item_like_rows_counts_items_not_totals_or_tender():
     )
     assert lines_mod.item_like_rows(part) == 3
     assert "return an empty list" in lines_mod.part_task(3, 3)
+
+
+def test_item_names_containing_tender_words_still_count_as_items():
+    # Review of #66: "card" excluded CARDAMOM and "cash" CASHMERE.
+    part = "GROUND CARDAMOM 5.49\nCASHEWS ROASTED 7.99\nCASHMERE SOCKS 12.00\nVISA 25.48"
+    assert lines_mod.item_like_rows(part) == 3
