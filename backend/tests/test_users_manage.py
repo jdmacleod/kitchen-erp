@@ -4,9 +4,16 @@ Deactivating a member must cut their access at once, sessions and API tokens
 alike, and the household must never lose its last active admin.
 """
 
-import httpx
+import asyncio
 
+import httpx
+import pytest
+
+from app.core.db import get_sessionmaker
+from app.core.errors import ApiError
 from app.main import app
+from app.models import AppUser
+from app.services import identity
 from tests.conftest import ADMIN, MEMBER, make_user
 
 
@@ -136,3 +143,46 @@ async def test_a_short_new_password_is_rejected(admin_client):
         json={"current_password": ADMIN["password"], "new_password": "short"},
     )
     assert r.status_code == 422
+
+
+async def test_a_blank_display_name_is_rejected(admin_client):
+    member = await make_user("member")
+    r = await admin_client.patch(f"/api/v1/users/{member.id}", json={"display_name": "   "})
+    assert r.status_code == 422
+    r = await admin_client.post(
+        "/api/v1/users",
+        json={"email": "blank@example.com", "display_name": "  ", "password": "long-enough-pw"},
+    )
+    assert r.status_code == 422
+
+
+async def test_two_admins_removing_each_other_at_once_leave_one(admin):
+    """Review of #80: both used to count two admins, both pass, and leave none.
+
+    The first edit holds the admin rows; the second waits for it to commit,
+    counts again, and is refused.
+    """
+    other = await make_user("admin", email="second@example.com")
+    maker = get_sessionmaker()
+    async with maker() as first, maker() as second:
+        # First: A deactivates B, holding the lock, not yet committed.
+        assert await identity._lock_active_admins(first) == 2
+        b = await first.get(AppUser, other.id)
+        b.active = False
+        await first.flush()
+
+        # Second: B deactivates A. It must wait for the first to finish.
+        actor_b = await second.get(AppUser, other.id)
+        racing = asyncio.create_task(
+            identity.edit_user(second, actor_b, admin.id, {"active": False})
+        )
+        await asyncio.sleep(0.3)
+        assert not racing.done(), "the second edit should wait on the admin rows"
+        await first.commit()
+
+        with pytest.raises(ApiError) as refused:
+            await racing
+        assert refused.value.code == "last_admin"
+
+    async with maker() as check:
+        assert await identity._lock_active_admins(check) == 1

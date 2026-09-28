@@ -48,15 +48,28 @@ async def list_users(db: AsyncSession) -> list[AppUser]:
 
 
 async def _get_user(db: AsyncSession, user_id: uuid.UUID) -> AppUser:
-    user = await db.get(AppUser, user_id)
+    # populate_existing: after waiting on a lock, read what the other
+    # transaction committed rather than the state loaded before it.
+    user = await db.get(AppUser, user_id, populate_existing=True)
     if user is None:
         raise ApiError(404, "not_found", "No such user.")
     return user
 
 
-async def _active_admins(db: AsyncSession) -> int:
-    stmt = select(func.count()).where(AppUser.role == "admin", AppUser.active.is_(True))
-    return int((await db.execute(stmt)).scalar_one())
+async def _lock_active_admins(db: AsyncSession) -> int:
+    """Count the active admins, holding their rows until this transaction ends.
+
+    Two admins removing each other at the same moment would otherwise both
+    count two, both pass, and leave none. With the rows locked, the second
+    waits for the first to commit and then counts again (READ COMMITTED
+    re-checks a locked row's WHERE clause once the lock is granted).
+    """
+    stmt = (
+        select(AppUser.id)
+        .where(AppUser.role == "admin", AppUser.active.is_(True))
+        .with_for_update()
+    )
+    return len((await db.execute(stmt)).all())
 
 
 async def _end_access(db: AsyncSession, user_id: uuid.UUID, *, keep_session: str | None = None):
@@ -79,6 +92,8 @@ async def edit_user(db: AsyncSession, actor: AppUser, user_id: uuid.UUID, change
     demote or deactivate themselves (another admin can): either would be a
     one-click lockout with no way back but the command line.
     """
+    touches_access = changes.get("role") is not None or changes.get("active") is not None
+    admins = await _lock_active_admins(db) if touches_access else 0
     user = await _get_user(db, user_id)
     demoting = changes.get("role") == "member" and user.role == "admin"
     deactivating = changes.get("active") is False and user.active
@@ -88,11 +103,8 @@ async def edit_user(db: AsyncSession, actor: AppUser, user_id: uuid.UUID, change
             "self_lockout",
             "You can't remove your own admin access. Another admin can.",
         )
-    # Through the API only an active admin gets here and cannot target
-    # themselves, so self_lockout already protects the last admin; this holds
-    # the rule for any other caller.
     removing_admin = (demoting or deactivating) and user.role == "admin" and user.active
-    if removing_admin and await _active_admins(db) <= 1:
+    if removing_admin and admins <= 1:
         raise ApiError(409, "last_admin", "The household needs at least one active admin.")
     if changes.get("email") is not None:
         user.email = str(changes["email"]).strip().lower()

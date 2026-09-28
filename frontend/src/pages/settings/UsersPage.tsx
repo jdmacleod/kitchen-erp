@@ -174,6 +174,10 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
   const [form, setForm] = useState({ display_name: user.display_name, email: user.email, role: user.role });
   const [password, setPasswordText] = useState("");
   const [confirming, setConfirming] = useState(false);
+  // Access and password actions stay in the drawer and say so here: closing it
+  // on their success would throw away unsaved edits to the details above.
+  const [active, setActive] = useState(user.active);
+  const [done, setDone] = useState<string | null>(null);
   const dirty = form.display_name !== user.display_name || form.email !== user.email || form.role !== user.role || password !== "";
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -188,8 +192,25 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
 
   const toggleAccess = () =>
     access.mutate(
-      { id: user.id, input: { active: !user.active } },
-      { onSuccess: (u) => onDone(u.active ? `${u.display_name} can sign in again.` : `${u.display_name} is deactivated and signed out everywhere.`) },
+      { id: user.id, input: { active: !active } },
+      {
+        onSuccess: (u) => {
+          setActive(u.active);
+          setConfirming(false);
+          setDone(u.active ? `${u.display_name} can sign in again.` : `${u.display_name} is deactivated and signed out everywhere.`);
+        },
+      },
+    );
+
+  const setNewPassword = () =>
+    setPassword.mutate(
+      { id: user.id, password },
+      {
+        onSuccess: (u) => {
+          setPasswordText("");
+          setDone(`New password set for ${u.display_name}. They are signed out everywhere.`);
+        },
+      },
     );
 
   return (
@@ -224,8 +245,9 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
           </p>
         ) : (
           <>
+            {done ? <Alert tone="success">{done}</Alert> : null}
             {access.isError ? <Alert tone="error">{userErrorMessage(access.error)}</Alert> : null}
-            {user.active ? (
+            {active ? (
               confirming ? (
                 <div className="flex flex-col gap-2 rounded-md border border-red-300 p-3 dark:border-red-900">
                   <p className="text-sm">
@@ -271,7 +293,7 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
                 <Button
                   variant="secondary"
                   disabled={setPassword.isPending || password.length < 8}
-                  onClick={() => setPassword.mutate({ id: user.id, password }, { onSuccess: (u) => onDone(`New password set for ${u.display_name}. They are signed out everywhere.`) })}
+                  onClick={setNewPassword}
                 >
                   {setPassword.isPending ? "Setting…" : "Set password"}
                 </Button>

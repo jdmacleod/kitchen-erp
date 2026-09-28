@@ -53,6 +53,27 @@ describe("household members", () => {
     expect(await screen.findByText("Member Example is deactivated and signed out everywhere.")).toBeInTheDocument();
   });
 
+  it("keeps unsaved edits when access changes, and keeps the drawer open", async () => {
+    // Review of #80: a deactivate or a new password closed the drawer on
+    // success and dropped a half-typed name without asking.
+    mockApi(usersRoutes({ member: memberUser }));
+    const user = userEvent.setup();
+    renderApp("/settings/users");
+
+    await user.click(await screen.findByRole("button", { name: "Edit Member Example" }));
+    const drawer = screen.getByRole("dialog", { name: "Edit Member Example" });
+    const name = within(drawer).getByLabelText("Display name");
+    await user.clear(name);
+    await user.type(name, "Sam");
+    await user.click(within(drawer).getByRole("button", { name: "Deactivate Member Example" }));
+    await user.click(within(drawer).getByRole("button", { name: "Deactivate" }));
+
+    expect(await within(drawer).findByText("Member Example is deactivated and signed out everywhere.")).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Edit Member Example" })).toBeInTheDocument();
+    expect(within(drawer).getByLabelText("Display name")).toHaveValue("Sam");
+    expect(within(drawer).getByRole("button", { name: "Reactivate Member Example" })).toBeInTheDocument();
+  });
+
   it("sets a new password for a member", async () => {
     const calls = mockApi(usersRoutes({ member: memberUser }));
     const user = userEvent.setup();

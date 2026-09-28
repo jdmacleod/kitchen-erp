@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import EmailStr, Field
+from pydantic import EmailStr, Field, StringConstraints
 
 from app.schemas.base import ApiModel
 
 Role = Literal["admin", "member"]
+
+# Trimmed before the length check, so "   " is rejected rather than stored empty.
+DisplayName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 class UserOut(ApiModel):
@@ -22,7 +25,7 @@ class UserOut(ApiModel):
 
 class UserCreate(ApiModel):
     email: EmailStr
-    display_name: str = Field(min_length=1, max_length=200)
+    display_name: DisplayName
     password: str = Field(min_length=8, max_length=1024)
     role: Role = "member"
 
@@ -35,7 +38,7 @@ class UserEdit(ApiModel):
     """An admin's change to a member. Every field is optional; only those sent change."""
 
     email: EmailStr | None = None
-    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    display_name: DisplayName | None = None
     role: Role | None = None
     active: bool | None = None
 
