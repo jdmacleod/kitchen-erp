@@ -403,3 +403,60 @@ def test_restoring_decimals_reconciles_only_when_it_actually_does():
     # No printed total: nothing to reconcile against.
     assert lines_mod.restoring_decimals_reconciles(lines, None, None) is False
     assert lines_mod.restored(Decimal("349")) == Decimal("3.49")
+
+
+def _answering(content: str, done_reason: str) -> tuple[httpx.MockTransport, list[int]]:
+    calls: list[int] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(1)
+        return httpx.Response(
+            200, json={"message": {"content": content}, "done": True, "done_reason": done_reason}
+        )
+
+    return httpx.MockTransport(handle), calls
+
+
+async def test_a_reply_that_ran_out_of_room_is_not_retried():
+    # #60: the context filled before the answer did, and the same request at
+    # temperature 0 filled it the same way twice more, about 140 s each time.
+    transport, calls = _answering("", "length")
+    client = LlmClient(transport=transport, max_retries=2)
+    with pytest.raises(InvalidModelOutput) as caught:
+        await client.extract(ReceiptLines, "task", "OAT MILK 3.49")
+    assert caught.value.code == "model_out_of_room"
+    assert caught.value.attempts == 1
+    assert len(calls) == 1
+
+
+async def test_a_finished_but_invalid_reply_is_still_retried():
+    transport, calls = _answering('{"lines": "not a list"}', "stop")
+    client = LlmClient(transport=transport, max_retries=2)
+    with pytest.raises(InvalidModelOutput) as caught:
+        await client.extract(ReceiptLines, "task", "OAT MILK 3.49")
+    assert caught.value.code == "invalid_model_output"
+    assert len(calls) == 3
+
+
+def test_a_short_receipt_is_one_part_and_a_long_one_is_split():
+    short = "\n".join(f"ITEM {i} 1.00" for i in range(25))
+    assert lines_mod.split_receipt(short) == [short]
+    long = "\n".join(f"ITEM {i} 1.00" for i in range(60))
+    parts = lines_mod.split_receipt(long)
+    assert [len(p.splitlines()) for p in parts] == [25, 25, 10]
+    assert "\n".join(parts) == long  # nothing lost, nothing repeated
+
+
+def test_a_part_never_starts_with_a_row_that_belongs_to_the_one_above():
+    rows = [f"ITEM {i} 1.00" for i in range(24)]
+    rows += ["BANANAS", "2.31 lb @ 0.69/lb 1.59", "MEMBER SAVINGS -0.20", "OAT MILK 3.49"]
+    parts = lines_mod.split_receipt("\n".join(rows + [f"MORE {i} 2.00" for i in range(10)]))
+    # BANANAS is row 25; its weight line and saving follow it into part 1.
+    assert parts[0].splitlines()[-3:] == [
+        "BANANAS",
+        "2.31 lb @ 0.69/lb 1.59",
+        "MEMBER SAVINGS -0.20",
+    ]
+    assert parts[1].splitlines()[0] == "OAT MILK 3.49"
+    assert "part 2 of 3" in lines_mod.part_task(2, 3)
+    assert lines_mod.part_task(1, 1) == lines_mod.LINES_TASK

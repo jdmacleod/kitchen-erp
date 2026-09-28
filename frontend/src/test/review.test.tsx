@@ -66,6 +66,13 @@ describe("receipt review", () => {
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({ line_total: "4.25" }));
   });
 
+  it("says when part of a long receipt could not be read", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["lines_partial"] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.getByText(/Part of this receipt could not be read, so some of its lines are missing/)).toBeInTheDocument();
+  });
+
   it("says nothing about the date or total when both were read", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
     renderApp(base);

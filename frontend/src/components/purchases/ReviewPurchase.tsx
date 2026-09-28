@@ -270,6 +270,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
   const dateMissing = purchase.flags.includes("purchased_at_missing");
+  // A long receipt is read in parts; one that never answered leaves a gap (#60).
+  const linesPartial = purchase.flags.includes("lines_partial");
   // Lines read without their decimal point, when putting it back makes the lines
   // match the printed total (#59). Offered, never applied without a click.
   const decimalSuspects = purchase.flags.includes("decimals_restore_total")
@@ -315,6 +317,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           <Button variant="secondary" className="mt-2" disabled={busy || restoring} onClick={() => void restoreDecimals()}>
             {restoring ? "Restoring…" : decimalSuspects.length === 1 ? "Restore the decimal point" : `Restore ${decimalSuspects.length} decimal points`}
           </Button>
+        </Alert>
+      ) : null}
+      {linesPartial ? (
+        <Alert tone="info">
+          Part of this receipt could not be read, so some of its lines are missing. Compare the lines with the receipt image and add the ones that are not here.
         </Alert>
       ) : null}
       {dateMissing ? (

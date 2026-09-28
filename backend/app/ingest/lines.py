@@ -62,12 +62,30 @@ LINES_TASK = (
     "loyalty summaries, and footer text. Keep raw_text exactly as printed."
 )
 
+# A receipt longer than this many rows is read in parts of about this size (#60).
+# gpt-oss reasons before it answers, and on a long receipt the reasoning can run
+# until the context is full, leaving no answer at all: a 77-row receipt failed
+# that way every time, deterministically, while its four 25-row parts all
+# answered (28 lines, in less total time). A bigger context only let the
+# reasoning run longer (16k filled too, after 330 s), and less reasoning
+# ("think: low") returned 2 of 28 lines. Small parts keep each answer, and each
+# runaway, small; a part that still fails costs only its own lines.
+LINES_CHUNK_ROWS = 25
+# A row that belongs to the one above it: the weight or count line of a weighed
+# item, or a saving or deposit printed beneath it. A part never starts with one.
+_CONTINUATION = re.compile(
+    r"^\s*(?:\d+(?:\.\d+)?\s*(?:lbs?|kg|oz|g|ea)?\s*@|.*\b(?:savings?|discount|coupon|you saved|"
+    r"member|crv|deposit|redemption)\b)",
+    re.IGNORECASE,
+)
+
 GENERIC_PARSER = "llm-generic"
 # 2: printed weights and counts override the model's, and assumed quantities are flagged (#31).
 # 3: the #31 prompt wording is withdrawn and a null quantity on a plain line is not flagged,
 #    after a live run against gpt-oss:20b: the model gives no quantity for any line under
 #    either prompt, and the new wording made it read pack sizes ("EGGS 12") as quantities.
-GENERIC_PARSER_VERSION = "3"
+# 4: long receipts are read in parts of LINES_CHUNK_ROWS rows (#60).
+GENERIC_PARSER_VERSION = "4"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -121,6 +139,39 @@ class ParsedLine:
             "parent_seq": self.parent_seq,
             "flags": list(self.flags),
         }
+
+
+def split_receipt(receipt_text: str) -> list[str]:
+    """The receipt as one part, or as parts of about LINES_CHUNK_ROWS rows.
+
+    Blank rows are dropped. A part is extended by up to three rows rather than
+    end just above a row that continues the one before it, so an item keeps its
+    weight line and its saving.
+    """
+    rows = [row for row in receipt_text.splitlines() if row.strip()]
+    if len(rows) <= LINES_CHUNK_ROWS:
+        return [receipt_text]
+    parts: list[str] = []
+    start = 0
+    while start < len(rows):
+        end = min(start + LINES_CHUNK_ROWS, len(rows))
+        grow = 0
+        while end < len(rows) and grow < 3 and _CONTINUATION.match(rows[end]):
+            end += 1
+            grow += 1
+        parts.append("\n".join(rows[start:end]))
+        start = end
+    return parts
+
+
+def part_task(index: int, count: int) -> str:
+    """The lines task for part ``index`` (1-based) of ``count``."""
+    if count == 1:
+        return LINES_TASK
+    return (
+        f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
+        "list only the lines in this part."
+    )
 
 
 def lines_budget_seconds(receipt_text: str) -> float:
