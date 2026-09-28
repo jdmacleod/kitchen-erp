@@ -73,6 +73,27 @@ test("the purchase form fits the viewport even with a long location name", async
   await expectNoSidewaysScroll(page, "/shop/purchases/new");
 });
 
+test("the product picker stays inside its column on the purchase form", async ({ page }, testInfo) => {
+  // A 12rem minimum on the picker's search box pushed it into the Quantity
+  // field beside it at 768 and 1024px (review of #67), widths no project here
+  // runs at, so the test sets them itself and runs once. Where the two share a
+  // row, the picker has to end before Quantity starts.
+  test.skip(testInfo.project.name !== "desktop", "sets its own widths");
+  await login(page);
+  for (const width of [768, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/shop/purchases/new");
+    const line = page.getByRole("group", { name: "Line 1" });
+    const box = await line.getByRole("combobox", { name: "Product" }).boundingBox();
+    const button = await line.getByRole("button", { name: "New product" }).boundingBox();
+    const quantity = await line.getByLabel("Quantity 1").boundingBox();
+    expect(box && button && quantity, "the picker and Quantity are on the page").toBeTruthy();
+    const pickerRight = Math.max(box!.x + box!.width, button!.x + button!.width);
+    const sameRow = Math.abs(quantity!.y - box!.y) < 40;
+    if (sameRow) expect(pickerRight, `at ${width}px the picker runs into Quantity`).toBeLessThanOrEqual(quantity!.x);
+  }
+});
+
 test("the receipt upload and map pages fit the viewport", async ({ page }) => {
   await login(page);
 

@@ -120,8 +120,11 @@ export function ProductPicker({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
+      {/* "New product" wraps under the box once the box would be under 10rem, and
+          the box itself can shrink to whatever its column has: a hard minimum
+          pushed the picker into the Quantity field on the purchase form. */}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1 basis-40">
           <ProductTypeahead
             id={id}
             label={label}
@@ -130,6 +133,10 @@ export function ProductPicker({
             hint={hint}
             onSelect={(hit) => pick(productRefFromHit(hit))}
             onTextChange={setTyped}
+            onCreate={(name) => {
+              setTyped(name);
+              setCreating(true);
+            }}
             autoFocus={autoFocus}
             inputRef={inputRef}
             disabled={disabled}

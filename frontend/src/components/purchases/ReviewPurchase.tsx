@@ -34,6 +34,7 @@ import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
 import { ProductPicker } from "./ProductPicker";
 import { ReceiptImage } from "./ReceiptImage";
 import { CategoryChip } from "../CategoryChip";
+import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
 
@@ -66,6 +67,8 @@ function topSuggestion(line: PurchaseLine): Suggestion | null {
  * corrections. Fully keyboard-operable; the legend at the top lists the keys.
  */
 export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
+  // The receipt beside a five-column table needs more than reading width (#61).
+  useWidePage();
   const id = purchase.id;
   const resolve = useResolveLine(id);
   const reResolve = useReResolveLine(id);
@@ -335,7 +338,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         </Alert>
       ) : null}
 
-      <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]" : ""}`}>
+      <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]" : ""}`}>
         {purchase.receipt_document_id ? (
           <Disclosure summary="Receipt image" defaultOpen className="md:sticky md:top-4 md:self-start">
             <ReceiptImage
@@ -867,7 +870,7 @@ function ReviewLine(props: ReviewLineProps) {
   const compact = !current && !picking && !editing;
   const pad = compact ? "py-1" : "py-2";
 
-  return (
+  const row = (
     <tr
       {...lineAttributes(line, current, onFocus)}
       aria-selected={current}
@@ -893,7 +896,7 @@ function ReviewLine(props: ReviewLineProps) {
         )}
       </td>
       <td className={`${pad} pr-2`}>
-        <LineProduct {...props} compact={compact} />
+        {picking ? <span className={hintClass}>Choosing below</span> : <LineProduct {...props} compact={compact} />}
       </td>
       <td className={pad}>
         {compact ? (
@@ -914,6 +917,23 @@ function ReviewLine(props: ReviewLineProps) {
         )}
       </td>
     </tr>
+  );
+  if (!picking) return row;
+  // The picker gets a row of its own, the full width of the table, under the
+  // line it is for. In the Product cell it made the table wider than its column
+  // at every desktop width, and the receipt text scrolled or squeezed out of
+  // view while the line was being identified (#61).
+  return (
+    <>
+      {row}
+      <tr data-testid="review-pick-row" className={`bg-neutral-100 dark:bg-neutral-900 ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}>
+        <td colSpan={5} className="pb-3 pl-1 pr-2">
+          <div className="max-w-xl">
+            <LineProduct {...props} compact={false} />
+          </div>
+        </td>
+      </tr>
+    </>
   );
 }
 
