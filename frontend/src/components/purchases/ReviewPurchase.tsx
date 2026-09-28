@@ -25,7 +25,7 @@ import {
   type Resolution,
   type Suggestion,
 } from "../../api/purchases";
-import { div, formatMoney, isNonNegativeDecimal } from "../../lib/decimal";
+import { cmp, div, formatMoney, isDecimal, isNonNegativeDecimal, stripZeros } from "../../lib/decimal";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
@@ -268,7 +268,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     onDelete: () => deleteLine.mutate(line.id),
   });
 
-  const unresolved = itemLines.filter((l) => l.resolution === "unmatched" || !l.product).length;
+  // An ignored line has no product on purpose; it never joins the to-identify queue.
+  const unresolved = itemLines.filter(
+    (l) => l.resolution !== "ignored" && (l.resolution === "unmatched" || !l.product),
+  ).length;
+  // Neither does it emit a price: what commits is the item lines less both.
+  const emitting = itemLines.filter((l) => l.resolution !== "ignored").length - unresolved;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
@@ -430,7 +435,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               Commit this purchase?
             </h2>
             <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
-              {itemLines.length - unresolved} {itemLines.length - unresolved === 1 ? "line emits" : "lines emit"} a price observation now.
+              {emitting} {emitting === 1 ? "line emits" : "lines emit"} a price observation now.
               {unresolved > 0 ? ` ${unresolved} unidentified ${unresolved === 1 ? "line waits" : "lines wait"} in the to-identify queue.` : ""}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -474,9 +479,9 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
   const [form, setForm] = useState({
     vendor_location_id: purchase.vendor_location?.id ?? "",
     purchased_at: toDateTimeLocal(new Date(purchase.purchased_at)),
-    subtotal: purchase.subtotal ?? "",
-    tax: purchase.tax ?? "",
-    total: purchase.total ?? "",
+    subtotal: editableMoney(purchase.subtotal),
+    tax: editableMoney(purchase.tax),
+    total: editableMoney(purchase.total),
   });
   const [invalid, setInvalid] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -490,7 +495,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
     for (const key of ["subtotal", "tax", "total"] as const) {
       const value = form[key].trim();
       if (value !== "" && !isNonNegativeDecimal(value)) return setInvalid(`${key[0].toUpperCase()}${key.slice(1)} must be a number.`);
-      if (value !== "" && value !== (purchase[key] ?? "")) input[key] = value;
+      if (value !== "" && !sameAmount(value, purchase[key])) input[key] = value;
     }
     setInvalid(null);
     if (Object.keys(input).length > 0) patch.mutate(input);
@@ -584,6 +589,23 @@ export function needsYou(line: PurchaseLine): boolean {
   if (isQuietLine(line)) return false;
   const isItem = line.line_kind === "item";
   return line.flags.length > 0 || (isItem && line.resolution !== "ignored" && (!line.product || (line.suggestions?.length ?? 0) > 0));
+}
+
+/** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total"];
+
+/** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
+function editableMoney(stored: string | null | undefined): string {
+  return stored === null || stored === undefined ? "" : stripZeros(stored, 2);
+}
+
+/**
+ * Whether typed text is the stored amount. Compared as numbers, so "6.98"
+ * against "6.9800" is not an edit: sending it would clear the line's price
+ * flags, or the header's missing-total flag, that nobody answered.
+ */
+function sameAmount(text: string, stored: string | null | undefined): boolean {
+  return stored !== null && stored !== undefined && isDecimal(text) && cmp(text, stored) === 0;
 }
 
 /** What a line flag means, in words; unknown flags fall back to their code. */
@@ -979,8 +1001,8 @@ function ReviewCard(props: ReviewLineProps) {
 function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; busy: boolean; onPatch: (input: LinePatchInput) => void; onCancel: () => void }) {
   const [qty, setQty] = useState(line.qty ?? "");
   const [unit, setUnit] = useState(line.unit ?? "");
-  const [unitPrice, setUnitPrice] = useState(line.unit_price ?? "");
-  const [total, setTotal] = useState(line.line_total ?? "");
+  const [unitPrice, setUnitPrice] = useState(editableMoney(line.unit_price));
+  const [total, setTotal] = useState(editableMoney(line.line_total));
   const [kind, setKind] = useState(line.line_kind);
   const [invalid, setInvalid] = useState<string | null>(null);
   const base = `review-edit-${line.id}`;
@@ -993,11 +1015,14 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
       if (qty.trim() !== line.qty) input.qty = qty.trim();
       if (unit !== (line.unit ?? "")) input.unit = unit;
     }
-    if (unitPrice.trim() !== "" && unitPrice.trim() !== line.unit_price) {
+    if (unitPrice.trim() !== "" && !sameAmount(unitPrice.trim(), line.unit_price)) {
       if (!isNonNegativeDecimal(unitPrice)) return setInvalid("Unit price must be a number.");
       input.unit_price = unitPrice.trim();
     }
-    if (total.trim() !== "" && total.trim() !== line.line_total) {
+    // Saving a flagged price as it stands confirms it, which is what clears the
+    // warning (the server clears it only when it is sent).
+    const confirmsFlaggedPrice = line.flags.some((f) => PRICE_FLAGS.includes(f));
+    if (total.trim() !== "" && (confirmsFlaggedPrice || !sameAmount(total.trim(), line.line_total))) {
       if (!isNonNegativeDecimal(total)) return setInvalid("Line total must be a number.");
       input.line_total = total.trim();
     }

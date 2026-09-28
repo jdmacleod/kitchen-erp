@@ -176,6 +176,11 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
   const locations = useLocations({ vendor_id: vendor.id, include_inactive: includeInactive });
   const homeBases = useHomeBases();
   const items = locations.data ?? [];
+  // With none active, ask whether any are only deactivated: "no locations yet"
+  // was wrong for a vendor whose one location had just been deactivated.
+  const checkInactive = !includeInactive && locations.isSuccess && items.length === 0;
+  const inactiveOnly = useLocations({ vendor_id: vendor.id, include_inactive: true }, checkInactive);
+  const hiddenInactive = inactiveOnly.data?.length ?? 0;
   const top = items.filter((l) => !l.parent_location_id);
   const stallsOf = (id: string) => items.filter((l) => l.parent_location_id === id);
   // Stalls whose market belongs to another vendor still show, under a heading.
@@ -205,6 +210,16 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
         </p>
       ) : locations.isError ? (
         <Alert tone="error">{errorMessage(locations.error)}</Alert>
+      ) : checkInactive && inactiveOnly.isPending ? (
+        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+          Loading…
+        </p>
+      ) : checkInactive && inactiveOnly.isError ? (
+        <Alert tone="error">{errorMessage(inactiveOnly.error)}</Alert>
+      ) : items.length === 0 && hiddenInactive > 0 ? (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          No active locations, so this vendor cannot be chosen for a purchase. {hiddenInactive === 1 ? "One is" : `${hiddenInactive} are`} deactivated; tick Show inactive to see {hiddenInactive === 1 ? "it" : "them"}.
+        </p>
       ) : items.length === 0 ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           No locations yet, so this vendor cannot be chosen for a purchase. Add one above, with its coordinates or by dropping a pin on the map.
@@ -471,7 +486,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
           onChange={(e) => set("receipt_identifiers", e.target.value)}
           hint="The store number this location prints on receipts and in retailer exports, e.g. 0217. One per line. Receipts and imports are matched to the location by it."
         />
-        <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on. Used by later phases." />
+        <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on." />
       </div>
       <OpeningHoursInput idPrefix={prefix} value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} noneHint={location.parent_location_id ? "A stall without hours inherits the market's." : undefined} />
       <div className="flex flex-wrap gap-2">

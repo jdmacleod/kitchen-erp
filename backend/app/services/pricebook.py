@@ -174,7 +174,8 @@ async def observe(
     observed_at: datetime | None = None,
     purchase_line_id: uuid.UUID | None = None,
 ) -> PriceObservation:
-    """Insert an observation and its normalization. Commits."""
+    """Insert an observation and its normalization. Flushes; the caller commits,
+    so a recommit's voids and replacements land together or not at all."""
     user_id = entered_by.id if isinstance(entered_by, AppUser) else entered_by
     observation = PriceObservation(
         product_id=product_id,
@@ -202,7 +203,7 @@ async def observe(
             raise ApiError(422, "unknown_unit", "unit is not a known unit code.") from exc
         raise ApiError(409, "conflict", "The observation could not be saved.") from exc
     db.add(await _norm_row(db, observation))
-    await db.commit()
+    await db.flush()
     return await get_observation(db, observation.id)
 
 
@@ -214,7 +215,9 @@ async def void(
         raise ApiError(409, "already_voided", "That observation is already voided.")
     user_id = voided_by.id if isinstance(voided_by, AppUser) else voided_by
     db.add(PriceObservationVoid(observation_id=observation.id, reason=reason, voided_by=user_id))
-    await db.commit()
+    # Flushed, not committed: a recommit voids and then re-emits, and a failure
+    # in between must roll the void back with it. The caller commits.
+    await db.flush()
     return await get_observation(db, observation_id)
 
 

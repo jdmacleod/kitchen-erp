@@ -64,15 +64,15 @@ export function purchaseValues(p: Purchase): PurchaseFormValues {
       qty: l.qty ?? "",
       unit: l.unit ?? "",
       unitTouched: true,
-      unit_price: useTotal ? "" : (l.unit_price ?? ""),
-      line_total: useTotal ? l.line_total! : "",
+      unit_price: useTotal || l.unit_price === null ? "" : stripZeros(l.unit_price, 2),
+      line_total: useTotal ? stripZeros(l.line_total!, 2) : "",
       driver: useTotal ? "line_total" : l.unit_price !== null ? "unit_price" : null,
     };
   });
   return {
     vendor_location_id: p.vendor_location?.id ?? "",
     date: toLocalDate(new Date(p.purchased_at)),
-    total: p.total ?? "",
+    total: p.total === null ? "" : stripZeros(p.total, 2),
     lines: lines.length > 0 ? [...lines, newLine()] : [newLine()],
   };
 }
@@ -522,7 +522,9 @@ function PriceInput({ id, label, field, value, onChange, computed = false, disab
           className={`w-full tabular-nums ${inputClass} ${computed ? "bg-neutral-50 text-neutral-700 dark:bg-neutral-950 dark:text-neutral-300" : ""}`}
         />
         {computed ? (
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2" data-testid={`${id}-computed`}>
+          // Inside the field on a phone, where it is full width; under it in the
+          // narrow price columns of wider screens, where it covered the value.
+          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 sm:static sm:mt-1 sm:block sm:translate-y-0" data-testid={`${id}-computed`}>
             <Badge>computed</Badge>
           </span>
         ) : null}

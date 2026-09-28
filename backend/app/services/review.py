@@ -13,9 +13,13 @@ from app.ingest.lines import restored as restored_amount
 from app.models import AppUser, Product, PurchaseLine
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
-from app.services import pricebook
 from app.services.normalize import normalize_receipt_text
-from app.services.purchases import TOTAL_TOLERANCE, computed_total, get_purchase, live_observations
+from app.services.purchases import (
+    TOTAL_TOLERANCE,
+    computed_total,
+    get_purchase,
+    recorded_lines,
+)
 from app.services.resolution import resolve_line
 
 _FOUR = Decimal("0.0001")
@@ -192,9 +196,12 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")
-    live = await live_observations(db, purchase)
-    if line.id in live:
-        await pricebook.void(db, live[line.id], "line deleted in review", user)
+    if await recorded_lines(db, [line]):
+        raise ApiError(
+            409,
+            "line_recorded",
+            "This line has been in the price book, so it can't be deleted. Ignore it instead.",
+        )
     for other in purchase.lines:
         if other.parent_line_id == line.id:
             other.parent_line_id = None

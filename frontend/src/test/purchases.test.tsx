@@ -130,7 +130,7 @@ describe("purchases", () => {
       total: "15",
       lines: [
         { product_id: flourProductId, qty: "2.31", unit: "lb", line_total: "10" },
-        { product_id: hits[1].id, qty: "1", unit: "each", line_total: "5.0000" },
+        { product_id: hits[1].id, qty: "1", unit: "each", line_total: "5.00" },
       ],
     });
     const table = screen.getByRole("table", { name: "Lines" });

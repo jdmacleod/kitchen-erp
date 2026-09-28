@@ -369,11 +369,11 @@ def restoring_decimals_reconciles(
     return not reconcile(fixed, printed_total, header_tax)["mismatch"]
 
 
-# A shelf-price row: "Regular Price 3.29", OCR's "Resular Price", "Reg. Price",
-# "Original Price". It says what the item would have cost; it is never a
-# purchased line (#64).
+# A shelf-price row: "Regular Price 3.29", OCR's "Resular", "Reqular" and
+# "Reaular Price", "Reg. Price", "Original Price". It says what the item would
+# have cost; it is never a purchased line (#64).
 _REGULAR_PRICE = re.compile(
-    r"^\W*(?:re[gs]ular|reg\.?|orig(?:inal)?\.?)\s+pr[il1]ce\b", re.IGNORECASE
+    r"^\W*(?:re[gsqa]ular|reg\.?|orig(?:inal)?\.?)\s+pr[il1]ce\b", re.IGNORECASE
 )
 # A saving printed beneath it: "Card Savings 0.30-", or "You saved 0.30" on the
 # same row as the regular price.
