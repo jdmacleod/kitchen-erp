@@ -176,6 +176,10 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
   const locations = useLocations({ vendor_id: vendor.id, include_inactive: includeInactive });
   const homeBases = useHomeBases();
   const items = locations.data ?? [];
+  // With none active, ask whether any are only deactivated: "no locations yet"
+  // was wrong for a vendor whose one location had just been deactivated.
+  const inactiveOnly = useLocations({ vendor_id: vendor.id, include_inactive: true }, !includeInactive && locations.isSuccess && items.length === 0);
+  const hiddenInactive = inactiveOnly.data?.length ?? 0;
   const top = items.filter((l) => !l.parent_location_id);
   const stallsOf = (id: string) => items.filter((l) => l.parent_location_id === id);
   // Stalls whose market belongs to another vendor still show, under a heading.
@@ -205,6 +209,10 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
         </p>
       ) : locations.isError ? (
         <Alert tone="error">{errorMessage(locations.error)}</Alert>
+      ) : items.length === 0 && hiddenInactive > 0 ? (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          No active locations, so this vendor cannot be chosen for a purchase. {hiddenInactive === 1 ? "One is" : `${hiddenInactive} are`} deactivated; tick Show inactive to see {hiddenInactive === 1 ? "it" : "them"}.
+        </p>
       ) : items.length === 0 ? (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           No locations yet, so this vendor cannot be chosen for a purchase. Add one above, with its coordinates or by dropping a pin on the map.
