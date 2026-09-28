@@ -27,6 +27,9 @@ up:  ## Start the stack with build identity baked in (use this, not bare compose
 	docker compose up -d --build
 	@echo "built $(BUILD_VERSION) ($(BUILD_COMMIT))"
 
+down:  ## Stop the stack (and Ollama, if started with the llm profile); data is kept
+	docker compose --profile llm down
+
 check-compose-env:  ## Every documented setting must reach a container
 	$(PY) -m tools.check_compose_env
 

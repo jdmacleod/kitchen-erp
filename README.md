@@ -65,6 +65,11 @@ docker compose exec -T api kerp create-admin \
   --email you@example.com --display-name "Your Name" --password '<password>'
 ```
 
+`make down` stops the stack and removes its containers, including a
+containerized Ollama. The database volume and the receipt files under `data/` are
+kept. `make up` restarts the default stack; if you use containerized Ollama, run
+`docker compose --profile llm up -d` to restart it too.
+
 `make up` is `docker compose up -d --build` with the build identity resolved from
 git and passed in, so the running deployment can tell you which commit it is. Plain
 `docker compose up -d --build` works too and reports `dev` — Compose cannot run git
