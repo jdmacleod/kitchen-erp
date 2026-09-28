@@ -108,6 +108,12 @@ The most important detail page; search results and inbox items land here most of
   - If the new row is visible, it takes focus.
   - Otherwise the Notice reads "Added {name} · Open it", with focus on the link (G10).
 
+**Product page: price records (#73).**
+- A "Price records" card sits under the prices chart and lists every current price for the product: amount per quantity, location, date, and whether it was a shelf price or came from a purchase.
+- **Shelf price:** a "Void" action (tomato, secondary weight) opens an inline form under the row. A reason is required ("Why is it wrong?") and is kept with the voided price. Confirming voids it; it leaves the chart, cheapest and compare, and the original stays for audit.
+- **Price from a purchase:** no Void. The row links to "Correct in its purchase", because voiding it on its own would leave the purchase saying the line was observed.
+- **Show voided:** a checkbox at the card's right brings back voided prices, struck through, with "Voided: {reason}" and no actions.
+
 **Ingredients** follows the same pattern as Products: search and catalog first, "Add ingredient" in a drawer, and a category field that suggests the nine known categories.
 
 ## Vendors (Vendors · Vendors: map view)
