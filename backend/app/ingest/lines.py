@@ -168,9 +168,33 @@ def part_task(index: int, count: int) -> str:
     """The lines task for part ``index`` (1-based) of ``count``."""
     if count == 1:
         return LINES_TASK
+    # Without the rest of the receipt around it, a footer part's savings summary
+    # looked like purchased lines to the model; say that a part may have none.
     return (
         f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
-        "list only the lines in this part."
+        "list only the lines in this part. A part may hold only the store header, the "
+        "totals, the payment or the footer; then return an empty list."
+    )
+
+
+# A row that ends in an amount and is not a total, tax or tender row: what an item
+# looks like on a till receipt. Only counted, to tell a part that plainly holds
+# items from one that is all header or footer.
+_PRICED_ROW = re.compile(r"\d+[.,]\d{2}\s*-?\s*[A-Za-z*$]{0,2}\s*$")
+_NOT_AN_ITEM = re.compile(
+    r"sub\s*total|total|\btax|visa|master|amex|debit|credit|change|cash|balance|amount|"
+    r"approved|tend|auth|card|purchase|usd|\bbal\b|savings",
+    re.IGNORECASE,
+)
+# A part with at least this many item-like rows that comes back with no items was
+# not read, whatever the reply says: a valid, empty answer for a part holding a
+# receipt's every item happened on a real receipt, and would otherwise pass unseen.
+EMPTY_PART_MIN_ROWS = 3
+
+
+def item_like_rows(part: str) -> int:
+    return sum(
+        1 for row in part.splitlines() if _PRICED_ROW.search(row) and not _NOT_AN_ITEM.search(row)
     )
 
 
@@ -282,10 +306,12 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 
 # Flags that say a line's price is probably misread (#59). Suggestions only: a
 # person confirms any change, and editing the line's total clears them.
-# decimal_missing: the amount printed at the end of the line is three or more bare
-#   digits ("OAT MILK 349") and is what the line was read as. Tills print cents,
-#   so this is almost always a decimal point OCR lost; the likely price is a
-#   hundredth of it.
+# decimal_missing: the amount printed at the end of the line is two or more bare
+#   digits ("OAT MILK 349", "CRV 30") and is what the line was read as. Tills
+#   print cents, so this is almost always a decimal point OCR lost; the likely
+#   price is a hundredth of it. On the real receipts behind #59 the two-digit
+#   case caught a $30.00 container deposit and a $69.00 item, and nothing else.
+#   A single digit is left alone: its hundredth is rarely a price.
 # exceeds_total: one line costs more than the whole printed receipt.
 PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total"})
 
@@ -305,7 +331,7 @@ def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None
             continue
         match = _TRAILING_AMOUNT.search(line.raw_text.strip())
         token = match.group(1) if match else ""
-        if len(token) >= 3 and token.isdigit() and Decimal(token) == line.line_total:
+        if len(token) >= 2 and token.isdigit() and Decimal(token) == line.line_total:
             line.flags.append("decimal_missing")
         if printed_total is not None and line.line_total > printed_total + RECONCILE_TOLERANCE:
             line.flags.append("exceeds_total")

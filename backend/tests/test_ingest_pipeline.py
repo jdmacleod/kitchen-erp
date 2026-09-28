@@ -714,3 +714,47 @@ async def test_a_parent_index_points_within_its_own_part(
     by_raw = {line["raw_text"]: line for line in outputs["lines"]["lines"]}
     assert by_raw[saving["raw_text"]]["parent_seq"] == by_raw[item["raw_text"]]["seq"]
     assert by_raw[item["raw_text"]]["seq"] == len(first["lines"]) + 1
+
+
+async def test_an_empty_answer_for_a_part_with_items_is_asked_again(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    # A valid {"lines": []} for the part holding a receipt's items happened on a
+    # real receipt (#60) and would pass unseen. It is asked once more, warmer.
+    fixture = load_fixture("long_till_receipt")
+    first, middle, last = fixture.llm_responses["lines"]
+    transport = recorded(
+        {"header": fixture.llm_responses["header"], "lines": [{"lines": []}, first, middle, last]}
+    )
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    outputs = await stage_outputs(admin_client, job["id"])
+    assert outputs["lines"]["unread_parts"] == []
+    assert outputs["lines"]["line_count"] == len(fixture.expected_lines)
+    lines_requests = [r for r in transport.requests if r["stage"] == "lines"]
+    temperatures = [r["body"]["options"]["temperature"] for r in lines_requests]
+    assert temperatures == [0, 0.3, 0, 0]
+
+
+async def test_a_part_with_items_that_stays_empty_is_unread_not_empty(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    fixture = load_fixture("long_till_receipt")
+    _first, middle, last = fixture.llm_responses["lines"]
+    recorded(
+        {
+            "header": fixture.llm_responses["header"],
+            "lines": [{"lines": []}, {"lines": []}, middle, last],
+        }
+    )
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    outputs = await stage_outputs(admin_client, job["id"])
+    assert outputs["lines"]["unread_parts"] == [1]
+    assert outputs["lines"]["reason"] == "empty_part"
+    purchase, _ = await _purchase_with_lines(outputs["lines"]["purchase_id"])
+    assert "lines_partial" in purchase.flags

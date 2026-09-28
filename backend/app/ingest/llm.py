@@ -233,6 +233,7 @@ class LlmClient:
         receipt_text: str,
         timeout_seconds: float | None = None,
         deadline_seconds: float | None = None,
+        temperature: float = 0,
     ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt text. Returns (value, attempts).
 
@@ -245,7 +246,7 @@ class LlmClient:
             "messages": build_messages(task, receipt_text),
             "format": model_cls.model_json_schema(),
             "stream": False,
-            "options": {"temperature": 0, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
+            "options": {"temperature": temperature, "num_ctx": NUM_CTX, "num_predict": NUM_PREDICT},
         }
         # A deadline bounds every attempt together, not each one: retries after
         # slow, invalid replies must not outlast the job's lock (#34).

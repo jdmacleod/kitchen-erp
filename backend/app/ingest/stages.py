@@ -180,6 +180,12 @@ def _uuid(value: Any) -> uuid.UUID | None:
     return None if value is None else uuid.UUID(str(value))
 
 
+# Enough to change the answer that a temperature-0 request repeats, little enough
+# not to invent lines: on the real receipt whose item part came back empty, 0.3
+# returned its five items three times out of three.
+EMPTY_PART_RETRY_TEMPERATURE = 0.3
+
+
 async def _read_lines_in_parts(
     ctx: StageContext, text: str
 ) -> tuple[ReceiptLines | None, int, str | None, list[int], int]:
@@ -217,6 +223,30 @@ async def _read_lines_in_parts(
             unread.append(index)
             continue
         attempts += used
+        if (
+            not any(line.line_kind == "item" for line in answer.lines)
+            and lines_stage.item_like_rows(part) >= lines_stage.EMPTY_PART_MIN_ROWS
+        ):
+            # A valid answer with no items for a part that plainly has them. At
+            # temperature 0 the same request would say the same, so ask once
+            # more a little differently; if that is empty too, the part is unread.
+            try:
+                answer, used = await ctx.llm.extract(
+                    ReceiptLines,
+                    lines_stage.part_task(index, len(parts)),
+                    part,
+                    timeout_seconds=lines_stage.lines_budget_seconds(part),
+                    deadline_seconds=max(deadline - (time.monotonic() - started), 0.001),
+                    temperature=EMPTY_PART_RETRY_TEMPERATURE,
+                )
+                attempts += used
+            except InvalidModelOutput as exc:
+                attempts += exc.attempts or 1 + max(ctx.llm.max_retries, 0)
+                answer = None
+            if answer is None or not any(line.line_kind == "item" for line in answer.lines):
+                unread.append(index)
+                reason = "empty_part"
+                continue
         offset = len(joined)
         for line in answer.lines:
             parent = line.parent_index

@@ -375,7 +375,8 @@ def _parsed(raw: str, total: str, kind: str = "item") -> lines_mod.ParsedLine:
         ("OAT MILK 1L 349*", "349", True),
         ("OAT MILK 1L 3.49", "3.49", False),
         ("OAT MILK 1L 3,49", "3.49", False),  # a comma is a decimal separator too
-        ("OAT MILK 1L 99", "99", False),  # two digits: too short to say
+        ("CRV 30 F", "30", True),  # a 0.30 container deposit read as $30.00
+        ("OAT MILK 1L 7", "7", False),  # one digit: its hundredth is rarely a price
         ("OAT MILK 1L 349", "3.49", False),  # the model already read it right
         ("012345678905 OAT MILK 3.49", "3.49", False),  # a code earlier on the line
     ],
@@ -460,3 +461,20 @@ def test_a_part_never_starts_with_a_row_that_belongs_to_the_one_above():
     assert parts[1].splitlines()[0] == "OAT MILK 3.49"
     assert "part 2 of 3" in lines_mod.part_task(2, 3)
     assert lines_mod.part_task(1, 1) == lines_mod.LINES_TASK
+
+
+def test_item_like_rows_counts_items_not_totals_or_tender():
+    part = "\n".join(
+        [
+            "HARBOURSIDE PROVISIONS",
+            "OAT MILK 1L 3.49 F",
+            "RYE BREAD 4.25",
+            "EGGS DOZEN 1.65-",
+            "SUBTOTAL 9.39",
+            "TAX 0.51",
+            "VISA 9.90",
+            "Card Savings 0.30-",
+        ]
+    )
+    assert lines_mod.item_like_rows(part) == 3
+    assert "return an empty list" in lines_mod.part_task(3, 3)
