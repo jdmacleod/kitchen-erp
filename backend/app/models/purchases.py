@@ -20,9 +20,10 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    select,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
 
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
 from app.models.catalog import Product
@@ -249,6 +250,14 @@ class PriceObservation(UUIDPrimaryKey, Base):
     vendor_location: Mapped[VendorLocation] = relationship(lazy="joined")
     norm: Mapped[PriceNorm | None] = relationship(lazy="joined", uselist=False)
     void: Mapped[PriceObservationVoid | None] = relationship(lazy="joined", uselist=False)
+    # The purchase a line-derived price came from, so a reader can send someone
+    # to correct it there rather than voiding it out from under the purchase.
+    purchase_id: Mapped[uuid.UUID | None] = column_property(
+        select(PurchaseLine.purchase_id)
+        .where(PurchaseLine.id == purchase_line_id)
+        .correlate_except(PurchaseLine)
+        .scalar_subquery()
+    )
 
 
 class PriceObservationVoid(UUIDPrimaryKey, Base):

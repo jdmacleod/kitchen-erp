@@ -70,6 +70,7 @@ def observation_out(o) -> ObservationOut:
             },
         },
         purchase_line_id=o.purchase_line_id,
+        purchase_id=o.purchase_id,
         observed_at=o.observed_at,
         price=o.price,
         qty=o.qty,
