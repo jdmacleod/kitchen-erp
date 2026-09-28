@@ -57,6 +57,87 @@ describe("map", () => {
     expect(screen.getByLabelText("Coordinates")).toBeInTheDocument();
   });
 
+  it("labels the map from glyphs on its own origin, without icons", async () => {
+    // #62: the map had no street, place or shop names, because the theme's
+    // glyphs come from a CDN and criterion 29 forbids other origins.
+    mockApi({
+      ...baseRoutes(() => [chainLocation]),
+      "HEAD /tiles/basemap.pmtiles": () => new Response(null, { status: 200 }),
+      [`HEAD /fonts/${encodeURIComponent("Noto Sans Regular")}/0-255.pbf`]: () =>
+        new Response(null, { status: 200, headers: { "content-type": "application/x-protobuf" } }),
+    });
+    renderApp("/catalog/vendors?view=map");
+    const map = await mapReady();
+    const style = map.options.style as { glyphs?: string; sprite?: string; layers: { id: string; type: string; layout?: Record<string, unknown> }[] };
+    expect(style.glyphs).toBe(`${window.location.origin}/fonts/{fontstack}/{range}.pbf`);
+    expect(style.sprite).toBeUndefined();
+    const labels = style.layers.filter((l) => l.type === "symbol");
+    expect(labels.map((l) => l.id)).toEqual(expect.arrayContaining(["roads_labels_major", "places_locality", "pois"]));
+    for (const layer of labels) expect(Object.keys(layer.layout ?? {}).filter((k) => k.startsWith("icon-"))).toEqual([]);
+    // Nothing in the style points at another origin.
+    expect(JSON.stringify(style)).not.toMatch(/https?:\/\/(?!localhost)/);
+  });
+
+  it("stays unlabelled when this origin has no glyphs", async () => {
+    mockApi({ ...baseRoutes(() => [chainLocation]), "HEAD /tiles/basemap.pmtiles": () => new Response(null, { status: 200 }) });
+    renderApp("/catalog/vendors?view=map");
+    const map = await mapReady();
+    const style = map.options.style as { glyphs?: string; layers: { type: string }[] };
+    expect(style.glyphs).toBeUndefined();
+    expect(style.layers.some((l) => l.type === "symbol")).toBe(false);
+  });
+
+  const places = {
+    items: [
+      { name: "Tideline Grocers", kind: "poi", detail: "supermarket", lat: "33.501000", lon: "-120.501000", distance_m: 140 },
+      { name: "Saltmarsh Harbour", kind: "town", detail: "town", lat: "33.500000", lon: "-120.500000", distance_m: 0 },
+    ],
+  };
+  const withTiles = () => ({
+    ...baseRoutes(() => [chainLocation]),
+    "HEAD /tiles/basemap.pmtiles": () => new Response(null, { status: 200 }),
+    "GET /map/places": () => jsonResponse(200, places),
+  });
+
+  it("finds a place by name near the middle of the map and goes to it (#62)", async () => {
+    const calls = mockApi(withTiles());
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors?view=map");
+    const map = await mapReady();
+    act(() => map.fire("load", {}));
+
+    await user.type(await screen.findByRole("combobox", { name: "Find a place" }), "grocer");
+    const option = await screen.findByRole("option", { name: /Tideline Grocers/ });
+    expect(option).toHaveTextContent("supermarket · 140 m");
+    const search = calls.find((c) => c.path.startsWith("/map/places"))!;
+    expect(search.query.get("q")).toBe("grocer");
+    expect([search.query.get("lat"), search.query.get("lon")]).toEqual(["33.500", "-120.500"]);
+
+    await user.click(option);
+    expect(map.jumps.at(-1)).toEqual({ center: [-120.501, 33.501], zoom: 17 });
+  });
+
+  it("puts the new pin on a shop found by name, and names the location after it", async () => {
+    mockApi(withTiles());
+    const user = userEvent.setup();
+    renderApp("/catalog/vendors?view=map&place=location");
+    const map = await mapReady();
+    act(() => map.fire("load", {}));
+
+    await user.type(await screen.findByRole("combobox", { name: "Find a place" }), "grocer");
+    await user.click(await screen.findByRole("option", { name: /Tideline Grocers/ }));
+    await waitFor(() => expect(screen.getByTestId("draft-point")).toHaveTextContent("33.501000, -120.501000"));
+    expect(screen.getByLabelText("Name", { selector: "input" })).toHaveValue("Tideline Grocers");
+  });
+
+  it("offers no place search without a map extract", async () => {
+    mockApi(baseRoutes(() => [chainLocation]));
+    renderApp("/catalog/vendors?view=map");
+    await mapReady();
+    await screen.findByText(/Map tiles are missing/);
+    expect(screen.queryByRole("combobox", { name: "Find a place" })).not.toBeInTheDocument();
+  });
+
   it("says the map failed only once, however many tiles fail", async () => {
     mockApi(baseRoutes(() => [chainLocation]));
     renderApp("/catalog/vendors?view=map");

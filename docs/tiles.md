@@ -28,7 +28,8 @@ planet, because it reads the archive over HTTP range requests.
    `SECURITY.md` assume nothing about it beyond the file being present or absent.
 4. Restart `web` (or just reload; nginx serves the file with range requests).
 
-The application looks for `data/tiles/basemap.pmtiles`. If the file is absent the
+The application looks for `data/tiles/basemap.pmtiles`; the `api` container
+reads the same file, at `/data/tiles`, for place search. If the file is absent the
 map renders a plain background with pins in their correct relative positions and
 says that tiles are missing; nothing else is blocked. A map that then fails to
 draw for some other reason — most often a browser holding map code from an
@@ -36,6 +37,21 @@ earlier build — says so above the map and suggests reloading if the map is
 blank, rather than leaving an empty frame with no explanation. The same notice
 covers a single tile that would not load, so it claims only that part of the map
 is missing.
+
+## Labels and place search
+
+The map draws street, place and shop names from the extract. Their glyphs
+(Noto Sans) are baked into the `web` image when it is built, fetched from a
+pinned commit of Protomaps' `basemaps-assets` and checked against its hash, and
+are served from `/fonts/` on this origin; nothing is fetched while the map is
+in use. A development server without them draws the map unlabelled.
+
+"Find a place", above the vendor map, searches the same extract through the
+API (`GET /api/v1/map/places`): towns anywhere in it, and neighbourhoods and
+shops near the middle of the map. Search for the town first to bring the map
+close enough for its shops. While adding a location, picking a shop puts the
+pin on it and names the location after it. Nothing is sent to another server;
+Nominatim stays off.
 
 ## Attribution
 

@@ -16,12 +16,14 @@ import {
   vendorKindLabel,
   type HomeBase,
   type LocationCreateInput,
+  type MapPlace,
   type VendorKind,
   type VendorLocation,
 } from "../../api/geo";
 import { Badge, Disclosure, SelectField } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { DraftPointControl } from "../../components/geo/DraftPointControl";
+import { PLACE_ZOOM, PlaceSearch } from "../../components/geo/PlaceSearch";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
@@ -72,7 +74,11 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
   const [draft, setDraft] = useState<Point | null>(null);
   // A point chosen away from the map needs the view brought to it; a point that
   // came from a click is already in front of the person who clicked.
-  const [centerOn, setCenterOn] = useState<Point | null>(null);
+  const [centerOn, setCenterOn] = useState<(Point & { zoom?: number }) | null>(null);
+  // Where the map is, so "Find a place" searches near what is on screen (#62).
+  const [view, setView] = useState<Point | null>(null);
+  // A shop picked in "Find a place" while adding a location names the new one.
+  const [suggestedName, setSuggestedName] = useState<string | null>(null);
   const [selected, setSelected] = useState<Selection | null>(() => {
     const id = params.get("location");
     return id ? { type: "location", id } : null;
@@ -151,6 +157,16 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
     setMode("browse");
     setDraft(null);
     setCenterOn(null);
+    setSuggestedName(null);
+  };
+  /** A place found by name: bring the map to it, and while adding, put the pin there. */
+  const goToPlace = (place: MapPlace) => {
+    const point = { lat: place.lat, lon: place.lon };
+    setCenterOn({ ...point, zoom: PLACE_ZOOM[place.kind] });
+    if (mode !== "browse" && place.kind === "poi") {
+      setDraft(point);
+      if (mode === "location") setSuggestedName(place.name);
+    }
   };
   /**
    * A point typed, pasted, or read off this device rather than clicked, or null
@@ -276,6 +292,12 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
         </p>
       ) : null}
 
+      {tilesPresent ? (
+        <div className="max-w-md">
+          <PlaceSearch id="map-place-search" near={view} onPick={goToPlace} />
+        </div>
+      ) : null}
+
       <div className="relative h-[70dvh] min-h-[360px] overflow-hidden rounded-lg border border-neutral-200 md:flex dark:border-neutral-800">
         <MapView
           label="Vendor locations and home bases"
@@ -288,6 +310,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
           onMapError={setMapError}
           initialView={initialView}
           centerOn={centerOn}
+          onViewChange={({ lat, lon }) => setView({ lat, lon })}
           onMapClick={(lat, lon) => {
             setDraft({ lat, lon });
             setCenterOn(null);
@@ -304,6 +327,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
           {mode === "location" ? (
             <LocationDraftForm
               draft={draft}
+              suggestedName={suggestedName}
               onPoint={placeAt}
               onCancel={stopPlacing}
               onCreated={(location) => {
@@ -711,10 +735,16 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
 
 // --- creation forms ---------------------------------------------------------
 
-function LocationDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Point | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
+function LocationDraftForm({ draft, suggestedName, onPoint, onCancel, onCreated }: { draft: Point | null; suggestedName: string | null; onPoint: (point: Point | null) => void; onCancel: () => void; onCreated: (l: VendorLocation) => void }) {
   const create = useCreateLocation();
   const [vendor, setVendor] = useState<VendorChoice | null>(null);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(suggestedName ?? "");
+  // A shop picked in "Find a place" names the location, unless a name was typed.
+  const [namedFrom, setNamedFrom] = useState(suggestedName);
+  if (suggestedName !== namedFrom) {
+    setNamedFrom(suggestedName);
+    if (suggestedName && (!name.trim() || name === namedFrom)) setName(suggestedName);
+  }
   const [hours, setHours] = useState("");
   const [hoursValid, setHoursValid] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
