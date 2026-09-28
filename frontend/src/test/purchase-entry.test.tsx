@@ -182,6 +182,31 @@ describe("manual purchase entry", () => {
     expect(within(second).getByLabelText("Unit 2")).toHaveValue("each");
   });
 
+  it("offers to create the product that was typed, right in the dropdown", async () => {
+    // #33: the product box was the only picker that ended at "No products match",
+    // while the vendor and ingredient boxes offered to create what was typed.
+    mockApi(baseRoutes());
+    const user = userEvent.setup();
+    renderApp("/shop/purchases/new");
+    const first = await screen.findByRole("group", { name: "Line 1" });
+
+    await user.type(within(first).getByRole("combobox", { name: /Product/ }), "Rolled oats");
+    await user.click(await screen.findByRole("option", { name: "Create product “Rolled oats”" }));
+    const form = within(first).getByRole("group", { name: "New product" });
+    expect(within(form).getByLabelText("Name")).toHaveValue("Rolled oats");
+  });
+
+  it("offers no create option for a name that already exists, and none before the search answers", async () => {
+    mockApi(baseRoutes());
+    const user = userEvent.setup();
+    renderApp("/shop/purchases/new");
+    const first = await screen.findByRole("group", { name: "Line 1" });
+
+    await user.type(within(first).getByRole("combobox", { name: /Product/ }), hits[0].name.toLowerCase());
+    await screen.findByRole("option", { name: new RegExp(hits[0].name) });
+    expect(screen.queryByRole("option", { name: /Create product/ })).not.toBeInTheDocument();
+  });
+
   it("starts a new product from what was typed in the search", async () => {
     // Searching "Rolled oats", finding nothing and pressing New product used to
     // open an empty Name field, so the same words were typed twice.

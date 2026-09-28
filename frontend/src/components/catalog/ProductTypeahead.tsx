@@ -21,7 +21,14 @@ interface ProductTypeaheadProps {
   debounceMs?: number;
   /** The text as typed, e.g. so "New product" can start from it. */
   onTextChange?: (text: string) => void;
+  /**
+   * Offer `Create product "…"` for what was typed, as the vendor and ingredient
+   * pickers do, instead of ending at "No products match" (#33).
+   */
+  onCreate?: (name: string) => void;
 }
+
+type Option = { kind: "hit"; hit: SearchHit } | { kind: "create"; name: string };
 
 const matchLabel: Record<SearchHit["match"], string> = {
   barcode: "barcode",
@@ -49,21 +56,29 @@ export function ProductTypeahead({
   inputRef,
   debounceMs = 150,
   onTextChange,
+  onCreate,
 }: ProductTypeaheadProps) {
   const [text, setText] = useState("");
   const debounced = useDebouncedValue(text, debounceMs);
   const search = useProductSearch(debounced, limit);
-  const hits = text.trim() ? (search.data ?? []) : [];
+  const trimmed = text.trim();
+  const hits = trimmed ? (search.data ?? []) : [];
+  const settled = debounced === text && !search.isPending && !search.isFetching;
+
+  const options: Option[] = hits.map((hit) => ({ kind: "hit", hit }));
+  // Offered once the search has answered, and not for a name that already exists.
+  const exact = hits.some((hit) => hit.name.toLowerCase() === trimmed.toLowerCase());
+  if (onCreate && trimmed && settled && !search.isError && !exact) options.push({ kind: "create", name: trimmed });
 
   let status: string | undefined;
-  if (text.trim()) {
+  if (trimmed) {
     if (search.isError) status = errorMessage(search.error);
-    else if (search.isPending || search.isFetching || debounced !== text) status = "Searching…";
-    else if (hits.length === 0) status = "No products match.";
+    else if (!settled) status = "Searching…";
+    else if (hits.length === 0 && !onCreate) status = "No products match.";
   }
 
   return (
-    <Combobox<SearchHit>
+    <Combobox<Option>
       id={id}
       label={label}
       hideLabel={hideLabel}
@@ -75,17 +90,30 @@ export function ProductTypeahead({
         setText(value);
         onTextChange?.(value);
       }}
-      items={hits}
-      getKey={(hit) => hit.id}
+      items={options}
+      getKey={(option) => (option.kind === "hit" ? option.hit.id : `create:${option.name}`)}
       status={status}
       disabled={disabled}
       autoFocus={autoFocus}
       inputRef={inputRef}
-      onSelect={(hit) => {
+      onSelect={(option) => {
+        if (option.kind === "create") {
+          onCreate?.(option.name);
+          return;
+        }
+        const { hit } = option;
         setText(clearOnSelect ? "" : hit.brand ? `${hit.brand} ${hit.name}` : hit.name);
         onSelect(hit);
       }}
-      renderItem={(hit) => <HitRow hit={hit} />}
+      renderItem={(option) =>
+        option.kind === "hit" ? (
+          <HitRow hit={option.hit} />
+        ) : (
+          <span>
+            Create product <span className="font-medium">“{option.name}”</span>
+          </span>
+        )
+      }
     />
   );
 }

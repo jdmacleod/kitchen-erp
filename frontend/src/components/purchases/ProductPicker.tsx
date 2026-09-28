@@ -120,8 +120,10 @@ export function ProductPicker({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
+      {/* Wraps "New product" under the box when the column is narrow, so the
+          picker never makes a table wider than its column (#61). */}
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-[12rem] flex-1">
           <ProductTypeahead
             id={id}
             label={label}
@@ -130,6 +132,10 @@ export function ProductPicker({
             hint={hint}
             onSelect={(hit) => pick(productRefFromHit(hit))}
             onTextChange={setTyped}
+            onCreate={(name) => {
+              setTyped(name);
+              setCreating(true);
+            }}
             autoFocus={autoFocus}
             inputRef={inputRef}
             disabled={disabled}
