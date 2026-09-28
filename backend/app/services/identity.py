@@ -47,6 +47,118 @@ async def list_users(db: AsyncSession) -> list[AppUser]:
     return list(result.scalars())
 
 
+async def _get_user(db: AsyncSession, user_id: uuid.UUID) -> AppUser:
+    # populate_existing: after waiting on a lock, read what the other
+    # transaction committed rather than the state loaded before it.
+    user = await db.get(AppUser, user_id, populate_existing=True)
+    if user is None:
+        raise ApiError(404, "not_found", "No such user.")
+    return user
+
+
+async def _lock_active_admins(db: AsyncSession) -> int:
+    """Count the active admins, holding their rows until this transaction ends.
+
+    Two admins removing each other at the same moment would otherwise both
+    count two, both pass, and leave none. With the rows locked, the second
+    waits for the first to commit and then counts again (READ COMMITTED
+    re-checks a locked row's WHERE clause once the lock is granted).
+    """
+    stmt = (
+        select(AppUser.id)
+        .where(AppUser.role == "admin", AppUser.active.is_(True))
+        .with_for_update()
+    )
+    return len((await db.execute(stmt)).all())
+
+
+async def _end_access(db: AsyncSession, user_id: uuid.UUID, *, keep_session: str | None = None):
+    """Revoke a user's sessions, all of them or all but the one given.
+
+    Deactivating a member or setting their password must take effect at once,
+    not when an old cookie expires. Flushed; the caller commits.
+    """
+    now = _now()
+    sessions = update(Session).where(Session.user_id == user_id, Session.revoked_at.is_(None))
+    if keep_session is not None:
+        sessions = sessions.where(Session.token_hash != digest(keep_session))
+    await db.execute(sessions.values(revoked_at=now))
+
+
+async def edit_user(db: AsyncSession, actor: AppUser, user_id: uuid.UUID, changes: dict) -> AppUser:
+    """An admin changes a member's name, email, role or whether they can sign in.
+
+    The household can never lose its last active admin, and an admin cannot
+    demote or deactivate themselves (another admin can): either would be a
+    one-click lockout with no way back but the command line.
+    """
+    touches_access = changes.get("role") is not None or changes.get("active") is not None
+    admins = await _lock_active_admins(db) if touches_access else 0
+    user = await _get_user(db, user_id)
+    demoting = changes.get("role") == "member" and user.role == "admin"
+    deactivating = changes.get("active") is False and user.active
+    if user.id == actor.id and (demoting or deactivating):
+        raise ApiError(
+            409,
+            "self_lockout",
+            "You can't remove your own admin access. Another admin can.",
+        )
+    removing_admin = (demoting or deactivating) and user.role == "admin" and user.active
+    if removing_admin and admins <= 1:
+        raise ApiError(409, "last_admin", "The household needs at least one active admin.")
+    if changes.get("email") is not None:
+        user.email = str(changes["email"]).strip().lower()
+    if changes.get("display_name") is not None:
+        user.display_name = changes["display_name"].strip()
+    if changes.get("role") is not None:
+        user.role = changes["role"]
+    if changes.get("active") is not None:
+        user.active = changes["active"]
+    if deactivating:
+        await _end_access(db, user.id)
+        await db.execute(
+            update(ApiToken)
+            .where(ApiToken.user_id == user.id, ApiToken.revoked_at.is_(None))
+            .values(revoked_at=_now())
+        )
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise ApiError(409, "email_taken", "A user with that email already exists.") from exc
+    await db.refresh(user)
+    return user
+
+
+async def set_password(
+    db: AsyncSession, actor: AppUser, user_id: uuid.UUID, password: str
+) -> AppUser:
+    """An admin sets a new password for another member and signs them out everywhere."""
+    if user_id == actor.id:
+        raise ApiError(
+            409,
+            "use_change_password",
+            "Change your own password in Settings, System, with your current one.",
+        )
+    user = await _get_user(db, user_id)
+    user.password_hash = hash_password(password)
+    await _end_access(db, user.id)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+async def change_own_password(
+    db: AsyncSession, user: AppUser, current: str, new: str, *, session_secret: str | None
+) -> None:
+    """Change your own password; every other session of yours is signed out."""
+    if not verify_password(user.password_hash, current):
+        raise ApiError(422, "wrong_password", "The current password is not right.")
+    user.password_hash = hash_password(new)
+    await _end_access(db, user.id, keep_session=session_secret)
+    await db.commit()
+
+
 async def count_users(db: AsyncSession) -> int:
     return int((await db.execute(select(func.count()).select_from(AppUser))).scalar_one())
 

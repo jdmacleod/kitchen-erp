@@ -122,6 +122,36 @@ export function useCreateUser() {
   });
 }
 
+export interface EditUserInput {
+  email?: string;
+  display_name?: string;
+  role?: "admin" | "member";
+  active?: boolean;
+}
+
+/** An admin's change to a member. Deactivating ends their sessions and tokens at once. */
+export function useEditUser() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: EditUserInput }) => api<User>(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: input }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.users }),
+  });
+}
+
+/** An admin sets a new password for another member, signing them out everywhere. */
+export function useSetUserPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) => api<User>(`/users/${encodeURIComponent(id)}/password`, { method: "POST", body: { password } }),
+  });
+}
+
+/** Change your own password; this session stays, every other one ends. */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (input: { current_password: string; new_password: string }) => api<void>("/auth/password", { method: "POST", body: input }),
+  });
+}
+
 // --- api tokens -------------------------------------------------------------
 
 export function useTokens() {

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request, Response, status
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
 from app.core.errors import ApiError
-from app.schemas.identity import LoginIn, LoginOut, UserOut
+from app.schemas.identity import LoginIn, LoginOut, PasswordChange, UserOut
 from app.services import identity
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -54,6 +54,21 @@ async def logout_all(user: CurrentUser, db: DbSession) -> Response:
     out = Response(status_code=status.HTTP_204_NO_CONTENT)
     _clear_cookie(out)
     return out
+
+
+@router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    payload: PasswordChange, request: Request, user: CurrentUser, db: DbSession
+) -> Response:
+    """Change your own password. This session stays signed in; every other one ends."""
+    await identity.change_own_password(
+        db,
+        user,
+        payload.current_password,
+        payload.new_password,
+        session_secret=request.cookies.get(get_settings().cookie_name),
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=UserOut)
