@@ -29,6 +29,8 @@ the paper or standard it implements and work from that.
 |---|---|---|
 | OpenStreetMap data (Overpass results, adopted locations, opening hours) | ODbL 1.0 | Attribute "© OpenStreetMap contributors" wherever map data or OSM-derived fields are displayed. Storing adopted attributes in the household's own database is a produced work, not a redistribution, so share-alike does not reach the database. Do not redistribute an OSM-derived dataset without ODbL. |
 | Protomaps / PMTiles basemap extract | ODbL for the data; Protomaps basemap tiles require attribution per their terms | Show OSM and Protomaps attribution on the map. The extract is downloaded locally and never committed. |
+| Noto Sans map label glyphs, as PBF ranges from Protomaps `basemaps-assets` (pinned commit, fetched when the `web` image is built) | SIL Open Font License 1.1 | `OFL.txt` ships beside the glyphs at `/fonts/OFL.txt` in the web image. The fonts may be redistributed with the licence, and must not be sold on their own. Only the fonts are used: the sprites in the same repository carry no stated licence, so the map's POI and town labels are drawn without icons. |
+| Python `pmtiles` (reads the extract for place search) | BSD-3-Clause | Notice preserved. Permissive. |
 | Overpass API (optional, off by default) | Public instance fair-use policy | Rate-limit, cache, identify the application in the `User-Agent`, send only public place queries. |
 | Nominatim (optional, off by default) | Public usage policy: at most one request per second, a valid `User-Agent`, no bulk geocoding | Same as Overpass. Never send household data in a query beyond the address being geocoded. |
 | USDA FoodData Central | Public domain (CC0) | None. Cite the source in the ingredient suggestion UI as a courtesy. |

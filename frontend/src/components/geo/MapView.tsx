@@ -9,8 +9,8 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
-import { basemapColours } from "../../lib/palette";
+import { labelsWithCustomTheme, namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
+import { basemapColours, basemapLabelColours } from "../../lib/palette";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { VendorKind } from "../../api/geo";
@@ -25,6 +25,9 @@ import "./map.css";
 setWorkerUrl(maplibreWorkerUrl);
 
 export const TILES_URL = "/tiles/basemap.pmtiles";
+// Label glyphs, baked into the web image and served from this origin (#62).
+export const GLYPHS_PATH = "/fonts/{fontstack}/{range}.pbf";
+const GLYPH_PROBE = `/fonts/${encodeURIComponent("Noto Sans Regular")}/0-255.pbf`;
 export const ATTRIBUTION = "© OpenStreetMap contributors © Protomaps";
 
 // The synthetic box from SECURITY.md is the empty-map view: open ocean, so no
@@ -99,7 +102,9 @@ export interface MapViewProps {
    * the pin would otherwise land outside the viewport with nothing to say so.
    * A point that came from a click is already in view and is not passed here.
    */
-  centerOn?: { lat: string; lon: string } | null;
+  centerOn?: { lat: string; lon: string; zoom?: number } | null;
+  /** The map's centre and zoom after every move, e.g. to search near what is on screen. */
+  onViewChange?: (view: { lat: string; lon: string; zoom: number }) => void;
 }
 
 const PIN_KINDS: readonly PinKind[] = ["chain", "independent", "market", "stand", "home"];
@@ -123,13 +128,34 @@ export async function tilesPresent(): Promise<boolean> {
   }
 }
 
+/**
+ * Whether this origin serves the label glyphs. The web image always does; a
+ * development server without them gets the unlabelled map rather than a style
+ * whose every label request fails.
+ */
+export async function glyphsPresent(): Promise<boolean> {
+  try {
+    const response = await fetch(GLYPH_PROBE, { method: "HEAD", credentials: "include" });
+    return response.ok && !(response.headers.get("content-type") ?? "").includes("text/html");
+  } catch {
+    return false;
+  }
+}
+
+/** A label layer without its icon: the Protomaps sprite is not shipped (no stated licence). */
+function withoutIcons(layer: LayerSpecification): LayerSpecification {
+  if (layer.type !== "symbol" || !layer.layout) return layer;
+  const layout = Object.fromEntries(Object.entries(layer.layout).filter(([key]) => !key.startsWith("icon-")));
+  return { ...layer, layout } as LayerSpecification;
+}
+
 function prefersDark(): boolean {
   return typeof window !== "undefined" && typeof window.matchMedia === "function"
     ? window.matchMedia("(prefers-color-scheme: dark)").matches
     : false;
 }
 
-function buildStyle(present: boolean): StyleSpecification {
+function buildStyle(present: boolean, labelled: boolean): StyleSpecification {
   if (!present) {
     // No source at all: a plain neutral ground with the pins on top.
     return {
@@ -138,23 +164,26 @@ function buildStyle(present: boolean): StyleSpecification {
       layers: [{ id: "ground", type: "background", paint: { "background-color": basemapColours(prefersDark()).background } }],
     };
   }
-  // The Protomaps theme's label layers need glyphs (fonts) that ship from a
-  // CDN. Criterion 29 forbids any request to another origin, so the symbol
-  // layers are dropped instead of pointing `glyphs` at a remote host. The map
-  // is therefore unlabelled; pins carry the names.
   // The Protomaps light/dark flavours recoloured onto the Market palette (spec 08).
   const dark = prefersDark();
-  const theme = { ...namedTheme(dark ? "dark" : "light"), ...basemapColours(dark) };
+  const theme = { ...namedTheme(dark ? "dark" : "light"), ...basemapColours(dark), ...basemapLabelColours(dark) };
   const layers: LayerSpecification[] = noLabelsWithCustomTheme("protomaps", theme).filter(
     (layer) => layer.type !== "symbol",
   );
-  return {
+  const style: StyleSpecification = {
     version: 8,
     sources: {
       protomaps: { type: "vector", url: `pmtiles://${TILES_URL}`, attribution: ATTRIBUTION },
     },
     layers,
   };
+  // Street, place and shop names (#62). The glyphs come from this origin, never
+  // the theme's CDN (criterion 29); without them the map stays unlabelled.
+  if (labelled) {
+    style.glyphs = `${window.location.origin}${GLYPHS_PATH}`;
+    style.layers = [...layers, ...labelsWithCustomTheme("protomaps", theme, "en").map(withoutIcons)];
+  }
+  return style;
 }
 
 function pinElement(pin: MapPin | { kind: "draft" }, label: string): HTMLButtonElement {
@@ -190,7 +219,7 @@ function fix(value: number): string {
  * own origin, and when the extract is missing draws a plain ground instead.
  * Nothing here ever reaches another origin.
  */
-export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null }: MapViewProps) {
+export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null, onViewChange }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const draftRef = useRef<Marker | null>(null);
@@ -198,9 +227,9 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
   const initialViewRef = useRef(initialView);
   const [ready, setReady] = useState<MapLibreMap | null>(null);
   // Latest callbacks, read by handlers registered once.
-  const callbacks = useRef({ onPinSelect, onMapClick, placing, onTilesStatus, onMapError });
+  const callbacks = useRef({ onPinSelect, onMapClick, placing, onTilesStatus, onMapError, onViewChange });
   useEffect(() => {
-    callbacks.current = { onPinSelect, onMapClick, placing, onTilesStatus, onMapError };
+    callbacks.current = { onPinSelect, onMapClick, placing, onTilesStatus, onMapError, onViewChange };
   });
 
   // Create the map once.
@@ -210,7 +239,7 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
     let cancelled = false;
     let map: MapLibreMap | null = null;
     const markers = markersRef.current;
-    void tilesPresent().then((present) => {
+    void Promise.all([tilesPresent(), glyphsPresent()]).then(([present, labelled]) => {
       if (cancelled) return;
       callbacks.current.onTilesStatus?.(present);
       if (present) registerProtocol();
@@ -219,7 +248,7 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       try {
         created = new MapLibreMap({
           container,
-          style: buildStyle(present),
+          style: buildStyle(present, present && labelled),
           center: start ? [num(start.lon), num(start.lat)] : [EMPTY_CENTER_LON, EMPTY_CENTER_LAT],
           zoom: start ? start.zoom : 9,
           attributionControl: false,
@@ -240,6 +269,12 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
         reportedError = true;
         callbacks.current.onMapError?.(mapErrorMessage(event?.error));
       });
+      const reportView = () => {
+        const at = created.getCenter();
+        callbacks.current.onViewChange?.({ lat: fix(at.lat), lon: fix(at.lng), zoom: created.getZoom() });
+      };
+      created.on("moveend", reportView);
+      created.on("load", reportView);
       created.on("click", (event) => {
         if (!callbacks.current.placing) return;
         callbacks.current.onMapClick?.(fix(event.lngLat.lat), fix(event.lngLat.lng));
@@ -319,13 +354,15 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
   // map out from under a drag.
   const centerLat = centerOn?.lat ?? null;
   const centerLon = centerOn?.lon ?? null;
+  const centerZoom = centerOn?.zoom ?? null;
   useEffect(() => {
     const map = ready;
     if (!map || centerLat === null || centerLon === null) return;
     // Keep the operator's zoom when they are already close in; only pull in when
-    // the view is wide enough that a pin would be lost on it.
-    map.jumpTo({ center: [num(centerLon), num(centerLat)], zoom: Math.max(map.getZoom(), 13) });
-  }, [ready, centerLat, centerLon]);
+    // the view is wide enough that a pin would be lost on it. A caller that knows
+    // the right scale (a town, a single shop) says so.
+    map.jumpTo({ center: [num(centerLon), num(centerLat)], zoom: centerZoom ?? Math.max(map.getZoom(), 13) });
+  }, [ready, centerLat, centerLon, centerZoom]);
 
   // Sync the draft pin.
   useEffect(() => {

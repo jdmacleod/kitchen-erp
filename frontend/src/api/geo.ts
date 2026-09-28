@@ -229,6 +229,7 @@ export const geoKeys = {
   location: (id: string) => ["vendor-locations", "detail", id] as const,
   isOpen: (id: string, at: string) => ["vendor-locations", "is-open", id, at] as const,
   osmCandidates: (homeBaseId: string, radius: number) => ["osm", "candidates", homeBaseId, radius] as const,
+  mapPlaces: (q: string, near: { lat: string; lon: string } | null) => ["map", "places", q, near] as const,
 };
 
 function invalidateLocations(client: QueryClient) {
@@ -445,6 +446,39 @@ export function useAdoptOsm() {
 // --- formatting -------------------------------------------------------------
 
 /** Latitude and longitude as "lat, lon", for display only. */
+// --- places in the map extract (#62) -----------------------------------------
+
+export interface MapPlace {
+  name: string;
+  kind: "town" | "neighbourhood" | "poi";
+  detail: string | null;
+  lat: string;
+  lon: string;
+  distance_m: number | null;
+}
+
+/**
+ * Places by name from the deployment's own map extract: towns anywhere in it,
+ * and neighbourhoods and shops near `near` (the map's centre). Nothing is sent
+ * anywhere but this deployment's API.
+ */
+export function useMapPlaces(q: string, near: { lat: string; lon: string } | null) {
+  const trimmed = q.trim();
+  return useQuery({
+    queryKey: geoKeys.mapPlaces(trimmed, near),
+    queryFn: () => api<ListResponse<MapPlace>>(`/map/places${qs({ q: trimmed, lat: near?.lat, lon: near?.lon })}`),
+    select: (data) => data.items,
+    enabled: trimmed.length >= 2,
+    placeholderData: (previous) => previous,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function formatDistance(metres: number | null): string | null {
+  if (metres === null) return null;
+  return metres < 1000 ? `${Math.round(metres / 10) * 10} m` : `${(metres / 1000).toFixed(1)} km`;
+}
+
 export function formatLatLon(lat: string, lon: string): string {
   return `${lat}, ${lon}`;
 }

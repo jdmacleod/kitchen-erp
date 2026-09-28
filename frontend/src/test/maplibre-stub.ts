@@ -7,6 +7,8 @@ type Handler = (event: unknown) => void;
 
 export class MapStub {
   container: HTMLElement;
+  /** What the map was created with, so a test can read the style. */
+  options: { container: HTMLElement; style?: unknown };
   private handlers = new globalThis.Map<string, Handler[]>();
   constructor(options: { container: HTMLElement }) {
     if (constructionFailure.next) {
@@ -15,6 +17,7 @@ export class MapStub {
       throw error;
     }
     this.container = options.container;
+    this.options = options;
     instances.push(this);
   }
   on(type: string, handler: Handler) {
@@ -38,12 +41,17 @@ export class MapStub {
   /** Every jumpTo, so a test can assert the view followed a point it was given. */
   jumps: { center: [number, number]; zoom?: number }[] = [];
   zoom = 9;
+  center: [number, number] = [-120.5, 33.5];
   jumpTo(options: { center: [number, number]; zoom?: number }) {
     this.jumps.push(options);
+    this.center = options.center;
     if (options.zoom !== undefined) this.zoom = options.zoom;
   }
   getZoom() {
     return this.zoom;
+  }
+  getCenter() {
+    return { lng: this.center[0], lat: this.center[1] };
   }
   fitBounds() {}
   getContainer() {
