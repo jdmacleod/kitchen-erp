@@ -7,6 +7,7 @@ import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 interface Reveal {
+  id: string;
   name: string;
   plaintext: string;
 }
@@ -27,7 +28,7 @@ export function TokensPage() {
       {
         onSuccess: (result) => {
           setName("");
-          setReveal({ name: result.token.name, plaintext: result.plaintext });
+          setReveal({ id: result.token.id, name: result.token.name, plaintext: result.plaintext });
         },
       },
     );
@@ -76,7 +77,12 @@ export function TokensPage() {
           ) : (
             <ul aria-label="Your tokens" className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {tokens.data.map((t) => (
-                <TokenRow key={t.id} token={t} />
+                <TokenRow
+                  key={t.id}
+                  token={t}
+                  // A revoked key is useless; leaving it on screen invited copying it.
+                  onRevoked={() => setReveal((r) => (r?.id === t.id ? null : r))}
+                />
               ))}
             </ul>
           )}
@@ -132,7 +138,7 @@ function NewTokenPanel({ reveal, onDismiss }: { reveal: Reveal; onDismiss: () =>
   );
 }
 
-function TokenRow({ token }: { token: ApiToken }) {
+function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void }) {
   const revoke = useRevokeToken();
   const [confirming, setConfirming] = useState(false);
   const revoked = token.revoked_at !== null;
@@ -168,7 +174,7 @@ function TokenRow({ token }: { token: ApiToken }) {
           <Button
             variant="danger"
             disabled={revoke.isPending}
-            onClick={() => revoke.mutate(token.id, { onSettled: () => setConfirming(false) })}
+            onClick={() => revoke.mutate(token.id, { onSuccess: onRevoked, onSettled: () => setConfirming(false) })}
           >
             {revoke.isPending ? "Revoking…" : "Confirm revoke"}
           </Button>
