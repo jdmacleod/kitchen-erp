@@ -39,7 +39,7 @@ function freshView(): string {
 }
 
 test("with no tiles: notice, pins, no external requests, create by pin drop, readable detail", async ({ page, baseURL }) => {
-  const external = watchExternalRequests(page, baseURL ?? "http://127.0.0.1:8080");
+  const external = watchExternalRequests(page, baseURL ?? "http://127.0.0.1:8082");
   await login(page);
   const view = freshView();
   await page.goto(view);

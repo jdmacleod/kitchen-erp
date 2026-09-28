@@ -105,6 +105,10 @@ jobs:
           docker compose exec -T api kerp create-admin --email admin@example.com --display-name Admin --password local-dev-admin-pw
       - name: Run Playwright
         working-directory: e2e
+        env:
+          # This job's stack is fresh and thrown away with the runner, so the
+          # suite runs on the default port rather than the local e2e stack's.
+          E2E_BASE_URL: http://127.0.0.1:8080
         run: |
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium
