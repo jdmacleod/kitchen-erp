@@ -3,6 +3,7 @@ import { AuthBridge } from "./auth/AuthBridge";
 import { RequireAdmin } from "./auth/RequireAdmin";
 import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./components/AppShell";
+import { FOOTER_SECTIONS, MAIN_SECTIONS } from "./components/Nav";
 import { RedirectTo } from "./components/RedirectTo";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
@@ -45,6 +46,14 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
   { from: "/price-book/needs-bridge", to: "/catalog/bridges" },
   { from: "/settings/home-bases", to: "/settings/kitchens" },
 ];
+
+/**
+ * A section's own path ("/settings", typed or trimmed from a URL) opens the
+ * section's first page, the same place its sidebar entry goes, instead of Not found.
+ */
+export const SECTION_ROOTS: { from: string; to: string }[] = [...MAIN_SECTIONS, ...FOOTER_SECTIONS].flatMap((section) =>
+  section.prefix ? [{ from: section.prefix, to: section.to }] : [],
+);
 
 /**
  * Route table (docs/spec/09-information-architecture.md, Routes). Mounted inside a
@@ -90,6 +99,10 @@ export function App() {
             />
             <Route path="/settings/tokens" element={<TokensPage />} />
             <Route path="/settings/system" element={<SystemPage />} />
+
+            {SECTION_ROOTS.map(({ from, to }) => (
+              <Route key={from} path={from} element={<RedirectTo to={to} />} />
+            ))}
 
             {/* Retired paths, kept as redirects for at least one release. */}
             {REDIRECTS.map(({ from, to, query }) => (
