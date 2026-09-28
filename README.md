@@ -181,6 +181,17 @@ docker compose exec api pytest -m llm   # opt-in, needs a live model
 The suite creates a fresh database on the Compose `db` service for each run and
 drops it afterwards, so it never touches the household's data.
 
+```bash
+make e2e    # browser tests (Playwright) on a throwaway stack, web on :8082
+```
+
+The browser tests create vendors, products and prices that the app can only
+deactivate, never delete, so they never run against the household's stack.
+`make e2e` starts a separate Compose project (`compose.e2e.yaml`, its own
+volumes), runs the suite, and deletes the project and its volumes, pass or
+fail. `make e2e-up` / `make e2e-down` do the halves by hand, for debugging a
+spec with `cd e2e && corepack pnpm exec playwright test <spec>`.
+
 ## Development without Docker for the API
 
 ```bash

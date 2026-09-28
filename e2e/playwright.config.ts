@@ -1,15 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Runs against the Compose stack (web on :8080 by default). Seed the dev admin
-// first: `make e2e-seed`. Nothing here reaches an outside origin; a test that
-// asserts on network activity fails if it does.
+// Runs against the throwaway e2e stack (compose.e2e.yaml, web on :8082), never
+// the household's own on :8080: the suite creates rows the app cannot delete.
+// `make e2e` creates that stack, runs this, and deletes it. CI runs a fresh
+// stack of its own and sets E2E_BASE_URL. Nothing here reaches an outside
+// origin; a test that asserts on network activity fails if it does.
 export default defineConfig({
   testDir: "./tests",
   timeout: 30_000,
   retries: 0,
   reporter: [["list"]],
   use: {
-    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8080",
+    baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8082",
     trace: "retain-on-failure",
   },
   projects: [
