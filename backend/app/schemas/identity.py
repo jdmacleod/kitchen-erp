@@ -31,6 +31,28 @@ class UserList(ApiModel):
     items: list[UserOut]
 
 
+class UserEdit(ApiModel):
+    """An admin's change to a member. Every field is optional; only those sent change."""
+
+    email: EmailStr | None = None
+    display_name: str | None = Field(default=None, min_length=1, max_length=200)
+    role: Role | None = None
+    active: bool | None = None
+
+
+class PasswordSet(ApiModel):
+    """An admin setting a new password for another member."""
+
+    password: str = Field(min_length=8, max_length=1024)
+
+
+class PasswordChange(ApiModel):
+    """Changing your own password: the current one proves it is you."""
+
+    current_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=8, max_length=1024)
+
+
 class LoginIn(ApiModel):
     email: str
     password: str

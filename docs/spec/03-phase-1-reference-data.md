@@ -18,6 +18,7 @@ Stand up the repository layout described in `CLAUDE.md`, the Compose services de
 6. The test suite runs with one command inside the `api` container against a real PostgreSQL instance and passes.
 7. A retried `POST` carrying the same `Idempotency-Key` and the same body replays the stored response; the same key with a different body is rejected with a 422.
 8. Revoking a session makes its cookie invalid on the next request, and "log out everywhere" revokes all of a user's sessions.
+9. (#75) An admin can edit a member's name, email and role, deactivate and reactivate them, and set a new password for them. Deactivating revokes the member's sessions and API tokens at once, and setting a password revokes their sessions. An admin cannot demote or deactivate themselves, so the last active admin can never be removed through the API. Any user can change their own password with the current one; that keeps the current session and revokes the others.
 
 ## 1B — Units and the conversion library
 

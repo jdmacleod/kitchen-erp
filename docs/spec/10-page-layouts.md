@@ -126,6 +126,20 @@ The most important detail page; search results and inbox items land here most of
   - Empty list: "No vendors yet. Drop a pin on the map".
   - Empty map: "No locations yet. Click the map to drop a pin".
 
+## Settings: users and passwords (#75)
+
+**Users (admins only).**
+- The members table has an "Edit" button per row, which opens a right-side drawer. The drawer follows 08's unsaved-input rule (D5).
+- **Drawer form:** Display name, Email, and Role (Member, or Admin: also manages members and tokens). "Save changes" sends only what changed.
+- **Signing in:**
+  - "Deactivate {name}" (tomato) asks inline first. The prompt says they are signed out everywhere, that their API tokens stop working, and that reactivating later leaves the tokens revoked.
+  - An inactive member shows "Reactivate {name}".
+  - "Set a new password" (at least 8 characters) signs them out everywhere; the admin shares it privately.
+- **Your own row:** the Role radios are disabled, and there is no Deactivate. The note reads "You can't remove your own admin access. Another admin can." The password section links to Settings, System. The household can never lose its last active admin.
+- **After saving:** the drawer closes and the Notice confirms what happened.
+
+**System (everyone).** A "Password" card sits between Status and Sessions: Current password, New password, and New password again. Changing the password keeps this session and signs out every other one. A wrong current password shows an inline error.
+
 ## Search palette (Search palette)
 
 - **Container:** a centred dialog, 640px wide, over a scrim.
