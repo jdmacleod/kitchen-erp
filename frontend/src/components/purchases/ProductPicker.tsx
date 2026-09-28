@@ -120,10 +120,11 @@ export function ProductPicker({
 
   return (
     <div className="flex flex-col gap-1">
-      {/* Wraps "New product" under the box when the column is narrow, so the
-          picker never makes a table wider than its column (#61). */}
+      {/* "New product" wraps under the box once the box would be under 10rem, and
+          the box itself can shrink to whatever its column has: a hard minimum
+          pushed the picker into the Quantity field on the purchase form. */}
       <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[12rem] flex-1">
+        <div className="min-w-0 flex-1 basis-40">
           <ProductTypeahead
             id={id}
             label={label}
