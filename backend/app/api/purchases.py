@@ -139,7 +139,9 @@ async def get_observation(
 async def void_observation(
     observation_id: uuid.UUID, payload: VoidIn, user: CurrentUser, db: DbSession
 ) -> ObservationOut:
-    return observation_out(await pricebook.void(db, observation_id, payload.reason, user))
+    observation = await pricebook.void(db, observation_id, payload.reason, user)
+    await db.commit()
+    return observation_out(observation)
 
 
 @router.get("/price-book/needs-bridge", response_model=NeedsBridgeList)

@@ -214,7 +214,9 @@ async def void(
         raise ApiError(409, "already_voided", "That observation is already voided.")
     user_id = voided_by.id if isinstance(voided_by, AppUser) else voided_by
     db.add(PriceObservationVoid(observation_id=observation.id, reason=reason, voided_by=user_id))
-    await db.commit()
+    # Flushed, not committed: a recommit voids and then re-emits, and a failure
+    # in between must roll the void back with it. The caller commits.
+    await db.flush()
     return await get_observation(db, observation_id)
 
 
