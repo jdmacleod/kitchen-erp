@@ -138,6 +138,9 @@ def receipts_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     settings = get_settings()
     monkeypatch.setattr(settings, "receipts_path", str(target))
     monkeypatch.setattr(settings, "household_timezone", "America/Los_Angeles")
+    # Fixture dates are written month-first (printed_date_echoed); a developer's
+    # own RECEIPT_DATE_ORDER must not change what they mean.
+    monkeypatch.setattr(settings, "receipt_date_order", "MDY")
     monkeypatch.setattr(settings, "ollama_base_url", "http://127.0.0.1:9")
     monkeypatch.setattr(settings, "llm_timeout_seconds", 2.0)
     monkeypatch.setattr(llm, "http_transport", None)
