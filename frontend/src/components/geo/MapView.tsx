@@ -51,6 +51,12 @@ export function mapErrorMessage(error: unknown): string {
   return `Part of the map could not be loaded. If the map is blank, reload the page — after an update the browser can keep a stale copy of the map code. (map_error: ${detail})`;
 }
 
+/** The map could not start at all, most often because WebGL is unavailable. */
+export function mapUnavailableMessage(error: unknown): string {
+  const detail = error instanceof Error ? error.message : String(error ?? "unknown");
+  return `The map could not start in this browser, which usually means WebGL is turned off or unavailable. Everything else works, and a location can still be placed by typing its coordinates. (map_error: ${detail})`;
+}
+
 export type PinKind = VendorKind | "home";
 
 export interface MapPin {
@@ -209,13 +215,22 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       callbacks.current.onTilesStatus?.(present);
       if (present) registerProtocol();
       const start = initialViewRef.current;
-      const created = new MapLibreMap({
-        container,
-        style: buildStyle(present),
-        center: start ? [num(start.lon), num(start.lat)] : [EMPTY_CENTER_LON, EMPTY_CENTER_LAT],
-        zoom: start ? start.zoom : 9,
-        attributionControl: false,
-      });
+      let created: MapLibreMap;
+      try {
+        created = new MapLibreMap({
+          container,
+          style: buildStyle(present),
+          center: start ? [num(start.lon), num(start.lat)] : [EMPTY_CENTER_LON, EMPTY_CENTER_LAT],
+          zoom: start ? start.zoom : 9,
+          attributionControl: false,
+        });
+      } catch (error) {
+        // MapLibre throws from its constructor when the browser gives it no
+        // WebGL (hardware acceleration off, some remote desktops and VMs). That
+        // used to be an unhandled rejection and an empty frame.
+        callbacks.current.onMapError?.(mapUnavailableMessage(error));
+        return;
+      }
       created.addControl(new NavigationControl({ showCompass: false }), "top-right");
       // Once per map: a failing worker fires on every tile, and one clear
       // sentence is the point, not a stream of them.

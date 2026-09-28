@@ -80,6 +80,8 @@ export function ProductPicker({
   hint,
 }: ProductPickerProps) {
   const [creating, setCreating] = useState(false);
+  // What was searched for is what the new product is most likely called.
+  const [typed, setTyped] = useState("");
 
   const pick = (product: ProductRef) => {
     setCreating(false);
@@ -113,7 +115,7 @@ export function ProductPicker({
   }
 
   if (creating) {
-    return <InlineProductCreate id={`${id}-new`} onCreated={pick} onCancel={() => setCreating(false)} disabled={disabled} />;
+    return <InlineProductCreate id={`${id}-new`} onCreated={pick} onCancel={() => setCreating(false)} disabled={disabled} initialName={typed.trim()} />;
   }
 
   return (
@@ -127,6 +129,7 @@ export function ProductPicker({
             placeholder="Type to search products"
             hint={hint}
             onSelect={(hit) => pick(productRefFromHit(hit))}
+            onTextChange={setTyped}
             autoFocus={autoFocus}
             inputRef={inputRef}
             disabled={disabled}

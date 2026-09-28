@@ -5,7 +5,7 @@ import type { VendorLocation } from "../api/geo";
 import { flour, flourProductId } from "./catalog-fixtures";
 import { chainLocation, homeBase, marketDetail, marketLocation, marketLocationId, stallLocation, stallLocationId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { instances } from "./maplibre-stub";
+import { constructionFailure, instances } from "./maplibre-stub";
 
 vi.mock("maplibre-gl", () => import("./maplibre-stub"));
 
@@ -41,6 +41,20 @@ describe("map", () => {
     // tile and a map that drew nothing, and reloading only helps the second.
     expect(alert).toHaveTextContent(/If the map is blank, reload the page/);
     expect(alert).toHaveTextContent(/map_error: Failed to load worker/);
+  });
+
+  it("says so when the map cannot start at all, as without WebGL", async () => {
+    // MapLibre throws from its constructor when there is no WebGL. That was an
+    // unhandled rejection: an empty frame and nothing on the page.
+    constructionFailure.next = new Error("Failed to initialize WebGL");
+    mockApi(baseRoutes(() => [chainLocation]));
+    renderApp("/catalog/vendors?view=map&place=location");
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/WebGL is turned off or unavailable/);
+    expect(alert).toHaveTextContent(/map_error: Failed to initialize WebGL/);
+    // The way round it is on the same screen.
+    expect(screen.getByLabelText("Coordinates")).toBeInTheDocument();
   });
 
   it("says the map failed only once, however many tiles fail", async () => {

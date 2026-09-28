@@ -107,7 +107,8 @@ function NewTokenPanel({ reveal, onDismiss }: { reveal: Reveal; onDismiss: () =>
         Token “{reveal.name}” created
       </h2>
       <p className="mt-1 text-sm text-green-900 dark:text-green-100">
-        Copy it now. It is shown once and cannot be retrieved later.
+        Copy it now. It is shown once and cannot be retrieved later. Send it on each request as the header{" "}
+        <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>.
       </p>
       <output
         aria-label="Token"

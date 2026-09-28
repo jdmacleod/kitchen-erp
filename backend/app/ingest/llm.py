@@ -102,6 +102,57 @@ def parse_model_output[T: BaseModel](model_cls: type[T], content: str) -> T | No
         return None
 
 
+def rejection_reason[T: BaseModel](model_cls: type[T], content: str) -> str:
+    """Why a reply did not validate, in schema terms only: never the reply's text.
+
+    Field paths and pydantic error types name the schema, not the receipt, so they
+    can go to the log. Without them "model output rejected" three times in a row
+    says a receipt failed and nothing about whether the model truncated its JSON,
+    returned a list, or wrote a price as words.
+    """
+    try:
+        data = json.loads(content, parse_float=Decimal)
+    except (ValueError, TypeError):
+        return "not_json"
+    if not isinstance(data, dict):
+        return f"not_object:{type(data).__name__}"
+    try:
+        model_cls.model_validate(data)
+    except ValidationError as exc:
+        errors = exc.errors(include_input=False, include_url=False, include_context=False)
+        # Only positions and schema field names: a key the model invented is
+        # reported as extra, not by name, since it could be receipt text.
+        parts = []
+        for error in errors[:5]:
+            loc = ".".join(
+                str(p) if isinstance(p, int) or p in _schema_fields(model_cls) else "?"
+                for p in error["loc"]
+            )
+            parts.append(f"{loc}:{error['type']}")
+        more = f" (+{len(errors) - 5} more)" if len(errors) > 5 else ""
+        return "; ".join(parts) + more
+    return "valid"
+
+
+def _schema_fields(model_cls: type[BaseModel]) -> set[str]:
+    """Every field name reachable from a model, nested models included."""
+    names: set[str] = set()
+    pending = [model_cls]
+    seen: set[type] = set()
+    while pending:
+        cls = pending.pop()
+        if cls in seen:
+            continue
+        seen.add(cls)
+        for name, field in cls.model_fields.items():
+            names.add(name)
+            for arg in (field.annotation, *getattr(field.annotation, "__args__", ())):
+                for inner in (arg, *getattr(arg, "__args__", ())):
+                    if isinstance(inner, type) and issubclass(inner, BaseModel):
+                        pending.append(inner)
+    return names
+
+
 class LlmClient:
     def __init__(
         self,
@@ -210,7 +261,11 @@ class LlmClient:
                 return parsed, attempts
             log.info(
                 "model output rejected",
-                extra={"schema": model_cls.__name__, "attempt": attempts},
+                extra={
+                    "schema": model_cls.__name__,
+                    "attempt": attempts,
+                    "reason": rejection_reason(model_cls, content),
+                },
             )
         raise InvalidModelOutput()
 

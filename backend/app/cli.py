@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from pathlib import Path
 
 import typer
@@ -91,23 +92,62 @@ def downgrade(revision: str = typer.Argument("-1")) -> None:
 
 @cli.command("create-admin")
 def create_admin(
-    email: str = typer.Option(..., prompt=True),
-    display_name: str = typer.Option(..., prompt=True),
-    password: str = typer.Option(..., prompt=True, hide_input=True, confirmation_prompt=True),
+    email: str | None = typer.Option(None, help="Prompted for when omitted."),
+    display_name: str | None = typer.Option(None, help="Prompted for when omitted."),
+    password: str | None = typer.Option(None, help="Prompted for (twice, hidden) when omitted."),
 ) -> None:
     """Create the first administrator (or another one)."""
+    from pydantic import ValidationError
+
     from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.schemas.identity import UserCreate
     from app.services import identity
 
-    async def _run() -> None:
-        async with get_sessionmaker()() as db:
-            user = await identity.create_user(
-                db, email=email, display_name=display_name, password=password, role="admin"
-            )
-            typer.echo(f"created admin {user.email} ({user.id})")
-        await dispose_engine()
+    if None in (email, display_name, password) and not sys.stdin.isatty():
+        # `exec -T` and scripts have no terminal to prompt on; say what to pass
+        # instead of click's bare "Aborted.".
+        typer.echo(
+            "error: no terminal to prompt on; pass --email, --display-name and --password",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if email is None:
+        email = typer.prompt("Email")
+    if display_name is None:
+        display_name = typer.prompt("Display name")
+    if password is None:
+        password = typer.prompt("Password", hide_input=True, confirmation_prompt=True)
 
-    asyncio.run(_run())
+    # The same rules as POST /users, so the CLI cannot create an account the API
+    # would have refused (an address that is not one, a one-character password).
+    try:
+        fields = UserCreate(email=email, display_name=display_name, password=password)
+    except ValidationError as exc:
+        for problem in exc.errors():
+            field = str(problem["loc"][0]).replace("_", "-")
+            typer.echo(f"error: --{field}: {problem['msg']}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    async def _run() -> None:
+        try:
+            async with get_sessionmaker()() as db:
+                user = await identity.create_user(
+                    db,
+                    email=fields.email,
+                    display_name=fields.display_name,
+                    password=fields.password,
+                    role="admin",
+                )
+                typer.echo(f"created admin {user.email} ({user.id})")
+        finally:
+            await dispose_engine()
+
+    try:
+        asyncio.run(_run())
+    except ApiError as exc:
+        typer.echo(f"error: {exc.message}", err=True)
+        raise typer.Exit(code=1) from exc
 
 
 @cli.command()
@@ -277,11 +317,17 @@ def import_purchases(
     from sqlalchemy import select
 
     from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
     from app.models import AppUser
     from app.services.importer import import_export, load_export
 
-    async def _run() -> None:
+    try:
         export = load_export(src)
+    except ApiError as exc:
+        typer.echo(f"error: {exc.message}", err=True)
+        raise typer.Exit(code=1) from exc
+
+    async def _run() -> None:
         async with get_sessionmaker()() as db:
             user = (
                 await db.execute(select(AppUser).where(AppUser.email == user_email.lower()))
@@ -300,6 +346,16 @@ def import_purchases(
             f"imported {result['created']} purchase(s), skipped {result['skipped']} already "
             f"present, {result['unlocated']} without a matching location"
         )
+        if result["unlocated"]:
+            # Otherwise a first import reports three numbers, imports nothing, and
+            # leaves no clue what a "matching location" is.
+            typer.echo(
+                f"{result['unlocated']} transaction(s) matched no location of "
+                f"{export.retailer!r}. Give that vendor one location (a vendor with a "
+                "single location is used automatically), pass --location <location id>, "
+                "or add the store code to a location's receipt_identifiers through the API.",
+                err=True,
+            )
 
     asyncio.run(_run())
 

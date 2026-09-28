@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
-import { REDIRECTS } from "../App";
+import { REDIRECTS, SECTION_ROOTS } from "../App";
 import type { SearchResults } from "../api/search";
 import { DEFAULT_FEATURES, FOOTER_SECTIONS, MAIN_SECTIONS, visibleSections, type NavSection } from "../components/Nav";
 import { RedirectTo } from "../components/RedirectTo";
@@ -123,6 +123,19 @@ describe("redirects from the retired paths (UI-2.3)", () => {
     expect(REDIRECTS.map((r) => r.from)).toEqual(
       expect.arrayContaining(["/map", "/compare", "/to-identify", "/price-book/needs-bridge", "/settings/home-bases"]),
     );
+  });
+
+  it("opens a section's first page from the section's own path", () => {
+    expect(SECTION_ROOTS).toEqual([
+      { from: "/shop", to: "/shop/purchases" },
+      { from: "/catalog", to: "/catalog/ingredients" },
+      { from: "/settings", to: "/settings/kitchens" },
+    ]);
+  });
+
+  it("lands on a section's first page in the real app", async () => {
+    mount({}, "/settings");
+    expect(await screen.findByRole("heading", { name: "Kitchens" })).toBeInTheDocument();
   });
 
   it("lands on the page in the real app", async () => {

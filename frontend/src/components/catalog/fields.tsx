@@ -116,9 +116,10 @@ const badgeTones = {
 
 export type BadgeTone = keyof typeof badgeTones;
 
-export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; children: ReactNode }) {
+/** `wrap` lets a long label break across lines, for badges inside a narrow table column. */
+export function Badge({ tone = "neutral", wrap = false, children }: { tone?: BadgeTone; wrap?: boolean; children: ReactNode }) {
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badgeTones[tone]}`}>
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${wrap ? "whitespace-normal" : "whitespace-nowrap"} ${badgeTones[tone]}`}>
       {children}
     </span>
   );

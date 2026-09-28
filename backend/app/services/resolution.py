@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -24,6 +24,7 @@ from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.models import (
     AppUser,
+    IngestJob,
     Ingredient,
     PriceObservation,
     PriceObservationVoid,
@@ -496,6 +497,13 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
         elif current is not None:
             await pricebook.void(db, current.id, "line no longer resolved on recommit", user)
     purchase.status = "committed"
+    # The receipt's job is finished too; left at needs_review, the Receipts page
+    # kept offering "ready to review" for a purchase already in the price book.
+    await db.execute(
+        update(IngestJob)
+        .where(IngestJob.purchase_id == purchase.id, IngestJob.status == "needs_review")
+        .values(status="done", stage="committed")
+    )
     await db.commit()
     return await get_purchase(db, purchase_id)
 

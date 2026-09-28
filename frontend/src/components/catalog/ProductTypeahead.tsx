@@ -19,6 +19,8 @@ interface ProductTypeaheadProps {
   disabled?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   debounceMs?: number;
+  /** The text as typed, e.g. so "New product" can start from it. */
+  onTextChange?: (text: string) => void;
 }
 
 const matchLabel: Record<SearchHit["match"], string> = {
@@ -46,6 +48,7 @@ export function ProductTypeahead({
   disabled,
   inputRef,
   debounceMs = 150,
+  onTextChange,
 }: ProductTypeaheadProps) {
   const [text, setText] = useState("");
   const debounced = useDebouncedValue(text, debounceMs);
@@ -68,7 +71,10 @@ export function ProductTypeahead({
       hint={hint}
       listLabel="Products"
       inputValue={text}
-      onInputChange={setText}
+      onInputChange={(value) => {
+        setText(value);
+        onTextChange?.(value);
+      }}
       items={hits}
       getKey={(hit) => hit.id}
       status={status}

@@ -279,6 +279,40 @@ describe("vendors", () => {
     await user.click(within(list).getByRole("button", { name: "Confirm delete" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("This home base is the default for 2 locations. Reassign them first.");
   });
+
+  it("does not repeat the name as a label the API filled in", async () => {
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "HEAD /tiles/basemap.pmtiles": () => jsonResponse(404),
+      "GET /home-bases": () => jsonResponse(200, { items: [{ ...homeBase, label: homeBase.name }, { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", name: "Cabin", label: "weekend place" }] }),
+    });
+    renderApp("/settings/kitchens");
+    const list = await screen.findByRole("list", { name: "Home bases" });
+    expect(within(list).queryByText(`· ${homeBase.name}`)).not.toBeInTheDocument();
+    expect(within(list).getByText("· weekend place")).toBeInTheDocument();
+  });
+
+  it("creates a home base from typed coordinates, with no map click", async () => {
+    // Without WebGL, or from the keyboard, the map cannot be clicked at all; the
+    // vendor map already took coordinates and this page did not.
+    const calls = mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "HEAD /tiles/basemap.pmtiles": () => jsonResponse(404),
+      "GET /home-bases": () => jsonResponse(200, { items: [] }),
+      "POST /home-bases": (call) => jsonResponse(201, { ...homeBase, ...(call.body as object) }),
+    });
+    const user = userEvent.setup();
+    renderApp("/settings/kitchens");
+
+    await user.type(await screen.findByLabelText("Coordinates"), "33.25, -120.75");
+    await user.type(screen.getByLabelText("Name"), "The cabin");
+    await user.click(screen.getByRole("button", { name: "Create home base" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/home-bases")?.body).toEqual({ name: "The cabin", lat: "33.25", lon: "-120.75" }));
+    // The form is ready for the next one: no leftover pair without a pin.
+    await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue(""));
+  });
 });
 
 describe("the Vendors page (UI-3.7, UI-3.8, G11)", () => {

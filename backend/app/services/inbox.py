@@ -70,7 +70,8 @@ _FAILED_SQL = text(
 
 _READING_SQL = text(
     """
-    SELECT count(*) AS n, min(created_at) AS oldest_at
+    SELECT count(*) AS n, min(created_at) AS oldest_at,
+           (SELECT max(created_at) FROM ingest_stage_result) AS last_progress_at
     FROM ingest_job WHERE status IN ('pending', 'running')
     """
 )
@@ -90,7 +91,12 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
     items = []
     for r in (await db.execute(_RECEIPTS_SQL)).mappings():
         noun = "receipt" if r["source"] == "receipt" else "purchase"
-        if r["needs_location"]:
+        if r["item_lines"] == 0 and r["status"] != "reviewed":
+            # Choosing a location is not the job when nothing was read: the lines
+            # are, from the receipt image beside them.
+            detail = "No lines could be read. Add them from the receipt image."
+            action = "Add lines"
+        elif r["needs_location"]:
             detail = f"{_lines(r['item_lines'])} read. Choose where you shopped to commit it."
             action = "Choose location"
         elif r["status"] == "reviewed":
@@ -199,12 +205,18 @@ async def _bridges(db: AsyncSession) -> list[InboxItem]:
 
 async def _reading(db: AsyncSession) -> InboxReading:
     row = (await db.execute(_READING_SQL)).mappings().one()
-    oldest = row["oldest_at"]
+    oldest, progress = row["oldest_at"], row["last_progress_at"]
     stall = timedelta(minutes=get_settings().ingest_stall_minutes)
+    now = datetime.now(UTC)
+    # Stalled means nothing is moving, not that something has waited: a batch of
+    # receipts on a slow model keeps its last one waiting well past the limit
+    # while the worker finishes a stage every minute or two.
     return InboxReading(
         count=row["n"],
         oldest_at=oldest,
-        stalled=oldest is not None and datetime.now(UTC) - oldest > stall,
+        stalled=oldest is not None
+        and now - oldest > stall
+        and (progress is None or now - progress > stall),
     )
 
 
