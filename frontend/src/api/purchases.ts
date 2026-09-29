@@ -300,6 +300,7 @@ export const purchaseKeys = {
   purchase: (id: string) => ["purchases", "detail", id] as const,
   lastUnit: (productId: string) => ["products", "last-purchase-unit", productId] as const,
   toIdentify: ["to-identify"] as const,
+  storeCodeOffer: (id: string, locationId: string | null) => ["purchases", "store-code-offer", id, locationId] as const,
 };
 
 function invalidateObservations(client: QueryClient) {
@@ -496,6 +497,34 @@ export function usePatchPurchase(purchaseId: string) {
 
 export function useCommitPurchase(purchaseId: string) {
   return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/commit`, { method: "POST" }));
+}
+
+/** A store code the receipt printed that review may remember on its location (1F, design D10). */
+export interface StoreCodeOffer {
+  code: string;
+  location_id: string;
+  location_name: string;
+  /** The receipt line it was printed on, other long numbers shown as ••••. */
+  printed_line: string;
+}
+
+/** Asked again whenever the saved location changes: the offer is for that location. */
+export function useStoreCodeOffer(purchaseId: string, locationId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: purchaseKeys.storeCodeOffer(purchaseId, locationId),
+    queryFn: () => api<{ offer: StoreCodeOffer | null }>(`/purchases/${enc(purchaseId)}/store-code-offer`),
+    select: (data) => data.offer,
+    enabled: enabled && locationId !== null,
+  });
+}
+
+export function useRememberStoreCode(purchaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (code: string) =>
+      api<StoreCodeOffer>(`/purchases/${enc(purchaseId)}/remember-store-code`, { method: "POST", body: { code } }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: ["vendor-locations"] }),
+  });
 }
 
 /** Another draft still waiting, for "Next draft" after a commit (G9); null when none. */

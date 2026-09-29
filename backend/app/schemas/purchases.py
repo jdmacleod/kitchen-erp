@@ -213,6 +213,24 @@ class PurchaseOut(ApiModel):
     removed_line_count: int | None = None
 
 
+class StoreCodeOfferOut(ApiModel):
+    """A store code review may remember on the purchase's location (1F, design D10)."""
+
+    code: str
+    location_id: uuid.UUID
+    location_name: str
+    # The receipt line it was printed on, other long numbers masked as ••••.
+    printed_line: str
+
+
+class StoreCodeOfferResponse(ApiModel):
+    offer: StoreCodeOfferOut | None
+
+
+class RememberStoreCodeIn(ApiModel):
+    code: str = Field(min_length=1, max_length=40)
+
+
 class RemovedOut(ApiModel):
     outcome: Literal["delete", "void"]
     photo_deleted: bool

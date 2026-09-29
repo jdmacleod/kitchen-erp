@@ -36,8 +36,11 @@ from app.schemas.purchases import (
     QueueApply,
     QueueList,
     RecomputeOut,
+    RememberStoreCodeIn,
     RemovalOut,
     RemovedOut,
+    StoreCodeOfferOut,
+    StoreCodeOfferResponse,
     VoidIn,
 )
 from app.services import (
@@ -48,6 +51,7 @@ from app.services import (
     removal,
     resolution,
     review,
+    store_codes,
 )
 
 router = APIRouter(tags=["purchases"])
@@ -347,6 +351,32 @@ async def remove_purchase(purchase_id: uuid.UUID, user: CurrentUser, db: DbSessi
         photo_deleted=done.photo_deleted,
         purchase=await purchase_out(db, done.purchase) if done.purchase is not None else None,
     )
+
+
+def _offer_out(offer: store_codes.StoreCodeOffer) -> StoreCodeOfferOut:
+    return StoreCodeOfferOut(
+        code=offer.code,
+        location_id=offer.location_id,
+        location_name=offer.location_name,
+        printed_line=offer.printed_line,
+    )
+
+
+@router.get("/purchases/{purchase_id}/store-code-offer", response_model=StoreCodeOfferResponse)
+async def store_code_offer(
+    purchase_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> StoreCodeOfferResponse:
+    """The store code the receipt printed, when review may offer to remember it (1F)."""
+    offer = await store_codes.get_offer(db, purchase_id)
+    return StoreCodeOfferResponse(offer=_offer_out(offer) if offer is not None else None)
+
+
+@router.post("/purchases/{purchase_id}/remember-store-code", response_model=StoreCodeOfferOut)
+async def remember_store_code(
+    purchase_id: uuid.UUID, payload: RememberStoreCodeIn, _: CurrentUser, db: DbSession
+) -> StoreCodeOfferOut:
+    """Append the offered code to the purchase's location; 409 if it is no longer offered."""
+    return _offer_out(await store_codes.remember(db, purchase_id, payload.code))
 
 
 @router.get("/products/{product_id}/last-purchase-unit", response_model=LastUnitOut)

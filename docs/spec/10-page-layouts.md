@@ -52,7 +52,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - Meta line: lines read, the receipt total, and how many lines are matched.
   - Primary: "Commit purchase". It stays disabled with a reason ("Choose where you shopped to commit") until a location is set.
 - **Where you shopped:** location candidates read from the receipt as chips, plus "Somewhere else…".
-  - Once a location is saved, if the header read a store code that location lacks, a line offers "Remember store code {code}" (1F).
+  - Once a location is saved, if the header read a store code that location lacks, a quiet line under the location offers it (1F): "Printed on this receipt:" and the printed line in monospace, with other long numbers shown as ••••, then "Remember {code} for {location}". It is offered only for a code that reads like a store number: printed in the top quarter of the receipt, on a line that names no member, card, loyalty, rewards, account or phone, and held by no other branch of the vendor. Saving reads "Remembered {code} for {location}." in place; a failure says why and keeps the button. It is not offered once the purchase is committed.
 - **Lines:**
   - A segmented filter: "Needs you n" and "All n".
   - Columns: what the receipt says (monospace), what it was read as (quantity × price), and the product. The product column shows either suggestions as soft buttons or "Choose a product" / "Ignore line".

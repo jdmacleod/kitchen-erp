@@ -171,7 +171,7 @@ class LocationMatch:
         }
 
 
-def _identifier_in_text(identifier: str, text: str) -> bool:
+def identifier_in_text(identifier: str, text: str) -> bool:
     pattern = r"(?<![A-Za-z0-9])" + re.escape(identifier) + r"(?![A-Za-z0-9])"
     return re.search(pattern, text, flags=re.IGNORECASE) is not None
 
@@ -217,7 +217,7 @@ async def match_location(
             ident = identifier.strip()
             if not ident:
                 continue
-            if (wanted and ident.lower() == wanted) or _identifier_in_text(ident, receipt_text):
+            if (wanted and ident.lower() == wanted) or identifier_in_text(ident, receipt_text):
                 candidate(location).identifier = ident
                 break
 
