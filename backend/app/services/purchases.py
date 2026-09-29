@@ -62,15 +62,18 @@ def _purchase_query():
     )
 
 
-async def get_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
+async def get_purchase(db: AsyncSession, purchase_id: uuid.UUID, *, lock: bool = False) -> Purchase:
+    """The purchase with its lines; ``lock`` holds its row until the transaction ends.
+
+    Every change to a purchase locks it first, so a removal and an edit that
+    would record a price cannot interleave: whichever comes second waits, then
+    sees what the first did (a voided purchase, or the new price to void).
+    """
+    stmt = _purchase_query().where(Purchase.id == purchase_id)
+    if lock:
+        stmt = stmt.with_for_update(of=Purchase)
     row = (
-        (
-            await db.execute(
-                _purchase_query()
-                .where(Purchase.id == purchase_id)
-                .execution_options(populate_existing=True)
-            )
-        )
+        (await db.execute(stmt.execution_options(populate_existing=True)))
         .unique()
         .scalar_one_or_none()
     )
@@ -301,7 +304,7 @@ async def update_manual(
     is new, and a saved line missing from the body is removed (#72). Matching by
     position would overwrite every line after a removed one with its neighbour.
     """
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     ensure_not_voided(purchase)
     if purchase.source not in ("manual", "import"):
         raise ApiError(

@@ -7,6 +7,7 @@ preview on the purchase always says what removing will then do.
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
@@ -182,3 +183,93 @@ async def test_list_items_leave_the_detail_fields_empty(admin_client):
     item = (await admin_client.get("/api/v1/purchases")).json()["items"][0]
     assert item["removal"] is None and item["removed_line_count"] is None
     assert all(ln["recorded"] is None for ln in item["lines"])
+
+
+# --- races (review of #83) -------------------------------------------------------
+
+
+async def test_a_removal_waits_for_an_edit_and_voids_the_price_it_recorded(admin_client, admin):
+    """An edit recording a price while the purchase is being removed must not
+    leave that price live: the removal waits for it, then voids it too."""
+    from decimal import Decimal
+
+    from sqlalchemy import select
+
+    from app.models import PriceObservation, PurchaseLine
+    from app.services import pricebook
+    from app.services.purchases import get_purchase
+
+    p = await _manual(admin_client, 1)
+    maker = get_sessionmaker()
+    async with maker() as editing, maker() as removing:
+        purchase = await get_purchase(editing, uuid.UUID(p["id"]), lock=True)
+        line = purchase.lines[0]
+        racing = asyncio.create_task(removal.remove_purchase(removing, admin, purchase.id))
+        await asyncio.sleep(0.3)
+        assert not racing.done(), "the removal should wait on the purchase row"
+        # What re-pointing the line does: void its price, record a new one.
+        await pricebook.void(
+            editing, uuid.UUID(p["lines"][0]["observation_id"]), "re-pointed", admin
+        )
+        await pricebook.observe(
+            editing,
+            product_id=line.product_id,
+            vendor_location_id=purchase.vendor_location_id,
+            price=Decimal("2.50"),
+            qty=Decimal("1"),
+            unit="each",
+            source="manual",
+            entered_by=admin,
+            purchase_line_id=line.id,
+        )
+        await editing.commit()
+        done = await racing
+        assert done.outcome == "void"
+
+    async with maker() as check:
+        stmt = (
+            select(PriceObservation)
+            .join(PurchaseLine, PurchaseLine.id == PriceObservation.purchase_line_id)
+            .where(PurchaseLine.purchase_id == uuid.UUID(p["id"]))
+        )
+        observations = (await check.execute(stmt)).unique().scalars().all()
+        assert len(observations) == 2
+        assert all(o.void is not None for o in observations)
+        # The one it voided itself says so.
+        assert {o.void.reason for o in observations} == {"re-pointed", "purchase removed"}
+
+
+async def test_a_receipt_uploaded_again_before_its_photo_goes_keeps_it(
+    admin_client, receipts_dir: Path
+):
+    """The photo is deleted after the commit; an upload in between revives the
+    job, and the deletion must then leave the photo it wrote alone."""
+    from app.models import ReceiptDocument
+
+    upload, pid = await receipt_draft(admin_client, "revive-race")
+    photo = stored_photo(receipts_dir, upload["document"])
+    async with get_sessionmaker()() as db:
+        purchase = await removal.get_purchase(db, uuid.UUID(pid), lock=True)
+        plan = await removal.removal_plan(db, purchase, lock=True)
+        await removal._delete(db, purchase, plan.job)
+        await db.commit()
+        # The same file arrives again before the photo is deleted.
+        again = await ih.upload(admin_client, ih.png_bytes("revive-race"))
+        assert again.json()["revived"] is True
+        document = await db.get(ReceiptDocument, uuid.UUID(upload["document"]["id"]))
+        assert await removal.delete_photo(db, document) is False
+    assert photo.is_file()
+
+
+async def test_a_removed_receipt_image_is_not_served_even_if_its_file_remains(
+    admin_client, receipts_dir: Path
+):
+    upload, pid = await receipt_draft(admin_client, "left-behind")
+    photo = stored_photo(receipts_dir, upload["document"])
+    data = photo.read_bytes()
+    assert (await _remove(admin_client, pid)).status_code == 200
+    # As if deleting the file had failed.
+    photo.parent.mkdir(parents=True, exist_ok=True)
+    photo.write_bytes(data)
+    r = await admin_client.get(f"/api/v1/receipts/{upload['document']['id']}/image")
+    assert r.status_code == 404

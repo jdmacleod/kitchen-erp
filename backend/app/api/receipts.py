@@ -132,6 +132,11 @@ async def get_receipt_image(
     `width` asks for a PNG no wider than that, for a thumbnail in a list (#28).
     """
     document = await ingest.get_document(db, document_id)
+    job = await ingest.job_for_document(db, document.id)
+    if job is not None and job.status == "discarded":
+        # Removed: its photo is deleted, and if the delete failed it is still
+        # not shown (#74).
+        raise ApiError(404, "image_missing", "The stored image is missing.")
     path = document_path(document)
     if not path.is_file():
         raise ApiError(404, "image_missing", "The stored image is missing.")
