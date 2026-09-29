@@ -86,4 +86,18 @@ describe("price records on the product page", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(within(list).getByRole("button", { name: /^Void the \$4\.99/ })).toHaveFocus());
   });
+
+  it("links a price voided with its purchase to that purchase (#74)", async () => {
+    const removed = { ...fromPurchase, voided: true, void_reason: "purchase removed" };
+    mockApi({
+      ...routes({ voided: new Set() }),
+      "GET /price-observations": () => jsonResponse(200, { items: [removed], next_cursor: null }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/${flourProductId}`);
+    await screen.findByRole("list", { name: "Price records" });
+    await user.click(screen.getByLabelText("Show voided"));
+    const row = await screen.findByText(/Voided: purchase removed/);
+    expect(within(row).getByRole("link", { name: "Open the purchase" })).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
+  });
 });

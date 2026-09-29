@@ -89,7 +89,8 @@ describe("palette mirrors (lib/palette.ts)", () => {
 
 describe("status tones (spec 08)", () => {
   it("gives each purchase status its own meaning", () => {
-    // Draft waits on a person (squash), Reviewed is neutral (T14), Committed is done (olive).
-    expect(purchaseStatusTone).toEqual({ draft: "warn", reviewed: "neutral", committed: "good" });
+    // Draft waits on a person (squash), Reviewed is neutral (T14), Committed is done
+    // (olive), and Voided is neutral: a removed purchase needs nobody (#74).
+    expect(purchaseStatusTone).toEqual({ draft: "warn", reviewed: "neutral", committed: "good", voided: "neutral" });
   });
 });

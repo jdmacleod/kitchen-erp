@@ -56,6 +56,8 @@ export interface ReceiptDocument {
 export interface ReceiptUploadResult {
   document: ReceiptDocument;
   job: IngestJob;
+  /** This receipt was removed before and is being read again (#74). */
+  revived?: boolean;
 }
 
 export const ingestKeys = {
@@ -136,6 +138,29 @@ export function useJobToManual() {
       // source to manual. That purchase may already be cached from the review
       // screen, so clearing only the lists would leave its detail showing lines
       // that no longer exist.
+      invalidatePurchases(client, "all");
+    },
+  });
+}
+
+/**
+ * Remove a receipt that couldn't be read, with its draft if it has one (#74).
+ * A 404 means it is already gone, which is what was asked for.
+ */
+export function useRemoveJob() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<{ photo_deleted: boolean }> => {
+      try {
+        return await api<{ photo_deleted: boolean }>(`/ingest-jobs/${enc(id)}/remove`, { method: "POST" });
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return { photo_deleted: false };
+        throw e;
+      }
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ingestKeys.jobs });
+      void client.invalidateQueries({ queryKey: ["inbox"] });
       invalidatePurchases(client, "all");
     },
   });

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { jobInFlight, useIngestJobs, type IngestJob } from "../../api/ingest";
 import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseStatus } from "../../api/purchases";
@@ -33,13 +33,22 @@ function countLabel(n: number, more: boolean): string {
 export function PurchasesPage() {
   usePageTitle("Purchases");
   const [filter, setFilter] = useState<Filter>("all");
-  const status = filter === "all" ? "" : filter;
+  // Removed purchases are a separate view, kept in the URL (#74, D6), so the
+  // segments stay the four statuses a person works with.
+  const [params, setParams] = useSearchParams();
+  const voidedView = params.get("status") === "voided";
+  const showAll = () => setParams({}, { replace: true });
+  const status = voidedView ? "voided" : filter === "all" ? "" : filter;
   const purchases = usePurchases({ status });
   const items = purchases.data?.pages.flatMap((p) => p.items) ?? [];
   // The Drafts count, from the first page of drafts.
   const drafts = usePurchases({ status: "draft" });
   const draftPage = drafts.data?.pages[0];
   const draftCount = draftPage ? countLabel(draftPage.items.length, Boolean(draftPage.next_cursor)) : null;
+  // The same for removed purchases, for the "Show voided" link.
+  const voided = usePurchases({ status: "voided" });
+  const voidedPage = voided.data?.pages[0];
+  const voidedCount = voidedPage && voidedPage.items.length > 0 ? countLabel(voidedPage.items.length, Boolean(voidedPage.next_cursor)) : null;
   // Receipts in flight belong with the drafts they are about to become. Asked
   // for by status, so an old upload still being read is never paged out by
   // newer finished ones.
@@ -48,7 +57,7 @@ export function PurchasesPage() {
   const inFlight = [...(pendingJobs.data ?? []), ...(runningJobs.data ?? [])].filter(jobInFlight);
   // A job that has already made its draft is listed as that draft.
   const readingJobs = inFlight.filter((j) => !j.purchase_id).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-  const showsReading = filter === "all" || filter === "draft";
+  const showsReading = !voidedView && (filter === "all" || filter === "draft");
   const reading = showsReading ? readingJobs : [];
   // Could not check: never claim there is nothing being read (CLAUDE.md: an
   // error is never an empty state).
@@ -70,7 +79,7 @@ export function PurchasesPage() {
 
   return (
     <>
-      <PageHeader title="Purchases" description="Everything you've bought, newest first. Drafts wait for you to finish them.">
+      <PageHeader title="Purchases" description="Everything you've bought, newest first. Drafts wait for you to finish them. Removed purchases are under Voided.">
         <div className="flex flex-wrap gap-2">
           <Link to="/shop/receipts" className={secondaryLinkClass}>
             Scan a receipt
@@ -82,7 +91,7 @@ export function PurchasesPage() {
       </PageHeader>
 
       {/* The phone's drafts banner (10, Phone: purchases): one tap to the drafts. */}
-      {filter === "all" && draftPage && draftPage.items.length > 0 ? (
+      {filter === "all" && !voidedView && draftPage && draftPage.items.length > 0 ? (
         <button
           type="button"
           onClick={() => setFilter("draft")}
@@ -97,18 +106,24 @@ export function PurchasesPage() {
 
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">All purchases</h2>
-          <SegmentedControl
-            label="Status"
-            options={[
-              { value: "all", label: "All" },
-              { value: "draft", label: draftCount ? `Drafts ${draftCount}` : "Drafts" },
-              { value: "reviewed", label: purchaseStatusLabel.reviewed },
-              { value: "committed", label: purchaseStatusLabel.committed },
-            ]}
-            value={filter}
-            onChange={setFilter}
-          />
+          <h2 className="text-lg font-medium">{voidedView ? "Voided purchases" : "All purchases"}</h2>
+          {voidedView ? (
+            <Button variant="secondary" onClick={showAll}>
+              Back to all
+            </Button>
+          ) : (
+            <SegmentedControl
+              label="Status"
+              options={[
+                { value: "all", label: "All" },
+                { value: "draft", label: draftCount ? `Drafts ${draftCount}` : "Drafts" },
+                { value: "reviewed", label: purchaseStatusLabel.reviewed },
+                { value: "committed", label: purchaseStatusLabel.committed },
+              ]}
+              value={filter}
+              onChange={setFilter}
+            />
+          )}
         </div>
 
         {purchases.isPending ? (
@@ -124,7 +139,13 @@ export function PurchasesPage() {
           <EmptyState
             title={`No ${purchaseStatusLabel[status].toLowerCase()} purchases`}
             action={
-              <Button variant="secondary" onClick={() => setFilter("all")}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFilter("all");
+                  if (voidedView) showAll();
+                }}
+              >
                 Show all
               </Button>
             }
@@ -195,7 +216,9 @@ export function PurchasesPage() {
                       </td>
                       <td className="py-2 pr-3">{fromLabel(p)}</td>
                       <td className="py-2 pr-3 text-right tabular-nums">{itemLines(p).length}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{formatMoney(p.total ?? p.computed_total)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">
+                        <Total purchase={p} />
+                      </td>
                       <td className="py-2">
                         <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
                       </td>
@@ -237,7 +260,9 @@ export function PurchasesPage() {
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-sm font-semibold tabular-nums">{formatMoney(p.total ?? p.computed_total)}</span>
+                        <span className="text-sm font-semibold tabular-nums">
+                          <Total purchase={p} />
+                        </span>
                         <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
                       </span>
                     </Link>
@@ -254,9 +279,23 @@ export function PurchasesPage() {
             ) : null}
           </>
         )}
+        {!voidedView && voidedCount ? (
+          <p className="mt-3 text-sm">
+            <Link to="?status=voided" className={`${tapTarget} rounded underline ${focusRing}`}>
+              Show voided ({voidedCount})
+            </Link>
+          </p>
+        ) : null}
       </Card>
     </>
   );
+}
+
+/** The total; a voided purchase's is struck through, since it no longer counts (D18). */
+function Total({ purchase: p }: { purchase: Purchase }) {
+  const amount = formatMoney(p.total ?? p.computed_total);
+  if (p.status !== "voided") return <>{amount}</>;
+  return <s className="font-normal text-neutral-600 dark:text-neutral-400">{amount}</s>;
 }
 
 function JobsFailed({ onRetry }: { onRetry: () => void }) {

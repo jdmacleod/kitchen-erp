@@ -10,6 +10,8 @@ const buttonVariants = {
     "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
   danger:
     "border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:bg-neutral-900 dark:text-red-300 dark:hover:bg-red-950",
+  // The one confirming button of a destructive action (remove a purchase, #74).
+  dangerFill: "bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50 dark:hover:bg-red-800",
   ghost:
     "text-neutral-700 hover:bg-neutral-200 disabled:opacity-50 dark:text-neutral-300 dark:hover:bg-neutral-800",
 } as const;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link } from "react-router";
+import { RemovedLinesCaption } from "./RemovePurchase";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
 import { useLocations } from "../../api/geo";
 import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
@@ -405,6 +406,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                 ))}
               </ul>
             )}
+            <RemovedLinesCaption purchase={purchase} />
             <Disclosure summary="Add a line" className="mt-3">
               <AddLineForm itemLines={itemLines} busy={busy} onAdd={(input) => addLine.mutate(input)} />
             </Disclosure>
@@ -839,6 +841,34 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
 function LineActions({ line, picking, editing, busy, onOpenPicker, onIgnore, onReResolve, onEdit, onDelete, touch }: LinePartProps & { touch?: boolean }) {
   const size = touch ? "min-h-11 px-3 text-sm" : "min-h-7 px-2 text-xs";
   const resolution = line.resolution as Resolution | null;
+  // A line that reached the price book asks first: deleting it voids its
+  // price (#72, D12). One that never did still goes in one click.
+  const [confirming, setConfirming] = useState(false);
+  const keep = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirming) keep.current?.focus();
+  }, [confirming]);
+  if (confirming) {
+    return (
+      <div role="group" aria-label={`Delete line ${line.seq}`} className="flex flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950">
+        <span className="text-sm">Delete line {line.seq}? Its price is voided.</span>
+        <Button variant="danger" className={size} disabled={busy} onClick={onDelete}>
+          Delete
+        </Button>
+        <Button
+          ref={keep}
+          variant="secondary"
+          className={size}
+          onClick={() => {
+            setConfirming(false);
+            document.getElementById(`review-line-${line.id}`)?.focus();
+          }}
+        >
+          Keep it
+        </Button>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap gap-1">
       {line.line_kind === "item" ? (
@@ -859,7 +889,13 @@ function LineActions({ line, picking, editing, busy, onOpenPicker, onIgnore, onR
       <Button variant="ghost" className={size} disabled={busy || editing} onClick={onEdit}>
         Edit
       </Button>
-      <Button variant="ghost" className={`${size} text-red-700 dark:text-red-300`} disabled={busy} onClick={onDelete} aria-label={`Delete line ${line.seq}`}>
+      <Button
+        variant="ghost"
+        className={`${size} text-red-700 dark:text-red-300`}
+        disabled={busy}
+        onClick={line.recorded ? () => setConfirming(true) : onDelete}
+        aria-label={`Delete line ${line.seq}`}
+      >
         Delete
       </Button>
     </div>
