@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 
 import httpx
@@ -34,6 +35,17 @@ async def test_import_and_suggest(admin_client, db_session, tmp_path: Path):
     assert [d["from_portion"] for d in garlic["densities"]] == ["1 teaspoon"]
 
     # Re-import replaces rather than duplicates.
+    assert await import_portions(db_session, tmp_path / "fdc") == 5
+
+
+async def test_import_skips_portions_with_no_food(db_session, tmp_path: Path):
+    # The 2026-04 download ends with portion rows that name no food: id,
+    # sequence, amount and grams only. One of them used to abort the whole
+    # import with int('').
+    await seed_units_via_service(db_session)
+    write_usda_fixture(tmp_path / "fdc")
+    with (tmp_path / "fdc" / "food_portion.csv").open("a", newline="") as fh:
+        csv.writer(fh).writerow([8, "", 1, 1, "", "", "", 50, 3, "", ""])
     assert await import_portions(db_session, tmp_path / "fdc") == 5
 
 
