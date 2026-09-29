@@ -157,6 +157,7 @@ These are patterns, not a component library; build them as the pages need them.
   - Committed: olive.
   - Reading: neutral (G1).
   - Couldn't read: tomato (G5).
+  - Voided: neutral (#74). In the purchases list, a voided row's total is struck through in `neutral-600`.
 - **Segmented control**: oat track with a raised warm-white selected segment. Used for small enumerations such as vendor kind, purchase status, and the list/map toggle.
 - **Drawer**: a right-side panel, 460px wide on desktop, `rounded-xl`, with a sticky footer holding Cancel and the primary action. It keeps focus inside while open, closes on Escape and Cancel, and returns focus to the button that opened it.
   - **Unsaved input (D5):** when the form holds typed input, Escape, a backdrop click and Cancel don't close it. They show an inline squash bar in the footer, "Discard this {thing}? What you typed will be lost.", with Discard and Keep editing. Keep editing takes focus.

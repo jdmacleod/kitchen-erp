@@ -37,6 +37,8 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 
 - **Header:** "Purchases", with secondary "Scan a receipt" and primary "New purchase" (UI-2.14).
 - **Filter:** a status segmented control: All, Drafts (with a count), Reviewed, Committed. Newest first.
+  - All excludes voided purchases, and the page description adds "Removed purchases are under Voided".
+  - When voided purchases exist, a link under the list, "Show voided ({n})", sets `?status=voided`. The count uses the first page, like Drafts, capped as "50+". That view offers "Back to all".
 - **Table:** Date, Where, From (Receipt / By hand), Lines, Total and Status.
   - A draft without a location reads "Location needed" in squash.
   - Receipts being read appear as rows with a Reading pill (G1).
@@ -61,6 +63,46 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - "Needs you" lines come first.
   - Commit is anchored in the thumb zone.
   - The keyboard shortcuts are hidden.
+
+## Removing lines and purchases (#72, #74)
+
+Behaviour is in 04, 2H; this is what the screens say. The server's `removal` preview drives every sentence, so the page never predicts on its own.
+
+**Remove purchase, at the foot of the purchase page.**
+- A quiet section after the lines, headed "Remove this purchase". The header keeps Edit and Reopen on committed purchases, and review keeps Commit in its sticky bar.
+- The line under the heading depends on `removal.outcome`:
+  - void: "It's in the price book, so its {n} price(s) will be voided. This can't be undone yet."
+  - delete: "Nothing from it reached the price book, so it will be deleted, along with its receipt photo." Without a photo, the sentence ends at "deleted."
+- The trigger is a tomato-text secondary button, "Remove purchase".
+- **Confirm:** an inline tomato-tinted panel.
+  - It is a `role="group"` labelled by its heading, "Remove the {vendor or location} purchase from {date}?", or "Remove this {date} receipt?" when there is no location. The outcome sentence follows.
+  - The buttons are "Remove purchase" (tomato fill) and "Keep it". Opening moves focus to "Keep it", and "Keep it" returns focus to the trigger.
+  - While pending, the button reads "Removing…" and both are disabled.
+  - An error shows a tomato Alert inside the panel. The panel stays open, and focus moves to the Alert. A 404 on a repeated request counts as success.
+- **While reading:** "Remove purchase" is disabled, with the line "You can remove it once it's been read." A `409 still_reading` from a race shows the same sentence.
+- **After a delete:** the page replaces itself with Purchases and the Notice "Purchase removed.", adding " Its receipt photo was deleted." when one was. Opening the old link shows "This purchase doesn't exist. It may have been removed." with a link to Purchases, not an empty page.
+- **After a void:** the page stays and becomes the voided view, and focus moves to its Notice.
+
+**Voided purchase.**
+- Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove.
+- The first element is an info Notice (`role="status"`): "Removed {date} by {name}. Its {n} prices no longer count in the price book."
+- The lines table is read-only, and its Observation column reads "voided".
+
+**Removed lines.**
+- **Review:** Delete stays one click for a line that was never recorded. A recorded line asks inline in its row, "Delete line {n}? Its price is voided.", with Delete (tomato) and Keep it. Focus goes to Keep it, and back to the row on cancel. No keyboard shortcut deletes.
+- **Manual edit form:** when removed lines include recorded ones, a squash line above Save reads "Saving voids {n} price(s) from removed lines." The Notice after saving reads "Saved. {n} price(s) from removed lines were voided."
+- A muted caption, "{n} line(s) removed", sits under the lines table on the committed, voided and review views.
+
+**Receipts.**
+- A failed read with no purchase shows a tomato secondary "Remove" on its row. It confirms inline: "Remove this receipt? Its photo is deleted.", with Remove and Keep it.
+- Removed receipts don't appear. Uploading one again shows the Notice "This receipt was removed before; it's being read again."
+
+**Price records.** A voided price from a purchase shows "Voided: {reason}" and a link, "Open the purchase". The removal reasons are fixed text ("purchase removed", "line removed") and are not typed, by design.
+
+**Phone (below 1024px).**
+- The section starts with a divider and an h2, "Remove this purchase".
+- Its bottom padding is at least the sticky Commit bar plus the tab bar, so it scrolls fully clear.
+- Its buttons are full-width at 44px and stacked, with "Keep it" below "Remove purchase", nearest the thumb.
 
 ## Ingredient hub (Ingredient hub)
 
