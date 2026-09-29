@@ -1,9 +1,12 @@
 import csv
+from collections import Counter
+from decimal import Decimal
 from pathlib import Path
 
 import httpx
+import pytest
 
-from app.services.usda import import_portions
+from app.services.usda import _survey_measure, import_portions
 from tests.catalog_helpers import make_ingredient, seed_units_via_service, write_usda_fixture
 
 
@@ -46,7 +49,41 @@ async def test_import_skips_portions_with_no_food(db_session, tmp_path: Path):
     write_usda_fixture(tmp_path / "fdc")
     with (tmp_path / "fdc" / "food_portion.csv").open("a", newline="") as fh:
         csv.writer(fh).writerow([8, "", 1, 1, "", "", "", 50, 3, "", ""])
-    assert await import_portions(db_session, tmp_path / "fdc") == 5
+    skipped: Counter[str] = Counter()
+    assert await import_portions(db_session, tmp_path / "fdc", skipped) == 5
+    assert skipped == {"portion names no food": 1, "amount or grams missing or zero": 1}
+
+
+async def test_survey_portions_take_their_quantity_from_the_description(
+    admin_client, db_session, tmp_path: Path
+):
+    # Survey (FNDDS) portions leave `amount` blank, use the undetermined unit,
+    # write the whole measure in portion_description, and put a numeric
+    # portion code in `modifier`.
+    await seed_units_via_service(db_session)
+    fdc = tmp_path / "fdc"
+    write_usda_fixture(fdc)
+    with (fdc / "food.csv").open("a", newline="") as fh:
+        csv.writer(fh).writerow([1005, "survey_fndds_food", "Chicken salad", 25, "2024-10-31"])
+    with (fdc / "food_portion.csv").open("a", newline="") as fh:
+        w = csv.writer(fh)
+        w.writerow([9, 1005, 1, "", 9999, "1 cup", "10205", 225, "", "", ""])
+        w.writerow([10, 1005, 2, "", 9999, "1/2 cup", "10206", 110, "", "", ""])
+        w.writerow([11, 1005, 3, "", 9999, "Quantity not specified", "90000", 150, "", "", ""])
+    skipped: Counter[str] = Counter()
+    assert await import_portions(db_session, fdc, skipped) == 7
+    assert skipped == {
+        "survey measure has no leading quantity": 1,
+        "amount or grams missing or zero": 1,
+    }
+
+    r = await admin_client.get("/api/v1/usda/suggestions", params={"name": "chicken salad"})
+    salad = r.json()["items"][0]
+    assert salad["description"] == "Chicken salad"
+    assert {d["from_portion"]: d["density_g_per_ml"] for d in salad["densities"]} == {
+        "1 cup": "0.95102",  # 225 g / 236.5882365 ml
+        "1/2 cup": "0.92989",  # 110 g / half of that
+    }
 
 
 async def test_accepted_suggestion_is_unconfirmed_until_confirmed(
@@ -70,3 +107,20 @@ async def test_accepted_suggestion_is_unconfirmed_until_confirmed(
     assert r.json()["confirmed"] is False
     confirmed = await admin_client.post(f"/api/v1/ingredients/{ing['id']}/density/confirm")
     assert confirmed.json()["density_confirmed"] is True
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("1 cup", (Decimal(1), "cup")),
+        ("1/2 cup, diced", (Decimal(1) / Decimal(2), "cup, diced")),
+        ("1 1/2 cups", (Decimal(3) / Decimal(2), "cups")),
+        ("0.5 oz", (Decimal("0.5"), "oz")),
+        ("Quantity not specified", None),
+        ("1/0 cup", None),
+        ("0 cup", None),
+        ("2", None),
+    ],
+)
+def test_survey_measure_reads_only_a_leading_quantity(text, expected):
+    assert _survey_measure(text) == expected
