@@ -3530,7 +3530,9 @@
                 "address",
                 "opening_hours",
                 "phone",
-                "website"
+                "website",
+                "brand",
+                "wikidata"
               ],
               "type": "string"
             },
@@ -3544,7 +3546,9 @@
                 "address",
                 "opening_hours",
                 "phone",
-                "website"
+                "website",
+                "brand",
+                "wikidata"
               ],
               "type": "string"
             },

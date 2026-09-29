@@ -205,7 +205,9 @@ links reach outside the deployment, and only when switched on.
    being read show as Reading rows on Purchases.
 2. **Finish it from Home.** Each read receipt becomes an inbox item. On its page,
    check the header first: pick the store from the location candidates or the
-   Location list, correct the date and total from the receipt image, and press
+   Location list (a branch is picked for you when its store code, its own phone
+   number or its address is printed; link your stores to OpenStreetMap or import
+   their details so there is something to match), correct the date and total from the receipt image, and press
    Save header. A warning above the header says when the date or total was not
    read and is standing in.
 3. **Check the lines.** "Needs you" lists the lines to look at. Edit a line's

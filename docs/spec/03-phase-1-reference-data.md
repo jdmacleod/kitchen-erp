@@ -193,7 +193,7 @@ vendors:
 
 ### Receipt matching uses the new facts
 
-The header stage already reads the printed phone and address. `match_location` scores a phone match (digits only) like a store identifier, and address similarity alongside name similarity. Branches of a chain then stop tying, which is what #86 asks for.
+The header stage already reads the printed phone and address. `match_location` scores a phone match (digits only, a country code on one side allowed) like a store identifier, but only when the number belongs to exactly one active branch of its vendor: a number several branches share adds nothing and is recorded as `phone_shared`. Address similarity (trigram, 0.4 or better) counts alongside name similarity (weight 0.6 × similarity). With no phone or address on either side, ranking is exactly what it was. Branches of a chain then stop tying, which is what #86 asks for. In review, each candidate chip shows its branch's saved address.
 
 ### Acceptance criteria
 

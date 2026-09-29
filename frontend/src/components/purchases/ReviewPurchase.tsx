@@ -479,6 +479,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
   const jobId = jobs.data?.find((j) => j.purchase_id === purchase.id)?.id;
   const job = useIngestJob(jobId);
   const candidates = locationCandidates(job.data);
+  const addressOf = (id: string) => (locations.data ?? []).find((l) => l.id === id)?.address ?? null;
 
   const [form, setForm] = useState({
     vendor_location_id: purchase.vendor_location?.id ?? "",
@@ -537,7 +538,11 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
                   // in the request, yet "Saved." would follow it.
                   disabled={patch.isPending}
                 >
-                  {c.vendor_name === c.name ? c.name : `${c.vendor_name} — ${c.name}`}
+                  <span className="flex flex-col items-start text-left">
+                    <span>{c.vendor_name === c.name ? c.name : `${c.vendor_name} — ${c.name}`}</span>
+                    {/* Branches of one chain read alike; where each one is tells them apart (#86). */}
+                    {addressOf(c.location_id) ? <span className="text-xs font-normal">{addressOf(c.location_id)}</span> : null}
+                  </span>
                 </Button>
               </li>
             ))}

@@ -126,7 +126,7 @@ export interface OsmCandidate {
   already_adopted: boolean;
 }
 
-export type LinkedField = "name" | "address" | "opening_hours" | "phone" | "website";
+export type LinkedField = "name" | "address" | "opening_hours" | "phone" | "website" | "brand" | "wikidata";
 
 /** An OpenStreetMap object near a location's pin, and what linking it would change (1F). */
 export interface LinkCandidate {

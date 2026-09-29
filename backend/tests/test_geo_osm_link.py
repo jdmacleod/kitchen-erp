@@ -331,3 +331,21 @@ def test_the_refresh_command_needs_a_target_and_overpass():
     assert bare.exit_code == 2 and "--all-linked" in bare.output
     off = runner.invoke(cli, ["osm", "refresh", "--all-linked"])
     assert off.exit_code == 2 and "ENABLE_OVERPASS" in off.output
+
+
+async def test_linking_fills_the_vendors_brand_and_wikidata_while_empty(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
+):
+    overpass.elements = [mart(brand="Invented Mart", **{"brand:wikidata": "Q4242"})]
+    location = await pinned(admin_client)
+    fills = (await admin_client.get(url(location, "osm-candidates"))).json()["items"][0]["fills"]
+    assert {"brand", "wikidata"} <= set(fills)
+    await admin_client.post(url(location, "link-osm"), json={"osm_type": "node", "osm_id": 301})
+    vendor = (await admin_client.get(f"/api/v1/vendors/{location['vendor']['id']}")).json()
+    assert (vendor["brand"], vendor["wikidata"]) == ("Invented Mart", "Q4242")
+    assert vendor["sources"]["wikidata"]["ref"] == "node/301"
+
+
+def test_a_malformed_brand_wikidata_tag_is_dropped():
+    candidate = osm._candidate(mart(**{"brand:wikidata": "not an id"}))
+    assert candidate is not None and candidate.brand_wikidata is None

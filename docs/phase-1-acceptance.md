@@ -57,6 +57,7 @@ Compose stack and observing, with the command shown.
 | 69 (1F) | A malformed batch is 422; a valid batch changes no vendor; a proposal cannot be edited | `test_vendor_suggestions.py::test_a_malformed_batch_stores_nothing`, `::test_posting_changes_no_vendor_and_collapses_repeats`, `::test_proposals_cannot_be_edited_or_deleted` |
 | 70 (1F) | Accepting writes the value and its provenance; a field changed since proposed goes stale | `test_vendor_suggestions.py::test_accept_writes_the_value_and_its_source`, `::test_a_field_changed_since_proposed_goes_stale`; `frontend/src/test/suggestion-review.test.tsx` |
 | 71 (1F) | Pending suggestions are one inbox row, gone once decided | `test_vendor_suggestions.py::test_accept_writes_the_value_and_its_source` |
+| 72 (1F) | On synthetic receipts from a chain with three branches, the branch whose phone is printed is chosen without a click | `test_location_matching.py::test_the_branch_whose_phone_is_printed_is_chosen`, `::test_a_number_several_branches_share_decides_nothing`, `::test_a_matching_address_picks_the_branch`, `::test_without_phones_or_addresses_ranking_is_unchanged` (frozen-copy property test) |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
 criteria to 1A, then restarts at 13 for 1C and continues to 35; the second column
