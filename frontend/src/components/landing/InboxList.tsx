@@ -14,6 +14,7 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   receipt_failed: { label: "Couldn't read", tone: "danger" },
   identify: { label: "Identify", tone: "neutral" },
   bridge: { label: "Bridge", tone: "neutral" },
+  vendor_suggestions: { label: "Vendors", tone: "neutral" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */

@@ -25,7 +25,7 @@ async def create_token(
 ) -> JSONResponse:
     if guard.replay is not None:
         return guard.replay
-    token, plaintext = await identity.create_api_token(db, user, payload.name)
+    token, plaintext = await identity.create_api_token(db, user, payload.name, payload.scopes)
     body = ApiTokenCreated(token=ApiTokenOut.model_validate(token), plaintext=plaintext)
     return await guard.commit(201, body.model_dump(mode="json"))
 

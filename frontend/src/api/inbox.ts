@@ -3,7 +3,7 @@ import { api } from "./client";
 
 /** The unified inbox (docs/spec/09, Unified inbox). */
 
-export type InboxKind = "receipt" | "receipt_failed" | "identify" | "bridge";
+export type InboxKind = "receipt" | "receipt_failed" | "identify" | "bridge" | "vendor_suggestions";
 
 export interface InboxItem {
   kind: InboxKind;

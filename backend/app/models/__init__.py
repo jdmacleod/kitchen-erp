@@ -20,6 +20,9 @@ from app.models import geo as _geo  # noqa: F401  isort: skip
 # Assigns vendor slugs and location keys on every flush that creates one (1F).
 from app.models import keys as _keys  # noqa: F401  isort: skip
 
+# Vendor suggestions (1F) register with Base on import.
+from app.models import suggestions as _suggestions  # noqa: F401  isort: skip
+
 __all__ = [
     "ApiToken",
     "AppUser",

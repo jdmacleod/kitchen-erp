@@ -27,7 +27,9 @@ import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
 import { Drawer } from "../../components/Drawer";
+import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
 import { VendorImportDrawer } from "../../components/geo/VendorImportDrawer";
+import { useSuggestionSummary } from "../../api/suggestions";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { formatDate } from "../../lib/format";
@@ -73,6 +75,8 @@ export function VendorsPage() {
   const [finding, setFinding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
+  // The inbox row links here with ?suggestions=1 (design D3).
+  const reviewing = params.get("suggestions") === "1";
   const [more, setMore] = useState(false);
   // Below 1024px the three secondary actions share one "More" button (design D15).
   const wide = useMediaQuery(LG_QUERY);
@@ -101,6 +105,7 @@ export function VendorsPage() {
         </div>
       </PageHeader>
 
+      <SuggestionsLine onReview={() => setParam("suggestions", "1")} />
       <div className="mb-4">
         <SegmentedControl
           label="View"
@@ -123,6 +128,7 @@ export function VendorsPage() {
       {finding ? <FindNearbyDialog onClose={() => setFinding(false)} /> : null}
       {exporting ? <ExportDialog onClose={() => setExporting(false)} /> : null}
       {importing ? <VendorImportDrawer onClose={() => setImporting(false)} /> : null}
+      {reviewing ? <SuggestionReviewDrawer onClose={() => setParam("suggestions", null)} /> : null}
       {more ? (
         <MoreDialog
           actions={secondary.map((a) => ({
@@ -355,6 +361,25 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
 }
 
 /** Find nearby: the OpenStreetMap adoption flow in a dialog (UI-3.8). */
+/** "{n} suggestions from {tool} to review · Review" above the list (spec 10, 1F). */
+function SuggestionsLine({ onReview }: { onReview: () => void }) {
+  const summary = useSuggestionSummary();
+  const n = summary.data?.count ?? 0;
+  if (n === 0) return null;
+  const from = summary.data?.tools.length ? ` from ${summary.data.tools.join(", ")}` : "";
+  return (
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-800">
+      <span>
+        {n} {n === 1 ? "suggestion" : "suggestions"}
+        {from} to review
+      </span>
+      <Button variant="secondary" onClick={onReview}>
+        Review
+      </Button>
+    </div>
+  );
+}
+
 function MoreDialog({ actions, onClose }: { actions: { label: string; open: () => void }[]; onClose: () => void }) {
   const titleId = useId();
   return (

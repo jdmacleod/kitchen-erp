@@ -53,6 +53,10 @@ Compose stack and observing, with the command shown.
 | 66 (1F) | Key before OSM id before name within 150 m; ambiguity reported, not guessed | `test_vendor_import.py::test_matching_order_key_then_osm_then_name_nearby`, `::test_two_nearby_candidates_are_reported_not_guessed` |
 | 67 (1F) | Float, alias, unknown format or oversized file is 422 `bad_export`; a dry run changes nothing | `test_vendor_import.py::test_a_malformed_file_is_refused_before_any_write`, `::test_yaml_aliases_and_oversized_files_are_refused`, `::test_dry_run_reports_and_writes_nothing`; `e2e/tests/vendor-import.spec.ts` |
 | 73 (1F) | Unknown home-base names are reported and none is created | `test_vendor_import.py::test_household_fields_only_from_a_household_file` |
+| 68 (1F) | A `vendors:read` token gets the public export and 403 elsewhere; a `vendors:suggest` token posts suggestions and cannot read or change a vendor | `test_scopes.py::test_scoped_tokens_reach_only_their_routes` (walks every route), `::test_read_token_gets_the_public_export_only`, `::test_sessions_and_full_tokens_are_never_refused_for_scope`, `::test_a_token_made_before_scopes_keeps_full_access`; `test_vendor_suggestions.py::test_a_suggest_token_cannot_read_or_change_vendors` |
+| 69 (1F) | A malformed batch is 422; a valid batch changes no vendor; a proposal cannot be edited | `test_vendor_suggestions.py::test_a_malformed_batch_stores_nothing`, `::test_posting_changes_no_vendor_and_collapses_repeats`, `::test_proposals_cannot_be_edited_or_deleted` |
+| 70 (1F) | Accepting writes the value and its provenance; a field changed since proposed goes stale | `test_vendor_suggestions.py::test_accept_writes_the_value_and_its_source`, `::test_a_field_changed_since_proposed_goes_stale`; `frontend/src/test/suggestion-review.test.tsx` |
+| 71 (1F) | Pending suggestions are one inbox row, gone once decided | `test_vendor_suggestions.py::test_accept_writes_the_value_and_its_source` |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
 criteria to 1A, then restarts at 13 for 1C and continues to 35; the second column

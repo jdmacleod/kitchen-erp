@@ -30,6 +30,8 @@ import {
 import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { LinkOsmDialog } from "../../components/geo/LinkOsmDialog";
+import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
+import { useSuggestionSummary } from "../../api/suggestions";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { parseLatLon } from "../../lib/latlon";
@@ -107,10 +109,34 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
           {vendor.active ? <Badge tone="good">active</Badge> : <Badge tone="warn">inactive</Badge>}
         </p>
         {setActive.isError ? <Alert tone="error">{geoErrorMessage(setActive.error)}</Alert> : null}
+        <VendorSuggestionsLine vendor={vendor} />
         {vendor.notes ? <p className="text-sm whitespace-pre-wrap">{vendor.notes}</p> : null}
         {editing ? <EditVendorForm vendor={vendor} onDone={() => setEditing(false)} /> : null}
         <VendorLocations vendor={vendor} />
       </div>
+    </>
+  );
+}
+
+/** "{n} suggestions · Review", opening the one review drawer on this vendor (design D3). */
+function VendorSuggestionsLine({ vendor }: { vendor: Vendor }) {
+  const summary = useSuggestionSummary();
+  const [open, setOpen] = useState(false);
+  const n = summary.data?.vendors.find((v) => v.vendor_id === vendor.id)?.count ?? 0;
+  if (n === 0 && !open) return null;
+  return (
+    <>
+      {n > 0 ? (
+        <p className="flex flex-wrap items-center gap-2 text-sm">
+          <span>
+            {n} {n === 1 ? "suggestion" : "suggestions"} to review
+          </span>
+          <Button variant="secondary" onClick={() => setOpen(true)}>
+            Review
+          </Button>
+        </p>
+      ) : null}
+      {open ? <SuggestionReviewDrawer initialVendorId={vendor.id} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }

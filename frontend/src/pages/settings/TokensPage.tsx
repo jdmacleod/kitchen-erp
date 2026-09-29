@@ -6,6 +6,28 @@ import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from ".
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
+/**
+ * What a token may do, as three named choices (spec 03 §1F, design D16). A
+ * scoped token is refused everywhere except the routes its scope names.
+ */
+export const TOKEN_ACCESS = [
+  { value: "full", scopes: ["*"], label: "Full access", hint: "Everything you can do. For capture apps and your own scripts." },
+  { value: "read", scopes: ["vendors:read"], label: "Read the public vendor list", hint: "Only the public vendor export." },
+  {
+    value: "suggest",
+    scopes: ["vendors:read", "vendors:suggest"],
+    label: "Read and suggest vendor facts",
+    hint: "For an enrichment tool. Suggestions wait for your review. Cannot see notes, home bases, purchases or receipts.",
+  },
+] as const;
+type Access = (typeof TOKEN_ACCESS)[number]["value"];
+
+/** A token's access in the same words as the choice that made it. */
+export function accessLabel(scopes: string[]): string {
+  const key = [...scopes].sort().join(" ");
+  return TOKEN_ACCESS.find((a) => [...a.scopes].sort().join(" ") === key)?.label ?? scopes.join(", ");
+}
+
 interface Reveal {
   id: string;
   name: string;
@@ -17,17 +39,20 @@ export function TokensPage() {
   const tokens = useTokens();
   const create = useCreateToken();
   const [name, setName] = useState("");
+  const [access, setAccess] = useState<Access>("full");
   // The plaintext lives only here, in component state, and only until dismissed.
   const [reveal, setReveal] = useState<Reveal | null>(null);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setReveal(null);
+    const scopes = [...(TOKEN_ACCESS.find((a) => a.value === access)?.scopes ?? ["*"])];
     create.mutate(
-      { name: name.trim() },
+      { name: name.trim(), scopes },
       {
         onSuccess: (result) => {
           setName("");
+          setAccess("full");
           setReveal({ id: result.token.id, name: result.token.name, plaintext: result.plaintext });
         },
       },
@@ -56,6 +81,28 @@ export function TokensPage() {
               onChange={(e) => setName(e.target.value)}
               hint="Something that tells you which device or script uses it."
             />
+            <fieldset className="flex flex-col gap-1">
+              <legend className="mb-1 text-sm font-medium">What it can do</legend>
+              {TOKEN_ACCESS.map((a) => (
+                <label key={a.value} className="flex min-h-11 items-start gap-2 py-1 text-sm lg:min-h-10">
+                  <input
+                    type="radio"
+                    name="new-token-access"
+                    value={a.value}
+                    checked={access === a.value}
+                    onChange={() => setAccess(a.value)}
+                    aria-describedby={`token-access-${a.value}`}
+                    className={`mt-0.5 size-4 ${focusRing}`}
+                  />
+                  <span>
+                    <span className="font-medium">{a.label}</span>
+                    <span id={`token-access-${a.value}`} className="block text-xs text-neutral-600 dark:text-neutral-400">
+                      {a.hint}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
             <div>
               <Button type="submit" disabled={create.isPending}>
                 {create.isPending ? "Creating…" : "Create token"}
@@ -148,6 +195,8 @@ function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void
       <div className="min-w-0">
         <p className={`font-medium ${revoked ? "text-neutral-600 dark:text-neutral-400 line-through" : ""}`}>{token.name}</p>
         <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          {accessLabel(token.scopes)}
+          {" · "}
           Created <time dateTime={token.created_at}>{formatDateTime(token.created_at)}</time>
           {" · "}
           {token.last_used_at ? (

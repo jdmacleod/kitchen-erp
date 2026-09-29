@@ -165,7 +165,7 @@ export function useTokens() {
 export function useCreateToken() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { name: string }) =>
+    mutationFn: (input: { name: string; scopes?: string[] }) =>
       api<ApiTokenCreated>("/api-tokens", {
         method: "POST",
         body: input,

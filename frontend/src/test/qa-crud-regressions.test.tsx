@@ -44,7 +44,7 @@ describe("after a deactivate or a revoke", () => {
   });
 
   it("takes a new token's plaintext off the screen when that token is revoked", async () => {
-    const created: ApiToken = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5acc", name: "tablet", created_at: "2026-02-03T04:05:06Z", last_used_at: null, revoked_at: null };
+    const created: ApiToken = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5acc", name: "tablet", scopes: ["*"], created_at: "2026-02-03T04:05:06Z", last_used_at: null, revoked_at: null };
     let items: ApiToken[] = [];
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),

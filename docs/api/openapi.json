@@ -1,6 +1,25 @@
 {
   "components": {
     "schemas": {
+      "AcceptAllOut": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "skipped_stale": {
+            "title": "Skipped Stale",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "skipped_stale"
+        ],
+        "title": "AcceptAllOut",
+        "type": "object"
+      },
       "ApiTokenCreate": {
         "additionalProperties": false,
         "properties": {
@@ -9,6 +28,20 @@
             "minLength": 1,
             "title": "Name",
             "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "enum": [
+                "*",
+                "vendors:read",
+                "vendors:suggest"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
           }
         },
         "required": [
@@ -92,11 +125,19 @@
               }
             ],
             "title": "Revoked At"
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scopes",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "name",
+          "scopes",
           "created_at",
           "last_used_at",
           "revoked_at"
@@ -1555,7 +1596,8 @@
               "receipt",
               "receipt_failed",
               "identify",
-              "bridge"
+              "bridge",
+              "vendor_suggestions"
             ],
             "title": "Kind",
             "type": "string"
@@ -7005,6 +7047,287 @@
           "offer"
         ],
         "title": "StoreCodeOfferResponse",
+        "type": "object"
+      },
+      "SuggestionBatchOut": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "integer"
+          },
+          "stored": {
+            "title": "Stored",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "batch_id",
+          "stored",
+          "collapsed"
+        ],
+        "title": "SuggestionBatchOut",
+        "type": "object"
+      },
+      "SuggestionDecisionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "override": {
+            "default": false,
+            "title": "Override",
+            "type": "boolean"
+          }
+        },
+        "title": "SuggestionDecisionIn",
+        "type": "object"
+      },
+      "SuggestionDecisionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "stale"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          }
+        },
+        "required": [
+          "outcome",
+          "suggestion"
+        ],
+        "title": "SuggestionDecisionOut",
+        "type": "object"
+      },
+      "SuggestionList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SuggestionList",
+        "type": "object"
+      },
+      "SuggestionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current"
+          },
+          "evidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence"
+          },
+          "expected": {
+            "title": "Expected"
+          },
+          "field": {
+            "enum": [
+              "website",
+              "brand",
+              "wikidata",
+              "phone",
+              "address",
+              "opening_hours",
+              "osm",
+              "name",
+              "price_scope"
+            ],
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "location_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Name"
+          },
+          "proposed": {
+            "title": "Proposed"
+          },
+          "source_domain": {
+            "title": "Source Domain",
+            "type": "string"
+          },
+          "source_url": {
+            "title": "Source Url",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected",
+              "stale"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "vendor",
+              "location"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "tool": {
+            "title": "Tool",
+            "type": "string"
+          },
+          "tool_version": {
+            "title": "Tool Version",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "target",
+          "vendor_id",
+          "vendor_name",
+          "location_id",
+          "location_name",
+          "field",
+          "expected",
+          "current",
+          "proposed",
+          "stale",
+          "status",
+          "source_url",
+          "source_domain",
+          "evidence",
+          "tool",
+          "tool_version",
+          "created_at"
+        ],
+        "title": "SuggestionOut",
+        "type": "object"
+      },
+      "SuggestionSummary": {
+        "additionalProperties": false,
+        "description": "What waits for review: the Vendors page line and the review drawer's picker.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "vendors": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionVendorCount"
+            },
+            "title": "Vendors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "count",
+          "tools",
+          "vendors"
+        ],
+        "title": "SuggestionSummary",
+        "type": "object"
+      },
+      "SuggestionVendorCount": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "name",
+          "count"
+        ],
+        "title": "SuggestionVendorCount",
         "type": "object"
       },
       "UnitList": {
@@ -13514,6 +13837,364 @@
         ]
       }
     },
+    "/api/v1/vendor-suggestions": {
+      "get": {
+        "description": "Suggestions waiting for a person, grouped by vendor then location.",
+        "operationId": "list_suggestions_api_v1_vendor_suggestions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "vendor_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Suggestions",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      },
+      "post": {
+        "description": "A batch of proposed facts from a tool with a ``vendors:suggest`` token.\n\nAt most 200 items and 1 MB; nothing is stored if any item is invalid, and\nposting never changes a vendor or location.",
+        "operationId": "post_suggestions_api_v1_vendor_suggestions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "confidence": {
+                          "anyOf": [
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Confidence"
+                        },
+                        "evidence": {
+                          "anyOf": [
+                            {
+                              "maxLength": 1000,
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "title": "Evidence"
+                        },
+                        "expected": {
+                          "title": "Expected"
+                        },
+                        "field": {
+                          "enum": [
+                            "website",
+                            "brand",
+                            "wikidata",
+                            "phone",
+                            "address",
+                            "opening_hours",
+                            "osm",
+                            "name",
+                            "price_scope"
+                          ],
+                          "title": "Field",
+                          "type": "string"
+                        },
+                        "key": {
+                          "maxLength": 250,
+                          "minLength": 1,
+                          "title": "Key",
+                          "type": "string"
+                        },
+                        "proposed": {
+                          "title": "Proposed"
+                        },
+                        "source_url": {
+                          "maxLength": 2000,
+                          "minLength": 1,
+                          "title": "Source Url",
+                          "type": "string"
+                        },
+                        "target": {
+                          "enum": [
+                            "vendor",
+                            "location"
+                          ],
+                          "title": "Target",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "target",
+                        "key",
+                        "field",
+                        "proposed",
+                        "source_url"
+                      ],
+                      "title": "SuggestionIn",
+                      "type": "object"
+                    },
+                    "minItems": 1,
+                    "title": "Items",
+                    "type": "array"
+                  },
+                  "tool": {
+                    "maxLength": 100,
+                    "minLength": 1,
+                    "title": "Tool",
+                    "type": "string"
+                  },
+                  "tool_version": {
+                    "maxLength": 50,
+                    "minLength": 1,
+                    "title": "Tool Version",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tool",
+                  "tool_version",
+                  "items"
+                ],
+                "title": "SuggestionBatchIn",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Post Suggestions",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      }
+    },
+    "/api/v1/vendor-suggestions/summary": {
+      "get": {
+        "operationId": "suggestion_summary_api_v1_vendor_suggestions_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Suggestion Summary",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      }
+    },
+    "/api/v1/vendor-suggestions/vendors/{vendor_id}/accept-all": {
+      "post": {
+        "description": "Accept a vendor's suggestions whose fields are still as expected; skip stale ones.",
+        "operationId": "accept_all_for_vendor_api_v1_vendor_suggestions_vendors__vendor_id__accept_all_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vendor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptAllOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept All For Vendor",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      }
+    },
+    "/api/v1/vendor-suggestions/{suggestion_id}/accept": {
+      "post": {
+        "description": "Apply a suggestion, or mark it stale when its field changed since it was proposed.",
+        "operationId": "accept_suggestion_api_v1_vendor_suggestions__suggestion_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SuggestionDecisionIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Suggestion",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      }
+    },
+    "/api/v1/vendor-suggestions/{suggestion_id}/reject": {
+      "post": {
+        "operationId": "reject_suggestion_api_v1_vendor_suggestions__suggestion_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Suggestion",
+        "tags": [
+          "vendor-suggestions"
+        ]
+      }
+    },
     "/api/v1/vendors": {
       "get": {
         "operationId": "list_vendors_api_v1_vendors_get",
@@ -13617,7 +14298,7 @@
     },
     "/api/v1/vendors/export": {
       "get": {
-        "description": "The vendor list as a file. Public mode holds public facts only (1F).",
+        "description": "The vendor list as a file. Public mode holds public facts only (1F).\n\nA ``vendors:read`` token may read the public file and nothing else: the\nhousehold file carries notes, home bases and store codes.",
         "operationId": "export_vendors_api_v1_vendors_export_get",
         "parameters": [
           {

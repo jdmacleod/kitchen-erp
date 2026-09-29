@@ -15,6 +15,8 @@ export interface User {
 export interface ApiToken {
   id: string;
   name: string;
+  /** ["*"] is full access; see TOKEN_ACCESS for the narrower sets (1F). */
+  scopes: string[];
   created_at: string;
   last_used_at: string | null;
   revoked_at: string | null;
