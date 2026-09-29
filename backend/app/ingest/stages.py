@@ -171,6 +171,8 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         receipt_text=text,
         merchant_name=None if header is None else header.merchant_name,
         store_identifier=None if header is None else header.store_identifier,
+        phone_text=None if header is None else header.phone_text,
+        address_text=None if header is None else header.address_text,
     )
     output = header_stage.header_output(
         header, model_attempts=attempts, purchased_at=purchased_at, match=match, flags=flags

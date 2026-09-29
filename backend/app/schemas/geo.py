@@ -24,7 +24,7 @@ Name = Annotated[str, Field(min_length=1, max_length=200)]
 Phone = Annotated[str, Field(max_length=40)]
 Wikidata = Annotated[str, Field(pattern=r"^Q[0-9]+$", max_length=20)]
 Brand = Annotated[str, Field(max_length=200)]
-LinkedField = Literal["name", "address", "opening_hours", "phone", "website"]
+LinkedField = Literal["name", "address", "opening_hours", "phone", "website", "brand", "wikidata"]
 
 
 class FieldSourceOut(ApiModel):
@@ -128,7 +128,7 @@ class VendorOut(VendorRef):
             notes=vendor.notes,
             active=vendor.active,
             created_at=vendor.created_at,
-            sources=sources_of(vendor, ("website",)),
+            sources=sources_of(vendor, ("website", "brand", "wikidata")),
         )
 
 

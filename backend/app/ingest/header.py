@@ -1,7 +1,7 @@
 """Header stage: vendor, location, purchase time, and totals.
 
 Field extraction is the language model constrained to :class:`ReceiptHeader`.
-Location matching combines three kinds of evidence, each computed with bound
+Location matching combines five kinds of evidence, each computed with bound
 parameters (merchant text never reaches SQL as a fragment):
 
 * an exact match between a location's ``receipt_identifiers`` and the store
@@ -9,7 +9,16 @@ parameters (merchant text never reaches SQL as a fragment):
 * proximity of the document's ``capture_geo`` to a location, within
   ``INGEST_LOCATION_RADIUS_M`` (weight 0.7);
 * trigram similarity between the printed merchant name and vendor names, at
-  0.3 or better (weight 0.6 × similarity).
+  0.3 or better (weight 0.6 × similarity);
+* the printed phone, compared by its digits with each location's phone, counted
+  only when it is the number of exactly one branch of its vendor (weight 1.0;
+  a number several branches share is recorded as ``phone_shared`` and adds
+  nothing);
+* trigram similarity between the printed address and each location's address, at
+  0.4 or better (weight 0.6 × similarity).
+
+With no phone or address on either side, the last two add nothing and ranking
+is exactly what it was before them (eng review R8).
 
 A single confident candidate is accepted; otherwise the ranked candidates are
 recorded for the reviewer and the purchase keeps ``vendor_location_id`` null.
@@ -26,7 +35,10 @@ Stage output shape::
                                   "location_name", "score": "1.600",
                                   "evidence": {"identifier": "0412" | null,
                                                "distance_m": "42.0" | null,
-                                               "name_similarity": "1.000" | null}}]}}
+                                               "name_similarity": "1.000" | null,
+                                               "phone": "555-0142" | null,
+                                               "phone_shared": false,
+                                               "address_similarity": "0.812" | null}}]}}
 
 When the model's reply never validates: ``{"parsed": false, "reason":
 "invalid_model_output", "model_attempts": 3, "location": {...}}``; matching still
@@ -50,6 +62,7 @@ from app.core.config import get_settings
 from app.ingest.schemas import ReceiptHeader
 from app.models import ReceiptDocument
 from app.models.geo import Place, Vendor, VendorLocation
+from app.services import phone as phones
 
 HEADER_TASK = (
     "Extract the receipt header: merchant name, store identifier (store number or "
@@ -58,6 +71,11 @@ HEADER_TASK = (
 )
 
 IDENTIFIER_WEIGHT = Decimal("1.0")
+# A printed phone that is one branch's own number is as decisive as its store code.
+PHONE_WEIGHT = IDENTIFIER_WEIGHT
+ADDRESS_WEIGHT = Decimal("0.6")
+# Addresses share words ("Blvd", a city), so a weak likeness says nothing.
+ADDRESS_FLOOR = Decimal("0.4")
 PROXIMITY_WEIGHT = Decimal("0.7")
 SIMILARITY_WEIGHT = Decimal("0.6")
 SIMILARITY_FLOOR = Decimal("0.3")
@@ -117,6 +135,11 @@ class Candidate:
     identifier: str | None = None
     distance_m: Decimal | None = None
     name_similarity: Decimal | None = None
+    # 1F (#86): the location's own number was printed; or it was, but several
+    # branches share it, so it says nothing about which (eng review R9).
+    phone: str | None = None
+    phone_shared: bool = False
+    address_similarity: Decimal | None = None
 
     @property
     def score(self) -> Decimal:
@@ -127,6 +150,10 @@ class Candidate:
             score += PROXIMITY_WEIGHT
         if self.name_similarity is not None:
             score += SIMILARITY_WEIGHT * self.name_similarity
+        if self.phone is not None:
+            score += PHONE_WEIGHT
+        if self.address_similarity is not None:
+            score += ADDRESS_WEIGHT * self.address_similarity
         return score.quantize(Decimal("0.001"))
 
     def as_json(self) -> dict[str, Any]:
@@ -141,6 +168,11 @@ class Candidate:
                 "distance_m": None if self.distance_m is None else str(self.distance_m),
                 "name_similarity": (
                     None if self.name_similarity is None else str(self.name_similarity)
+                ),
+                "phone": self.phone,
+                "phone_shared": self.phone_shared,
+                "address_similarity": (
+                    None if self.address_similarity is None else str(self.address_similarity)
                 ),
             },
         }
@@ -183,6 +215,8 @@ async def match_location(
     receipt_text: str,
     merchant_name: str | None,
     store_identifier: str | None,
+    phone_text: str | None = None,
+    address_text: str | None = None,
     radius_m: int | None = None,
 ) -> LocationMatch:
     radius = radius_m if radius_m is not None else get_settings().ingest_location_radius_m
@@ -251,6 +285,36 @@ async def match_location(
             if location.vendor.name.strip().lower() == merchant.lower():
                 value = Decimal("1.000")
             candidate(location).name_similarity = value
+
+    # 4. The printed phone, by its digits. It counts only when it is one branch's
+    #    own number: a head-office number printed by every branch, or listed on
+    #    several, cannot tell them apart and adds nothing (R9).
+    printed = phones.digits(phone_text or "")
+    if len(printed) >= 7:
+        by_vendor: dict[uuid.UUID, list[VendorLocation]] = {}
+        with_phones = await db.execute(active.where(VendorLocation.phone.is_not(None)))
+        for location in with_phones.scalars().unique():
+            if phones.same_number(printed, phones.digits(location.phone or "")):
+                by_vendor.setdefault(location.vendor_id, []).append(location)
+        for matched in by_vendor.values():
+            if len(matched) == 1:
+                candidate(matched[0]).phone = matched[0].phone
+            else:
+                for location in matched:
+                    if location.id in candidates:
+                        candidates[location.id].phone_shared = True
+
+    # 5. Trigram likeness of the printed address to each location's address.
+    address = " ".join((address_text or "").split()).lower()
+    if address:
+        likeness = cast(func.similarity(func.lower(VendorLocation.address), address), Numeric)
+        similar_addresses = await db.execute(
+            active.add_columns(func.round(likeness, 3)).where(
+                VendorLocation.address.is_not(None), likeness >= ADDRESS_FLOOR
+            )
+        )
+        for location, sim in similar_addresses.unique():
+            candidate(location).address_similarity = Decimal(str(sim))
 
     ranked = sorted(candidates.values(), key=lambda c: (-c.score, c.location_name))
     return LocationMatch(candidates=[c for c in ranked if c.score > 0])

@@ -323,6 +323,8 @@ describe("receipt review", () => {
     let purchase: Purchase = { ...receiptPurchase, vendor_location: null };
     const calls = mockApi({
       ...baseRoutes(() => purchase),
+      // A branch with a saved address shows it on its chip (#86).
+      "GET /vendor-locations": () => jsonResponse(200, { items: [{ ...chainLocation, address: "4 Pier Lane" }, marketLocation] }), // pii-scan: allow invented street
       "GET /ingest-jobs": () => jsonResponse(200, { items: [{ id: ingestJobId, receipt_document_id: receiptDocumentId, stage: "review", status: "needs_review", attempts: 1, last_error: null, purchase_id: receiptPurchaseId, created_at: "2026-09-20T18:05:30Z", updated_at: "2026-09-20T18:06:00Z" }] }),
       [`GET /ingest-jobs/${ingestJobId}`]: () =>
         jsonResponse(200, {
@@ -367,7 +369,7 @@ describe("receipt review", () => {
     const candidates = await screen.findByRole("list", { name: "Location candidates" });
     const buttons = within(candidates).getAllByRole("button");
     // Ranked, but the raw match score is not shown: it means nothing to a person.
-    expect(buttons.map((b) => b.textContent)).toEqual(["Pier Farmers Market", "Millstone Market — Millstone Harbour"]);
+    expect(buttons.map((b) => b.textContent)).toEqual(["Pier Farmers Market", "Millstone Market — Millstone Harbour4 Pier Lane"]); // pii-scan: allow invented street
     expect(screen.getByLabelText("Location")).toHaveValue("");
 
     await user.click(buttons[1]);

@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import re
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
@@ -85,6 +86,8 @@ class OsmCandidate:
     # Defaults keep cache files written before these were captured readable.
     phone: str | None = None
     website: str | None = None
+    brand: str | None = None
+    brand_wikidata: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         data = asdict(self)
@@ -225,6 +228,18 @@ def _website(tags: dict[str, Any]) -> str | None:
     return None
 
 
+def _brand(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value.strip()[:200]
+
+
+def _wikidata(value: object) -> str | None:
+    if isinstance(value, str) and re.fullmatch(r"Q[0-9]+", value.strip()):
+        return value.strip()
+    return None
+
+
 def _candidate(element: dict[str, Any]) -> OsmCandidate | None:
     osm_type = element.get("type")
     osm_id = element.get("id")
@@ -258,6 +273,8 @@ def _candidate(element: dict[str, Any]) -> OsmCandidate | None:
         opening_hours=hours,
         phone=phones.from_tag(tags.get("phone")) or phones.from_tag(tags.get("contact:phone")),
         website=_website(tags),
+        brand=_brand(tags.get("brand")),
+        brand_wikidata=_wikidata(tags.get("brand:wikidata")),
     )
 
 

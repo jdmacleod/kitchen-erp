@@ -10,6 +10,8 @@ export const fieldLabel: Record<LinkedField, string> = {
   opening_hours: "Hours",
   phone: "Phone",
   website: "Website",
+  brand: "Brand",
+  wikidata: "Wikidata",
 };
 
 function osmRef(ref: string | null): string | null {

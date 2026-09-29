@@ -17,6 +17,18 @@ def digits(value: str) -> str:
     return "".join(ch for ch in value if ch.isdigit())
 
 
+def same_number(a: str, b: str) -> bool:
+    """Whether two digit strings are one number, allowing a country code (1 to 3
+    digits) on one side only: the digits of "+1 555 555 0142" and of
+    "555 555 0142" match."""
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    short, long = sorted((a, b), key=len)
+    return len(short) >= 7 and long.endswith(short) and len(long) - len(short) <= 3
+
+
 def phone_error(value: str) -> str | None:
     """Why ``value`` is not a phone number, or None when it is one."""
     if len(value) > MAX_LENGTH or not _ALLOWED.match(value):

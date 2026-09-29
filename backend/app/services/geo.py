@@ -829,10 +829,16 @@ def _apply_osm(
             )
         if name in OSM_SNAPSHOTS:
             setattr(location, OSM_SNAPSHOTS[name], value)
-    if candidate.website is not None:
-        outcomes["website"] = write_unless_edited(
-            vendor, "website", candidate.website, source="osm", ref=ref, now=now, only_if_empty=True
-        )
+    # A chain's own facts: filled only while the vendor has none.
+    for name, value in (
+        ("website", candidate.website),
+        ("brand", candidate.brand),
+        ("wikidata", candidate.brand_wikidata),
+    ):
+        if value is not None:
+            outcomes[name] = write_unless_edited(
+                vendor, name, value, source="osm", ref=ref, now=now, only_if_empty=True
+            )
     return outcomes
 
 
@@ -850,8 +856,13 @@ def osm_preview(
             fills.append(name)
         elif outcome == "kept":
             keeps.append(name)
-    if candidate.website is not None and location.vendor.website is None:
-        fills.append("website")
+    for name, value in (
+        ("website", candidate.website),
+        ("brand", candidate.brand),
+        ("wikidata", candidate.brand_wikidata),
+    ):
+        if value is not None and getattr(location.vendor, name) is None:
+            fills.append(name)
     return fills, keeps
 
 

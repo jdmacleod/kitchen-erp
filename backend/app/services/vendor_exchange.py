@@ -112,7 +112,7 @@ async def build(db: AsyncSession, mode: Mode, *, now: datetime | None = None) ->
             website=vendor.website,
             brand=vendor.brand,
             wikidata=vendor.wikidata,
-            sources=_sources(vendor, ("website",)),
+            sources=_sources(vendor, ("website", "brand", "wikidata")),
             locations=[_location(loc, keys) for loc in locations],
         )
         if not public:
