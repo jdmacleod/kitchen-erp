@@ -28,6 +28,9 @@ async def _two_line_purchase(client):
     }
     r = await client.post("/api/v1/purchases", json=body)
     assert r.status_code == 201, r.text
+    # The edit form names each saved line by id (#72).
+    for line, saved in zip(body["lines"], r.json()["lines"], strict=True):
+        line["id"] = saved["id"]
     return r.json(), body
 
 
