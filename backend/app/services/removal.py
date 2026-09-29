@@ -59,6 +59,21 @@ class Removed:
     purchase: Purchase | None = None
 
 
+VOID_REASON = "purchase removed"
+
+
+async def prices_voided_by_removal(db: AsyncSession, purchase_id: uuid.UUID) -> int:
+    """How many prices removing the purchase voided; not ones voided before it."""
+    stmt = (
+        select(func.count())
+        .select_from(PriceObservationVoid)
+        .join(PriceObservation, PriceObservation.id == PriceObservationVoid.observation_id)
+        .join(PurchaseLine, PurchaseLine.id == PriceObservation.purchase_line_id)
+        .where(PurchaseLine.purchase_id == purchase_id, PriceObservationVoid.reason == VOID_REASON)
+    )
+    return int((await db.execute(stmt)).scalar_one())
+
+
 def still_reading() -> ApiError:
     return ApiError(409, "still_reading", "You can remove it once it's been read.")
 
@@ -167,7 +182,7 @@ async def remove_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
         raise still_reading()
     if plan.outcome == "void":
         for observation_id in plan.live:
-            await pricebook.void(db, observation_id, "purchase removed", user)
+            await pricebook.void(db, observation_id, VOID_REASON, user)
         purchase.status = "voided"
         purchase.voided_at = datetime.now(UTC)
         purchase.voided_by = user.id

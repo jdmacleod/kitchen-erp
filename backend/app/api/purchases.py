@@ -282,6 +282,11 @@ async def purchase_out(
         voided_at=purchase.voided_at,
         voided_by_name=names.get(purchase.voided_by) if purchase.voided_by else None,
         removal=plan,
+        voided_prices=(
+            await removal.prices_voided_by_removal(db, purchase.id)
+            if detail and purchase.status == "voided"
+            else None
+        ),
         removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
     )
 

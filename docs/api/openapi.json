@@ -5375,6 +5375,17 @@
               }
             ],
             "title": "Voided By Name"
+          },
+          "voided_prices": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided Prices"
           }
         },
         "required": [

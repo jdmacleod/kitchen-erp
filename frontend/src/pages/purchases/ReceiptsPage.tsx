@@ -1,7 +1,7 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
-import { errorMessage } from "../../api/client";
-import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
+import { errorMessage, isApiError } from "../../api/client";
+import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRemoveJob, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -17,7 +17,7 @@ export function ReceiptsPage() {
   const notice = useNotice();
   const jobs = useIngestJobs();
   // An inbox item names its job (?job=), which may be older than the newest jobs listed.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const pinnedId = params.get("job") ?? undefined;
   const pinned = useIngestJob(pinnedId, false);
   // Listed once: the list drops the job only while the pinned card is showing it.
@@ -33,9 +33,13 @@ export function ReceiptsPage() {
     upload.mutate(
       { image: file },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
           if (fileRef.current) fileRef.current.value = "";
-          notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
+          notice.show(
+            result.revived
+              ? { tone: "info", message: "This receipt was removed before; it's being read again." }
+              : { tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." },
+          );
         },
       },
     );
@@ -78,9 +82,14 @@ export function ReceiptsPage() {
                 Loading…
               </p>
             ) : pinned.isError ? (
-              <Alert tone="error">{errorMessage(pinned.error)}</Alert>
+              isApiError(pinned.error) && pinned.error.code === "receipt_removed" ? (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">This receipt was removed.</p>
+              ) : (
+                <Alert tone="error">{errorMessage(pinned.error)}</Alert>
+              )
             ) : (
-              <JobRow job={pinned.data} />
+              // Removed from here, it has nothing left to show: drop the pin.
+              <JobRow job={pinned.data} onRemoved={() => setParams({}, { replace: true })} />
             )}
           </Card>
         ) : null}
@@ -128,9 +137,19 @@ function jobStatusText(job: IngestJob): string {
   return statusText[job.status] ?? job.status;
 }
 
-function JobRow({ job }: { job: IngestJob }) {
+function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
+  const remove = useRemoveJob();
+  // A failed read with no purchase has nowhere else to be removed from (D5);
+  // one that has a draft is removed from the purchase page.
+  const removable = job.status === "failed" && !job.purchase_id;
+  const [confirming, setConfirming] = useState(false);
+  const keep = useRef<HTMLButtonElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (confirming) keep.current?.focus();
+  }, [confirming]);
   const tone = job.status === "done" ? "good" : job.status === "failed" ? "danger" : job.last_error ? "warn" : "neutral";
   const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
   return (
@@ -176,7 +195,34 @@ function JobRow({ job }: { job: IngestJob }) {
             Enter by hand
           </Button>
         ) : null}
+        {removable && !confirming ? (
+          <Button ref={trigger} variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(true)}>
+            Remove
+          </Button>
+        ) : null}
       </span>
+      {removable && confirming ? (
+        <div role="group" aria-label="Remove this receipt" className="flex w-full flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950">
+          <span className="text-sm">Remove this receipt? Its photo is deleted.</span>
+          {remove.isError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">{errorMessage(remove.error)}</span> : null}
+          <Button variant="dangerFill" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(job.id, { onSuccess: onRemoved })}>
+            {remove.isPending ? "Removing…" : "Remove"}
+          </Button>
+          <Button
+            ref={keep}
+            variant="secondary"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            disabled={remove.isPending}
+            onClick={() => {
+              setConfirming(false);
+              remove.reset();
+              requestAnimationFrame(() => trigger.current?.focus());
+            }}
+          >
+            Keep it
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

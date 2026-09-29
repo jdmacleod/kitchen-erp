@@ -12,7 +12,7 @@ import type { PriceScope, VendorKind } from "./geo";
 
 export type NormStatus = "ok" | "no_density" | "unknown_measure" | "no_pack" | "no_qty";
 export type ObservationSource = "receipt" | "manual" | "shelf" | "import";
-export type PurchaseStatus = "draft" | "reviewed" | "committed";
+export type PurchaseStatus = "draft" | "reviewed" | "committed" | "voided";
 
 export interface ObservationProduct {
   id: string;
@@ -103,6 +103,18 @@ export interface PurchaseLine {
   flags: string[];
   suggestions?: Suggestion[];
   observation_id: string | null;
+  /** Whether it ever reached the price book, so removing it voids a price. Null in lists. */
+  recorded?: boolean | null;
+}
+
+/** What removing the purchase would do, from the rule the server applies (spec 04, 2H). */
+export interface Removal {
+  outcome: "delete" | "void";
+  /** Prices a void would void; 0 for a delete. */
+  prices: number;
+  /** Whether its receipt photo is deleted with it. */
+  photo: boolean;
+  blocked: "still_reading" | null;
 }
 
 export interface PurchaseLocation {
@@ -128,6 +140,20 @@ export interface Purchase {
   lines: PurchaseLine[];
   created_at: string;
   updated_at: string;
+  voided_at?: string | null;
+  voided_by_name?: string | null;
+  /** The prices the removal voided, on a single voided purchase. */
+  voided_prices?: number | null;
+  /** On a single purchase only; null in lists and on a voided purchase. */
+  removal?: Removal | null;
+  removed_line_count?: number | null;
+}
+
+export interface RemovedPurchase {
+  outcome: "delete" | "void";
+  photo_deleted: boolean;
+  /** The voided purchase; null after a delete. */
+  purchase: Purchase | null;
 }
 
 // --- inputs -----------------------------------------------------------------
@@ -241,6 +267,10 @@ const knownMessages: Record<string, string> = {
   committed: "This purchase is committed; reopen it to change it.",
   location_required: "Choose a location before committing.",
   not_committed: "Only a committed purchase can be reopened.",
+  still_reading: "You can remove it once it's been read.",
+  voided: "This purchase was removed, so it can't be changed.",
+  line_ids_required: "Reload the purchase and try again.",
+  unknown_line: "A line changed while you were editing. Reload the purchase and try again.",
 };
 
 /** A message for a purchase or observation mutation error. */
@@ -474,6 +504,37 @@ export async function fetchNextDraft(excludeId: string): Promise<Purchase | null
   return page.items.find((p) => p.id !== excludeId) ?? null;
 }
 
+/**
+ * Remove a purchase (#74): the server deletes it when nothing reached the price
+ * book and voids it otherwise. A 404 means an earlier try already removed it,
+ * so it counts as done (spec 10, D11).
+ */
+export function useRemovePurchase(purchaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<RemovedPurchase> => {
+      try {
+        return await api<RemovedPurchase>(`/purchases/${enc(purchaseId)}/remove`, { method: "POST" });
+      } catch (e) {
+        if (isApiError(e) && e.status === 404) return { outcome: "delete", photo_deleted: false, purchase: null };
+        throw e;
+      }
+    },
+    onSuccess: (removed) => {
+      if (removed.purchase) client.setQueryData(purchaseKeys.purchase(purchaseId), removed.purchase);
+      else client.removeQueries({ queryKey: purchaseKeys.purchase(purchaseId) });
+      invalidatePurchases(client);
+      invalidateObservations(client);
+      void client.invalidateQueries({ queryKey: ["price-book"] });
+      void client.invalidateQueries({ queryKey: ["price-history"] });
+      void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
+      // Its receipt leaves the Receipts page and the inbox.
+      void client.invalidateQueries({ queryKey: ["ingest-jobs"] });
+      void client.invalidateQueries({ queryKey: ["inbox"] });
+    },
+  });
+}
+
 export function useReopenPurchase(purchaseId: string) {
   return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/reopen`, { method: "POST" }));
 }
@@ -522,6 +583,7 @@ export const purchaseStatusLabel: Record<PurchaseStatus, string> = {
   draft: "Draft",
   reviewed: "Reviewed",
   committed: "Committed",
+  voided: "Voided",
 };
 
 /** Badge tone per status (spec 08): a draft waits on a person, reviewed is neutral, committed is done. */
@@ -529,6 +591,7 @@ export const purchaseStatusTone: Record<PurchaseStatus, "warn" | "neutral" | "go
   draft: "warn",
   reviewed: "neutral",
   committed: "good",
+  voided: "neutral",
 };
 
 export const resolutionLabel: Record<Resolution, string> = {

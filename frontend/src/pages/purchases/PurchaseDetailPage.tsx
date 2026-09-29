@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { formatPack, productTitle, trimDecimal } from "../../api/catalog";
-import { errorMessage } from "../../api/client";
+import { errorMessage, isApiError } from "../../api/client";
 import {
   purchaseErrorMessage,
   purchaseLocationLabel,
@@ -14,22 +14,25 @@ import {
   useUpdatePurchase,
   type Purchase,
   type PurchaseLine,
+  type RemovedPurchase,
   type Resolution,
 } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
-import { PurchaseForm, purchaseValues } from "../../components/purchases/PurchaseForm";
+import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
+import { RemovedLinesCaption, RemovePurchase } from "../../components/purchases/RemovePurchase";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
-import { Alert, Button, Card, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
-import { formatDateTime } from "../../lib/format";
+import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
-import { useNotice } from "../../components/Notice";
+import { useNavigateWithNotice, useNotice } from "../../components/Notice";
 
 /**
  * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);
  * committed ones show their lines and observations, with Reopen to go back
  * to review and, for manual purchases, the entry form to edit them outright.
+ * Both end with "Remove this purchase" (#74); a voided one is read-only.
  */
 export function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +44,17 @@ export function PurchaseDetailPage() {
   usePageTitle(title);
 
   const notice = useNotice();
+  const navigateWithNotice = useNavigateWithNotice();
+  // After a void the page turns into the voided view; its notice takes focus.
+  const [justVoided, setJustVoided] = useState(false);
+  const onRemoved = (removed: RemovedPurchase) => {
+    if (removed.outcome === "void") {
+      setJustVoided(true);
+      return;
+    }
+    const photo = removed.photo_deleted ? " Its receipt photo was deleted." : "";
+    navigateWithNotice("/shop/purchases", { tone: "success", message: `Purchase removed.${photo}` }, { replace: true });
+  };
 
   if (purchase.isPending) {
     return (
@@ -50,6 +64,19 @@ export function PurchaseDetailPage() {
     );
   }
   if (purchase.isError) {
+    // An old link to a purchase that was removed is not an error to report (D9).
+    if (isApiError(purchase.error) && purchase.error.status === 404) {
+      return (
+        <>
+          <PageHeader title="Purchase" />
+          <EmptyState title="This purchase doesn't exist. It may have been removed.">
+            <Link to="/shop/purchases" className={`rounded-md underline ${focusRing}`}>
+              Purchases
+            </Link>
+          </EmptyState>
+        </>
+      );
+    }
     return <Alert tone="error">{errorMessage(purchase.error)}</Alert>;
   }
   const p = purchase.data;
@@ -65,6 +92,10 @@ export function PurchaseDetailPage() {
     );
   }
 
+  if (p.status === "voided") {
+    return <CommittedPurchase purchase={p} title={title} focusNotice={justVoided} />;
+  }
+
   if (p.status !== "committed") {
     return (
       <>
@@ -78,6 +109,7 @@ export function PurchaseDetailPage() {
           </div>
         </PageHeader>
         <ReviewPurchase purchase={p} />
+        <RemovePurchase purchase={p} onRemoved={onRemoved} />
       </>
     );
   }
@@ -90,34 +122,62 @@ export function PurchaseDetailPage() {
       // commit) no longer holds once it is reopened.
       onReopened={notice.dismiss}
       onEdit={() => setEditing(true)}
+      onRemoved={onRemoved}
     />
   );
 }
 
+/** "Removed {date} by {name}. Its {n} prices no longer count in the price book." (D4) */
+function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (focus) ref.current?.focus();
+  }, [focus]);
+  // What the removal itself voided; prices voided before it are not counted twice.
+  const n = p.voided_prices ?? 0;
+  const when = p.voided_at ? formatDate(p.voided_at) : "";
+  const who = p.voided_by_name ? ` by ${p.voided_by_name}` : "";
+  return (
+    <div ref={ref} tabIndex={-1} role="status" className={`rounded-md border px-3 py-2 text-sm ${alertTones.info} ${focusRing}`}>
+      Removed {when}
+      {who}. Its {n} {n === 1 ? "price no longer counts" : "prices no longer count"} in the price book.
+    </div>
+  );
+}
+
+
+/** A committed purchase, or, without the actions, a voided one (D4). */
 function CommittedPurchase({
   purchase: p,
   title,
   onReopened,
   onEdit,
+  onRemoved,
+  focusNotice = false,
 }: {
   purchase: Purchase;
   title: string;
-  onReopened: () => void;
-  onEdit: () => void;
+  onReopened?: () => void;
+  onEdit?: () => void;
+  onRemoved?: (removed: RemovedPurchase) => void;
+  focusNotice?: boolean;
 }) {
   const reopen = useReopenPurchase(p.id);
+  const voided = p.status === "voided";
   return (
     <>
       <PageHeader title={title}>
         <div className="flex flex-wrap gap-2">
-          {p.source === "manual" ? (
+          {!voided && p.source === "manual" ? (
             <Button variant="secondary" onClick={onEdit}>
               Edit
             </Button>
           ) : null}
-          <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
-            {reopen.isPending ? "Reopening…" : "Reopen"}
-          </Button>
+          {!voided ? (
+            <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
+              {reopen.isPending ? "Reopening…" : "Reopen"}
+            </Button>
+          ) : null}
           <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
             All purchases
           </Link>
@@ -125,6 +185,7 @@ function CommittedPurchase({
       </PageHeader>
 
       <div className="flex flex-col gap-6">
+        {voided ? <VoidedNotice purchase={p} focus={focusNotice} /> : null}
         {reopen.error ? <Alert tone="error">{purchaseErrorMessage(reopen.error)}</Alert> : null}
         <Card>
           <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
@@ -178,11 +239,12 @@ function CommittedPurchase({
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {p.lines.map((l) => (
-                  <LineRow key={l.id} line={l} />
+                  <LineRow key={l.id} line={l} voided={voided} />
                 ))}
               </tbody>
             </table>
           </div>
+          <RemovedLinesCaption purchase={p} />
           {p.lines.some((l) => l.line_kind === "item" && l.resolution === "unmatched") ? (
             <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
               Unidentified lines wait in the{" "}
@@ -193,6 +255,7 @@ function CommittedPurchase({
             </p>
           ) : null}
         </Card>
+        {onRemoved ? <RemovePurchase purchase={p} onRemoved={onRemoved} /> : null}
       </div>
     </>
   );
@@ -207,7 +270,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function LineRow({ line }: { line: PurchaseLine }) {
+function LineRow({ line, voided = false }: { line: PurchaseLine; voided?: boolean }) {
   const isItem = line.line_kind === "item";
   const resolution = line.resolution as Resolution | null;
   return (
@@ -255,7 +318,17 @@ function LineRow({ line }: { line: PurchaseLine }) {
         </span>
       </td>
       <td className="py-2">
-        {isItem && resolution !== "ignored" ? line.observation_id ? <Badge tone="good">observed</Badge> : <Badge tone="warn">no observation</Badge> : null}
+        {voided ? (
+          line.recorded ? (
+            <Badge>voided</Badge>
+          ) : null
+        ) : isItem && resolution !== "ignored" ? (
+          line.observation_id ? (
+            <Badge tone="good">observed</Badge>
+          ) : (
+            <Badge tone="warn">no observation</Badge>
+          )
+        ) : null}
       </td>
     </tr>
   );
@@ -264,7 +337,20 @@ function LineRow({ line }: { line: PurchaseLine }) {
 /** Reopen a committed manual purchase; the server voids and re-emits observations for changed lines. */
 function EditPurchase({ purchase, onDone }: { purchase: Purchase; onDone: () => void }) {
   const update = useUpdatePurchase(purchase.id);
+  const notice = useNotice();
   const [values, setValues] = useState(() => purchaseValues(purchase));
+  // Saved lines taken out of the form that reached the price book: saving
+  // voids their prices (#72, D13).
+  const kept = new Set(values.lines.filter((l) => !isLineEmpty(l)).map((l) => l.id));
+  const voids = purchase.lines.filter((l) => l.recorded && l.line_kind === "item" && !kept.has(l.id)).length;
+  const prices = (n: number) => `${n} ${n === 1 ? "price" : "prices"}`;
+  const save = (input: Parameters<typeof update.mutate>[0]) =>
+    update.mutate(input, {
+      onSuccess: () => {
+        if (voids > 0) notice.show({ tone: "success", message: `Saved. ${prices(voids)} from removed lines ${voids === 1 ? "was" : "were"} voided.` });
+        onDone();
+      },
+    });
   return (
     <PurchaseForm
       idPrefix="edit-purchase"
@@ -276,7 +362,8 @@ function EditPurchase({ purchase, onDone }: { purchase: Purchase; onDone: () => 
       error={update.error}
       submitLabel="Save changes"
       busyLabel="Saving…"
-      onSubmit={(input) => update.mutate(input, { onSuccess: onDone })}
+      onSubmit={save}
+      warning={voids > 0 ? `Saving voids ${prices(voids)} from removed lines.` : null}
     >
       <Button variant="secondary" onClick={onDone} disabled={update.isPending}>
         Cancel

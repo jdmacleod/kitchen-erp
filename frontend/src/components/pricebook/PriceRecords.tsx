@@ -4,7 +4,7 @@ import { errorMessage } from "../../api/client";
 import { sourceLabel, useObservations, useVoidObservation, type Observation } from "../../api/purchases";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
-import { Alert, Button, Card, Field, focusRing } from "../ui";
+import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
 import { PromoBadge } from "./PriceAge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -93,7 +93,20 @@ function PriceRecord({ record }: { record: Observation }) {
           <span className={`text-xs ${muted}`}>
             {where} · <time dateTime={record.observed_at}>{formatDateTime(record.observed_at)}</time> · {record.source === "shelf" ? "Shelf price" : `${sourceLabel[record.source]} purchase`}
           </span>
-          {record.voided ? <span className={`text-xs ${muted}`}>Voided{record.void_reason ? `: ${record.void_reason}` : ""}</span> : null}
+          {record.voided ? (
+            <span className={`text-xs ${muted}`}>
+              Voided{record.void_reason ? `: ${record.void_reason}` : ""}
+              {/* The purchase it came from says why, and may have been removed (D17). */}
+              {record.purchase_id ? (
+                <>
+                  {" · "}
+                  <Link to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`} className={`${tapTarget} rounded underline ${focusRing}`}>
+                    Open the purchase
+                  </Link>
+                </>
+              ) : null}
+            </span>
+          ) : null}
         </div>
         {record.voided ? null : record.purchase_id ? (
           <Link to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`} className={`inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline lg:min-h-0 ${focusRing}`}>

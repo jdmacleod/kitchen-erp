@@ -178,6 +178,8 @@ interface PurchaseFormProps {
   busyLabel: string;
   /** Extra controls next to the submit button. */
   children?: ReactNode;
+  /** A line above the submit button about what saving will do. */
+  warning?: ReactNode;
 }
 
 const NARROW = 640;
@@ -189,7 +191,7 @@ const NARROW = 640;
  * so an inline product creation, a save error, or a re-render never loses a
  * line that was already entered.
  */
-export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, existing, busy, error, submitLabel, busyLabel, children }: PurchaseFormProps) {
+export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, existing, busy, error, submitLabel, busyLabel, children, warning }: PurchaseFormProps) {
   const [invalid, setInvalid] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // A field to focus once the next render has put it in the document.
@@ -422,6 +424,7 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
         ) : null}
       </dl>
 
+      {warning ? <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{warning}</p> : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={busy}>
           {busy ? busyLabel : submitLabel}
