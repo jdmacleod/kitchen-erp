@@ -57,6 +57,10 @@ docker compose exec api kerp migrate         # also seeds the unit table
 docker compose exec api kerp create-admin   # prompts for email, name, password
 ```
 
+`migrate` prints each migration as it runs, then how many it committed and the
+revision the database is now at, or that there was nothing to do. It is safe to
+run after every update.
+
 `create-admin` prompts, so it needs a terminal. Scripting it (or running it over
 `exec -T`) takes the values as flags instead:
 

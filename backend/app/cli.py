@@ -63,10 +63,43 @@ def alembic_config() -> Config:
     return cfg
 
 
+def _run_alembic(action, revision: str, verb: str) -> None:
+    """Run an upgrade or downgrade and say what it did; alembic/env.py prints each step."""
+    cfg = alembic_config()
+    typer.echo(f"{verb.capitalize()} the database to {revision}…")
+    action(cfg, revision)
+    steps = cfg.attributes.get("steps", [])
+    if not steps:
+        typer.echo("Nothing to do: the database is already there.")
+        return
+    noun = "migration" if len(steps) == 1 else "migrations"
+    typer.echo(f"Committed {len(steps)} {noun}. The database is at {_current(cfg)}.")
+
+
+def _current(cfg: Config) -> str:
+    """The revision the database is at now, or "base" when none."""
+    from alembic.runtime.migration import MigrationContext
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import get_settings
+
+    async def _heads() -> tuple[str, ...]:
+        engine = create_async_engine(get_settings().migration_database_url)
+        try:
+            async with engine.connect() as conn:
+                return await conn.run_sync(
+                    lambda sync: MigrationContext.configure(sync).get_current_heads()
+                )
+        finally:
+            await engine.dispose()
+
+    return ", ".join(asyncio.run(_heads())) or "base"
+
+
 @cli.command()
 def migrate(revision: str = typer.Argument("head")) -> None:
     """Apply migrations as the owner role, then seed reference units (idempotent)."""
-    command.upgrade(alembic_config(), revision)
+    _run_alembic(command.upgrade, revision, "migrating")
     if revision == "head":
         _seed_units()
 
@@ -87,7 +120,7 @@ def _seed_units() -> None:
 @cli.command()
 def downgrade(revision: str = typer.Argument("-1")) -> None:
     """Revert migrations as the owner role."""
-    command.downgrade(alembic_config(), revision)
+    _run_alembic(command.downgrade, revision, "downgrading")
 
 
 @cli.command("create-admin")
