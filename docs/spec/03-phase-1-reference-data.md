@@ -104,12 +104,12 @@ Added 2026-09-29 after a /devex-review found the household's vendor list held li
 **Privacy comes first.** A household's list of the stores it visits is personal data even with every household field removed (SECURITY.md). So:
 
 - **Two export modes.** `household` exports everything the household holds about its vendors, for moving between deployments or as input to a tool the household controls. `public` exports only what is safe to contribute:
-  - It leaves out notes, home bases, stop overheads, the `active` flag, internal ids, and anything derived from purchases or visits.
+  - It leaves out notes, home bases, stop overheads, the `active` flag, internal ids, and anything derived from purchases, receipts or visits: last visits, and `receipt_identifiers`, which are learned from the household's own receipts.
   - It includes only locations marked `publishable` or linked to an OpenStreetMap object, and never stands, whose pin may be someone's home.
 - **The file is a contribution candidate.** A person reads the public export and opens the pull request to the public repository themselves.
 
 **Linking to OpenStreetMap.** Adoption (1D) creates a new location, so an existing location could never gain its OSM facts. A location can now be linked to an OSM object:
-- `POST /vendor-locations/{id}/link-osm` takes `{osm_type, osm_id}` from the candidates near the location's pin, and records the id and the `osm_*` snapshots.
+- `POST /api/v1/vendor-locations/{id}/link-osm` takes `{osm_type, osm_id}` from the candidates near the location's pin, and records the id and the `osm_*` snapshots.
 - A linked location refreshes like an adopted one.
 - The candidate query also captures `phone`, `website`, `brand` and `brand:wikidata` from OSM tags.
 - This is subject to `ENABLE_OVERPASS` and makes no request when it is off (criterion 25 still holds).
@@ -146,10 +146,9 @@ vendors:
         name: Elm St
         lat: "33.61234"
         lon: "-120.52345"
-        address: {line: "…", housenumber: "…", street: "…", city: "…", region: "…", postcode: "…", country: "…"}
+        address: "…"                         # one line, as stored and as the edit form takes it
         phone: "+1 555 0100"
         opening_hours: "Mo-Su 08:00-21:00"
-        receipt_identifiers: ["0123"]
         osm: {type: node, id: 123}
         parent: null                  # another location's key, for a stall
         sources: {address: {source: osm, ref: "node/123", checked_at: "…"}}
@@ -157,7 +156,8 @@ vendors:
       id: "…"
       notes: "…"
       active: true
-      locations: {invented-mart/elm-st: {id: "…", home_base: "Home", stop_overhead_min: 5, active: true}}
+      locations:
+        invented-mart/elm-st: {id: "…", home_base: "Home", stop_overhead_min: 5, active: true, receipt_identifiers: ["0123"]}
 ```
 
 ### Export and import
@@ -173,13 +173,14 @@ vendors:
 - **Writing fields.**
   - A field is written only when it is empty or still equals `field_source.imported`. Otherwise it is a conflict: left alone and listed.
   - Household fields are written only from a household-mode file.
+  - A home base is matched by its name. A name with no matching home base is reported as unresolved and the location keeps its nearest-base default; import never creates a home base, because a home base is where someone lives.
   - Nothing is deleted.
 - **Report.** Import returns `{created, updated, unchanged, conflicts, unmatched}` with each field's old and new value. A dry run is the same code rolled back. A malformed file is `422 bad_export`.
 
 ### Suggestions from an outside tool
 
 - **Scoped tokens.** An API token may be limited to scopes. A session, or a token with the scope `*` (every existing token), keeps full rights.
-  - `vendors:read` may read vendors and the **public** export only; the household export is `403`.
+  - `vendors:read` may read the **public** export and nothing else. The household export and every other vendor and location route are `403` to it, because those return notes, home bases, visits and store codes. A tool addresses suggestions by the keys in the public export.
   - `vendors:suggest` may only post suggestions.
 - **Posting suggestions.** `POST /api/v1/vendor-suggestions` accepts a batch of proposed field values, each with a target (vendor or location, by id or key), a field, the value it expects to replace, the proposed value, a required `source_url`, optional evidence (plain text, at most 1,000 characters), the tool's name and version, and a confidence (a decimal string).
   - Fields are a closed set: `website`, `brand`, `wikidata`, `phone`, `address`, `opening_hours`, `osm`, `name`, `price_scope`.
@@ -198,13 +199,14 @@ The header stage already reads the printed phone and address. `match_location` s
 
 60. An existing location can be linked to an OSM object near its pin; a refresh then fills its address and hours, and a name the user changed survives. With Overpass disabled, linking is refused and no request is made.
 61. Confirming a receipt's location offers to remember a store code the location lacks. Accepting it appends the code, and the next receipt printing that code is matched to that location without a click.
-62. A public export contains no household field, no stand, and no location that is neither publishable nor linked to OSM, verified by a test that scans every key in the document. A household export contains the household block.
+62. A public export contains no household field, no receipt identifier, no stand, and no location that is neither publishable nor linked to OSM, verified by a test that scans every key in the document. A household export contains the household block.
 63. The same export written as YAML and as JSON parses to equal documents, with every coordinate a string.
 64. Importing a file twice reports `0 created, 0 updated` the second time.
 65. A field the user edited after an import is reported as a conflict by the next import and left unchanged.
 66. Import matches by key before OSM id before name and proximity, and reports an ambiguous match instead of choosing.
 67. A file with a float coordinate, a YAML alias, an unknown format, or over the size limit is refused with `422 bad_export`, and a dry run changes nothing.
-68. A `vendors:read` token gets the public export and `403` for the household export; a `vendors:suggest` token can post suggestions and cannot change a vendor.
+68. A `vendors:read` token gets the public export and `403` from the household export and from every other vendor and location route; a `vendors:suggest` token can post suggestions and cannot read or change a vendor.
+73. Importing a household file on a deployment without its home bases reports each unmatched home-base name, and creates none.
 69. A malformed suggestion batch is `422`; posting a valid batch changes no vendor; an attempt to update a suggestion's proposal is refused by the database.
 70. Accepting a suggestion writes the value and its provenance; accepting one whose field changed since it was proposed marks it stale.
 71. Pending suggestions appear as one inbox row and leave the inbox once decided.

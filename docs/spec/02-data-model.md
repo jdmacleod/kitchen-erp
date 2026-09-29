@@ -11,7 +11,7 @@ The central idea is a three-way separation. An ingredient is what a recipe asks 
 ```
 app_user(id, email UNIQUE, display_name, password_hash, role CHECK IN (admin, member), active)
 api_token(id, user_id FK, name, token_hash UNIQUE, last_used_at?, revoked_at?,
-          scopes TEXT[] DEFAULT '{*}')      -- 1F: '*' is full rights; or vendors:read, vendors:suggest
+          scopes TEXT[] DEFAULT '{*}')      -- 1F: '*' is full rights; vendors:read is the public export only; vendors:suggest posts suggestions only
 session(id, user_id FK, expires_at, last_seen_at, revoked_at?)
 idempotency_key(id, user_id FK, key, request_hash, status_code, response_body JSONB, created_at, UNIQUE (user_id, key))
 ```
