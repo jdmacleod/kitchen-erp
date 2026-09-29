@@ -82,6 +82,16 @@ async def test_an_id_from_elsewhere_is_422_and_changes_nothing(admin_client):
     assert again["lines"] == p["lines"]
 
 
+async def test_an_edit_naming_no_saved_line_is_refused(admin_client):
+    # A client that still matches lines by position must not replace them all.
+    p, body = await _purchase(admin_client, 2)
+    body["lines"][1]["unit_price"] = "9.00"
+    r = await admin_client.put(f"/api/v1/purchases/{p['id']}", json=body)
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "line_ids_required"
+    assert (await admin_client.get(f"/api/v1/purchases/{p['id']}")).json()["lines"] == p["lines"]
+
+
 async def test_a_new_line_after_a_removal_gets_a_fresh_number(admin_client):
     p, body = await _purchase(admin_client)
     # Remove the last line, then add one: it must not reuse number 3.

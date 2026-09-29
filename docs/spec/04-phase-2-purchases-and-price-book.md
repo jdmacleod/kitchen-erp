@@ -161,7 +161,7 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 - A line that never produced an observation is deleted, and any discount or deposit attached to it is detached.
 - A line that did has its live observation voided with the reason "line removed". It gets `removed_at` and `removed_by`, its children are detached, and it disappears from every reader of the purchase's lines (02).
 - New lines take the next `seq` across all lines, removed ones included. Review's insert-after shift moves removed lines too.
-- The manual edit form sends each line's id. A line present in the purchase but missing from the request is removed. An id not on the purchase is refused with `422 unknown_line`.
+- The manual edit form sends each line's id. A line present in the purchase but missing from the request is removed. An id not on the purchase is refused with `422 unknown_line`. A request that names none of a purchase's saved lines is refused with `422 line_ids_required`, so a client still matching by position cannot void every price by accident.
 
 **Removing a purchase (#74).** One action, `POST /purchases/{id}/remove`, with no body. `removal_plan(purchase)` decides the outcome, and both the preview (below) and the action use it.
 - It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.

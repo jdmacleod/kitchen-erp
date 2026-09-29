@@ -298,6 +298,14 @@ async def update_manual(
     )
     existing = {line.id: line for line in purchase.lines}
     given = [line_in.id for line_in in payload.lines if line_in.id is not None]
+    if existing and not given:
+        # A client that still matches by position would otherwise remove every
+        # saved line and re-add it, voiding prices nobody changed.
+        raise ApiError(
+            422,
+            "line_ids_required",
+            "Name each saved line by its id; a saved line left out is removed.",
+        )
     unknown = [str(i) for i in given if i not in existing]
     if unknown:
         raise ApiError(422, "unknown_line", "No such line on this purchase.", {"line_ids": unknown})
