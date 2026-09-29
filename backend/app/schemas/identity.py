@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import EmailStr, Field, StringConstraints
+from pydantic import EmailStr, Field, StringConstraints, model_validator
 
 from app.schemas.base import ApiModel
 
@@ -65,9 +65,14 @@ class LoginOut(ApiModel):
     user: UserOut
 
 
+TokenScope = Literal["*", "vendors:read", "vendors:suggest"]
+
+
 class ApiTokenOut(ApiModel):
     id: uuid.UUID
     name: str
+    # "*" is full access; see app.api.deps (1F).
+    scopes: list[str]
     created_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
@@ -75,6 +80,15 @@ class ApiTokenOut(ApiModel):
 
 class ApiTokenCreate(ApiModel):
     name: str = Field(min_length=1, max_length=200)
+    # Full access by default, as every token had before scopes existed.
+    scopes: list[TokenScope] = Field(default_factory=lambda: ["*"], min_length=1, max_length=3)
+
+    @model_validator(mode="after")
+    def _full_alone(self) -> ApiTokenCreate:
+        if "*" in self.scopes and len(self.scopes) > 1:
+            raise ValueError("Full access (*) already includes every other scope.")
+        self.scopes = sorted(set(self.scopes))
+        return self
 
 
 class ApiTokenCreated(ApiModel):

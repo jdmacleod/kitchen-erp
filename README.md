@@ -154,6 +154,14 @@ links reach outside the deployment, and only when switched on.
   updated or left alone, and what needs you. Import never overwrites a field
   you edited, never deletes anything, and never creates a home base.
 
+- **Suggestions from an enrichment tool.** A tool that fills in missing store
+  facts works through the API with a token made under Settings → API tokens as
+  "Read and suggest vendor facts". That token can read the public vendor file
+  and post suggestions (`POST /api/v1/vendor-suggestions`), and nothing else:
+  every other route answers 403. Suggestions wait in the inbox; nothing changes
+  until you accept one. Whatever such a tool sends to a hosted model has left
+  your deployment, so choose the model accordingly.
+
 - **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See
   `docs/tiles.md` for how to cut one and for the attribution it carries.
 

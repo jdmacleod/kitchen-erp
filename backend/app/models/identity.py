@@ -14,7 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
@@ -46,6 +46,8 @@ class ApiToken(UUIDPrimaryKey, Timestamped, Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # "*" is every right its user has; see app.api.deps for how narrower scopes are held.
+    scopes: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=lambda: ["*"])
 
     user: Mapped[AppUser] = relationship(back_populates="tokens")
 

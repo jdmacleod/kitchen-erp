@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, update
@@ -233,9 +234,16 @@ async def revoke_all_sessions(db: AsyncSession, user_id: uuid.UUID) -> int:
 # --- API tokens ------------------------------------------------------------
 
 
-async def create_api_token(db: AsyncSession, user: AppUser, name: str) -> tuple[ApiToken, str]:
+async def create_api_token(
+    db: AsyncSession, user: AppUser, name: str, scopes: list[str] | None = None
+) -> tuple[ApiToken, str]:
     plaintext = new_api_token()
-    token = ApiToken(user_id=user.id, name=name.strip(), token_hash=digest(plaintext))
+    token = ApiToken(
+        user_id=user.id,
+        name=name.strip(),
+        token_hash=digest(plaintext),
+        scopes=list(scopes) if scopes else ["*"],
+    )
     db.add(token)
     await db.commit()
     await db.refresh(token)
@@ -258,6 +266,32 @@ async def revoke_api_token(db: AsyncSession, user: AppUser, token_id: uuid.UUID)
         await db.commit()
         await db.refresh(token)
     return token
+
+
+@dataclass(frozen=True)
+class TokenHolder:
+    """The user a bearer token stands for, and what that token may do."""
+
+    user: AppUser
+    token_id: uuid.UUID
+    scopes: tuple[str, ...]
+
+
+async def holder_for_api_token(db: AsyncSession, plaintext: str) -> TokenHolder | None:
+    result = await db.execute(
+        select(ApiToken, AppUser)
+        .join(AppUser, AppUser.id == ApiToken.user_id)
+        .where(ApiToken.token_hash == digest(plaintext))
+    )
+    row = result.first()
+    if row is None:
+        return None
+    token, user = row
+    if token.revoked_at is not None or not user.active:
+        return None
+    token.last_used_at = _now()
+    await db.commit()
+    return TokenHolder(user=user, token_id=token.id, scopes=tuple(token.scopes))
 
 
 async def user_for_api_token(db: AsyncSession, plaintext: str) -> AppUser | None:

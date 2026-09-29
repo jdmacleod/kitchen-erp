@@ -7,13 +7,14 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.api.deps import FULL_SCOPE, CurrentUser, DbSession, Idempotency, scoped_user, token_scopes
 from app.core.config import get_settings
 from app.core.errors import ApiError
+from app.models import AppUser
 from app.schemas.geo import (
     ExportSummaryOut,
     HomeBaseCreate,
@@ -117,12 +118,25 @@ async def delete_home_base(home_base_id: uuid.UUID, _: CurrentUser, db: DbSessio
     },
 )
 async def export_vendors(
-    _: CurrentUser,
+    request: Request,
+    _: Annotated[AppUser, Depends(scoped_user("vendors:read"))],
     db: DbSession,
     format: Literal["yaml", "json"] = "yaml",
     mode: Literal["public", "household"] = "public",
 ) -> Response:
-    """The vendor list as a file. Public mode holds public facts only (1F)."""
+    """The vendor list as a file. Public mode holds public facts only (1F).
+
+    A ``vendors:read`` token may read the public file and nothing else: the
+    household file carries notes, home bases and store codes.
+    """
+    scopes = token_scopes(request)
+    if mode == "household" and scopes is not None and FULL_SCOPE not in scopes:
+        raise ApiError(
+            403,
+            "insufficient_scope",
+            "This token can read the public vendor file only.",
+            {"required": FULL_SCOPE},
+        )
     file = await vendor_exchange.build(db, mode)
     day = file.source.exported_at.date().isoformat()
     return Response(

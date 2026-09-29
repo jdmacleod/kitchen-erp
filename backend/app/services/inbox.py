@@ -10,6 +10,7 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     receipt_failed   failed ingest jobs                             job
     identify         resolution.to_identify (committed, unmatched)  one aggregate row
     bridge           pricebook.needs_bridge (failed normalization)  product
+    vendor_suggest.. vendor_suggestion awaiting a decision (1F)     one aggregate row
 
 Receipts still being read are not items: they come back as ``reading`` so Home can
 show one line above the list.
@@ -33,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
-from app.services import pricebook, resolution
+from app.services import pricebook, resolution, vendor_suggestions
 
 log = get_logger(__name__)
 
@@ -210,6 +211,24 @@ async def _bridges(db: AsyncSession) -> list[InboxItem]:
     return items
 
 
+async def _suggestions(db: AsyncSession) -> list[InboxItem]:
+    count, oldest, tools = await vendor_suggestions.oldest_awaiting(db)
+    if not count or oldest is None:
+        return []
+    noun = "vendor suggestion" if count == 1 else "vendor suggestions"
+    source = f"From {', '.join(tools)}. " if tools else ""
+    return [
+        InboxItem(
+            kind="vendor_suggestions",
+            title=f"{count} {noun} to review",
+            detail=f"{source}Nothing changes until you accept one.",
+            action_label="Review",
+            action_route="/catalog/vendors?suggestions=1",
+            created_at=oldest,
+        )
+    ]
+
+
 async def _reading(db: AsyncSession) -> InboxReading:
     row = (await db.execute(_READING_SQL)).mappings().one()
     oldest, progress = row["oldest_at"], row["last_progress_at"]
@@ -232,6 +251,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("receipt_failed", _failed_reads),
     ("identify", _identify),
     ("bridge", _bridges),
+    ("vendor_suggestions", _suggestions),
 ]
 
 

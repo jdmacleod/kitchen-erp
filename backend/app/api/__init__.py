@@ -12,6 +12,7 @@ from app.api import (
     search,
     units,
     users,
+    vendor_suggestions,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -26,3 +27,4 @@ router.include_router(purchases.router)
 router.include_router(receipts.router)
 router.include_router(inbox.router)
 router.include_router(search.router)
+router.include_router(vendor_suggestions.router)
