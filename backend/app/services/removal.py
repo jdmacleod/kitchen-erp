@@ -16,7 +16,6 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Literal
 
 from sqlalchemy import func, select
@@ -130,25 +129,37 @@ async def _delete(db: AsyncSession, purchase: Purchase, job: IngestJob | None) -
     await db.flush()
 
 
-def _unlink(path: Path | None) -> bool:
-    """Delete the photo once the database has let go of it.
+async def delete_photo(db: AsyncSession, document: ReceiptDocument | None) -> bool:
+    """Delete a removed receipt's photo, once the removal has committed.
 
-    Only after the commit: a rollback cannot bring a file back. If this fails,
-    the removal still stands; the file is served by nothing, and uploading the
-    same receipt again writes over it.
+    Only after the commit: a rollback cannot bring a file back. The receipt's
+    job is locked and checked again first, because uploading the same file
+    between the commit and here revives the job and writes the photo back;
+    the upload takes the same lock. If the file can't be deleted, the removal
+    still stands and the image route refuses a removed receipt anyway.
     """
-    if path is None:
+    if document is None:
         return False
+    stmt = (
+        select(IngestJob.status)
+        .where(IngestJob.receipt_document_id == document.id)
+        .with_for_update()
+    )
+    status = (await db.execute(stmt)).scalar_one_or_none()
     try:
-        path.unlink(missing_ok=True)
+        if status != "discarded":
+            return False
+        document_path(document).unlink(missing_ok=True)
     except OSError:
         log.exception("could not delete a removed receipt's photo")
         return False
+    finally:
+        await db.commit()
     return True
 
 
 async def remove_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID) -> Removed:
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     if purchase.status == "voided":
         raise ApiError(409, "already_removed", "This purchase was already removed.")
     plan = await removal_plan(db, purchase, lock=True)
@@ -162,10 +173,9 @@ async def remove_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
         purchase.voided_by = user.id
         await db.commit()
         return Removed("void", False, await get_purchase(db, purchase_id))
-    photo = document_path(plan.document) if plan.document is not None else None
     await _delete(db, purchase, plan.job)
     await db.commit()
-    return Removed("delete", _unlink(photo))
+    return Removed("delete", await delete_photo(db, plan.document))
 
 
 async def remove_failed_job(db: AsyncSession, job_id: uuid.UUID) -> bool:
@@ -173,22 +183,26 @@ async def remove_failed_job(db: AsyncSession, job_id: uuid.UUID) -> bool:
 
     Returns whether its photo was deleted.
     """
-    stmt = (
-        select(IngestJob)
-        .where(IngestJob.id == job_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
+    stmt = select(IngestJob).where(IngestJob.id == job_id)
     job = (await db.execute(stmt)).scalar_one_or_none()
     if job is None:
         raise ApiError(404, "not_found", "Ingest job not found.")
+    # The purchase before the job, the order every other change takes them
+    # in (removing a purchase, committing one), so two can never deadlock.
+    purchase = (
+        await get_purchase(db, job.purchase_id, lock=True) if job.purchase_id is not None else None
+    )
+    job = (
+        await db.execute(stmt.with_for_update().execution_options(populate_existing=True))
+    ).scalar_one()
+    if purchase is not None and job.purchase_id != purchase.id:
+        raise ApiError(409, "conflict", "This receipt changed meanwhile. Reload and try again.")
     if job.status == "discarded":
         raise ApiError(404, "receipt_removed", "This receipt was removed.")
     if job.status in READING:
         raise still_reading()
     if job.status != "failed":
         raise ApiError(409, "not_failed", "Only a receipt that couldn't be read is removed here.")
-    purchase = await get_purchase(db, job.purchase_id) if job.purchase_id is not None else None
     if purchase is not None:
         plan = await removal_plan(db, purchase)
         if plan.outcome == "void":
@@ -202,10 +216,9 @@ async def remove_failed_job(db: AsyncSession, job_id: uuid.UUID) -> bool:
     document = await _photo_to_delete(
         db, job.receipt_document_id, purchase.id if purchase is not None else None
     )
-    photo = document_path(document) if document is not None else None
     if purchase is not None:
         await _delete(db, purchase, job)
     else:
         _discard(job)
     await db.commit()
-    return _unlink(photo)
+    return await delete_photo(db, document)

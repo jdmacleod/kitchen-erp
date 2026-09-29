@@ -343,7 +343,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
 
 async def resolve_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> dict[str, Any]:
     """Run the ladder over every unresolved item line. Commits. Returns stage output."""
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     records = []
     for line in purchase.lines:
         if line.resolution in ("manual", "ignored", "barcode", "alias") and line.resolved_by:
@@ -384,7 +384,7 @@ async def decide_line(
 
     On a committed purchase the observation is emitted now, dated to the purchase.
     """
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     ensure_not_voided(purchase)
     line = await _line_of(purchase, line_id)
     if line.line_kind != "item":
@@ -463,7 +463,7 @@ def _resolved_item(line: PurchaseLine) -> bool:
 async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID) -> Purchase:
     """Commit at any time. Resolved item lines emit observations; unresolved lines
     join the to-identify queue. On recommit, only changed lines void and re-emit."""
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     ensure_not_voided(purchase)
     if purchase.vendor_location_id is None:
         raise ApiError(409, "location_required", "Choose the vendor location before committing.")
@@ -511,7 +511,7 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
 
 
 async def reopen_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     if purchase.status != "committed":
         raise ApiError(409, "not_committed", "Only a committed purchase can be reopened.")
     purchase.status = "reviewed"
