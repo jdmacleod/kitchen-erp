@@ -163,14 +163,16 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 - New lines take the next `seq` across all lines, removed ones included. Review's insert-after shift moves removed lines too.
 - The manual edit form sends each line's id. A line present in the purchase but missing from the request is removed. An id not on the purchase is refused with `422 unknown_line`.
 
-**Removing a purchase (#74).** One "Remove purchase" action. `removal_plan(purchase)` decides the outcome, and both the preview (below) and the action use it.
+**Removing a purchase (#74).** One action, `POST /purchases/{id}/remove`, with no body. `removal_plan(purchase)` decides the outcome, and both the preview (below) and the action use it.
+- It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.
+- A purchase that no longer exists is `404`, which the client treats as already removed.
 - **Delete:** when none of the purchase's lines ever produced an observation, the purchase and its lines are deleted. Its ingest job, if any, gets `purchase_id = NULL` and `status = discarded`, and its receipt image file is deleted. The `receipt_document` row and stage results stay (append-only).
 - **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only and its receipt image is kept.
 - **Blocked:** while the purchase's ingest job is `pending` or `running`, removal is refused with `409 still_reading`, because the worker would otherwise recreate the draft.
-- All of it happens in one transaction; void and observe flush, and the caller commits.
+- The database changes happen in one transaction; void and observe flush, and the caller commits. The image file is deleted only after the commit succeeds, because a rollback cannot restore a file. If that deletion fails, the removal still stands and the failure is logged. The leftover file is served by nothing, and re-uploading the receipt overwrites it.
 
 **Removing a failed read.** `POST /ingest-jobs/{id}/remove` accepts only a `failed` job.
-- It discards the job and deletes its image.
+- It discards the job and, after the commit, deletes its image, as above. It answers `200` with `{photo_deleted}`.
 - If the job already has a draft purchase, the draft is deleted by the same plan. A draft cannot have recorded lines; if the plan says void, the request is refused with that outcome.
 - A `pending` or `running` job gets `409 still_reading`. Any other status gets `409 not_failed`.
 - `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`. Uploading the file again is the only way back.
