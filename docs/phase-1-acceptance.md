@@ -48,6 +48,11 @@ Compose stack and observing, with the command shown.
 | 61 (1F) | Review offers a store code the location lacks; remembering it makes the next receipt printing it match without a click | `test_store_code_offer.py::test_remembered_code_matches_the_next_receipt`, `::test_codes_that_do_not_read_like_a_store_number_are_not_offered`; `frontend/src/test/review-store-code.test.tsx` |
 | 62 (1F) | A public export holds no household field, store code, stand, or location neither publishable nor linked; a household export holds the household block | `test_vendor_export.py::test_public_export_carries_no_household_data` (scans every key), `::test_household_export_carries_the_household_block`, `::test_linked_locations_are_public_and_inactive_ones_are_not` |
 | 63 (1F) | YAML and JSON exports parse to equal documents with every coordinate a string | `test_vendor_export.py::test_yaml_and_json_are_the_same_document` |
+| 64 (1F) | Importing a file twice reports 0 created, 0 updated the second time | `test_vendor_import.py::test_apply_then_the_same_file_again_changes_nothing`, `::test_an_exported_household_file_imports_unchanged` |
+| 65 (1F) | A field edited after an import is a conflict next time, left unchanged | `test_vendor_import.py::test_a_field_edited_after_import_is_a_conflict` |
+| 66 (1F) | Key before OSM id before name within 150 m; ambiguity reported, not guessed | `test_vendor_import.py::test_matching_order_key_then_osm_then_name_nearby`, `::test_two_nearby_candidates_are_reported_not_guessed` |
+| 67 (1F) | Float, alias, unknown format or oversized file is 422 `bad_export`; a dry run changes nothing | `test_vendor_import.py::test_a_malformed_file_is_refused_before_any_write`, `::test_yaml_aliases_and_oversized_files_are_refused`, `::test_dry_run_reports_and_writes_nothing`; `e2e/tests/vendor-import.spec.ts` |
+| 73 (1F) | Unknown home-base names are reported and none is created | `test_vendor_import.py::test_household_fields_only_from_a_household_file` |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
 criteria to 1A, then restarts at 13 for 1C and continues to 35; the second column

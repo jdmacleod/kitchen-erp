@@ -20,6 +20,10 @@ LICENSE = "ODbL-1.0"
 
 Mode = Literal["public", "household"]
 Coordinate = Annotated[str, Field(pattern=r"^-?\d{1,3}(\.\d+)?$")]
+VendorKey = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9-]*$", max_length=120)]
+_SLUG = r"[a-z0-9][a-z0-9-]*"
+LocationKey = Annotated[str, Field(pattern=rf"^{_SLUG}/{_SLUG}$", max_length=250)]
+Text = Annotated[str, Field(max_length=500)]
 
 
 class _Strict(BaseModel):
@@ -44,25 +48,27 @@ class OsmRef(_Strict):
 
 
 class LocationEntry(_Strict):
-    key: str
-    name: str
+    key: LocationKey
+    name: Annotated[str, Field(min_length=1, max_length=200)]
     lat: Coordinate
     lon: Coordinate
-    address: str | None = None
-    phone: str | None = None
-    opening_hours: str | None = None
+    address: Text | None = None
+    phone: Annotated[str, Field(max_length=40)] | None = None
+    opening_hours: Annotated[str, Field(max_length=2000)] | None = None
     osm: OsmRef | None = None
-    parent: str | None = None  # another location's key, for a stall
+    parent: LocationKey | None = None  # another location's key, for a stall
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
 
 
 class HouseholdLocation(_Strict):
     id: str
     home_base: str | None = None  # a home base's name; never created by import
-    stop_overhead_min: int | None = None
+    stop_overhead_min: Annotated[int, Field(ge=0, le=32767)] | None = None
     active: bool
     publishable: bool
-    receipt_identifiers: list[str] = Field(default_factory=list)
+    receipt_identifiers: list[Annotated[str, Field(max_length=200)]] = Field(
+        default_factory=list, max_length=50
+    )
 
 
 class HouseholdVendor(_Strict):
@@ -73,13 +79,13 @@ class HouseholdVendor(_Strict):
 
 
 class VendorEntry(_Strict):
-    key: str
-    name: str
+    key: VendorKey
+    name: Annotated[str, Field(min_length=1, max_length=200)]
     kind: Literal["chain", "independent", "market", "stand"]
     price_scope: Literal["chain", "location"]
-    website: str | None = None
-    brand: str | None = None
-    wikidata: str | None = None
+    website: Text | None = None
+    brand: Annotated[str, Field(max_length=200)] | None = None
+    wikidata: Annotated[str, Field(pattern=r"^Q[0-9]+$", max_length=20)] | None = None
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
     locations: list[LocationEntry] = Field(default_factory=list)
     household: HouseholdVendor | None = None
@@ -90,3 +96,51 @@ class VendorFile(_Strict):
     license: Literal["ODbL-1.0"] = LICENSE
     source: FileSource
     vendors: list[VendorEntry]
+
+
+# --- import report ------------------------------------------------------------
+
+
+class FieldChange(BaseModel):
+    field: str
+    old: str | None
+    new: str | None
+
+
+class FieldConflict(BaseModel):
+    """A field a person edited: import leaves it and says what the file had."""
+
+    field: str
+    current: str | None
+    file: str | None
+
+
+Outcome = Literal["created", "updated", "unchanged", "conflict", "unmatched"]
+
+
+class ImportItem(BaseModel):
+    target: Literal["vendor", "location"]
+    key: str
+    name: str
+    vendor_key: str | None = None  # for a location
+    outcome: Outcome
+    changes: list[FieldChange] = Field(default_factory=list)
+    conflicts: list[FieldConflict] = Field(default_factory=list)
+    reason: str | None = None  # why a row was not matched, in plain words
+
+
+class ImportCounts(BaseModel):
+    created: int
+    updated: int
+    unchanged: int
+    conflicts: int
+    unmatched: int
+
+
+class ImportReport(BaseModel):
+    dry_run: bool
+    mode: Mode
+    counts: ImportCounts
+    items: list[ImportItem]
+    # Home base names the file uses that this deployment has none of; none is created.
+    unresolved_home_bases: list[str] = Field(default_factory=list)

@@ -501,6 +501,71 @@ export function exportUrl(mode: ExportMode, format: ExportFormat): string {
   return `/api/v1/vendors/export${qs({ format, mode })}`;
 }
 
+export interface ImportFieldChange {
+  field: string;
+  old: string | null;
+  new: string | null;
+}
+
+/** A field a person edited: import keeps it and says what the file had. */
+export interface ImportFieldConflict {
+  field: string;
+  current: string | null;
+  file: string | null;
+}
+
+export type ImportOutcome = "created" | "updated" | "unchanged" | "conflict" | "unmatched";
+
+export interface ImportItem {
+  target: "vendor" | "location";
+  key: string;
+  name: string;
+  vendor_key: string | null;
+  outcome: ImportOutcome;
+  changes: ImportFieldChange[];
+  conflicts: ImportFieldConflict[];
+  reason: string | null;
+}
+
+export interface ImportCounts {
+  created: number;
+  updated: number;
+  unchanged: number;
+  conflicts: number;
+  unmatched: number;
+}
+
+export interface ImportReport {
+  dry_run: boolean;
+  mode: ExportMode;
+  counts: ImportCounts;
+  items: ImportItem[];
+  unresolved_home_bases: string[];
+}
+
+export const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Send a vendor file. A dry run reports what would change and writes nothing;
+ * otherwise the file is applied in one transaction (1F).
+ */
+export function useImportVendors() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ text, fileName, dryRun }: { text: string; fileName: string; dryRun: boolean }) =>
+      // As a string: qs drops a false, and the server's default is a dry run.
+      api<ImportReport>(`/vendors/import${qs({ dry_run: dryRun ? "true" : "false", filename: fileName.slice(0, 200) })}`, {
+        method: "POST",
+        rawBody: { text, contentType: /\.json$/i.test(fileName) ? "application/json" : "application/yaml" },
+      }),
+    onSuccess: (report) => {
+      if (report.dry_run) return;
+      invalidateLocations(client);
+      void client.invalidateQueries({ queryKey: geoKeys.vendors });
+    },
+  });
+}
+
 /** What a public export would hold, shown before downloading (design D12). */
 export function useExportSummary(enabled: boolean) {
   return useQuery({

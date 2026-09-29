@@ -341,6 +341,52 @@ def export_vendors(
     typer.echo(f"wrote {out}: {vendors} vendor(s), {locations} location(s), {mode} mode")
 
 
+VENDOR_FILE = typer.Option(..., "--from", exists=True, dir_okay=False, resolve_path=True)
+
+
+@import_cli.command("vendors")
+def import_vendors(
+    src: Path = VENDOR_FILE,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change; write nothing."
+    ),
+) -> None:
+    """Import a kitchen-erp-vendors/1 file (YAML or JSON). A field someone edited is kept."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.services import vendor_import
+
+    fmt = "json" if src.suffix.lower() == ".json" else "yaml"
+
+    async def _run():
+        async with get_sessionmaker()() as db:
+            report = await vendor_import.run(
+                db, src.read_bytes(), fmt=fmt, dry_run=dry_run, filename=src.name
+            )
+        await dispose_engine()
+        return report
+
+    try:
+        report = asyncio.run(_run())
+    except ApiError as exc:
+        typer.echo(f"{exc.message}", err=True)
+        raise typer.Exit(2) from exc
+    for item in report.items:
+        if item.outcome in ("conflict", "unmatched"):
+            what = item.reason or "; ".join(
+                f"your {c.field} is kept (the file says {c.file!r})" for c in item.conflicts
+            )
+            typer.echo(f"  needs you: {item.key}: {what}")
+    for name in report.unresolved_home_bases:
+        typer.echo(f"  no home base called {name!r}: those locations use the nearest one")
+    c = report.counts
+    verb = "would change" if dry_run else "changed"
+    typer.echo(
+        f"{verb}: {c.created} created, {c.updated} updated, {c.unchanged} unchanged, "
+        f"{c.conflicts} conflicts, {c.unmatched} unmatched"
+    )
+
+
 @cli.command("recompute-norms")
 def recompute_norms() -> None:
     """Truncate and rebuild price_norm from observations and current bridges."""

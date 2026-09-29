@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { login, nextTag } from "./helpers";
+import { login, nextTag, vendorsAction } from "./helpers";
 
 // Names carry a per-run stamp so repeated runs never collide on the
 // case-insensitive unique index.
@@ -57,7 +57,7 @@ test("the OpenStreetMap panel says the integration is off rather than failing", 
 
   await page.goto("/catalog/vendors");
   // Find nearby opens the adoption flow in a dialog (UI-3.8).
-  await page.getByRole("button", { name: "Find nearby" }).click();
+  await vendorsAction(page, "Find nearby");
   const dialog = page.getByRole("dialog", { name: "Find nearby" });
   await dialog.getByLabel("Home base").selectOption(home.id);
   await dialog.getByRole("button", { name: "Find candidates" }).click();

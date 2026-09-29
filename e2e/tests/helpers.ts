@@ -38,3 +38,19 @@ export function watchExternalRequests(page: Page, baseURL: string): string[] {
   });
   return external;
 }
+
+/**
+ * Click one of the Vendors page's secondary actions (Find nearby, Export,
+ * Import). Below 1024px they sit behind "More actions" (design D15).
+ */
+export async function vendorsAction(page: Page, name: string): Promise<void> {
+  // The header renders its actions together; wait for it before asking which layout.
+  await page.getByRole("button", { name: "Add vendor" }).first().waitFor();
+  const more = page.getByRole("button", { name: "More actions", exact: true });
+  if (await more.isVisible()) {
+    await more.click();
+    await page.getByRole("dialog", { name: "More actions" }).getByRole("button", { name }).click();
+  } else {
+    await page.getByRole("button", { name, exact: true }).click();
+  }
+}

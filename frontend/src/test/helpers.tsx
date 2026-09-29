@@ -60,7 +60,8 @@ export function mockApi(routes: Record<string, RouteHandler>): RecordedCall[] {
     const path = url.replace(/^\/api\/v1/, "");
     const method = (init?.method ?? "GET").toUpperCase();
     const headers = new Headers(init?.headers);
-    const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+    // JSON bodies are parsed; anything else (a YAML vendor file) is kept as text.
+    const body = typeof init?.body === "string" ? (headers.get("Content-Type")?.includes("json") ? JSON.parse(init.body) : init.body) : undefined;
     const [pathname, search = ""] = path.split("?", 2);
     const call: RecordedCall = { method, path, query: new URLSearchParams(search), headers, body };
     calls.push(call);

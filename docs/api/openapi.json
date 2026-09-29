@@ -699,6 +699,81 @@
         "title": "ExportSummaryOut",
         "type": "object"
       },
+      "FieldChange": {
+        "properties": {
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "new": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New"
+          },
+          "old": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old"
+          }
+        },
+        "required": [
+          "field",
+          "old",
+          "new"
+        ],
+        "title": "FieldChange",
+        "type": "object"
+      },
+      "FieldConflict": {
+        "description": "A field a person edited: import leaves it and says what the file had.",
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          }
+        },
+        "required": [
+          "field",
+          "current",
+          "file"
+        ],
+        "title": "FieldConflict",
+        "type": "object"
+      },
       "FieldSourceEntry": {
         "additionalProperties": false,
         "properties": {
@@ -1229,14 +1304,18 @@
           },
           "receipt_identifiers": {
             "items": {
+              "maxLength": 200,
               "type": "string"
             },
+            "maxItems": 50,
             "title": "Receipt Identifiers",
             "type": "array"
           },
           "stop_overhead_min": {
             "anyOf": [
               {
+                "maximum": 32767.0,
+                "minimum": 0.0,
                 "type": "integer"
               },
               {
@@ -1289,6 +1368,155 @@
           "active"
         ],
         "title": "HouseholdVendor",
+        "type": "object"
+      },
+      "ImportCounts": {
+        "properties": {
+          "conflicts": {
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "unchanged": {
+            "title": "Unchanged",
+            "type": "integer"
+          },
+          "unmatched": {
+            "title": "Unmatched",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "created",
+          "updated",
+          "unchanged",
+          "conflicts",
+          "unmatched"
+        ],
+        "title": "ImportCounts",
+        "type": "object"
+      },
+      "ImportItem": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "conflicts": {
+            "items": {
+              "$ref": "#/components/schemas/FieldConflict"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "created",
+              "updated",
+              "unchanged",
+              "conflict",
+              "unmatched"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "target": {
+            "enum": [
+              "vendor",
+              "location"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "vendor_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Key"
+          }
+        },
+        "required": [
+          "target",
+          "key",
+          "name",
+          "outcome"
+        ],
+        "title": "ImportItem",
+        "type": "object"
+      },
+      "ImportReport": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/ImportCounts"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ImportItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "public",
+              "household"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "unresolved_home_bases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unresolved Home Bases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dry_run",
+          "mode",
+          "counts",
+          "items"
+        ],
+        "title": "ImportReport",
         "type": "object"
       },
       "InboxItem": {
@@ -3402,6 +3630,7 @@
           "address": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -3411,6 +3640,8 @@
             "title": "Address"
           },
           "key": {
+            "maxLength": 250,
+            "pattern": "^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$",
             "title": "Key",
             "type": "string"
           },
@@ -3425,12 +3656,15 @@
             "type": "string"
           },
           "name": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "opening_hours": {
             "anyOf": [
               {
+                "maxLength": 2000,
                 "type": "string"
               },
               {
@@ -3452,6 +3686,8 @@
           "parent": {
             "anyOf": [
               {
+                "maxLength": 250,
+                "pattern": "^[a-z0-9][a-z0-9-]*/[a-z0-9][a-z0-9-]*$",
                 "type": "string"
               },
               {
@@ -3463,6 +3699,7 @@
           "phone": {
             "anyOf": [
               {
+                "maxLength": 40,
                 "type": "string"
               },
               {
@@ -7232,6 +7469,7 @@
           "brand": {
             "anyOf": [
               {
+                "maxLength": 200,
                 "type": "string"
               },
               {
@@ -7251,6 +7489,8 @@
             ]
           },
           "key": {
+            "maxLength": 120,
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
             "title": "Key",
             "type": "string"
           },
@@ -7272,6 +7512,8 @@
             "type": "array"
           },
           "name": {
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
@@ -7293,6 +7535,7 @@
           "website": {
             "anyOf": [
               {
+                "maxLength": 500,
                 "type": "string"
               },
               {
@@ -7304,6 +7547,8 @@
           "wikidata": {
             "anyOf": [
               {
+                "maxLength": 20,
+                "pattern": "^Q[0-9]+$",
                 "type": "string"
               },
               {
@@ -13450,6 +13695,78 @@
           }
         },
         "summary": "Export Summary",
+        "tags": [
+          "geo",
+          "vendors"
+        ]
+      }
+    },
+    "/api/v1/vendors/import": {
+      "post": {
+        "description": "Import a vendor file. A dry run (the default) reports what would change and\nwrites nothing; ``dry_run=false`` applies it in one transaction (1F).",
+        "operationId": "import_vendors_api_v1_vendors_import_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "filename",
+            "required": false,
+            "schema": {
+              "default": "vendor file",
+              "maxLength": 200,
+              "title": "Filename",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorFile"
+              }
+            },
+            "application/yaml": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "description": "A kitchen-erp-vendors/1 file, at most 5 MB.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Vendors",
         "tags": [
           "geo",
           "vendors"
