@@ -679,6 +679,46 @@
         "title": "DensitySuggestion",
         "type": "object"
       },
+      "FieldSourceOut": {
+        "additionalProperties": false,
+        "description": "Where a field's current value came from. Absent when a person entered it.",
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "ref",
+          "checked_at"
+        ],
+        "title": "FieldSourceOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3001,6 +3041,185 @@
         "title": "LineProductRef",
         "type": "object"
       },
+      "LinkCandidateList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LinkCandidateOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "LinkCandidateList",
+        "type": "object"
+      },
+      "LinkCandidateOut": {
+        "additionalProperties": false,
+        "description": "An OSM object near a location's pin, and what linking it would change (1F).",
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "distance_m": {
+            "title": "Distance M",
+            "type": "integer"
+          },
+          "fills": {
+            "items": {
+              "enum": [
+                "name",
+                "address",
+                "opening_hours",
+                "phone",
+                "website"
+              ],
+              "type": "string"
+            },
+            "title": "Fills",
+            "type": "array"
+          },
+          "keeps": {
+            "items": {
+              "enum": [
+                "name",
+                "address",
+                "opening_hours",
+                "phone",
+                "website"
+              ],
+              "type": "string"
+            },
+            "title": "Keeps",
+            "type": "array"
+          },
+          "kind_guess": {
+            "enum": [
+              "chain",
+              "independent",
+              "market",
+              "stand"
+            ],
+            "title": "Kind Guess",
+            "type": "string"
+          },
+          "linked_to": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkedLocationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "osm_id": {
+            "title": "Osm Id",
+            "type": "integer"
+          },
+          "osm_type": {
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "title": "Osm Type",
+            "type": "string"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          }
+        },
+        "required": [
+          "osm_type",
+          "osm_id",
+          "name",
+          "kind_guess",
+          "address",
+          "opening_hours",
+          "phone",
+          "website",
+          "distance_m",
+          "linked_to",
+          "fills",
+          "keeps"
+        ],
+        "title": "LinkCandidateOut",
+        "type": "object"
+      },
+      "LinkedLocationRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "LinkedLocationRef",
+        "type": "object"
+      },
       "LocationPanel": {
         "additionalProperties": false,
         "properties": {
@@ -4185,6 +4404,38 @@
           "already_adopted"
         ],
         "title": "OsmCandidateOut",
+        "type": "object"
+      },
+      "OsmLinkIn": {
+        "additionalProperties": false,
+        "properties": {
+          "osm_id": {
+            "minimum": 1.0,
+            "title": "Osm Id",
+            "type": "integer"
+          },
+          "osm_type": {
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "title": "Osm Type",
+            "type": "string"
+          },
+          "radius_m": {
+            "default": 250,
+            "maximum": 2000.0,
+            "minimum": 50.0,
+            "title": "Radius M",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "osm_type",
+          "osm_id"
+        ],
+        "title": "OsmLinkIn",
         "type": "object"
       },
       "PasswordChange": {
@@ -6709,6 +6960,13 @@
             "title": "Price Scope",
             "type": "string"
           },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "title": "Sources",
+            "type": "object"
+          },
           "website": {
             "anyOf": [
               {
@@ -6819,6 +7077,18 @@
               }
             ],
             "title": "Parent Location Id"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
           },
           "receipt_identifiers": {
             "items": {
@@ -7012,12 +7282,30 @@
             ],
             "title": "Parent Location Id"
           },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
           "receipt_identifiers": {
             "items": {
               "type": "string"
             },
             "title": "Receipt Identifiers",
             "type": "array"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "title": "Sources",
+            "type": "object"
           },
           "stalls": {
             "items": {
@@ -7048,6 +7336,7 @@
           "lat",
           "lon",
           "address",
+          "phone",
           "home_base_id",
           "parent_location_id",
           "opening_hours",
@@ -7219,12 +7508,30 @@
             ],
             "title": "Parent Location Id"
           },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
           "receipt_identifiers": {
             "items": {
               "type": "string"
             },
             "title": "Receipt Identifiers",
             "type": "array"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "title": "Sources",
+            "type": "object"
           },
           "stop_overhead_min": {
             "anyOf": [
@@ -7248,6 +7555,7 @@
           "lat",
           "lon",
           "address",
+          "phone",
           "home_base_id",
           "parent_location_id",
           "opening_hours",
@@ -7360,6 +7668,18 @@
             ],
             "title": "Parent Location Id"
           },
+          "phone": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
           "receipt_identifiers": {
             "anyOf": [
               {
@@ -7442,6 +7762,13 @@
             ],
             "title": "Price Scope",
             "type": "string"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "title": "Sources",
+            "type": "object"
           },
           "website": {
             "anyOf": [
@@ -11957,6 +12284,117 @@
         ]
       }
     },
+    "/api/v1/vendor-locations/{location_id}/link-osm": {
+      "post": {
+        "operationId": "link_location_osm_api_v1_vendor_locations__location_id__link_osm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OsmLinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorLocationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link Location Osm",
+        "tags": [
+          "geo",
+          "vendor-locations"
+        ]
+      }
+    },
+    "/api/v1/vendor-locations/{location_id}/osm-candidates": {
+      "get": {
+        "description": "OpenStreetMap objects near this location's pin, to link it to (1F).",
+        "operationId": "location_osm_candidates_api_v1_vendor_locations__location_id__osm_candidates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "radius_m",
+            "required": false,
+            "schema": {
+              "default": 250,
+              "maximum": 2000,
+              "minimum": 50,
+              "title": "Radius M",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkCandidateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Location Osm Candidates",
+        "tags": [
+          "geo",
+          "vendor-locations"
+        ]
+      }
+    },
     "/api/v1/vendor-locations/{location_id}/price-panel": {
       "get": {
         "operationId": "location_price_panel_api_v1_vendor_locations__location_id__price_panel_get",
@@ -12050,6 +12488,50 @@
           }
         },
         "summary": "Refresh Location Osm",
+        "tags": [
+          "geo",
+          "vendor-locations"
+        ]
+      }
+    },
+    "/api/v1/vendor-locations/{location_id}/unlink-osm": {
+      "post": {
+        "operationId": "unlink_location_osm_api_v1_vendor_locations__location_id__unlink_osm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorLocationDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unlink Location Osm",
         "tags": [
           "geo",
           "vendor-locations"

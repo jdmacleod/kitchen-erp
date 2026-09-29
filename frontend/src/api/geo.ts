@@ -39,6 +39,16 @@ export interface HomeBase {
   created_at: string;
 }
 
+/** Where a field's current value came from (1F). A field a person entered has none. */
+export interface FieldSource {
+  /** osm | observed | import | enriched:<tool> */
+  source: string;
+  ref: string | null;
+  checked_at: string | null;
+}
+
+export type Sources = Partial<Record<string, FieldSource>>;
+
 export interface VendorRef {
   id: string;
   name: string;
@@ -51,6 +61,7 @@ export interface Vendor extends VendorRef {
   notes: string | null;
   active: boolean;
   created_at: string;
+  sources: Sources;
 }
 
 /** A row of the vendor list, with what its card shows (T16). */
@@ -67,6 +78,7 @@ export interface VendorLocation {
   lat: string;
   lon: string;
   address: string | null;
+  phone: string | null;
   home_base_id: string | null;
   parent_location_id: string | null;
   opening_hours: string | null;
@@ -76,6 +88,7 @@ export interface VendorLocation {
   receipt_identifiers: string[];
   osm_type: OsmType | null;
   osm_id: number | null;
+  sources: Sources;
   active: boolean;
   is_open: boolean | null;
   distance_m: string | null;
@@ -103,6 +116,25 @@ export interface OsmCandidate {
   address: string | null;
   opening_hours: string | null;
   already_adopted: boolean;
+}
+
+export type LinkedField = "name" | "address" | "opening_hours" | "phone" | "website";
+
+/** An OpenStreetMap object near a location's pin, and what linking it would change (1F). */
+export interface LinkCandidate {
+  osm_type: OsmType;
+  osm_id: number;
+  name: string | null;
+  kind_guess: VendorKind;
+  address: string | null;
+  opening_hours: string | null;
+  phone: string | null;
+  website: string | null;
+  distance_m: number;
+  linked_to: { id: string; name: string } | null;
+  fills: LinkedField[];
+  /** Fields a person edited, which linking leaves alone. */
+  keeps: LinkedField[];
 }
 
 // --- inputs -----------------------------------------------------------------
@@ -143,6 +175,7 @@ export interface LocationCreateInput {
   lat: string;
   lon: string;
   address?: string;
+  phone?: string;
   parent_location_id?: string;
   opening_hours?: string;
   /** Omit for the nearest home base; explicit null for none. */
@@ -156,6 +189,7 @@ export interface LocationUpdateInput {
   lat?: string;
   lon?: string;
   address?: string | null;
+  phone?: string | null;
   parent_location_id?: string | null;
   opening_hours?: string | null;
   home_base_id?: string | null;
@@ -195,6 +229,9 @@ const knownMessages: Record<string, string> = {
   parent_is_stall: "A stall cannot contain stalls; choose the market itself.",
   has_stalls: "This location has stalls of its own and cannot become a stall.",
   [INTEGRATION_DISABLED]: "OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.",
+  already_linked: "This location is already linked to OpenStreetMap; unlink it first.",
+  already_adopted: "That OpenStreetMap place is already linked to another location.",
+  osm_candidate_not_found: "That place is no longer among the OpenStreetMap places near this location.",
 };
 
 /** A message for a geo mutation error, with known codes spelled out. */
@@ -229,6 +266,7 @@ export const geoKeys = {
   location: (id: string) => ["vendor-locations", "detail", id] as const,
   isOpen: (id: string, at: string) => ["vendor-locations", "is-open", id, at] as const,
   osmCandidates: (homeBaseId: string, radius: number) => ["osm", "candidates", homeBaseId, radius] as const,
+  linkCandidates: (locationId: string) => ["vendor-locations", "osm-candidates", locationId] as const,
   mapPlaces: (q: string, near: { lat: string; lon: string } | null) => ["map", "places", q, near] as const,
 };
 
@@ -401,6 +439,38 @@ export function useRefreshOsm(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/refresh-osm`, { method: "POST" }),
+    onSuccess: () => invalidateLocations(client),
+  });
+}
+
+/** OpenStreetMap places near a location's pin, nearest first (1F). */
+export function useLinkCandidates(locationId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: geoKeys.linkCandidates(locationId),
+    queryFn: () => api<ListResponse<LinkCandidate>>(`/vendor-locations/${enc(locationId)}/osm-candidates`),
+    select: (data) => data.items,
+    enabled,
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useLinkOsm(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { osm_type: OsmType; osm_id: number }) =>
+      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/link-osm`, { method: "POST", body: input }),
+    onSuccess: () => {
+      invalidateLocations(client);
+      void client.invalidateQueries({ queryKey: geoKeys.vendors });
+    },
+  });
+}
+
+export function useUnlinkOsm(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/unlink-osm`, { method: "POST" }),
     onSuccess: () => invalidateLocations(client),
   });
 }

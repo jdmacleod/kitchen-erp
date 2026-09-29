@@ -27,6 +27,7 @@ import httpx
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
+from app.services import phone as phones
 from app.services.opening_hours import validate_hours
 
 log = get_logger(__name__)
@@ -80,6 +81,9 @@ class OsmCandidate:
     lon: Decimal
     address: str | None
     opening_hours: str | None
+    # Defaults keep cache files written before these were captured readable.
+    phone: str | None = None
+    website: str | None = None
 
     def to_json(self) -> dict[str, Any]:
         data = asdict(self)
@@ -209,6 +213,16 @@ def _address(tags: dict[str, Any]) -> str | None:
     return joined or None
 
 
+def _website(tags: dict[str, Any]) -> str | None:
+    for key in ("website", "contact:website"):
+        value = tags.get(key)
+        if isinstance(value, str):
+            value = value.strip()
+            if value.lower().startswith(("http://", "https://")) and len(value) <= 500:
+                return value
+    return None
+
+
 def _candidate(element: dict[str, Any]) -> OsmCandidate | None:
     osm_type = element.get("type")
     osm_id = element.get("id")
@@ -240,6 +254,8 @@ def _candidate(element: dict[str, Any]) -> OsmCandidate | None:
         lon=lon,
         address=address[:500] if address else None,
         opening_hours=hours,
+        phone=phones.from_tag(tags.get("phone")) or phones.from_tag(tags.get("contact:phone")),
+        website=_website(tags),
     )
 
 
@@ -290,16 +306,16 @@ def by_id_query(osm_type: str, osm_id: int) -> str:
     return f"[out:json][timeout:25];{osm_type}({int(osm_id)});out center tags;"
 
 
-def cache_key(home_base_id: Any, lat: Decimal, lon: Decimal, radius_m: int) -> str:
-    return f"{home_base_id}:{lat}:{lon}:{int(radius_m)}"
+def cache_key(anchor_id: Any, lat: Decimal, lon: Decimal, radius_m: int) -> str:
+    return f"{anchor_id}:{lat}:{lon}:{int(radius_m)}"
 
 
 async def candidates_around(
-    home_base_id: Any, lat: Decimal, lon: Decimal, radius_m: int
+    anchor_id: Any, lat: Decimal, lon: Decimal, radius_m: int
 ) -> list[OsmCandidate]:
-    """Cached candidate list for a home base and radius."""
+    """Cached candidate list around a home base or a location's pin, for a radius."""
     ensure_enabled()
-    key = cache_key(home_base_id, lat, lon, radius_m)
+    key = cache_key(anchor_id, lat, lon, radius_m)
     cached = cache.get(key)
     if cached is not None:
         return cached

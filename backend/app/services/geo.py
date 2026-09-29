@@ -10,9 +10,11 @@ be a top-level location, so stalls do not nest.
 
 from __future__ import annotations
 
+import math
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import field as dc_field
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -25,6 +27,7 @@ from app.core.errors import ApiError
 from app.models.geo import HomeBase, Place, Vendor, VendorLocation, point_expr
 from app.models.purchases import Purchase
 from app.services import osm
+from app.services import phone as phones
 from app.services.opening_hours import OpeningHoursError, is_open_at, normalize_hours, to_household
 
 _INTEGRITY_CODES = {
@@ -71,6 +74,97 @@ def _clean(value: str | None, *, required: bool = False) -> str | None:
     if required and not stripped:
         raise ApiError(422, "validation_error", "A name must not be blank.")
     return stripped or None
+
+
+def _phone(value: str | None) -> str | None:
+    cleaned = _clean(value)
+    if cleaned is not None and (error := phones.phone_error(cleaned)) is not None:
+        raise ApiError(422, "invalid_phone", error)
+    return cleaned
+
+
+# --- provenance ----------------------------------------------------------------
+
+# Location fields whose last OpenStreetMap value also lives in an ``osm_*`` column.
+# Locations adopted before ``field_source`` existed have only these.
+OSM_SNAPSHOTS = {"name": "osm_name", "address": "osm_address", "opening_hours": "osm_opening_hours"}
+
+
+def _last_written(obj: Vendor | VendorLocation, name: str) -> Any:
+    record = (obj.field_source or {}).get(name)
+    if isinstance(record, dict) and "imported" in record:
+        return record["imported"]
+    snapshot = OSM_SNAPSHOTS.get(name) if isinstance(obj, VendorLocation) else None
+    return getattr(obj, snapshot) if snapshot else None
+
+
+def edit_outcome(current: Any, last_written: Any, value: Any) -> str:
+    """What writing ``value`` over ``current`` would do.
+
+    ``unchanged`` when they are equal; ``kept`` when a person changed the field
+    since a source last wrote it (it no longer equals ``last_written``), so their
+    edit wins; otherwise ``filled`` (it was empty) or ``updated``.
+    """
+    if value == current:
+        return "unchanged"
+    if current != last_written:
+        return "kept"
+    return "filled" if current is None else "updated"
+
+
+def write_unless_edited(
+    obj: Vendor | VendorLocation,
+    name: str,
+    value: Any,
+    *,
+    source: str,
+    ref: str | None,
+    now: datetime,
+    only_if_empty: bool = False,
+) -> str:
+    """Write ``value`` to ``obj.<name>`` unless a person has edited the field.
+
+    The one rule for every writer that is not a person (OSM link and refresh, and
+    later import and accepted suggestions). ``field_source[name].imported``
+    always advances to what the source now says, like the ``osm_*`` snapshots, so
+    a field is a person's exactly while it differs from its source. With
+    ``only_if_empty`` a field that holds any value is left entirely alone.
+    Returns the ``edit_outcome``.
+    """
+    current = getattr(obj, name)
+    if only_if_empty and current is not None:
+        return "unchanged" if value == current else "kept"
+    outcome = edit_outcome(current, _last_written(obj, name), value)
+    if outcome in ("filled", "updated"):
+        setattr(obj, name, value)
+    record = {"source": source, "ref": ref, "checked_at": now.isoformat(), "imported": value}
+    obj.field_source = {**(obj.field_source or {}), name: record}
+    return outcome
+
+
+def sources_of(obj: Vendor | VendorLocation, names: tuple[str, ...]) -> dict[str, dict[str, Any]]:
+    """Where each field's current value came from, for the fields a source still owns.
+
+    A field a person has changed since its source wrote it is absent: it was
+    entered by hand.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for name in names:
+        current = getattr(obj, name)
+        if current is None:
+            continue
+        record = (obj.field_source or {}).get(name)
+        if isinstance(record, dict) and "imported" in record:
+            if record["imported"] == current:
+                out[name] = {k: record.get(k) for k in ("source", "ref", "checked_at")}
+        elif (
+            isinstance(obj, VendorLocation)
+            and obj.osm_type is not None
+            and name in OSM_SNAPSHOTS
+            and getattr(obj, OSM_SNAPSHOTS[name]) == current
+        ):
+            out[name] = {"source": "osm", "ref": f"{obj.osm_type}/{obj.osm_id}", "checked_at": None}
+    return out
 
 
 # --- places ------------------------------------------------------------------
@@ -374,6 +468,7 @@ async def create_location(db: AsyncSession, data: dict[str, Any]) -> VendorLocat
         parent=parent,
         name=name,
         address=_clean(data.get("address")),
+        phone=_phone(data.get("phone")),
         opening_hours=hours,
         stop_overhead_min=data.get("stop_overhead_min"),
         receipt_identifiers=[s.strip() for s in data.get("receipt_identifiers") or [] if s.strip()],
@@ -469,6 +564,8 @@ async def update_location(
         location.name = _clean(changes["name"], required=True) or ""
     if "address" in changes:
         location.address = _clean(changes["address"])
+    if "phone" in changes:
+        location.phone = _phone(changes["phone"])
     if "opening_hours" in changes:
         location.opening_hours = _hours(changes["opening_hours"])
     if "stop_overhead_min" in changes:
@@ -587,16 +684,13 @@ async def adopt_osm(
         place=_new_place(candidate.lat, candidate.lon, candidate.name),
         home_base_id=home_base.id,
         name=candidate.name,
-        address=candidate.address,
         osm_type=candidate.osm_type,
         osm_id=candidate.osm_id,
-        osm_name=candidate.name,
-        osm_address=candidate.address,
-        osm_opening_hours=candidate.opening_hours,
-        opening_hours=candidate.opening_hours,
         receipt_identifiers=[],
+        field_source={},
         active=True,
     )
+    _apply_osm(location, vendor, candidate, datetime.now(UTC))
     db.add(location)
     await _commit(db)
     return await _load_location(db, location.id)
@@ -607,18 +701,161 @@ async def refresh_osm(db: AsyncSession, location_id: uuid.UUID) -> VendorLocatio
     osm.ensure_enabled()
     location = await _load_location(db, location_id)
     if location.osm_type is None or location.osm_id is None:
-        raise ApiError(409, "not_adopted", "This location was not adopted from OpenStreetMap.")
+        raise ApiError(409, "not_adopted", "This location is not linked to OpenStreetMap.")
     fresh = await osm.fetch_by_id(location.osm_type, location.osm_id)
     if fresh is None:
         raise ApiError(404, "osm_object_not_found", "That object no longer exists in OSM.")
-    for field, snapshot_field, new_value in (
-        ("name", "osm_name", fresh.name),
-        ("address", "osm_address", fresh.address),
-        ("opening_hours", "osm_opening_hours", fresh.opening_hours),
-    ):
-        user_edited = getattr(location, field) != getattr(location, snapshot_field)
-        if not user_edited and not (field == "name" and new_value is None):
-            setattr(location, field, new_value)
-        setattr(location, snapshot_field, new_value)
+    _apply_osm(location, location.vendor, fresh, datetime.now(UTC))
     await _commit(db)
     return await _load_location(db, location_id)
+
+
+# Location fields OSM writes, in order.
+_OSM_LOCATION_FIELDS = ("name", "address", "opening_hours", "phone")
+
+
+def _osm_values(candidate: osm.OsmCandidate) -> dict[str, Any]:
+    return {name: getattr(candidate, name) for name in _OSM_LOCATION_FIELDS}
+
+
+def _apply_osm(
+    location: VendorLocation, vendor: Vendor, candidate: osm.OsmCandidate, now: datetime
+) -> dict[str, str]:
+    """Write a candidate's facts where no person has edited them; advance the snapshots.
+
+    A name missing from OSM never blanks a location. The vendor's website is
+    filled only while the vendor has none. Returns each field's ``edit_outcome``.
+    """
+    ref = f"{candidate.osm_type}/{candidate.osm_id}"
+    outcomes: dict[str, str] = {}
+    for name, value in _osm_values(candidate).items():
+        if not (name == "name" and value is None):
+            outcomes[name] = write_unless_edited(
+                location, name, value, source="osm", ref=ref, now=now
+            )
+        if name in OSM_SNAPSHOTS:
+            setattr(location, OSM_SNAPSHOTS[name], value)
+    if candidate.website is not None:
+        outcomes["website"] = write_unless_edited(
+            vendor, "website", candidate.website, source="osm", ref=ref, now=now, only_if_empty=True
+        )
+    return outcomes
+
+
+def osm_preview(
+    location: VendorLocation, candidate: osm.OsmCandidate
+) -> tuple[list[str], list[str]]:
+    """Which fields linking ``candidate`` would fill or update, and which a person's edit keeps."""
+    fills: list[str] = []
+    keeps: list[str] = []
+    for name, value in _osm_values(candidate).items():
+        if value is None:
+            continue
+        outcome = edit_outcome(getattr(location, name), _last_written(location, name), value)
+        if outcome in ("filled", "updated"):
+            fills.append(name)
+        elif outcome == "kept":
+            keeps.append(name)
+    if candidate.website is not None and location.vendor.website is None:
+        fills.append("website")
+    return fills, keeps
+
+
+def _distance_m(lat1: Decimal, lon1: Decimal, lat2: Decimal, lon2: Decimal) -> int:
+    """Great-circle metres, for display only (rounded; never stored)."""
+    p1, p2 = math.radians(float(lat1)), math.radians(float(lat2))
+    dp, dl = p2 - p1, math.radians(float(lon2) - float(lon1))
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return round(2 * 6_371_008.8 * math.asin(math.sqrt(a)))
+
+
+@dataclass
+class LinkCandidate:
+    candidate: osm.OsmCandidate
+    distance_m: int
+    linked_to: VendorLocation | None
+    fills: list[str] = dc_field(default_factory=list)
+    keeps: list[str] = dc_field(default_factory=list)
+
+
+async def location_osm_candidates(
+    db: AsyncSession, location_id: uuid.UUID, *, radius_m: int
+) -> list[LinkCandidate]:
+    """OSM objects near a location's pin, nearest first, each with what linking would do."""
+    osm.ensure_enabled()
+    location = await _load_location(db, location_id)
+    items = await osm.candidates_around(
+        f"location:{location.id}", location.place.lat, location.place.lon, radius_m
+    )
+    linked = await db.execute(select(VendorLocation).where(VendorLocation.osm_id.is_not(None)))
+    by_key = {(loc.osm_type, loc.osm_id): loc for loc in linked.unique().scalars()}
+    rows = []
+    for c in items:
+        fills, keeps = osm_preview(location, c)
+        rows.append(
+            LinkCandidate(
+                candidate=c,
+                distance_m=_distance_m(location.place.lat, location.place.lon, c.lat, c.lon),
+                linked_to=by_key.get((c.osm_type, c.osm_id)),
+                fills=fills,
+                keeps=keeps,
+            )
+        )
+    rows.sort(key=lambda r: (r.distance_m, r.candidate.name or ""))
+    return rows
+
+
+async def link_osm(
+    db: AsyncSession, location_id: uuid.UUID, *, osm_type: str, osm_id: int, radius_m: int
+) -> VendorLocation:
+    """Link an existing location to an OSM object near its pin, and take its facts (1F)."""
+    osm.ensure_enabled()
+    location = await _load_location(db, location_id)
+    if location.osm_type is not None:
+        raise ApiError(409, "already_linked", "This location is already linked; unlink it first.")
+    other = await db.scalar(
+        select(VendorLocation.id).where(
+            VendorLocation.osm_type == osm_type, VendorLocation.osm_id == osm_id
+        )
+    )
+    if other is not None:
+        raise ApiError(
+            409,
+            "already_adopted",
+            "That OpenStreetMap object is already linked to another location.",
+            {"location_id": str(other)},
+        )
+    items = await osm.candidates_around(
+        f"location:{location.id}", location.place.lat, location.place.lon, radius_m
+    )
+    candidate = next((c for c in items if (c.osm_type, c.osm_id) == (osm_type, osm_id)), None)
+    if candidate is None:
+        raise ApiError(
+            404,
+            "osm_candidate_not_found",
+            "That object is not among the OpenStreetMap places near this location.",
+        )
+    location.osm_type, location.osm_id = candidate.osm_type, candidate.osm_id
+    _apply_osm(location, location.vendor, candidate, datetime.now(UTC))
+    await _commit(db)
+    return await _load_location(db, location_id)
+
+
+async def unlink_osm(db: AsyncSession, location_id: uuid.UUID) -> VendorLocation:
+    """Forget the OSM link. The location keeps every value it has."""
+    location = await _load_location(db, location_id)
+    if location.osm_type is None:
+        raise ApiError(409, "not_adopted", "This location is not linked to OpenStreetMap.")
+    location.osm_type, location.osm_id = None, None
+    await _commit(db)
+    return await _load_location(db, location_id)
+
+
+async def linked_location_ids(db: AsyncSession) -> list[tuple[uuid.UUID, str]]:
+    """Active locations linked to OSM, for ``kerp osm refresh --all-linked``."""
+    result = await db.execute(
+        select(VendorLocation.id, VendorLocation.name)
+        .where(VendorLocation.osm_id.is_not(None), VendorLocation.active.is_(True))
+        .order_by(VendorLocation.name)
+    )
+    return [(i, n) for i, n in result.all()]

@@ -27,6 +27,7 @@ export const chainVendor: Vendor = {
   notes: null,
   active: true,
   created_at: "2026-03-01T00:00:00Z",
+  sources: {},
 };
 
 export const marketVendor: Vendor = {
@@ -38,10 +39,13 @@ export const marketVendor: Vendor = {
   notes: null,
   active: true,
   created_at: "2026-03-01T00:00:00Z",
+  sources: {},
 };
 
 const base = {
   address: null,
+  phone: null,
+  sources: {},
   home_base_id: homeBaseId,
   parent_location_id: null,
   stop_overhead_min: null,

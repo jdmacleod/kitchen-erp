@@ -28,7 +28,7 @@ from sqlalchemy import (
     func,
     literal,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, JSONB, UUID
 from sqlalchemy.orm import Mapped, deferred, mapped_column, relationship
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.types import UserDefinedType
@@ -102,6 +102,8 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     website: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # {field: {source, ref, checked_at, imported}}; see services.geo.write_unless_edited.
+    field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     locations: Mapped[list[VendorLocation]] = relationship(back_populates="vendor")
 
@@ -112,7 +114,8 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
     ``osm_name``, ``osm_address`` and ``osm_opening_hours`` snapshot the values as
     last fetched from OpenStreetMap. A refresh overwrites a field only while the
     stored value still equals its snapshot; once the user has edited it, the
-    field is theirs and the refresh only advances the snapshot.
+    field is theirs and the refresh only advances the snapshot. ``field_source``
+    generalises that record to every field and source (1F).
     """
 
     __tablename__ = "vendor_location"
@@ -149,6 +152,7 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     address: Mapped[str | None] = mapped_column(String(500))
+    phone: Mapped[str | None] = mapped_column(String(40))
     osm_type: Mapped[str | None] = mapped_column(String(16))
     osm_id: Mapped[int | None] = mapped_column(BIGINT)
     osm_name: Mapped[str | None] = mapped_column(String(200))
@@ -160,6 +164,7 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
         ARRAY(Text), nullable=False, default=list
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     vendor: Mapped[Vendor] = relationship(back_populates="locations", lazy="joined")
     place: Mapped[Place] = relationship(lazy="joined")

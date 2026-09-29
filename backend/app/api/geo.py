@@ -19,6 +19,9 @@ from app.schemas.geo import (
     HomeBaseOut,
     HomeBaseUpdate,
     IsOpenOut,
+    LinkCandidateList,
+    LinkCandidateOut,
+    LinkedLocationRef,
     MapPlaceList,
     MapPlaceOut,
     OpeningHoursValidateIn,
@@ -26,6 +29,7 @@ from app.schemas.geo import (
     OsmAdoptIn,
     OsmCandidateList,
     OsmCandidateOut,
+    OsmLinkIn,
     VendorCreate,
     VendorList,
     VendorListItem,
@@ -108,7 +112,7 @@ async def list_vendors(
     return VendorList(
         items=[
             VendorListItem(
-                **VendorOut.model_validate(f.vendor).model_dump(),
+                **VendorOut.from_model(f.vendor).model_dump(),
                 location_count=f.location_count,
                 last_visit=f.last_visit,
             )
@@ -131,12 +135,12 @@ async def create_vendor(
         website=payload.website,
         notes=payload.notes,
     )
-    return await guard.commit(201, VendorOut.model_validate(vendor).model_dump(mode="json"))
+    return await guard.commit(201, VendorOut.from_model(vendor).model_dump(mode="json"))
 
 
 @vendors.get("/{vendor_id}", response_model=VendorOut)
 async def get_vendor(vendor_id: uuid.UUID, _: CurrentUser, db: DbSession) -> VendorOut:
-    return VendorOut.model_validate(await geo.get_vendor(db, vendor_id))
+    return VendorOut.from_model(await geo.get_vendor(db, vendor_id))
 
 
 @vendors.patch("/{vendor_id}", response_model=VendorOut)
@@ -144,17 +148,17 @@ async def update_vendor(
     vendor_id: uuid.UUID, payload: VendorUpdate, _: CurrentUser, db: DbSession
 ) -> VendorOut:
     changes = payload.model_dump(exclude_unset=True)
-    return VendorOut.model_validate(await geo.update_vendor(db, vendor_id, changes))
+    return VendorOut.from_model(await geo.update_vendor(db, vendor_id, changes))
 
 
 @vendors.post("/{vendor_id}/deactivate", response_model=VendorOut)
 async def deactivate_vendor(vendor_id: uuid.UUID, _: CurrentUser, db: DbSession) -> VendorOut:
-    return VendorOut.model_validate(await geo.set_vendor_active(db, vendor_id, False))
+    return VendorOut.from_model(await geo.set_vendor_active(db, vendor_id, False))
 
 
 @vendors.post("/{vendor_id}/activate", response_model=VendorOut)
 async def activate_vendor(vendor_id: uuid.UUID, _: CurrentUser, db: DbSession) -> VendorOut:
-    return VendorOut.model_validate(await geo.set_vendor_active(db, vendor_id, True))
+    return VendorOut.from_model(await geo.set_vendor_active(db, vendor_id, True))
 
 
 # --- vendor locations ----------------------------------------------------------
@@ -249,6 +253,58 @@ async def refresh_location_osm(
     location_id: uuid.UUID, _: CurrentUser, db: DbSession
 ) -> VendorLocationDetail:
     await geo.refresh_osm(db, location_id)
+    return await _detail(db, location_id)
+
+
+@locations.get("/{location_id}/osm-candidates", response_model=LinkCandidateList)
+async def location_osm_candidates(
+    location_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    radius_m: int = Query(default=250, ge=50, le=2000),
+) -> LinkCandidateList:
+    """OpenStreetMap objects near this location's pin, to link it to (1F)."""
+    rows = await geo.location_osm_candidates(db, location_id, radius_m=radius_m)
+    return LinkCandidateList(
+        items=[
+            LinkCandidateOut(
+                osm_type=r.candidate.osm_type,  # type: ignore[arg-type]
+                osm_id=r.candidate.osm_id,
+                name=r.candidate.name,
+                kind_guess=r.candidate.kind_guess,  # type: ignore[arg-type]
+                address=r.candidate.address,
+                opening_hours=r.candidate.opening_hours,
+                phone=r.candidate.phone,
+                website=r.candidate.website,
+                distance_m=r.distance_m,
+                linked_to=(
+                    LinkedLocationRef(id=r.linked_to.id, name=r.linked_to.name)
+                    if r.linked_to is not None
+                    else None
+                ),
+                fills=r.fills,  # type: ignore[arg-type]
+                keeps=r.keeps,  # type: ignore[arg-type]
+            )
+            for r in rows
+        ]
+    )
+
+
+@locations.post("/{location_id}/link-osm", response_model=VendorLocationDetail)
+async def link_location_osm(
+    location_id: uuid.UUID, payload: OsmLinkIn, _: CurrentUser, db: DbSession
+) -> VendorLocationDetail:
+    await geo.link_osm(
+        db, location_id, osm_type=payload.osm_type, osm_id=payload.osm_id, radius_m=payload.radius_m
+    )
+    return await _detail(db, location_id)
+
+
+@locations.post("/{location_id}/unlink-osm", response_model=VendorLocationDetail)
+async def unlink_location_osm(
+    location_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> VendorLocationDetail:
+    await geo.unlink_osm(db, location_id)
     return await _detail(db, location_id)
 
 
