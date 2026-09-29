@@ -29,6 +29,8 @@ def _report(ctx, step, heads, run_args) -> None:
     doc = f" · {script.doc}" if script is not None and script.doc else ""
     click.echo(f"  {verb} {step.up_revision_id}{doc}")
     config.attributes.setdefault("steps", []).append(step.up_revision_id)
+    # Where the database stands after this step, so the summary needn't ask it.
+    config.attributes["at"] = ", ".join(step.destination_revision_ids) or "base"
 
 
 def run_migrations_offline() -> None:

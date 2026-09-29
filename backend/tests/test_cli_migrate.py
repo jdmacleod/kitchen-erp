@@ -34,16 +34,22 @@ async def test_migrate_reports_each_step_and_a_summary():
     scripts = ScriptDirectory.from_config(alembic_config())
     head = scripts.get_current_head()
     previous = scripts.get_revision(head).down_revision
+    two_back = scripts.get_revision(previous).down_revision
     await dispose_engine()  # nothing pooled may hold the tables the steps change
     try:
         out = _kerp("downgrade", previous)
         assert f"  reverted {head} · " in out
-        assert "Committed 1 migration." in out
+        assert f"Committed 1 migration. The database is at {previous}." in out
 
+        # Two steps: one line each, in order, and the count says two.
+        out = _kerp("downgrade", two_back)
+        assert f"  reverted {previous} · " in out
+        assert f"Committed 1 migration. The database is at {two_back}." in out
         out = _kerp("migrate")
         assert out.startswith("Migrating the database to head…\n")
-        assert f"  ran {head} · " in out
-        assert f"Committed 1 migration. The database is at {head}." in out
+        lines = [line for line in out.splitlines() if line.startswith("  ran ")]
+        assert [line.split()[1] for line in lines] == [previous, head]
+        assert f"Committed 2 migrations. The database is at {head}." in out
 
         out = _kerp("migrate")
         assert "Nothing to do: the database is already there." in out
