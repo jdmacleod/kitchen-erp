@@ -5,7 +5,9 @@ from pathlib import Path
 
 import httpx
 import pytest
+from sqlalchemy import select
 
+from app.models.catalog import RefUsdaPortion
 from app.services.usda import _survey_measure, import_portions
 from tests.catalog_helpers import make_ingredient, seed_units_via_service, write_usda_fixture
 
@@ -107,6 +109,27 @@ async def test_accepted_suggestion_is_unconfirmed_until_confirmed(
     assert r.json()["confirmed"] is False
     confirmed = await admin_client.post(f"/api/v1/ingredients/{ing['id']}/density/confirm")
     assert confirmed.json()["density_confirmed"] is True
+
+
+async def test_a_long_survey_measure_is_kept_whole(db_session, tmp_path: Path):
+    # The 2026-04-30 download has a survey measure whose unit text runs past
+    # 100 characters once its quantity is read off; the insert used to fail.
+    await seed_units_via_service(db_session)
+    fdc = tmp_path / "fdc"
+    write_usda_fixture(fdc)
+    unit = "piece, " + "very long description of the portion " * 4
+    with (fdc / "food.csv").open("a", newline="") as fh:
+        csv.writer(fh).writerow([1005, "survey_fndds_food", "Chicken salad", 25, "2024-10-31"])
+    with (fdc / "food_portion.csv").open("a", newline="") as fh:
+        csv.writer(fh).writerow([9, 1005, 1, "", 9999, f"1 {unit}", "10205", 40, "", "", ""])
+    assert len(unit.strip()) > 100
+    assert await import_portions(db_session, fdc) == 6
+    stored = (
+        await db_session.execute(
+            select(RefUsdaPortion.portion_unit).where(RefUsdaPortion.fdc_id == 1005)
+        )
+    ).scalar_one()
+    assert stored == unit.strip()
 
 
 @pytest.mark.parametrize(
