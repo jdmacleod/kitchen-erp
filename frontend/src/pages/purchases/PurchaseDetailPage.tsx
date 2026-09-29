@@ -133,7 +133,8 @@ function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boole
   useEffect(() => {
     if (focus) ref.current?.focus();
   }, [focus]);
-  const n = p.lines.filter((l) => l.recorded).length;
+  // What the removal itself voided; prices voided before it are not counted twice.
+  const n = p.voided_prices ?? 0;
   const when = p.voided_at ? formatDate(p.voided_at) : "";
   const who = p.voided_by_name ? ` by ${p.voided_by_name}` : "";
   return (

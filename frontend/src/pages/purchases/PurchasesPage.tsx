@@ -37,7 +37,10 @@ export function PurchasesPage() {
   // segments stay the four statuses a person works with.
   const [params, setParams] = useSearchParams();
   const voidedView = params.get("status") === "voided";
-  const showAll = () => setParams({}, { replace: true });
+  const showAll = () => {
+    setFilter("all");
+    setParams({}, { replace: true });
+  };
   const status = voidedView ? "voided" : filter === "all" ? "" : filter;
   const purchases = usePurchases({ status });
   const items = purchases.data?.pages.flatMap((p) => p.items) ?? [];
@@ -139,13 +142,7 @@ export function PurchasesPage() {
           <EmptyState
             title={`No ${purchaseStatusLabel[status].toLowerCase()} purchases`}
             action={
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setFilter("all");
-                  if (voidedView) showAll();
-                }}
-              >
+              <Button variant="secondary" onClick={showAll}>
                 Show all
               </Button>
             }
@@ -279,10 +276,11 @@ export function PurchasesPage() {
             ) : null}
           </>
         )}
-        {!voidedView && voidedCount ? (
+        {!voidedView && (voidedCount || voided.isError) ? (
           <p className="mt-3 text-sm">
             <Link to="?status=voided" className={`${tapTarget} rounded underline ${focusRing}`}>
-              Show voided ({voidedCount})
+              {/* Without a count when it couldn't be checked: the way in stays. */}
+              {voidedCount ? `Show voided (${voidedCount})` : "Show voided"}
             </Link>
           </p>
         ) : null}

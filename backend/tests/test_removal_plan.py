@@ -94,6 +94,7 @@ async def test_a_recorded_purchase_is_voided_and_kept(admin_client):
     voided = body["purchase"]
     assert voided["status"] == "voided"
     assert voided["voided_at"] is not None and voided["voided_by_name"] == "Admin"
+    assert voided["voided_prices"] == 2
     assert voided["removal"] is None
 
     everything = (
@@ -126,6 +127,8 @@ async def test_a_reopened_purchase_with_every_price_voided_still_voids(admin_cli
     assert got["removed_line_count"] == 1
     r = await _remove(admin_client, p["id"])
     assert r.status_code == 200 and r.json()["outcome"] == "void"
+    # Its one price was voided before the removal, not by it.
+    assert r.json()["purchase"]["voided_prices"] == 0
 
 
 async def test_a_voided_receipt_keeps_its_photo(admin_client, receipts_dir: Path):

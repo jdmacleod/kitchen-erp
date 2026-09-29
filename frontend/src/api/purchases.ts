@@ -142,6 +142,8 @@ export interface Purchase {
   updated_at: string;
   voided_at?: string | null;
   voided_by_name?: string | null;
+  /** The prices the removal voided, on a single voided purchase. */
+  voided_prices?: number | null;
   /** On a single purchase only; null in lists and on a voided purchase. */
   removal?: Removal | null;
   removed_line_count?: number | null;

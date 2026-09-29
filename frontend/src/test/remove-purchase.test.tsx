@@ -33,7 +33,7 @@ describe("removing a purchase", () => {
       ...baseRoutes(),
       [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, purchase),
       [`POST /purchases/${purchaseId}/remove`]: () => {
-        purchase = { ...purchase, status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", removal: null, lines: purchase.lines.map((l) => ({ ...l, observation_id: null })) };
+        purchase = { ...purchase, status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", voided_prices: 1, removal: null, lines: purchase.lines.map((l) => ({ ...l, observation_id: null })) };
         return jsonResponse(200, { outcome: "void", photo_deleted: false, purchase });
       },
     });
@@ -108,6 +108,22 @@ describe("removing a purchase", () => {
     await waitFor(() => expect(within(section).getByRole("button", { name: "Remove purchase" })).toHaveFocus());
   });
 
+  it("keeps Remove usable when reading started again after the page loaded", async () => {
+    // Review of #84: the error closed the confirm and left Remove disabled for good.
+    mockApi({
+      ...baseRoutes(),
+      [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, { ...recorded(manualPurchase), removal: voidPlan }),
+      [`POST /purchases/${purchaseId}/remove`]: () => errorResponse(409, "still_reading", "You can remove it once it's been read."),
+    });
+    const user = userEvent.setup();
+    renderApp(`/shop/purchases/${purchaseId}`);
+    const section = await screen.findByRole("region", { name: "Remove this purchase" });
+    await user.click(within(section).getByRole("button", { name: "Remove purchase" }));
+    await user.click(within(section).getByRole("button", { name: "Remove purchase" }));
+    expect(await within(section).findByText("You can remove it once it's been read.")).toBeInTheDocument();
+    expect(within(section).getByRole("button", { name: "Remove purchase" })).toBeEnabled();
+  });
+
   it("treats a 404 on removing as already removed", async () => {
     mockApi({
       ...baseRoutes(),
@@ -151,6 +167,36 @@ describe("the purchases list and removed purchases", () => {
     expect(within(row).getByText("$14.21").tagName).toBe("S");
     await user.click(screen.getByRole("button", { name: "Back to all" }));
     expect(await screen.findByRole("heading", { name: "All purchases" })).toBeInTheDocument();
+  });
+
+  it("Back to all clears a status chosen before opening Voided", async () => {
+    // Review of #84: the title said All while Drafts stayed selected underneath.
+    mockApi({
+      ...baseRoutes(),
+      "GET /purchases": (call: RecordedCall) => {
+        const status = call.query.get("status");
+        if (status === "voided") return jsonResponse(200, { items: [voidedOne], next_cursor: null });
+        if (status === "draft") return jsonResponse(200, { items: [], next_cursor: null });
+        return jsonResponse(200, { items: [manualPurchase], next_cursor: null });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/purchases");
+    await user.click(await screen.findByRole("button", { name: "Drafts" }));
+    await user.click(await screen.findByRole("link", { name: "Show voided (1)" }));
+    await user.click(await screen.findByRole("button", { name: "Back to all" }));
+    const table = await screen.findByRole("table", { name: "Purchases" });
+    expect(within(table).getByText("Pier Farmers Market")).toBeInTheDocument();
+  });
+
+  it("keeps a way to Voided when its count can't be checked", async () => {
+    mockApi({
+      ...baseRoutes(),
+      "GET /purchases": (call: RecordedCall) =>
+        call.query.get("status") === "voided" ? errorResponse(500, "internal_error", "Boom.") : jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
+    });
+    renderApp("/shop/purchases");
+    expect(await screen.findByRole("link", { name: "Show voided" })).toHaveAttribute("href", "/shop/purchases?status=voided");
   });
 
   it("hides the link when nothing was removed", async () => {
@@ -254,6 +300,16 @@ describe("receipts", () => {
     await user.click(within(ask).getByRole("button", { name: "Remove" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/remove"))).toBe(true));
     expect(await screen.findByText("No receipts yet")).toBeInTheDocument();
+  });
+
+  it("says a receipt pinned from the inbox was removed, not an error", async () => {
+    mockApi({
+      ...baseRoutes(),
+      [`GET /ingest-jobs/${ingestJobId}`]: () => errorResponse(404, "receipt_removed", "This receipt was removed."),
+    });
+    renderApp(`/shop/receipts?job=${ingestJobId}`);
+    expect(await screen.findByText("This receipt was removed.")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("offers no Remove on a failed read that already has a draft", async () => {

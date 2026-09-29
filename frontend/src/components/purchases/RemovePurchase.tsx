@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { purchaseErrorMessage, useRemovePurchase, type Purchase, type RemovedPurchase } from "../../api/purchases";
+import { useQueryClient } from "@tanstack/react-query";
+import { purchaseErrorMessage, purchaseKeys, useRemovePurchase, type Purchase, type RemovedPurchase } from "../../api/purchases";
 import { isApiError } from "../../api/client";
 import { formatDate } from "../../lib/format";
 import { alertTones, Button, focusRing } from "../ui";
@@ -13,6 +14,7 @@ import { alertTones, Button, focusRing } from "../ui";
 export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; onRemoved: (removed: RemovedPurchase) => void }) {
   const removal = purchase.removal;
   const remove = useRemovePurchase(purchase.id);
+  const client = useQueryClient();
   const [confirming, setConfirming] = useState(false);
   const headingId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -27,8 +29,10 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
   }, [remove.isError, remove.failureCount]);
 
   if (!removal) return null;
+  // The receipt started being read again after the page loaded. Say so, and
+  // leave Remove usable: the refreshed preview decides whether it is blocked.
   const raced = remove.isError && isApiError(remove.error) && remove.error.code === "still_reading";
-  const reading = removal.blocked === "still_reading" || raced;
+  const reading = removal.blocked === "still_reading";
   const outcome = outcomeSentence(purchase);
 
   const cancel = () => {
@@ -48,7 +52,7 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
       <h2 id={`${headingId}-section`} className="text-lg font-medium">
         Remove this purchase
       </h2>
-      {reading ? (
+      {reading || raced ? (
         <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">You can remove it once it&apos;s been read.</p>
       ) : (
         <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">{outcome}</p>
@@ -73,7 +77,17 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
               variant="dangerFill"
               className="w-full lg:w-auto"
               disabled={remove.isPending}
-              onClick={() => remove.mutate(undefined, { onSuccess: onRemoved })}
+              onClick={() =>
+                remove.mutate(undefined, {
+                  onSuccess: onRemoved,
+                  onError: (e) => {
+                    if (!isApiError(e) || e.code !== "still_reading") return;
+                    // Close the confirm and ask the server again what removal would do.
+                    setConfirming(false);
+                    void client.invalidateQueries({ queryKey: purchaseKeys.purchase(purchase.id) });
+                  },
+                })
+              }
             >
               {remove.isPending ? "Removing…" : "Remove purchase"}
             </Button>
@@ -84,7 +98,16 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
         </div>
       ) : (
         <div className="mt-3">
-          <Button ref={trigger} variant="danger" className="w-full lg:w-auto" disabled={reading} onClick={() => setConfirming(true)}>
+          <Button
+            ref={trigger}
+            variant="danger"
+            className="w-full lg:w-auto"
+            disabled={reading}
+            onClick={() => {
+              remove.reset();
+              setConfirming(true);
+            }}
+          >
             Remove purchase
           </Button>
         </div>

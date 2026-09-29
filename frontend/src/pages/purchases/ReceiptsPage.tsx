@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
-import { errorMessage } from "../../api/client";
+import { errorMessage, isApiError } from "../../api/client";
 import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRemoveJob, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
@@ -17,7 +17,7 @@ export function ReceiptsPage() {
   const notice = useNotice();
   const jobs = useIngestJobs();
   // An inbox item names its job (?job=), which may be older than the newest jobs listed.
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const pinnedId = params.get("job") ?? undefined;
   const pinned = useIngestJob(pinnedId, false);
   // Listed once: the list drops the job only while the pinned card is showing it.
@@ -82,9 +82,14 @@ export function ReceiptsPage() {
                 Loading…
               </p>
             ) : pinned.isError ? (
-              <Alert tone="error">{errorMessage(pinned.error)}</Alert>
+              isApiError(pinned.error) && pinned.error.code === "receipt_removed" ? (
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">This receipt was removed.</p>
+              ) : (
+                <Alert tone="error">{errorMessage(pinned.error)}</Alert>
+              )
             ) : (
-              <JobRow job={pinned.data} />
+              // Removed from here, it has nothing left to show: drop the pin.
+              <JobRow job={pinned.data} onRemoved={() => setParams({}, { replace: true })} />
             )}
           </Card>
         ) : null}
@@ -132,7 +137,7 @@ function jobStatusText(job: IngestJob): string {
   return statusText[job.status] ?? job.status;
 }
 
-function JobRow({ job }: { job: IngestJob }) {
+function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
   const remove = useRemoveJob();
@@ -200,7 +205,7 @@ function JobRow({ job }: { job: IngestJob }) {
         <div role="group" aria-label="Remove this receipt" className="flex w-full flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950">
           <span className="text-sm">Remove this receipt? Its photo is deleted.</span>
           {remove.isError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">{errorMessage(remove.error)}</span> : null}
-          <Button variant="dangerFill" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(job.id)}>
+          <Button variant="dangerFill" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(job.id, { onSuccess: onRemoved })}>
             {remove.isPending ? "Removing…" : "Remove"}
           </Button>
           <Button
