@@ -97,6 +97,121 @@ Pins are distinguished by vendor kind using both colour and shape. A filter narr
 34. On a 390-pixel-wide viewport, a pin can be selected and its detail read without horizontal scrolling.
 35. The map shows OpenStreetMap and Protomaps attribution whenever tiles or adopted OSM data are displayed.
 
+## 1F — Vendor interchange and enrichment
+
+Added 2026-09-29 after a /devex-review found the household's vendor list held little beyond names and pins: no addresses, phones, websites or OpenStreetMap links, and no store codes. Receipt matching needs those facts (#86). This section adds a file format for vendors, export and import, and a way for an outside tool to propose missing facts that a person then accepts. A separate public repository, `kitchen-erp-vendors`, holds contributor-facing store facts under the ODbL; this application imports from it and exports to it, and never pushes to it.
+
+**Privacy comes first.** A household's list of the stores it visits is personal data even with every household field removed (SECURITY.md). So:
+
+- **Two export modes.** `household` exports everything the household holds about its vendors, for moving between deployments or as input to a tool the household controls. `public` exports only what is safe to contribute:
+  - It leaves out notes, home bases, stop overheads, the `active` flag, internal ids, and anything derived from purchases, receipts or visits: last visits, and `receipt_identifiers`, which are learned from the household's own receipts.
+  - It includes only locations marked `publishable` or linked to an OpenStreetMap object, and never stands, whose pin may be someone's home.
+- **The file is a contribution candidate.** A person reads the public export and opens the pull request to the public repository themselves.
+
+**Linking to OpenStreetMap.** Adoption (1D) creates a new location, so an existing location could never gain its OSM facts. A location can now be linked to an OSM object:
+- `POST /api/v1/vendor-locations/{id}/link-osm` takes `{osm_type, osm_id}` from the candidates near the location's pin, and records the id and the `osm_*` snapshots.
+- A linked location refreshes like an adopted one.
+- The candidate query also captures `phone`, `website`, `brand` and `brand:wikidata` from OSM tags.
+- This is subject to `ENABLE_OVERPASS` and makes no request when it is off (criterion 25 still holds).
+
+**Remembering a store code.** When a reviewer confirms a receipt's location and the header read a store identifier that the location does not have, review offers "Remember store code {code}". Accepting it appends the code to the location's `receipt_identifiers`, so the next receipt from that store matches on it. Nothing is added without that click.
+
+**Provenance.** Vendors and locations carry `field_source`, which records for each field where its value came from:
+- `source` is `osm`, `observed`, `import`, or `enriched:<tool>`;
+- `ref` is an OSM object or a source URL;
+- `checked_at` records when the value was checked;
+- `imported` is the value an import, a refresh or an accepted suggestion last wrote.
+
+This generalises the rule refresh already follows: a field is overwritten only while it still equals the value last written from that source, so a person's edit always wins. The `osm_*` snapshot columns stay as they are.
+
+### The format: `kitchen-erp-vendors/1`
+
+One schema, written as YAML or JSON; the file extension or the `Accept` / `Content-Type` header chooses. YAML is read with a safe loader only, aliases are refused, and files over 5 MB are refused. Coordinates and every other number that is not an integer are strings, and a float anywhere is rejected.
+
+```yaml
+format: kitchen-erp-vendors/1
+license: ODbL-1.0
+source: {name: "…", exported_at: "2026-09-29T12:00:00Z", mode: public}
+vendors:
+  - key: invented-mart                # stable across exports and repositories
+    name: Invented Mart
+    kind: chain                       # chain | independent | market | stand
+    price_scope: location             # chain | location
+    website: https://example.test
+    brand: Invented Mart
+    wikidata: Q000000
+    sources: {website: {source: "enriched:tool", ref: "https://…", checked_at: "…"}}
+    locations:
+      - key: invented-mart/elm-st
+        name: Elm St
+        lat: "33.61234"
+        lon: "-120.52345"
+        address: "…"                         # one line, as stored and as the edit form takes it
+        phone: "+1 555 0100"
+        opening_hours: "Mo-Su 08:00-21:00"
+        osm: {type: node, id: 123}
+        parent: null                  # another location's key, for a stall
+        sources: {address: {source: osm, ref: "node/123", checked_at: "…"}}
+    household:                        # household mode only
+      id: "…"
+      notes: "…"
+      active: true
+      locations:
+        invented-mart/elm-st: {id: "…", home_base: "Home", stop_overhead_min: 5, active: true, receipt_identifiers: ["0123"]}
+```
+
+### Export and import
+
+- **Export.** `GET /api/v1/vendors/export?format=yaml|json&mode=public|household` and `kerp export vendors --format --mode --out`.
+- **Import.** `POST /api/v1/vendors/import?dry_run=` and `kerp import vendors --from PATH [--dry-run]`.
+- **Matching.** Import matches each vendor and location in this order:
+  1. by key;
+  2. by OSM type and id;
+  3. by vendor name (case-insensitive), then a location of that vendor within 150 m whose name is similar.
+
+  Two or more matches at one step is ambiguous: reported, never guessed.
+- **Writing fields.**
+  - A field is written only when it is empty or still equals `field_source.imported`. Otherwise it is a conflict: left alone and listed.
+  - Household fields are written only from a household-mode file.
+  - A home base is matched by its name. A name with no matching home base is reported as unresolved and the location keeps its nearest-base default; import never creates a home base, because a home base is where someone lives.
+  - Nothing is deleted.
+- **Report.** Import returns `{created, updated, unchanged, conflicts, unmatched}` with each field's old and new value. A dry run is the same code rolled back. A malformed file is `422 bad_export`.
+
+### Suggestions from an outside tool
+
+- **Scoped tokens.** An API token may be limited to scopes. A session, or a token with the scope `*` (every existing token), keeps full rights.
+  - `vendors:read` may read the **public** export and nothing else. The household export and every other vendor and location route are `403` to it, because those return notes, home bases, visits and store codes. A tool addresses suggestions by the keys in the public export.
+  - `vendors:suggest` may only post suggestions.
+- **Posting suggestions.** `POST /api/v1/vendor-suggestions` accepts a batch of proposed field values, each with a target (vendor or location, by id or key), a field, the value it expects to replace, the proposed value, a required `source_url`, optional evidence (plain text, at most 1,000 characters), the tool's name and version, and a confidence (a decimal string).
+  - Fields are a closed set: `website`, `brand`, `wikidata`, `phone`, `address`, `opening_hours`, `osm`, `name`, `price_scope`.
+  - Each value is validated as the edit form validates it: opening hours by the parser, URLs as http or https, OSM type and id by their rules.
+  - A duplicate of a pending suggestion is collapsed.
+  - Posting never changes a vendor or location.
+- **Suggestions are append-only.** A suggestion's proposal cannot be changed: the runtime role may update only its decision columns, and a trigger refuses anything else. Its status is pending, accepted, rejected or stale.
+- **Review.** Pending suggestions become one inbox row, and a person accepts or rejects them per field or all at once. Accepting checks that the field still holds the value the suggestion expected; if it changed, the suggestion is stale and is applied only on an explicit override. An accepted value is written with its provenance (`enriched:<tool>`) in one transaction.
+- **What a tool may send outside.** The reference enrichment tool lives in the public repository, not here. It works from the public export and sends a model only public facts: vendor and branch names, city or region, OSM ids, public coordinates and current public values, one vendor at a time. It never sends home bases, notes, purchases or receipt text, and it drops values from sources whose terms are incompatible with the ODbL.
+
+### Receipt matching uses the new facts
+
+The header stage already reads the printed phone and address. `match_location` scores a phone match (digits only) like a store identifier, and address similarity alongside name similarity. Branches of a chain then stop tying, which is what #86 asks for.
+
+### Acceptance criteria
+
+60. An existing location can be linked to an OSM object near its pin; a refresh then fills its address and hours, and a name the user changed survives. With Overpass disabled, linking is refused and no request is made.
+61. Confirming a receipt's location offers to remember a store code the location lacks. Accepting it appends the code, and the next receipt printing that code is matched to that location without a click.
+62. A public export contains no household field, no receipt identifier, no stand, and no location that is neither publishable nor linked to OSM, verified by a test that scans every key in the document. A household export contains the household block.
+63. The same export written as YAML and as JSON parses to equal documents, with every coordinate a string.
+64. Importing a file twice reports `0 created, 0 updated` the second time.
+65. A field the user edited after an import is reported as a conflict by the next import and left unchanged.
+66. Import matches by key before OSM id before name and proximity, and reports an ambiguous match instead of choosing.
+67. A file with a float coordinate, a YAML alias, an unknown format, or over the size limit is refused with `422 bad_export`, and a dry run changes nothing.
+68. A `vendors:read` token gets the public export and `403` from the household export and from every other vendor and location route; a `vendors:suggest` token can post suggestions and cannot read or change a vendor.
+73. Importing a household file on a deployment without its home bases reports each unmatched home-base name, and creates none.
+69. A malformed suggestion batch is `422`; posting a valid batch changes no vendor; an attempt to update a suggestion's proposal is refused by the database.
+70. Accepting a suggestion writes the value and its provenance; accepting one whose field changed since it was proposed marks it stale.
+71. Pending suggestions appear as one inbox row and leave the inbox once decided.
+72. On synthetic receipts from a chain with three branches, the branch whose phone is printed is chosen without a click.
+
 ## Out of scope for Phase 1
 
 Barcode lookup against external product databases, geocoding of typed addresses, drive times and routing, recipes, and anything involving purchases or prices. Address geocoding through a proxied public Nominatim is a small optional addition that may be made at the end of the phase if wanted, behind `ENABLE_NOMINATIM`, subject to the same no-outbound-by-default test as Overpass.

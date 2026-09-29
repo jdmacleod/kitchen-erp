@@ -52,6 +52,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - Meta line: lines read, the receipt total, and how many lines are matched.
   - Primary: "Commit purchase". It stays disabled with a reason ("Choose where you shopped to commit") until a location is set.
 - **Where you shopped:** location candidates read from the receipt as chips, plus "Somewhere else…".
+  - Once a location is saved, if the header read a store code that location lacks, a line offers "Remember store code {code}" (1F).
 - **Lines:**
   - A segmented filter: "Needs you n" and "All n".
   - Columns: what the receipt says (monospace), what it was read as (quantity × price), and the product. The product column shows either suggestions as soft buttons or "Choose a product" / "Ignore line".
@@ -169,6 +170,15 @@ The most important detail page; search results and inbox items land here most of
   - A shape legend, with the hint "Click the map to drop a pin".
   - The selected location's card at the top right.
   - All current map functions remain, including dropping a pin to create a vendor and its location.
+- **Export and import (1F):** the header gains secondary "Export" and "Import" actions beside "Find nearby".
+  - Export offers YAML or JSON, and Public or Household. It says in one line what Public leaves out: notes, home bases, stands, and locations not marked for sharing.
+  - Import opens a right-side drawer: choose a file, see the dry-run report (created, updated, unchanged, conflicts, unmatched, each with its fields), then "Import" or "Cancel". The Notice gives the counts. The drawer follows the unsaved-input rule once a file is chosen.
+- **Vendor suggestions (1F):** with pending suggestions, a line above the list reads "{n} suggestions from {tool} to review · Review". Review lists them by vendor and location, each as field, current value, proposed value and a source link, with Accept and Reject per row and "Accept all" per vendor. A stale suggestion says the field changed since it was proposed, and offers "Apply anyway" and "Reject".
+- **Location detail (1F):**
+  - An unlinked location offers "Link to OpenStreetMap", which lists OSM objects near its pin to choose from, and says why when Overpass is off.
+  - A "Share in public export" checkbox sets `publishable`.
+  - The phone is shown and editable.
+  - Each field that came from OSM, an import or a suggestion shows its source in a muted line under it.
 - **Find nearby:** opens a dialog containing the OpenStreetMap adoption flow, with its home-base picker pre-set to the only home base when there is one. If there is no home base, the dialog says to add one first and links to Settings → Kitchens.
 - **States:**
   - Empty list: "No vendors yet. Drop a pin on the map".

@@ -10,7 +10,8 @@ The central idea is a three-way separation. An ingredient is what a recipe asks 
 
 ```
 app_user(id, email UNIQUE, display_name, password_hash, role CHECK IN (admin, member), active)
-api_token(id, user_id FK, name, token_hash UNIQUE, last_used_at?, revoked_at?)
+api_token(id, user_id FK, name, token_hash UNIQUE, last_used_at?, revoked_at?,
+          scopes TEXT[] DEFAULT '{*}')      -- 1F: '*' is full rights; vendors:read is the public export only; vendors:suggest posts suggestions only
 session(id, user_id FK, expires_at, last_seen_at, revoked_at?)
 idempotency_key(id, user_id FK, key, request_hash, status_code, response_body JSONB, created_at, UNIQUE (user_id, key))
 ```
@@ -80,7 +81,10 @@ vendor(
   id, name (unique on lower(name)),
   kind CHECK IN (chain, independent, market, stand),
   price_scope CHECK IN (chain, location) DEFAULT location,
-  website?, notes?
+  website?, notes?,
+  slug UNIQUE?,                              -- 1F: the stable key in kitchen-erp-vendors files
+  brand?, wikidata?,                         -- 1F
+  field_source JSONB DEFAULT '{}'            -- 1F: {field: {source, ref, checked_at, imported}}
 )
 
 vendor_location(
@@ -88,16 +92,36 @@ vendor_location(
   home_base_id FK?,                          -- defaults to nearest; nullable for in-between sites
   parent_location_id FK vendor_location?,    -- a stall inside a market
   name, address?,
-  osm_type CHECK IN (node, way, relation)?, osm_id BIGINT?,
+  osm_type CHECK IN (node, way, relation)?, osm_id BIGINT?,   -- UNIQUE together when set
+  osm_name?, osm_address?, osm_opening_hours?,  -- the values OSM last gave; refresh overwrites only while unchanged
   opening_hours TEXT?,                       -- OSM opening_hours syntax; seasonality included
   stop_overhead_min SMALLINT?,               -- used by the Phase 4 planner
   receipt_identifiers TEXT[],                -- store numbers or address fragments as printed on receipts
   active BOOLEAN DEFAULT true,
+  key UNIQUE?,                               -- 1F: "<vendor slug>/<location slug>"
+  phone?,                                    -- 1F: as printed or published; matched on its digits
+  publishable BOOLEAN DEFAULT false,         -- 1F: may appear in a public export
+  field_source JSONB DEFAULT '{}',           -- 1F
   CHECK (parent_location_id IS DISTINCT FROM id)
+)
+
+vendor_suggestion(                           -- 1F; append-only apart from its decision
+  id, batch_id,
+  target CHECK IN (vendor, location),
+  vendor_id FK?, vendor_location_id FK?,     -- exactly one, matching target
+  field CHECK IN (website, brand, wikidata, phone, address, opening_hours, osm, name, price_scope),
+  old_value JSONB?, proposed_value JSONB,
+  source_url, evidence?,                     -- evidence is plain text, at most 1,000 characters
+  tool, tool_version, confidence NUMERIC(4,3)?,
+  created_by_token_id FK api_token?, created_at,
+  status CHECK IN (pending, accepted, rejected, stale) DEFAULT pending,
+  decided_by FK app_user?, decided_at?
 )
 ```
 
 `place` is a shared node type so that Phase 4 can store drive times between any two places without caring whether an endpoint is a home or a shop. `price_scope` records whether a vendor prices uniformly across its locations; when it is `chain`, an observation at any location stands in for all of them. A stall's `opening_hours` may be null, in which case it inherits its parent's. `receipt_identifiers` lets header parsing pin a receipt to the right location of a chain from the store number printed on it.
+
+`field_source` (1F) says where each field's value came from and what that source last wrote. An import, an OSM refresh or an accepted suggestion overwrites a field only while it still equals `imported`, so a person's edit always wins. `vendor_suggestion` rows hold what an outside tool proposed. The runtime role may update only `status`, `decided_by` and `decided_at`, and a trigger refuses any other update and every delete, as for the append-only price tables.
 
 ### Optional reference data
 

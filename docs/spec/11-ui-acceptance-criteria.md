@@ -67,6 +67,8 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). Criteria m
 - **UI-3.11** Every list page has an empty state with one sentence and the relevant action. Filtered-empty and truly-empty states differ (G11).
 - **UI-3.12** Receipt review keeps Commit disabled, with its reason, until a location is set. After commit, it shows the committed notice and offers "Next draft" when drafts remain (G9).
 - **UI-3.13** After a drawer save, the new row takes focus if it is visible; otherwise the Notice links to it and that link takes focus (G10).
+- **UI-3.14** Vendor import shows the dry-run report before anything is written, and nothing is written if the drawer is cancelled (1F).
+- **UI-3.15** A vendor suggestion is never applied without a click. Its source link and its current and proposed values are visible before that click, and evidence text is shown as plain text, never as markup (1F).
 
 ## UI-4 — Phone and tablet
 
