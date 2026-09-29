@@ -46,7 +46,7 @@ _RECEIPTS_SQL = text(
            p.vendor_location_id IS NULL AS needs_location,
            count(pl.id) FILTER (WHERE pl.line_kind = 'item') AS item_lines
     FROM purchase p
-    LEFT JOIN purchase_line pl ON pl.purchase_id = p.id
+    LEFT JOIN purchase_line pl ON pl.purchase_id = p.id AND pl.removed_at IS NULL
     WHERE p.status IN ('draft', 'reviewed')
       AND NOT EXISTS (
           SELECT 1 FROM ingest_job j

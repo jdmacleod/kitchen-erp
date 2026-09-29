@@ -149,6 +149,8 @@ export function buildPurchaseInput(v: PurchaseFormValues, existing?: Purchase): 
     const problem = lineProblem(l);
     if (problem) return { ok: false, message: problem.message, lineKey: l.key, field: problem.field };
     const line: PurchaseLineInput = { product_id: l.product!.id, qty: l.qty.trim(), unit: l.unit };
+    // By id, so removing a line from the middle leaves the others' prices alone (#72).
+    if (l.id) line.id = l.id;
     if (l.driver === "unit_price") line.unit_price = l.unit_price.trim();
     else line.line_total = l.line_total.trim();
     lines.push(line);

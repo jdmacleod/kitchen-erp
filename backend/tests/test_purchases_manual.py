@@ -128,6 +128,9 @@ async def test_reopen_voids_and_reemits_only_changed_lines(admin_client):
     }
     p = (await admin_client.post("/api/v1/purchases", json=body)).json()
     first_obs = {ln["seq"]: ln["observation_id"] for ln in p["lines"]}
+    # The edit form names each saved line by id (#72).
+    for line, saved in zip(body["lines"], p["lines"], strict=True):
+        line["id"] = saved["id"]
     body["lines"][1]["unit_price"] = "3.50"  # only the second line changes
     r = await admin_client.put(f"/api/v1/purchases/{p['id']}", json=body)
     assert r.status_code == 200, r.text
@@ -149,7 +152,7 @@ async def test_reopen_voids_and_reemits_only_changed_lines(admin_client):
     q = (await admin_client.put(f"/api/v1/purchases/{p['id']}", json=body)).json()
     assert [ln["product"]["id"] for ln in q["lines"]] == [berries["id"], eggs["id"]]
     gone = (await admin_client.get(f"/api/v1/price-observations/{second_obs[2]}")).json()
-    assert gone["voided"] is True
+    assert gone["voided"] is True and gone["void_reason"] == "line removed"
     assert q["total"] == "15.0000"
 
 

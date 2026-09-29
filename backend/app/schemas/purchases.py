@@ -111,6 +111,9 @@ class RecomputeOut(ApiModel):
 
 
 class LineIn(ApiModel):
+    # The saved line this updates; omitted for a new line. A saved line left out
+    # of the request is removed (#72).
+    id: uuid.UUID | None = None
     product_id: uuid.UUID
     qty: Decimal = Field(gt=0)
     unit: str = Field(min_length=1, max_length=16)

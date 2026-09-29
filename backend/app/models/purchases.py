@@ -144,8 +144,18 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
     ledger_txn_ref: Mapped[str | None] = mapped_column(Text)
     import_ref: Mapped[str | None] = mapped_column(Text)
 
+    # The lines people see and count. A removed line stays in the table only as
+    # the provenance of an observation, and nothing that reads a purchase's lines
+    # should see it (#72); all_lines is the whole record, for audit.
     lines: Mapped[list[PurchaseLine]] = relationship(
-        back_populates="purchase", cascade="all, delete-orphan", order_by="PurchaseLine.seq"
+        primaryjoin="and_(Purchase.id == PurchaseLine.purchase_id, "
+        "PurchaseLine.removed_at.is_(None))",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="PurchaseLine.seq",
+    )
+    all_lines: Mapped[list[PurchaseLine]] = relationship(
+        viewonly=True, order_by="PurchaseLine.seq", lazy="raise"
     )
     vendor_location: Mapped[VendorLocation | None] = relationship(lazy="joined")
 
@@ -159,6 +169,9 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
             "line_kind = 'item' OR product_id IS NULL", name="ck_purchase_line_product"
         ),
         UniqueConstraint("purchase_id", "seq", name="uq_purchase_line_seq"),
+        CheckConstraint(
+            "(removed_at IS NULL) = (removed_by IS NULL)", name="ck_purchase_line_removed"
+        ),
     )
 
     purchase_id: Mapped[uuid.UUID] = mapped_column(
@@ -185,8 +198,12 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     )
     resolution_confidence: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
     flags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    removed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id", name="fk_purchase_line_removed_by")
+    )
 
-    purchase: Mapped[Purchase] = relationship(back_populates="lines")
+    purchase: Mapped[Purchase] = relationship(viewonly=True)
     product: Mapped[Product | None] = relationship(lazy="joined")
 
 

@@ -150,6 +150,8 @@ export interface ObservationFilters {
 
 /** Exactly one of unit_price and line_total; the server computes the other. */
 export interface PurchaseLineInput {
+  /** The saved line this updates; a saved line left out is removed (#72). */
+  id?: string;
   product_id: string;
   qty: string;
   unit: string;

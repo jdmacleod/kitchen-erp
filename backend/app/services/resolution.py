@@ -536,7 +536,7 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
             JOIN vendor_location vl ON vl.id = p.vendor_location_id
             JOIN vendor v ON v.id = vl.vendor_id
             WHERE p.status = 'committed' AND pl.line_kind = 'item'
-              AND pl.resolution = 'unmatched'
+              AND pl.resolution = 'unmatched' AND pl.removed_at IS NULL
             GROUP BY v.id, v.name, pl.raw_text_norm
             ORDER BY max(p.purchased_at) DESC
             """
@@ -566,6 +566,7 @@ async def apply_to_identify(
             PurchaseLine.line_kind == "item",
             PurchaseLine.resolution == "unmatched",
             PurchaseLine.raw_text_norm == raw_text_norm,
+            PurchaseLine.removed_at.is_(None),
             VendorLocation.vendor_id == vendor_id,
         )
     )
