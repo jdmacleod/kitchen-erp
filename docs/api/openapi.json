@@ -6063,6 +6063,22 @@
         "title": "RecomputeOut",
         "type": "object"
       },
+      "RememberStoreCodeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "RememberStoreCodeIn",
+        "type": "object"
+      },
       "RemovalOut": {
         "additionalProperties": false,
         "description": "What removing the purchase would do, from the same rule the action uses.",
@@ -6408,6 +6424,57 @@
           "created_at"
         ],
         "title": "StageResultOut",
+        "type": "object"
+      },
+      "StoreCodeOfferOut": {
+        "additionalProperties": false,
+        "description": "A store code review may remember on the purchase's location (1F, design D10).",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "location_id": {
+            "format": "uuid",
+            "title": "Location Id",
+            "type": "string"
+          },
+          "location_name": {
+            "title": "Location Name",
+            "type": "string"
+          },
+          "printed_line": {
+            "title": "Printed Line",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "location_id",
+          "location_name",
+          "printed_line"
+        ],
+        "title": "StoreCodeOfferOut",
+        "type": "object"
+      },
+      "StoreCodeOfferResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StoreCodeOfferOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "offer"
+        ],
+        "title": "StoreCodeOfferResponse",
         "type": "object"
       },
       "UnitList": {
@@ -11244,6 +11311,60 @@
         ]
       }
     },
+    "/api/v1/purchases/{purchase_id}/remember-store-code": {
+      "post": {
+        "description": "Append the offered code to the purchase's location; 409 if it is no longer offered.",
+        "operationId": "remember_store_code_api_v1_purchases__purchase_id__remember_store_code_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RememberStoreCodeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCodeOfferOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remember Store Code",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
     "/api/v1/purchases/{purchase_id}/remove": {
       "post": {
         "description": "Delete a purchase that never reached the price book, or void one that did (#74).",
@@ -11326,6 +11447,50 @@
           }
         },
         "summary": "Reopen Purchase",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/store-code-offer": {
+      "get": {
+        "description": "The store code the receipt printed, when review may offer to remember it (1F).",
+        "operationId": "store_code_offer_api_v1_purchases__purchase_id__store_code_offer_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCodeOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Store Code Offer",
         "tags": [
           "purchases"
         ]

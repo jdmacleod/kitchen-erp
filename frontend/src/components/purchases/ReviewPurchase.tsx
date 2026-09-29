@@ -16,7 +16,9 @@ import {
   usePatchLine,
   usePatchPurchase,
   useReResolveLine,
+  useRememberStoreCode,
   useResolveLine,
+  useStoreCodeOffer,
   type AcceptedKind,
   type LineAddInput,
   type LinePatchInput,
@@ -553,6 +555,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
         </SelectField>
         <Field id="review-purchased-at" label="Purchased at" type="datetime-local" value={form.purchased_at} onChange={(e) => set("purchased_at", e.target.value)} disabled={patch.isPending} />
       </div>
+      <RememberStoreCode purchase={purchase} />
       <div className="grid gap-3 sm:grid-cols-3">
         <Field id="review-subtotal" label="Subtotal" inputMode="decimal" autoComplete="off" value={form.subtotal} onChange={(e) => set("subtotal", e.target.value)} disabled={patch.isPending} />
         <Field id="review-tax" label="Tax" inputMode="decimal" autoComplete="off" value={form.tax} onChange={(e) => set("tax", e.target.value)} disabled={patch.isPending} />
@@ -565,6 +568,48 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
         <span role="status" className={hintClass}>
           {saved === "saved" ? "Saved." : saved === "unchanged" ? "Nothing has changed." : ""}
         </span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * After the location is saved, a quiet offer to remember the store code the
+ * receipt printed, so the next receipt from that store matches on its own (1F,
+ * design D10). The server offers only codes that read like a store number, and
+ * shows the line they were printed on with other long numbers masked.
+ */
+function RememberStoreCode({ purchase }: { purchase: Purchase }) {
+  const locationId = purchase.vendor_location?.id ?? null;
+  const reviewing = purchase.source === "receipt" && (purchase.status === "draft" || purchase.status === "reviewed");
+  const offer = useStoreCodeOffer(purchase.id, locationId, reviewing);
+  const remember = useRememberStoreCode(purchase.id);
+  const done = remember.data && remember.data.location_id === locationId ? remember.data : null;
+  // A committed purchase keeps this page mounted; the offer is for review only.
+  if (!reviewing) return null;
+  if (done) {
+    return (
+      <p role="status" className="text-sm text-green-800 dark:text-green-300">
+        Remembered {done.code} for {done.location_name}.
+      </p>
+    );
+  }
+  if (!offer.data) return null;
+  const { code, location_name, printed_line } = offer.data;
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p className={hintClass}>
+        Printed on this receipt: <span className="rounded bg-neutral-100 px-1 font-mono text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">{printed_line}</span>
+      </p>
+      <div className="flex flex-col gap-1">
+        <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remember.isPending} onClick={() => remember.mutate(code)}>
+          {remember.isPending ? "Remembering…" : `Remember ${code} for ${location_name}`}
+        </Button>
+        {remember.isError ? (
+          <p role="alert" className="text-xs text-red-700 dark:text-red-300">
+            {purchaseErrorMessage(remember.error)}
+          </p>
+        ) : null}
       </div>
     </div>
   );
