@@ -111,7 +111,8 @@ that runs out says `model_timeout`, which names the setting.
 
 ## Optional reference data
 
-Both are optional and local. The system works fully without them.
+Each is optional, and the system works fully without them. Only OpenStreetMap
+links reach outside the deployment, and only when switched on.
 
 - **USDA FoodData Central** portions, used only to suggest densities and named
   measures when an ingredient is created. Download the "Full Download of All Data
@@ -120,6 +121,15 @@ Both are optional and local. The system works fully without them.
 
   ```bash
   docker compose exec api kerp import usda-portions --path /data/usda/<unzipped-dir>
+  ```
+
+- **OpenStreetMap links**, off unless `ENABLE_OVERPASS=true`. With it on, a
+  location's card offers "Link to OpenStreetMap", which lists the places within
+  250 m of its pin and fills in the address, hours, phone and website it is
+  missing; anything you typed stays. To re-read every linked location later:
+
+  ```bash
+  docker compose exec api kerp osm refresh --all-linked
   ```
 
 - **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See

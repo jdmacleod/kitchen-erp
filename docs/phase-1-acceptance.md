@@ -44,6 +44,7 @@ Compose stack and observing, with the command shown.
 | 35 (1E-33) | Market lists stalls; stall shows inherited or own hours | `frontend/src/test/map.test.tsx` (market → stalls → inherited hours); `e2e/tests/map.spec.ts` |
 | 36 (1E-34) | 390 px: pin selected and detail read without horizontal scroll | `e2e/tests/map.spec.ts` in the `phone` project asserts `scrollWidth <= innerWidth` with the detail sheet open; `e2e/tests/narrow-phone.spec.ts` repeats the no-sideways-scroll check for `/map` in the `phone-375` project, measured against the project's declared device width because `innerWidth` inflates when an overflowing page makes the browser zoom out |
 | 37 (1E-35) | OSM and Protomaps attribution shown | `e2e/tests/map.spec.ts` (attribution present with tiles absent) |
+| 60 (1F) | An existing location links to an OSM place near its pin; refresh fills what changed and keeps a person's edits; refused with no request while Overpass is off | `test_geo_osm_link.py::test_link_fills_empty_fields_keeps_edits_and_records_sources`, `::test_linking_is_refused_with_no_request_while_overpass_is_off`, `::test_refresh_overwrites_keeps_or_fills_by_state` |
 
 Numbering note: the spec numbers 1A–1B criteria 1–14 after the review added two
 criteria to 1A, then restarts at 13 for 1C and continues to 35; the second column

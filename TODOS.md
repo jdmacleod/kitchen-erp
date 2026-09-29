@@ -117,6 +117,20 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** #74
 
+## Vendors
+
+### Public vendor dataset and reference enrichment tool
+
+**What:** Create the public `kitchen-erp-vendors` repository (ODbL) and, in it, the reference tool that reads a household's public vendor export, cross-checks it against OpenStreetMap and stores' own sites, asks a model for a structured diff, and posts vendor suggestions.
+
+**Why:** Spec 03 §1F builds the app side (public export, scoped tokens, the suggestion API and review), but nothing uses it until this tool exists, and the public dataset needs a home that is not this repository.
+
+**Context:** Plan `playful-launching-parrot.md`, Phase 4; eng review 2026-09-29. The tool authenticates with a `vendors:read` + `vendors:suggest` token, which can read only the public export. It sends a model public facts only (vendor and branch names, city or region, OSM ids, public coordinates, current public values), one vendor per prompt, never home bases, notes, purchases or receipt text. Every suggestion carries a `source_url`; values from sources whose terms are incompatible with the ODbL are dropped. The app caps a batch at 200 items and pending suggestions at 2,000. Start from the suggestion API's schema in `docs/api/openapi.json`.
+
+**Effort:** L
+**Priority:** P3
+**Depends on:** Phase 3 (scoped tokens and vendor suggestions) merged.
+
 ## Operations
 
 ### Backup refuses to overwrite an existing backup

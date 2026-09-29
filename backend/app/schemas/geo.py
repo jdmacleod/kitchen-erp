@@ -9,8 +9,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from app.models.geo import HomeBase, VendorLocation
+from app.models.geo import HomeBase, Vendor, VendorLocation
 from app.schemas.base import ApiModel, DecimalStr
+from app.services.geo import sources_of
 from app.services.opening_hours import effective_hours
 
 VendorKind = Literal["chain", "independent", "market", "stand"]
@@ -20,6 +21,16 @@ OsmType = Literal["node", "way", "relation"]
 Lat = Annotated[Decimal, Field(ge=-90, le=90)]
 Lon = Annotated[Decimal, Field(ge=-180, le=180)]
 Name = Annotated[str, Field(min_length=1, max_length=200)]
+Phone = Annotated[str, Field(max_length=40)]
+LinkedField = Literal["name", "address", "opening_hours", "phone", "website"]
+
+
+class FieldSourceOut(ApiModel):
+    """Where a field's current value came from. Absent when a person entered it."""
+
+    source: str  # osm | observed | import | enriched:<tool>
+    ref: str | None
+    checked_at: datetime | None
 
 
 # --- home bases --------------------------------------------------------------
@@ -94,6 +105,19 @@ class VendorOut(VendorRef):
     notes: str | None
     active: bool
     created_at: datetime
+    sources: dict[str, FieldSourceOut] = Field(default_factory=dict)
+
+    @classmethod
+    def from_model(cls, vendor: Vendor) -> VendorOut:
+        base = VendorRef.model_validate(vendor).model_dump()
+        return cls(
+            **base,
+            website=vendor.website,
+            notes=vendor.notes,
+            active=vendor.active,
+            created_at=vendor.created_at,
+            sources=sources_of(vendor, ("website",)),
+        )
 
 
 class VendorListItem(VendorOut):
@@ -121,6 +145,7 @@ class VendorLocationCreate(ApiModel):
     lat: Lat
     lon: Lon
     address: str | None = Field(default=None, max_length=500)
+    phone: Phone | None = None
     parent_location_id: uuid.UUID | None = None
     opening_hours: str | None = None
     # Omitted: nearest home base. Explicit null: none. See model_fields_set.
@@ -142,6 +167,7 @@ class VendorLocationUpdate(ApiModel):
     lat: Lat | None = None
     lon: Lon | None = None
     address: str | None = Field(default=None, max_length=500)
+    phone: Phone | None = None
     parent_location_id: uuid.UUID | None = None
     opening_hours: str | None = None
     home_base_id: uuid.UUID | None = None
@@ -158,6 +184,7 @@ class VendorLocationOut(ApiModel):
     lat: DecimalStr
     lon: DecimalStr
     address: str | None
+    phone: str | None
     home_base_id: uuid.UUID | None
     parent_location_id: uuid.UUID | None
     opening_hours: str | None
@@ -167,6 +194,7 @@ class VendorLocationOut(ApiModel):
     receipt_identifiers: list[str]
     osm_type: OsmType | None
     osm_id: int | None
+    sources: dict[str, FieldSourceOut] = Field(default_factory=dict)
     active: bool
     is_open: bool | None = None  # set only when the request named an instant
     distance_m: DecimalStr | None = None  # set only when the request named a point
@@ -188,6 +216,7 @@ class VendorLocationOut(ApiModel):
             lat=location.place.lat,
             lon=location.place.lon,
             address=location.address,
+            phone=location.phone,
             home_base_id=location.home_base_id,
             parent_location_id=location.parent_location_id,
             opening_hours=location.opening_hours,
@@ -197,6 +226,7 @@ class VendorLocationOut(ApiModel):
             receipt_identifiers=list(location.receipt_identifiers),
             osm_type=location.osm_type,  # type: ignore[arg-type]
             osm_id=location.osm_id,
+            sources=sources_of(location, ("name", "address", "opening_hours", "phone")),
             active=location.active,
             is_open=is_open,
             distance_m=distance_m,
@@ -263,6 +293,38 @@ class OsmAdoptIn(ApiModel):
     home_base_id: uuid.UUID
     radius_m: int = Field(ge=100, le=50000)
     vendor_kind: VendorKind | None = None
+
+
+class LinkedLocationRef(ApiModel):
+    id: uuid.UUID
+    name: str
+
+
+class LinkCandidateOut(ApiModel):
+    """An OSM object near a location's pin, and what linking it would change (1F)."""
+
+    osm_type: OsmType
+    osm_id: int
+    name: str | None
+    kind_guess: VendorKind
+    address: str | None
+    opening_hours: str | None
+    phone: str | None
+    website: str | None
+    distance_m: int
+    linked_to: LinkedLocationRef | None
+    fills: list[LinkedField]
+    keeps: list[LinkedField]  # fields a person edited, which linking leaves alone
+
+
+class LinkCandidateList(ApiModel):
+    items: list[LinkCandidateOut]
+
+
+class OsmLinkIn(ApiModel):
+    osm_type: OsmType
+    osm_id: int = Field(ge=1)
+    radius_m: int = Field(default=250, ge=50, le=2000)
 
 
 class MapPlaceOut(ApiModel):

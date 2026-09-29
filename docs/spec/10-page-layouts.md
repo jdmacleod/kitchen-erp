@@ -174,11 +174,12 @@ The most important detail page; search results and inbox items land here most of
   - Export offers YAML or JSON, and Public or Household. It says in one line what Public leaves out: notes, home bases, stands, and locations not marked for sharing.
   - Import opens a right-side drawer: choose a file, see the dry-run report (created, updated, unchanged, conflicts, unmatched, each with its fields), then "Import" or "Cancel". The Notice gives the counts. The drawer follows the unsaved-input rule once a file is chosen.
 - **Vendor suggestions (1F):** with pending suggestions, a line above the list reads "{n} suggestions from {tool} to review · Review". Review lists them by vendor and location, each as field, current value, proposed value and a source link, with Accept and Reject per row and "Accept all" per vendor. A stale suggestion says the field changed since it was proposed, and offers "Apply anyway" and "Reject".
-- **Location detail (1F):**
-  - An unlinked location offers "Link to OpenStreetMap", which lists OSM objects near its pin to choose from, and says why when Overpass is off.
-  - A "Share in public export" checkbox sets `publishable`.
-  - The phone is shown and editable.
-  - Each field that came from OSM, an import or a suggestion shows its source in a muted line under it.
+- **Location card (1F):** the card stays compact.
+  - Its meta line reads hours · phone (a `tel:` link) · address · home base. A line under it says "Linked to OpenStreetMap · Refresh · Unlink", or "Not linked to OpenStreetMap · Link". Unlink forgets the link and keeps every value.
+  - "Link" opens a dialog modeled on Find nearby. It lists the OSM places within 250 m of the pin, nearest first, each with its distance, kind and address. A place already linked to another location is shown disabled with "Linked to {name}". Choosing one shows "Will fill: {fields} · Keeps your: {fields} (you edited it)" before "Link" writes anything. The dialog names its states: "Searching near this pin…", "No OpenStreetMap places within 250 m.", and lookups off.
+  - A "Sources" disclosure lists where each value came from, in one sentence pattern: "From OpenStreetMap (node 123), checked {date}", "From the file {name}, imported {date}", "Suggested by {tool}, accepted {date}". A value a person changed since then has no source line: it was entered by hand.
+  - The edit form has Phone (kept as typed; 7 to 15 digits and only `+ ( ) - .` besides), and shows each field's source as its hint while the field still holds that value.
+  - A "Share in public export" checkbox in the edit form sets `publishable` (Phase 1 of 1F). A linked location shows it ticked and disabled, "Shared because it's linked to OpenStreetMap"; a stand shows it unticked and disabled, "Stands are never shared".
 - **Find nearby:** opens a dialog containing the OpenStreetMap adoption flow, with its home-base picker pre-set to the only home base when there is one. If there is no home base, the dialog says to add one first and links to Settings → Kitchens.
 - **States:**
   - Empty list: "No vendors yet. Drop a pin on the map".

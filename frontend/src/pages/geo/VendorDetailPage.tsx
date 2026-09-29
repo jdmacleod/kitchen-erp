@@ -13,11 +13,13 @@ import {
   useRefreshOsm,
   useSetLocationActive,
   useSetVendorActive,
+  useUnlinkOsm,
   useUpdateLocation,
   useUpdateVendor,
   useVendor,
   vendorKindLabel,
   type LocationCreateInput,
+  type LinkedField,
   type LocationUpdateInput,
   type PriceScope,
   type Vendor,
@@ -26,10 +28,12 @@ import {
 } from "../../api/geo";
 import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
+import { LinkOsmDialog } from "../../components/geo/LinkOsmDialog";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
+import { describeSource, fieldLabel, phoneError } from "../../lib/sources";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function VendorDetailPage() {
@@ -262,7 +266,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
  */
 function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets: VendorLocation[]; onDone: () => void }) {
   const create = useCreateLocation();
-  const [form, setForm] = useState({ name: "", coordinates: "", address: "", opening_hours: "", parent_location_id: "" });
+  const [form, setForm] = useState({ name: "", coordinates: "", address: "", phone: "", opening_hours: "", parent_location_id: "" });
   const [hoursValid, setHoursValid] = useState(true);
   const [invalid, setInvalid] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
@@ -282,9 +286,15 @@ function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets:
       setInvalid("Fix the opening hours first.");
       return;
     }
+    const badPhone = phoneError(form.phone);
+    if (badPhone) {
+      setInvalid(`Phone: ${badPhone}`);
+      return;
+    }
     setInvalid(null);
     const input: LocationCreateInput = { vendor_id: vendor.id, name: form.name.trim(), lat: point.lat, lon: point.lon };
     if (form.address.trim()) input.address = form.address.trim();
+    if (form.phone.trim()) input.phone = form.phone.trim();
     if (form.opening_hours.trim()) input.opening_hours = form.opening_hours.trim();
     if (form.parent_location_id) input.parent_location_id = form.parent_location_id;
     create.mutate(input, { onSuccess: onDone });
@@ -298,6 +308,7 @@ function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets:
       <Field id="add-location-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} hint="What you call this place, e.g. “the one on the coast road”." />
       <CoordinatesField id="add-location-coordinates" value={form.coordinates} onChange={(v) => set("coordinates", v)} disabled={create.isPending} />
       <Field id="add-location-address" label="Address" autoComplete="off" value={form.address} onChange={(e) => set("address", e.target.value)} />
+      <Field id="add-location-phone" label="Phone" type="tel" inputMode="tel" autoComplete="off" value={form.phone} onChange={(e) => set("phone", e.target.value)} hint="As the store prints it. Receipts are matched on its digits." />
       {markets.length > 0 ? (
         <SelectField id="add-location-parent" label="Stall at" value={form.parent_location_id} onChange={(e) => set("parent_location_id", e.target.value)} hint="Choose a market to make this a stall of it.">
           <option value="">Not a stall</option>
@@ -326,11 +337,19 @@ function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets:
   );
 }
 
+const SOURCE_FIELDS: LinkedField[] = ["name", "address", "opening_hours", "phone"];
+const smallAction = "min-h-11 lg:min-h-8 px-2 text-xs";
+
 function LocationCard({ location, homeBases, markets }: { location: VendorLocation; homeBases: { id: string; name: string }[]; markets: VendorLocation[] }) {
   const [editing, setEditing] = useState(false);
+  const [linking, setLinking] = useState(false);
   const setActive = useSetLocationActive(location.id);
   const refresh = useRefreshOsm(location.id);
+  const unlink = useUnlinkOsm(location.id);
   const home = homeBases.find((h) => h.id === location.home_base_id);
+  const linked = location.osm_id !== null;
+  const sourced = SOURCE_FIELDS.filter((f) => location.sources[f]);
+  const osmError = refresh.error ?? unlink.error;
   return (
     <div className="rounded-md border border-neutral-200 p-3 text-sm dark:border-neutral-800">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -342,28 +361,67 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
           <p className="text-xs text-neutral-600 dark:text-neutral-400">
             {describeOpeningHours(location.effective_opening_hours)}
             {location.opening_hours_inherited ? " (inherited)" : ""}
+            {location.phone ? (
+              <>
+                {" · "}
+                <a href={`tel:${location.phone.replace(/[^0-9+]/g, "")}`} className={`rounded underline ${focusRing}`}>
+                  {location.phone}
+                </a>
+              </>
+            ) : null}
             {location.address ? ` · ${location.address}` : ""}
             {home ? ` · from ${home.name}` : ""}
-            {location.osm_id ? ` · OSM ${location.osm_type} ${location.osm_id}` : ""}
           </p>
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
           {location.receipt_identifiers.length > 0 ? (
             <p className="break-all text-xs text-neutral-600 dark:text-neutral-400">Store codes on receipts: {location.receipt_identifiers.join(", ")}</p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-x-1 text-xs text-neutral-600 dark:text-neutral-400">
+            {linked ? (
+              <>
+                <span>Linked to OpenStreetMap</span>
+                <span aria-hidden="true">·</span>
+                <Button variant="ghost" className={smallAction} disabled={refresh.isPending} onClick={() => refresh.mutate()} aria-label={`Refresh ${location.name} from OpenStreetMap`}>
+                  {refresh.isPending ? "Refreshing…" : "Refresh"}
+                </Button>
+                <Button variant="ghost" className={smallAction} disabled={unlink.isPending} onClick={() => unlink.mutate()} aria-label={`Unlink ${location.name} from OpenStreetMap`}>
+                  {unlink.isPending ? "Unlinking…" : "Unlink"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <span>Not linked to OpenStreetMap</span>
+                <span aria-hidden="true">·</span>
+                <Button variant="ghost" className={smallAction} onClick={() => setLinking(true)} aria-label={`Link ${location.name} to OpenStreetMap`}>
+                  Link
+                </Button>
+              </>
+            )}
+          </div>
+          {sourced.length > 0 ? (
+            <Disclosure summary="Sources" className="text-xs">
+              <div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-neutral-600 dark:text-neutral-400">
+                  {sourced.map((f) => (
+                    <div key={f} className="contents">
+                      <dt className="font-medium">{fieldLabel[f]}</dt>
+                      <dd>{describeSource(location.sources[f])}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {sourced.some((f) => location.sources[f]?.source === "osm") ? <p className="mt-1 text-neutral-600 dark:text-neutral-400">© OpenStreetMap contributors</p> : null}
+              </div>
+            </Disclosure>
           ) : null}
         </div>
         <div className="flex flex-wrap gap-1">
           <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(location.id)}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-xs font-medium text-neutral-700 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-800 ${focusRing}`}>
             Map
           </Link>
-          <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${location.name}`}>
+          <Button variant="ghost" className={smallAction} onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${location.name}`}>
             Edit
           </Button>
-          {location.osm_id ? (
-            <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={refresh.isPending} onClick={() => refresh.mutate()} aria-label={`Refresh ${location.name} from OpenStreetMap`}>
-              {refresh.isPending ? "Refreshing…" : "Refresh from OSM"}
-            </Button>
-          ) : null}
-          <Button variant={location.active ? "danger" : "secondary"} className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={setActive.isPending} onClick={() => setActive.mutate(!location.active)} aria-label={`${location.active ? "Deactivate" : "Activate"} ${location.name}`}>
+          <Button variant={location.active ? "danger" : "secondary"} className={smallAction} disabled={setActive.isPending} onClick={() => setActive.mutate(!location.active)} aria-label={`${location.active ? "Deactivate" : "Activate"} ${location.name}`}>
             {location.active ? "Deactivate" : "Activate"}
           </Button>
         </div>
@@ -373,12 +431,13 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
           {geoErrorMessage(setActive.error)}
         </Alert>
       ) : null}
-      {refresh.isError ? (
+      {osmError ? (
         <Alert tone="error" className="mt-2">
-          {geoErrorMessage(refresh.error)}
+          {geoErrorMessage(osmError)}
         </Alert>
       ) : null}
       {editing ? <EditLocationForm location={location} homeBases={homeBases} markets={markets.filter((m) => m.id !== location.id)} onDone={() => setEditing(false)} /> : null}
+      {linking ? <LinkOsmDialog location={location} onClose={() => setLinking(false)} onLinked={() => setLinking(false)} /> : null}
     </div>
   );
 }
@@ -405,6 +464,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
   const [form, setForm] = useState({
     name: location.name,
     address: location.address ?? "",
+    phone: location.phone ?? "",
     opening_hours: location.opening_hours ?? "",
     home_base_id: location.home_base_id ?? "",
     parent_location_id: location.parent_location_id ?? "",
@@ -415,6 +475,12 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
   const [invalid, setInvalid] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const prefix = `loc-${location.id}`;
+  // Where the saved value came from, shown only while the field still holds it.
+  const sourceHint = (f: LinkedField) => {
+    const saved = f === "name" ? location.name : f === "address" ? location.address : f === "phone" ? location.phone : location.opening_hours;
+    const typed = f === "name" ? form.name : f === "address" ? form.address : f === "phone" ? form.phone : form.opening_hours;
+    return location.sources[f] && typed.trim() === (saved ?? "") ? describeSource(location.sources[f]) : undefined;
+  };
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -424,6 +490,11 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
     }
     if (form.opening_hours.trim() && !hoursValid) {
       setInvalid("Fix the opening hours first.");
+      return;
+    }
+    const badPhone = phoneError(form.phone);
+    if (badPhone) {
+      setInvalid(`Phone: ${badPhone}`);
       return;
     }
     if (form.stop_overhead_min.trim() && !/^\d+$/.test(form.stop_overhead_min.trim())) {
@@ -443,6 +514,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
     if (codesEdited && codes.join("\n") !== location.receipt_identifiers.join("\n")) input.receipt_identifiers = codes;
     if (form.name.trim() !== location.name) input.name = form.name.trim();
     if ((form.address.trim() || null) !== location.address) input.address = form.address.trim() || null;
+    if ((form.phone.trim() || null) !== location.phone) input.phone = form.phone.trim() || null;
     if ((form.opening_hours.trim() || null) !== location.opening_hours) input.opening_hours = form.opening_hours.trim() || null;
     if ((form.home_base_id || null) !== location.home_base_id) input.home_base_id = form.home_base_id || null;
     if ((form.parent_location_id || null) !== location.parent_location_id) input.parent_location_id = form.parent_location_id || null;
@@ -460,8 +532,9 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field id={`${prefix}-name`} label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
-        <Field id={`${prefix}-address`} label="Address" autoComplete="off" value={form.address} onChange={(e) => set("address", e.target.value)} />
+        <Field id={`${prefix}-name`} label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} hint={sourceHint("name")} />
+        <Field id={`${prefix}-address`} label="Address" autoComplete="off" value={form.address} onChange={(e) => set("address", e.target.value)} hint={sourceHint("address")} />
+        <Field id={`${prefix}-phone`} label="Phone" type="tel" inputMode="tel" autoComplete="off" value={form.phone} onChange={(e) => set("phone", e.target.value)} hint={phoneError(form.phone) ?? sourceHint("phone")} />
         <SelectField id={`${prefix}-home`} label="Home base" value={form.home_base_id} onChange={(e) => set("home_base_id", e.target.value)} hint="Cleared means no default base.">
           <option value="">None</option>
           {homeBases.map((h) => (
