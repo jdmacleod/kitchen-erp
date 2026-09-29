@@ -257,31 +257,57 @@ async def match_location(
 
 
 # A total line as a till prints it: the label, anything (stars, a colon), then the
-# amount at the end of the line. Not a subtotal, and not a "you saved" line.
+# amount at the end of the line. Not a subtotal, a "you saved" line, or an account
+# balance (points, a gift card, store credit) printed after the sale.
+_AMOUNT = r"(\d{1,3}(?:[,.]\d{3})+[.,]\d{2}|\d{1,6}[.,]\d{2})"
 _TOTAL_LINE = re.compile(
-    r"\b(?:total|balance(?:\s+due)?|amount\s+due)\b[^0-9\n]*?(\d{1,6}[.,]\d{2})\s*$",
+    r"\b(?P<label>total|balance(?:\s+due)?|amount\s+due)\b[^0-9\n]*?" + _AMOUNT + r"\s*$",
     re.IGNORECASE,
 )
-_NOT_TOTAL = re.compile(r"sub\s*-?\s*total|sav(?:ed|ings?)|tax\s+total|items?\b", re.IGNORECASE)
+_NOT_TOTAL = re.compile(
+    r"sub\s*-?\s*total|sav(?:ed|ings?)|tax\s+total|items?\b|"
+    r"points?|rewards?|gift|card\s+bal|credit|loyalty|member|remaining|available|previous|prior",
+    re.IGNORECASE,
+)
 
 
-def printed_total_from_text(text: str) -> Decimal | None:
-    """The receipt's total read straight from its text, for when the model found none.
+def _money(text: str) -> Decimal:
+    """1,234.50 or 1.234,50 or 12,34: the last separator is the decimal mark."""
+    whole, cents = text[:-3], text[-2:]
+    return Decimal(re.sub(r"[.,]", "", whole) + "." + cents)
 
-    Some tills label the total BALANCE rather than TOTAL, and the model then
-    reported no total at all, so the receipt could not be checked against its
-    lines. The last labelled line wins: a total comes after the lines it sums.
-    Read from OCR text, which is untrusted: only the amount is taken, and only
-    when it parses as money.
+
+def printed_total_line(text: str) -> tuple[Decimal, bool] | None:
+    """The receipt's labelled total and whether its label is a strong one.
+
+    TOTAL, AMOUNT DUE and BALANCE DUE are strong; a bare BALANCE is weak, used
+    only when nothing stronger is printed, because some tills print an account
+    balance under that word after the sale. Among equals the last line wins: a
+    total comes after the lines it sums.
     """
-    found: Decimal | None = None
+    best: tuple[Decimal, bool] | None = None
     for line in text.splitlines():
         if _NOT_TOTAL.search(line):
             continue
         m = _TOTAL_LINE.search(line.strip())
-        if m:
-            found = Decimal(m.group(1).replace(",", "."))
-    return found
+        if not m:
+            continue
+        strong = m.group("label").lower() != "balance"
+        if best is None or strong or not best[1]:
+            best = (_money(m.group(2)), strong)
+    return best
+
+
+def printed_total_from_text(text: str) -> Decimal | None:
+    """The receipt's total read straight from its text.
+
+    Some tills label the total BALANCE rather than TOTAL, and the model then
+    reported no total at all, so the receipt could not be checked against its
+    lines. Read from OCR text, which is untrusted: only the amount is taken, and
+    only when it parses as money.
+    """
+    found = printed_total_line(text)
+    return None if found is None else found[0]
 
 
 def amount_in_text(amount: Decimal, text: str) -> bool:

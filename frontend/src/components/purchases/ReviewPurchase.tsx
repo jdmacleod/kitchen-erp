@@ -531,6 +531,9 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
                   className="min-h-11 lg:min-h-8 px-2 text-xs"
                   onClick={() => set("vendor_location_id", c.location_id)}
                   aria-pressed={form.vendor_location_id === c.location_id}
+                  // Like the fields below: a choice made mid-save would not be
+                  // in the request, yet "Saved." would follow it.
+                  disabled={patch.isPending}
                 >
                   {c.vendor_name === c.name ? c.name : `${c.vendor_name} — ${c.name}`}
                 </Button>

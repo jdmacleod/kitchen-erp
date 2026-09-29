@@ -22,6 +22,11 @@ from app.ingest.header import amount_in_text, printed_total_from_text
         # A subtotal and a savings line are not the total; the last total wins.
         ("SUBTOTAL 10.00\nTOTAL 10.80\nYou saved 1.20\nTOTAL SAVINGS 1.20", Decimal("10.80")),
         ("TOTAL 5.00\nCASH 10.00\nTOTAL 5.25", Decimal("5.25")),
+        # Review of #89: an account balance printed after the sale is not it.
+        ("TOTAL 24.41\nVISA 24.41\nBALANCE 3.20", Decimal("24.41")),
+        ("BALANCE DUE 18.00\nREWARDS BALANCE 42.00\nGIFT CARD BALANCE 9.99", Decimal("18.00")),
+        ("TOTAL 1,234.50", Decimal("1234.50")),
+        ("Total: EUR 1.234,50", Decimal("1234.50")),
     ],
 )
 def test_a_labelled_total_line_is_read(text, expected):

@@ -793,7 +793,9 @@ async def test_a_part_that_times_out_keeps_the_parts_already_read(
 
 
 @pytest.mark.parametrize(
-    ("model_total", "flagged"), [(None, True), ("4.54", True), ("24.41", False)]
+    ("model_total", "flagged"),
+    # 6.50 is an item price printed on the receipt: the TOTAL line still wins.
+    [(None, True), ("4.54", True), ("6.50", True), ("24.41", False)],
 )
 async def test_a_total_the_model_missed_or_invented_comes_from_the_printed_line(
     admin_client: httpx.AsyncClient,
