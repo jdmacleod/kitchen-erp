@@ -14,6 +14,8 @@ interface DrawerProps {
   primaryLabel: string;
   busy?: boolean;
   busyLabel?: string;
+  /** The primary action cannot run yet, e.g. an import with nothing to change. */
+  primaryDisabled?: boolean;
   /** Another action beside the primary, e.g. "Save and scan another". */
   secondaryAction?: ReactNode;
   /**
@@ -32,7 +34,7 @@ interface DrawerProps {
  * With typed input, Escape, a backdrop click and Cancel do not close it: they show
  * an inline squash bar asking to discard, and focus goes to Keep editing (D5).
  */
-export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, busy = false, busyLabel, secondaryAction, actions = true, children }: DrawerProps) {
+export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, busy = false, busyLabel, primaryDisabled = false, secondaryAction, actions = true, children }: DrawerProps) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const keepEditing = useRef<HTMLButtonElement>(null);
@@ -84,7 +86,7 @@ export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, bus
             {actions ? (
               <>
                 {secondaryAction}
-                <Button type="submit" form={formId} disabled={busy}>
+                <Button type="submit" form={formId} disabled={busy || primaryDisabled}>
                   {busy ? (busyLabel ?? primaryLabel) : primaryLabel}
                 </Button>
               </>

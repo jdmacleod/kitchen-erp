@@ -27,6 +27,8 @@ import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
 import { Drawer } from "../../components/Drawer";
+import { VendorImportDrawer } from "../../components/geo/VendorImportDrawer";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { formatDate } from "../../lib/format";
 import { MapPage } from "./MapPage";
@@ -70,17 +72,31 @@ export function VendorsPage() {
   const [adding, setAdding] = useState(false);
   const [finding, setFinding] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [more, setMore] = useState(false);
+  // Below 1024px the three secondary actions share one "More" button (design D15).
+  const wide = useMediaQuery(LG_QUERY);
+  const secondary = [
+    { label: "Find nearby", open: () => setFinding(true) },
+    { label: "Export", open: () => setExporting(true) },
+    { label: "Import", open: () => setImporting(true) },
+  ];
 
   return (
     <>
       <PageHeader title="Vendors" description="The shops, markets and stands you buy from, and where they are.">
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => setFinding(true)}>
-            Find nearby
-          </Button>
-          <Button variant="secondary" onClick={() => setExporting(true)}>
-            Export
-          </Button>
+          {wide ? (
+            secondary.map((a) => (
+              <Button key={a.label} variant="secondary" onClick={a.open}>
+                {a.label}
+              </Button>
+            ))
+          ) : (
+            <Button variant="secondary" onClick={() => setMore(true)} aria-haspopup="dialog">
+              More actions
+            </Button>
+          )}
           <Button onClick={() => setAdding(true)}>Add vendor</Button>
         </div>
       </PageHeader>
@@ -106,6 +122,19 @@ export function VendorsPage() {
       {adding ? <AddVendorDrawer onClose={() => setAdding(false)} /> : null}
       {finding ? <FindNearbyDialog onClose={() => setFinding(false)} /> : null}
       {exporting ? <ExportDialog onClose={() => setExporting(false)} /> : null}
+      {importing ? <VendorImportDrawer onClose={() => setImporting(false)} /> : null}
+      {more ? (
+        <MoreDialog
+          actions={secondary.map((a) => ({
+            ...a,
+            open: () => {
+              setMore(false);
+              a.open();
+            },
+          }))}
+          onClose={() => setMore(false)}
+        />
+      ) : null}
     </>
   );
 }
@@ -326,6 +355,27 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
 }
 
 /** Find nearby: the OpenStreetMap adoption flow in a dialog (UI-3.8). */
+function MoreDialog({ actions, onClose }: { actions: { label: string; open: () => void }[]; onClose: () => void }) {
+  const titleId = useId();
+  return (
+    <Dialog open onClose={onClose} labelledBy={titleId} placement="sheet" className="p-5">
+      <h2 id={titleId} className="mb-3 font-display text-xl">
+        More actions
+      </h2>
+      <div className="flex flex-col gap-2">
+        {actions.map((a) => (
+          <Button key={a.label} variant="secondary" onClick={a.open}>
+            {a.label}
+          </Button>
+        ))}
+        <Button variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
 /**
  * Download the vendor list as a kitchen-erp-vendors/1 file (1F, design D12).
  * Public is what may be contributed, and says how much of the list that is, so

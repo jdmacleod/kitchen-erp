@@ -69,6 +69,18 @@ async def _commit(db: AsyncSession) -> None:
         _raise_integrity(exc)
 
 
+async def _flush(db: AsyncSession) -> None:
+    """Write pending rows without committing, mapping constraint names to API errors.
+
+    The cores below flush; their public wrappers commit. Import runs the cores
+    in one transaction and commits, or rolls back for a dry run (eng review R2).
+    """
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        _raise_integrity(exc)
+
+
 def _hours(value: str | None) -> str | None:
     try:
         return normalize_hours(value)
@@ -301,6 +313,35 @@ async def create_vendor(
     brand: str | None = None,
     wikidata: str | None = None,
 ) -> Vendor:
+    vendor = await create_vendor_row(
+        db,
+        name=name,
+        kind=kind,
+        price_scope=price_scope,
+        website=website,
+        notes=notes,
+        brand=brand,
+        wikidata=wikidata,
+    )
+    await _commit(db)
+    return await _load_vendor(db, vendor.id)
+
+
+async def create_vendor_row(
+    db: AsyncSession,
+    *,
+    name: str,
+    kind: str,
+    price_scope: str = "location",
+    website: str | None = None,
+    notes: str | None = None,
+    brand: str | None = None,
+    wikidata: str | None = None,
+    slug: str | None = None,
+    active: bool = True,
+) -> Vendor:
+    """Validate, add and flush a vendor; the caller commits. ``slug`` defaults to one
+    assigned from the name (models/keys.py)."""
     vendor = Vendor(
         name=_clean(name, required=True) or "",
         kind=kind,
@@ -309,11 +350,13 @@ async def create_vendor(
         notes=notes,
         brand=_clean(brand),
         wikidata=_clean(wikidata),
-        active=True,
+        slug=slug,
+        field_source={},
+        active=active,
     )
     db.add(vendor)
-    await _commit(db)
-    return await _load_vendor(db, vendor.id)
+    await _flush(db)
+    return vendor
 
 
 @dataclass(frozen=True)
@@ -370,6 +413,13 @@ async def get_vendor(db: AsyncSession, vendor_id: uuid.UUID) -> Vendor:
 
 async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[str, Any]) -> Vendor:
     vendor = await _load_vendor(db, vendor_id)
+    apply_vendor_changes(vendor, changes)
+    await _commit(db)
+    return await _load_vendor(db, vendor_id)
+
+
+def apply_vendor_changes(vendor: Vendor, changes: dict[str, Any]) -> None:
+    """Validate and set the named fields; the caller flushes or commits."""
     if "name" in changes:
         vendor.name = _clean(changes["name"], required=True) or ""
     for field in ("kind", "price_scope"):
@@ -382,8 +432,6 @@ async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[st
             setattr(vendor, field, _clean(changes[field]))
     if "notes" in changes:
         vendor.notes = changes["notes"]
-    await _commit(db)
-    return await _load_vendor(db, vendor_id)
 
 
 async def set_vendor_active(db: AsyncSession, vendor_id: uuid.UUID, active: bool) -> Vendor:
@@ -473,9 +521,23 @@ async def _vendor_for_create(db: AsyncSession, data: dict[str, Any]) -> Vendor:
 
 async def create_location(db: AsyncSession, data: dict[str, Any]) -> VendorLocation:
     """``data`` is the request body with unset fields absent (``exclude_unset``)."""
+    location = await create_location_row(db, data)
+    await _commit(db)
+    return await _load_location(db, location.id)
+
+
+async def create_location_row(
+    db: AsyncSession, data: dict[str, Any], *, vendor: Vendor | None = None
+) -> VendorLocation:
+    """Validate, add and flush a location; the caller commits.
+
+    ``vendor`` (import) takes the place of ``vendor_id``/``vendor`` in ``data``;
+    ``data["key"]``, when given, is used instead of one assigned from the name.
+    """
     name = _clean(data["name"], required=True) or ""
     lat, lon = data["lat"], data["lon"]
-    vendor = await _vendor_for_create(db, data)
+    if vendor is None:
+        vendor = await _vendor_for_create(db, data)
     parent = await _resolve_parent(db, data.get("parent_location_id"))
     hours = _hours(data.get("opening_hours"))
     home_base_id = await _resolve_home_base(db, data, lat, lon)
@@ -491,11 +553,15 @@ async def create_location(db: AsyncSession, data: dict[str, Any]) -> VendorLocat
         opening_hours=hours,
         stop_overhead_min=data.get("stop_overhead_min"),
         receipt_identifiers=[s.strip() for s in data.get("receipt_identifiers") or [] if s.strip()],
-        active=True,
+        key=data.get("key"),
+        osm_type=data.get("osm_type"),
+        osm_id=data.get("osm_id"),
+        field_source={},
+        active=data.get("active", True),
     )
     db.add(location)
-    await _commit(db)
-    return await _load_location(db, location.id)
+    await _flush(db)
+    return location
 
 
 def _parse_near(near: str | None) -> tuple[Decimal, Decimal] | None:
@@ -579,6 +645,15 @@ async def update_location(
     db: AsyncSession, location_id: uuid.UUID, changes: dict[str, Any]
 ) -> VendorLocation:
     location = await _load_location(db, location_id)
+    await apply_location_changes(db, location, changes)
+    await _commit(db)
+    return await _load_location(db, location_id)
+
+
+async def apply_location_changes(
+    db: AsyncSession, location: VendorLocation, changes: dict[str, Any]
+) -> None:
+    """Validate and set the named fields; the caller flushes or commits."""
     if "name" in changes:
         location.name = _clean(changes["name"], required=True) or ""
     if "address" in changes:
@@ -610,8 +685,6 @@ async def update_location(
         location.home_base_id = await _resolve_home_base(
             db, changes, location.place.lat, location.place.lon
         )
-    await _commit(db)
-    return await _load_location(db, location_id)
 
 
 async def set_location_active(

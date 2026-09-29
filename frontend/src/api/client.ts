@@ -43,6 +43,8 @@ export function setUnauthenticatedHandler(handler: UnauthenticatedHandler | null
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  /** A body sent as it is, e.g. a vendor file, instead of `body` as JSON. */
+  rawBody?: { text: string; contentType: string };
   headers?: Record<string, string>;
   /** When true, a 401 does not trigger the global unauthenticated handler. */
   quiet401?: boolean;
@@ -69,13 +71,16 @@ function isEnvelope(value: unknown): value is ErrorEnvelope {
  * rejects with an ApiError carrying the server's envelope on any non-2xx.
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, headers = {}, quiet401 = false, acceptStatuses = [] } = options;
+  const { method = "GET", body, rawBody, headers = {}, quiet401 = false, acceptStatuses = [] } = options;
   const init: RequestInit = {
     method,
     credentials: "include",
     headers: { Accept: "application/json", ...headers },
   };
-  if (body !== undefined) {
+  if (rawBody !== undefined) {
+    init.headers = { ...init.headers, "Content-Type": rawBody.contentType };
+    init.body = rawBody.text;
+  } else if (body !== undefined) {
     init.headers = { ...init.headers, "Content-Type": "application/json" };
     init.body = JSON.stringify(body);
   }

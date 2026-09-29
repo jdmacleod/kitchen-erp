@@ -7,12 +7,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Query, Request, Response, status
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.core.config import get_settings
+from app.core.errors import ApiError
 from app.schemas.geo import (
     ExportSummaryOut,
     HomeBaseCreate,
@@ -42,8 +43,8 @@ from app.schemas.geo import (
     VendorOut,
     VendorUpdate,
 )
-from app.schemas.vendor_interchange import VendorFile
-from app.services import geo, place_search, vendor_exchange
+from app.schemas.vendor_interchange import ImportReport, VendorFile
+from app.services import geo, place_search, vendor_exchange, vendor_import
 from app.services.opening_hours import is_open_at, to_household, validate_hours
 
 router = APIRouter(tags=["geo"])
@@ -129,6 +130,44 @@ async def export_vendors(
         media_type="application/json" if format == "json" else "application/yaml",
         headers={"Content-Disposition": f'attachment; filename="vendors-{mode}-{day}.{format}"'},
     )
+
+
+@vendors.post(
+    "/import",
+    response_model=ImportReport,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "description": "A kitchen-erp-vendors/1 file, at most 5 MB.",
+            "content": {
+                "application/yaml": {"schema": {"type": "string"}},
+                "application/json": {"schema": {"$ref": "#/components/schemas/VendorFile"}},
+            },
+        }
+    },
+)
+async def import_vendors(
+    request: Request,
+    _: CurrentUser,
+    db: DbSession,
+    dry_run: bool = True,
+    filename: str = Query(default="vendor file", max_length=200),
+) -> ImportReport:
+    """Import a vendor file. A dry run (the default) reports what would change and
+    writes nothing; ``dry_run=false`` applies it in one transaction (1F)."""
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > vendor_import.MAX_BYTES:
+            raise ApiError(
+                422,
+                "bad_export",
+                "The file is over the 5 MB limit.",
+                {"limit_bytes": vendor_import.MAX_BYTES},
+            )
+    kind = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    fmt = "json" if kind.endswith("json") else "yaml" if "yaml" in kind else None
+    return await vendor_import.run(db, bytes(raw), fmt=fmt, dry_run=dry_run, filename=filename)
 
 
 @vendors.get("/export-summary", response_model=ExportSummaryOut)

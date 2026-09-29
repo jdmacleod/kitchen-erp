@@ -144,6 +144,16 @@ links reach outside the deployment, and only when switched on.
   read it before contributing it anywhere. `household` holds everything and is
   for moving between your own deployments; keep it private. See spec 03 §1F.
 
+  Import reads the same files, from Import on the Vendors page or:
+
+  ```bash
+  docker compose exec api kerp import vendors --from /data/exports/vendors.yaml --dry-run
+  ```
+
+  A dry run (the page always starts with one) says what would be created,
+  updated or left alone, and what needs you. Import never overwrites a field
+  you edited, never deletes anything, and never creates a home base.
+
 - **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See
   `docs/tiles.md` for how to cut one and for the attribution it carries.
 
