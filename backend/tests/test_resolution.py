@@ -435,9 +435,12 @@ async def test_resolver_names_is_one_query_for_a_page_and_none_for_nobody():
 
     a, b = uuid4(), uuid4()
     page = [
-        SimpleNamespace(lines=[SimpleNamespace(resolved_by=a), SimpleNamespace(resolved_by=None)]),
-        SimpleNamespace(lines=[SimpleNamespace(resolved_by=b)]),
-        SimpleNamespace(lines=[SimpleNamespace(resolved_by=a)]),
+        SimpleNamespace(
+            lines=[SimpleNamespace(resolved_by=a), SimpleNamespace(resolved_by=None)],
+            voided_by=None,
+        ),
+        SimpleNamespace(lines=[SimpleNamespace(resolved_by=b)], voided_by=None),
+        SimpleNamespace(lines=[SimpleNamespace(resolved_by=a)], voided_by=None),
     ]
     db = Recorder()
     await purchase_service.resolver_names(db, page)
@@ -445,7 +448,7 @@ async def test_resolver_names_is_one_query_for_a_page_and_none_for_nobody():
 
     nobody = Recorder()
     await purchase_service.resolver_names(
-        nobody, [SimpleNamespace(lines=[SimpleNamespace(resolved_by=None)])]
+        nobody, [SimpleNamespace(lines=[SimpleNamespace(resolved_by=None)], voided_by=None)]
     )
     assert nobody.calls == 0
 

@@ -21,10 +21,11 @@ from app.schemas.receipts import (
     IngestJobList,
     IngestJobOut,
     ReceiptDocumentOut,
+    ReceiptRemovedOut,
     ReceiptUploadOut,
     StageResultOut,
 )
-from app.services import ingest, receipt_images
+from app.services import ingest, receipt_images, removal
 
 router = APIRouter(tags=["receipts"])
 
@@ -91,6 +92,7 @@ async def upload_receipt(
     body = ReceiptUploadOut(
         document=ReceiptDocumentOut.from_model(result.document),
         job=IngestJobOut.model_validate(result.job),
+        revived=result.revived,
     ).model_dump(mode="json")
     return await guard.commit(201 if result.created else 200, body)
 
@@ -171,6 +173,8 @@ async def get_ingest_job(
     include_output: Annotated[bool, Query()] = False,
 ) -> IngestJobDetail:
     job = await ingest.get_job(db, job_id)
+    if job.status == "discarded":
+        raise ApiError(404, "receipt_removed", "This receipt was removed.")
     results = await ingest.stage_results_for(db, job.id)
     detail = IngestJobDetail.model_validate(job)
     detail.stage_results = [
@@ -191,6 +195,12 @@ async def get_ingest_job(
 @router.post("/ingest-jobs/{job_id}/retry", response_model=IngestJobOut)
 async def retry_ingest_job(job_id: uuid.UUID, _: CurrentUser, db: DbSession) -> IngestJobOut:
     return IngestJobOut.model_validate(await ingest.retry_job(db, job_id))
+
+
+@router.post("/ingest-jobs/{job_id}/remove", response_model=ReceiptRemovedOut)
+async def remove_ingest_job(job_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ReceiptRemovedOut:
+    """Remove a receipt that couldn't be read, with its draft if it has one (#74)."""
+    return ReceiptRemovedOut(photo_deleted=await removal.remove_failed_job(db, job_id))
 
 
 @router.post("/ingest-jobs/{job_id}/to-manual", response_model=ConvertToManualOut)

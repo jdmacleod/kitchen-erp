@@ -18,6 +18,7 @@ from app.services.normalize import normalize_receipt_text
 from app.services.purchases import (
     TOTAL_TOLERANCE,
     computed_total,
+    ensure_not_voided,
     get_purchase,
     next_seq,
     remove_line,
@@ -28,6 +29,7 @@ _FOUR = Decimal("0.0001")
 
 
 def _editable(purchase) -> None:
+    ensure_not_voided(purchase)
     if purchase.status == "committed":
         raise ApiError(409, "committed", "Reopen the purchase before editing it.")
 
@@ -227,6 +229,7 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
 
 async def re_resolve_line(db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID):
     purchase = await get_purchase(db, purchase_id)
+    ensure_not_voided(purchase)
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")

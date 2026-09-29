@@ -164,12 +164,26 @@ class LineOut(ApiModel):
     observation_id: uuid.UUID | None
     raw_text_norm: str | None = None
     suggestions: list[dict] = []
+    # Whether this line ever reached the price book, so removing it voids a
+    # price. On a single purchase only; null in lists.
+    recorded: bool | None = None
 
 
 class PurchaseLocationRef(ApiModel):
     id: uuid.UUID
     name: str
     vendor: VendorRef
+
+
+class RemovalOut(ApiModel):
+    """What removing the purchase would do, from the same rule the action uses."""
+
+    outcome: Literal["delete", "void"]
+    # Prices the removal voids (void), or 0 (delete).
+    prices: int
+    # Whether its receipt photo is deleted with it.
+    photo: bool
+    blocked: Literal["still_reading"] | None = None
 
 
 class PurchaseOut(ApiModel):
@@ -188,6 +202,20 @@ class PurchaseOut(ApiModel):
     lines: list[LineOut]
     created_at: datetime
     updated_at: datetime
+    # Set when the purchase was removed after reaching the price book (#74).
+    voided_at: datetime | None = None
+    voided_by_name: str | None = None
+    # On a single purchase only (GET by id and every change that returns one);
+    # null in lists, which never show them. Null on a voided purchase.
+    removal: RemovalOut | None = None
+    removed_line_count: int | None = None
+
+
+class RemovedOut(ApiModel):
+    outcome: Literal["delete", "void"]
+    photo_deleted: bool
+    # The purchase as it is now, after a void; null after a delete.
+    purchase: PurchaseOut | None = None
 
 
 class PurchaseList(ApiModel):

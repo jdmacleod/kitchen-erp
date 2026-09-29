@@ -71,6 +71,8 @@ class UploadResult:
     document: ReceiptDocument
     job: IngestJob
     created: bool
+    # The same file was removed before and is now being read again (#74).
+    revived: bool = False
 
 
 async def upload_receipt(
@@ -106,17 +108,34 @@ async def upload_receipt(
     ).scalar_one_or_none()
     if existing is not None:
         job = (
-            await db.execute(select(IngestJob).where(IngestJob.receipt_document_id == existing.id))
+            await db.execute(
+                select(IngestJob)
+                .where(IngestJob.receipt_document_id == existing.id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
         ).scalar_one()
-        return UploadResult(existing, job, created=False)
+        if job.status != "discarded":
+            return UploadResult(existing, job, created=False)
+        # Removed before: its photo was deleted with it. Uploading it again is
+        # the way back, so it is stored again and read from the start; the
+        # earlier stage results stay (append-only) and the new ones follow.
+        _store(Path(settings.receipts_path) / existing.image_path, data)
+        job.status = "pending"
+        job.stage = "captured"
+        job.attempts = 0
+        job.last_error = None
+        job.last_error_detail = None
+        job.next_attempt_at = None
+        job.locked_at = None
+        job.locked_by = None
+        await db.commit()
+        await db.refresh(job)
+        log.info("removed receipt uploaded again", extra={"job_id": str(job.id)})
+        return UploadResult(existing, job, created=False, revived=True)
 
     rel = relative_path(digest, mime)
-    target = Path(settings.receipts_path) / rel
-    target.parent.mkdir(parents=True, exist_ok=True)
-    if not target.exists():
-        tmp = target.with_suffix(target.suffix + f".{uuid.uuid4().hex}.part")
-        tmp.write_bytes(data)
-        tmp.replace(target)
+    _store(Path(settings.receipts_path) / rel, data)
 
     document = ReceiptDocument(
         id=new_id(),
@@ -146,6 +165,14 @@ async def upload_receipt(
     return UploadResult(document, job, created=True)
 
 
+def _store(target: Path, data: bytes) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if not target.exists():
+        tmp = target.with_suffix(target.suffix + f".{uuid.uuid4().hex}.part")
+        tmp.write_bytes(data)
+        tmp.replace(target)
+
+
 async def get_document(db: AsyncSession, document_id: uuid.UUID) -> ReceiptDocument:
     document = await db.get(ReceiptDocument, document_id)
     if document is None:
@@ -153,11 +180,19 @@ async def get_document(db: AsyncSession, document_id: uuid.UUID) -> ReceiptDocum
     return document
 
 
-async def get_job(db: AsyncSession, job_id: uuid.UUID) -> IngestJob:
-    job = await db.get(IngestJob, job_id, populate_existing=True)
+async def get_job(db: AsyncSession, job_id: uuid.UUID, *, lock: bool = False) -> IngestJob:
+    job = await db.get(IngestJob, job_id, populate_existing=True, with_for_update=lock or None)
     if job is None:
         raise ApiError(404, "not_found", "Ingest job not found.")
     return job
+
+
+def _not_discarded(job: IngestJob) -> None:
+    """A removed receipt comes back only by uploading it again."""
+    if job.status == "discarded":
+        raise ApiError(
+            409, "receipt_removed", "This receipt was removed. Upload it again to read it."
+        )
 
 
 async def job_for_document(db: AsyncSession, document_id: uuid.UUID) -> IngestJob | None:
@@ -180,7 +215,13 @@ async def list_jobs(
     cursor: uuid.UUID | None = None,
     limit: int = 50,
 ) -> tuple[list[IngestJob], uuid.UUID | None]:
-    stmt = select(IngestJob).order_by(IngestJob.id.desc()).limit(limit + 1)
+    # Removed receipts are not shown anywhere (#74).
+    stmt = (
+        select(IngestJob)
+        .where(IngestJob.status != "discarded")
+        .order_by(IngestJob.id.desc())
+        .limit(limit + 1)
+    )
     if status is not None:
         stmt = stmt.where(IngestJob.status == status)
     if stage is not None:
@@ -194,7 +235,8 @@ async def list_jobs(
 
 async def retry_job(db: AsyncSession, job_id: uuid.UUID) -> IngestJob:
     """A failed job goes back to pending at the stage that failed (criterion 25)."""
-    job = await get_job(db, job_id)
+    job = await get_job(db, job_id, lock=True)
+    _not_discarded(job)
     if job.status != "failed":
         raise ApiError(409, "job_not_failed", "Only a failed job can be retried.")
     if job.stage not in RUNNABLE_STAGES:
@@ -221,7 +263,8 @@ async def convert_to_manual(
     behind; otherwise creates one from what the header stage found. The job
     ends ``done`` at ``committed`` with ``purchase_id`` set.
     """
-    job = await get_job(db, job_id)
+    job = await get_job(db, job_id, lock=True)
+    _not_discarded(job)
     if job.status in ("done", "running"):
         raise ApiError(409, "job_not_convertible", "This job is running or already finished.")
     document = await get_document(db, job.receipt_document_id)

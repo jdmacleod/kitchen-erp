@@ -30,8 +30,8 @@ from app.models.catalog import Product
 from app.models.geo import GeographyPoint, VendorLocation
 
 INGEST_STAGES = ("captured", "ocr", "header", "lines", "resolve", "review", "committed")
-INGEST_STATUSES = ("pending", "running", "needs_review", "done", "failed")
-PURCHASE_STATUSES = ("draft", "reviewed", "committed")
+INGEST_STATUSES = ("pending", "running", "needs_review", "done", "failed", "discarded")
+PURCHASE_STATUSES = ("draft", "reviewed", "committed", "voided")
 PURCHASE_SOURCES = ("receipt", "manual", "import")
 LINE_KINDS = ("item", "discount", "tax", "deposit", "fee")
 RESOLUTIONS = ("barcode", "alias", "fuzzy", "llm", "manual", "unmatched", "ignored")
@@ -117,6 +117,11 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint(
             "status = 'draft' OR vendor_location_id IS NOT NULL", name="ck_purchase_location"
         ),
+        CheckConstraint(
+            "(status = 'voided') = (voided_at IS NOT NULL) "
+            "AND (voided_at IS NULL) = (voided_by IS NULL)",
+            name="ck_purchase_voided",
+        ),
         Index(
             "uq_purchase_import_ref",
             "import_ref",
@@ -143,6 +148,11 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
     flags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     ledger_txn_ref: Mapped[str | None] = mapped_column(Text)
     import_ref: Mapped[str | None] = mapped_column(Text)
+    # Removed after reaching the price book (#74): kept, read-only, prices voided.
+    voided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    voided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id", name="fk_purchase_voided_by")
+    )
 
     # The lines people see and count. A removed line stays in the table only as
     # the provenance of an observation, and nothing that reads a purchase's lines
