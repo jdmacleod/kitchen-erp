@@ -46,6 +46,20 @@ Removing a purchase or a failed read (spec 04, 2H) erases only what it can:
 - A browser that already showed the photo may keep a private copy for up to a
   day (`Cache-Control: private, max-age=86400`).
 
+## Vendor exports
+
+A **household** vendor export (spec 03, 1F) holds the household's notes, home
+bases and the full list of stores it uses: it is personal data, and belongs under
+`data/` like any other. A **public** export leaves those out, along with stands and
+any location not marked for sharing. Even so, it is still a list of stores this
+household chose, so read it before contributing it anywhere. The app never
+publishes it for you.
+
+An enrichment tool given a `vendors:read` token can read only the public export.
+Whatever it sends to a model provider has left the house; the reference tool sends
+public facts one vendor at a time, never home bases, notes, purchases or receipt
+text.
+
 ## The safeguards, and what each one covers
 
 | Safeguard | Covers |

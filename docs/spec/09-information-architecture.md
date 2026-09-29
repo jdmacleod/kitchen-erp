@@ -119,6 +119,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Couldn't read | Failed ingest job (D4); drafts belonging to a failed job are not listed twice | "A receipt couldn't be read" | Open receipt (Retry and Enter by hand sit together on that page, G5) |
 | Identify | Unmatched lines on committed purchases, as one aggregate row (T6) | "23 receipt lines to identify" | Review lines → `/shop/receipts/identify` |
 | Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one row per product (T7) | "Oat milk, 1 L carton" | Add density or measure |
+| Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
 | Recipe | Recipe lines that do not resolve to ingredients (Phase 3) | "[Recipe] has 2 unresolved lines" | Resolve |
 
 API (T5): `GET /api/v1/inbox`.
