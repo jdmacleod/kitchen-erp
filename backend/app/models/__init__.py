@@ -17,6 +17,9 @@ from app.models.units import UnitRow
 # Geography models (Phase 1D) register with Base on import.
 from app.models import geo as _geo  # noqa: F401  isort: skip
 
+# Assigns vendor slugs and location keys on every flush that creates one (1F).
+from app.models import keys as _keys  # noqa: F401  isort: skip
+
 __all__ = [
     "ApiToken",
     "AppUser",

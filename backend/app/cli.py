@@ -306,6 +306,41 @@ def osm_refresh(
         raise typer.Exit(1)
 
 
+export_cli = typer.Typer(help="Export data as files.", no_args_is_help=True)
+cli.add_typer(export_cli, name="export")
+EXPORT_OUT = typer.Option(..., "--out", help="File to write")
+
+
+@export_cli.command("vendors")
+def export_vendors(
+    fmt: str = typer.Option("yaml", "--format", help="yaml or json"),
+    mode: str = typer.Option("public", "--mode", help="public or household"),
+    out: Path = EXPORT_OUT,
+) -> None:
+    """Write the vendor list as a kitchen-erp-vendors/1 file.
+
+    Public mode holds only what may be contributed; household mode holds
+    everything, including store codes and home bases: keep it private.
+    """
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import vendor_exchange
+
+    if fmt not in ("yaml", "json") or mode not in ("public", "household"):
+        typer.echo("--format is yaml or json; --mode is public or household.", err=True)
+        raise typer.Exit(2)
+
+    async def _run() -> tuple[int, int]:
+        async with get_sessionmaker()() as db:
+            file = await vendor_exchange.build(db, mode)  # type: ignore[arg-type]
+        await dispose_engine()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(vendor_exchange.render(file, fmt))
+        return len(file.vendors), sum(len(v.locations) for v in file.vendors)
+
+    vendors, locations = asyncio.run(_run())
+    typer.echo(f"wrote {out}: {vendors} vendor(s), {locations} location(s), {mode} mode")
+
+
 @cli.command("recompute-norms")
 def recompute_norms() -> None:
     """Truncate and rebuild price_norm from observations and current bridges."""

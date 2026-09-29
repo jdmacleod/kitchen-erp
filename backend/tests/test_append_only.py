@@ -35,14 +35,14 @@ async def _seed_observation(owner: asyncpg.Connection) -> tuple[uuid.UUID, uuid.
     )
     vendor = new_id()
     await owner.execute(
-        "INSERT INTO vendor (id, name, kind, price_scope) VALUES ($1, 'Seed vendor', "
-        "'stand', 'location')",
+        "INSERT INTO vendor (id, name, slug, kind, price_scope) VALUES ($1, 'Seed vendor', "
+        "'seed-vendor', 'stand', 'location')",
         vendor,
     )
     loc = new_id()
     await owner.execute(
-        "INSERT INTO vendor_location (id, vendor_id, place_id, name) VALUES ($1, $2, $3, "
-        "'Seed stand')",
+        "INSERT INTO vendor_location (id, vendor_id, place_id, name, key) VALUES ($1, $2, $3, "
+        "'Seed stand', 'seed-vendor/seed-stand')",
         loc,
         vendor,
         place,

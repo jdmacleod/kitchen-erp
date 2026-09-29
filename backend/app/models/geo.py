@@ -94,9 +94,15 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
         ),
         CheckConstraint("price_scope IN ('chain', 'location')", name="ck_vendor_price_scope"),
         Index("uq_vendor_name_lower", func.lower("name"), unique=True),
+        UniqueConstraint("slug", name="uq_vendor_slug"),
+        CheckConstraint("wikidata IS NULL OR wikidata ~ '^Q[0-9]+$'", name="ck_vendor_wikidata"),
     )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # Assigned on creation by models.keys; never follows a rename.
+    slug: Mapped[str] = mapped_column(String(120), nullable=False)
+    brand: Mapped[str | None] = mapped_column(String(200))
+    wikidata: Mapped[str | None] = mapped_column(String(20))
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     price_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="location")
     website: Mapped[str | None] = mapped_column(String(500))
@@ -129,6 +135,7 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint(
             "stop_overhead_min IS NULL OR stop_overhead_min >= 0", name="ck_location_stop_overhead"
         ),
+        UniqueConstraint("key", name="uq_location_key"),
         Index(
             "uq_location_osm",
             "osm_type",
@@ -151,6 +158,8 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
         UUID(as_uuid=True), ForeignKey("vendor_location.id"), index=True
     )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    # "<vendor slug>/<location slug>", assigned on creation by models.keys.
+    key: Mapped[str] = mapped_column(String(250), nullable=False)
     address: Mapped[str | None] = mapped_column(String(500))
     phone: Mapped[str | None] = mapped_column(String(40))
     osm_type: Mapped[str | None] = mapped_column(String(16))
@@ -164,6 +173,8 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
         ARRAY(Text), nullable=False, default=list
     )
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # May appear in a public export (1F). A location linked to OSM always may; a stand never.
+    publishable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
 
     vendor: Mapped[Vendor] = relationship(back_populates="locations", lazy="joined")

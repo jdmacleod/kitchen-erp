@@ -39,6 +39,17 @@ _INTEGRITY_CODES = {
     ),
     "uq_location_osm": (409, "already_adopted", "That OpenStreetMap object is already adopted."),
     "fk_product_exclusive_vendor": (409, "vendor_in_use", "A product references this vendor."),
+    # Two creations raced to the same new key (models/keys.py); the retry gets the next one.
+    "uq_vendor_slug": (
+        409,
+        "key_taken",
+        "Another vendor took that key at the same moment; try again.",
+    ),
+    "uq_location_key": (
+        409,
+        "key_taken",
+        "Another location took that key at the same moment; try again.",
+    ),
 }
 
 
@@ -287,6 +298,8 @@ async def create_vendor(
     price_scope: str = "location",
     website: str | None = None,
     notes: str | None = None,
+    brand: str | None = None,
+    wikidata: str | None = None,
 ) -> Vendor:
     vendor = Vendor(
         name=_clean(name, required=True) or "",
@@ -294,6 +307,8 @@ async def create_vendor(
         price_scope=price_scope,
         website=_clean(website),
         notes=notes,
+        brand=_clean(brand),
+        wikidata=_clean(wikidata),
         active=True,
     )
     db.add(vendor)
@@ -362,6 +377,9 @@ async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[st
             setattr(vendor, field, changes[field])
     if "website" in changes:
         vendor.website = _clean(changes["website"])
+    for field in ("brand", "wikidata"):
+        if field in changes:
+            setattr(vendor, field, _clean(changes[field]))
     if "notes" in changes:
         vendor.notes = changes["notes"]
     await _commit(db)
@@ -469,6 +487,7 @@ async def create_location(db: AsyncSession, data: dict[str, Any]) -> VendorLocat
         name=name,
         address=_clean(data.get("address")),
         phone=_phone(data.get("phone")),
+        publishable=bool(data.get("publishable", False)),
         opening_hours=hours,
         stop_overhead_min=data.get("stop_overhead_min"),
         receipt_identifiers=[s.strip() for s in data.get("receipt_identifiers") or [] if s.strip()],
@@ -566,6 +585,8 @@ async def update_location(
         location.address = _clean(changes["address"])
     if "phone" in changes:
         location.phone = _phone(changes["phone"])
+    if changes.get("publishable") is not None:
+        location.publishable = changes["publishable"]
     if "opening_hours" in changes:
         location.opening_hours = _hours(changes["opening_hours"])
     if "stop_overhead_min" in changes:

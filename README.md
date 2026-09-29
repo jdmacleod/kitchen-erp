@@ -132,6 +132,18 @@ links reach outside the deployment, and only when switched on.
   docker compose exec api kerp osm refresh --all-linked
   ```
 
+- **Vendor files.** The vendor list exports as a `kitchen-erp-vendors/1` file,
+  YAML or JSON, from Export on the Vendors page or the command line:
+
+  ```bash
+  docker compose exec api kerp export vendors --mode public --format yaml --out /data/exports/vendors.yaml
+  ```
+
+  `public` holds only locations you ticked "Share in public export" on or linked
+  to OpenStreetMap, and none of your notes, home bases, store codes or stands:
+  read it before contributing it anywhere. `household` holds everything and is
+  for moving between your own deployments; keep it private. See spec 03 §1F.
+
 - **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See
   `docs/tiles.md` for how to cut one and for the attribution it carries.
 

@@ -22,6 +22,8 @@ Lat = Annotated[Decimal, Field(ge=-90, le=90)]
 Lon = Annotated[Decimal, Field(ge=-180, le=180)]
 Name = Annotated[str, Field(min_length=1, max_length=200)]
 Phone = Annotated[str, Field(max_length=40)]
+Wikidata = Annotated[str, Field(pattern=r"^Q[0-9]+$", max_length=20)]
+Brand = Annotated[str, Field(max_length=200)]
 LinkedField = Literal["name", "address", "opening_hours", "phone", "website"]
 
 
@@ -83,6 +85,8 @@ class VendorCreate(ApiModel):
     price_scope: PriceScope = "location"
     website: str | None = Field(default=None, max_length=500)
     notes: str | None = None
+    brand: Brand | None = None
+    wikidata: Wikidata | None = None
 
 
 class VendorUpdate(ApiModel):
@@ -91,6 +95,8 @@ class VendorUpdate(ApiModel):
     price_scope: PriceScope | None = None
     website: str | None = Field(default=None, max_length=500)
     notes: str | None = None
+    brand: Brand | None = None
+    wikidata: Wikidata | None = None
 
 
 class VendorRef(ApiModel):
@@ -101,7 +107,10 @@ class VendorRef(ApiModel):
 
 
 class VendorOut(VendorRef):
+    slug: str
     website: str | None
+    brand: str | None
+    wikidata: str | None
     notes: str | None
     active: bool
     created_at: datetime
@@ -112,7 +121,10 @@ class VendorOut(VendorRef):
         base = VendorRef.model_validate(vendor).model_dump()
         return cls(
             **base,
+            slug=vendor.slug,
             website=vendor.website,
+            brand=vendor.brand,
+            wikidata=vendor.wikidata,
             notes=vendor.notes,
             active=vendor.active,
             created_at=vendor.created_at,
@@ -146,6 +158,7 @@ class VendorLocationCreate(ApiModel):
     lon: Lon
     address: str | None = Field(default=None, max_length=500)
     phone: Phone | None = None
+    publishable: bool = False
     parent_location_id: uuid.UUID | None = None
     opening_hours: str | None = None
     # Omitted: nearest home base. Explicit null: none. See model_fields_set.
@@ -168,6 +181,7 @@ class VendorLocationUpdate(ApiModel):
     lon: Lon | None = None
     address: str | None = Field(default=None, max_length=500)
     phone: Phone | None = None
+    publishable: bool | None = None
     parent_location_id: uuid.UUID | None = None
     opening_hours: str | None = None
     home_base_id: uuid.UUID | None = None
@@ -181,6 +195,7 @@ class VendorLocationOut(ApiModel):
     id: uuid.UUID
     vendor: VendorRef
     name: str
+    key: str
     lat: DecimalStr
     lon: DecimalStr
     address: str | None
@@ -194,6 +209,7 @@ class VendorLocationOut(ApiModel):
     receipt_identifiers: list[str]
     osm_type: OsmType | None
     osm_id: int | None
+    publishable: bool
     sources: dict[str, FieldSourceOut] = Field(default_factory=dict)
     active: bool
     is_open: bool | None = None  # set only when the request named an instant
@@ -213,6 +229,7 @@ class VendorLocationOut(ApiModel):
             id=location.id,
             vendor=VendorRef.model_validate(location.vendor),
             name=location.name,
+            key=location.key,
             lat=location.place.lat,
             lon=location.place.lon,
             address=location.address,
@@ -226,6 +243,7 @@ class VendorLocationOut(ApiModel):
             receipt_identifiers=list(location.receipt_identifiers),
             osm_type=location.osm_type,  # type: ignore[arg-type]
             osm_id=location.osm_id,
+            publishable=location.publishable,
             sources=sources_of(location, ("name", "address", "opening_hours", "phone")),
             active=location.active,
             is_open=is_open,
@@ -325,6 +343,13 @@ class OsmLinkIn(ApiModel):
     osm_type: OsmType
     osm_id: int = Field(ge=1)
     radius_m: int = Field(default=250, ge=50, le=2000)
+
+
+class ExportSummaryOut(ApiModel):
+    """What a public vendor export would hold, before downloading it (design D12)."""
+
+    locations: int  # active locations of active vendors
+    public: int  # of those, the ones a public export includes
 
 
 class MapPlaceOut(ApiModel):

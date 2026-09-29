@@ -193,11 +193,12 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
     for v in range(5):
         vendors.append(
             await owner_conn.fetchval(
-                "INSERT INTO vendor (id, name, kind, price_scope) VALUES ($1, $2, 'chain', $3) "
-                "RETURNING id",
+                "INSERT INTO vendor (id, name, slug, kind, price_scope) "
+                "VALUES ($1, $2, $4, 'chain', $3) RETURNING id",
                 new_id(),
                 f"Perf Vendor {v}",
                 "chain" if v % 2 == 0 else "location",
+                f"perf-vendor-{v}",
             )
         )
     for i in range(10):
@@ -212,12 +213,13 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
         )
         locations.append(
             await owner_conn.fetchval(
-                "INSERT INTO vendor_location (id, vendor_id, place_id, name) "
-                "VALUES ($1, $2, $3, $4) RETURNING id",
+                "INSERT INTO vendor_location (id, vendor_id, place_id, name, key) "
+                "VALUES ($1, $2, $3, $4, $5) RETURNING id",
                 new_id(),
                 vendors[i % 5],
                 place,
                 f"Perf Location {i}",
+                f"perf/location-{i}",
             )
         )
     ingredients = [
