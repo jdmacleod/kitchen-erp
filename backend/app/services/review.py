@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
@@ -18,7 +19,8 @@ from app.services.purchases import (
     TOTAL_TOLERANCE,
     computed_total,
     get_purchase,
-    recorded_lines,
+    next_seq,
+    remove_line,
 )
 from app.services.resolution import resolve_line
 
@@ -113,15 +115,16 @@ def _parent_ok(purchase, line: PurchaseLine, parent_id: uuid.UUID | None) -> Non
 async def add_line(db: AsyncSession, purchase_id: uuid.UUID, payload: LineAdd):
     purchase = await get_purchase(db, purchase_id)
     _editable(purchase)
-    seqs = [line.seq for line in purchase.lines]
-    if payload.after_seq is None or payload.after_seq >= (max(seqs) if seqs else 0):
-        seq = (max(seqs) if seqs else 0) + 1
+    # Numbers run over removed lines too, so a number always names one line (#72).
+    last = await next_seq(db, purchase_id) - 1
+    if payload.after_seq is None or payload.after_seq >= last:
+        seq = last + 1
     else:
         seq = payload.after_seq + 1
-        for line in sorted(purchase.lines, key=lambda x: -x.seq):
-            if line.seq >= seq:
-                line.seq += 1
-        await db.flush()
+        # Make room in two steps: the (purchase, seq) uniqueness is checked row
+        # by row, so shifting in place could collide with the next line.
+        await _shift_seqs(db, purchase_id, seq)
+        purchase = await get_purchase(db, purchase_id)
     if payload.product_id is not None and await db.get(Product, payload.product_id) is None:
         raise ApiError(404, "not_found", "No such product.")
     line = PurchaseLine(
@@ -146,6 +149,23 @@ async def add_line(db: AsyncSession, purchase_id: uuid.UUID, payload: LineAdd):
     purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
+
+
+async def _shift_seqs(db: AsyncSession, purchase_id: uuid.UUID, from_seq: int) -> None:
+    """Move every line numbered from_seq or later, removed ones included, up by one."""
+    at_or_after = (PurchaseLine.purchase_id == purchase_id) & (PurchaseLine.seq >= from_seq)
+    # The caller reloads the purchase afterwards, so the session needn't track it.
+    options = {"synchronize_session": False}
+    await db.execute(
+        update(PurchaseLine).where(at_or_after).values(seq=-PurchaseLine.seq - 1),
+        execution_options=options,
+    )
+    await db.execute(
+        update(PurchaseLine)
+        .where(PurchaseLine.purchase_id == purchase_id, PurchaseLine.seq < 0)
+        .values(seq=-PurchaseLine.seq),
+        execution_options=options,
+    )
 
 
 async def edit_line(
@@ -196,16 +216,9 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")
-    if await recorded_lines(db, [line]):
-        raise ApiError(
-            409,
-            "line_recorded",
-            "This line has been in the price book, so it can't be deleted. Ignore it instead.",
-        )
-    for other in purchase.lines:
-        if other.parent_line_id == line.id:
-            other.parent_line_id = None
-    purchase.lines.remove(line)
+    # A line that reached the price book is voided and kept as its price's
+    # provenance; one that never did is deleted (#72).
+    await remove_line(db, user, purchase, line)
     # A corrected line can settle (or raise) a mismatch with the printed total.
     purchase.flags = _rechecked_total(purchase)
     await db.commit()

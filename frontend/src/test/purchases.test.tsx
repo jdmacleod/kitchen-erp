@@ -129,11 +129,31 @@ describe("purchases", () => {
       purchased_at: manualPurchase.purchased_at,
       total: "15",
       lines: [
-        { product_id: flourProductId, qty: "2.31", unit: "lb", line_total: "10" },
-        { product_id: hits[1].id, qty: "1", unit: "each", line_total: "5.00" },
+        { id: manualPurchase.lines[0].id, product_id: flourProductId, qty: "2.31", unit: "lb", line_total: "10" },
+        { id: manualPurchase.lines[1].id, product_id: hits[1].id, qty: "1", unit: "each", line_total: "5.00" },
       ],
     });
     const table = screen.getByRole("table", { name: "Lines" });
     expect(within(table).getAllByRole("row")[1]).toHaveTextContent("$10.00");
+  });
+
+  it("names each kept line by id, so removing one leaves the others alone (#72)", async () => {
+    const calls = mockApi({
+      ...baseRoutes(),
+      [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, manualPurchase),
+      [`PUT /purchases/${purchaseId}`]: () => jsonResponse(200, { ...manualPurchase, lines: [manualPurchase.lines[1]] }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/shop/purchases/${purchaseId}`);
+
+    await screen.findByRole("heading", { name: /Pier Farmers Market/ });
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const form = await screen.findByRole("form", { name: "Edit purchase" });
+    await user.click(within(form).getByRole("button", { name: "Remove line 1" }));
+    await user.click(within(form).getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() => expect(calls.find((c) => c.method === "PUT")).toBeDefined());
+    const lines = (calls.find((c) => c.method === "PUT")?.body as { lines: { id?: string }[] }).lines;
+    expect(lines.map((l) => l.id)).toEqual([manualPurchase.lines[1].id]);
   });
 });

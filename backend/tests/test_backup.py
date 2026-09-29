@@ -32,15 +32,23 @@ async def test_backup_and_restore_round_trip(
     loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
     box = await make_product(admin_client, "Rigatoni", "Rigatoni box", pack_qty="1", pack_unit="lb")
     await shelf(admin_client, box["id"], loc["id"], "3.99")
+    # A purchase with a removed line (#72): the mark must survive the round trip.
+    line = {"product_id": box["id"], "qty": "1", "unit": "each", "line_total": "3.49"}
+    body = {"vendor_location_id": loc["id"], "purchased_at": "2026-06-01T12:00:00Z"}
+    p = (await admin_client.post("/api/v1/purchases", json={**body, "lines": [line, line]})).json()
+    kept = {**line, "id": p["lines"][0]["id"]}
+    r = await admin_client.put(f"/api/v1/purchases/{p['id']}", json={**body, "lines": [kept]})
+    assert r.status_code == 200, r.text
+    removed_sql = "SELECT count(*) FROM purchase_line WHERE removed_at IS NOT NULL"
     before = {t: await owner_conn.fetchval(f"SELECT count(*) FROM {t}") for t in TABLES}
-    assert before["price_observation"] == 1
+    assert before["price_observation"] == 3
 
     out = tmp_path / "backup"
     async with get_sessionmaker()() as db:
         manifest = await backup(db, out)
     assert (out / "db.dump").is_file() and (out / "manifest.json").is_file()
     assert manifest["receipts"][0]["path"] == "ab/cd/deadbeef.png"
-    assert manifest["counts"]["price_observation"] == 1
+    assert manifest["counts"]["price_observation"] == 3
 
     # Refuses a non-empty database unless forced.
     async with get_sessionmaker()() as db:
@@ -57,4 +65,5 @@ async def test_backup_and_restore_round_trip(
     assert result["restored_receipts"] == 1
     after = {t: await owner_conn.fetchval(f"SELECT count(*) FROM {t}") for t in TABLES}
     assert after == before
+    assert await owner_conn.fetchval(removed_sql) == 1
     assert image.read_bytes() == b"\x89PNG synthetic bytes"
