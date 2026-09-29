@@ -256,6 +256,40 @@ async def match_location(
     return LocationMatch(candidates=[c for c in ranked if c.score > 0])
 
 
+# A total line as a till prints it: the label, anything (stars, a colon), then the
+# amount at the end of the line. Not a subtotal, and not a "you saved" line.
+_TOTAL_LINE = re.compile(
+    r"\b(?:total|balance(?:\s+due)?|amount\s+due)\b[^0-9\n]*?(\d{1,6}[.,]\d{2})\s*$",
+    re.IGNORECASE,
+)
+_NOT_TOTAL = re.compile(r"sub\s*-?\s*total|sav(?:ed|ings?)|tax\s+total|items?\b", re.IGNORECASE)
+
+
+def printed_total_from_text(text: str) -> Decimal | None:
+    """The receipt's total read straight from its text, for when the model found none.
+
+    Some tills label the total BALANCE rather than TOTAL, and the model then
+    reported no total at all, so the receipt could not be checked against its
+    lines. The last labelled line wins: a total comes after the lines it sums.
+    Read from OCR text, which is untrusted: only the amount is taken, and only
+    when it parses as money.
+    """
+    found: Decimal | None = None
+    for line in text.splitlines():
+        if _NOT_TOTAL.search(line):
+            continue
+        m = _TOTAL_LINE.search(line.strip())
+        if m:
+            found = Decimal(m.group(1).replace(",", "."))
+    return found
+
+
+def amount_in_text(amount: Decimal, text: str) -> bool:
+    """Whether an amount is printed anywhere in the text, with either decimal mark."""
+    whole, _, cents = f"{amount.quantize(Decimal('0.01'))}".partition(".")
+    return re.search(rf"(?<![\d.,]){re.escape(whole)}[.,]{cents}(?!\d)", text) is not None
+
+
 def header_output(
     header: ReceiptHeader | None,
     *,

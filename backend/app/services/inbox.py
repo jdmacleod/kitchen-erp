@@ -78,8 +78,15 @@ _READING_SQL = text(
 
 
 def _day(moment: datetime) -> str:
-    """A short date such as Sep 24, in the household's timezone: the day the person remembers."""
-    local = moment.astimezone(ZoneInfo(get_settings().household_timezone))
+    """A short date such as Sep 24, in the household's timezone: the day the person remembers.
+
+    Another year's date carries its year (Jul 30, 2020). Without it an old
+    receipt, or one whose year was misread, looked like one from this summer.
+    """
+    zone = ZoneInfo(get_settings().household_timezone)
+    local = moment.astimezone(zone)
+    if local.year != datetime.now(zone).year:
+        return f"{local:%b} {local.day}, {local.year}"
     return f"{local:%b} {local.day}"
 
 

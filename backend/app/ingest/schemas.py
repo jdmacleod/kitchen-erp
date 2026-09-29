@@ -45,7 +45,11 @@ class ReceiptHeader(ModelOutput):
     )
     subtotal: Money | None = Field(default=None, description="Printed subtotal, or null.")
     tax: Money | None = Field(default=None, description="Printed tax total, or null.")
-    total: Money | None = Field(default=None, description="Printed grand total, or null.")
+    total: Money | None = Field(
+        default=None,
+        description="Printed grand total paid, often labelled TOTAL, BALANCE, BALANCE DUE or "
+        "AMOUNT DUE, or null.",
+    )
 
     @field_validator("merchant_name", "store_identifier", "address_text", "phone_text")
     @classmethod

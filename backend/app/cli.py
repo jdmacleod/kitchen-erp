@@ -10,14 +10,16 @@ from pathlib import Path
 import typer
 from alembic.config import Config
 
-from alembic import command
+from alembic import command, util
 from app.core.config import DEV_VERSION, UNKNOWN_COMMIT
 from app.core.logging import configure_logging
 
 cli = typer.Typer(help="Kitchen ERP administration.", no_args_is_help=True)
 seed_cli = typer.Typer(help="Seed reference data.", no_args_is_help=True)
 cli.add_typer(seed_cli, name="seed")
-import_cli = typer.Typer(help="Import reference data.", no_args_is_help=True)
+import_cli = typer.Typer(
+    help="Import reference data or a retailer's purchase export.", no_args_is_help=True
+)
 cli.add_typer(import_cli, name="import")
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -67,7 +69,12 @@ def _run_alembic(action, revision: str, verb: str) -> None:
     """Run an upgrade or downgrade and say what it did; alembic/env.py prints each step."""
     cfg = alembic_config()
     typer.echo(f"{verb.capitalize()} the database to {revision}…")
-    action(cfg, revision)
+    try:
+        action(cfg, revision)
+    except util.CommandError as exc:
+        # A mistyped revision is a usage error, not a crash: say so in one line.
+        typer.echo(f"Error: {exc}. `kerp migrate` with no argument goes to the latest.", err=True)
+        raise typer.Exit(2) from exc
     steps = cfg.attributes.get("steps", [])
     if not steps:
         typer.echo("Nothing to do: the database is already there.")

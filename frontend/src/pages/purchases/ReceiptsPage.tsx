@@ -35,11 +35,15 @@ export function ReceiptsPage() {
       {
         onSuccess: (result) => {
           if (fileRef.current) fileRef.current.value = "";
-          notice.show(
-            result.revived
-              ? { tone: "info", message: "This receipt was removed before; it's being read again." }
-              : { tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." },
-          );
+          if (result.revived) notice.show({ tone: "info", message: "This receipt was removed before; it's being read again." });
+          else if (result.created === false)
+            // Nothing new is read: saying "once it's read" sent people waiting for nothing.
+            notice.show({
+              tone: "info",
+              message: "You've uploaded this receipt before, so it isn't read again.",
+              action: result.job.purchase_id ? { label: "Open its purchase", to: `/shop/purchases/${result.job.purchase_id}` } : undefined,
+            });
+          else notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
         },
       },
     );

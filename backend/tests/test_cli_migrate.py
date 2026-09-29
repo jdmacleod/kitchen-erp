@@ -57,3 +57,18 @@ async def test_migrate_reports_each_step_and_a_summary():
         # Whatever happened above, leave the schema at head for the next test.
         _kerp("migrate")
         await dispose_engine()
+
+
+def test_an_unknown_revision_is_one_line_not_a_traceback():
+    # Found by /devex-review: a mistyped revision printed a full traceback.
+    done = subprocess.run(
+        [sys.executable, "-m", "app.cli", "migrate", "nosuchrev"],
+        cwd=BACKEND_ROOT,
+        env=os.environ.copy(),
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 2
+    assert "Can't locate revision identified by 'nosuchrev'" in done.stderr
+    assert "Traceback" not in done.stderr and "│" not in done.stderr

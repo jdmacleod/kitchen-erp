@@ -58,6 +58,8 @@ export interface ReceiptUploadResult {
   job: IngestJob;
   /** This receipt was removed before and is being read again (#74). */
   revived?: boolean;
+  /** False when the same file was already here and nothing new is read. */
+  created?: boolean;
 }
 
 export const ingestKeys = {
@@ -199,7 +201,8 @@ export async function uploadReceipt(input: ReceiptUploadInput): Promise<ReceiptU
     if (err && typeof err.code === "string") throw new ApiError(response.status, err.code, err.message, err.details);
     throw new ApiError(response.status, "http_error", `Upload failed with status ${response.status}.`);
   }
-  return payload as ReceiptUploadResult;
+  // 201 is a new receipt; 200 is one this deployment already has (#74 revives it).
+  return { ...(payload as ReceiptUploadResult), created: response.status === 201 };
 }
 
 export function useUploadReceipt() {

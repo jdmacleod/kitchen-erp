@@ -154,6 +154,15 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         )
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
+        # The model's total is untrusted like the rest of its output: one it
+        # found nowhere on the receipt, or none at all, gives way to a labelled
+        # total line in the text itself.
+        printed = header_stage.printed_total_from_text(text)
+        if printed is not None and (
+            header.total is None or not header_stage.amount_in_text(header.total, text)
+        ):
+            header = header.model_copy(update={"total": printed})
+            flags.append("total_from_text")
     match = await header_stage.match_location(
         ctx.db,
         document_id=ctx.document.id,

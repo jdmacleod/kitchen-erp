@@ -108,6 +108,15 @@ describe("removing a purchase", () => {
     await waitFor(() => expect(within(section).getByRole("button", { name: "Remove purchase" })).toHaveFocus());
   });
 
+  it("says so plainly when the removal voided no prices of its own", async () => {
+    // Found by /devex-review: "Its 0 prices no longer count in the price book."
+    const voided: Purchase = { ...recorded(manualPurchase), status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", voided_prices: 0, removal: null };
+    mockApi({ ...baseRoutes(), [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, voided) });
+    renderApp(`/shop/purchases/${purchaseId}`);
+    expect(await screen.findByText(/None of its prices were still counting in the price book\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Its 0 prices/)).not.toBeInTheDocument();
+  });
+
   it("keeps Remove usable when reading started again after the page loaded", async () => {
     // Review of #84: the error closed the confirm and left Remove disabled for good.
     mockApi({
@@ -317,6 +326,24 @@ describe("receipts", () => {
     renderApp("/shop/receipts");
     const row = await screen.findByTestId("ingest-job");
     expect(within(row).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
+  });
+
+  it("says a duplicate upload isn't read again, and links to its purchase", async () => {
+    // Found by /devex-review: re-uploading a receipt already read said "It'll
+    // appear in Needs you once it's read", and nothing ever appeared.
+    mockApi({
+      ...baseRoutes(),
+      "POST /receipts": () => jsonResponse(200, { document: { id: receiptDocumentId }, job: { ...failedJob, status: "done", stage: "committed", purchase_id: receiptPurchaseId }, revived: false }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts");
+    await screen.findByText("No receipts yet");
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", { type: "image/png" });
+    await user.upload(screen.getByLabelText("Photo"), file);
+    await user.click(screen.getByRole("button", { name: "Upload" }));
+    const notice = await screen.findByTestId("notice");
+    expect(notice).toHaveTextContent("You've uploaded this receipt before, so it isn't read again.");
+    expect(within(notice).getByRole("link", { name: "Open its purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
   });
 
   it("says when an upload brings back a removed receipt", async () => {
