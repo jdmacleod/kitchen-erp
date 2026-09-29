@@ -250,14 +250,19 @@ PATH_OPTION = typer.Option(..., "--path", exists=True, file_okay=False, resolve_
 @import_cli.command("usda-portions")
 def import_usda_portions(path: Path = PATH_OPTION) -> None:
     """Load food portions from a local USDA FoodData Central CSV download."""
+    from collections import Counter
+
     from app.core.db import dispose_engine, get_sessionmaker
     from app.services.usda import import_portions
 
     async def _run() -> None:
+        skipped: Counter[str] = Counter()
         async with get_sessionmaker()() as db:
-            n = await import_portions(db, path)
+            n = await import_portions(db, path, skipped)
         await dispose_engine()
         typer.echo(f"imported {n} portions")
+        for reason, count in sorted(skipped.items()):
+            typer.echo(f"  skipped {count}: {reason}")
 
     asyncio.run(_run())
 

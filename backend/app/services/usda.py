@@ -8,6 +8,8 @@ an ingredient is created.
 from __future__ import annotations
 
 import csv
+import re
+from collections import Counter
 from collections.abc import Iterable
 from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from pathlib import Path
@@ -39,10 +41,38 @@ def _fdc_id(value: str | None) -> int | None:
     return int(value) if value.isdigit() else None
 
 
-def read_portions(directory: Path) -> Iterable[dict]:
-    # A row with no food id can never be matched to a food, so it is skipped
-    # like a row for a food outside DATA_TYPES. The 2026-04 download ends with
-    # a block of such portion rows.
+# A survey measure's leading quantity: "1 cup", "1/2 cup", "1 1/2 cups", "0.5 oz".
+_LEADING_QTY = re.compile(r"^(?:(\d+)\s+(\d+)/(\d+)|(\d+)/(\d+)|(\d*\.?\d+))\s+(\S.*)$")
+
+
+def _survey_measure(description: str) -> tuple[Decimal, str] | None:
+    """(amount, unit) from a survey portion's text, or None if it names no quantity.
+
+    Only a leading number, fraction or mixed number is read; "Quantity not
+    specified" and the like name no quantity and are not guessed at.
+    """
+    m = _LEADING_QTY.match(description.strip())
+    if m is None:
+        return None
+    whole, num, den, fnum, fden, number, unit = m.groups()
+    if whole is not None:
+        amount = Decimal(whole) + Decimal(num) / Decimal(den) if int(den) else None
+    elif fnum is not None:
+        amount = Decimal(fnum) / Decimal(fden) if int(fden) else None
+    else:
+        amount = Decimal(number)
+    if amount is None or amount <= 0:
+        return None
+    return amount, unit.strip()
+
+
+def read_portions(directory: Path, skipped: Counter[str] | None = None) -> Iterable[dict]:
+    """Portions of the kept food types, in the reference table's shape.
+
+    `skipped` counts rows dropped because of their shape (as opposed to a food
+    type that is simply not kept), so an import can say what it left out.
+    """
+    skipped = Counter() if skipped is None else skipped
     foods: dict[int, tuple[str, str]] = {}
     with (directory / "food.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
@@ -56,24 +86,44 @@ def read_portions(directory: Path) -> Iterable[dict]:
     with (directory / "food_portion.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             fdc_id = _fdc_id(row.get("fdc_id"))
-            if fdc_id is None or fdc_id not in foods:
+            if fdc_id is None:
+                # Can never be matched to a food. The 2026-04 download ends
+                # with a block of these.
+                skipped["portion names no food"] += 1
                 continue
-            amount = _dec(row.get("amount", ""))
-            grams = _dec(row.get("gram_weight", ""))
-            if amount is None or grams is None:
+            if fdc_id not in foods:
                 continue
-            unit = units.get(row.get("measure_unit_id", ""), "undetermined")
-            modifier = (row.get("modifier") or "").strip()
-            if unit == "undetermined":
-                unit = (row.get("portion_description") or modifier or "").strip()
-                if unit == modifier:
-                    modifier = ""
-            if not unit:
-                continue
-            label = " ".join(
-                p for p in (format(amount, "f").rstrip("0").rstrip("."), unit, modifier) if p
-            )
             description, data_type = foods[fdc_id]
+            grams = _dec(row.get("gram_weight", ""))
+            amount = _dec(row.get("amount", ""))
+            portion_text = (row.get("portion_description") or "").strip()
+            if data_type == "survey_fndds_food" and amount is None:
+                # Survey portions leave `amount` blank and write the whole
+                # measure as text; `modifier` holds a numeric portion code.
+                measure = _survey_measure(portion_text)
+                if measure is None:
+                    skipped["survey measure has no leading quantity"] += 1
+                    continue
+                if grams is None:
+                    skipped["amount or grams missing or zero"] += 1
+                    continue
+                amount, unit = measure
+                label = portion_text
+            else:
+                if amount is None or grams is None:
+                    skipped["amount or grams missing or zero"] += 1
+                    continue
+                unit = units.get(row.get("measure_unit_id", ""), "undetermined")
+                modifier = (row.get("modifier") or "").strip()
+                if unit == "undetermined":
+                    unit = (portion_text or modifier).strip()
+                    if unit == modifier:
+                        modifier = ""
+                if not unit:
+                    continue
+                label = " ".join(
+                    p for p in (format(amount, "f").rstrip("0").rstrip("."), unit, modifier) if p
+                )
             yield {
                 "id": new_id(),
                 "fdc_id": fdc_id,
@@ -86,15 +136,21 @@ def read_portions(directory: Path) -> Iterable[dict]:
             }
 
 
-async def import_portions(db: AsyncSession, directory: Path) -> int:
-    """Replace the reference table from a FoodData Central CSV directory."""
+async def import_portions(
+    db: AsyncSession, directory: Path, skipped: Counter[str] | None = None
+) -> int:
+    """Replace the reference table from a FoodData Central CSV directory.
+
+    Returns the number of portions loaded; `skipped`, if given, collects the
+    reasons rows were left out.
+    """
     for name in ("food.csv", "measure_unit.csv", "food_portion.csv"):
         if not (directory / name).is_file():
             raise FileNotFoundError(f"{name} not found under {directory}")
     await db.execute(delete(RefUsdaPortion))
     total = 0
     batch: list[dict] = []
-    for row in read_portions(directory):
+    for row in read_portions(directory, skipped):
         batch.append(row)
         if len(batch) >= BATCH:
             await db.execute(RefUsdaPortion.__table__.insert(), batch)
