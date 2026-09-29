@@ -142,6 +142,6 @@ class RefUsdaPortion(UUIDPrimaryKey, Base):
     food_description: Mapped[str] = mapped_column(Text, nullable=False)
     portion_label: Mapped[str] = mapped_column(Text, nullable=False)
     portion_amount: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
-    portion_unit: Mapped[str] = mapped_column(String(100), nullable=False)
+    portion_unit: Mapped[str] = mapped_column(Text, nullable=False)
     gram_weight: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     data_type: Mapped[str] = mapped_column(String(40), nullable=False)
