@@ -122,7 +122,7 @@ receipt_document(
 ingest_job(
   id, receipt_document_id FK UNIQUE,
   stage CHECK IN (captured, ocr, header, lines, resolve, review, committed),
-  status CHECK IN (pending, running, needs_review, done, failed),
+  status CHECK IN (pending, running, needs_review, done, failed, discarded),   -- discarded: the receipt was removed (#74)
   attempts INT, last_error?, locked_at?, locked_by?,
   purchase_id FK?
 )
@@ -142,9 +142,10 @@ purchase(
   id, vendor_location_id FK?,                 -- null only while a receipt's location is unconfirmed
   receipt_document_id FK?,
   purchased_at, subtotal?, tax?, total,
-  status CHECK IN (draft, reviewed, committed),
+  status CHECK IN (draft, reviewed, committed, voided),   -- voided: removed after reaching the price book (#74)
   source CHECK IN (receipt, manual, import),
   entered_by FK app_user,
+  voided_at?, voided_by FK app_user?,         -- set together, only when status = voided
   flags TEXT[],                               -- purchase-level review hints such as reconcile_mismatch
   ledger_txn_ref TEXT?,                       -- opaque external reference; no integration
   CHECK (status = 'draft' OR vendor_location_id IS NOT NULL)
@@ -159,6 +160,7 @@ purchase_line(
   resolution CHECK IN (barcode, alias, fuzzy, llm, manual, unmatched, ignored),   -- the rung whose answer was used
   resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode and alias
   resolution_confidence NUMERIC?, flags TEXT[],
+  removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
   CHECK (line_kind = 'item' OR product_id IS NULL)
 )
 
@@ -170,6 +172,10 @@ receipt_alias(
   CHECK ((disposition = 'product') = (product_id IS NOT NULL))
 )
 ```
+
+A line with `removed_at` set is kept only because an observation still points at it as provenance (observations are append-only). Every reader of a purchase's lines skips it: totals, reconcile, review, the edit form, the inbox and the to-identify queue. Backup keeps it. A line that never produced an observation is deleted outright rather than marked removed. Line numbers (`seq`) stay unique across removed lines too, so a number always names one line (#72, D8).
+
+A purchase is removed by deleting it when none of its lines ever produced an observation, and by setting `status = voided` (and voiding its live observations) otherwise; see 04, 2H.
 
 `resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching.
 

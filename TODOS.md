@@ -91,6 +91,32 @@ source is named so it can be traced back.
 **Priority:** P2
 **Depends on:** None
 
+### Flag a second photo of the same receipt
+
+**What:** After a receipt is read, flag it in review when a committed or draft purchase at the same location has the same date and total ("possible duplicate"), with Remove one step away.
+
+**Why:** Byte-identical re-uploads are already caught by the upload's sha256 lookup, but a second photo of the same paper receipt is read again, and committing both would double-count every price.
+
+**Context:** Deferred from #74 by the eng review on 2026-09-28 (D2). The exact-file case is handled in `services/ingest.py` (the sha256 lookup before writing). Removing a purchase (#74) is the manual fix until this exists. The match rule must tolerate two real trips on one day at one store, so it should flag, not block.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** #74 (Remove purchase)
+
+## Purchases
+
+### Restore a voided purchase
+
+**What:** A "Restore" action on a voided purchase: voided → reviewed, then a normal commit re-emits its prices.
+
+**Why:** Removing the wrong purchase otherwise means entering it again by hand.
+
+**Context:** Recorded by the eng review of #72/#74 on 2026-09-28 (D13). With D4, a purchase that ever reached the price book is voided rather than deleted, and keeps its lines. `reopen_purchase` (`services/resolution.py`) accepts only `committed` today and would need to accept `voided`. The recommit path already re-emits observations for resolved item lines.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** #74
+
 ## Operations
 
 ### Backup refuses to overwrite an existing backup

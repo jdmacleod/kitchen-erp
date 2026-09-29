@@ -34,6 +34,18 @@ bind-mounted at runtime, and refused by a commit hook even when force-added.
 own deployment. Nothing under `data/` is read by any test, fixture generator,
 or documentation build.
 
+## What removing a receipt erases
+
+Removing a purchase or a failed read (spec 04, 2H) erases only what it can:
+
+- A receipt that never reached the price book has its photo file deleted from
+  disk. Later backups don't contain it; earlier backups still do.
+- A receipt whose prices were recorded is voided, not deleted, and keeps its
+  photo as the record behind the voided prices.
+- The text read from any photo is not erased. Stage results are append-only.
+- A browser that already showed the photo may keep a private copy for up to a
+  day (`Cache-Control: private, max-age=86400`).
+
 ## The safeguards, and what each one covers
 
 | Safeguard | Covers |

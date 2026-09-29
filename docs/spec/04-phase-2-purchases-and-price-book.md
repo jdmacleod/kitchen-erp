@@ -35,7 +35,7 @@ Shelf-price entry is the simplest producer of observations and is built here to 
 
 Build the form for purchases that have no receipt. It should be the fastest screen in the system, because it will be used standing at a market with a bag in one hand. The header takes a location and a date. The location defaults to the nearest active location when the browser offers a position, and otherwise to the most recently used one; the date defaults to today. Lines are entered one after another: product by typeahead with inline creation, then quantity, unit, and either a line total or a unit price, with the other computed. Unit defaults to the product's most recently used purchase unit. Pressing enter on the last field of a line commits it and opens the next. A running total is shown, and an optional entered total is reconciled against it.
 
-Saving a manual purchase commits it immediately, since there is nothing to resolve, and emits one observation per item line with `source = manual`. A committed manual purchase can be reopened and edited; doing so voids the observations it emitted and emits new ones on recommit.
+Saving a manual purchase commits it immediately, since there is nothing to resolve, and emits one observation per item line with `source = manual`. A committed manual purchase can be reopened and edited; doing so voids the observations it emitted and emits new ones on recommit. The edit form identifies lines by id, so removing one voids only that line's observation (see 2H).
 
 ### Acceptance criteria
 
@@ -85,7 +85,7 @@ The ladder has five rungs. A **barcode** match, when a line carries a UPC or EAN
 
 Every human confirmation writes or updates an alias. Accepting a suggestion, choosing a product, or marking ignore each upsert `receipt_alias` for that vendor and normalized text, increment `confirmed_count`, and update `last_seen_at`. Re-pointing an existing alias to a different product is allowed and resets its count to one.
 
-The review screen shows the receipt image beside the parsed purchase. The header is editable, with ranked location candidates when matching was not confident. Each line shows its raw text, its parsed fields, its resolution and how it was reached, and any flags. Lines that resolved by confirmed alias are visually quiet; attention is drawn to suggestions, unmatched lines, and flags. The reviewer can accept, change, or create a product with the same typeahead and inline creation as manual entry, can mark a line ignored, can correct parsed quantities and prices, can reattach a discount to a different item, and can add or delete lines. The whole screen is keyboard-operable: move between lines, accept the top suggestion, open the typeahead, mark ignore, commit.
+The review screen shows the receipt image beside the parsed purchase. The header is editable, with ranked location candidates when matching was not confident. Each line shows its raw text, its parsed fields, its resolution and how it was reached, and any flags. Lines that resolved by confirmed alias are visually quiet; attention is drawn to suggestions, unmatched lines, and flags. The reviewer can accept, change, or create a product with the same typeahead and inline creation as manual entry, can mark a line ignored, can correct parsed quantities and prices, can reattach a discount to a different item, and can add or delete lines. Deleting a line that reached the price book follows 2H. The whole screen is keyboard-operable: move between lines, accept the top suggestion, open the typeahead, mark ignore, commit.
 
 Commit is allowed at any time. Lines still unresolved are committed as `unmatched`; they are part of the purchase and its total but emit no observation. They appear in a **to-identify queue** that lists unmatched lines across all purchases, grouped by vendor and normalized text so that identifying one instance offers to apply the same answer to the others. Identifying a line after commit emits its observation then, dated to the purchase time. Commit emits one observation per resolved item line, with the price reduced by attached discounts, `is_promo` set when any discount was attached, and deposits and tax excluded. A committed receipt purchase can be reopened under the same void-and-re-emit rule as a manual one.
 
@@ -152,6 +152,55 @@ Phase 2 is the first phase that holds data someone would be sorry to lose. Provi
 
 49. A backup taken from a populated system and restored into a clean deployment reproduces every purchase, observation, alias, and receipt image, verified by row counts and image hashes.
 50. Restore refuses to run against a non-empty database unless explicitly forced.
+
+## 2H — Removing lines and purchases
+
+Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and keep their purchase line as provenance, so nothing an observation points at is ever deleted. Everything else can be.
+
+**Removing a line (#72).** One service function, `remove_line`, is used by review's Delete and by the manual edit form.
+- A line that never produced an observation is deleted, and any discount or deposit attached to it is detached.
+- A line that did has its live observation voided with the reason "line removed". It gets `removed_at` and `removed_by`, its children are detached, and it disappears from every reader of the purchase's lines (02).
+- New lines take the next `seq` across all lines, removed ones included. Review's insert-after shift moves removed lines too.
+- The manual edit form sends each line's id. A line present in the purchase but missing from the request is removed. An id not on the purchase is refused with `422 unknown_line`.
+
+**Removing a purchase (#74).** One action, `POST /purchases/{id}/remove`, with no body. `removal_plan(purchase)` decides the outcome, and both the preview (below) and the action use it.
+- It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.
+- A purchase that no longer exists is `404`, which the client treats as already removed.
+- **Delete:** when none of the purchase's lines ever produced an observation, the purchase and its lines are deleted. Its ingest job, if any, gets `purchase_id = NULL` and `status = discarded`, and its receipt image file is deleted. The `receipt_document` row and stage results stay (append-only).
+- **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only and its receipt image is kept.
+- **Blocked:** while the purchase's ingest job is `pending` or `running`, removal is refused with `409 still_reading`, because the worker would otherwise recreate the draft.
+- The database changes happen in one transaction; void and observe flush, and the caller commits. The image file is deleted only after the commit succeeds, because a rollback cannot restore a file. If that deletion fails, the removal still stands and the failure is logged. The leftover file is served by nothing, and re-uploading the receipt overwrites it.
+
+**Removing a failed read.** `POST /ingest-jobs/{id}/remove` accepts only a `failed` job.
+- It discards the job and, after the commit, deletes its image, as above. It answers `200` with `{photo_deleted}`.
+- If the job already has a draft purchase, the draft is deleted by the same plan. A draft cannot have recorded lines; if the plan says void, the request is refused with that outcome.
+- A `pending` or `running` job gets `409 still_reading`. Any other status gets `409 not_failed`.
+- `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`. Uploading the file again is the only way back.
+
+**Discarded jobs.**
+- `GET /ingest-jobs` leaves them out, and `GET /ingest-jobs/{id}` returns `404 receipt_removed` for one.
+- Uploading the same file again revives the job. It returns to `pending` at stage `captured`, the image is written again if missing, and the response says `revived: true`. New stage results append to the old ones.
+
+**What the client is told.** A single-purchase response (GET and every mutation returning one purchase) carries:
+- `removal: {outcome: delete | void, prices, photo, blocked: null | still_reading}` from `removal_plan`;
+- `removed_line_count`;
+- a `recorded` flag on each line.
+
+In list responses these are null, so a list page costs no extra queries.
+
+**Lists.** `GET /purchases` excludes `voided` unless `status=voided` is asked for.
+
+### Acceptance criteria
+
+51. Removing a never-recorded line deletes it. Removing a recorded line voids its observation ("line removed"), sets `removed_at`/`removed_by`, detaches its children, and hides it from computed totals, reconcile, the review response, inbox counts and the to-identify queue. A backup and restore keeps it with `removed_at` intact.
+52. Removing the middle line of a three-line manual purchase through the edit form voids exactly that line's observation; the other two keep theirs. An id from another purchase is `422 unknown_line`.
+53. Adding a line after the last line was removed gets a new, unique `seq`, with no error.
+54. Removing a purchase none of whose lines ever produced an observation deletes it. Its job becomes `discarded` with `purchase_id` NULL, and its image file is gone (`GET /receipts/{id}/image` is 404).
+55. Removing a purchase with observations voids each live one ("purchase removed"), sets `status = voided` with `voided_at`/`voided_by`, keeps the image, and drops it from `GET /purchases` unless `status=voided`.
+56. Removing while the job is `pending` or `running` is `409 still_reading` and changes nothing. A failure partway through a removal leaves every observation live.
+57. For every case above, `removal` on the purchase predicts the outcome and price count that removing then produces, including a reopened purchase whose prices are all already voided (void, 0). In list responses it is null.
+58. `POST /ingest-jobs/{id}/remove` discards a failed job, and its draft if one exists, and deletes the image. It refuses other statuses as specified. `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`.
+59. A discarded job is absent from `GET /ingest-jobs` and is `404 receipt_removed` by id. Re-uploading the same file revives it with `revived: true` and reads it again.
 
 ## Fixture corpus
 
