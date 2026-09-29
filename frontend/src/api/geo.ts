@@ -57,7 +57,11 @@ export interface VendorRef {
 }
 
 export interface Vendor extends VendorRef {
+  /** The stable key in kitchen-erp-vendors files; never follows a rename. */
+  slug: string;
   website: string | null;
+  brand: string | null;
+  wikidata: string | null;
   notes: string | null;
   active: boolean;
   created_at: string;
@@ -75,6 +79,8 @@ export interface VendorLocation {
   id: string;
   vendor: VendorRef;
   name: string;
+  /** "<vendor slug>/<location slug>": the stable key in kitchen-erp-vendors files. */
+  key: string;
   lat: string;
   lon: string;
   address: string | null;
@@ -88,6 +94,8 @@ export interface VendorLocation {
   receipt_identifiers: string[];
   osm_type: OsmType | null;
   osm_id: number | null;
+  /** May appear in a public export (1F). A linked location always may; a stand never. */
+  publishable: boolean;
   sources: Sources;
   active: boolean;
   is_open: boolean | null;
@@ -190,6 +198,7 @@ export interface LocationUpdateInput {
   lon?: string;
   address?: string | null;
   phone?: string | null;
+  publishable?: boolean;
   parent_location_id?: string | null;
   opening_hours?: string | null;
   home_base_id?: string | null;
@@ -477,6 +486,32 @@ export function useUnlinkOsm(id: string) {
     mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/unlink-osm`, { method: "POST" }),
     onSuccess: () => invalidateLocations(client),
   });
+}
+
+// --- vendor files (1F) --------------------------------------------------------
+
+export type ExportMode = "public" | "household";
+export type ExportFormat = "yaml" | "json";
+
+/** Where a kitchen-erp-vendors/1 file downloads from; the session cookie goes with it. */
+export function exportUrl(mode: ExportMode, format: ExportFormat): string {
+  return `/api/v1/vendors/export${qs({ format, mode })}`;
+}
+
+/** What a public export would hold, shown before downloading (design D12). */
+export function useExportSummary(enabled: boolean) {
+  return useQuery({
+    queryKey: ["vendors", "export-summary"] as const,
+    queryFn: () => api<{ locations: number; public: number }>("/vendors/export-summary"),
+    enabled,
+  });
+}
+
+/** Whether a location is in a public export, and the plain-words reason when that is fixed. */
+export function shareState(location: VendorLocation, vendorKind: VendorKind): { shared: boolean; fixed: string | null } {
+  if (vendorKind === "stand") return { shared: false, fixed: "Stands are never shared" };
+  if (location.osm_id !== null) return { shared: true, fixed: "Shared because it's linked to OpenStreetMap" };
+  return { shared: location.publishable, fixed: null };
 }
 
 // --- opening hours ----------------------------------------------------------

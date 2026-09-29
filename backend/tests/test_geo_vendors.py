@@ -24,6 +24,9 @@ async def test_create_get_patch(admin_client: httpx.AsyncClient):
         "active",
         "created_at",
         "sources",
+        "slug",
+        "brand",
+        "wikidata",
     }
     patched = await admin_client.patch(
         f"/api/v1/vendors/{created['id']}", json={"kind": "market", "notes": "Saturdays"}

@@ -13,6 +13,7 @@ import {
   useRefreshOsm,
   useSetLocationActive,
   useSetVendorActive,
+  shareState,
   useUnlinkOsm,
   useUpdateLocation,
   useUpdateVendor,
@@ -371,6 +372,7 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
             ) : null}
             {location.address ? ` · ${location.address}` : ""}
             {home ? ` · from ${home.name}` : ""}
+            {shareState(location, location.vendor.kind).shared ? " · Shared in public export" : ""}
           </p>
           <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(location.lat, location.lon)}</p>
           {location.receipt_identifiers.length > 0 ? (
@@ -442,6 +444,28 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
   );
 }
 
+const SHARE_HINT = "Name, pin, address, hours and phone go in the public file. Notes and home base never do.";
+
+/**
+ * "Share in public export" (1F, design D11). It always shows what an export
+ * will do: a linked location is shared and a stand never is, whatever was
+ * ticked, so those two are shown fixed, with the reason.
+ */
+function ShareCheckbox({ id, location, checked, onChange }: { id: string; location: VendorLocation; checked: boolean; onChange: (v: boolean) => void }) {
+  const { shared, fixed } = shareState(location, location.vendor.kind);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm font-medium">
+        <input id={id} type="checkbox" className={`size-4 ${focusRing}`} aria-describedby={`${id}-hint`} checked={fixed ? shared : checked} disabled={fixed !== null} onChange={(e) => onChange(e.target.checked)} />
+        Share in public export
+      </label>
+      <p id={`${id}-hint`} className="text-xs text-neutral-600 dark:text-neutral-400">
+        {fixed ?? SHARE_HINT}
+      </p>
+    </div>
+  );
+}
+
 /**
  * One code per line, trimmed, blanks dropped, each once, in order. Lines rather
  * than commas, because a code may itself contain a comma.
@@ -465,6 +489,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
     name: location.name,
     address: location.address ?? "",
     phone: location.phone ?? "",
+    publishable: location.publishable,
     opening_hours: location.opening_hours ?? "",
     home_base_id: location.home_base_id ?? "",
     parent_location_id: location.parent_location_id ?? "",
@@ -515,6 +540,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
     if (form.name.trim() !== location.name) input.name = form.name.trim();
     if ((form.address.trim() || null) !== location.address) input.address = form.address.trim() || null;
     if ((form.phone.trim() || null) !== location.phone) input.phone = form.phone.trim() || null;
+    if (form.publishable !== location.publishable) input.publishable = form.publishable;
     if ((form.opening_hours.trim() || null) !== location.opening_hours) input.opening_hours = form.opening_hours.trim() || null;
     if ((form.home_base_id || null) !== location.home_base_id) input.home_base_id = form.home_base_id || null;
     if ((form.parent_location_id || null) !== location.parent_location_id) input.parent_location_id = form.parent_location_id || null;
@@ -561,6 +587,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
         />
         <Field id={`${prefix}-overhead`} label="Stop overhead (minutes)" inputMode="numeric" autoComplete="off" value={form.stop_overhead_min} onChange={(e) => set("stop_overhead_min", e.target.value)} hint="Parking, queueing, and so on." />
       </div>
+      <ShareCheckbox id={`${prefix}-share`} location={location} checked={form.publishable} onChange={(v) => set("publishable", v)} />
       <OpeningHoursInput idPrefix={prefix} value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} noneHint={location.parent_location_id ? "A stall without hours inherits the market's." : undefined} />
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={update.isPending}>

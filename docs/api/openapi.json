@@ -679,6 +679,26 @@
         "title": "DensitySuggestion",
         "type": "object"
       },
+      "ExportSummaryOut": {
+        "additionalProperties": false,
+        "description": "What a public vendor export would hold, before downloading it (design D12).",
+        "properties": {
+          "locations": {
+            "title": "Locations",
+            "type": "integer"
+          },
+          "public": {
+            "title": "Public",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "locations",
+          "public"
+        ],
+        "title": "ExportSummaryOut",
+        "type": "object"
+      },
       "FieldSourceOut": {
         "additionalProperties": false,
         "description": "Where a field's current value came from. Absent when a person entered it.",
@@ -6852,6 +6872,18 @@
       "VendorCreate": {
         "additionalProperties": false,
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "kind": {
             "enum": [
               "chain",
@@ -6899,6 +6931,19 @@
               }
             ],
             "title": "Website"
+          },
+          "wikidata": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "pattern": "^Q[0-9]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wikidata"
           }
         },
         "required": [
@@ -6968,6 +7013,17 @@
             "title": "Active",
             "type": "boolean"
           },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -7027,6 +7083,10 @@
             "title": "Price Scope",
             "type": "string"
           },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
           "sources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/FieldSourceOut"
@@ -7044,6 +7104,17 @@
               }
             ],
             "title": "Website"
+          },
+          "wikidata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wikidata"
           }
         },
         "required": [
@@ -7051,7 +7122,10 @@
           "name",
           "kind",
           "price_scope",
+          "slug",
           "website",
+          "brand",
+          "wikidata",
           "notes",
           "active",
           "created_at",
@@ -7156,6 +7230,11 @@
               }
             ],
             "title": "Phone"
+          },
+          "publishable": {
+            "default": false,
+            "title": "Publishable",
+            "type": "boolean"
           },
           "receipt_identifiers": {
             "items": {
@@ -7283,6 +7362,10 @@
             ],
             "title": "Is Open"
           },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
           "lat": {
             "title": "Lat",
             "type": "string"
@@ -7360,6 +7443,10 @@
             ],
             "title": "Phone"
           },
+          "publishable": {
+            "title": "Publishable",
+            "type": "boolean"
+          },
           "receipt_identifiers": {
             "items": {
               "type": "string"
@@ -7400,6 +7487,7 @@
           "id",
           "vendor",
           "name",
+          "key",
           "lat",
           "lon",
           "address",
@@ -7413,6 +7501,7 @@
           "receipt_identifiers",
           "osm_type",
           "osm_id",
+          "publishable",
           "active",
           "created_at"
         ],
@@ -7509,6 +7598,10 @@
             ],
             "title": "Is Open"
           },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
           "lat": {
             "title": "Lat",
             "type": "string"
@@ -7586,6 +7679,10 @@
             ],
             "title": "Phone"
           },
+          "publishable": {
+            "title": "Publishable",
+            "type": "boolean"
+          },
           "receipt_identifiers": {
             "items": {
               "type": "string"
@@ -7619,6 +7716,7 @@
           "id",
           "vendor",
           "name",
+          "key",
           "lat",
           "lon",
           "address",
@@ -7632,6 +7730,7 @@
           "receipt_identifiers",
           "osm_type",
           "osm_id",
+          "publishable",
           "active",
           "created_at"
         ],
@@ -7747,6 +7846,17 @@
             ],
             "title": "Phone"
           },
+          "publishable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishable"
+          },
           "receipt_identifiers": {
             "anyOf": [
               {
@@ -7786,6 +7896,17 @@
           "active": {
             "title": "Active",
             "type": "boolean"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
           },
           "created_at": {
             "format": "date-time",
@@ -7830,6 +7951,10 @@
             "title": "Price Scope",
             "type": "string"
           },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
           "sources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/FieldSourceOut"
@@ -7847,6 +7972,17 @@
               }
             ],
             "title": "Website"
+          },
+          "wikidata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wikidata"
           }
         },
         "required": [
@@ -7854,7 +7990,10 @@
           "name",
           "kind",
           "price_scope",
+          "slug",
           "website",
+          "brand",
+          "wikidata",
           "notes",
           "active",
           "created_at"
@@ -7885,6 +8024,18 @@
       "VendorUpdate": {
         "additionalProperties": false,
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "kind": {
             "anyOf": [
               {
@@ -7952,6 +8103,19 @@
               }
             ],
             "title": "Website"
+          },
+          "wikidata": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "pattern": "^Q[0-9]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wikidata"
           }
         },
         "title": "VendorUpdate",
@@ -12798,6 +12962,88 @@
           }
         },
         "summary": "Create Vendor",
+        "tags": [
+          "geo",
+          "vendors"
+        ]
+      }
+    },
+    "/api/v1/vendors/export": {
+      "get": {
+        "description": "The vendor list as a file. Public mode holds public facts only (1F).",
+        "operationId": "export_vendors_api_v1_vendors_export_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "yaml",
+              "enum": [
+                "yaml",
+                "json"
+              ],
+              "title": "Format",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "default": "public",
+              "enum": [
+                "public",
+                "household"
+              ],
+              "title": "Mode",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {},
+              "application/yaml": {}
+            },
+            "description": "A kitchen-erp-vendors/1 file (spec 03 1F)."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Vendors",
+        "tags": [
+          "geo",
+          "vendors"
+        ]
+      }
+    },
+    "/api/v1/vendors/export-summary": {
+      "get": {
+        "operationId": "export_summary_api_v1_vendors_export_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Export Summary",
         "tags": [
           "geo",
           "vendors"

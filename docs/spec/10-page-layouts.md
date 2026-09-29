@@ -171,7 +171,7 @@ The most important detail page; search results and inbox items land here most of
   - The selected location's card at the top right.
   - All current map functions remain, including dropping a pin to create a vendor and its location.
 - **Export and import (1F):** the header gains secondary "Export" and "Import" actions beside "Find nearby".
-  - Export offers YAML or JSON, and Public or Household. It says in one line what Public leaves out: notes, home bases, stands, and locations not marked for sharing.
+  - Export opens a small dialog with two sections, each offering YAML (first) and JSON. "Public — {s} of {n} locations shared" says what it holds and what it leaves out (notes, home bases, store codes, stands, and locations neither shared nor linked), and when some are left out, "Link stores to OpenStreetMap or tick Share on a location to include more." "Household" says it holds everything, including store codes, notes and home bases: "Keep it private." Below 1024px, Export and Import move into a "More" menu once Import exists.
   - Import opens a right-side drawer: choose a file, see the dry-run report (created, updated, unchanged, conflicts, unmatched, each with its fields), then "Import" or "Cancel". The Notice gives the counts. The drawer follows the unsaved-input rule once a file is chosen.
 - **Vendor suggestions (1F):** with pending suggestions, a line above the list reads "{n} suggestions from {tool} to review · Review". Review lists them by vendor and location, each as field, current value, proposed value and a source link, with Accept and Reject per row and "Accept all" per vendor. A stale suggestion says the field changed since it was proposed, and offers "Apply anyway" and "Reject".
 - **Location card (1F):** the card stays compact.

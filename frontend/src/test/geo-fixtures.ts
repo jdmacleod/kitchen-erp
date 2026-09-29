@@ -21,9 +21,12 @@ export const homeBase: HomeBase = {
 export const chainVendor: Vendor = {
   id: chainVendorId,
   name: "Millstone Market",
+  slug: "millstone-market",
   kind: "chain",
   price_scope: "chain",
   website: null,
+  brand: null,
+  wikidata: null,
   notes: null,
   active: true,
   created_at: "2026-03-01T00:00:00Z",
@@ -33,9 +36,12 @@ export const chainVendor: Vendor = {
 export const marketVendor: Vendor = {
   id: marketVendorId,
   name: "Pier Farmers Market",
+  slug: "pier-farmers-market",
   kind: "market",
   price_scope: "location",
   website: null,
+  brand: null,
+  wikidata: null,
   notes: null,
   active: true,
   created_at: "2026-03-01T00:00:00Z",
@@ -45,6 +51,7 @@ export const marketVendor: Vendor = {
 const base = {
   address: null,
   phone: null,
+  publishable: false,
   sources: {},
   home_base_id: homeBaseId,
   parent_location_id: null,
@@ -61,6 +68,7 @@ const base = {
 export const chainLocation: VendorLocation = {
   ...base,
   id: chainLocationId,
+  key: "millstone-market/millstone-harbour",
   vendor: { id: chainVendorId, name: chainVendor.name, kind: "chain", price_scope: "chain" },
   name: "Millstone Harbour",
   lat: "33.450000",
@@ -73,6 +81,7 @@ export const chainLocation: VendorLocation = {
 export const marketLocation: VendorLocation = {
   ...base,
   id: marketLocationId,
+  key: "pier-farmers-market/pier-farmers-market",
   vendor: { id: marketVendorId, name: marketVendor.name, kind: "market", price_scope: "location" },
   name: "Pier Farmers Market",
   lat: "33.520000",
@@ -85,6 +94,7 @@ export const marketLocation: VendorLocation = {
 export const stallLocation: VendorLocation = {
   ...base,
   id: stallLocationId,
+  key: "sandys-stone-fruit/stall",
   vendor: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5f03", name: "Sandy's Stone Fruit", kind: "stand", price_scope: "location" },
   name: "Sandy's Stone Fruit",
   lat: "33.520000",

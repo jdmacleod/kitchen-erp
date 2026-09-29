@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.core.config import get_settings
 from app.schemas.geo import (
+    ExportSummaryOut,
     HomeBaseCreate,
     HomeBaseList,
     HomeBaseOut,
@@ -41,7 +42,7 @@ from app.schemas.geo import (
     VendorOut,
     VendorUpdate,
 )
-from app.services import geo, place_search
+from app.services import geo, place_search, vendor_exchange
 from app.services.opening_hours import is_open_at, to_household, validate_hours
 
 router = APIRouter(tags=["geo"])
@@ -101,6 +102,39 @@ async def delete_home_base(home_base_id: uuid.UUID, _: CurrentUser, db: DbSessio
 # --- vendors -----------------------------------------------------------------
 
 
+# Declared before /vendors/{vendor_id}, which would otherwise claim these paths.
+@vendors.get(
+    "/export",
+    response_class=Response,
+    responses={
+        200: {
+            "description": "A kitchen-erp-vendors/1 file (spec 03 1F).",
+            "content": {"application/yaml": {}, "application/json": {}},
+        }
+    },
+)
+async def export_vendors(
+    _: CurrentUser,
+    db: DbSession,
+    format: Literal["yaml", "json"] = "yaml",
+    mode: Literal["public", "household"] = "public",
+) -> Response:
+    """The vendor list as a file. Public mode holds public facts only (1F)."""
+    file = await vendor_exchange.build(db, mode)
+    day = file.source.exported_at.date().isoformat()
+    return Response(
+        content=vendor_exchange.render(file, format),
+        media_type="application/json" if format == "json" else "application/yaml",
+        headers={"Content-Disposition": f'attachment; filename="vendors-{mode}-{day}.{format}"'},
+    )
+
+
+@vendors.get("/export-summary", response_model=ExportSummaryOut)
+async def export_summary(_: CurrentUser, db: DbSession) -> ExportSummaryOut:
+    found = await vendor_exchange.summary(db)
+    return ExportSummaryOut(locations=found.locations, public=found.public)
+
+
 @vendors.get("", response_model=VendorList)
 async def list_vendors(
     _: CurrentUser,
@@ -134,6 +168,8 @@ async def create_vendor(
         price_scope=payload.price_scope,
         website=payload.website,
         notes=payload.notes,
+        brand=payload.brand,
+        wikidata=payload.wikidata,
     )
     return await guard.commit(201, VendorOut.from_model(vendor).model_dump(mode="json"))
 

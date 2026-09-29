@@ -4,15 +4,19 @@ import { errorMessage } from "../../api/client";
 import {
   PRICE_SCOPES,
   VENDOR_KINDS,
+  exportUrl,
   geoErrorMessage,
   isIntegrationDisabled,
   priceScopeLabel,
   useAdoptOsm,
   useCreateVendor,
+  useExportSummary,
   useHomeBases,
   useOsmCandidates,
   useVendors,
   vendorKindLabel,
+  type ExportFormat,
+  type ExportMode,
   type OsmCandidate,
   type PriceScope,
   type VendorCreateInput,
@@ -20,7 +24,7 @@ import {
   type VendorKind,
 } from "../../api/geo";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, tapTarget } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
 import { Drawer } from "../../components/Drawer";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -65,6 +69,7 @@ export function VendorsPage() {
 
   const [adding, setAdding] = useState(false);
   const [finding, setFinding] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   return (
     <>
@@ -72,6 +77,9 @@ export function VendorsPage() {
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setFinding(true)}>
             Find nearby
+          </Button>
+          <Button variant="secondary" onClick={() => setExporting(true)}>
+            Export
           </Button>
           <Button onClick={() => setAdding(true)}>Add vendor</Button>
         </div>
@@ -97,6 +105,7 @@ export function VendorsPage() {
 
       {adding ? <AddVendorDrawer onClose={() => setAdding(false)} /> : null}
       {finding ? <FindNearbyDialog onClose={() => setFinding(false)} /> : null}
+      {exporting ? <ExportDialog onClose={() => setExporting(false)} /> : null}
     </>
   );
 }
@@ -317,6 +326,60 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
 }
 
 /** Find nearby: the OpenStreetMap adoption flow in a dialog (UI-3.8). */
+/**
+ * Download the vendor list as a kitchen-erp-vendors/1 file (1F, design D12).
+ * Public is what may be contributed, and says how much of the list that is, so
+ * a nearly empty file is explained before it downloads; Household is
+ * everything and says to keep it private.
+ */
+function ExportDialog({ onClose }: { onClose: () => void }) {
+  const titleId = useId();
+  const summary = useExportSummary(true);
+  const formats: ExportFormat[] = ["yaml", "json"];
+  const links = (mode: ExportMode, label: string) => (
+    <div className="flex flex-wrap gap-2">
+      {formats.map((f) => (
+        <a key={f} href={exportUrl(mode, f)} download className={secondaryLinkClass} aria-label={`Download ${label} as ${f.toUpperCase()}`}>
+          {f.toUpperCase()}
+        </a>
+      ))}
+    </div>
+  );
+  return (
+    <Dialog open onClose={onClose} labelledBy={titleId} className="max-h-[80vh] overflow-y-auto p-5">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 id={titleId} className="font-display text-xl">
+          Export vendors
+        </h2>
+        <Button variant="ghost" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      <section aria-labelledby={`${titleId}-public`} className="flex flex-col gap-2 border-b border-neutral-200 pb-4 dark:border-neutral-800">
+        <h3 id={`${titleId}-public`} className="font-medium">
+          Public
+          {summary.data ? ` — ${summary.data.public} of ${summary.data.locations} locations shared` : null}
+        </h3>
+        {summary.isError ? <Alert tone="error">{errorMessage(summary.error)}</Alert> : null}
+        <p className={`text-sm ${muted}`}>
+          Names, pins, addresses, hours and phones of locations you share or have linked to OpenStreetMap. Never notes, home bases, store codes, stands or anything about your purchases. Read it before you contribute it.
+        </p>
+        {summary.data && summary.data.public < summary.data.locations ? (
+          <p className={`text-sm ${muted}`}>Link stores to OpenStreetMap or tick Share on a location to include more.</p>
+        ) : null}
+        {links("public", "the public file")}
+      </section>
+      <section aria-labelledby={`${titleId}-household`} className="flex flex-col gap-2 pt-4">
+        <h3 id={`${titleId}-household`} className="font-medium">
+          Household
+        </h3>
+        <p className={`text-sm ${muted}`}>Everything, including store codes, notes and home bases. Keep it private.</p>
+        {links("household", "the household file")}
+      </section>
+    </Dialog>
+  );
+}
+
 function FindNearbyDialog({ onClose }: { onClose: () => void }) {
   const titleId = useId();
   return (
