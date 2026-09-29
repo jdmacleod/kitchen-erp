@@ -21,6 +21,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -218,7 +219,8 @@ def _website(tags: dict[str, Any]) -> str | None:
         value = tags.get(key)
         if isinstance(value, str):
             value = value.strip()
-            if value.lower().startswith(("http://", "https://")) and len(value) <= 500:
+            parts = urlsplit(value)
+            if parts.scheme.lower() in ("http", "https") and parts.hostname and len(value) <= 500:
                 return value
     return None
 

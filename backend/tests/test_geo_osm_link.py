@@ -204,7 +204,10 @@ def test_osm_tags_keep_only_well_formed_phones_and_web_sites():
     candidate = osm._candidate(node)
     assert candidate is not None
     assert candidate.phone == "+1 555 0101" and candidate.website == SITE
-    node["tags"].update({"phone": "none", "contact:website": "javascript:alert(1)"})
+    node["tags"].update({"phone": "none", "contact:website": "https://"})
+    candidate = osm._candidate(node)
+    assert candidate is not None and candidate.website is None  # no host
+    node["tags"].update({"contact:website": "javascript:alert(1)"})
     node["tags"].pop("website")
     candidate = osm._candidate(node)
     assert candidate is not None and candidate.phone is None and candidate.website is None

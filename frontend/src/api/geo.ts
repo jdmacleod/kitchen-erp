@@ -439,7 +439,11 @@ export function useRefreshOsm(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/refresh-osm`, { method: "POST" }),
-    onSuccess: () => invalidateLocations(client),
+    // A refresh may fill the vendor's website too.
+    onSuccess: () => {
+      invalidateLocations(client);
+      void client.invalidateQueries({ queryKey: geoKeys.vendors });
+    },
   });
 }
 

@@ -769,11 +769,17 @@ def _distance_m(lat1: Decimal, lon1: Decimal, lat2: Decimal, lon2: Decimal) -> i
     return round(2 * 6_371_008.8 * math.asin(math.sqrt(a)))
 
 
+@dataclass(frozen=True)
+class LinkedRef:
+    id: uuid.UUID
+    name: str
+
+
 @dataclass
 class LinkCandidate:
     candidate: osm.OsmCandidate
     distance_m: int
-    linked_to: VendorLocation | None
+    linked_to: LinkedRef | None
     fills: list[str] = dc_field(default_factory=list)
     keeps: list[str] = dc_field(default_factory=list)
 
@@ -787,8 +793,13 @@ async def location_osm_candidates(
     items = await osm.candidates_around(
         f"location:{location.id}", location.place.lat, location.place.lon, radius_m
     )
-    linked = await db.execute(select(VendorLocation).where(VendorLocation.osm_id.is_not(None)))
-    by_key = {(loc.osm_type, loc.osm_id): loc for loc in linked.unique().scalars()}
+    # Only the links these candidates could collide with, and only what linked_to shows.
+    linked = await db.execute(
+        select(
+            VendorLocation.osm_type, VendorLocation.osm_id, VendorLocation.id, VendorLocation.name
+        ).where(VendorLocation.osm_id.in_({c.osm_id for c in items}))
+    )
+    by_key = {(t, i): LinkedRef(loc_id, name) for t, i, loc_id, name in linked.all()}
     rows = []
     for c in items:
         fills, keeps = osm_preview(location, c)
