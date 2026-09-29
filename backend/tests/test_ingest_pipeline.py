@@ -790,3 +790,33 @@ async def test_a_part_that_times_out_keeps_the_parts_already_read(
     lines_out = (await stage_outputs(admin_client, job["id"]))["lines"]
     assert lines_out["unread_parts"] == [2, 3] and lines_out["reason"] == "model_timeout"
     assert lines_out["line_count"] == len(fixture.llm_responses["lines"][0]["lines"])
+
+
+@pytest.mark.parametrize(
+    ("model_total", "flagged"),
+    # 6.50 is an item price printed on the receipt: the TOTAL line still wins.
+    [(None, True), ("4.54", True), ("6.50", True), ("24.41", False)],
+)
+async def test_a_total_the_model_missed_or_invented_comes_from_the_printed_line(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+    model_total: str | None,
+    flagged: bool,
+):
+    """Found by /devex-review on real receipts: one till's total is labelled
+    BALANCE and the model reported none; on another the model gave an amount
+    printed nowhere on the receipt. Either way the printed total line wins, and a
+    total the model read correctly is left alone."""
+    fixture = load_fixture("independent_minimal")
+    recorded(
+        {
+            "header": {**fixture.llm_responses["header"], "total": model_total},
+            "lines": fixture.llm_responses["lines"],
+        }
+    )
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    header = (await stage_outputs(admin_client, job["id"]))["header"]
+    assert header["total"] == "24.41"
+    assert ("total_from_text" in header["flags"]) is flagged

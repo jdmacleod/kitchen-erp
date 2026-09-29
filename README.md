@@ -129,7 +129,7 @@ Both are optional and local. The system works fully without them.
 
 - **Receipts** are uploaded from the web UI (or the capture API) and pass through
   the ingest worker; the review screen is where unresolved lines get identified
-  once and remembered as aliases.
+  once and remembered as aliases. See "Reading a receipt, start to finish" below.
 - **Retailer exports** in the documented JSON format (see `backend/app/services/importer.py`)
   load with `docker compose exec api kerp import purchases --from /data/imports/<file>.json --as <admin email>`.
   Keep real exports under `data/imports/`, which is never committed.
@@ -154,7 +154,33 @@ Both are optional and local. The system works fully without them.
     http://localhost:8000/api/v1/receipts
   ```
 
-  The same file uploaded twice is recognised by its hash and not read again.
+  The same file uploaded twice is recognised by its hash and not read again,
+  unless it was removed: uploading a removed receipt reads it again.
+
+### Reading a receipt, start to finish
+
+1. **Upload** it under Shop → Receipts. It is read in the background: text
+   first (OCR), then the header (store, date, totals) and the lines through the
+   model, so allow a minute or more per receipt on a LAN model server. Receipts
+   being read show as Reading rows on Purchases.
+2. **Finish it from Home.** Each read receipt becomes an inbox item. On its page,
+   check the header first: pick the store from the location candidates or the
+   Location list, correct the date and total from the receipt image, and press
+   Save header. A warning above the header says when the date or total was not
+   read and is standing in.
+3. **Check the lines.** "Needs you" lists the lines to look at. Edit a line's
+   quantity, unit or price where the reader got it wrong, and delete a line that
+   is not a purchase. A weight printed on its own line above the item (such as
+   `2.71 lb @ 3.99 /lb`) may be read as a separate line: put the weight on the
+   item line and delete the other. "Lines add up to" should then match the total.
+4. **Identify what you can**, choosing an existing product or creating one
+   inline, then **Commit**. Resolved lines enter the price book at once; the rest
+   wait in the to-identify queue (Home's "lines to identify" item), grouped by
+   store and wording, where one choice applies to every matching line and is
+   remembered for next time.
+5. **Mistakes** are corrected by reopening the purchase, or by removing it at the
+   foot of its page: a receipt that never reached the price book is deleted with
+   its photo; one that did is voided and kept.
 
 ## What a default deployment exposes
 

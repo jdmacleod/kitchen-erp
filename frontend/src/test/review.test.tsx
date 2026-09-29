@@ -366,7 +366,8 @@ describe("receipt review", () => {
 
     const candidates = await screen.findByRole("list", { name: "Location candidates" });
     const buttons = within(candidates).getAllByRole("button");
-    expect(buttons.map((b) => b.textContent)).toEqual(["Pier Farmers Market · 1.200", "Millstone Market — Millstone Harbour · 0.900"]);
+    // Ranked, but the raw match score is not shown: it means nothing to a person.
+    expect(buttons.map((b) => b.textContent)).toEqual(["Pier Farmers Market", "Millstone Market — Millstone Harbour"]);
     expect(screen.getByLabelText("Location")).toHaveValue("");
 
     await user.click(buttons[1]);
@@ -375,6 +376,10 @@ describe("receipt review", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path === base)).toBe(true));
     expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ vendor_location_id: chainLocationId });
     expect(await screen.findByRole("heading", { name: /Millstone Market/ })).toBeInTheDocument();
+    // Found by /devex-review: the save gave no sign it had worked.
+    expect(await screen.findByText("Saved.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Save header" }));
+    expect(await screen.findByText("Nothing has changed.")).toBeInTheDocument();
   });
 });
 

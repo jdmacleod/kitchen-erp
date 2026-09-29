@@ -140,7 +140,11 @@ function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boole
   return (
     <div ref={ref} tabIndex={-1} role="status" className={`rounded-md border px-3 py-2 text-sm ${alertTones.info} ${focusRing}`}>
       Removed {when}
-      {who}. Its {n} {n === 1 ? "price no longer counts" : "prices no longer count"} in the price book.
+      {who}.{" "}
+      {n === 0
+        ? // Its prices were voided before the removal (a reopen, a removed line).
+          "None of its prices were still counting in the price book."
+        : `Its ${n} ${n === 1 ? "price no longer counts" : "prices no longer count"} in the price book.`}
     </div>
   );
 }

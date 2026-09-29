@@ -486,7 +486,13 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
     total: editableMoney(purchase.total),
   });
   const [invalid, setInvalid] = useState<string | null>(null);
-  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
+  // What the last Save did, until the form changes again: a click with no
+  // answer left people unsure the location had stuck.
+  const [saved, setSaved] = useState<"saved" | "unchanged" | null>(null);
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+    setSaved(null);
+    setForm((f) => ({ ...f, [key]: value }));
+  };
 
   const save = () => {
     const input: PurchaseHeaderInput = {};
@@ -500,7 +506,8 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
       if (value !== "" && !sameAmount(value, purchase[key])) input[key] = value;
     }
     setInvalid(null);
-    if (Object.keys(input).length > 0) patch.mutate(input);
+    if (Object.keys(input).length === 0) return setSaved("unchanged");
+    patch.mutate(input, { onSuccess: () => setSaved("saved") });
   };
 
   return (
@@ -524,8 +531,11 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
                   className="min-h-11 lg:min-h-8 px-2 text-xs"
                   onClick={() => set("vendor_location_id", c.location_id)}
                   aria-pressed={form.vendor_location_id === c.location_id}
+                  // Like the fields below: a choice made mid-save would not be
+                  // in the request, yet "Saved." would follow it.
+                  disabled={patch.isPending}
                 >
-                  {c.vendor_name === c.name ? c.name : `${c.vendor_name} — ${c.name}`} · {c.score}
+                  {c.vendor_name === c.name ? c.name : `${c.vendor_name} — ${c.name}`}
                 </Button>
               </li>
             ))}
@@ -548,10 +558,13 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
         <Field id="review-tax" label="Tax" inputMode="decimal" autoComplete="off" value={form.tax} onChange={(e) => set("tax", e.target.value)} disabled={patch.isPending} />
         <Field id="review-total" label="Total" inputMode="decimal" autoComplete="off" value={form.total} onChange={(e) => set("total", e.target.value)} disabled={patch.isPending} />
       </div>
-      <div>
+      <div className="flex flex-wrap items-center gap-3">
         <Button variant="secondary" onClick={save} disabled={patch.isPending}>
           {patch.isPending ? "Saving…" : "Save header"}
         </Button>
+        <span role="status" className={hintClass}>
+          {saved === "saved" ? "Saved." : saved === "unchanged" ? "Nothing has changed." : ""}
+        </span>
       </div>
     </div>
   );

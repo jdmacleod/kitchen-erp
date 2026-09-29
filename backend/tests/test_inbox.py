@@ -6,11 +6,13 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
 from sqlalchemy import update
 
+from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.models import IngestJob, Purchase
 from app.services import inbox as inbox_service
@@ -68,8 +70,10 @@ async def test_empty_inbox_is_empty_not_an_error(admin_client: httpx.AsyncClient
 
 async def test_a_draft_receipt_is_an_item_with_its_day_and_line_count(admin_client, admin):
     loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    # The year as the household sees it, which is what decides whether it shows.
+    this_year = datetime.now(ZoneInfo(get_settings().household_timezone)).year
     pid = await make_receipt_purchase(
-        admin.id, loc["id"], LINES, purchased_at=datetime(2026, 9, 24, 18, 0, tzinfo=UTC)
+        admin.id, loc["id"], LINES, purchased_at=datetime(this_year, 9, 24, 18, 0, tzinfo=UTC)
     )
     [item] = (await get_inbox(admin_client))["items"]
     assert item["kind"] == "receipt"
@@ -77,6 +81,17 @@ async def test_a_draft_receipt_is_an_item_with_its_day_and_line_count(admin_clie
     assert item["title"] == "Finish the Sep 24 receipt"
     assert item["detail"] == "2 lines ready to review and commit."
     assert (item["action_label"], item["action_route"]) == ("Review", f"/shop/purchases/{pid}")
+
+
+async def test_a_receipt_from_another_year_says_which(admin_client, admin):
+    # Found by /devex-review: a receipt dated years back read "Finish the Jul 30
+    # receipt", as if it were from this summer.
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    await make_receipt_purchase(
+        admin.id, loc["id"], LINES, purchased_at=datetime(2020, 7, 30, 18, 0, tzinfo=UTC)
+    )
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["title"] == "Finish the Jul 30, 2020 receipt"
 
 
 async def test_a_draft_without_a_location_asks_for_one(admin_client, admin):
