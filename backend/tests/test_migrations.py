@@ -20,9 +20,13 @@ async def test_downgrade_and_upgrade_round_trip(owner_conn: asyncpg.Connection):
         for r in await owner_conn.fetch("SELECT tablename FROM pg_tables WHERE schemaname='public'")
     }
     assert {"app_user", "api_token", "session", "idempotency_key"} <= tables
-    # The round trip recreated the unit table empty; later tests expect the seed.
-    from app.core.db import get_sessionmaker
+    # Pooled connections hold statements prepared against the old tables; a
+    # later test reusing one would fail with a stale plan.
+    from app.core.db import dispose_engine, get_sessionmaker
     from app.services.units import seed_units
+
+    await dispose_engine()
+    # The round trip recreated the unit table empty; later tests expect the seed.
 
     async with get_sessionmaker()() as db:
         assert await seed_units(db) == 16

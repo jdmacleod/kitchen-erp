@@ -62,21 +62,30 @@ def _purchase_query():
     )
 
 
-async def get_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
+async def get_purchase(db: AsyncSession, purchase_id: uuid.UUID, *, lock: bool = False) -> Purchase:
+    """The purchase with its lines; ``lock`` holds its row until the transaction ends.
+
+    Every change to a purchase locks it first, so a removal and an edit that
+    would record a price cannot interleave: whichever comes second waits, then
+    sees what the first did (a voided purchase, or the new price to void).
+    """
+    stmt = _purchase_query().where(Purchase.id == purchase_id)
+    if lock:
+        stmt = stmt.with_for_update(of=Purchase)
     row = (
-        (
-            await db.execute(
-                _purchase_query()
-                .where(Purchase.id == purchase_id)
-                .execution_options(populate_existing=True)
-            )
-        )
+        (await db.execute(stmt.execution_options(populate_existing=True)))
         .unique()
         .scalar_one_or_none()
     )
     if row is None:
         raise ApiError(404, "not_found", "No such purchase.")
     return row
+
+
+def ensure_not_voided(purchase: Purchase) -> None:
+    """A removed purchase is kept only as the record behind its voided prices."""
+    if purchase.status == "voided":
+        raise ApiError(409, "voided", "This purchase was removed, so it can't be changed.")
 
 
 async def list_purchases(
@@ -93,6 +102,9 @@ async def list_purchases(
         stmt = stmt.where(Purchase.vendor_location_id == vendor_location_id)
     if status is not None:
         stmt = stmt.where(Purchase.status == status)
+    else:
+        # Removed purchases are shown only when asked for (#74).
+        stmt = stmt.where(Purchase.status != "voided")
     if source is not None:
         stmt = stmt.where(Purchase.source == source)
     before = decode_cursor(cursor)
@@ -172,12 +184,21 @@ async def remove_line(
     return voided
 
 
+async def removed_line_count(db: AsyncSession, purchase_id: uuid.UUID) -> int:
+    stmt = select(func.count()).where(
+        PurchaseLine.purchase_id == purchase_id, PurchaseLine.removed_at.is_not(None)
+    )
+    return int((await db.execute(stmt)).scalar_one())
+
+
 async def resolver_names(db: AsyncSession, purchases: Iterable[Purchase]) -> dict[uuid.UUID, str]:
-    """Map user id -> display name for everyone who resolved a line of these purchases.
+    """Map user id -> display name for everyone who resolved a line of these
+    purchases, or removed one.
 
     One query for a whole page of purchases, none when nobody resolved anything.
     """
     ids = {line.resolved_by for p in purchases for line in p.lines if line.resolved_by is not None}
+    ids |= {p.voided_by for p in purchases if p.voided_by is not None}
     if not ids:
         return {}
     stmt = select(AppUser.id, AppUser.display_name).where(AppUser.id.in_(ids))
@@ -283,7 +304,8 @@ async def update_manual(
     is new, and a saved line missing from the body is removed (#72). Matching by
     position would overwrite every line after a removed one with its neighbour.
     """
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    ensure_not_voided(purchase)
     if purchase.source not in ("manual", "import"):
         raise ApiError(
             409,

@@ -36,9 +36,19 @@ from app.schemas.purchases import (
     QueueApply,
     QueueList,
     RecomputeOut,
+    RemovalOut,
+    RemovedOut,
     VoidIn,
 )
-from app.services import catalog, pricebook, pricebook_views, purchases, resolution, review
+from app.services import (
+    catalog,
+    pricebook,
+    pricebook_views,
+    purchases,
+    removal,
+    resolution,
+    review,
+)
 
 router = APIRouter(tags=["purchases"])
 
@@ -186,11 +196,18 @@ async def recompute(_: CurrentUser, db: DbSession) -> RecomputeOut:
 # --- purchases --------------------------------------------------------------
 
 
-async def purchase_out(db, purchase, names: dict[uuid.UUID, str] | None = None) -> PurchaseOut:
-    """`names` maps resolver ids to display names; a list passes one lookup for its page."""
+async def purchase_out(
+    db, purchase, names: dict[uuid.UUID, str] | None = None, *, detail: bool = True
+) -> PurchaseOut:
+    """`names` maps resolver ids to display names; a list passes one lookup for its page.
+
+    A list passes ``detail=False``: the removal preview, the recorded flags and
+    the removed-line count cost queries per row and no list shows them.
+    """
     live = await purchases.live_observations(db, purchase)
     if names is None:
         names = await purchases.resolver_names(db, [purchase])
+    recorded = await purchases.recorded_lines(db, purchase.lines) if detail else None
     lines = [
         LineOut(
             id=line.id,
@@ -222,9 +239,16 @@ async def purchase_out(db, purchase, names: dict[uuid.UUID, str] | None = None) 
             observation_id=live.get(line.id),
             raw_text_norm=line.raw_text_norm,
             suggestions=line.suggestions or [],
+            recorded=None if recorded is None else line.id in recorded,
         )
         for line in purchase.lines
     ]
+    plan = None
+    if detail and purchase.status != "voided":
+        found = await removal.removal_plan(db, purchase)
+        plan = RemovalOut(
+            outcome=found.outcome, prices=found.prices, photo=found.photo, blocked=found.blocked
+        )
     location = purchase.vendor_location
     return PurchaseOut(
         id=purchase.id,
@@ -255,6 +279,10 @@ async def purchase_out(db, purchase, names: dict[uuid.UUID, str] | None = None) 
         lines=lines,
         created_at=purchase.created_at,
         updated_at=purchase.updated_at,
+        voided_at=purchase.voided_at,
+        voided_by_name=names.get(purchase.voided_by) if purchase.voided_by else None,
+        removal=plan,
+        removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
     )
 
 
@@ -278,7 +306,8 @@ async def list_purchases(
     )
     names = await purchases.resolver_names(db, rows)
     return PurchaseList(
-        items=[await purchase_out(db, p, names) for p in rows], next_cursor=next_cursor
+        items=[await purchase_out(db, p, names, detail=False) for p in rows],
+        next_cursor=next_cursor,
     )
 
 
@@ -302,6 +331,17 @@ async def update_purchase(
     purchase_id: uuid.UUID, payload: ManualPurchaseIn, user: CurrentUser, db: DbSession
 ) -> PurchaseOut:
     return await purchase_out(db, await purchases.update_manual(db, user, purchase_id, payload))
+
+
+@router.post("/purchases/{purchase_id}/remove", response_model=RemovedOut)
+async def remove_purchase(purchase_id: uuid.UUID, user: CurrentUser, db: DbSession) -> RemovedOut:
+    """Delete a purchase that never reached the price book, or void one that did (#74)."""
+    done = await removal.remove_purchase(db, user, purchase_id)
+    return RemovedOut(
+        outcome=done.outcome,
+        photo_deleted=done.photo_deleted,
+        purchase=await purchase_out(db, done.purchase) if done.purchase is not None else None,
+    )
 
 
 @router.get("/products/{product_id}/last-purchase-unit", response_model=LastUnitOut)

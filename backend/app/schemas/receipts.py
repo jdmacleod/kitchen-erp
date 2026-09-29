@@ -74,6 +74,12 @@ class IngestJobList(ApiModel):
 class ReceiptUploadOut(ApiModel):
     document: ReceiptDocumentOut
     job: IngestJobOut
+    # This receipt was removed before and is being read again (#74).
+    revived: bool = False
+
+
+class ReceiptRemovedOut(ApiModel):
+    photo_deleted: bool
 
 
 class ConvertToManualOut(ApiModel):

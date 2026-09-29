@@ -2803,6 +2803,17 @@
             ],
             "title": "Raw Text Norm"
           },
+          "recorded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded"
+          },
           "resolution": {
             "title": "Resolution",
             "type": "string"
@@ -5272,6 +5283,27 @@
             ],
             "title": "Receipt Document Id"
           },
+          "removal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemovalOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "removed_line_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Removed Line Count"
+          },
           "source": {
             "title": "Source",
             "type": "string"
@@ -5320,6 +5352,29 @@
                 "type": "null"
               }
             ]
+          },
+          "voided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided At"
+          },
+          "voided_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voided By Name"
           }
         },
         "required": [
@@ -5596,6 +5651,20 @@
         "title": "ReceiptDocumentOut",
         "type": "object"
       },
+      "ReceiptRemovedOut": {
+        "additionalProperties": false,
+        "properties": {
+          "photo_deleted": {
+            "title": "Photo Deleted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "photo_deleted"
+        ],
+        "title": "ReceiptRemovedOut",
+        "type": "object"
+      },
       "ReceiptUploadOut": {
         "additionalProperties": false,
         "properties": {
@@ -5604,6 +5673,11 @@
           },
           "job": {
             "$ref": "#/components/schemas/IngestJobOut"
+          },
+          "revived": {
+            "default": false,
+            "title": "Revived",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5725,6 +5799,80 @@
           "recomputed"
         ],
         "title": "RecomputeOut",
+        "type": "object"
+      },
+      "RemovalOut": {
+        "additionalProperties": false,
+        "description": "What removing the purchase would do, from the same rule the action uses.",
+        "properties": {
+          "blocked": {
+            "anyOf": [
+              {
+                "const": "still_reading",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
+          "outcome": {
+            "enum": [
+              "delete",
+              "void"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "photo": {
+            "title": "Photo",
+            "type": "boolean"
+          },
+          "prices": {
+            "title": "Prices",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "outcome",
+          "prices",
+          "photo"
+        ],
+        "title": "RemovalOut",
+        "type": "object"
+      },
+      "RemovedOut": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "delete",
+              "void"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "photo_deleted": {
+            "title": "Photo Deleted",
+            "type": "boolean"
+          },
+          "purchase": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PurchaseOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "outcome",
+          "photo_deleted"
+        ],
+        "title": "RemovedOut",
         "type": "object"
       },
       "SearchHit": {
@@ -8102,6 +8250,50 @@
           }
         },
         "summary": "Get Ingest Job",
+        "tags": [
+          "receipts"
+        ]
+      }
+    },
+    "/api/v1/ingest-jobs/{job_id}/remove": {
+      "post": {
+        "description": "Remove a receipt that couldn't be read, with its draft if it has one (#74).",
+        "operationId": "remove_ingest_job_api_v1_ingest_jobs__job_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptRemovedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Ingest Job",
         "tags": [
           "receipts"
         ]
@@ -10709,6 +10901,50 @@
           }
         },
         "summary": "Resolve Line",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/remove": {
+      "post": {
+        "description": "Delete a purchase that never reached the price book, or void one that did (#74).",
+        "operationId": "remove_purchase_api_v1_purchases__purchase_id__remove_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Purchase",
         "tags": [
           "purchases"
         ]

@@ -18,6 +18,7 @@ from app.services.normalize import normalize_receipt_text
 from app.services.purchases import (
     TOTAL_TOLERANCE,
     computed_total,
+    ensure_not_voided,
     get_purchase,
     next_seq,
     remove_line,
@@ -28,12 +29,13 @@ _FOUR = Decimal("0.0001")
 
 
 def _editable(purchase) -> None:
+    ensure_not_voided(purchase)
     if purchase.status == "committed":
         raise ApiError(409, "committed", "Reopen the purchase before editing it.")
 
 
 async def edit_header(db: AsyncSession, purchase_id: uuid.UUID, payload: PurchaseHeaderEdit):
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     _editable(purchase)
     data = payload.model_dump(exclude_unset=True)
     if data.pop("clear_ledger_txn_ref", False):
@@ -113,7 +115,7 @@ def _parent_ok(purchase, line: PurchaseLine, parent_id: uuid.UUID | None) -> Non
 
 
 async def add_line(db: AsyncSession, purchase_id: uuid.UUID, payload: LineAdd):
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     _editable(purchase)
     # Numbers run over removed lines too, so a number always names one line (#72).
     last = await next_seq(db, purchase_id) - 1
@@ -171,7 +173,7 @@ async def _shift_seqs(db: AsyncSession, purchase_id: uuid.UUID, from_seq: int) -
 async def edit_line(
     db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineEdit
 ):
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     _editable(purchase)
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
@@ -211,7 +213,7 @@ async def edit_line(
 
 
 async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, line_id: uuid.UUID):
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     _editable(purchase)
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
@@ -226,7 +228,8 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
 
 
 async def re_resolve_line(db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID):
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    ensure_not_voided(purchase)
     line = next((x for x in purchase.lines if x.id == line_id), None)
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")

@@ -37,7 +37,7 @@ from app.models.geo import VendorLocation
 from app.services import pricebook
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
-from app.services.purchases import get_purchase, live_observations
+from app.services.purchases import ensure_not_voided, get_purchase, live_observations
 from app.services.units import build_context
 from app.units import CanonicalQty, convert
 
@@ -343,7 +343,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
 
 async def resolve_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> dict[str, Any]:
     """Run the ladder over every unresolved item line. Commits. Returns stage output."""
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     records = []
     for line in purchase.lines:
         if line.resolution in ("manual", "ignored", "barcode", "alias") and line.resolved_by:
@@ -384,7 +384,8 @@ async def decide_line(
 
     On a committed purchase the observation is emitted now, dated to the purchase.
     """
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    ensure_not_voided(purchase)
     line = await _line_of(purchase, line_id)
     if line.line_kind != "item":
         raise ApiError(422, "not_an_item", "Only item lines resolve to products.")
@@ -462,7 +463,8 @@ def _resolved_item(line: PurchaseLine) -> bool:
 async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID) -> Purchase:
     """Commit at any time. Resolved item lines emit observations; unresolved lines
     join the to-identify queue. On recommit, only changed lines void and re-emit."""
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    ensure_not_voided(purchase)
     if purchase.vendor_location_id is None:
         raise ApiError(409, "location_required", "Choose the vendor location before committing.")
     live = await live_observations(db, purchase)
@@ -509,7 +511,7 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
 
 
 async def reopen_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
-    purchase = await get_purchase(db, purchase_id)
+    purchase = await get_purchase(db, purchase_id, lock=True)
     if purchase.status != "committed":
         raise ApiError(409, "not_committed", "Only a committed purchase can be reopened.")
     purchase.status = "reviewed"
