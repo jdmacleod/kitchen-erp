@@ -42,6 +42,7 @@ from app.schemas.geo import (
     VendorOut,
     VendorUpdate,
 )
+from app.schemas.vendor_interchange import VendorFile
 from app.services import geo, place_search, vendor_exchange
 from app.services.opening_hours import is_open_at, to_household, validate_hours
 
@@ -108,8 +109,9 @@ async def delete_home_base(home_base_id: uuid.UUID, _: CurrentUser, db: DbSessio
     response_class=Response,
     responses={
         200: {
-            "description": "A kitchen-erp-vendors/1 file (spec 03 1F).",
-            "content": {"application/yaml": {}, "application/json": {}},
+            "model": VendorFile,
+            "description": "A kitchen-erp-vendors/1 file (spec 03 1F), as YAML or JSON.",
+            "content": {"application/yaml": {}},
         }
     },
 )

@@ -275,12 +275,15 @@ export const geoKeys = {
   location: (id: string) => ["vendor-locations", "detail", id] as const,
   isOpen: (id: string, at: string) => ["vendor-locations", "is-open", id, at] as const,
   osmCandidates: (homeBaseId: string, radius: number) => ["osm", "candidates", homeBaseId, radius] as const,
+  exportSummary: ["vendors", "export-summary"] as const,
   linkCandidates: (locationId: string) => ["vendor-locations", "osm-candidates", locationId] as const,
   mapPlaces: (q: string, near: { lat: string; lon: string } | null) => ["map", "places", q, near] as const,
 };
 
 function invalidateLocations(client: QueryClient) {
   void client.invalidateQueries({ queryKey: geoKeys.locations });
+  // Sharing, linking and deactivating all change what a public export holds.
+  void client.invalidateQueries({ queryKey: geoKeys.exportSummary });
 }
 
 // --- home bases -------------------------------------------------------------
@@ -501,7 +504,7 @@ export function exportUrl(mode: ExportMode, format: ExportFormat): string {
 /** What a public export would hold, shown before downloading (design D12). */
 export function useExportSummary(enabled: boolean) {
   return useQuery({
-    queryKey: ["vendors", "export-summary"] as const,
+    queryKey: geoKeys.exportSummary,
     queryFn: () => api<{ locations: number; public: number }>("/vendors/export-summary"),
     enabled,
   });
@@ -510,6 +513,7 @@ export function useExportSummary(enabled: boolean) {
 /** Whether a location is in a public export, and the plain-words reason when that is fixed. */
 export function shareState(location: VendorLocation, vendorKind: VendorKind): { shared: boolean; fixed: string | null } {
   if (vendorKind === "stand") return { shared: false, fixed: "Stands are never shared" };
+  if (!location.active) return { shared: false, fixed: "An inactive location is never shared" };
   if (location.osm_id !== null) return { shared: true, fixed: "Shared because it's linked to OpenStreetMap" };
   return { shared: location.publishable, fixed: null };
 }

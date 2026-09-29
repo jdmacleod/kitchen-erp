@@ -218,3 +218,16 @@ async def test_migration_backfills_unique_keys(owner_conn: asyncpg.Connection):
     from app.core.db import dispose_engine
 
     await dispose_engine()
+
+
+async def test_a_raced_key_is_a_409_not_a_500(
+    admin_client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+):
+    """Two creations that both chose one free key: the constraint catches the second."""
+    from app.models import keys
+
+    monkeypatch.setattr(keys, "_unique", lambda _s, _c, base, _p: base)
+    first = await admin_client.post("/api/v1/vendors", json={"name": "Café Nord", "kind": "chain"})
+    assert first.status_code == 201
+    raced = await admin_client.post("/api/v1/vendors", json={"name": "Cafe Nord", "kind": "chain"})
+    assert raced.status_code == 409 and raced.json()["error"]["code"] == "key_taken"

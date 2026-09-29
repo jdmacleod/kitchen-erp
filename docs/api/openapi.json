@@ -699,6 +699,43 @@
         "title": "ExportSummaryOut",
         "type": "object"
       },
+      "FieldSourceEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ref"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source"
+        ],
+        "title": "FieldSourceEntry",
+        "type": "object"
+      },
       "FieldSourceOut": {
         "additionalProperties": false,
         "description": "Where a field's current value came from. Absent when a person entered it.",
@@ -737,6 +774,35 @@
           "checked_at"
         ],
         "title": "FieldSourceOut",
+        "type": "object"
+      },
+      "FileSource": {
+        "additionalProperties": false,
+        "properties": {
+          "exported_at": {
+            "format": "date-time",
+            "title": "Exported At",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "public",
+              "household"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "exported_at",
+          "mode"
+        ],
+        "title": "FileSource",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1133,6 +1199,96 @@
           }
         },
         "title": "HomeBaseUpdate",
+        "type": "object"
+      },
+      "HouseholdLocation": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "home_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Base"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "publishable": {
+            "title": "Publishable",
+            "type": "boolean"
+          },
+          "receipt_identifiers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Receipt Identifiers",
+            "type": "array"
+          },
+          "stop_overhead_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Overhead Min"
+          }
+        },
+        "required": [
+          "id",
+          "active",
+          "publishable"
+        ],
+        "title": "HouseholdLocation",
+        "type": "object"
+      },
+      "HouseholdVendor": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "locations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HouseholdLocation"
+            },
+            "title": "Locations",
+            "type": "object"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "id",
+          "active"
+        ],
+        "title": "HouseholdVendor",
         "type": "object"
       },
       "InboxItem": {
@@ -3240,6 +3396,98 @@
         "title": "LinkedLocationRef",
         "type": "object"
       },
+      "LocationEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "lat": {
+            "pattern": "^-?\\d{1,3}(\\.\\d+)?$",
+            "title": "Lat",
+            "type": "string"
+          },
+          "lon": {
+            "pattern": "^-?\\d{1,3}(\\.\\d+)?$",
+            "title": "Lon",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "opening_hours": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Hours"
+          },
+          "osm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OsmRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceEntry"
+            },
+            "title": "Sources",
+            "type": "object"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "lat",
+          "lon"
+        ],
+        "title": "LocationEntry",
+        "type": "object"
+      },
       "LocationPanel": {
         "additionalProperties": false,
         "properties": {
@@ -4456,6 +4704,31 @@
           "osm_id"
         ],
         "title": "OsmLinkIn",
+        "type": "object"
+      },
+      "OsmRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minimum": 1.0,
+            "title": "Id",
+            "type": "integer"
+          },
+          "type": {
+            "enum": [
+              "node",
+              "way",
+              "relation"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "id"
+        ],
+        "title": "OsmRef",
         "type": "object"
       },
       "PasswordChange": {
@@ -6951,6 +7224,135 @@
           "kind"
         ],
         "title": "VendorCreate",
+        "type": "object"
+      },
+      "VendorEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "household": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseholdVendor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "chain",
+              "independent",
+              "market",
+              "stand"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/LocationEntry"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_scope": {
+            "enum": [
+              "chain",
+              "location"
+            ],
+            "title": "Price Scope",
+            "type": "string"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceEntry"
+            },
+            "title": "Sources",
+            "type": "object"
+          },
+          "website": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website"
+          },
+          "wikidata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wikidata"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind",
+          "price_scope"
+        ],
+        "title": "VendorEntry",
+        "type": "object"
+      },
+      "VendorFile": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "const": "kitchen-erp-vendors/1",
+            "default": "kitchen-erp-vendors/1",
+            "title": "Format",
+            "type": "string"
+          },
+          "license": {
+            "const": "ODbL-1.0",
+            "default": "ODbL-1.0",
+            "title": "License",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FileSource"
+          },
+          "vendors": {
+            "items": {
+              "$ref": "#/components/schemas/VendorEntry"
+            },
+            "title": "Vendors",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source",
+          "vendors"
+        ],
+        "title": "VendorFile",
         "type": "object"
       },
       "VendorInline": {
@@ -13005,10 +13407,14 @@
         "responses": {
           "200": {
             "content": {
-              "application/json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorFile"
+                }
+              },
               "application/yaml": {}
             },
-            "description": "A kitchen-erp-vendors/1 file (spec 03 1F)."
+            "description": "A kitchen-erp-vendors/1 file (spec 03 1F), as YAML or JSON."
           },
           "422": {
             "content": {

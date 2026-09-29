@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { VendorLocation } from "../api/geo";
+import { shareState, type VendorLocation } from "../api/geo";
 import { chainLocation, chainVendor, chainVendorId, homeBase, stallLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
@@ -81,5 +81,10 @@ describe("share in public export", () => {
     expect(box).toBeDisabled();
     expect(box).toHaveAccessibleDescription("Stands are never shared");
     expect(screen.queryByText(/Shared in public export/)).not.toBeInTheDocument();
+  });
+
+  it("never counts an inactive location as shared", () => {
+    expect(shareState({ ...chainLocation, publishable: true, active: false }, "chain")).toEqual({ shared: false, fixed: "An inactive location is never shared" });
+    expect(shareState({ ...chainLocation, publishable: true }, "chain")).toEqual({ shared: true, fixed: null });
   });
 });

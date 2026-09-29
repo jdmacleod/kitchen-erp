@@ -39,6 +39,17 @@ _INTEGRITY_CODES = {
     ),
     "uq_location_osm": (409, "already_adopted", "That OpenStreetMap object is already adopted."),
     "fk_product_exclusive_vendor": (409, "vendor_in_use", "A product references this vendor."),
+    # Two creations raced to the same new key (models/keys.py); the retry gets the next one.
+    "uq_vendor_slug": (
+        409,
+        "key_taken",
+        "Another vendor took that key at the same moment; try again.",
+    ),
+    "uq_location_key": (
+        409,
+        "key_taken",
+        "Another location took that key at the same moment; try again.",
+    ),
 }
 
 
