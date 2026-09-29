@@ -2,7 +2,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import type { StoreCodeOffer } from "../api/purchases";
+import type { Purchase, StoreCodeOffer } from "../api/purchases";
 import { units } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation } from "./geo-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
@@ -16,7 +16,7 @@ const offer: StoreCodeOffer = {
   printed_line: "STORE 0217  TERM ••••",
 };
 
-function render(remember: () => Response) {
+function render(remember: () => Response, purchase: Purchase = receiptPurchase) {
   const calls = mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -24,7 +24,7 @@ function render(remember: () => Response) {
     "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
     "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
     "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
-    [`GET ${base}`]: () => jsonResponse(200, receiptPurchase),
+    [`GET ${base}`]: () => jsonResponse(200, purchase),
     [`GET ${base}/store-code-offer`]: () => jsonResponse(200, { offer }),
     [`POST ${base}/remember-store-code`]: remember,
   });
@@ -50,5 +50,13 @@ describe("remember store code", () => {
     await user.click(button);
     expect(await screen.findByRole("alert")).toHaveTextContent("not on offer");
     expect(screen.getByRole("button", { name: `Remember 0217 for ${chainLocation.name}` })).toBeEnabled();
+  });
+
+  it("offers nothing on a committed purchase", async () => {
+    const calls = render(() => jsonResponse(200, offer), { ...receiptPurchase, status: "committed" });
+    await screen.findByRole("heading", { level: 1 });
+    await waitFor(() => expect(calls.some((c) => c.path.startsWith("/purchases/"))).toBe(true));
+    expect(screen.queryByRole("button", { name: /Remember 0217/ })).not.toBeInTheDocument();
+    expect(calls.some((c) => c.path.endsWith("/store-code-offer"))).toBe(false);
   });
 });

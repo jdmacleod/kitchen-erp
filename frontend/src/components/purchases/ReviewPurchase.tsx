@@ -585,6 +585,8 @@ function RememberStoreCode({ purchase }: { purchase: Purchase }) {
   const offer = useStoreCodeOffer(purchase.id, locationId, reviewing);
   const remember = useRememberStoreCode(purchase.id);
   const done = remember.data && remember.data.location_id === locationId ? remember.data : null;
+  // A committed purchase keeps this page mounted; the offer is for review only.
+  if (!reviewing) return null;
   if (done) {
     return (
       <p role="status" className="text-sm text-green-800 dark:text-green-300">

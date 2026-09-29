@@ -143,6 +143,13 @@ MEMBER 55501234
 THANK YOU"""
 
 
+@pytest.mark.parametrize(
+    "line", ["STORE #0217", "Store No. 0217", "STR 0217", "BRANCH: 0217", "LOC#0217"]
+)
+def test_a_code_after_a_store_label_is_offered(line: str):
+    assert store_line("0217", RECEIPT.replace("STORE 0217  TERM 0042", line)) == line
+
+
 def test_a_code_near_the_top_is_offered_with_other_numbers_masked():
     line = store_line("0217", RECEIPT)
     assert line == "STORE 0217  TERM 0042"
@@ -157,6 +164,8 @@ def test_a_code_near_the_top_is_offered_with_other_numbers_masked():
         ("0217", RECEIPT.replace("STORE 0217", "TEL 0217")),  # labelled as a phone
         ("0217", "\n".join(RECEIPT.splitlines()[3:] + ["STORE 0217"])),  # printed at the foot
         ("0999", RECEIPT),  # not printed at all
+        ("0042", RECEIPT),  # the terminal number on the store's own line
+        ("0217", RECEIPT.replace("STORE 0217", "INVENTED 0217")),  # no store label
     ],
 )
 def test_codes_that_do_not_read_like_a_store_number_are_not_offered(code: str, text: str):

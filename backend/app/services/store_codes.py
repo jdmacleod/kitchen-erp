@@ -10,7 +10,9 @@ A code is offered when all of these hold:
 - the purchase came from a receipt, is still being reviewed, and has a location;
 - the header read a store identifier, and the location does not already have it;
 - the first line of the receipt text that prints it is in the top quarter of the
-  receipt, and names no member, card, loyalty, rewards, account or phone;
+  receipt, names no member, card, loyalty, rewards, account or phone, and
+  prints the code right after a store label ("STORE #0412", "STR 17"), so a
+  terminal or transaction number on the same line is never taken for it;
 - no other location of the same vendor already has it.
 
 Receipt text is untrusted: it is only searched and shown, never interpreted.
@@ -38,6 +40,12 @@ _NOT_A_STORE = re.compile(
     r"member|card|loyal|reward|account|acct|phone|\btel\b|\bph\b", re.IGNORECASE
 )
 _LONG_DIGITS = re.compile(r"\d{4,}")
+# What must come right before the code on its line: a store label, then an
+# optional "No.", "#" or ":".
+_STORE_LABEL = re.compile(
+    r"\b(?:store|str|shop|branch|location|loc)\b\.?\s*(?:no\.?|number)?\s*[#:]?\s*$",
+    re.IGNORECASE,
+)
 MASK = "••••"
 
 
@@ -57,7 +65,8 @@ def store_line(code: str, text: str) -> str | None:
         if identifier_in_text(code, line):
             if index >= top or _NOT_A_STORE.search(line):
                 return None
-            return line
+            at = line.lower().find(code.lower())
+            return line if _STORE_LABEL.search(line[:at]) else None
     return None
 
 
@@ -125,6 +134,20 @@ async def get_offer(db: AsyncSession, purchase_id: uuid.UUID) -> StoreCodeOffer 
 async def remember(db: AsyncSession, purchase_id: uuid.UUID, code: str) -> StoreCodeOffer:
     """Append the offered code to the purchase's location. Nothing else is accepted."""
     purchase = await get_purchase(db, purchase_id, lock=True)
+    if purchase.vendor_location_id is not None:
+        # Hold every branch of the vendor, in a fixed order, so two receipts from
+        # different branches cannot both pass the sibling check for one code.
+        await db.execute(
+            select(VendorLocation.id)
+            .where(
+                VendorLocation.vendor_id
+                == select(VendorLocation.vendor_id)
+                .where(VendorLocation.id == purchase.vendor_location_id)
+                .scalar_subquery()
+            )
+            .order_by(VendorLocation.id)
+            .with_for_update()
+        )
     offer = await offer_for(db, purchase)
     if offer is None or offer.code != code.strip():
         raise ApiError(
@@ -138,7 +161,6 @@ async def remember(db: AsyncSession, purchase_id: uuid.UUID, code: str) -> Store
             await db.execute(
                 select(VendorLocation)
                 .where(VendorLocation.id == offer.location_id)
-                .with_for_update(of=VendorLocation)
                 .execution_options(populate_existing=True)
             )
         )
