@@ -34,20 +34,29 @@ def _dec(value: str) -> Decimal | None:
     return d if d.is_finite() and d > 0 else None
 
 
+def _fdc_id(value: str | None) -> int | None:
+    value = (value or "").strip()
+    return int(value) if value.isdigit() else None
+
+
 def read_portions(directory: Path) -> Iterable[dict]:
+    # A row with no food id can never be matched to a food, so it is skipped
+    # like a row for a food outside DATA_TYPES. The 2026-04 download ends with
+    # a block of such portion rows.
     foods: dict[int, tuple[str, str]] = {}
     with (directory / "food.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
-            if row.get("data_type") in DATA_TYPES:
-                foods[int(row["fdc_id"])] = (row["description"], row["data_type"])
+            food_id = _fdc_id(row.get("fdc_id"))
+            if food_id is not None and row.get("data_type") in DATA_TYPES:
+                foods[food_id] = (row["description"], row["data_type"])
     units: dict[str, str] = {}
     with (directory / "measure_unit.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             units[row["id"]] = row["name"]
     with (directory / "food_portion.csv").open(newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
-            fdc_id = int(row["fdc_id"])
-            if fdc_id not in foods:
+            fdc_id = _fdc_id(row.get("fdc_id"))
+            if fdc_id is None or fdc_id not in foods:
                 continue
             amount = _dec(row.get("amount", ""))
             grams = _dec(row.get("gram_weight", ""))
