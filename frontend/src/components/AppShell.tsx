@@ -5,6 +5,7 @@ import { CaptureSheet } from "./CaptureSheet";
 import { ChromeContext, type Chrome } from "./chrome";
 import { Nav } from "./Nav";
 import { NoticeProvider } from "./Notice";
+import { PageErrorBoundary } from "./PageErrorBoundary";
 import { SearchPalette } from "./SearchPalette";
 import { MoreSheet, TabBar } from "./TabBar";
 import { ShelfPriceDrawer, type ShelfPriceState } from "../pages/purchases/ShelfPricePage";
@@ -134,7 +135,9 @@ export function AppShell() {
       >
         <ChromeContext.Provider value={chrome}>
           <NoticeProvider>
-            <Outlet />
+            <PageErrorBoundary key={location.pathname}>
+              <Outlet />
+            </PageErrorBoundary>
             {/* Inside the provider, so its Save can show the notice on this page. */}
             {overlay === "shelf" ? <ShelfPriceDrawer arrival={shelfArrival} onClose={close} /> : null}
           </NoticeProvider>
