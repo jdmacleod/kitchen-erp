@@ -1,5 +1,7 @@
 from app.models.base import Base
 from app.models.catalog import (
+    FdcFood,
+    FdcRelease,
     Ingredient,
     IngredientAlias,
     IngredientMeasure,
@@ -34,6 +36,8 @@ __all__ = [
     "ApiToken",
     "AppUser",
     "Base",
+    "FdcFood",
+    "FdcRelease",
     "IdempotencyKey",
     "Ingredient",
     "IngredientAlias",
