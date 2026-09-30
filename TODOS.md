@@ -147,7 +147,7 @@ source is named so it can be traced back.
 
 ### The full name-matching cascade for recipe text
 
-**What:** Prep-word stripping ("minced garlic" → garlic + note), USDA-pool proposals for unknown names, and the Ollama tier, as doc 14 §3 describes.
+**What:** Prep-word stripping ("minced garlic" → garlic + note), USDA-pool proposals for unknown names, and the Ollama tier, as the handoff described (`12`, and 07's 1G amendments).
 
 **Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
 
@@ -199,7 +199,7 @@ source is named so it can be traced back.
 
 **Why:** Scanning an unknown barcode could pre-fill a new product instead of starting from nothing.
 
-**Context:** Deferred by the ingredient-vocabulary handoff itself (doc 15, task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
+**Context:** Deferred by the ingredient-vocabulary handoff itself (its task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
 
 **Effort:** M (human) / S (CC)
 **Priority:** P3

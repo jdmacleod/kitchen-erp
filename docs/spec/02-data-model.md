@@ -51,6 +51,42 @@ ingredient_measure(
 
 `density_source` takes the same values as `ingredient_measure.source`, and `density_confirmed` plays the role that `confirmed` plays on a measure: an accepted suggestion or a newly entered value is unconfirmed until a person confirms it as a distinct action. The same pair exists on `product` for the density override. `yield_pct` and `perishability` are not used until Phase 3 and Phase 4 respectively but are cheap to capture while an ingredient is being created, and both default sensibly.
 
+### Ingredient vocabulary (1G)
+
+Sub-phase 1G (`03`) gives each ingredient one canonical identity that any spelling reaches. It extends `ingredient` rather than adding a second vocabulary table.
+
+```
+ingredient(
+  ...,                                -- the columns above
+  slug TEXT UNIQUE,                   -- the standard key when created from, or linked to, the standard list;
+                                      -- otherwise generated, and never equal to a standard key
+  reconcile_state CHECK IN (unreviewed, linked, skipped, not_applicable) DEFAULT not_applicable,  -- indexed
+  usda_reviewed_fdc_id INT?,          -- the FDC food whose suggestions a person last reviewed
+  merged_into FK ingredient?          -- set on the loser of a merge, which is also deactivated
+)
+
+ingredient_alias(
+  id, name_norm TEXT UNIQUE,          -- other spellings only; the canonical name is never a row here
+  ingredient_id FK,
+  kind CHECK IN (synonym, inflection, legacy),
+  source TEXT,                        -- standard, generated, rename, merge, manual; Phase 3 adds recipe
+  confirmed_count INT DEFAULT 0, last_seen_at?
+)                                     -- trigram GIN index on name_norm
+
+ingredient_ref(
+  id, ingredient_id FK,
+  system CHECK IN (fdc),              -- Phase 3 may add foodon
+  external_id TEXT, is_preferred BOOLEAN,
+  UNIQUE (system, external_id, ingredient_id)
+)                                     -- one preferred per (ingredient_id, system), a partial unique index
+```
+
+Existing rows migrate to `unreviewed` with a generated slug; rows created later default to `not_applicable`, or `linked` when created from the standard list. `name_norm` comes from one versioned pure normalizer in `app/catalog/names.py`: NFKC, lowercase, accents stripped in the key only, punctuation removed except hyphens inside words, quantity fragments removed, and no stemming. Plurals are explicit `inflection` rows made by a small generator, so "grass" never becomes "gras". The unique index on `lower(name)` still covers inactive rows, so a merge first renames its loser to "<name> (merged into <survivor>)".
+
+`ingredient_alias` is the same table Phase 3 uses for recipe names (`07`); 1G creates it.
+
+The standard list is a tracked file, `backend/app/catalog/standard_ingredients.yaml`, not a table. An ingredient created from it records the entry's key as its slug, which is how the list knows which entries the catalog already has.
+
 ### Products
 
 ```
@@ -126,10 +162,19 @@ vendor_suggestion(                           -- 1F; append-only apart from its d
 ### Optional reference data
 
 ```
-ref_usda_portion(id, fdc_id, food_description, portion_label, gram_weight, data_type)
+fdc_release(id, release_date DATE, imported_at, source_dir TEXT)   -- one row per import; the latest is current
+
+fdc_food(
+  fdc_id INT PK, data_type TEXT,      -- foundation_food, sr_legacy_food, survey_fndds_food
+  description TEXT, category TEXT?,
+  fndds_uses INT DEFAULT 0            -- times the food is an input to an FNDDS survey food
+)                                     -- trigram GIN index on description
+
+ref_usda_portion(id, fdc_id, food_description, portion_label, portion_amount, portion_unit TEXT,
+                 gram_weight, data_type)
 ```
 
-Loaded by a CLI importer from a local USDA FoodData Central download, and used only to suggest densities and measures when an ingredient is created. Nothing reads it at costing time.
+Loaded by `kerp import usda` from a local, unzipped USDA FoodData Central download, in one transaction that replaces the previous load. They are used only to suggest standard-list links, densities and measures; nothing reads them at costing time, and the system works fully without them. `ref_usda_portion` keeps its 1C shape; `fdc_food` and `fndds_uses` let suggestions rank by how often USDA's survey recipes use a food.
 
 ## Phase 2 tables
 
@@ -240,4 +285,4 @@ An observation records only what was seen: this much money for this quantity in 
 
 ## Forward compatibility
 
-Later phases add `ingredient_alias`, `recipe`, `recipe_ingredient`, and `recipe_cost_snapshot` in Phase 3; `shopping_list`, `shopping_list_item`, `travel_leg`, and the `trip_plan` tables in Phase 4, along with a nullable `purchase.trip_plan_id`; and `stock_location` and `stock_item` in Phase 5. Nothing in Phases 1–2 should need to change shape to accommodate them. If an implementation choice here would make one of those additions awkward, raise it.
+Later phases add `recipe`, `recipe_ingredient`, and `recipe_cost_snapshot` in Phase 3 (`ingredient_alias` arrives earlier, in 1G); `shopping_list`, `shopping_list_item`, `travel_leg`, and the `trip_plan` tables in Phase 4, along with a nullable `purchase.trip_plan_id`; and `stock_location` and `stock_item` in Phase 5. Nothing in Phases 1–2 should need to change shape to accommodate them. If an implementation choice here would make one of those additions awkward, raise it.

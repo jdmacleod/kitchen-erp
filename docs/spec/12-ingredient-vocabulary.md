@@ -1,16 +1,15 @@
 # 12 — Ingredient Vocabulary: Overview & Decisions
 
-**Status: draft for review, 2026-09-30. Not approved for implementation; `CLAUDE.md` names Phases 1 and 2 as the approved scope.** Documents 12–15 arrived as a handoff from a design session and are kept close to how they arrived; their tensions with documents 00–11 are being settled in planning.
+**Status: folded, 2026-09-30. Kept as the record of the design-session handoff; it is not a work order.** After CEO, engineering, design and outside-voice reviews, the catalog work became Phase 1 sub-phase 1G (`03`, tables in `02`, screens in `10` and `11`), and the recipe work became amendments to the Phase 3 draft (`07`). Where this document and those disagree, they win. Documents 13–15 of the handoff were folded the same way and removed; git history keeps them. Notable changes from this record: the vocabulary lives in the database, not in a YAML file in the recipes repository, and the application never writes there; ingredients stay flat (no hierarchy yet); the standard list offers names rather than seeding them; close matches never apply themselves; FoodOn, USDA attributes and the matching cascade wait for Phase 3; and the branded barcode lookup stays deferred.
 
 Handoff from a claude.ai design session. This package covers the **canonical ingredient vocabulary**: seeding it from USDA FoodData Central (FDC), conforming existing Cooklang recipes to it, and suggesting canonical names while authoring.
 
-Read in order: **12** (this: why and what) → **13** (data model and lexicon format) → **14** (FDC import, resolver, conform pass) → **15** (task plan with acceptance criteria).
 
 ## Package contents
 
 | path | what |
 |---|---|
-| `docs/spec/12–15-*.md` | this spec |
+| `docs/spec/12–15-*.md` | the handoff spec; 13–15 are removed, see the status above |
 | `tools/fdc_profile.py` | stdlib-only profiler that reads the FDC zip directly; v2 (column-name fixes). Produces `fdc_profile.md` and `fdc_candidates.csv`. Use it as reference code for the real importer. |
 | `docs/spec/assets/tier-a-ingredients.csv` | draft of 146 canonical ingredients plus 7 abstract parents, with FDC and FoodOn references. **Draft: needs review** (see §6). |
 
@@ -40,7 +39,7 @@ FDC descriptions are inverted, comma-delimited and loaded with cooking state, fo
 These are the rules the resolver, the LLM prompts and human review all enforce.
 
 1. **Culinary word order, lowercase.** Write "yellow onion", "ground cumin", "parmesan". Proper nouns keep their capitals (Parmigiano-Reggiano, Italian sausage).
-2. **Use the natural recipe form of the noun.** That is the singular for count nouns (egg, onion, carrot). Use the plural only where a cook naturally writes it (green beans, strawberries, almonds). Other inflections are registered as aliases, and they are **not** drift (see doc 13 §3).
+2. **Use the natural recipe form of the noun.** That is the singular for count nouns (egg, onion, carrot). Use the plural only where a cook naturally writes it (green beans, strawberries, almonds). Other inflections are registered as aliases, and they are **not** drift (`03` §1G).
 3. **Form that changes what you buy is a separate ingredient.** Garlic vs garlic powder; whole vs ground cumin; dried vs canned beans; salted vs unsalted butter.
 4. **Prep you do goes in the note, not the name.** Write `@garlic{3%cloves}(minced)`, not `@minced garlic{…}`.
 5. **Cooking state is not identity.** Raw vs cooked is a nutrition concern. The FDC reference should point at the raw or dry record, meaning what you buy and weigh.
@@ -81,7 +80,7 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 
 **Portions / density.**
 - 7,649 of 8,262 core foods have `food_portion` rows, including 1,661 of the 1,674 FNDDS-used SR foods.
-- `measure_unit` is almost always "undetermined". The real unit is free text in `modifier` ("cup, chopped", "tbsp", "medium", "slice", "cup (8 fl oz)"), so it needs a parser (doc 14 §2).
+- `measure_unit` is almost always "undetermined". The real unit is free text in `modifier` ("cup, chopped", "tbsp", "medium", "slice", "cup (8 fl oz)"), so it needs a parser (the 1C importer's, #99).
 
 **Branded.**
 - 2.0M rows, 449 `branded_food_category` values, and a 954 MB CSV that is mostly label ingredient text.
