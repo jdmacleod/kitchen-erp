@@ -23,23 +23,75 @@ ingredients:
     unit: g
     fdc: 175043
     spellings: ["dry yeast"]
+  - key: agar
+    name: "agar"
+    category: pantry
+    unit: g
+    fdc: 170090
+    spellings: ["agar agar"]
+  - key: alfalfa-sprouts
+    name: "alfalfa sprouts"
+    category: produce
+    unit: g
+    fdc: 168384
   - key: all-purpose-flour
     name: "all-purpose flour"
     category: pantry
     unit: g
     fdc: 168894
     spellings: ["ap flour", "plain flour"]
+  - key: almond-butter
+    name: "almond butter"
+    category: pantry
+    unit: g
+    fdc: 168588
+  - key: almond-flour
+    name: "almond flour"
+    category: pantry
+    unit: g
+    fdc: 2261420
+    spellings: ["almond meal"]
+  - key: almond-milk
+    name: "almond milk"
+    category: beverages
+    unit: ml
+    fdc: 174832
+  - key: almond-paste
+    name: "almond paste"
+    category: pantry
+    unit: g
+    fdc: 170160
+    spellings: ["marzipan"]
   - key: almonds
     name: "almonds"
     category: pantry
     unit: g
     fdc: 170567
+  - key: anaheim-pepper
+    name: "Anaheim pepper"
+    proper_noun: true
+    category: produce
+    unit: g
+    spellings: ["anaheim chile"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: ancho-chiles
+    name: "ancho chiles"
+    category: spices
+    unit: g
+    fdc: 169396
+    spellings: ["dried ancho chiles"]
   - key: anchovies
     name: "anchovies"
     category: seafood
     unit: g
     fdc: 174183
     spellings: ["anchovy fillets"]
+  - key: anise-seed
+    name: "anise seed"
+    category: spices
+    unit: g
+    fdc: 171316
+    spellings: ["aniseed"]
   - key: apple
     name: "apple"
     category: produce
@@ -61,11 +113,27 @@ ingredients:
     category: produce
     unit: each
     fdc: 171705
+  - key: avocado-oil
+    name: "avocado oil"
+    category: pantry
+    unit: ml
+    fdc: 173573
+  - key: baby-carrots
+    name: "baby carrots"
+    category: produce
+    unit: g
+    fdc: 168568
   - key: bacon
     name: "bacon"
     category: meat
     unit: g
     fdc: 168277
+  - key: bacon-grease
+    name: "bacon grease"
+    category: pantry
+    unit: g
+    fdc: 172345
+    spellings: ["bacon fat", "bacon drippings"]
   - key: bagels
     name: "bagels"
     category: bakery
@@ -129,12 +197,24 @@ ingredients:
     unit: ml
     fdc: 171538
     spellings: ["beef stock"]
+  - key: beef-short-ribs
+    name: "beef short ribs"
+    category: meat
+    unit: g
+    fdc: 169439
+    spellings: ["short ribs"]
   - key: beef-stew-meat
     name: "beef stew meat"
     category: meat
     unit: g
     fdc: 171206
     spellings: ["stew beef", "beef chuck"]
+  - key: beef-tallow
+    name: "beef tallow"
+    category: pantry
+    unit: g
+    fdc: 171400
+    spellings: ["tallow"]
   - key: beef-top-round
     name: "beef top round"
     category: meat
@@ -145,6 +225,11 @@ ingredients:
     category: beverages
     unit: ml
     fdc: 168746
+  - key: beet-greens
+    name: "beet greens"
+    category: produce
+    unit: g
+    fdc: 170375
   - key: beets
     name: "beets"
     category: produce
@@ -206,11 +291,22 @@ ingredients:
     unit: g
     fdc: 174928
     spellings: ["bread crumbs", "dry breadcrumbs"]
+  - key: brie
+    name: "brie"
+    category: dairy
+    unit: g
+    fdc: 172177
   - key: broccoli
     name: "broccoli"
     category: produce
     unit: g
     fdc: 170379
+  - key: broccoli-rabe
+    name: "broccoli rabe"
+    category: produce
+    unit: g
+    fdc: 170381
+    spellings: ["rapini", "broccoli raab"]
   - key: brown-rice
     name: "brown rice"
     category: pantry
@@ -227,6 +323,11 @@ ingredients:
     category: produce
     unit: g
     fdc: 170383
+  - key: buckwheat-flour
+    name: "buckwheat flour"
+    category: pantry
+    unit: g
+    fdc: 170687
   - key: bulgur
     name: "bulgur"
     category: pantry
@@ -248,6 +349,16 @@ ingredients:
     category: produce
     unit: g
     fdc: 169975
+  - key: cake-flour
+    name: "cake flour"
+    category: pantry
+    unit: g
+    fdc: 169723
+  - key: camembert
+    name: "camembert"
+    category: dairy
+    unit: g
+    fdc: 172178
   - key: canned-black-beans
     name: "canned black beans"
     category: pantry
@@ -325,6 +436,18 @@ ingredients:
     category: pantry
     unit: g
     fdc: 172238
+  - key: caraway-seed
+    name: "caraway seed"
+    category: spices
+    unit: g
+    fdc: 170918
+    spellings: ["caraway seeds"]
+  - key: cardamom
+    name: "cardamom"
+    category: spices
+    unit: g
+    fdc: 170919
+    spellings: ["ground cardamom"]
   - key: carrot
     name: "carrot"
     category: produce
@@ -357,6 +480,16 @@ ingredients:
     category: produce
     unit: g
     fdc: 169988
+  - key: celery-seed
+    name: "celery seed"
+    category: spices
+    unit: g
+    fdc: 170920
+  - key: chayote
+    name: "chayote"
+    category: produce
+    unit: g
+    fdc: 170402
   - key: cheddar
     name: "cheddar"
     category: dairy
@@ -369,6 +502,11 @@ ingredients:
     unit: g
     fdc: 171719
     spellings: ["sweet cherries"]
+  - key: chia-seeds
+    name: "chia seeds"
+    category: pantry
+    unit: g
+    fdc: 170554
   - key: chicken-breast
     name: "chicken breast"
     category: meat
@@ -386,6 +524,17 @@ ingredients:
     category: meat
     unit: g
     fdc: 173614
+  - key: chicken-fat
+    name: "chicken fat"
+    category: pantry
+    unit: g
+    fdc: 173564
+    spellings: ["schmaltz"]
+  - key: chicken-livers
+    name: "chicken livers"
+    category: meat
+    unit: g
+    fdc: 171060
   - key: chicken-thigh
     name: "chicken thigh"
     category: meat
@@ -402,6 +551,18 @@ ingredients:
     category: spices
     unit: g
     fdc: 171319
+  - key: chili-sauce
+    name: "chili sauce"
+    category: pantry
+    unit: g
+    fdc: 171595
+  - key: chinese-broccoli
+    name: "Chinese broccoli"
+    proper_noun: true
+    category: produce
+    unit: g
+    fdc: 169404
+    spellings: ["gai lan"]
   - key: chives
     name: "chives"
     category: produce
@@ -412,6 +573,12 @@ ingredients:
     category: meat
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: chuck-roast
+    name: "chuck roast"
+    category: meat
+    unit: g
+    fdc: 174056
+    spellings: ["pot roast"]
   - key: cider-vinegar
     name: "apple cider vinegar"
     category: pantry
@@ -424,6 +591,11 @@ ingredients:
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
+  - key: cocktail-sauce
+    name: "cocktail sauce"
+    category: pantry
+    unit: g
+    fdc: 174067
   - key: cocoa-powder
     name: "cocoa powder"
     category: pantry
@@ -451,6 +623,12 @@ ingredients:
     unit: g
     spellings: ["coffee beans", "ground coffee"]
     note: "USDA records only brewed coffee; the list means the beans or grounds you buy."
+  - key: colby
+    name: "colby"
+    category: dairy
+    unit: g
+    fdc: 173416
+    spellings: ["colby jack"]
   - key: collard-greens
     name: "collard greens"
     category: produce
@@ -484,6 +662,12 @@ ingredients:
     unit: g
     fdc: 169698
     spellings: ["cornflour", "corn starch"]
+  - key: cotija
+    name: "cotija"
+    category: dairy
+    unit: g
+    fdc: 2647443
+    spellings: ["cotija cheese"]
   - key: cottage-cheese
     name: "cottage cheese"
     category: dairy
@@ -499,11 +683,38 @@ ingredients:
     category: produce
     unit: g
     fdc: 171722
+  - key: cranberry-sauce
+    name: "cranberry sauce"
+    category: pantry
+    unit: g
+    fdc: 173961
+  - key: crayfish
+    name: "crayfish"
+    category: seafood
+    unit: g
+    fdc: 174206
+    spellings: ["crawfish", "crawdads"]
   - key: cream-cheese
     name: "cream cheese"
     category: dairy
     unit: g
     fdc: 173418
+  - key: cream-of-tartar
+    name: "cream of tartar"
+    category: pantry
+    unit: g
+    fdc: 175041
+  - key: creme-fraiche
+    name: "crème fraîche"
+    category: dairy
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: cremini-mushrooms
+    name: "cremini mushrooms"
+    category: produce
+    unit: g
+    fdc: 168434
+    spellings: ["cremini", "crimini mushrooms", "baby bella mushrooms"]
   - key: cucumber
     name: "cucumber"
     category: produce
@@ -520,6 +731,11 @@ ingredients:
     category: spices
     unit: g
     fdc: 170924
+  - key: dandelion-greens
+    name: "dandelion greens"
+    category: produce
+    unit: g
+    fdc: 169226
   - key: dates
     name: "dates"
     category: pantry
@@ -566,6 +782,12 @@ ingredients:
     unit: g
     fdc: 173756
     spellings: ["chickpeas", "garbanzo beans"]
+  - key: dried-chiles
+    name: "dried chiles"
+    category: spices
+    unit: g
+    fdc: 168570
+    spellings: ["dried chili peppers", "guajillo chiles"]
   - key: dried-cranberries
     name: "dried cranberries"
     category: pantry
@@ -584,6 +806,12 @@ ingredients:
     unit: g
     fdc: 173744
     spellings: ["kidney beans", "red kidney beans"]
+  - key: dried-marjoram
+    name: "dried marjoram"
+    category: spices
+    unit: g
+    fdc: 170928
+    spellings: ["marjoram"]
   - key: dried-oregano
     name: "dried oregano"
     category: spices
@@ -605,6 +833,12 @@ ingredients:
     category: spices
     unit: g
     fdc: 171333
+  - key: dried-tarragon
+    name: "dried tarragon"
+    category: spices
+    unit: g
+    fdc: 170937
+    spellings: ["tarragon"]
   - key: dried-thyme
     name: "dried thyme"
     category: spices
@@ -616,6 +850,22 @@ ingredients:
     unit: g
     fdc: 2644281
     spellings: ["cannellini beans", "white beans", "navy beans", "great northern beans"]
+  - key: duck
+    name: "duck"
+    category: meat
+    unit: g
+    fdc: 172410
+    spellings: ["duck breast"]
+  - key: duck-eggs
+    name: "duck eggs"
+    category: dairy
+    unit: each
+    fdc: 172189
+  - key: dulce-de-leche
+    name: "dulce de leche"
+    category: pantry
+    unit: g
+    fdc: 173461
   - key: egg
     name: "egg"
     category: dairy
@@ -647,17 +897,35 @@ ingredients:
     category: pantry
     unit: ml
     fdc: 174074
+  - key: endive
+    name: "endive"
+    category: produce
+    unit: g
+    fdc: 168412
+    spellings: ["belgian endive"]
   - key: english-muffins
     name: "English muffins"
     proper_noun: true
     category: bakery
     unit: each
     fdc: 174994
+  - key: enoki-mushrooms
+    name: "enoki mushrooms"
+    category: produce
+    unit: g
+    fdc: 169382
+    spellings: ["enoki"]
   - key: evaporated-milk
     name: "evaporated milk"
     category: pantry
     unit: ml
     fdc: 171276
+  - key: extra-virgin-olive-oil
+    name: "extra virgin olive oil"
+    category: pantry
+    unit: ml
+    fdc: 748608
+    spellings: ["evoo"]
   - key: fennel
     name: "fennel"
     category: produce
@@ -682,11 +950,27 @@ ingredients:
     unit: ml
     fdc: 174531
     spellings: ["nam pla", "nuoc mam"]
+  - key: flank-steak
+    name: "flank steak"
+    category: meat
+    unit: g
+    fdc: 169564
+  - key: flaxseed
+    name: "flaxseed"
+    category: pantry
+    unit: g
+    fdc: 169414
+    spellings: ["flax seeds", "ground flaxseed"]
   - key: flour-tortilla
     name: "flour tortilla"
     category: bakery
     unit: each
     fdc: 175037
+  - key: fontina
+    name: "fontina"
+    category: dairy
+    unit: g
+    fdc: 170843
   - key: french-bread
     name: "French bread"
     proper_noun: true
@@ -706,12 +990,28 @@ ingredients:
     unit: g
     fdc: 173475
     spellings: ["mint", "spearmint"]
+  - key: fresh-oregano
+    name: "fresh oregano"
+    category: produce
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-rosemary
     name: "fresh rosemary"
     category: produce
     unit: g
     fdc: 173473
     spellings: ["rosemary"]
+  - key: fresh-sage
+    name: "fresh sage"
+    category: produce
+    unit: g
+    spellings: ["sage"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: fresh-tarragon
+    name: "fresh tarragon"
+    category: produce
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-thyme
     name: "fresh thyme"
     category: produce
@@ -739,6 +1039,12 @@ ingredients:
     category: spices
     unit: g
     fdc: 171325
+  - key: ghee
+    name: "ghee"
+    category: dairy
+    unit: g
+    fdc: 173412
+    spellings: ["clarified butter", "butter oil"]
   - key: gin
     name: "gin"
     category: beverages
@@ -750,12 +1056,28 @@ ingredients:
     category: produce
     unit: g
     fdc: 169231
+  - key: glass-noodles
+    name: "glass noodles"
+    category: pantry
+    unit: g
+    fdc: 174258
+    spellings: ["cellophane noodles", "bean thread noodles"]
   - key: goat-cheese
     name: "goat cheese"
     category: dairy
     unit: g
     fdc: 173435
     spellings: ["chevre", "chèvre"]
+  - key: goat-milk
+    name: "goat milk"
+    category: dairy
+    unit: ml
+    fdc: 171278
+  - key: gouda
+    name: "gouda"
+    category: dairy
+    unit: g
+    fdc: 171241
   - key: graham-crackers
     name: "graham crackers"
     category: pantry
@@ -858,6 +1180,12 @@ ingredients:
     category: meat
     unit: g
     fdc: 174370
+  - key: ground-mace
+    name: "ground mace"
+    category: spices
+    unit: g
+    fdc: 170927
+    spellings: ["mace"]
   - key: ground-mustard
     name: "ground mustard"
     category: spices
@@ -898,6 +1226,11 @@ ingredients:
     unit: g
     fdc: 171242
     spellings: ["gruyere cheese"]
+  - key: guava
+    name: "guava"
+    category: produce
+    unit: g
+    fdc: 173044
   - key: habanero
     name: "habanero"
     category: produce
@@ -926,12 +1259,22 @@ ingredients:
     unit: each
     fdc: 172796
     spellings: ["hot dog buns", "buns"]
+  - key: havarti
+    name: "havarti"
+    category: dairy
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hazelnuts
     name: "hazelnuts"
     category: pantry
     unit: g
     fdc: 170581
     spellings: ["filberts"]
+  - key: hearts-of-palm
+    name: "hearts of palm"
+    category: pantry
+    unit: g
+    fdc: 168569
   - key: heavy-cream
     name: "heavy cream"
     category: dairy
@@ -944,6 +1287,11 @@ ingredients:
     unit: ml
     fdc: 172886
     spellings: ["hoisin"]
+  - key: hominy
+    name: "hominy"
+    category: pantry
+    unit: g
+    fdc: 169701
   - key: honey
     name: "honey"
     category: pantry
@@ -962,6 +1310,11 @@ ingredients:
     fdc: 174528
     spellings: ["pepper sauce"]
     note: "The only plain pepper-sauce record is brand-named; the brand belongs on products."
+  - key: hummus
+    name: "hummus"
+    category: pantry
+    unit: g
+    fdc: 174289
   - key: iceberg-lettuce
     name: "iceberg lettuce"
     category: produce
@@ -1007,12 +1360,33 @@ ingredients:
     unit: g
     fdc: 168556
     spellings: ["catsup"]
+  - key: kimchi
+    name: "kimchi"
+    category: pantry
+    unit: g
+    fdc: 170392
   - key: kiwi
     name: "kiwi"
     category: produce
     unit: g
     fdc: 168153
     spellings: ["kiwifruit"]
+  - key: kohlrabi
+    name: "kohlrabi"
+    category: produce
+    unit: g
+    fdc: 168424
+  - key: kumquat
+    name: "kumquat"
+    category: produce
+    unit: g
+    fdc: 168154
+  - key: lamb-chops
+    name: "lamb chops"
+    category: meat
+    unit: g
+    fdc: 172551
+    spellings: ["lamb loin chops"]
   - key: lard
     name: "lard"
     category: pantry
@@ -1023,6 +1397,11 @@ ingredients:
     category: produce
     unit: g
     fdc: 169246
+  - key: leg-of-lamb
+    name: "leg of lamb"
+    category: meat
+    unit: g
+    fdc: 174372
   - key: lemon
     name: "lemon"
     category: produce
@@ -1032,6 +1411,12 @@ ingredients:
       - {label: "tbsp juice", qty: "0.33"}
       - {label: "tsp zest", qty: "0.33"}
     note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"). The measures below are household estimates to confirm."
+  - key: lemongrass
+    name: "lemongrass"
+    category: produce
+    unit: g
+    fdc: 168573
+    spellings: ["lemon grass"]
   - key: lentils
     name: "lentils"
     category: pantry
@@ -1060,17 +1445,33 @@ ingredients:
     category: produce
     unit: ml
     fdc: 168156
+  - key: lobster
+    name: "lobster"
+    category: seafood
+    unit: g
+    fdc: 174208
   - key: long-grain-white-rice
     name: "long-grain white rice"
     category: pantry
     unit: g
     fdc: 168877
     spellings: ["white rice"]
+  - key: lychee
+    name: "lychee"
+    category: produce
+    unit: g
+    fdc: 169086
+    spellings: ["litchi"]
   - key: macadamia-nuts
     name: "macadamia nuts"
     category: pantry
     unit: g
     fdc: 170178
+  - key: mackerel
+    name: "mackerel"
+    category: seafood
+    unit: g
+    fdc: 175119
   - key: mandarin-orange
     name: "mandarin orange"
     category: produce
@@ -1097,17 +1498,39 @@ ingredients:
     category: pantry
     unit: g
     fdc: 171192
+  - key: marshmallows
+    name: "marshmallows"
+    category: pantry
+    unit: g
+    fdc: 167995
   - key: masa-harina
     name: "masa harina"
     category: pantry
     unit: g
     fdc: 169694
     spellings: ["masa flour"]
+  - key: mascarpone
+    name: "mascarpone"
+    category: dairy
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mayonnaise
     name: "mayonnaise"
     category: pantry
     unit: g
     fdc: 171009
+  - key: medium-grain-rice
+    name: "medium-grain rice"
+    category: pantry
+    unit: g
+    fdc: 168879
+    spellings: ["arborio rice", "calrose rice"]
+  - key: milk-chocolate
+    name: "milk chocolate"
+    category: pantry
+    unit: g
+    fdc: 167587
+    spellings: ["milk chocolate chips"]
   - key: miso
     name: "miso"
     category: pantry
@@ -1133,6 +1556,11 @@ ingredients:
     fdc: 171244
     spellings: ["mozzarella cheese"]
     note: "Reference is low-moisture part-skim; fresh mozzarella is its own entry when wanted."
+  - key: muenster
+    name: "muenster"
+    category: dairy
+    unit: g
+    fdc: 171245
   - key: mushroom
     name: "mushroom"
     category: produce
@@ -1148,12 +1576,57 @@ ingredients:
     category: produce
     unit: g
     fdc: 169256
+  - key: napa-cabbage
+    name: "napa cabbage"
+    category: produce
+    unit: g
+    fdc: 169979
+    spellings: ["chinese cabbage"]
+  - key: natto
+    name: "natto"
+    category: pantry
+    unit: g
+    fdc: 172443
+  - key: nectarine
+    name: "nectarine"
+    category: produce
+    unit: g
+    fdc: 169914
   - key: nonfat-dry-milk
     name: "nonfat dry milk"
     category: pantry
     unit: g
     fdc: 170877
     spellings: ["powdered milk", "milk powder"]
+  - key: nori
+    name: "nori"
+    category: pantry
+    unit: g
+    fdc: 168458
+    spellings: ["seaweed sheets", "laver"]
+  - key: nutritional-yeast
+    name: "nutritional yeast"
+    category: pantry
+    unit: g
+    spellings: ["nooch"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: oat-milk
+    name: "oat milk"
+    category: beverages
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: oaxaca-cheese
+    name: "Oaxaca cheese"
+    proper_noun: true
+    category: dairy
+    unit: g
+    fdc: 2647441
+    spellings: ["quesillo"]
+  - key: octopus
+    name: "octopus"
+    category: seafood
+    unit: g
+    fdc: 174218
   - key: okra
     name: "okra"
     category: produce
@@ -1179,16 +1652,37 @@ ingredients:
     category: produce
     unit: g
     fdc: 169097
+  - key: oyster-mushrooms
+    name: "oyster mushrooms"
+    category: produce
+    unit: g
+    fdc: 168580
   - key: oyster-sauce
     name: "oyster sauce"
     category: pantry
     unit: ml
     fdc: 174529
+  - key: oysters
+    name: "oysters"
+    category: seafood
+    unit: g
+    fdc: 171978
   - key: pancetta
     name: "pancetta"
     category: meat
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: panko
+    name: "panko"
+    category: pantry
+    unit: g
+    spellings: ["panko breadcrumbs"]
+    note: "USDA has no panko record; plain breadcrumbs (174928) is the nearest."
+  - key: papaya
+    name: "papaya"
+    category: produce
+    unit: g
+    fdc: 169926
   - key: paprika
     name: "paprika"
     category: spices
@@ -1206,6 +1700,11 @@ ingredients:
     category: produce
     unit: g
     fdc: 170416
+  - key: passion-fruit
+    name: "passion fruit"
+    category: produce
+    unit: g
+    fdc: 169108
   - key: pasta
     name: "dried pasta"
     category: pantry
@@ -1244,11 +1743,28 @@ ingredients:
     unit: g
     fdc: 170284
     spellings: ["barley"]
+  - key: pearl-onions
+    name: "pearl onions"
+    category: produce
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pecans
     name: "pecans"
     category: pantry
     unit: g
     fdc: 170182
+  - key: pecorino-romano
+    name: "Pecorino Romano"
+    proper_noun: true
+    category: dairy
+    unit: g
+    fdc: 171249
+    spellings: ["pecorino", "romano cheese"]
+  - key: persimmon
+    name: "persimmon"
+    category: produce
+    unit: g
+    fdc: 169941
   - key: phyllo-dough
     name: "phyllo dough"
     category: bakery
@@ -1310,6 +1826,11 @@ ingredients:
     category: spices
     unit: g
     fdc: 171330
+  - key: pork-belly
+    name: "pork belly"
+    category: meat
+    unit: g
+    fdc: 167812
   - key: pork-chop
     name: "pork chop"
     category: meat
@@ -1321,6 +1842,12 @@ ingredients:
     category: meat
     unit: g
     fdc: 168230
+  - key: pork-ribs
+    name: "pork ribs"
+    category: meat
+    unit: g
+    fdc: 167853
+    spellings: ["spareribs", "spare ribs", "baby back ribs"]
   - key: pork-sausage
     name: "pork sausage"
     category: meat
@@ -1332,6 +1859,17 @@ ingredients:
     unit: g
     fdc: 167849
     spellings: ["boston butt", "pork butt"]
+  - key: pork-tenderloin
+    name: "pork tenderloin"
+    category: meat
+    unit: g
+    fdc: 168249
+  - key: portobello-mushrooms
+    name: "portobello mushrooms"
+    category: produce
+    unit: g
+    fdc: 169255
+    spellings: ["portobello", "portabella mushrooms"]
   - key: potato
     name: "potato"
     category: produce
@@ -1365,6 +1903,11 @@ ingredients:
     unit: g
     fdc: 170556
     spellings: ["pepitas"]
+  - key: quail-eggs
+    name: "quail eggs"
+    category: dairy
+    unit: each
+    fdc: 172191
   - key: queso-fresco
     name: "queso fresco"
     category: dairy
@@ -1375,6 +1918,11 @@ ingredients:
     category: pantry
     unit: g
     fdc: 168874
+  - key: radicchio
+    name: "radicchio"
+    category: produce
+    unit: g
+    fdc: 168564
   - key: radishes
     name: "radishes"
     category: produce
@@ -1413,6 +1961,17 @@ ingredients:
     unit: g
     fdc: 790577
     spellings: ["purple onion"]
+  - key: red-pepper-flakes
+    name: "red pepper flakes"
+    category: spices
+    unit: g
+    spellings: ["crushed red pepper", "chili flakes"]
+    note: "USDA has no record for pepper flakes; ground cayenne (170932) is the nearest."
+  - key: red-potato
+    name: "red potato"
+    category: produce
+    unit: g
+    fdc: 2346402
   - key: red-wine
     name: "red wine"
     category: beverages
@@ -1428,6 +1987,12 @@ ingredients:
     category: pantry
     unit: g
     fdc: 172438
+  - key: ribeye-steak
+    name: "ribeye steak"
+    category: meat
+    unit: g
+    fdc: 173402
+    spellings: ["rib eye", "ribeye"]
   - key: rice-flour
     name: "rice flour"
     category: pantry
@@ -1438,6 +2003,12 @@ ingredients:
     category: pantry
     unit: g
     fdc: 169742
+  - key: rice-paper
+    name: "rice paper"
+    category: pantry
+    unit: g
+    spellings: ["spring roll wrappers"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: rice-vinegar
     name: "rice vinegar"
     category: pantry
@@ -1467,11 +2038,27 @@ ingredients:
     category: beverages
     unit: ml
     fdc: 174817
+  - key: russet-potato
+    name: "russet potato"
+    category: produce
+    unit: g
+    fdc: 2346401
+    spellings: ["idaho potato", "baking potato"]
   - key: rye-bread
     name: "rye bread"
     category: bakery
     unit: g
     fdc: 172684
+  - key: safflower-oil
+    name: "safflower oil"
+    category: pantry
+    unit: ml
+    fdc: 171027
+  - key: saffron
+    name: "saffron"
+    category: spices
+    unit: g
+    fdc: 170934
   - key: salmon
     name: "salmon"
     category: seafood
@@ -1482,6 +2069,12 @@ ingredients:
     category: pantry
     unit: g
     fdc: 174524
+  - key: salsa-verde
+    name: "salsa verde"
+    category: pantry
+    unit: g
+    fdc: 171824
+    spellings: ["green salsa"]
   - key: salt
     name: "salt"
     category: spices
@@ -1506,11 +2099,21 @@ ingredients:
     unit: g
     fdc: 174924
     spellings: ["white bread"]
+  - key: sardines
+    name: "sardines"
+    category: seafood
+    unit: g
+    fdc: 175139
   - key: sauerkraut
     name: "sauerkraut"
     category: pantry
     unit: g
     fdc: 169279
+  - key: savoy-cabbage
+    name: "savoy cabbage"
+    category: produce
+    unit: g
+    fdc: 170388
   - key: scallion
     name: "scallion"
     category: produce
@@ -1527,12 +2130,24 @@ ingredients:
     category: seafood
     unit: g
     fdc: 175142
+  - key: self-rising-flour
+    name: "self-rising flour"
+    category: pantry
+    unit: g
+    fdc: 168895
+    spellings: ["self-raising flour"]
   - key: semisweet-chocolate
     name: "semisweet chocolate"
     category: pantry
     unit: g
     fdc: 167976
     spellings: ["chocolate chips", "semisweet chocolate chips"]
+  - key: semolina
+    name: "semolina"
+    category: pantry
+    unit: g
+    fdc: 169715
+    spellings: ["semolina flour"]
   - key: serrano
     name: "serrano"
     category: produce
@@ -1554,6 +2169,18 @@ ingredients:
     category: produce
     unit: g
     fdc: 170499
+  - key: shiitake-mushrooms
+    name: "shiitake mushrooms"
+    category: produce
+    unit: g
+    fdc: 169242
+    spellings: ["shiitake"]
+  - key: short-grain-rice
+    name: "short-grain rice"
+    category: pantry
+    unit: g
+    fdc: 168931
+    spellings: ["sushi rice"]
   - key: shortening
     name: "shortening"
     category: pantry
@@ -1583,22 +2210,56 @@ ingredients:
     category: dairy
     unit: ml
     fdc: 171269
+  - key: skirt-steak
+    name: "skirt steak"
+    category: meat
+    unit: g
+    fdc: 172160
+  - key: smoked-paprika
+    name: "smoked paprika"
+    category: spices
+    unit: g
+    spellings: ["pimenton"]
+    note: "USDA records only plain paprika (171329); smoked paprika is a separate thing to buy."
+  - key: smoked-salmon
+    name: "smoked salmon"
+    category: seafood
+    unit: g
+    fdc: 173687
+    spellings: ["lox"]
   - key: snow-peas
     name: "snow peas"
     category: produce
     unit: g
     fdc: 170010
     spellings: ["sugar snap peas", "snap peas"]
+  - key: soba-noodles
+    name: "soba noodles"
+    category: pantry
+    unit: g
+    fdc: 168906
+    spellings: ["soba"]
   - key: sour-cream
     name: "sour cream"
     category: dairy
     unit: g
     fdc: 171257
+  - key: soy-milk
+    name: "soy milk"
+    category: beverages
+    unit: ml
+    fdc: 1750337
+    spellings: ["soymilk"]
   - key: soy-sauce
     name: "soy sauce"
     category: pantry
     unit: ml
     fdc: 174277
+  - key: spelt-flour
+    name: "spelt flour"
+    category: pantry
+    unit: g
+    note: "USDA has spelt grain but no spelt flour record."
   - key: spinach
     name: "spinach"
     category: produce
@@ -1609,6 +2270,12 @@ ingredients:
     category: pantry
     unit: g
     fdc: 172428
+  - key: squid
+    name: "squid"
+    category: seafood
+    unit: g
+    fdc: 174223
+    spellings: ["calamari"]
   - key: sriracha
     name: "sriracha"
     category: pantry
@@ -1616,16 +2283,37 @@ ingredients:
     fdc: 171186
     spellings: ["sriracha sauce"]
     note: "Reference is the generic sriracha record; brands belong on products."
+  - key: star-anise
+    name: "star anise"
+    category: spices
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: star-fruit
+    name: "star fruit"
+    category: produce
+    unit: g
+    fdc: 171715
+    spellings: ["carambola"]
   - key: strawberries
     name: "strawberries"
     category: produce
     unit: g
     fdc: 167762
+  - key: sunflower-oil
+    name: "sunflower oil"
+    category: pantry
+    unit: ml
+    fdc: 1750349
   - key: sunflower-seeds
     name: "sunflower seeds"
     category: pantry
     unit: g
     fdc: 170562
+  - key: sweet-and-sour-sauce
+    name: "sweet and sour sauce"
+    category: pantry
+    unit: ml
+    fdc: 174066
   - key: sweet-potato
     name: "sweet potato"
     category: produce
@@ -1661,6 +2349,16 @@ ingredients:
     unit: g
     fdc: 169717
     spellings: ["tapioca"]
+  - key: tartar-sauce
+    name: "tartar sauce"
+    category: pantry
+    unit: g
+    fdc: 171826
+  - key: tempeh
+    name: "tempeh"
+    category: pantry
+    unit: g
+    fdc: 174272
   - key: tequila
     name: "tequila"
     category: beverages
@@ -1715,6 +2413,18 @@ ingredients:
     unit: g
     fdc: 173717
     spellings: ["rainbow trout"]
+  - key: tuna-steak
+    name: "tuna steak"
+    category: seafood
+    unit: g
+    fdc: 175159
+    spellings: ["ahi tuna", "yellowfin tuna"]
+  - key: turbinado-sugar
+    name: "turbinado sugar"
+    category: pantry
+    unit: g
+    fdc: 170674
+    spellings: ["raw sugar", "demerara sugar"]
   - key: turkey-breast
     name: "turkey breast"
     category: meat
@@ -1725,6 +2435,18 @@ ingredients:
     category: produce
     unit: g
     fdc: 170465
+  - key: udon-noodles
+    name: "udon noodles"
+    category: pantry
+    unit: g
+    spellings: ["udon"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: unflavored-gelatin
+    name: "unflavored gelatin"
+    category: pantry
+    unit: g
+    fdc: 169599
+    spellings: ["gelatin", "gelatine"]
   - key: unsalted-butter
     name: "unsalted butter"
     category: dairy
@@ -1751,11 +2473,26 @@ ingredients:
     category: beverages
     unit: ml
     fdc: 174818
+  - key: wakame
+    name: "wakame"
+    category: pantry
+    unit: g
+    fdc: 170496
+  - key: walnut-oil
+    name: "walnut oil"
+    category: pantry
+    unit: ml
+    fdc: 171030
   - key: walnuts
     name: "walnuts"
     category: pantry
     unit: g
     fdc: 170187
+  - key: watercress
+    name: "watercress"
+    category: produce
+    unit: g
+    fdc: 170068
   - key: watermelon
     name: "watermelon"
     category: produce
@@ -1767,6 +2504,23 @@ ingredients:
     unit: ml
     fdc: 174819
     spellings: ["whisky"]
+  - key: white-chocolate
+    name: "white chocolate"
+    category: pantry
+    unit: g
+    fdc: 167571
+    spellings: ["white chocolate chips"]
+  - key: white-onion
+    name: "white onion"
+    category: produce
+    unit: g
+    fdc: 1104962
+  - key: white-pepper
+    name: "white pepper"
+    category: spices
+    unit: g
+    fdc: 170933
+    spellings: ["ground white pepper"]
   - key: white-wine
     name: "white wine"
     category: beverages
@@ -1818,12 +2572,24 @@ ingredients:
     unit: g
     fdc: 172234
     spellings: ["prepared mustard"]
+  - key: yellow-onion
+    name: "yellow onion"
+    category: produce
+    unit: g
+    fdc: 790646
   - key: yellow-squash
     name: "yellow squash"
     category: produce
     unit: g
     fdc: 168464
     spellings: ["summer squash"]
+  - key: yukon-gold-potato
+    name: "Yukon Gold potato"
+    proper_noun: true
+    category: produce
+    unit: g
+    fdc: 2346403
+    spellings: ["gold potato"]
   - key: zucchini
     name: "zucchini"
     category: produce
