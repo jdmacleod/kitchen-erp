@@ -4865,6 +4865,270 @@
         "title": "MergeTarget",
         "type": "object"
       },
+      "NameProductRow": {
+        "additionalProperties": false,
+        "description": "A row a person confirmed: its product, and the group it identifies.",
+        "properties": {
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientCreate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          },
+          "raw_text_norm": {
+            "minLength": 1,
+            "title": "Raw Text Norm",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "raw_text_norm",
+          "name"
+        ],
+        "title": "NameProductRow",
+        "type": "object"
+      },
+      "NameProductsIn": {
+        "additionalProperties": false,
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/NameProductRow"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rows"
+        ],
+        "title": "NameProductsIn",
+        "type": "object"
+      },
+      "NameProductsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/NamedProduct"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results"
+        ],
+        "title": "NameProductsOut",
+        "type": "object"
+      },
+      "NamedProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RowError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "raw_text_norm": {
+            "title": "Raw Text Norm",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "raw_text_norm",
+          "product_id",
+          "applied",
+          "error"
+        ],
+        "title": "NamedProduct",
+        "type": "object"
+      },
+      "NamingList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NamingRow"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "NamingList",
+        "type": "object"
+      },
+      "NamingRow": {
+        "additionalProperties": false,
+        "description": "One waiting group with a suggested product (04, 2I).",
+        "properties": {
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          },
+          "raw_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Text"
+          },
+          "raw_text_norm": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Text Norm"
+          },
+          "vendor": {
+            "$ref": "#/components/schemas/VendorSummary"
+          }
+        },
+        "required": [
+          "vendor",
+          "raw_text_norm",
+          "line_count",
+          "raw_text",
+          "name",
+          "ingredient",
+          "pack_qty",
+          "pack_unit"
+        ],
+        "title": "NamingRow",
+        "type": "object"
+      },
       "NeedsBridgeItem": {
         "additionalProperties": false,
         "properties": {
@@ -7429,6 +7693,25 @@
           "name"
         ],
         "title": "RenameIn",
+        "type": "object"
+      },
+      "RowError": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "RowError",
         "type": "object"
       },
       "SearchHit": {
@@ -14381,6 +14664,70 @@
           }
         },
         "summary": "Apply To Identify",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/to-identify/name-products": {
+      "post": {
+        "description": "Create each confirmed row's product and identify its lines; each row stands alone.",
+        "operationId": "name_products_api_v1_to_identify_name_products_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameProductsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NameProductsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Name Products",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/to-identify/naming": {
+      "get": {
+        "description": "Every waiting group with a suggested product, for naming them in bulk (2I).",
+        "operationId": "naming_rows_api_v1_to_identify_naming_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamingList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Naming Rows",
         "tags": [
           "purchases"
         ]

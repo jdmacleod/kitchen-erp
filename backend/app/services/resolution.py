@@ -547,19 +547,8 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
     return [dict(r) for r in rows.mappings()]
 
 
-async def apply_to_identify(
-    db: AsyncSession,
-    user: AppUser,
-    *,
-    vendor_id: uuid.UUID,
-    raw_text_norm: str,
-    product_id: uuid.UUID | None,
-    ignore: bool,
-    line_ids: list[uuid.UUID] | None,
-) -> int:
-    """Identify one queued line and, unless narrowed, every other queued line with
-    the same vendor and normalized text. Each emits an observation dated to its purchase."""
-    stmt = (
+def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
+    return (
         select(PurchaseLine.id, PurchaseLine.purchase_id)
         .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
         .join(VendorLocation, VendorLocation.id == Purchase.vendor_location_id)
@@ -572,7 +561,28 @@ async def apply_to_identify(
             VendorLocation.vendor_id == vendor_id,
         )
     )
-    rows = (await db.execute(stmt)).all()
+
+
+async def queued_line_ids(
+    db: AsyncSession, vendor_id: uuid.UUID, raw_text_norm: str
+) -> list[uuid.UUID]:
+    """The group's lines still waiting in the to-identify queue."""
+    return [lid for lid, _ in (await db.execute(_queued(vendor_id, raw_text_norm))).all()]
+
+
+async def apply_to_identify(
+    db: AsyncSession,
+    user: AppUser,
+    *,
+    vendor_id: uuid.UUID,
+    raw_text_norm: str,
+    product_id: uuid.UUID | None,
+    ignore: bool,
+    line_ids: list[uuid.UUID] | None,
+) -> int:
+    """Identify one queued line and, unless narrowed, every other queued line with
+    the same vendor and normalized text. Each emits an observation dated to its purchase."""
+    rows = (await db.execute(_queued(vendor_id, raw_text_norm))).all()
     targets = [(lid, pid) for lid, pid in rows if line_ids is None or lid in set(line_ids)]
     for line_id, purchase_id in targets:
         await decide_line(db, user, purchase_id, line_id, product_id=product_id, ignore=ignore)
@@ -587,6 +597,7 @@ async def void_for_purchase(db: AsyncSession, purchase: Purchase) -> list[uuid.U
 __all__ = [
     "PriceObservationVoid",
     "apply_to_identify",
+    "queued_line_ids",
     "commit_purchase",
     "decide_line",
     "reopen_purchase",
