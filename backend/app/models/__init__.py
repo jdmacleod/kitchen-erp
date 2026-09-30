@@ -1,5 +1,12 @@
 from app.models.base import Base
-from app.models.catalog import Ingredient, IngredientMeasure, Product, RefUsdaPortion
+from app.models.catalog import (
+    Ingredient,
+    IngredientAlias,
+    IngredientMeasure,
+    IngredientRef,
+    Product,
+    RefUsdaPortion,
+)
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.purchases import (
     IngestJob,
@@ -29,6 +36,8 @@ __all__ = [
     "Base",
     "IdempotencyKey",
     "Ingredient",
+    "IngredientAlias",
+    "IngredientRef",
     "IngestJob",
     "IngestStageResult",
     "IngredientMeasure",

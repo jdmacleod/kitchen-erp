@@ -94,10 +94,11 @@ async def test_typeahead_under_100ms_with_5000_products(
     for food in foods:
         ingredient_ids.append(
             await owner_conn.fetchval(
-                "INSERT INTO ingredient (id, name, canonical_unit) "
-                "VALUES ($1, $2, 'g') RETURNING id",
+                "INSERT INTO ingredient (id, name, canonical_unit, slug) "
+                "VALUES ($1, $2, 'g', $3) RETURNING id",
                 new_id(),
                 food.title(),
+                f"local.{food.replace(' ', '-')}",
             )
         )
     rows = []

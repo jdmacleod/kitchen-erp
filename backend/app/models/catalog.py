@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -15,6 +17,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -46,6 +49,11 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
             name="ck_ingredient_density_pair",
         ),
         Index("uq_ingredient_name_lower", func.lower(name := "name"), unique=True),
+        CheckConstraint(
+            "reconcile_state IN ('unreviewed', 'linked', 'skipped', 'not_applicable')",
+            name="ck_ingredient_reconcile_state",
+        ),
+        UniqueConstraint("slug", name="uq_ingredient_slug"),
     )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -60,6 +68,16 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
     perishability: Mapped[str] = mapped_column(String(16), nullable=False, default="shelf_stable")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    # 1G: the standard key when created from, or linked to, the standard list;
+    # otherwise "local.<name>", assigned on flush (models/keys.py).
+    slug: Mapped[str] = mapped_column(String(120), nullable=False)
+    reconcile_state: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="not_applicable", index=True
+    )
+    usda_reviewed_fdc_id: Mapped[int | None] = mapped_column(Integer)
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ingredient.id")
+    )
 
     measures: Mapped[list[IngredientMeasure]] = relationship(
         back_populates="ingredient",
@@ -90,6 +108,76 @@ class IngredientMeasure(UUIDPrimaryKey, Timestamped, Base):
     confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="measures")
+
+
+ALIAS_KINDS = ("synonym", "inflection", "legacy")
+ALIAS_SOURCES = ("standard", "generated", "rename", "merge", "manual")
+
+
+class IngredientAlias(UUIDPrimaryKey, Timestamped, Base):
+    """Another spelling of an ingredient (1G). The canonical name is never a row here."""
+
+    __tablename__ = "ingredient_alias"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('synonym', 'inflection', 'legacy')", name="ck_ingredient_alias_kind"
+        ),
+        CheckConstraint(
+            "source IN ('standard', 'generated', 'rename', 'merge', 'manual')",
+            name="ck_ingredient_alias_source",
+        ),
+        UniqueConstraint("name_norm", name="uq_ingredient_alias_name_norm"),
+        Index(
+            "ix_ingredient_alias_name_norm_trgm",
+            "name_norm",
+            postgresql_using="gin",
+            postgresql_ops={"name_norm": "gin_trgm_ops"},
+        ),
+    )
+
+    name_norm: Mapped[str] = mapped_column(Text, nullable=False)
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingredient.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    confirmed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class IngredientRef(UUIDPrimaryKey, Timestamped, Base):
+    """An external identifier for an ingredient; only USDA FoodData Central (``fdc``) in 1G."""
+
+    __tablename__ = "ingredient_ref"
+    __table_args__ = (
+        CheckConstraint("system IN ('fdc')", name="ck_ingredient_ref_system"),
+        CheckConstraint(
+            "system <> 'fdc' OR external_id ~ '^[0-9]+$'", name="ck_ingredient_ref_fdc_digits"
+        ),
+        UniqueConstraint(
+            "system", "external_id", "ingredient_id", name="uq_ingredient_ref_system_external"
+        ),
+        Index(
+            "uq_ingredient_ref_one_preferred",
+            "ingredient_id",
+            "system",
+            unique=True,
+            postgresql_where="is_preferred",
+        ),
+    )
+
+    ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingredient.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    system: Mapped[str] = mapped_column(String(16), nullable=False)
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    is_preferred: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class Product(UUIDPrimaryKey, Timestamped, Base):

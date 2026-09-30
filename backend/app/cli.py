@@ -267,6 +267,31 @@ def import_usda_portions(path: Path = PATH_OPTION) -> None:
     asyncio.run(_run())
 
 
+ingredients_cli = typer.Typer(help="The ingredient vocabulary (1G).", no_args_is_help=True)
+cli.add_typer(ingredients_cli, name="ingredients")
+
+
+@ingredients_cli.command("check")
+def ingredients_check() -> None:
+    """List what the vocabulary lacks: skipped plurals and missing USDA references."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.spellings import vocabulary_report
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            report = await vocabulary_report(db)
+        await dispose_engine()
+        skipped = report.skipped_plurals
+        typer.echo(f"Plurals skipped because another ingredient has them: {len(skipped)}")
+        for s in skipped:
+            typer.echo(f"  {s.ingredient}: “{s.plural}” belongs to {s.held_by}")
+        typer.echo(f"Ingredients without a USDA reference: {len(report.without_reference)}")
+        for name in report.without_reference:
+            typer.echo(f"  {name}")
+
+    asyncio.run(_run())
+
+
 osm_cli = typer.Typer(help="OpenStreetMap links (needs ENABLE_OVERPASS).", no_args_is_help=True)
 cli.add_typer(osm_cli, name="osm")
 

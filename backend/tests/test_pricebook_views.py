@@ -224,10 +224,11 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
         )
     ingredients = [
         await owner_conn.fetchval(
-            "INSERT INTO ingredient (id, name, canonical_unit) VALUES ($1, $2, 'each') "
+            "INSERT INTO ingredient (id, name, canonical_unit, slug) VALUES ($1, $2, 'each', $3) "
             "RETURNING id",
             new_id(),
             f"Perf ingredient {k}",
+            f"local.perf-ingredient-{k}",
         )
         for k in range(20)
     ]
