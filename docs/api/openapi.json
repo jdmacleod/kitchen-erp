@@ -1597,7 +1597,9 @@
               "receipt_failed",
               "identify",
               "bridge",
-              "vendor_suggestions"
+              "vendor_suggestions",
+              "link",
+              "usda"
             ],
             "title": "Kind",
             "type": "string"
@@ -3798,6 +3800,281 @@
         "title": "LinkCandidateOut",
         "type": "object"
       },
+      "LinkIn": {
+        "additionalProperties": false,
+        "properties": {
+          "standard_key": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Standard Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "standard_key"
+        ],
+        "title": "LinkIn",
+        "type": "object"
+      },
+      "LinkOther": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "title": "Products",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "canonical_unit",
+          "products"
+        ],
+        "title": "LinkOther",
+        "type": "object"
+      },
+      "LinkPageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/LinkRowOut"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "to_review": {
+            "items": {
+              "$ref": "#/components/schemas/LinkRowOut"
+            },
+            "title": "To Review",
+            "type": "array"
+          }
+        },
+        "required": [
+          "to_review",
+          "skipped"
+        ],
+        "title": "LinkPageOut",
+        "type": "object"
+      },
+      "LinkRowOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
+          "conflict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkOther"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "title": "Products",
+            "type": "integer"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "category",
+          "id",
+          "name",
+          "canonical_unit",
+          "products",
+          "suggestion",
+          "conflict",
+          "category_key"
+        ],
+        "title": "LinkRowOut",
+        "type": "object"
+      },
+      "LinkSuggestion": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
+          "fdc_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Id"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "usda_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usda Description"
+          }
+        },
+        "required": [
+          "category",
+          "key",
+          "name",
+          "canonical_unit",
+          "category_key"
+        ],
+        "title": "LinkSuggestion",
+        "type": "object"
+      },
+      "LinkSummaryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "to_review": {
+            "title": "To Review",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "to_review",
+          "skipped"
+        ],
+        "title": "LinkSummaryOut",
+        "type": "object"
+      },
       "LinkedLocationRef": {
         "additionalProperties": false,
         "properties": {
@@ -4325,6 +4602,197 @@
           }
         },
         "title": "MeasureUpdate",
+        "type": "object"
+      },
+      "MergeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "copy_measures": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Copy Measures",
+            "type": "array"
+          },
+          "loser_id": {
+            "format": "uuid",
+            "title": "Loser Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "standard_key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standard Key"
+          },
+          "survivor_id": {
+            "format": "uuid",
+            "title": "Survivor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "survivor_id",
+          "loser_id"
+        ],
+        "title": "MergeIn",
+        "type": "object"
+      },
+      "MergeMeasureOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_qty": {
+            "title": "Canonical Qty",
+            "type": "string"
+          },
+          "copyable": {
+            "title": "Copyable",
+            "type": "boolean"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "canonical_qty",
+          "copyable",
+          "suggested"
+        ],
+        "title": "MergeMeasureOut",
+        "type": "object"
+      },
+      "MergeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "loser_id": {
+            "format": "uuid",
+            "title": "Loser Id",
+            "type": "string"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/MergeMeasureOut"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "prices_needing_bridge": {
+            "title": "Prices Needing Bridge",
+            "type": "integer"
+          },
+          "products_moving": {
+            "title": "Products Moving",
+            "type": "integer"
+          },
+          "survivor_id": {
+            "format": "uuid",
+            "title": "Survivor Id",
+            "type": "string"
+          },
+          "target_name": {
+            "title": "Target Name",
+            "type": "string"
+          },
+          "unit_from": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Unit From",
+            "type": "string"
+          },
+          "unit_to": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Unit To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "survivor_id",
+          "loser_id",
+          "target_name",
+          "products_moving",
+          "unit_from",
+          "unit_to",
+          "prices_needing_bridge",
+          "measures"
+        ],
+        "title": "MergeOut",
+        "type": "object"
+      },
+      "MergeTarget": {
+        "additionalProperties": false,
+        "properties": {
+          "loser_id": {
+            "format": "uuid",
+            "title": "Loser Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "standard_key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standard Key"
+          },
+          "survivor_id": {
+            "format": "uuid",
+            "title": "Survivor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "survivor_id",
+          "loser_id"
+        ],
+        "title": "MergeTarget",
         "type": "object"
       },
       "NeedsBridgeItem": {
@@ -6877,6 +7345,22 @@
         "title": "RemovedOut",
         "type": "object"
       },
+      "RenameIn": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "RenameIn",
+        "type": "object"
+      },
       "SearchHit": {
         "additionalProperties": false,
         "properties": {
@@ -7148,6 +7632,99 @@
           "created_at"
         ],
         "title": "StageResultOut",
+        "type": "object"
+      },
+      "StandardEntryList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StandardEntryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "StandardEntryList",
+        "type": "object"
+      },
+      "StandardEntryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
+          "fdc_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Id"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "key",
+          "name",
+          "canonical_unit",
+          "category_key"
+        ],
+        "title": "StandardEntryOut",
         "type": "object"
       },
       "StoreCodeOfferOut": {
@@ -10202,6 +10779,131 @@
         ]
       }
     },
+    "/api/v1/ingredients/link": {
+      "get": {
+        "operationId": "link_page_api_v1_ingredients_link_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Link Page",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/link/summary": {
+      "get": {
+        "operationId": "link_summary_api_v1_ingredients_link_summary_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Link Summary",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/merge": {
+      "post": {
+        "operationId": "merge_api_v1_ingredients_merge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/merge/preview": {
+      "post": {
+        "description": "What merging would do; nothing is written.",
+        "operationId": "merge_preview_api_v1_ingredients_merge_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeTarget"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MergeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Preview",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
     "/api/v1/ingredients/search": {
       "get": {
         "description": "Ingredients by name or other spelling, best first; standard names on request (1G).",
@@ -10545,6 +11247,60 @@
         ]
       }
     },
+    "/api/v1/ingredients/{ingredient_id}/link": {
+      "post": {
+        "description": "Take a standard name. 409 merge_needed when another ingredient has it.",
+        "operationId": "link_api_v1_ingredients__ingredient_id__link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Link",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
     "/api/v1/ingredients/{ingredient_id}/measures": {
       "post": {
         "operationId": "add_measure_api_v1_ingredients__ingredient_id__measures_post",
@@ -10731,6 +11487,146 @@
         "summary": "Ingredient Price History",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/rename": {
+      "post": {
+        "description": "Take a typed name. 409 merge_needed when another ingredient has it.",
+        "operationId": "rename_api_v1_ingredients__ingredient_id__rename_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rename",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/reopen": {
+      "post": {
+        "operationId": "reopen_api_v1_ingredients__ingredient_id__reopen_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reopen",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/skip": {
+      "post": {
+        "operationId": "skip_api_v1_ingredients__ingredient_id__skip_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip",
+        "tags": [
+          "ingredient vocabulary"
         ]
       }
     },
@@ -13032,6 +13928,63 @@
         "summary": "Search",
         "tags": [
           "search"
+        ]
+      }
+    },
+    "/api/v1/standard-ingredients": {
+      "get": {
+        "description": "The standard list, filtered by name or spelling; whether taken or not.",
+        "operationId": "standard_ingredients_api_v1_standard_ingredients_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardEntryList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Standard Ingredients",
+        "tags": [
+          "ingredient vocabulary"
         ]
       }
     },

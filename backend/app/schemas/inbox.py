@@ -5,7 +5,9 @@ from typing import Literal
 
 from app.schemas.base import ApiModel
 
-InboxKind = Literal["receipt", "receipt_failed", "identify", "bridge", "vendor_suggestions"]
+InboxKind = Literal[
+    "receipt", "receipt_failed", "identify", "bridge", "vendor_suggestions", "link", "usda"
+]
 
 
 class InboxItem(ApiModel):

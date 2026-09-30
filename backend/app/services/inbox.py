@@ -11,6 +11,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     identify         resolution.to_identify (committed, unmatched)  one aggregate row
     bridge           pricebook.needs_bridge (failed normalization)  product
     vendor_suggest.. vendor_suggestion awaiting a decision (1F)     one aggregate row
+    link             ingredients still unreviewed against the       one aggregate row
+                     standard list (1G)
 
 Receipts still being read are not items: they come back as ``reading`` so Home can
 show one line above the list.
@@ -28,11 +30,12 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import pricebook, resolution, vendor_suggestions
 
@@ -229,6 +232,29 @@ async def _suggestions(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _link(db: AsyncSession) -> list[InboxItem]:
+    count, oldest = (
+        await db.execute(
+            select(func.count(), func.min(Ingredient.created_at)).where(
+                Ingredient.active, Ingredient.reconcile_state == "unreviewed"
+            )
+        )
+    ).one()
+    if not count or oldest is None:
+        return []
+    noun = "ingredient" if count == 1 else "ingredients"
+    return [
+        InboxItem(
+            kind="link",
+            title=f"{count} {noun} to link to the standard list",
+            detail="Give each its standard name so spellings and USDA data line up.",
+            action_label="Review",
+            action_route="/catalog/ingredients/link",
+            created_at=oldest,
+        )
+    ]
+
+
 async def _reading(db: AsyncSession) -> InboxReading:
     row = (await db.execute(_READING_SQL)).mappings().one()
     oldest, progress = row["oldest_at"], row["last_progress_at"]
@@ -252,6 +278,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("identify", _identify),
     ("bridge", _bridges),
     ("vendor_suggestions", _suggestions),
+    ("link", _link),
 ]
 
 

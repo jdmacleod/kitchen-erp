@@ -28,6 +28,7 @@ ingredients:
     category: pantry
     unit: g
     fdc: 168894
+    spellings: ["ap flour", "plain flour"]
   - key: almonds
     name: "almonds"
     category: pantry

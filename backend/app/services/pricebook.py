@@ -72,8 +72,9 @@ async def _norm_row(db: AsyncSession, observation: PriceObservation) -> PriceNor
     )
 
 
-async def normalize(db: AsyncSession, observation_ids: list[uuid.UUID]) -> int:
-    """Recompute price_norm for the given observations. Commits."""
+async def normalize_core(db: AsyncSession, observation_ids: list[uuid.UUID]) -> int:
+    """Recompute price_norm for the given observations. Flushes, never commits,
+    so a caller such as an ingredient merge can make it part of one transaction."""
     if not observation_ids:
         return 0
     await db.execute(delete(PriceNorm).where(PriceNorm.observation_id.in_(observation_ids)))
@@ -86,6 +87,13 @@ async def normalize(db: AsyncSession, observation_ids: list[uuid.UUID]) -> int:
     for observation in rows:
         db.add(await _norm_row(db, observation))
         count += 1
+    await db.flush()
+    return count
+
+
+async def normalize(db: AsyncSession, observation_ids: list[uuid.UUID]) -> int:
+    """Recompute price_norm for the given observations. Commits."""
+    count = await normalize_core(db, observation_ids)
     await db.commit()
     return count
 
@@ -108,7 +116,11 @@ async def _dependents(db: AsyncSession, where) -> list[uuid.UUID]:
 
 
 async def recompute_for_ingredient(
-    db: AsyncSession, ingredient_id: uuid.UUID, *, canonical_unit_changed: bool = False
+    db: AsyncSession,
+    ingredient_id: uuid.UUID,
+    *,
+    canonical_unit_changed: bool = False,
+    commit: bool = True,
 ) -> int:
     """After a density or named-measure change: every observation of the
     ingredient's products that crossed a bridge, failed to, or crossed a pack
@@ -117,7 +129,9 @@ async def recompute_for_ingredient(
 
     After a canonical-unit change nothing is left alone: an observation that
     needed no bridge in the old unit may need one in the new unit, and its
-    stored price is per the old unit."""
+    stored price is per the old unit.
+
+    With ``commit=False`` it only flushes (the merge's single commit, O2)."""
     product_ids = select(Product.id).where(Product.ingredient_id == ingredient_id)
     where = PriceObservation.product_id.in_(product_ids)
     if not canonical_unit_changed:
@@ -126,7 +140,8 @@ async def recompute_for_ingredient(
             | (PriceNorm.status != "ok")
             | (PriceNorm.bridge_kind != "none")
         )
-    return await normalize(db, await _dependents(db, where))
+    ids = await _dependents(db, where)
+    return await (normalize(db, ids) if commit else normalize_core(db, ids))
 
 
 async def recompute_for_product(db: AsyncSession, product_id: uuid.UUID) -> int:

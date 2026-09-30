@@ -31,8 +31,8 @@ export function jsonResponse(status: number, body?: unknown): Response {
   });
 }
 
-export function errorResponse(status: number, code: string, message: string): Response {
-  return jsonResponse(status, { error: { code, message } });
+export function errorResponse(status: number, code: string, message: string, details?: Record<string, unknown>): Response {
+  return jsonResponse(status, { error: details ? { code, message, details } : { code, message } });
 }
 
 export interface RecordedCall {

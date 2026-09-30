@@ -7,6 +7,7 @@ from app.api import (
     geo,
     health,
     inbox,
+    ingredient_link,
     purchases,
     receipts,
     search,
@@ -21,6 +22,7 @@ router.include_router(auth.router)
 router.include_router(users.router)
 router.include_router(api_tokens.router)
 router.include_router(units.router)
+router.include_router(ingredient_link.router)
 router.include_router(catalog.router)
 router.include_router(geo.router)
 router.include_router(purchases.router)
