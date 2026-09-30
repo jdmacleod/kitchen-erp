@@ -9,11 +9,11 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
-from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS
+from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS, prints_an_amount, quantity_only
 from app.ingest.lines import restored as restored_amount
 from app.models import AppUser, Product, PurchaseLine
 from app.models.geo import VendorLocation
-from app.schemas.purchases import LineAdd, LineEdit, PurchaseHeaderEdit
+from app.schemas.purchases import LineAdd, LineEdit, LineMerge, PurchaseHeaderEdit
 from app.services.normalize import normalize_receipt_text
 from app.services.purchases import (
     TOTAL_TOLERANCE,
@@ -222,6 +222,46 @@ async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, l
     # provenance; one that never did is deleted (#72).
     await remove_line(db, user, purchase, line)
     # A corrected line can settle (or raise) a mismatch with the printed total.
+    purchase.flags = _rechecked_total(purchase)
+    await db.commit()
+    return await get_purchase(db, purchase_id)
+
+
+async def merge_line(
+    db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineMerge
+):
+    """Join a line that is only a weight or count to the item it belongs to (#87).
+
+    The item takes the printed quantity and rate. It keeps its own amount unless
+    it prints none (a name row, "BANANAS", with the price on the weight row
+    beneath it), when it takes the weight row's. The weight row is then taken
+    off the purchase as Delete would take it, and whatever was attached to it
+    moves to the item.
+    """
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    _editable(purchase)
+    line = next((x for x in purchase.lines if x.id == line_id), None)
+    target = next((x for x in purchase.lines if x.id == payload.into_line_id), None)
+    if line is None or target is None:
+        raise ApiError(404, "not_found", "No such line on this purchase.")
+    if target is line:
+        raise ApiError(422, "self_merge", "A line cannot merge into itself.")
+    if target.line_kind != "item":
+        raise ApiError(422, "not_an_item", "A weight or count merges into an item line.")
+    printed = quantity_only(line.raw_text or "")
+    if printed is None:
+        raise ApiError(
+            422, "not_a_quantity", "Only a line that is just a weight or count can be merged."
+        )
+    target.qty, target.unit, target.unit_price = printed.qty, printed.unit, printed.rate
+    if printed.amount is not None and not prints_an_amount(target.raw_text or ""):
+        target.line_total = printed.amount.quantize(_FOUR)
+    # A person has now said where the quantity belongs.
+    target.flags = [f for f in target.flags if f not in QTY_FLAGS]
+    for other in purchase.lines:
+        if other.parent_line_id == line.id:
+            other.parent_line_id = target.id
+    await remove_line(db, user, purchase, line)
     purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)

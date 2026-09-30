@@ -3379,6 +3379,22 @@
         "title": "LineIn",
         "type": "object"
       },
+      "LineMerge": {
+        "additionalProperties": false,
+        "description": "Join a line that is only a weight or count to the item it belongs to (#87).",
+        "properties": {
+          "into_line_id": {
+            "format": "uuid",
+            "title": "Into Line Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "into_line_id"
+        ],
+        "title": "LineMerge",
+        "type": "object"
+      },
       "LineOut": {
         "additionalProperties": false,
         "properties": {
@@ -13651,6 +13667,69 @@
           }
         },
         "summary": "Edit Line",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/lines/{line_id}/merge": {
+      "post": {
+        "operationId": "merge_line_api_v1_purchases__purchase_id__lines__line_id__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "line_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineMerge"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Line",
         "tags": [
           "purchases"
         ]

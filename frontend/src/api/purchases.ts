@@ -483,6 +483,13 @@ export function useAddLine(purchaseId: string) {
   );
 }
 
+/** Join a line that is only a weight or count to the item it belongs to (#87). */
+export function useMergeLine(purchaseId: string) {
+  return usePurchaseMutation(purchaseId, ({ lineId, intoLineId }: { lineId: string; intoLineId: string }) =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/merge`, { method: "POST", body: { into_line_id: intoLineId } }),
+  );
+}
+
 export function useDeleteLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, (lineId: string) =>
     api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}`, { method: "DELETE" }),

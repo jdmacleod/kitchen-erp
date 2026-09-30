@@ -22,6 +22,7 @@ from app.schemas.purchases import (
     LineAdd,
     LineDecision,
     LineEdit,
+    LineMerge,
     LineOut,
     ManualPurchaseIn,
     NeedsBridgeItem,
@@ -413,6 +414,17 @@ async def delete_line(
     purchase_id: uuid.UUID, line_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> PurchaseOut:
     return await purchase_out(db, await review.delete_line(db, user, purchase_id, line_id))
+
+
+@router.post("/purchases/{purchase_id}/lines/{line_id}/merge", response_model=PurchaseOut)
+async def merge_line(
+    purchase_id: uuid.UUID,
+    line_id: uuid.UUID,
+    payload: LineMerge,
+    user: CurrentUser,
+    db: DbSession,
+) -> PurchaseOut:
+    return await purchase_out(db, await review.merge_line(db, user, purchase_id, line_id, payload))
 
 
 @router.post("/purchases/{purchase_id}/lines/{line_id}/resolve", response_model=PurchaseOut)
