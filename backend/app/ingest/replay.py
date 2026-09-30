@@ -1,9 +1,9 @@
 """Recorded model responses for deterministic, offline tests.
 
 :class:`RecordedTransport` stands in for the Ollama server. It reads the JSON
-schema title of each request (``ReceiptHeader``, ``ReceiptLines`` or
-``ProductRank``) to pick the stage (``header``, ``lines``, ``rank``) and answers
-from a fixture's ``llm_responses`` map. A value may be a single object or a list
+schema title of each request (``ReceiptHeader``, ``ReceiptLines``, ``ProductRank``
+or ``LineNaming``) to pick the stage (``header``, ``lines``, ``rank``, ``naming``)
+and answers from a fixture's ``llm_responses`` map. A value may be a single object or a list
 of objects consumed in order (the last one repeats), so a test can script
 "invalid, then valid". Strings are sent verbatim, which lets a fixture record
 malformed JSON.
@@ -17,7 +17,12 @@ from typing import Any
 
 import httpx
 
-STAGE_BY_SCHEMA_TITLE = {"ReceiptHeader": "header", "ReceiptLines": "lines", "ProductRank": "rank"}
+STAGE_BY_SCHEMA_TITLE = {
+    "ReceiptHeader": "header",
+    "ReceiptLines": "lines",
+    "ProductRank": "rank",
+    "LineNaming": "naming",
+}
 
 
 class RecordedTransport(httpx.AsyncBaseTransport):

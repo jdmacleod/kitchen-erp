@@ -21,6 +21,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     select,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
@@ -239,6 +240,44 @@ class ReceiptAlias(UUIDPrimaryKey, Timestamped, Base):
     )
     confirmed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class NamingSuggestion(UUIDPrimaryKey, Timestamped, Base):
+    """The model's suggested product for one waiting group (04, 2I; #88).
+
+    One row per vendor and wording, asked for from the naming pass and filled by
+    the worker. A suggestion only ever pre-fills a field a person then confirms.
+    """
+
+    __tablename__ = "naming_suggestion"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('pending', 'running', 'done', 'failed')", name="ck_naming_suggestion_status"
+        ),
+        CheckConstraint(
+            "ingredient_id IS NULL OR standard_key IS NULL",
+            name="ck_naming_suggestion_one_ingredient",
+        ),
+        UniqueConstraint("vendor_id", "raw_text_norm", name="uq_naming_suggestion_vendor_text"),
+        Index(
+            "ix_naming_suggestion_pending",
+            "created_at",
+            postgresql_where=text("status IN ('pending', 'running')"),
+        ),
+    )
+
+    vendor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendor.id", ondelete="CASCADE"), nullable=False
+    )
+    raw_text_norm: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    name: Mapped[str | None] = mapped_column(Text)
+    ingredient_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ingredient.id", ondelete="SET NULL")
+    )
+    standard_key: Mapped[str | None] = mapped_column(String(120))
+    error: Mapped[str | None] = mapped_column(String(64))
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class PriceObservation(UUIDPrimaryKey, Base):

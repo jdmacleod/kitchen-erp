@@ -10,19 +10,27 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import standard
+from app.core.config import get_settings
 from app.core.errors import ApiError
-from app.models import AppUser
+from app.core.logging import get_logger
+from app.ingest.errors import IngestError
+from app.ingest.llm import LlmClient, suggest_name
+from app.models import AppUser, NamingSuggestion
 from app.models.catalog import Ingredient
-from app.schemas.catalog import IngredientCreate, ProductCreate
+from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
 from app.services import catalog, resolution
 from app.units import UnitParseFailure, parse_unit
+
+log = get_logger(__name__)
 
 # "2KG", "12CT", "1.5L" in one token, or "16" then "OZ" in two.
 _JOINED = re.compile(r"(\d+(?:\.\d+)?)([A-Z]+)")
@@ -69,7 +77,9 @@ def name_from_words(words: list[str]) -> str:
 
 
 async def naming_rows(db: AsyncSession) -> list[dict]:
-    """One row per waiting group, with a suggested name, ingredient and pack."""
+    """One row per waiting group, with a suggested name, ingredient and pack, and
+    the model's suggestion when one was asked for."""
+    asked = await _model_suggestions(db)
     rows: list[dict] = []
     for group in await resolution.to_identify(db):
         norm = group["raw_text_norm"] or ""
@@ -85,9 +95,181 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
                 "ingredient": found[0] if found else None,
                 "pack_qty": pack.qty if pack else None,
                 "pack_unit": pack.unit if pack else None,
+                "model": asked.get((group["vendor_id"], norm)),
             }
         )
     return rows
+
+
+# --- the model's suggestions (N2, N3) ------------------------------------------------
+
+
+async def _suggested_ingredient(
+    db: AsyncSession, suggestion: NamingSuggestion
+) -> IngredientMatch | None:
+    if suggestion.ingredient_id is not None:
+        ingredient = await db.get(Ingredient, suggestion.ingredient_id)
+        if ingredient is None or not ingredient.active:
+            return None
+        return _match(ingredient)
+    if suggestion.standard_key is not None:
+        entry = standard.by_key().get(suggestion.standard_key)
+        if entry is None:
+            return None
+        # Created since it was suggested: offer the catalog ingredient instead.
+        taken = await db.scalar(select(Ingredient).where(Ingredient.slug == entry.key))
+        if taken is not None:
+            return _match(taken)
+        return IngredientMatch(
+            kind="standard",
+            key=entry.key,
+            name=entry.name,
+            canonical_unit=entry.unit,
+            category=entry.category,
+            exact=True,
+        )
+    return None
+
+
+def _match(ingredient: Ingredient) -> IngredientMatch:
+    return IngredientMatch(
+        kind="ingredient",
+        id=ingredient.id,
+        name=ingredient.name,
+        canonical_unit=ingredient.canonical_unit,
+        active=ingredient.active,
+        category=ingredient.category,
+        exact=True,
+    )
+
+
+async def _model_suggestions(db: AsyncSession) -> dict[tuple[uuid.UUID, str], dict]:
+    out: dict[tuple[uuid.UUID, str], dict] = {}
+    for s in (await db.execute(select(NamingSuggestion))).scalars():
+        out[(s.vendor_id, s.raw_text_norm)] = {
+            "status": "asking" if s.status in ("pending", "running") else s.status,
+            "name": s.name,
+            "ingredient": await _suggested_ingredient(db, s) if s.status == "done" else None,
+        }
+    return out
+
+
+async def request_suggestions(db: AsyncSession) -> int:
+    """Ask the model about every waiting group its wording couldn't name.
+
+    A group already asked about is asked again only if that failed; one waiting
+    for its answer, or answered, is left alone. Returns how many were queued.
+    """
+    queued = 0
+    for row in await naming_rows(db):
+        model = row["model"]
+        if row["ingredient"] is not None or not row["raw_text_norm"]:
+            continue
+        if model is not None and model["status"] != "failed":
+            continue
+        stmt = (
+            insert(NamingSuggestion)
+            .values(
+                id=uuid.uuid4(),
+                vendor_id=row["vendor"]["id"],
+                raw_text_norm=row["raw_text_norm"],
+                status="pending",
+            )
+            .on_conflict_do_update(
+                constraint="uq_naming_suggestion_vendor_text",
+                set_={
+                    "status": "pending",
+                    "name": None,
+                    "ingredient_id": None,
+                    "standard_key": None,
+                    "error": None,
+                    "locked_at": None,
+                    "updated_at": func.now(),
+                },
+            )
+        )
+        await db.execute(stmt)
+        queued += 1
+    await db.commit()
+    return queued
+
+
+async def _claim(db: AsyncSession) -> NamingSuggestion | None:
+    now = datetime.now(UTC)
+    stale = now - timedelta(seconds=get_settings().ingest_lock_timeout_seconds)
+    stmt = (
+        select(NamingSuggestion)
+        .where(
+            or_(
+                NamingSuggestion.status == "pending",
+                (NamingSuggestion.status == "running") & (NamingSuggestion.locked_at < stale),
+            )
+        )
+        .order_by(NamingSuggestion.created_at)
+        .limit(1)
+        .with_for_update(skip_locked=True)
+    )
+    suggestion = (await db.execute(stmt)).scalar_one_or_none()
+    if suggestion is None:
+        await db.rollback()
+        return None
+    suggestion.status = "running"
+    suggestion.locked_at = now
+    await db.commit()
+    return suggestion
+
+
+async def _known_ingredient(
+    db: AsyncSession, ingredient: str | None, product_name: str | None
+) -> IngredientMatch | None:
+    """The catalog or standard ingredient the model's answer names exactly, or None.
+
+    Its ingredient first, as a whole name or spelling; failing that, one named
+    inside its ingredient or product name ("Boneless chicken breast" names chicken
+    breast), as for a receipt line's own wording. A near miss is never taken.
+    """
+    if ingredient:
+        for match in await catalog.search_ingredients(
+            db, ingredient, include_standard=True, limit=5
+        ):
+            if match.exact:
+                return match
+    for text in (ingredient, product_name):
+        if text:
+            found = await catalog.ingredients_in_text(db, text, limit=1)
+            if found:
+                return found[0]
+    return None
+
+
+async def run_suggestion_once(db: AsyncSession, *, client: LlmClient | None = None) -> bool:
+    """Ask the model about one pending group. Returns False when none was waiting.
+
+    Its answer must validate as ``LineNaming``, and its ingredient counts only when
+    it is exactly the name or a spelling of a catalog ingredient or a standard-list
+    entry; anything else is dropped (non-negotiable 7). Nothing is created here.
+    """
+    suggestion = await _claim(db)
+    if suggestion is None:
+        return False
+    try:
+        answer = await suggest_name(suggestion.raw_text_norm, client=client)
+    except IngestError as exc:
+        suggestion.status, suggestion.error, suggestion.locked_at = "failed", exc.code, None
+        await db.commit()
+        log.info("naming suggestion failed", extra={"code": exc.code})
+        return True
+    # Sentence case like the wording's names; the model often answers in lowercase.
+    name = answer.product_name
+    suggestion.name = name[:1].upper() + name[1:] if name else None
+    match = await _known_ingredient(db, answer.ingredient, answer.product_name)
+    if match is not None and match.kind == "ingredient":
+        suggestion.ingredient_id = match.id
+    elif match is not None:
+        suggestion.standard_key = match.key
+    suggestion.status, suggestion.locked_at = "done", None
+    await db.commit()
+    return True
 
 
 async def _existing_ingredient(db: AsyncSession, spec: IngredientCreate) -> uuid.UUID | None:

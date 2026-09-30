@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { errorMessage } from "../../api/client";
 import { isPositiveDecimal } from "../../api/catalog";
-import { purchaseErrorMessage, useNameProducts, useNamingRows, type NameProductRow, type NamingRow } from "../../api/purchases";
+import { purchaseErrorMessage, useNameProducts, useNamingRows, useSuggestNames, type NameProductRow, type NamingRow } from "../../api/purchases";
 import { stripZeros } from "../../lib/decimal";
 import { choiceFromMatch, choiceInput, IngredientPicker, type IngredientChoice } from "../catalog/IngredientPicker";
 import { UnitSelect } from "../catalog/UnitSelect";
@@ -25,19 +25,31 @@ interface RowValue {
   packQty: string;
   packUnit: string;
   ticked: boolean;
+  /** Which of the fields shown came from the model. */
+  fromModel: { name: boolean; ingredient: boolean };
 }
 
 function rowKey(row: NamingRow): string {
   return `${row.vendor.id}:${row.raw_text_norm ?? ""}`;
 }
 
+/**
+ * A row as shown: what a person typed, else the model's answer for a field the
+ * wording couldn't fill well, else the wording's suggestion. The model never
+ * replaces a field a person edited (criterion 65).
+ */
 function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
+  const model = row.model?.status === "done" ? row.model : null;
+  const modelName = edit?.name === undefined && !!model?.name;
+  const modelIngredient = edit?.ingredient === undefined && !row.ingredient && !!model?.ingredient;
+  const ingredient = row.ingredient ?? (modelIngredient ? model!.ingredient : null);
   return {
-    name: edit?.name ?? row.name,
-    ingredient: edit?.ingredient !== undefined ? edit.ingredient : row.ingredient ? choiceFromMatch(row.ingredient) : null,
+    name: edit?.name ?? (modelName ? model!.name! : row.name),
+    ingredient: edit?.ingredient !== undefined ? edit.ingredient : ingredient ? choiceFromMatch(ingredient) : null,
     packQty: edit?.packQty ?? (row.pack_qty ? stripZeros(row.pack_qty, 0) : ""),
     packUnit: edit?.packUnit ?? row.pack_unit ?? "",
     ticked: edit?.ticked ?? false,
+    fromModel: { name: modelName, ingredient: modelIngredient },
   };
 }
 
@@ -60,6 +72,7 @@ export function NameProducts() {
   useWidePage();
   const naming = useNamingRows(true);
   const create = useNameProducts();
+  const suggest = useSuggestNames();
   const notice = useNotice();
   const [edits, setEdits] = useState<Record<string, RowEdit>>({});
   const [problems, setProblems] = useState<Record<string, string>>({});
@@ -127,11 +140,33 @@ export function NameProducts() {
   if (rows.length === 0) return <p className={`py-4 ${hintClass}`}>Every line has a product or is ignored.</p>;
 
   const failedCount = Object.keys(problems).length;
+  // Rows the wording couldn't name, and where the model stands on them (N2, N3).
+  const unnamed = rows.filter((r) => !r.ingredient);
+  const asking = rows.filter((r) => r.model?.status === "asking").length;
+  const modelFailed = unnamed.filter((r) => r.model?.status === "failed").length;
+  const askable = unnamed.filter((r) => !r.model || r.model.status === "failed").length;
   return (
     <div className="flex flex-col gap-4">
       <p className={hintClass}>
         Each row starts from the receipt's wording. Tick a row, or change anything in it, to include it; nothing is created until you press Create.
       </p>
+      {askable > 0 || asking > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          {askable > 0 && asking === 0 ? (
+            <Button variant="secondary" disabled={suggest.isPending} onClick={() => suggest.mutate()}>
+              {modelFailed > 0 && modelFailed === askable ? "Ask the model again" : "Suggest names with the model"}
+            </Button>
+          ) : null}
+          <span role="status" className={hintClass}>
+            {asking > 0
+              ? `Asking the model about ${asking} ${asking === 1 ? "line" : "lines"}… You can keep working; rows fill in as answers arrive.`
+              : modelFailed > 0
+                ? `The model couldn't answer for ${modelFailed} ${modelFailed === 1 ? "line" : "lines"}.`
+                : `The wording didn't name an ingredient for ${askable} ${askable === 1 ? "line" : "lines"}.`}
+          </span>
+        </div>
+      ) : null}
+      {suggest.error ? <Alert tone="error">{purchaseErrorMessage(suggest.error)}</Alert> : null}
       {create.error ? <Alert tone="error">{purchaseErrorMessage(create.error)}</Alert> : null}
       {failedCount > 0 ? (
         <Alert tone="error">
@@ -179,11 +214,18 @@ function NamingRowItem({ id, row, value, problem, busy, onChange }: { id: string
             disabled={busy}
             autoComplete="off"
             onChange={(e) => onChange({ name: e.target.value })}
+            aria-describedby={value.fromModel.name ? `${id}-name-model` : undefined}
             className={`min-h-11 min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 lg:min-h-10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`}
           />
+          {value.fromModel.name ? (
+            <p id={`${id}-name-model`} className={hintClass}>
+              Suggested by the model
+            </p>
+          ) : null}
         </div>
         <div className="min-w-0">
           <IngredientPicker id={`${id}-ingredient`} value={value.ingredient} onChange={(choice) => onChange({ ingredient: choice })} disabled={busy} />
+          {value.fromModel.ingredient ? <p className={`mt-1 ${hintClass}`}>Suggested by the model</p> : null}
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="flex min-w-0 flex-col gap-1">

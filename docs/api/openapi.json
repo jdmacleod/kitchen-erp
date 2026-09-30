@@ -4865,6 +4865,49 @@
         "title": "MergeTarget",
         "type": "object"
       },
+      "ModelNaming": {
+        "additionalProperties": false,
+        "description": "The model's suggestion for a row: asked for, answered, or failed (N2, N3).",
+        "properties": {
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "enum": [
+              "asking",
+              "done",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "name",
+          "ingredient"
+        ],
+        "title": "ModelNaming",
+        "type": "object"
+      },
       "NameProductRow": {
         "additionalProperties": false,
         "description": "A row a person confirmed: its product, and the group it identifies.",
@@ -5029,6 +5072,20 @@
         "title": "NamedProduct",
         "type": "object"
       },
+      "NamingAsked": {
+        "additionalProperties": false,
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued"
+        ],
+        "title": "NamingAsked",
+        "type": "object"
+      },
       "NamingList": {
         "additionalProperties": false,
         "properties": {
@@ -5063,6 +5120,16 @@
           "line_count": {
             "title": "Line Count",
             "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelNaming"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "name": {
             "title": "Name",
@@ -5124,7 +5191,8 @@
           "name",
           "ingredient",
           "pack_qty",
-          "pack_unit"
+          "pack_unit",
+          "model"
         ],
         "title": "NamingRow",
         "type": "object"
@@ -14728,6 +14796,28 @@
           }
         },
         "summary": "Naming Rows",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/to-identify/naming/suggest": {
+      "post": {
+        "description": "Ask the model about the rows the wording couldn't name; the worker answers (N3).",
+        "operationId": "suggest_names_api_v1_to_identify_naming_suggest_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamingAsked"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Suggest Names",
         "tags": [
           "purchases"
         ]

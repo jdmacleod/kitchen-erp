@@ -108,3 +108,30 @@ class ReceiptLines(ModelOutput):
         "order. Do not include headers, footers, subtotal, total, tender, change, "
         "loyalty summaries or blank lines.",
     )
+
+
+class LineNaming(ModelOutput):
+    """What the naming pass asks the model about one receipt line (04, 2I; #88)."""
+
+    product_name: str | None = Field(
+        default=None,
+        max_length=120,
+        description="A short product name a household would recognize: abbreviations "
+        "expanded, brand words kept, codes, prices and pack sizes dropped. Null when "
+        "the line can't be read.",
+    )
+    ingredient: str | None = Field(
+        default=None,
+        max_length=80,
+        description="The ingredient the product is, as specifically as a cook would buy "
+        "it, in a few lowercase words (for example 'chicken breast', 'bread flour'). "
+        "Null when unsure.",
+    )
+
+    @field_validator("product_name", "ingredient")
+    @classmethod
+    def _strip(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = " ".join(value.split())
+        return value or None
