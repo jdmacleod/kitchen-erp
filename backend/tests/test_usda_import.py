@@ -177,3 +177,28 @@ async def test_check_lists_references_absent_from_the_release(
     report = await vocabulary_report(db_session)
     assert report.usda_loaded
     assert report.absent_references == [("Dun onion", "424242")]
+
+
+async def test_check_lists_standard_references_absent_from_the_release(db_session, tmp_path: Path):
+    from app.catalog.standard import standard_list
+
+    fdc = tmp_path / RELEASE
+    write_usda_usage_fixture(fdc)
+    await import_usda(db_session, fdc)
+    report = await vocabulary_report(db_session)
+    wanted = [e for e in standard_list().ingredients if e.fdc is not None]
+    assert len(report.absent_standard) == len(wanted)  # the fixture has none of them
+
+
+async def test_candidates_list_raw_siblings_and_text_matches(db_session, tmp_path: Path):
+    from app.services.usda import candidates, uncooked_text
+
+    fdc = tmp_path / RELEASE
+    write_usda_usage_fixture(fdc)
+    await import_usda(db_session, fdc)
+    assert [f.fdc_id for f in await candidates(db_session, "2002")] == [2001]
+    assert [f.fdc_id for f in await candidates(db_session, "onions raw")][:2] == [2002, 2001]
+    assert await candidates(db_session, "999999") == []
+    assert uncooked_text("Beans, black, mature seeds, cooked, boiled, without salt") == (
+        "beans black mature seeds"
+    )

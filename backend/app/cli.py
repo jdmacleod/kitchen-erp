@@ -316,6 +316,30 @@ def ingredients_check() -> None:
         typer.echo(f"USDA references not in the loaded release: {len(absent)}")
         for name, fdc_id in absent:
             typer.echo(f"  {name}: {fdc_id}")
+        standard = report.absent_standard
+        typer.echo(f"Standard-list references not in the loaded release: {len(standard)}")
+        for key, fdc_id in standard:
+            typer.echo(f"  {key}: {fdc_id}")
+
+    asyncio.run(_run())
+
+
+@ingredients_cli.command("usda-candidates")
+def ingredients_usda_candidates(
+    query: str = typer.Argument(..., help="An FDC id (lists its raw or dry siblings) or text."),
+) -> None:
+    """List USDA foods to choose a reference from, most used by USDA's survey recipes first."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.usda import candidates
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            foods = await candidates(db, query)
+        await dispose_engine()
+        if not foods:
+            typer.echo("No candidates. Is USDA data loaded (kerp import usda)?")
+        for food in foods:
+            typer.echo(f"{food.fdc_id:>8}  {food.fndds_uses:>4} uses  {food.description}")
 
     asyncio.run(_run())
 

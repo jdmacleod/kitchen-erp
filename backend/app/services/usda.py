@@ -18,7 +18,7 @@ from datetime import date
 from decimal import ROUND_HALF_EVEN, Decimal, InvalidOperation
 from pathlib import Path
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.ids import new_id
@@ -440,3 +440,54 @@ async def suggest(db: AsyncSession, name: str, limit: int = 5) -> list[UsdaSugge
             )
         )
     return out
+
+
+_RAW_WORDS = ("raw", "dry", "dried", "uncooked", "unprepared")
+# Words that describe how a food was cooked, not what was bought.
+_COOKING = re.compile(
+    r"\b(?:cooked|boiled|roasted|broiled|braised|pan-fried|pan-browned|fried|drained|"
+    r"microwaved|steamed|baked|grilled|stewed|simmered|crumbles|rotisserie|bbq|"
+    r"without salt|with salt|heated)\b"
+)
+
+
+def uncooked_text(description: str) -> str:
+    """A description with its cooking words removed, to compare with raw records."""
+    text = _COOKING.sub(" ", description.lower())
+    return " ".join(p.strip() for p in text.split(",") if p.strip())
+
+
+async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcFood]:
+    """USDA foods a person might pick as an ingredient's reference.
+
+    ``query`` is an FDC id or text. For an id, the candidates are its raw or dry
+    siblings: Foundation and SR Legacy foods that share its first description
+    segment ("Beef, ground, …" → "beef") and say raw, dry or uncooked, ranked by
+    how closely they match its description with the cooking words removed. For
+    text, they are Foundation and SR Legacy foods resembling it, used ones
+    first. ``kerp ingredients usda-candidates`` prints them so a person can swap
+    a cooked reference for the record of what is bought (03, 1G).
+    """
+    core = FdcFood.data_type.in_(("foundation_food", "sr_legacy_food"))
+    lowered = func.lower(FdcFood.description)
+    if query.strip().isdigit():
+        food = await db.get(FdcFood, int(query))
+        if food is None:
+            return []
+        head = food.description.split(",", 1)[0].strip().lower()
+        target = uncooked_text(food.description)
+        raw = or_(*(lowered.contains(w) for w in _RAW_WORDS))
+        stmt = (
+            select(FdcFood)
+            .where(core, lowered.startswith(head), raw, FdcFood.fdc_id != food.fdc_id)
+            .order_by(func.similarity(lowered, target).desc(), FdcFood.fndds_uses.desc())
+        )
+    else:
+        q = query.strip().lower()
+        sim = func.similarity(lowered, q)
+        stmt = (
+            select(FdcFood)
+            .where(core, or_(lowered.op("%")(q), sim > 0.2))
+            .order_by((sim + func.least(func.ln(1 + FdcFood.fndds_uses), 6) / 30).desc())
+        )
+    return list((await db.execute(stmt.limit(limit))).scalars())
