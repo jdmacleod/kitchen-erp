@@ -12,6 +12,7 @@ import {
   type MergeTarget,
   type StandardEntry,
 } from "../../api/ingredientLink";
+import { useUsdaReview } from "../../api/usdaReview";
 import { CategoryChip } from "../../components/CategoryChip";
 import { Combobox } from "../../components/catalog/Combobox";
 import { useNotice } from "../../components/Notice";
@@ -32,6 +33,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 export function IngredientLinkPage() {
   usePageTitle("Link ingredients");
   const page = useLinkPage();
+  const usda = useUsdaReview();
   const notice = useNotice();
   const [announcement, setAnnouncement] = useState("");
   const [tally, setTally] = useState<Tally>({ linked: 0, renamed: 0, merged: 0, skipped: 0 });
@@ -66,7 +68,13 @@ export function IngredientLinkPage() {
         `${nextTally.merged} merged`,
         `${nextTally.skipped} skipped`,
       ].filter(Boolean);
-      notice.show({ tone: "success", message: `${reviewed} reviewed: ${parts.join(", ")}.` });
+      // DV5, DV7: point on to the USDA suggestions the links just made possible.
+      const next = usda.data?.groups.length ?? 0;
+      notice.show({
+        tone: "success",
+        message: `${reviewed} reviewed: ${parts.join(", ")}.`,
+        action: next > 0 ? { label: `Next: review USDA densities for ${plural(next, "ingredient")}`, to: "/catalog/bridges#usda" } : undefined,
+      });
     }
   };
 

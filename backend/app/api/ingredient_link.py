@@ -28,8 +28,12 @@ from app.schemas.ingredient_link import (
     RenameIn,
     StandardEntryList,
     StandardEntryOut,
+    UsdaDecisionIn,
+    UsdaDecisionOut,
+    UsdaReviewGroupOut,
+    UsdaReviewOut,
 )
-from app.services import catalog, ingredient_reconcile
+from app.services import catalog, ingredient_reconcile, usda_review
 
 router = APIRouter(tags=["ingredient vocabulary"])
 
@@ -138,3 +142,33 @@ async def skip(ingredient_id: uuid.UUID, db: DbSession, _: CurrentUser) -> Ingre
 async def reopen(ingredient_id: uuid.UUID, db: DbSession, _: CurrentUser) -> IngredientOut:
     await ingredient_reconcile.set_skipped(db, ingredient_id, False)
     return await catalog.get_ingredient(db, ingredient_id)
+
+
+@router.get("/usda/review", response_model=UsdaReviewOut)
+async def usda_review_list(db: DbSession, _: CurrentUser) -> UsdaReviewOut:
+    """Linked ingredients with USDA densities or measures to review (03, 1G; DV2)."""
+    found = await usda_review.review_list(db)
+    return UsdaReviewOut(
+        loaded=found.loaded,
+        release_date=found.release_date,
+        groups=[
+            UsdaReviewGroupOut(**{k: v for k, v in asdict(g).items() if k != "reconcile_state"})
+            for g in found.groups
+        ],
+    )
+
+
+@router.post("/usda/review/{ingredient_id}", response_model=UsdaDecisionOut)
+async def usda_review_decide(
+    ingredient_id: uuid.UUID, body: UsdaDecisionIn, db: DbSession, _: CurrentUser
+) -> UsdaDecisionOut:
+    """Accept chosen suggestions as unconfirmed, or skip them. 409 density_exists on a race."""
+    saved, _ingredient = await usda_review.decide(
+        db,
+        ingredient_id,
+        density_portion_id=body.density_portion_id,
+        measures=body.measures,
+        skip=body.skip,
+        replace_density=body.replace_density,
+    )
+    return UsdaDecisionOut(saved=saved, ingredient=await catalog.get_ingredient(db, ingredient_id))

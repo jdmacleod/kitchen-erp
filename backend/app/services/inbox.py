@@ -13,6 +13,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     vendor_suggest.. vendor_suggestion awaiting a decision (1F)     one aggregate row
     link             ingredients still unreviewed against the       one aggregate row
                      standard list (1G)
+    usda             usda_review.review_list, when linking is done  one aggregate row
+                     or a linked ingredient has suggestions (1G)
 
 Receipts still being read are not items: they come back as ``reading`` so Home can
 show one line above the list.
@@ -37,7 +39,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
-from app.services import pricebook, resolution, vendor_suggestions
+from app.services import pricebook, resolution, usda_review, vendor_suggestions
 
 log = get_logger(__name__)
 
@@ -255,6 +257,41 @@ async def _link(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _usda(db: AsyncSession) -> list[InboxItem]:
+    # DV7: once linking is done, or as soon as a linked ingredient has suggestions.
+    found = await usda_review.review_list(db)
+    if not found.loaded or not found.groups:
+        return []
+    unreviewed = (
+        await db.execute(
+            select(func.count()).where(
+                Ingredient.active, Ingredient.reconcile_state == "unreviewed"
+            )
+        )
+    ).scalar_one()
+    if unreviewed and not any(g.reconcile_state == "linked" for g in found.groups):
+        return []
+    oldest = (
+        await db.execute(
+            select(func.min(Ingredient.created_at)).where(
+                Ingredient.id.in_([g.ingredient_id for g in found.groups])
+            )
+        )
+    ).scalar_one()
+    count = len(found.groups)
+    noun = "ingredient has" if count == 1 else "ingredients have"
+    return [
+        InboxItem(
+            kind="usda",
+            title=f"{count} {noun} USDA densities to review",
+            detail="Suggestions from USDA, saved as unconfirmed until you check them.",
+            action_label="Review",
+            action_route="/catalog/bridges#usda",
+            created_at=oldest,
+        )
+    ]
+
+
 async def _reading(db: AsyncSession) -> InboxReading:
     row = (await db.execute(_READING_SQL)).mappings().one()
     oldest, progress = row["oldest_at"], row["last_progress_at"]
@@ -279,6 +316,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("bridge", _bridges),
     ("vendor_suggestions", _suggestions),
     ("link", _link),
+    ("usda", _usda),
 ]
 
 
