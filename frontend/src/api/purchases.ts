@@ -597,6 +597,8 @@ export interface NamingRow {
   ingredient: IngredientMatch | null;
   pack_qty: string | null;
   pack_unit: string | null;
+  /** The model's suggestion, once asked for (N2, N3). */
+  model: { status: "asking" | "done" | "failed"; name: string | null; ingredient: IngredientMatch | null } | null;
 }
 
 export type NameProductRow = {
@@ -621,6 +623,17 @@ export function useNamingRows(enabled: boolean) {
     queryFn: () => api<{ items: NamingRow[] }>("/to-identify/naming"),
     select: (data) => data.items,
     enabled,
+    // The worker answers one line at a time; look again while any is waiting.
+    refetchInterval: (query) => (query.state.data?.items.some((r) => r.model?.status === "asking") ? 3000 : false),
+  });
+}
+
+/** Ask the model about the rows the wording couldn't name (N3). */
+export function useSuggestNames() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ queued: number }>("/to-identify/naming/suggest", { method: "POST" }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: [...purchaseKeys.toIdentify, "naming"] }),
   });
 }
 

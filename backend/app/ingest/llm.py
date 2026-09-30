@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field, ValidationError, WithJsonSchema, create_m
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.ingest.errors import InvalidModelOutput, ModelTimeout, ModelUnavailable
+from app.ingest.schemas import LineNaming
 
 log = get_logger(__name__)
 
@@ -337,3 +338,26 @@ async def rank_products(
     if product_id is not None and product_id not in ids:
         product_id, confidence = None, None
     return {"product_id": product_id, "confidence": confidence}
+
+
+# --- naming a new product (04, 2I; #88) --------------------------------------------
+
+NAMING_TASK = (
+    "The receipt text below is one abbreviated line from a grocery receipt, with its "
+    "price removed. Say what product it most likely is, as a short name a household "
+    "would recognize, and the ingredient that product is, as specifically as a cook "
+    "would buy it: 'chicken breast' rather than 'chicken', 'whole milk' rather than "
+    "'milk', 'flour tortilla' rather than 'tortilla'. Expand abbreviations (BNLS is "
+    "boneless, FLR is flour, WHL is whole). Use null for anything you can't tell."
+)
+
+
+async def suggest_name(norm_text: str, *, client: LlmClient | None = None) -> LineNaming:
+    """Ask the model to name one receipt line's product and ingredient.
+
+    The answer is untrusted: it is only what validates as :class:`LineNaming`,
+    and the caller keeps the ingredient only if it names one that already exists
+    in the catalog or on the standard list. Raises like any extraction.
+    """
+    answer, _attempts = await (client or LlmClient()).extract(LineNaming, NAMING_TASK, norm_text)
+    return answer

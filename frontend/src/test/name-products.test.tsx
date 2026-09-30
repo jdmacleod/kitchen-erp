@@ -19,9 +19,9 @@ function group(norm: string, n: number): ToIdentifyGroup {
 }
 
 const rows: NamingRow[] = [
-  { vendor, raw_text_norm: "RVRBND BREAD FLR 2KG", line_count: 2, raw_text: "RVRBND BREAD FLR 2KG 6.50", name: "Rvrbnd bread flr", ingredient: { kind: "ingredient", id: flour.id, key: null, name: flour.name, canonical_unit: flour.canonical_unit, active: true, category: null, category_key: null, matched_spelling: null, exact: true }, pack_qty: "2", pack_unit: "kg" },
-  { vendor, raw_text_norm: "BNLS CHKN BRST", line_count: 1, raw_text: "BNLS CHKN BRST 8.40", name: "Bnls chkn brst", ingredient: null, pack_qty: null, pack_unit: null },
-  { vendor, raw_text_norm: "OAT MILK", line_count: 1, raw_text: "OAT MILK 3.49", name: "Oat milk", ingredient: null, pack_qty: null, pack_unit: null },
+  { vendor, raw_text_norm: "RVRBND BREAD FLR 2KG", line_count: 2, raw_text: "RVRBND BREAD FLR 2KG 6.50", name: "Rvrbnd bread flr", ingredient: { kind: "ingredient", id: flour.id, key: null, name: flour.name, canonical_unit: flour.canonical_unit, active: true, category: null, category_key: null, matched_spelling: null, exact: true }, pack_qty: "2", pack_unit: "kg", model: null },
+  { vendor, raw_text_norm: "BNLS CHKN BRST", line_count: 1, raw_text: "BNLS CHKN BRST 8.40", name: "Bnls chkn brst", ingredient: null, pack_qty: null, pack_unit: null, model: null },
+  { vendor, raw_text_norm: "OAT MILK", line_count: 1, raw_text: "OAT MILK 3.49", name: "Oat milk", ingredient: null, pack_qty: null, pack_unit: null, model: null },
 ];
 
 function routes(queue: ToIdentifyGroup[], post?: (call: RecordedCall) => Response) {
@@ -97,6 +97,44 @@ describe("naming new products in bulk", () => {
       rows: [{ vendor_id: vendor.id, raw_text_norm: "RVRBND BREAD FLR 2KG", name: "Rvrbnd bread flr", pack_qty: "2", pack_unit: "kg", ingredient_id: flour.id }],
     });
     expect(await screen.findByText("Created 1 product and identified 2 lines.")).toBeInTheDocument();
+  });
+
+  it("fills the rows the wording couldn't name from the model, never over what was typed", async () => {
+    let answered = false;
+    const chicken = { kind: "standard" as const, id: null, key: "chicken-breast", name: "chicken breast", canonical_unit: "g" as const, active: true, category: "meat", category_key: null, matched_spelling: null, exact: true };
+    const withModel = (): NamingRow[] =>
+      answered
+        ? [rows[0], { ...rows[1], model: { status: "done", name: "Boneless chicken breast", ingredient: chicken } }, { ...rows[2], model: { status: "done", name: "Oat beverage", ingredient: null } }]
+        : rows;
+    const calls = mockApi({
+      ...routes(three),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: withModel() }),
+      "POST /to-identify/naming/suggest": () => {
+        answered = true;
+        return jsonResponse(200, { queued: 2 });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const list = await screen.findByRole("list", { name: "New products to name" });
+    expect(screen.getByText("The wording didn't name an ingredient for 2 lines.")).toBeInTheDocument();
+
+    // A name typed before the model answers stays.
+    const milkRow = within(list).getByRole("group", { name: `${vendor.name}: OAT MILK` });
+    const milkName = within(milkRow).getByRole("textbox", { name: "Name" });
+    await user.clear(milkName);
+    await user.type(milkName, "Oat milk, barista");
+
+    await user.click(screen.getByRole("button", { name: "Suggest names with the model" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/to-identify/naming/suggest")).toBe(true));
+    const chickenRow = within(list).getByRole("group", { name: `${vendor.name}: BNLS CHKN BRST` });
+    await waitFor(() => expect(within(chickenRow).getByRole("textbox", { name: "Name" })).toHaveValue("Boneless chicken breast"));
+    expect(within(chickenRow).getByTestId("name-1-ingredient-choice")).toHaveTextContent("chicken breast");
+    expect(within(chickenRow).getAllByText("Suggested by the model")).toHaveLength(2);
+    // A suggestion is not a decision: the row stays unticked.
+    expect(within(chickenRow).getByRole("checkbox")).not.toBeChecked();
+    expect(milkName).toHaveValue("Oat milk, barista");
+    expect(within(milkRow).queryByText("Suggested by the model")).not.toBeInTheDocument();
   });
 
   it("keeps a failed row's input and shows why", async () => {

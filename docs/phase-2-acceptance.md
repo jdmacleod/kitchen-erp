@@ -63,7 +63,7 @@ frontend unit tests under `frontend/src/test/`, browser tests under `e2e/tests/`
 | 62 | Confirmed rows create products, identify every line of the group, and reuse a new ingredient named twice | `test_naming.py::test_confirmed_rows_become_products_and_identify_their_lines` |
 | 63 | A failing row stands alone | `test_naming.py::test_a_failing_row_stands_alone`; `name-products.test.tsx` (input kept) |
 | 64 | Only ticked rows are sent; rows start unticked and editing ticks | `name-products.test.tsx` |
-| 65 | Model suggestions validated and never overwrite edits | pending: #88 part 3 (model suggestions) |
+| 65 | Model suggestions validated and never overwrite edits | `test_naming_model.py`; `name-products.test.tsx` (edited fields kept) |
 
 All Phase 2 criteria pass as of 2026-09-21: backend 325 tests (plus the container-only backup and Tesseract tests), frontend 76, browser 20.
 

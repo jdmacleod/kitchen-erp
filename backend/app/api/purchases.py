@@ -27,6 +27,7 @@ from app.schemas.purchases import (
     ManualPurchaseIn,
     NameProductsIn,
     NameProductsOut,
+    NamingAsked,
     NamingList,
     NeedsBridgeItem,
     NeedsBridgeList,
@@ -505,6 +506,12 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
 async def naming_rows(_: CurrentUser, db: DbSession) -> NamingList:
     """Every waiting group with a suggested product, for naming them in bulk (2I)."""
     return NamingList(items=await naming.naming_rows(db))
+
+
+@router.post("/to-identify/naming/suggest", response_model=NamingAsked)
+async def suggest_names(_: CurrentUser, db: DbSession) -> NamingAsked:
+    """Ask the model about the rows the wording couldn't name; the worker answers (N3)."""
+    return NamingAsked(queued=await naming.request_suggestions(db))
 
 
 @router.post("/to-identify/name-products", response_model=NameProductsOut)

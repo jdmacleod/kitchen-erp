@@ -348,6 +348,14 @@ class QueueApplied(ApiModel):
     applied: int
 
 
+class ModelNaming(ApiModel):
+    """The model's suggestion for a row: asked for, answered, or failed (N2, N3)."""
+
+    status: Literal["asking", "done", "failed"]
+    name: str | None
+    ingredient: IngredientMatch | None
+
+
 class NamingRow(ApiModel):
     """One waiting group with a suggested product (04, 2I)."""
 
@@ -359,10 +367,15 @@ class NamingRow(ApiModel):
     ingredient: IngredientMatch | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
+    model: ModelNaming | None
 
 
 class NamingList(ApiModel):
     items: list[NamingRow]
+
+
+class NamingAsked(ApiModel):
+    queued: int
 
 
 class NameProductRow(ApiModel):
