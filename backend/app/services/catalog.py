@@ -31,6 +31,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
+from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
 from app.services.spellings import add_generated_spellings, add_spelling
@@ -185,6 +186,40 @@ async def search_ingredients(
     if include_standard:
         out += await _standard_matches(db, norm)
     return out
+
+
+# Longest phrase first: "green onion" before "onion" in "GREEN ONION BNCH".
+_LINE_PHRASE_WORDS = 3
+
+
+async def ingredients_in_text(
+    db: AsyncSession, receipt_text: str, *, limit: int = 3
+) -> list[IngredientMatch]:
+    """Ingredients whose name or spelling is spelled out in a receipt line (#88).
+
+    Each run of up to three words of the line is looked up, longest first, and
+    only an exact name or spelling counts: "WT BROCCOLI CROWNS" offers broccoli,
+    "BNLS CHKN BRST" offers nothing. Catalog ingredients come before standard
+    names the catalog doesn't have yet. A suggestion is only ever offered.
+    """
+    words = [w for w in normalize_receipt_text(receipt_text).casefold().split() if w.isalpha()]
+    phrases: list[str] = []
+    for n in range(min(_LINE_PHRASE_WORDS, len(words)), 0, -1):
+        for i in range(len(words) - n + 1):
+            phrase = " ".join(words[i : i + n])
+            if phrase not in phrases:
+                phrases.append(phrase)
+    existing: list[IngredientMatch] = []
+    standard_names: list[IngredientMatch] = []
+    seen: set[str] = set()
+    for phrase in phrases:
+        for match in await search_ingredients(db, phrase, include_standard=True, limit=5):
+            ident = f"i:{match.id}" if match.kind == "ingredient" else f"s:{match.key}"
+            if not match.exact or ident in seen:
+                continue
+            seen.add(ident)
+            (existing if match.kind == "ingredient" else standard_names).append(match)
+    return (existing + standard_names)[:limit]
 
 
 async def _standard_matches(db: AsyncSession, norm: str) -> list[IngredientMatch]:

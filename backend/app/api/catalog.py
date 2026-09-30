@@ -75,6 +75,16 @@ async def search_ingredients(
     return IngredientSearchOut(items=items)
 
 
+@router.get("/ingredients/in-text", response_model=IngredientSearchOut)
+async def ingredients_in_text(
+    db: DbSession,
+    _: CurrentUser,
+    text: str = Query(..., min_length=1, max_length=200),
+) -> IngredientSearchOut:
+    """Ingredients a receipt line names outright, for a new product's picker (#88)."""
+    return IngredientSearchOut(items=await catalog.ingredients_in_text(db, text))
+
+
 @router.get("/ingredients/{ingredient_id}", response_model=IngredientOut)
 async def get_ingredient(ingredient_id: uuid.UUID, _: CurrentUser, db: DbSession) -> IngredientOut:
     return IngredientOut.model_validate(await catalog.get_ingredient(db, ingredient_id))
