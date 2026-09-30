@@ -811,7 +811,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
   if (picking) {
     return (
       <div className="flex flex-col gap-1">
-        <ProductPicker id={`review-pick-${line.id}`} label={`Product for line ${line.seq}`} hideLabel value={null} onChange={(p) => p && onChoose(p.id)} disabled={busy} />
+        <ProductPicker id={`review-pick-${line.id}`} label={`Product for line ${line.seq}`} hideLabel value={null} lineText={line.raw_text_norm ?? line.raw_text} onChange={(p) => p && onChoose(p.id)} disabled={busy} />
         <Button variant="ghost" className="min-h-11 lg:min-h-8 self-start px-2 text-xs" onClick={onClosePicker}>
           Cancel
         </Button>

@@ -379,6 +379,18 @@ export interface IngredientMatch {
 }
 
 /** Ingredients by name or other spelling, best first; standard names on request (1G). */
+/** Ingredients a receipt line names outright, for a new product's picker (#88). */
+export function useIngredientsInText(text: string) {
+  const trimmed = text.trim().slice(0, 200);
+  return useQuery({
+    queryKey: [...catalogKeys.ingredientSearch(trimmed, true), "in-text"],
+    queryFn: () => api<{ items: IngredientMatch[] }>(`/ingredients/in-text${qs({ text: trimmed })}`),
+    select: (data) => data.items,
+    enabled: trimmed.length > 0,
+    staleTime: 10_000,
+  });
+}
+
 export function useIngredientSearch(q: string, includeStandard = false, limit = 10) {
   const trimmed = q.trim();
   return useQuery({

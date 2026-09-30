@@ -60,6 +60,14 @@ interface ProductPickerProps {
   autoFocus?: boolean;
   inputRef?: RefObject<HTMLInputElement | null>;
   hint?: string;
+  /** The receipt line being identified: it names a new product and suggests its ingredient (#88). */
+  lineText?: string | null;
+}
+
+/** A receipt line's wording as a product name to start from: "WT BROCCOLI CROWNS" → "Wt broccoli crowns". */
+export function nameFromLine(text: string | null | undefined): string {
+  const lower = (text ?? "").trim().toLowerCase();
+  return lower ? lower[0].toUpperCase() + lower.slice(1) : "";
 }
 
 /**
@@ -78,6 +86,7 @@ export function ProductPicker({
   autoFocus,
   inputRef,
   hint,
+  lineText,
 }: ProductPickerProps) {
   const [creating, setCreating] = useState(false);
   // What was searched for is what the new product is most likely called.
@@ -115,7 +124,7 @@ export function ProductPicker({
   }
 
   if (creating) {
-    return <InlineProductCreate id={`${id}-new`} onCreated={pick} onCancel={() => setCreating(false)} disabled={disabled} initialName={typed.trim()} />;
+    return <InlineProductCreate id={`${id}-new`} onCreated={pick} onCancel={() => setCreating(false)} disabled={disabled} initialName={typed.trim() || nameFromLine(lineText)} suggestFrom={lineText ?? undefined} />;
   }
 
   return (
@@ -159,6 +168,8 @@ interface InlineProductCreateProps {
   initialBarcode?: string;
   /** What was typed in the search that found nothing. */
   initialName?: string;
+  /** A receipt line whose named ingredients the ingredient box offers. */
+  suggestFrom?: string;
 }
 
 /**
@@ -166,7 +177,7 @@ interface InlineProductCreateProps {
  * (existing or new by name), brand, name, and pack. Enter creates; Escape
  * cancels. Everything else about the product can be edited later.
  */
-export function InlineProductCreate({ id, onCreated, onCancel, disabled, initialBarcode, initialName = "" }: InlineProductCreateProps) {
+export function InlineProductCreate({ id, onCreated, onCancel, disabled, initialBarcode, initialName = "", suggestFrom }: InlineProductCreateProps) {
   const create = useCreateProduct();
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const [brand, setBrand] = useState("");
@@ -225,7 +236,7 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled, initial
       </p>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {create.error ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
-      <IngredientPicker id={`${id}-ingredient`} value={ingredient} onChange={setIngredient} disabled={busy} />
+      <IngredientPicker id={`${id}-ingredient`} value={ingredient} onChange={setIngredient} disabled={busy} suggestFrom={suggestFrom} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field id={`${id}-brand`} label="Brand" autoComplete="off" value={brand} onChange={(e) => setBrand(e.target.value)} disabled={busy} />
         <Field
