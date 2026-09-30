@@ -151,7 +151,7 @@ source is named so it can be traced back.
 
 **Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 draft is amended to carry it.
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 draft is amended to carry it. FoodOn references and the USDA attribute table (common and scientific names) moved here too (outside-voice card O8): nothing in 1G reads them, and the FoodOn licensing entry waits with them.
 
 **Effort:** L (human) / M (CC)
 **Priority:** P3
@@ -168,6 +168,18 @@ source is named so it can be traced back.
 **Effort:** S (human) / S (CC)
 **Priority:** P3
 **Depends on:** Phase 3 approval
+
+### Merge from an ingredient's own page
+
+**What:** A "Merge into…" action (and "Link to standard name") on the ingredient detail page, reusing the link page's merge: survivor choice, retired name, moved products, copied measures, full recompute.
+
+**Why:** Duplicates keep appearing after the one-time link list is cleared, and merging is the lasting capability.
+
+**Context:** Proposed by the outside-voice review of sub-phase 1G on 2026-09-30 (card O12); the user kept the dedicated link page (DV1) and deferred this. Build on `app/services/ingredient_reconcile.py` once 1G ships.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Sub-phase 1G
 
 ### Ingredient vocabulary export and import
 
