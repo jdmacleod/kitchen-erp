@@ -107,17 +107,25 @@ async def _dependents(db: AsyncSession, where) -> list[uuid.UUID]:
     return list((await db.execute(stmt)).scalars())
 
 
-async def recompute_for_ingredient(db: AsyncSession, ingredient_id: uuid.UUID) -> int:
+async def recompute_for_ingredient(
+    db: AsyncSession, ingredient_id: uuid.UUID, *, canonical_unit_changed: bool = False
+) -> int:
     """After a density or named-measure change: every observation of the
     ingredient's products that crossed a bridge, failed to, or crossed a pack
     (a pack may itself have crossed the density). Same-dimension observations
-    depend on nothing and are left alone."""
+    depend on nothing and are left alone.
+
+    After a canonical-unit change nothing is left alone: an observation that
+    needed no bridge in the old unit may need one in the new unit, and its
+    stored price is per the old unit."""
     product_ids = select(Product.id).where(Product.ingredient_id == ingredient_id)
-    where = PriceObservation.product_id.in_(product_ids) & (
-        PriceNorm.observation_id.is_(None)
-        | (PriceNorm.status != "ok")
-        | (PriceNorm.bridge_kind != "none")
-    )
+    where = PriceObservation.product_id.in_(product_ids)
+    if not canonical_unit_changed:
+        where = where & (
+            PriceNorm.observation_id.is_(None)
+            | (PriceNorm.status != "ok")
+            | (PriceNorm.bridge_kind != "none")
+        )
     return await normalize(db, await _dependents(db, where))
 
 
