@@ -86,7 +86,8 @@ GENERIC_PARSER = "llm-generic"
 #    either prompt, and the new wording made it read pack sizes ("EGGS 12") as quantities.
 # 4: long receipts are read in parts of LINES_CHUNK_ROWS rows (#60).
 # 5: regular-price rows are folded into the item and its saving (#64).
-GENERIC_PARSER_VERSION = "5"
+# 6: a weight or count printed on a row of its own joins the item it belongs to (#87).
+GENERIC_PARSER_VERSION = "6"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -109,7 +110,20 @@ LOOSE_WEIGHT_PATTERN = re.compile(
 #   quantity it carries is unsupported. A plain line with no quantity is one each and
 #   is not flagged: nothing printed says otherwise, and flagging it flagged every line,
 #   since the model gives no quantity for plain lines at all.
-QTY_FLAGS = frozenset({"qty_inferred", "qty_corrected", "qty_assumed"})
+# qty_from_line_above, qty_from_line_below: the weight or count was printed on a
+#   row of its own, above or below the item, and the rows were joined (#87).
+# quantity_line: a row that is only a weight or count and could not be joined
+#   to an item with certainty; review offers to merge it.
+QTY_FLAGS = frozenset(
+    {
+        "qty_inferred",
+        "qty_corrected",
+        "qty_assumed",
+        "qty_from_line_above",
+        "qty_from_line_below",
+        "quantity_line",
+    }
+)
 
 
 @dataclass
@@ -481,6 +495,143 @@ def _renumber(lines: list[ParsedLine]) -> list[ParsedLine]:
         line.parent_seq = new_seq.get(line.parent_seq) if line.parent_seq is not None else None
         line.seq = n
     return lines
+
+
+@dataclass(frozen=True)
+class PrintedQuantity:
+    """A row that is only a weight or count, as printed."""
+
+    qty: Decimal
+    unit: str
+    rate: Decimal
+    amount: Decimal | None  # what it comes to, when the row prints that too
+
+    def comes_to(self, total: Decimal) -> bool:
+        """The quantity at the rate is ``total``, to within a cent of rounding."""
+        return abs(self.qty * self.rate - total) <= CENTS
+
+
+# "/lb" after a rate, and what may be left once the quantity and amounts are out
+# of a quantity row: nothing, or a tax letter or two.
+_RATE_UNIT = re.compile(r"/\s*(?:lbs?|kg|oz|g|ea|each)\b", re.IGNORECASE)
+_TAX_CODE = re.compile(r"[A-Za-z*]{0,2}")
+
+
+def quantity_only(raw_text: str) -> PrintedQuantity | None:
+    """The row's weight or count when that is all the row holds, else None.
+
+    "2.71 lb @ 3.99 /lb" and "5 @ 0.79" qualify, as does "2.31 lb @ 0.69/lb 1.59 F"
+    with its amount and tax letter. A row with a name ("AVOCADO 3 @ 0.69 2.07"), a
+    negative amount or two amounts does not.
+    """
+    weighed = WEIGHT_PATTERN.search(raw_text)
+    match = weighed or COUNT_PATTERN.search(raw_text)
+    if match is None:
+        return None
+    rest = _RATE_UNIT.sub(" ", raw_text[: match.start()] + " " + raw_text[match.end() :])
+    amounts = _amounts(rest)
+    rest = _AMOUNT.sub(" ", rest).replace("$", " ")
+    if len(amounts) > 1 or not _TAX_CODE.fullmatch("".join(rest.split())):
+        return None
+    if weighed is not None:
+        qty, unit, rate = Decimal(match.group(1)), _unit(match.group(2)), match.group(3)
+    else:
+        qty, unit, rate = Decimal(match.group(1)), "each", match.group(2)
+    if unit is None:
+        return None
+    return PrintedQuantity(qty, unit, Decimal(rate), amounts[0] if amounts else None)
+
+
+def prints_an_amount(raw_text: str) -> bool:
+    """Whether the row prints an amount (a name row such as "BANANAS" does not)."""
+    return _AMOUNT.search(raw_text) is not None
+
+
+def _prints_its_quantity(line: ParsedLine) -> bool:
+    return bool(WEIGHT_PATTERN.search(line.raw_text) or COUNT_PATTERN.search(line.raw_text))
+
+
+def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list[str]]:
+    """Join each weight or count printed on a row of its own to its item (#87).
+
+    Tills print a weighed or counted item on two rows, and the model reads each
+    row as a line of its own, so the item is counted twice. The quantity can
+    come first, or the name can::
+
+        2.71 lb @ 3.99 /lb
+        WT BROCCOLI CROWNS    10.81 F
+
+        BANANAS
+          2.31 lb @ 0.69/lb    1.59
+
+    Nothing is joined on the model's word. A quantity row with no amount joins
+    the item above or below it whose printed amount is the quantity at the rate;
+    when both would, or neither, it is left alone and flagged ``quantity_line``
+    for review. A quantity row that prints its own amount, which must be the
+    quantity at the rate, joins a name row above it that prints no amount, and
+    that item takes the amount. The model's own reading of a quantity row is
+    never used: it gets their amounts wrong, and reads a count row as a discount.
+    Returns the kept lines and the quantity rows that were joined.
+    """
+    merged: list[str] = []
+    joined: dict[int, int] = {}  # seq of a quantity row -> seq of the item it joined
+    taken: set[int] = set()  # seqs of items that already took a quantity row
+
+    def item_at(j: int) -> ParsedLine | None:
+        if not 0 <= j < len(lines):
+            return None
+        other = lines[j]
+        if (
+            other.line_kind != "item"
+            or other.seq in joined
+            or other.seq in taken
+            or _prints_its_quantity(other)
+        ):
+            return None
+        return other
+
+    for i, line in enumerate(lines):
+        if line.line_kind not in ("item", "discount") or line.seq in taken:
+            continue
+        printed = quantity_only(line.raw_text)
+        if printed is None:
+            continue
+        target: ParsedLine | None = None
+        flag = ""
+        above, below = item_at(i - 1), item_at(i + 1)
+        if printed.amount is None:
+            # The amount is on the item's row; it has to be printed there, since
+            # a total the model gave a row with no amount proves nothing.
+            fits = [
+                (other, flag)
+                for other, flag in ((above, "qty_from_line_below"), (below, "qty_from_line_above"))
+                if other is not None
+                and prints_an_amount(other.raw_text)
+                and printed.comes_to(other.line_total)
+            ]
+            if len(fits) == 1:
+                target, flag = fits[0]
+        elif (
+            above is not None
+            and not prints_an_amount(above.raw_text)
+            and printed.comes_to(printed.amount)
+        ):
+            target, flag = above, "qty_from_line_below"
+            target.line_total = printed.amount
+        if target is None:
+            if "quantity_line" not in line.flags:
+                line.flags.append("quantity_line")
+            continue
+        target.qty, target.unit, target.unit_price = printed.qty, printed.unit, printed.rate
+        target.flags = [f for f in target.flags if f not in QTY_FLAGS] + [flag]
+        joined[line.seq] = target.seq
+        taken.add(target.seq)
+        merged.append(line.raw_text)
+    kept = [line for line in lines if line.seq not in joined]
+    for line in kept:
+        if line.parent_seq in joined:
+            line.parent_seq = joined[line.parent_seq]
+    return _renumber(kept), merged
 
 
 def parse_model_lines(result: ReceiptLines) -> list[ParsedLine]:
