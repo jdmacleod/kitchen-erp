@@ -25,6 +25,11 @@ Where this package records a decision, treat it as settled unless implementation
 | `09-information-architecture.md` | Workflow-based navigation, routes and redirects, search, capture, the unified inbox, phone and tablet tabs |
 | `10-page-layouts.md` | Approved layout of each desktop and phone page, with their states |
 | `11-ui-acceptance-criteria.md` | UI sub-phases UI-1 to UI-4 with numbered acceptance criteria; approved alongside Phases 1–2, with later-phase criteria marked dormant |
+| `12-ingredient-vocabulary.md` | Canonical ingredient vocabulary seeded from USDA FoodData Central: goals, naming rules, FDC profiling findings; a draft awaiting approval |
+| `13-ingredient-data-model.md` | Vocabulary tables, aliases, external references, and the lexicon file format; draft |
+| `14-fdc-import-resolver-conform.md` | FDC staging import, portion parser, name resolver, recipe conform pass, authoring suggestions; draft |
+| `15-ingredient-vocabulary-tasks.md` | Task plan T1–T11 with acceptance criteria for documents 12–14; draft |
+| `assets/tier-a-ingredients.csv` | Draft seed of 146 ingredients and 7 parents for document 12; untracked, see its planning notes |
 
 ## Roadmap
 

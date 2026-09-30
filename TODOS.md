@@ -131,6 +131,56 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 3 (scoped tokens and vendor suggestions) merged.
 
+## Ingredients
+
+### Ingredient hierarchy and substitution
+
+**What:** Add parent ingredients (cheese → parmesan → Parmigiano-Reggiano) and decide whether a product satisfies an ingredient through its parents.
+
+**Why:** Recipes name ingredients at different levels ("cheese", "parmesan"), and substitution and cost rollups want the chain.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. Decide with the Phase 3 costing rules.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval
+
+### The full name-matching cascade for recipe text
+
+**What:** Prep-word stripping ("minced garlic" → garlic + note), USDA-pool proposals for unknown names, and the Ollama tier, as doc 14 §3 describes.
+
+**Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 draft is amended to carry it.
+
+**Effort:** L (human) / M (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval, sub-phase 1G
+
+### Choosing one USDA density per ingredient
+
+**What:** Pick the plain "cup" portion or the median of the volume portions automatically, and keep descriptors ("chopped", "packed") so a recipe note can select the matching conversion.
+
+**Why:** Today each portion is its own suggestion and a person picks one.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS5). It only pays off once recipe notes exist to choose between descriptors.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval
+
+### Barcode lookup from USDA branded foods
+
+**What:** Load a slim table of branded foods (barcode, brand, description, category, package weight) and use it to suggest a product and ingredient for an unknown barcode.
+
+**Why:** Scanning an unknown barcode could pre-fill a new product instead of starting from nothing.
+
+**Context:** Deferred by the ingredient-vocabulary handoff itself (doc 15, task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Sub-phase 1G; the household's go-ahead
+
 ## Operations
 
 ### Backup refuses to overwrite an existing backup
