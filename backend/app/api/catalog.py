@@ -15,6 +15,7 @@ from app.schemas.catalog import (
     IngredientCreate,
     IngredientList,
     IngredientOut,
+    IngredientSearchOut,
     IngredientUpdate,
     MeasureCreate,
     MeasureOut,
@@ -59,6 +60,19 @@ async def create_ingredient(
         return guard.replay
     row = await catalog.create_ingredient(db, payload)
     return await guard.commit(201, IngredientOut.model_validate(row).model_dump(mode="json"))
+
+
+@router.get("/ingredients/search", response_model=IngredientSearchOut)
+async def search_ingredients(
+    db: DbSession,
+    _: CurrentUser,
+    q: str = Query(..., min_length=1, max_length=200),
+    include_standard: bool = False,
+    limit: int = Query(10, ge=1, le=50),
+) -> IngredientSearchOut:
+    """Ingredients by name or other spelling, best first; standard names on request (1G)."""
+    items = await catalog.search_ingredients(db, q, include_standard=include_standard, limit=limit)
+    return IngredientSearchOut(items=items)
 
 
 @router.get("/ingredients/{ingredient_id}", response_model=IngredientOut)

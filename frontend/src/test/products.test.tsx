@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Product } from "../api/catalog";
-import { flour, flourProduct, flourProductId, hits, units } from "./catalog-fixtures";
+import { flour, flourProduct, flourProductId, hits, units, ingredientMatch } from "./catalog-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -14,7 +14,7 @@ function baseRoutes(products: () => Product[]) {
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /products": () => jsonResponse(200, { items: products(), next_cursor: null }),
     "GET /products/search": () => jsonResponse(200, { items: hits }),
-    "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+    "GET /ingredients/search": () => jsonResponse(200, { items: [] }),
   };
 }
 
@@ -82,7 +82,7 @@ describe("products", () => {
     // The list stays empty: the new row sorts onto a page not loaded yet.
     mockApi({
       ...baseRoutes(() => []),
-      "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
       "POST /products": () => jsonResponse(201, { ...flourProduct, name: "Zucchini flour", brand: null }),
     });
     const user = userEvent.setup();
@@ -103,7 +103,7 @@ describe("products", () => {
   it("refuses a pack quantity without a unit before calling the API", async () => {
     const calls = mockApi({
       ...baseRoutes(() => []),
-      "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
     });
     const user = userEvent.setup();
     renderApp("/catalog/products");
@@ -122,7 +122,7 @@ describe("products", () => {
   it("shows the server's conflict message for a taken barcode", async () => {
     mockApi({
       ...baseRoutes(() => []),
-      "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
       "POST /products": () => errorResponse(409, "barcode_taken", "barcode taken"),
     });
     const user = userEvent.setup();

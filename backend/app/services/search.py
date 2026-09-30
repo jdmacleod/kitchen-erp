@@ -8,14 +8,11 @@ the ingredient name.
 
 from __future__ import annotations
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog import categories
 from app.core.logging import get_logger
 from app.schemas.search import SearchResult, SearchResults
 from app.services import catalog, geo
-from app.services.catalog import like_escape
 
 log = get_logger(__name__)
 
@@ -28,39 +25,20 @@ _VENDOR_KINDS = {
     "stand": "Stand",
 }
 
-_INGREDIENT_SQL = text(
-    """
-    SELECT i.id, i.name, i.category
-    FROM ingredient i
-    WHERE i.active AND (lower(i.name) LIKE :like OR :ql <% lower(i.name))
-    ORDER BY word_similarity(:ql, lower(i.name)) DESC,
-             (lower(i.name) LIKE :prefix) DESC,
-             i.name
-    LIMIT :limit
-    """
-)
 
-
-async def _ingredients(db: AsyncSession, ql: str) -> list[SearchResult]:
-    rows = await db.execute(
-        _INGREDIENT_SQL,
-        {
-            "ql": ql,
-            "like": f"%{like_escape(ql)}%",
-            "prefix": f"{like_escape(ql)}%",
-            "limit": GROUP_LIMIT,
-        },
-    )
+async def _ingredients(db: AsyncSession, q: str) -> list[SearchResult]:
+    matches = await catalog.search_ingredients(db, q, limit=GROUP_LIMIT)
     return [
         SearchResult(
             kind="ingredient",
-            id=r["id"],
-            label=r["name"],
-            detail=r["category"],
-            route=f"/catalog/ingredients/{r['id']}",
-            category_key=categories.key(r["category"]),
+            id=m.id,
+            label=m.name,
+            detail=f"matches {m.matched_spelling}" if m.matched_spelling else m.category,
+            route=f"/catalog/ingredients/{m.id}",
+            category_key=m.category_key,
         )
-        for r in rows.mappings()
+        for m in matches
+        if m.id is not None
     ]
 
 

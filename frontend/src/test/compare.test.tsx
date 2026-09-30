@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { CompareResult } from "../api/pricebook";
-import { flour, flourId, flourProductId, units } from "./catalog-fixtures";
+import { flour, flourId, flourProductId, units, ingredientMatch } from "./catalog-fixtures";
 import { chainVendor, chainVendorId, marketVendor, marketVendorId, chainLocationId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
@@ -45,7 +45,7 @@ function baseRoutes() {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
-    "GET /ingredients": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [flour] : [], next_cursor: null }),
+    "GET /ingredients/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [ingredientMatch(flour)] : [] }),
     "POST /price-book/compare": () => jsonResponse(200, result),
   };
 }

@@ -17,7 +17,7 @@ function baseRoutes() {
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
     "GET /products/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
-    "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+    "GET /ingredients/search": () => jsonResponse(200, { items: [] }),
     // Flour was last bought by the pound; the other product has never been bought.
     [`GET /products/${flourProductId}/last-purchase-unit`]: () => jsonResponse(200, { unit: "lb" }),
     [`GET /products/${hits[1].id}/last-purchase-unit`]: () => errorResponse(404, "not_found", "no purchases"),

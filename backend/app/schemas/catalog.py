@@ -59,6 +59,9 @@ class _DensityPair(ApiModel):
 
 class IngredientCreate(_DensityPair):
     name: str = Field(min_length=1, max_length=200)
+    # 1G: create from the standard list. The entry supplies the name, category,
+    # unit, spellings, USDA reference and measures; the fields above are ignored.
+    standard_key: str | None = Field(default=None, max_length=120)
     category: str | None = Field(default=None, max_length=100)
     canonical_unit: CanonicalUnit = "g"
     yield_pct: Decimal = Field(default=Decimal("1"), gt=0, le=1)
@@ -107,6 +110,7 @@ class IngredientSummary(Categorized):
 class IngredientOut(Categorized):
     id: uuid.UUID
     name: str
+    slug: str
     canonical_unit: CanonicalUnit
     density_g_per_ml: DecimalStr | None
     density_source: BridgeSource | None
@@ -118,6 +122,25 @@ class IngredientOut(Categorized):
     measures: list[MeasureOut] = []
     created_at: datetime
     updated_at: datetime
+
+
+class IngredientMatch(Categorized):
+    """One ingredient search row (1G): a catalog ingredient or a standard name."""
+
+    kind: Literal["ingredient", "standard"]
+    id: uuid.UUID | None = None
+    key: str | None = None
+    name: str
+    canonical_unit: CanonicalUnit
+    active: bool = True
+    # The spelling the text matched when it wasn't the name, e.g. "green onion".
+    matched_spelling: str | None = None
+    # The text equals the name or a spelling (ignoring case, accents, punctuation).
+    exact: bool = False
+
+
+class IngredientSearchOut(ApiModel):
+    items: list[IngredientMatch]
 
 
 class IngredientList(ApiModel):

@@ -21,6 +21,14 @@ export interface ComboboxProps<T> {
   /** Name of the list for assistive tech, e.g. "Products". */
   listLabel: string;
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /**
+   * A heading for a run of consecutive items, e.g. "From the standard list".
+   * Items with a heading are wrapped in a labelled group, which screen readers
+   * announce; items returning null stay directly in the list.
+   */
+  groupOf?: (item: T) => string | null;
+  /** Text read for an option instead of its visible content, when that needs context. */
+  getLabel?: (item: T) => string | undefined;
 }
 
 /**
@@ -45,6 +53,8 @@ export function Combobox<T>({
   autoFocus,
   listLabel,
   inputRef,
+  groupOf,
+  getLabel,
 }: ComboboxProps<T>) {
   const [open, setOpen] = useState(false);
   const [rawActive, setActive] = useState(-1);
@@ -154,21 +164,36 @@ export function Combobox<T>({
           onMouseDown={(e) => e.preventDefault()}
         >
           <ul id={listId} role="listbox" aria-label={listLabel}>
-            {items.map((item, index) => (
-              <li
-                key={getKey(item)}
-                id={`${id}-option-${index}`}
-                role="option"
-                aria-selected={index === active}
-                onMouseEnter={() => setActive(index)}
-                onClick={() => select(item)}
-                className={`flex min-h-11 cursor-pointer flex-col justify-center px-3 py-2 text-sm lg:block lg:min-h-0 ${
-                  index === active ? "bg-neutral-200 dark:bg-neutral-800" : ""
-                }`}
-              >
-                {renderItem(item)}
-              </li>
-            ))}
+            {segments(items, groupOf).map((segment) => {
+              const options = segment.entries.map(({ item, index }) => (
+                <li
+                  key={getKey(item)}
+                  id={`${id}-option-${index}`}
+                  role="option"
+                  aria-selected={index === active}
+                  aria-label={getLabel?.(item)}
+                  onMouseEnter={() => setActive(index)}
+                  onClick={() => select(item)}
+                  className={`flex min-h-11 cursor-pointer flex-col justify-center px-3 py-2 text-sm lg:block lg:min-h-0 ${
+                    index === active ? "bg-neutral-200 dark:bg-neutral-800" : ""
+                  }`}
+                >
+                  {renderItem(item)}
+                </li>
+              ));
+              if (segment.heading === null) return options;
+              const headingId = `${id}-group-${segment.entries[0].index}`;
+              return (
+                <li key={headingId} role="presentation">
+                  <div id={headingId} role="presentation" className="border-t border-neutral-200 px-3 pt-2 pb-1 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                    {segment.heading}
+                  </div>
+                  <ul role="group" aria-labelledby={headingId}>
+                    {options}
+                  </ul>
+                </li>
+              );
+            })}
           </ul>
           {status ? (
             <p role="status" className={`px-3 py-2 ${hintClass}`}>
@@ -182,4 +207,16 @@ export function Combobox<T>({
       )}
     </div>
   );
+}
+
+/** Split items into runs that share a group heading, keeping each item's list index. */
+function segments<T>(items: T[], groupOf?: (item: T) => string | null) {
+  const out: { heading: string | null; entries: { item: T; index: number }[] }[] = [];
+  items.forEach((item, index) => {
+    const heading = groupOf?.(item) ?? null;
+    const last = out[out.length - 1];
+    if (last && last.heading === heading) last.entries.push({ item, index });
+    else out.push({ heading, entries: [{ item, index }] });
+  });
+  return out;
 }

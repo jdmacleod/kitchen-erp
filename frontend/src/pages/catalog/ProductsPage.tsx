@@ -14,7 +14,7 @@ import {
   type ProductListItem,
 } from "../../api/catalog";
 import { Badge, QualityStars } from "../../components/catalog/fields";
-import type { IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
@@ -326,9 +326,7 @@ function AddProductForm({
     setInvalid(problem);
     if (problem || !values.ingredient) return;
 
-    const input: ProductCreateInput = { name: values.name.trim() };
-    if (values.ingredient.kind === "existing") input.ingredient_id = values.ingredient.ingredient.id;
-    else input.ingredient = { name: values.ingredient.name };
+    const input: ProductCreateInput = { name: values.name.trim(), ...choiceInput(values.ingredient) };
     if (values.brand.trim()) input.brand = values.brand.trim();
     if (values.pack_qty.trim()) {
       input.pack_qty = values.pack_qty.trim();

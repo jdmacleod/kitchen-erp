@@ -10,7 +10,7 @@ import {
   type Unit,
 } from "../../api/catalog";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { choiceName, choiceUnit, IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { Alert, Button, Field } from "../../components/ui";
@@ -114,11 +114,11 @@ export function densityReason(
 ): string | null {
   // The ingredient's own density already bridges mass and volume for its products.
   if (!packUnit || !ingredient || ingredientHasDensity) return null;
-  const canonical = ingredient.kind === "existing" ? ingredient.ingredient.canonical_unit : "g";
+  const canonical = choiceUnit(ingredient);
   const from = units.find((u) => u.code === packUnit)?.dimension;
   const to = CANONICAL_DIMENSION[canonical];
   if (!from || !to || from === to || from === "count" || to === "count") return null;
-  const name = ingredient.kind === "existing" ? ingredient.ingredient.name : ingredient.name;
+  const name = choiceName(ingredient);
   return `${packUnit} is a ${from} unit and ${name} is measured in ${canonical}, so this product's prices can't be compared until there is a density. You can add one here or later; saving without one is fine.`;
 }
 

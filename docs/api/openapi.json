@@ -2012,6 +2012,18 @@
             "title": "Perishability",
             "type": "string"
           },
+          "standard_key": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standard Key"
+          },
           "yield_pct": {
             "anyOf": [
               {
@@ -2060,6 +2072,120 @@
           "items"
         ],
         "title": "IngredientList",
+        "type": "object"
+      },
+      "IngredientMatch": {
+        "additionalProperties": false,
+        "description": "One ingredient search row (1G): a catalog ingredient or a standard name.",
+        "properties": {
+          "active": {
+            "default": true,
+            "title": "Active",
+            "type": "boolean"
+          },
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_key": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "title": "Category Key"
+          },
+          "exact": {
+            "default": false,
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "kind": {
+            "enum": [
+              "ingredient",
+              "standard"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "matched_spelling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Spelling"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "kind",
+          "name",
+          "canonical_unit",
+          "category_key"
+        ],
+        "title": "IngredientMatch",
         "type": "object"
       },
       "IngredientOut": {
@@ -2187,6 +2313,10 @@
             "title": "Perishability",
             "type": "string"
           },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -2201,6 +2331,7 @@
           "category",
           "id",
           "name",
+          "slug",
           "canonical_unit",
           "density_g_per_ml",
           "density_source",
@@ -2391,6 +2522,23 @@
           "category_key"
         ],
         "title": "IngredientRef",
+        "type": "object"
+      },
+      "IngredientSearchOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngredientMatch"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "IngredientSearchOut",
         "type": "object"
       },
       "IngredientSummary": {
@@ -10049,6 +10197,73 @@
           }
         },
         "summary": "Create Ingredient",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/ingredients/search": {
+      "get": {
+        "description": "Ingredients by name or other spelling, best first; standard names on request (1G).",
+        "operationId": "search_ingredients_api_v1_ingredients_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_standard",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Standard",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientSearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Ingredients",
         "tags": [
           "catalog"
         ]

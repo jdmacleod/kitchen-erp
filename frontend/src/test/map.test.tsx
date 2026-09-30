@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { VendorLocation } from "../api/geo";
-import { flour, flourProductId } from "./catalog-fixtures";
+import { flour, flourProductId, ingredientMatch } from "./catalog-fixtures";
 import { chainLocation, homeBase, marketDetail, marketLocation, marketLocationId, stallLocation, stallLocationId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { constructionFailure, instances } from "./maplibre-stub";
@@ -442,7 +442,7 @@ describe("map price book (2E)", () => {
   it("labels pins with the best price per unit for a chosen ingredient and marks stale ones", async () => {
     const calls = mockApi({
       ...baseRoutes(() => [chainLocation, marketLocation]),
-      "GET /ingredients": (call) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [flour] : [], next_cursor: null }),
+      "GET /ingredients/search": (call) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [ingredientMatch(flour)] : [] }),
       "GET /price-book/cheapest": () =>
         jsonResponse(200, {
           unit: "g",

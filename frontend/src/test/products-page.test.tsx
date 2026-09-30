@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ProductListItem } from "../api/catalog";
-import { flour, flourProduct, hits, units } from "./catalog-fixtures";
+import { flour, flourProduct, hits, units, ingredientMatch } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
 
 const paidFlour: ProductListItem = {
@@ -25,7 +25,7 @@ function mount(products: RouteHandler, path = "/catalog/products") {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
-    "GET /ingredients": () => jsonResponse(200, { items: [flour], next_cursor: null }),
+    "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
     [`GET /ingredients/${flour.id}`]: () => jsonResponse(200, flour),
     "GET /products/search": () => jsonResponse(200, { items: hits }),
     "GET /products": products,
@@ -112,7 +112,7 @@ describe("the Products page, review follow-ups", () => {
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
-      "GET /ingredients": () => jsonResponse(200, { items: [dense], next_cursor: null }),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(dense)] }),
       [`GET /ingredients/${flour.id}`]: () => jsonResponse(200, dense),
       "GET /products": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
