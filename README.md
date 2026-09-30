@@ -127,6 +127,28 @@ links reach outside the deployment, and only when switched on.
   directory name USDA gives it: the release date is read from it.
   `kerp import usda-portions` is the command's earlier name.
 
+- **The standard ingredient list and USDA suggestions (1G).** Upgrading to a
+  release with the ingredient vocabulary is a few steps, in this order:
+
+  1. `docker compose exec api kerp backup --out /data/backups/before-1g`. Merges
+     can't be undone in the app, so keep a way back, and take a backup before
+     any downgrade too.
+  2. `docker compose exec api kerp migrate`. Every existing ingredient starts
+     as "to review" against the standard list.
+  3. `docker compose exec api kerp import usda --path /data/usda/<unzipped-dir>`
+     (above). It is optional, but without it nothing links to a USDA food.
+  4. Home shows "n ingredients to link to the standard list". On that page,
+     link, rename or skip each one; where two ingredients are one, merge them.
+  5. Then Home shows "n ingredients have USDA densities to review", which
+     opens the USDA suggestions on Needs a bridge. Accepted values are saved
+     as unconfirmed: confirm each on its ingredient page after checking a
+     label or weighing it.
+
+  `kerp ingredients check` lists plurals another ingredient already has,
+  ingredients with no USDA reference, and references missing from the loaded
+  release. `kerp ingredients usda-candidates <fdc id | text>` lists raw or dry
+  USDA records to choose a reference from.
+
 - **OpenStreetMap links**, off unless `ENABLE_OVERPASS=true`. With it on, a
   location's card offers "Link to OpenStreetMap", which lists the places within
   250 m of its pin and fills in the address, hours, phone and website it is
