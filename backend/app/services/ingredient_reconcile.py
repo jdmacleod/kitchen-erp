@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.catalog import standard
 from app.catalog.names import GENERATED_SLUG_PREFIX, STANDARD_KEY_RE, normalize_name, plural
 from app.core.errors import ApiError
+from app.core.logging import get_logger
 from app.models.catalog import (
     FdcFood,
     Ingredient,
@@ -47,6 +48,8 @@ from app.models.purchases import PriceNorm, PriceObservation
 from app.services import pricebook
 from app.services.catalog import apply_standard_entry
 from app.services.spellings import add_generated_spellings, add_spelling
+
+log = get_logger(__name__)
 
 _CLOSE_MATCH = 0.8
 
@@ -237,7 +240,12 @@ async def _add_legacy(db: AsyncSession, ingredient_id: uuid.UUID, name: str, sou
         async with db.begin_nested():
             await add_spelling(db, ingredient_id, name, kind="legacy", source=source)
     except ApiError:
-        pass
+        # Another ingredient already has this spelling. The rename or merge still
+        # goes ahead: the old name just isn't kept as a spelling of this one.
+        log.info(
+            "skipped a former name another ingredient has",
+            extra={"ingredient_id": str(ingredient_id), "spelling": name},
+        )
 
 
 async def _drop_own_spelling(db: AsyncSession, ingredient_id: uuid.UUID, name: str) -> None:
