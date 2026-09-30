@@ -1,0 +1,59 @@
+# Synthetic receipt. Vendor and items are invented (SECURITY.md).
+name: two_line_quantities
+notes: |
+  A till that prints a weighed or counted item on two rows (#87): the weight or
+  count first, then the item with its price, and once the other way round, the
+  name first and the weight with the price beneath it. The recorded model answer
+  does what gpt-oss:20b did on real receipts of this layout: every row is a line
+  of its own at the full price, and a count row is read as a saving on the item
+  above it. The stage joins each quantity row to its item on the printed
+  arithmetic, so each item is one line with its printed quantity and the lines
+  add up to the printed total.
+ocr_text: |
+  LANTERN ROW GROCERY
+  STORE 0412
+  03/20/26 11:05
+  2.71 lb @ 3.99 /lb
+  WT BROCCOLI CROWNS      10.81 F
+  5 @ 0.79
+  AVOCADO                  3.95 F
+  BANANAS
+    2.31 lb @ 0.69/lb      1.59 F
+  OAT MILK 1L              3.49 F
+  SUBTOTAL                19.84
+  TOTAL                   19.84
+  DEBIT                   19.84
+expected_header:
+  merchant_name: LANTERN ROW GROCERY
+  store_identifier: "0412"
+  purchased_at_local: "2026-03-20 11:05"
+  purchased_at: "2026-03-20T18:05:00+00:00"
+  subtotal: "19.84"
+  tax: null
+  total: "19.84"
+expected_lines:
+  - {seq: 1, raw_text: "WT BROCCOLI CROWNS      10.81 F", line_kind: item, qty: "2.71", unit: lb, unit_price: "3.99", line_total: "10.81", parent_seq: null}
+  - {seq: 2, raw_text: "AVOCADO                  3.95 F", line_kind: item, qty: "5", unit: each, unit_price: "0.79", line_total: "3.95", parent_seq: null}
+  - {seq: 3, raw_text: "BANANAS", line_kind: item, qty: "2.31", unit: lb, unit_price: "0.69", line_total: "1.59", parent_seq: null}
+  - {seq: 4, raw_text: "OAT MILK 1L              3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "LANTERN ROW GROCERY"
+    store_identifier: "0412"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-03-20 11:05"
+    subtotal: "19.84"
+    tax: null
+    total: "19.84"
+  lines:
+    lines:
+      - {raw_text: "2.71 lb @ 3.99 /lb", line_kind: item, qty: null, unit: null, unit_price: null, line_total: "10.81", parent_index: null}
+      - {raw_text: "WT BROCCOLI CROWNS      10.81 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "10.81", parent_index: null}
+      - {raw_text: "5 @ 0.79", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "3.95", parent_index: 1}
+      - {raw_text: "AVOCADO                  3.95 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.95", parent_index: null}
+      - {raw_text: "BANANAS", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "1.59", parent_index: null}
+      - {raw_text: "2.31 lb @ 0.69/lb      1.59 F", line_kind: item, qty: null, unit: null, unit_price: null, line_total: "1.59", parent_index: null}
+      - {raw_text: "OAT MILK 1L              3.49 F", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "3.49", parent_index: null}
