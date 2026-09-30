@@ -5,19 +5,22 @@ from __future__ import annotations
 import uuid
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from sqlalchemy import func, literal, select, text, tuple_
+from sqlalchemy import func, literal, or_, select, text, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.catalog import categories
+from app.catalog import categories, standard
 from app.catalog.categories import CategoryKey
+from app.catalog.names import normalize_name
 from app.core.errors import ApiError
-from app.models.catalog import Ingredient, IngredientMeasure, Product
+from app.core.logging import get_logger
+from app.models.catalog import Ingredient, IngredientMeasure, IngredientRef, Product
 from app.schemas.catalog import (
     ConvertIn,
     ConvertOut,
     IngredientCreate,
+    IngredientMatch,
     IngredientUpdate,
     LastPaid,
     MeasureCreate,
@@ -30,13 +33,15 @@ from app.schemas.catalog import (
 )
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
-from app.services.spellings import add_generated_spellings
+from app.services.spellings import add_generated_spellings, add_spelling
 from app.services.units import build_context
 from app.units import (
     CanonicalQty,
     Provenance,
     convert,
 )
+
+log = get_logger(__name__)
 
 # --- text matching ---------------------------------------------------------
 
@@ -87,25 +92,280 @@ async def list_ingredients(
     return rows[:limit], next_cursor
 
 
-async def create_ingredient(db: AsyncSession, payload: IngredientCreate) -> Ingredient:
+_INGREDIENT_SEARCH_SQL = text(
+    """
+    WITH hits AS (
+        SELECT i.id, NULL::text AS spelling,
+               CASE WHEN lower(i.name) = :ql THEN 0
+                    WHEN lower(i.name) LIKE :prefix THEN 1
+                    ELSE 2 END AS rank,
+               similarity(lower(i.name), :ql) AS sim
+        FROM ingredient i
+        WHERE i.active AND (lower(i.name) LIKE :contains OR lower(i.name) % :ql)
+        UNION ALL
+        SELECT a.ingredient_id, a.name_norm,
+               CASE WHEN a.name_norm = :norm THEN 0
+                    WHEN a.name_norm LIKE :nprefix THEN 1
+                    ELSE 2 END,
+               similarity(a.name_norm, :norm)
+        FROM ingredient_alias a
+        JOIN ingredient i ON i.id = a.ingredient_id AND i.active
+        WHERE a.name_norm LIKE :ncontains OR a.name_norm % :norm
+    ), best AS (
+        SELECT DISTINCT ON (id) id, spelling, rank, sim
+        FROM hits
+        ORDER BY id, rank, spelling IS NOT NULL, sim DESC
+    )
+    SELECT i.id, i.name, i.category, i.canonical_unit, b.spelling, b.rank, b.sim
+    FROM best b JOIN ingredient i ON i.id = b.id
+    ORDER BY b.rank, b.sim DESC, i.name
+    LIMIT :limit
+    """
+)
+STANDARD_LIMIT = 5
+
+
+def _standard_rank(norm: str, candidate: str) -> int | None:
+    if candidate == norm:
+        return 0
+    if candidate.startswith(norm) or f" {norm}" in f" {candidate}":
+        return 1
+    if norm in candidate:
+        return 2
+    return None
+
+
+async def search_ingredients(
+    db: AsyncSession, q: str, *, include_standard: bool = False, limit: int = 10
+) -> list[IngredientMatch]:
+    """Active ingredients whose name or other spelling matches ``q``, best first (1G).
+
+    An exact name or spelling ranks first, then prefixes, then trigram
+    similarity; each ingredient appears once, however many spellings match.
+    With ``include_standard``, standard-list names the catalog doesn't have yet
+    follow. One search serves the picker and the search palette.
+    """
+    ql = " ".join(q.casefold().split())
+    if not ql:
+        return []
+    # Text that normalizes to nothing ("_", "%") still matches names literally.
+    norm = normalize_name(q) or ql
+    rows = await db.execute(
+        _INGREDIENT_SEARCH_SQL,
+        {
+            "ql": ql,
+            "prefix": f"{like_escape(ql)}%",
+            "contains": f"%{like_escape(ql)}%",
+            "norm": norm,
+            "nprefix": f"{like_escape(norm)}%",
+            "ncontains": f"%{like_escape(norm)}%",
+            "limit": limit,
+        },
+    )
+    found: list[tuple[int, float, IngredientMatch]] = []
+    for r in rows.mappings():
+        exact = r["rank"] == 0 or normalize_name(r["name"]) == norm
+        found.append(
+            (
+                0 if exact else r["rank"],
+                -float(r["sim"]),
+                IngredientMatch(
+                    kind="ingredient",
+                    id=r["id"],
+                    name=r["name"],
+                    category=r["category"],
+                    canonical_unit=r["canonical_unit"],
+                    matched_spelling=r["spelling"],
+                    exact=exact,
+                ),
+            )
+        )
+    found.sort(key=lambda t: (t[0], t[1], t[2].name.casefold()))
+    out = [m for _, _, m in found]
+    if include_standard:
+        out += await _standard_matches(db, norm)
+    return out
+
+
+async def _standard_matches(db: AsyncSession, norm: str) -> list[IngredientMatch]:
+    """Standard names matching ``norm`` that no ingredient has taken, by slug or name."""
+    scored: list[tuple[int, str, standard.StandardEntry, str | None]] = []
+    for e in standard.standard_list().ingredients:
+        best: tuple[int, str | None] | None = None
+        rank = _standard_rank(norm, normalize_name(e.name))
+        if rank is not None:
+            best = (rank, None)
+        for spelling in e.spellings:
+            rank = _standard_rank(norm, normalize_name(spelling))
+            if rank is not None and (best is None or rank < best[0]):
+                best = (rank, spelling)
+        if best is not None:
+            scored.append((best[0], e.name.casefold(), e, best[1]))
+    if not scored:
+        return []
+    scored.sort(key=lambda t: (t[0], t[1]))
+    keys = [e.key for _, _, e, _ in scored]
+    names = [e.name.lower() for _, _, e, _ in scored]
+    taken_rows = await db.execute(
+        select(Ingredient.slug, func.lower(Ingredient.name)).where(
+            or_(Ingredient.slug.in_(keys), func.lower(Ingredient.name).in_(names))
+        )
+    )
+    taken_keys: set[str] = set()
+    taken_names: set[str] = set()
+    for slug, lname in taken_rows:
+        taken_keys.add(slug)
+        taken_names.add(lname)
+    out: list[IngredientMatch] = []
+    for rank, _, e, spelling in scored:
+        if e.key in taken_keys or e.name.lower() in taken_names:
+            continue
+        out.append(
+            IngredientMatch(
+                kind="standard",
+                key=e.key,
+                name=e.name,
+                category=e.category,
+                canonical_unit=e.unit,
+                matched_spelling=spelling,
+                exact=rank == 0,
+            )
+        )
+        if len(out) == STANDARD_LIMIT:
+            break
+    return out
+
+
+async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient:
+    """Add and flush an ingredient with its generated spellings; the caller commits.
+
+    With ``standard_key``, the standard-list entry supplies the name, category
+    and unit, and its spellings, USDA reference and measures are added too; the
+    entry's key becomes the slug and the ingredient starts ``linked`` (03, 1G).
+    Raises ``IntegrityError`` for a taken name, like a plain create.
+    """
+    if spec.standard_key is None:
+        ingredient = Ingredient(
+            name=spec.name.strip(),
+            category=spec.category,
+            canonical_unit=spec.canonical_unit,
+            density_g_per_ml=spec.density_g_per_ml,
+            density_source=spec.density_source,
+            density_confirmed=False,
+            yield_pct=spec.yield_pct,
+            perishability=spec.perishability,
+            notes=spec.notes,
+        )
+        db.add(ingredient)
+        await db.flush()
+        await add_generated_spellings(db, ingredient)
+        return ingredient
+    entry = standard.entry(spec.standard_key)
+    if entry is None:
+        raise ApiError(
+            422, "unknown_standard_entry", "The standard list has no entry with that key."
+        )
     ingredient = Ingredient(
-        name=payload.name.strip(),
-        category=payload.category,
-        canonical_unit=payload.canonical_unit,
-        density_g_per_ml=payload.density_g_per_ml,
-        density_source=payload.density_source,
-        density_confirmed=False,
-        yield_pct=payload.yield_pct,
-        perishability=payload.perishability,
-        notes=payload.notes,
+        name=entry.name,
+        slug=entry.key,
+        reconcile_state="linked",
+        category=entry.category,
+        canonical_unit=entry.unit,
+        yield_pct=spec.yield_pct,
+        perishability=spec.perishability,
+        notes=spec.notes,
     )
     db.add(ingredient)
+    await db.flush()
+    await apply_standard_entry(db, ingredient, entry)
+    return ingredient
+
+
+async def apply_standard_entry(
+    db: AsyncSession, ingredient: Ingredient, entry: standard.StandardEntry
+) -> None:
+    """Give an ingredient a standard entry's spellings, USDA reference and new measures.
+
+    Spellings another ingredient already has are skipped, as generated ones are:
+    the list is a suggestion, and the ingredient being saved matters more.
+    """
+    await add_generated_spellings(db, ingredient)
+    for spelling in entry.spellings:
+        try:
+            async with db.begin_nested():
+                await add_spelling(db, ingredient.id, spelling, kind="synonym", source="standard")
+        except ApiError:
+            log.info(
+                "skipped a standard spelling another ingredient has",
+                extra={"ingredient_id": str(ingredient.id), "spelling": spelling},
+            )
+    if entry.fdc is not None:
+        await set_preferred_fdc(db, ingredient.id, entry.fdc)
+    have = {
+        label.lower()
+        for label in (
+            await db.execute(
+                select(IngredientMeasure.label).where(
+                    IngredientMeasure.ingredient_id == ingredient.id
+                )
+            )
+        ).scalars()
+    }
+    for measure in entry.measures:
+        if measure.label.lower() not in have:
+            db.add(
+                IngredientMeasure(
+                    ingredient_id=ingredient.id,
+                    label=measure.label,
+                    canonical_qty=measure.qty,
+                    source="manual",
+                    confirmed=False,
+                )
+            )
+    await db.flush()
+
+
+async def set_preferred_fdc(db: AsyncSession, ingredient_id: uuid.UUID, fdc_id: int) -> None:
+    """Make ``fdc_id`` the ingredient's preferred USDA reference, keeping any others."""
+    refs = (
+        (
+            await db.execute(
+                select(IngredientRef).where(
+                    IngredientRef.ingredient_id == ingredient_id, IngredientRef.system == "fdc"
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for ref in refs:
+        if ref.is_preferred and ref.external_id != str(fdc_id):
+            ref.is_preferred = False
+    await db.flush()
+    match = next((r for r in refs if r.external_id == str(fdc_id)), None)
+    if match is None:
+        db.add(
+            IngredientRef(
+                ingredient_id=ingredient_id,
+                system="fdc",
+                external_id=str(fdc_id),
+                is_preferred=True,
+            )
+        )
+    else:
+        match.is_preferred = True
+    await db.flush()
+
+
+async def create_ingredient(db: AsyncSession, payload: IngredientCreate) -> Ingredient:
     try:
-        await db.flush()
+        ingredient = await new_ingredient(db, payload)
     except IntegrityError as exc:
         await db.rollback()
         raise _ingredient_conflict(exc) from exc
-    await add_generated_spellings(db, ingredient)
+    except ApiError:
+        await db.rollback()
+        raise
     await db.commit()
     return await get_ingredient(db, ingredient.id)
 
@@ -113,6 +373,10 @@ async def create_ingredient(db: AsyncSession, payload: IngredientCreate) -> Ingr
 def _ingredient_conflict(exc: IntegrityError) -> ApiError:
     if "uq_ingredient_name_lower" in str(exc.orig):
         return ApiError(409, "ingredient_name_taken", "An ingredient with that name exists.")
+    if "uq_ingredient_slug" in str(exc.orig):
+        return ApiError(
+            409, "ingredient_name_taken", "That standard name is already in your catalog."
+        )
     return ApiError(409, "conflict", "The ingredient could not be saved.")
 
 
@@ -399,6 +663,10 @@ def _product_conflict(exc: IntegrityError) -> ApiError:
         return ApiError(409, "barcode_taken", "Another product already has that barcode.")
     if "uq_ingredient_name_lower" in message:
         return ApiError(409, "ingredient_name_taken", "An ingredient with that name exists.")
+    if "uq_ingredient_slug" in message:
+        return ApiError(
+            409, "ingredient_name_taken", "That standard name is already in your catalog."
+        )
     if "pack_unit" in message or "unit.code" in message:
         return ApiError(422, "unknown_unit", "pack_unit is not a known unit code.")
     return ApiError(409, "conflict", "The product could not be saved.")
@@ -408,21 +676,7 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
     """Create a product, and its ingredient inline if asked, in one transaction."""
     try:
         if payload.ingredient is not None:
-            spec = payload.ingredient
-            ingredient = Ingredient(
-                name=spec.name.strip(),
-                category=spec.category,
-                canonical_unit=spec.canonical_unit,
-                density_g_per_ml=spec.density_g_per_ml,
-                density_source=spec.density_source,
-                density_confirmed=False,
-                yield_pct=spec.yield_pct,
-                perishability=spec.perishability,
-                notes=spec.notes,
-            )
-            db.add(ingredient)
-            await db.flush()
-            await add_generated_spellings(db, ingredient)
+            ingredient = await new_ingredient(db, payload.ingredient)
             ingredient_id = ingredient.id
         else:
             assert payload.ingredient_id is not None

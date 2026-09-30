@@ -61,6 +61,8 @@ export interface IngredientSummary {
 export interface Ingredient {
   id: string;
   name: string;
+  /** The standard key once linked to the standard list, otherwise "local.<name>" (1G). */
+  slug: string;
   category: string | null;
   category_key: CategoryKey | null;
   canonical_unit: CanonicalUnit;
@@ -177,6 +179,8 @@ export interface Page<T> {
 
 export interface IngredientCreateInput {
   name: string;
+  /** Create from the standard list; the entry supplies name, unit, spellings and USDA link. */
+  standard_key?: string;
   category?: string;
   canonical_unit?: CanonicalUnit;
   density_g_per_ml?: string;
@@ -308,7 +312,7 @@ export const catalogKeys = {
   ingredients: ["ingredients"] as const,
   ingredientList: (q: string, includeInactive: boolean) =>
     ["ingredients", "list", { q, includeInactive }] as const,
-  ingredientSearch: (q: string) => ["ingredients", "search", q] as const,
+  ingredientSearch: (q: string, includeStandard: boolean) => ["ingredients", "search", q, includeStandard] as const,
   ingredient: (id: string) => ["ingredients", "detail", id] as const,
   products: ["products"] as const,
   productList: (ingredientId: string | undefined, includeInactive: boolean) =>
@@ -356,11 +360,33 @@ export function useIngredients(q: string, includeInactive: boolean, limit = 50) 
 }
 
 /** A short ranked list for pickers. Disabled until there is something to search for. */
-export function useIngredientSearch(q: string, limit = 10) {
+/** One ingredient search row (1G): a catalog ingredient, or a standard name not yet in it. */
+export interface IngredientMatch {
+  kind: "ingredient" | "standard";
+  /** Set for catalog ingredients. */
+  id: string | null;
+  /** Set for standard names. */
+  key: string | null;
+  name: string;
+  canonical_unit: CanonicalUnit;
+  active: boolean;
+  category: string | null;
+  category_key: CategoryKey | null;
+  /** The other spelling the text matched, e.g. "green onion" for scallion. */
+  matched_spelling: string | null;
+  /** The text equals the name or a spelling. */
+  exact: boolean;
+}
+
+/** Ingredients by name or other spelling, best first; standard names on request (1G). */
+export function useIngredientSearch(q: string, includeStandard = false, limit = 10) {
   const trimmed = q.trim();
   return useQuery({
-    queryKey: catalogKeys.ingredientSearch(trimmed),
-    queryFn: () => api<Page<Ingredient>>(`/ingredients${qs({ q: trimmed, limit })}`),
+    queryKey: catalogKeys.ingredientSearch(trimmed, includeStandard),
+    queryFn: () =>
+      api<{ items: IngredientMatch[] }>(
+        `/ingredients/search${qs({ q: trimmed, include_standard: includeStandard ? "true" : "false", limit })}`,
+      ),
     select: (data) => data.items,
     enabled: trimmed.length > 0,
     staleTime: 10_000,

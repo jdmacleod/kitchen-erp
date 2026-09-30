@@ -1,5 +1,5 @@
 // Synthetic catalog records for tests. Names are invented; ids are fixed v7-shaped UUIDs.
-import type { Ingredient, Measure, Product, SearchHit, Unit } from "../api/catalog";
+import type { Ingredient, Measure, Product, SearchHit, Unit, IngredientMatch } from "../api/catalog";
 
 export const units: Unit[] = [
   { code: "g", dimension: "mass", to_base_factor: "1", system: "metric", aliases: ["gram", "grams"] },
@@ -28,6 +28,7 @@ export const cupMeasure: Measure = {
 export const flour: Ingredient = {
   id: flourId,
   name: "all-purpose flour",
+  slug: "local.all-purpose-flour",
   category: "pantry",
   category_key: "pantry",
   canonical_unit: "g",
@@ -90,3 +91,20 @@ export const hits: SearchHit[] = [
     score: "0.6",
   },
 ];
+
+/** An ingredient as `GET /ingredients/search` returns it (1G). */
+export function ingredientMatch(i: Ingredient, extra: Partial<IngredientMatch> = {}): IngredientMatch {
+  return {
+    kind: "ingredient",
+    id: i.id,
+    key: null,
+    name: i.name,
+    canonical_unit: i.canonical_unit,
+    active: i.active,
+    category: i.category,
+    category_key: i.category_key,
+    matched_spelling: null,
+    exact: false,
+    ...extra,
+  };
+}

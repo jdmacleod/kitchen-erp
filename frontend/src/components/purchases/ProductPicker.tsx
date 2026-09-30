@@ -11,7 +11,7 @@ import {
   type SearchHit,
 } from "../../api/catalog";
 import { Badge, labelClass } from "../catalog/fields";
-import { IngredientPicker, type IngredientChoice } from "../catalog/IngredientPicker";
+import { choiceInput, IngredientPicker, type IngredientChoice } from "../catalog/IngredientPicker";
 import { ProductTypeahead } from "../catalog/ProductTypeahead";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Field } from "../ui";
@@ -185,9 +185,7 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled, initial
     if (hasQty && !isPositiveDecimal(packQty)) return setInvalid("Pack quantity must be a positive number.");
     setInvalid(null);
 
-    const input: ProductCreateInput = { name: name.trim() };
-    if (ingredient.kind === "existing") input.ingredient_id = ingredient.ingredient.id;
-    else input.ingredient = { name: ingredient.name };
+    const input: ProductCreateInput = { name: name.trim(), ...choiceInput(ingredient) };
     if (brand.trim()) input.brand = brand.trim();
     if (barcode.trim()) input.barcode = barcode.trim();
     if (hasQty) {
