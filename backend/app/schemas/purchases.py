@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
-from app.schemas.catalog import Categorized, ProductCreate
+from app.schemas.catalog import Categorized, IngredientCreate, IngredientMatch, ProductCreate
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import"]
 NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
@@ -346,3 +346,61 @@ class QueueApply(ApiModel):
 
 class QueueApplied(ApiModel):
     applied: int
+
+
+class NamingRow(ApiModel):
+    """One waiting group with a suggested product (04, 2I)."""
+
+    vendor: VendorSummary
+    raw_text_norm: str | None
+    line_count: int
+    raw_text: str | None
+    name: str
+    ingredient: IngredientMatch | None
+    pack_qty: DecimalStr | None
+    pack_unit: str | None
+
+
+class NamingList(ApiModel):
+    items: list[NamingRow]
+
+
+class NameProductRow(ApiModel):
+    """A row a person confirmed: its product, and the group it identifies."""
+
+    vendor_id: uuid.UUID
+    raw_text_norm: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=200)
+    ingredient_id: uuid.UUID | None = None
+    ingredient: IngredientCreate | None = None
+    pack_qty: Decimal | None = Field(default=None, gt=0)
+    pack_unit: str | None = Field(default=None, max_length=16)
+
+    @model_validator(mode="after")
+    def _fields(self):
+        if (self.ingredient_id is None) == (self.ingredient is None):
+            raise ValueError("give exactly one of ingredient_id or ingredient")
+        if (self.pack_qty is None) != (self.pack_unit is None):
+            raise ValueError("pack_qty and pack_unit must be given together, or neither")
+        return self
+
+
+class NameProductsIn(ApiModel):
+    rows: list[NameProductRow] = Field(min_length=1, max_length=200)
+
+
+class RowError(ApiModel):
+    code: str
+    message: str
+
+
+class NamedProduct(ApiModel):
+    vendor_id: uuid.UUID
+    raw_text_norm: str
+    product_id: uuid.UUID | None
+    applied: int
+    error: RowError | None
+
+
+class NameProductsOut(ApiModel):
+    results: list[NamedProduct]

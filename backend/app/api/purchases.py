@@ -25,6 +25,9 @@ from app.schemas.purchases import (
     LineMerge,
     LineOut,
     ManualPurchaseIn,
+    NameProductsIn,
+    NameProductsOut,
+    NamingList,
     NeedsBridgeItem,
     NeedsBridgeList,
     ObservationCreate,
@@ -46,6 +49,7 @@ from app.schemas.purchases import (
 )
 from app.services import (
     catalog,
+    naming,
     pricebook,
     pricebook_views,
     purchases,
@@ -495,6 +499,20 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
         line_ids=payload.line_ids,
     )
     return QueueApplied(applied=n)
+
+
+@router.get("/to-identify/naming", response_model=NamingList)
+async def naming_rows(_: CurrentUser, db: DbSession) -> NamingList:
+    """Every waiting group with a suggested product, for naming them in bulk (2I)."""
+    return NamingList(items=await naming.naming_rows(db))
+
+
+@router.post("/to-identify/name-products", response_model=NameProductsOut)
+async def name_products(
+    payload: NameProductsIn, user: CurrentUser, db: DbSession
+) -> NameProductsOut:
+    """Create each confirmed row's product and identify its lines; each row stands alone."""
+    return NameProductsOut(results=await naming.name_products(db, user, payload.rows))
 
 
 # --- price book views (2E) --------------------------------------------------

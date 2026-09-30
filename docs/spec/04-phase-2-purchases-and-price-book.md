@@ -202,6 +202,37 @@ In list responses these are null, so a list page costs no extra queries.
 58. `POST /ingest-jobs/{id}/remove` discards a failed job, and its draft if one exists, and deletes the image. It refuses other statuses as specified. `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`.
 59. A discarded job is absent from `GET /ingest-jobs` and is `404 receipt_removed` by id. Re-uploading the same file revives it with `revived: true` and reads it again.
 
+## 2I — Naming new products in bulk
+
+Added by #88 and the board rulings N1–N5 of 2026-09-30. A household's first receipts match nothing: no aliases, no products, and nothing for fuzzy or model resolution to suggest. Identifying them one inline form at a time took about six actions and two typed names per line. The naming pass does it in one table.
+
+**Where (N1).** The to-identify page gains a mode, "Name the new products", offered while at least three groups wait. It lists every waiting group as one row. It is not a nav item and not a new page.
+
+**What a row shows (N2, N4).** The line's wording, how many lines the group holds, and three fields, each prefilled and editable:
+- **Name**: the normalized wording in sentence case, with a pack size read from it removed ("RVRBND BREAD FLR 2KG" → "Rvrbnd bread flr").
+- **Ingredient**: an ingredient the wording names outright (`GET /ingredients/in-text`: catalog first, then standard names), or empty.
+- **Pack**: a size printed in the wording ("2KG" → 2 kg, "12CT" → 12 each, "16 OZ" → 16 oz), read through the unit table, or empty. Conversion never guesses: a token the unit table doesn't know is left in the name.
+
+Brand is not in the row; it is edited on the product later. `GET /to-identify/naming` returns the rows with these suggestions. Suggestions are computed on each request and never stored.
+
+**Model suggestions (N2, N3).** "Suggest names with the model" asks the local model about the rows the wording couldn't name (no ingredient found). It runs as a background job in the worker, not in the request. The page shows "Asking the model about 14 lines…" and fills each row as its answer arrives, and the page stays usable meanwhile. A reply is accepted only if it validates against its schema, and its ingredient only if it is an existing catalog ingredient or a standard-list key; anything else is dropped (non-negotiable 7). A model suggestion fills an empty field and never overwrites what a person typed.
+
+**Confirming (N5).** Rows start unticked. Editing a row ticks it, and so does its own tick box. "Create N products" sends the ticked rows to `POST /to-identify/name-products`. Each row is handled on its own:
+- its ingredient is resolved (an existing id, a standard key, or a new name; a standard key or name another row just created is reused, not duplicated);
+- the product is created with the name and pack;
+- the product is applied to every line in the group, which writes the vendor's alias and emits each line's observation, as `POST /to-identify/apply` does.
+
+A row that fails keeps its fields and shows its error; the others are unaffected. The response lists each row's outcome. Nothing is created from a row a person didn't tick (non-negotiable 8).
+
+### Acceptance criteria
+
+60. With three or more groups waiting, the to-identify page offers the naming mode; with fewer it does not.
+61. `GET /to-identify/naming` returns one row per waiting group, with the name, ingredient and pack suggestions described above. A pack token the unit table doesn't know stays in the name, and no pack is suggested.
+62. `POST /to-identify/name-products` creates each row's product and applies it to every line of its group, emitting their observations and writing the alias. Two rows naming the same new ingredient create it once.
+63. A failing row (an unknown ingredient, an unknown pack unit, a group identified meanwhile) reports its error and creates nothing; the other rows in the same request succeed.
+64. The UI sends only ticked rows. Rows start unticked; editing a row ticks it.
+65. A model suggestion that fails validation, or names an ingredient that is neither in the catalog nor on the standard list, is dropped. A suggestion never replaces a field a person edited.
+
 ## Fixture corpus
 
 Create a corpus of synthetic receipts under `backend/tests/fixtures/receipts/`. Each fixture has OCR text, a generated image of that text for the Tesseract path, the expected header, the expected parsed lines, and recorded model responses for deterministic replay. The corpus should cover at least six distinct layouts modelled on common receipt styles: a supermarket with loyalty discounts printed beneath items, a supermarket with weighted produce and deposit lines, a discount grocer with terse abbreviated names, a warehouse store with item codes before names, a small independent market with minimal formatting, and one deliberately poor OCR sample with broken lines and misread characters. Invent store names, addresses, and items; do not reproduce real receipts. The opt-in `llm` suite runs the corpus against a live model and reports header accuracy, line-classification accuracy, and field-level accuracy for quantity and price, so that swapping models is an informed decision.

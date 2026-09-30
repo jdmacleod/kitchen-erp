@@ -57,6 +57,12 @@ export function choiceInput(
   return { ingredient: { name: choice.name } };
 }
 
+/** A search or suggestion row as the choice picking it makes. */
+export function choiceFromMatch(m: IngredientMatch): IngredientChoice {
+  if (m.kind === "ingredient") return { kind: "existing", ingredient: summary(m), matchedSpelling: m.matched_spelling };
+  return { kind: "standard", key: m.key ?? "", name: m.name, canonical_unit: m.canonical_unit, category: m.category, category_key: m.category_key };
+}
+
 function summary(m: IngredientMatch): IngredientSummary {
   return {
     id: m.id ?? "",

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { purchaseErrorMessage, useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
 import { SelectField } from "../../components/catalog/fields";
+import { NameProducts } from "../../components/purchases/NameProducts";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
@@ -18,6 +19,10 @@ export function ToIdentifyPage() {
   usePageTitle("To identify");
   const queue = useToIdentify();
   const groups = queue.data ?? [];
+  // Naming in bulk (N1): offered once a few groups wait, in the URL so Back leaves it.
+  const [params, setParams] = useSearchParams();
+  const naming = params.get("mode") === "name";
+  const offerNaming = !naming && groups.length >= NAMING_MIN;
   // Once a group is answered it leaves the list, and the next one is where the
   // work continues: its product box takes focus (#88).
   const focusKey = useRef<string | null>(null);
@@ -32,8 +37,17 @@ export function ToIdentifyPage() {
 
   return (
     <>
-      <PageHeader title="To identify" description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned." />
-      {queue.isPending ? (
+      <PageHeader title="To identify" description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned.">
+        {offerNaming ? <Button onClick={() => setParams({ mode: "name" })}>Name the new products</Button> : null}
+        {naming ? (
+          <Button variant="secondary" onClick={() => setParams({})}>
+            One at a time
+          </Button>
+        ) : null}
+      </PageHeader>
+      {naming ? (
+        <NameProducts />
+      ) : queue.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
         </p>
@@ -55,9 +69,13 @@ export function ToIdentifyPage() {
           {groups.map((g, i) => (
             <li key={groupKey(g)}>
               <Card>
-                <GroupCard group={g} index={i} onAnswered={() => {
+                <GroupCard
+                  group={g}
+                  index={i}
+                  onAnswered={() => {
                     focusKey.current = groupKey(groups[i + 1] ?? groups[i - 1]);
-                  }} />
+                  }}
+                />
               </Card>
             </li>
           ))}
@@ -66,6 +84,9 @@ export function ToIdentifyPage() {
     </>
   );
 }
+
+/** How many groups must wait before naming them in bulk is offered (N1). */
+const NAMING_MIN = 3;
 
 function groupKey(g: ToIdentifyGroup | undefined): string | null {
   return g ? `${g.vendor.id}:${g.raw_text_norm}` : null;
