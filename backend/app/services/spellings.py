@@ -14,9 +14,9 @@ key differently:
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-from sqlalchemy import func, select
+from sqlalchemy import Text, cast, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +24,7 @@ from app.catalog.names import normalize_name, plural
 from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
-from app.models.catalog import Ingredient, IngredientAlias, IngredientRef
+from app.models.catalog import FdcFood, Ingredient, IngredientAlias, IngredientRef
 
 log = get_logger(__name__)
 
@@ -167,12 +167,15 @@ async def skipped_plurals(db: AsyncSession) -> list[SkippedPlural]:
     return out
 
 
-@dataclass(frozen=True)
+@dataclass
 class VocabularyReport:
     """What ``kerp ingredients check`` prints. Read-only."""
 
     skipped_plurals: list[SkippedPlural]
     without_reference: list[str]
+    usda_loaded: bool = False
+    # (ingredient, FDC id) for references the loaded USDA release doesn't have.
+    absent_references: list[tuple[str, str]] = field(default_factory=list)
 
 
 async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
@@ -188,4 +191,17 @@ async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
         .scalars()
         .all()
     )
-    return VocabularyReport(await skipped_plurals(db), list(unreferenced))
+    report = VocabularyReport(await skipped_plurals(db), list(unreferenced))
+    report.usda_loaded = (
+        await db.execute(select(func.count()).select_from(FdcFood))
+    ).scalar_one() > 0
+    if report.usda_loaded:
+        loaded = select(cast(FdcFood.fdc_id, Text))
+        rows = await db.execute(
+            select(Ingredient.name, IngredientRef.external_id)
+            .join(Ingredient, Ingredient.id == IngredientRef.ingredient_id)
+            .where(IngredientRef.system == "fdc", IngredientRef.external_id.not_in(loaded))
+            .order_by(Ingredient.name, IngredientRef.external_id)
+        )
+        report.absent_references = [(r.name, r.external_id) for r in rows]
+    return report

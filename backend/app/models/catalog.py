@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -233,3 +234,29 @@ class RefUsdaPortion(UUIDPrimaryKey, Base):
     portion_unit: Mapped[str] = mapped_column(Text, nullable=False)
     gram_weight: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     data_type: Mapped[str] = mapped_column(String(40), nullable=False)
+
+
+class FdcFood(Base):
+    """A USDA FoodData Central food (1G): Foundation, SR Legacy or FNDDS survey."""
+
+    __tablename__ = "fdc_food"
+
+    fdc_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
+    data_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str | None] = mapped_column(Text)
+    fndds_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class FdcRelease(UUIDPrimaryKey, Base):
+    """One ``kerp import usda`` run; the latest row describes the loaded data."""
+
+    __tablename__ = "fdc_release"
+
+    release_date: Mapped[date | None] = mapped_column(Date)
+    source_name: Mapped[str] = mapped_column(Text, nullable=False)
+    foods: Mapped[int] = mapped_column(Integer, nullable=False)
+    portions: Mapped[int] = mapped_column(Integer, nullable=False)
+    imported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

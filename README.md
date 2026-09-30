@@ -114,14 +114,18 @@ that runs out says `model_timeout`, which names the setting.
 Each is optional, and the system works fully without them. Only OpenStreetMap
 links reach outside the deployment, and only when switched on.
 
-- **USDA FoodData Central** portions, used only to suggest densities and named
-  measures when an ingredient is created. Download the "Full Download of All Data
+- **USDA FoodData Central** foods and portions, used only to suggest standard
+  names, densities and named measures. Download the "Full Download of All Data
   Types" CSV bundle from <https://fdc.nal.usda.gov/download-datasets> (public
   domain), unzip it under `data/usda/`, then:
 
   ```bash
-  docker compose exec api kerp import usda-portions --path /data/usda/<unzipped-dir>
+  docker compose exec api kerp import usda --path /data/usda/<unzipped-dir>
   ```
+
+  Each import replaces the previous one in a single transaction. Keep the
+  directory name USDA gives it: the release date is read from it.
+  `kerp import usda-portions` is the command's earlier name.
 
 - **OpenStreetMap links**, off unless `ENABLE_OVERPASS=true`. With it on, a
   location's card offers "Link to OpenStreetMap", which lists the places within

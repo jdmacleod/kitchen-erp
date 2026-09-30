@@ -247,24 +247,45 @@ def seed_demo(force: bool = DEMO_FORCE) -> None:
 PATH_OPTION = typer.Option(..., "--path", exists=True, file_okay=False, resolve_path=True)
 
 
-@import_cli.command("usda-portions")
-def import_usda_portions(path: Path = PATH_OPTION) -> None:
-    """Load food portions from a local USDA FoodData Central CSV download."""
+def _import_usda(path: Path) -> None:
     from collections import Counter
 
     from app.core.db import dispose_engine, get_sessionmaker
-    from app.services.usda import import_portions
+    from app.services.usda import UsdaFormatError, import_usda
 
     async def _run() -> None:
         skipped: Counter[str] = Counter()
-        async with get_sessionmaker()() as db:
-            n = await import_portions(db, path, skipped)
-        await dispose_engine()
-        typer.echo(f"imported {n} portions")
+        try:
+            async with get_sessionmaker()() as db:
+                result = await import_usda(db, path, skipped)
+        finally:
+            await dispose_engine()
+        release = result.release_date.isoformat() if result.release_date else "date not in name"
+        typer.echo(
+            f"imported {result.foods} foods and {result.portions} portions (release {release})"
+        )
+        for name in result.absent:
+            typer.echo(f"  not in the download: {name}")
         for reason, count in sorted(skipped.items()):
             typer.echo(f"  skipped {count}: {reason}")
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    except UsdaFormatError as exc:
+        typer.echo(f"error: {exc}. Nothing was imported.", err=True)
+        raise typer.Exit(1) from exc
+
+
+@import_cli.command("usda")
+def import_usda_command(path: Path = PATH_OPTION) -> None:
+    """Load foods, portions and usage counts from a local, unzipped FoodData Central download."""
+    _import_usda(path)
+
+
+@import_cli.command("usda-portions")
+def import_usda_portions(path: Path = PATH_OPTION) -> None:
+    """The earlier name of `kerp import usda`."""
+    _import_usda(path)
 
 
 ingredients_cli = typer.Typer(help="The ingredient vocabulary (1G).", no_args_is_help=True)
@@ -288,6 +309,13 @@ def ingredients_check() -> None:
         typer.echo(f"Ingredients without a USDA reference: {len(report.without_reference)}")
         for name in report.without_reference:
             typer.echo(f"  {name}")
+        if not report.usda_loaded:
+            typer.echo("USDA data isn't loaded, so references weren't checked against it.")
+            return
+        absent = report.absent_references
+        typer.echo(f"USDA references not in the loaded release: {len(absent)}")
+        for name, fdc_id in absent:
+            typer.echo(f"  {name}: {fdc_id}")
 
     asyncio.run(_run())
 
