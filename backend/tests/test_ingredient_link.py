@@ -284,3 +284,25 @@ async def test_standard_entries_filter_by_name_or_spelling(admin_client):
         "sesame-oil",
         "toasted-sesame-oil",
     }
+
+
+async def test_a_former_name_another_ingredient_has_is_logged_not_kept(
+    admin_client, db_session, owner_conn, caplog
+):
+
+    holder = await make_ingredient(admin_client, "Allium greens")
+    ing = await make_ingredient(admin_client, "green onion")
+    # The old name is already another ingredient's spelling, so it can't follow.
+    await owner_conn.execute(
+        "INSERT INTO ingredient_alias (id, name_norm, ingredient_id, kind, source) "
+        "VALUES ($1, 'green onion', $2, 'synonym', 'manual')",
+        new_id(),
+        uuid.UUID(holder["id"]),
+    )
+    with caplog.at_level("INFO", logger="app.services.ingredient_reconcile"):
+        r = await admin_client.post(
+            f"/api/v1/ingredients/{ing['id']}/rename", json={"name": "scallion stalk"}
+        )
+    assert r.status_code == 200, r.text
+    assert "skipped a former name another ingredient has" in caplog.text
+    assert "green onion" not in await _spellings(db_session, uuid.UUID(ing["id"]))
