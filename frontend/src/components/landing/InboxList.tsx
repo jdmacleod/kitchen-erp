@@ -15,6 +15,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   identify: { label: "Identify", tone: "neutral" },
   bridge: { label: "Bridge", tone: "neutral" },
   vendor_suggestions: { label: "Vendors", tone: "neutral" },
+  link: { label: "Link", tone: "neutral" },
+  usda: { label: "USDA", tone: "neutral" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */

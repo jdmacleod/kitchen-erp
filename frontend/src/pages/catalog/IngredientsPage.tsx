@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
+import { useLinkSummary } from "../../api/ingredientLink";
 import {
   BRIDGE_SOURCES,
   CANONICAL_UNITS,
@@ -61,6 +62,8 @@ export function IngredientsPage() {
   const list = useIngredients(q, includeInactive);
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const [adding, setAdding] = useState(false);
+  // DV14: skipped ingredients stay reachable from the list.
+  const linkSummary = useLinkSummary();
 
   const notice = useNotice();
   const onCreated = async (ingredient: Ingredient, message: NoticeData) => {
@@ -79,6 +82,14 @@ export function IngredientsPage() {
       <PageHeader title="Ingredients" description="The things you cook with, each measured in one unit.">
         <Button onClick={() => setAdding(true)}>Add ingredient</Button>
       </PageHeader>
+      {linkSummary.data && linkSummary.data.skipped > 0 ? (
+        <p className="mb-4 text-sm text-neutral-700 dark:text-neutral-300" data-testid="link-skipped-line">
+          {linkSummary.data.skipped} {linkSummary.data.skipped === 1 ? "ingredient" : "ingredients"} skipped when linking ·{" "}
+          <Link to="/catalog/ingredients/link" className={`rounded font-medium underline ${focusRing}`}>
+            Review
+          </Link>
+        </p>
+      ) : null}
 
       <div className="mb-4 flex flex-col gap-3">
         <label htmlFor="ingredient-search" className="sr-only">
