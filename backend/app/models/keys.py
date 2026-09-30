@@ -1,4 +1,8 @@
-"""Stable keys for vendors and locations (1F): ``slug`` and ``<vendor slug>/<location slug>``.
+"""Stable keys for vendors and locations (1F), and ingredient slugs (1G).
+
+Vendors get ``slug`` and locations ``<vendor slug>/<location slug>``. An
+ingredient created without a standard key gets ``local.<name>``: the dot keeps
+it from ever equalling a standard-list key (``app.catalog.names``).
 
 A ``kitchen-erp-vendors/1`` file names every vendor and location by key, so
 keys are assigned once, on creation, and never follow a rename. Assignment
@@ -16,6 +20,8 @@ from typing import Any
 from sqlalchemy import event, select
 from sqlalchemy.orm import Session
 
+from app.catalog.names import GENERATED_SLUG_PREFIX
+from app.models.catalog import Ingredient
 from app.models.geo import Vendor, VendorLocation
 
 
@@ -58,3 +64,8 @@ def _assign_keys(session: Session, _context: Any, _instances: Any) -> None:
             prefix = vendor.slug if vendor is not None and vendor.slug else "vendor"
             base = f"{prefix}/{slugify(obj.name or '', 'location')}"
             obj.key = _unique(session, VendorLocation.key, base, keys)
+    ingredient_slugs: set[str] = set()
+    for obj in new:
+        if isinstance(obj, Ingredient) and not obj.slug:
+            base = GENERATED_SLUG_PREFIX + slugify(obj.name or "", "ingredient")
+            obj.slug = _unique(session, Ingredient.slug, base, ingredient_slugs)

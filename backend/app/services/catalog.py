@@ -30,6 +30,7 @@ from app.schemas.catalog import (
 )
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
+from app.services.spellings import add_generated_spellings
 from app.services.units import build_context
 from app.units import (
     CanonicalQty,
@@ -104,6 +105,7 @@ async def create_ingredient(db: AsyncSession, payload: IngredientCreate) -> Ingr
     except IntegrityError as exc:
         await db.rollback()
         raise _ingredient_conflict(exc) from exc
+    await add_generated_spellings(db, ingredient)
     await db.commit()
     return await get_ingredient(db, ingredient.id)
 
@@ -420,6 +422,7 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             )
             db.add(ingredient)
             await db.flush()
+            await add_generated_spellings(db, ingredient)
             ingredient_id = ingredient.id
         else:
             assert payload.ingredient_id is not None
