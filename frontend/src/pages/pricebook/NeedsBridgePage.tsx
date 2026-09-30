@@ -6,6 +6,7 @@ import { Badge } from "../../components/catalog/fields";
 import { Alert, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { UsdaReviewSection } from "./UsdaReviewSection";
 
 /** Observations that could not be priced per canonical unit, and what each is missing. */
 export function NeedsBridgePage() {
@@ -16,6 +17,7 @@ export function NeedsBridgePage() {
   return (
     <>
       <PageHeader title="Needs a bridge" description="Products whose prices can't be compared until they have a density, a measure or a pack size." />
+      <UsdaReviewSection />
       {list.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…

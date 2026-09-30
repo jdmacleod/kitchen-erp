@@ -701,6 +701,36 @@
         "title": "ConvertToManualOut",
         "type": "object"
       },
+      "DensityOfferOut": {
+        "additionalProperties": false,
+        "properties": {
+          "density_g_per_ml": {
+            "title": "Density G Per Ml",
+            "type": "string"
+          },
+          "gram_weight": {
+            "title": "Gram Weight",
+            "type": "string"
+          },
+          "portion_id": {
+            "format": "uuid",
+            "title": "Portion Id",
+            "type": "string"
+          },
+          "portion_label": {
+            "title": "Portion Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "portion_id",
+          "portion_label",
+          "gram_weight",
+          "density_g_per_ml"
+        ],
+        "title": "DensityOfferOut",
+        "type": "object"
+      },
       "DensitySuggestion": {
         "additionalProperties": false,
         "properties": {
@@ -4466,6 +4496,30 @@
         "title": "MeasureCreate",
         "type": "object"
       },
+      "MeasureOfferOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_qty": {
+            "title": "Canonical Qty",
+            "type": "string"
+          },
+          "from_portion": {
+            "title": "From Portion",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "canonical_qty",
+          "from_portion"
+        ],
+        "title": "MeasureOfferOut",
+        "type": "object"
+      },
       "MeasureOut": {
         "additionalProperties": false,
         "properties": {
@@ -8148,6 +8202,164 @@
           "code"
         ],
         "title": "UnitParseOut",
+        "type": "object"
+      },
+      "UsdaDecisionIn": {
+        "additionalProperties": false,
+        "properties": {
+          "density_portion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Density Portion Id"
+          },
+          "measures": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "replace_density": {
+            "default": false,
+            "title": "Replace Density",
+            "type": "boolean"
+          },
+          "skip": {
+            "default": false,
+            "title": "Skip",
+            "type": "boolean"
+          }
+        },
+        "title": "UsdaDecisionIn",
+        "type": "object"
+      },
+      "UsdaDecisionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "ingredient": {
+            "$ref": "#/components/schemas/IngredientOut"
+          },
+          "saved": {
+            "title": "Saved",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "saved",
+          "ingredient"
+        ],
+        "title": "UsdaDecisionOut",
+        "type": "object"
+      },
+      "UsdaReviewGroupOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "densities": {
+            "items": {
+              "$ref": "#/components/schemas/DensityOfferOut"
+            },
+            "title": "Densities",
+            "type": "array"
+          },
+          "fdc_id": {
+            "title": "Fdc Id",
+            "type": "integer"
+          },
+          "has_density": {
+            "title": "Has Density",
+            "type": "boolean"
+          },
+          "ingredient_id": {
+            "format": "uuid",
+            "title": "Ingredient Id",
+            "type": "string"
+          },
+          "measures": {
+            "items": {
+              "$ref": "#/components/schemas/MeasureOfferOut"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "usda_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usda Description"
+          }
+        },
+        "required": [
+          "ingredient_id",
+          "name",
+          "canonical_unit",
+          "fdc_id",
+          "usda_description",
+          "has_density",
+          "densities",
+          "measures"
+        ],
+        "title": "UsdaReviewGroupOut",
+        "type": "object"
+      },
+      "UsdaReviewOut": {
+        "additionalProperties": false,
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/UsdaReviewGroupOut"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "loaded": {
+            "title": "Loaded",
+            "type": "boolean"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          }
+        },
+        "required": [
+          "loaded",
+          "release_date",
+          "groups"
+        ],
+        "title": "UsdaReviewOut",
         "type": "object"
       },
       "UsdaSuggestion": {
@@ -14111,6 +14323,82 @@
         "summary": "Parse",
         "tags": [
           "units"
+        ]
+      }
+    },
+    "/api/v1/usda/review": {
+      "get": {
+        "description": "Linked ingredients with USDA densities or measures to review (03, 1G; DV2).",
+        "operationId": "usda_review_list_api_v1_usda_review_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsdaReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Usda Review List",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/usda/review/{ingredient_id}": {
+      "post": {
+        "description": "Accept chosen suggestions as unconfirmed, or skip them. 409 density_exists on a race.",
+        "operationId": "usda_review_decide_api_v1_usda_review__ingredient_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsdaDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsdaDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Usda Review Decide",
+        "tags": [
+          "ingredient vocabulary"
         ]
       }
     },

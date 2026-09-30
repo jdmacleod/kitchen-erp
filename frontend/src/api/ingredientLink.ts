@@ -117,6 +117,8 @@ function useInvalidateCatalog() {
   return () => {
     void client.invalidateQueries({ queryKey: ["ingredients"] });
     void client.invalidateQueries({ queryKey: ["products"] });
+    // A link can bring a USDA reference, and with it suggestions (DV7).
+    void client.invalidateQueries({ queryKey: ["usda", "review"] });
   };
 }
 

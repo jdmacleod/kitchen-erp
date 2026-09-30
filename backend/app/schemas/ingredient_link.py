@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
-from app.schemas.catalog import CanonicalUnit, Categorized
+from app.schemas.catalog import CanonicalUnit, Categorized, IngredientOut
 
 
 class StandardEntryOut(Categorized):
@@ -96,3 +97,46 @@ class MergeOut(ApiModel):
     unit_to: CanonicalUnit
     prices_needing_bridge: int
     measures: list[MergeMeasureOut]
+
+
+class DensityOfferOut(ApiModel):
+    portion_id: uuid.UUID
+    portion_label: str
+    gram_weight: DecimalStr
+    density_g_per_ml: DecimalStr
+
+
+class MeasureOfferOut(ApiModel):
+    label: str
+    canonical_qty: DecimalStr
+    from_portion: str
+
+
+class UsdaReviewGroupOut(ApiModel):
+    ingredient_id: uuid.UUID
+    name: str
+    canonical_unit: CanonicalUnit
+    fdc_id: int
+    usda_description: str | None
+    has_density: bool
+    densities: list[DensityOfferOut]
+    measures: list[MeasureOfferOut]
+
+
+class UsdaReviewOut(ApiModel):
+    loaded: bool
+    release_date: date | None
+    groups: list[UsdaReviewGroupOut]
+
+
+class UsdaDecisionIn(ApiModel):
+    density_portion_id: uuid.UUID | None = None
+    measures: list[str] = []
+    skip: bool = False
+    # After a 409 density_exists: replace the density set since the list was read.
+    replace_density: bool = False
+
+
+class UsdaDecisionOut(ApiModel):
+    saved: int
+    ingredient: IngredientOut
