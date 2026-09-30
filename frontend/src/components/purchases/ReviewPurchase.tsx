@@ -13,6 +13,7 @@ import {
   fetchNextDraft,
   useCommitPurchase,
   useDeleteLine,
+  useMergeLine,
   usePatchLine,
   usePatchPurchase,
   useReResolveLine,
@@ -78,8 +79,9 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const patchLine = usePatchLine(id);
   const addLine = useAddLine(id);
   const deleteLine = useDeleteLine(id);
+  const mergeLine = useMergeLine(id);
   const commit = useCommitPurchase(id);
-  const mutations = [resolve, reResolve, patchLine, addLine, deleteLine, commit];
+  const mutations = [resolve, reResolve, patchLine, addLine, deleteLine, mergeLine, commit];
   const busy = mutations.some((m) => m.isPending);
   const error = mutations.find((m) => m.error)?.error;
 
@@ -233,9 +235,18 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     }
   };
 
+  // The item lines printed directly above and below a line: where a weight or
+  // count on a row of its own can be merged (#87).
+  const neighbours = (line: PurchaseLine) => {
+    const at = lines.indexOf(line);
+    const item = (l: PurchaseLine | undefined) => (l && l.line_kind === "item" ? l : null);
+    return { above: item(lines[at - 1]), below: item(lines[at + 1]) };
+  };
+
   const lineProps = (line: PurchaseLine): ReviewLineProps => ({
     line,
     itemLines,
+    mergeInto: line.flags.includes("quantity_line") ? neighbours(line) : { above: null, below: null },
     current: line.id === current?.id,
     picking: picking === line.id,
     editing: editing === line.id,
@@ -269,6 +280,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       focusRow(line.id);
     },
     onDelete: () => deleteLine.mutate(line.id),
+    onMerge: (into) => mergeLine.mutate({ lineId: line.id, intoLineId: into.id }, { onSuccess: () => focusRow(into.id) }),
   });
 
   // An ignored line has no product on purpose; it never joins the to-identify queue.
@@ -625,6 +637,7 @@ function RememberStoreCode({ purchase }: { purchase: Purchase }) {
 interface ReviewLineProps {
   line: PurchaseLine;
   itemLines: PurchaseLine[];
+  mergeInto: { above: PurchaseLine | null; below: PurchaseLine | null };
   current: boolean;
   picking: boolean;
   editing: boolean;
@@ -640,6 +653,7 @@ interface ReviewLineProps {
   onPatch: (input: LinePatchInput) => void;
   onCancelEdit: () => void;
   onDelete: () => void;
+  onMerge: (into: PurchaseLine) => void;
 }
 
 function lineTitle(l: PurchaseLine): string {
@@ -679,6 +693,10 @@ const FLAG_LABELS: Record<string, string> = {
   qty_assumed: "quantity assumed",
   qty_corrected: "quantity from the print",
   qty_inferred: "quantity from the print",
+  // #87: a weight or count printed on a row of its own, joined to its item or not.
+  qty_from_line_above: "quantity from above",
+  qty_from_line_below: "quantity from below",
+  quantity_line: "only a quantity",
   // #59: a price printed with no decimal point, or a line over the whole receipt.
   decimal_missing: "decimal point missing?",
   exceeds_total: "more than the receipt total",
@@ -697,6 +715,31 @@ function DecimalFix({ line, busy, onPatch }: { line: PurchaseLine; busy: boolean
     <Button variant="secondary" className="mt-1 min-h-11 lg:min-h-8 px-2 text-xs" disabled={busy} onClick={() => onPatch({ line_total: fixed })}>
       Use {formatMoney(fixed)}
     </Button>
+  );
+}
+
+/**
+ * On a line that is only a weight or count, the one-click merge into the item
+ * it belongs to (#87): the reader could not tell which neighbour that is.
+ */
+function QuantityMerge({ line, mergeInto, busy, onMerge }: { line: PurchaseLine; mergeInto: ReviewLineProps["mergeInto"]; busy: boolean; onMerge: (into: PurchaseLine) => void }) {
+  if (!line.flags.includes("quantity_line")) return null;
+  const { above, below } = mergeInto;
+  if (!above && !below) return null;
+  const size = "mt-1 min-h-11 lg:min-h-8 px-2 text-xs";
+  return (
+    <div className="flex flex-wrap gap-1">
+      {below ? (
+        <Button variant="secondary" className={size} disabled={busy} onClick={() => onMerge(below)} aria-label={`Merge line ${line.seq} into the next line, ${lineTitle(below)}`}>
+          Merge into the next line
+        </Button>
+      ) : null}
+      {above ? (
+        <Button variant="secondary" className={size} disabled={busy} onClick={() => onMerge(above)} aria-label={`Merge line ${line.seq} into the line above, ${lineTitle(above)}`}>
+          Merge into the line above
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -1012,7 +1055,12 @@ function ReviewLine(props: ReviewLineProps) {
         ) : (
           <>
             <LineParsed line={line} compact={compact} />
-            {compact ? null : <DecimalFix line={line} busy={busy} onPatch={onPatch} />}
+            {compact ? null : (
+              <>
+                <DecimalFix line={line} busy={busy} onPatch={onPatch} />
+                <QuantityMerge line={line} mergeInto={props.mergeInto} busy={busy} onMerge={props.onMerge} />
+              </>
+            )}
           </>
         )}
       </td>
@@ -1086,6 +1134,7 @@ function ReviewCard(props: ReviewLineProps) {
           <>
             <LineParsed line={line} />
             <DecimalFix line={line} busy={busy} onPatch={onPatch} />
+            <QuantityMerge line={line} mergeInto={props.mergeInto} busy={busy} onMerge={props.onMerge} />
           </>
         )}
       </div>

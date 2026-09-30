@@ -309,6 +309,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     if result is None:
         result, attempts, reason, unread_parts, part_count = await _read_lines_in_parts(ctx, text)
     parsed = [] if result is None else lines_stage.parse_model_lines(result)
+    parsed, merged_rows = lines_stage.merge_quantity_lines(parsed)
     parsed, informational = lines_stage.fold_regular_prices(parsed)
 
     purchase_flags: list[str] = []
@@ -367,6 +368,9 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     if informational:
         # Shelf-price rows taken out of the lines, kept here for the record.
         output["dropped_rows"] = informational
+    if merged_rows:
+        # Weight and count rows joined to their items, kept here for the record.
+        output["merged_rows"] = merged_rows
     if part_count > 1:
         output["parts"] = part_count
         output["unread_parts"] = unread_parts

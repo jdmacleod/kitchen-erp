@@ -66,6 +66,28 @@ describe("receipt review", () => {
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({ line_total: "4.25" }));
   });
 
+  it("merges a line that is only a count into the item beside it, on a click", async () => {
+    // #87: the reader could not tell which neighbour "5 @ 0.79" belongs to.
+    const count = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8305", seq: 5, raw_text: "5 @ 0.79", qty: "5", unit: "each", unit_price: "0.7900", line_total: "3.9500", suggestions: [], flags: ["quantity_line"] };
+    const avocado = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8306", seq: 6, raw_text: "AVOCADO 3.95 F", line_total: "3.9500", suggestions: [], flags: [] };
+    const purchase = { ...receiptPurchase, lines: [...receiptPurchase.lines, count, avocado] };
+    const calls = mockApi({
+      ...baseRoutes(() => purchase),
+      [`POST ${base}/lines/${count.id}/merge`]: () => jsonResponse(200, { ...purchase, lines: receiptPurchase.lines }),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    const row = rows.find((r) => r.getAttribute("aria-label") === "Line 5: 5 @ 0.79")!;
+    row.focus();
+    expect(await within(row).findByText("only a quantity")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+    // Line 4 above is an item too, so both ways are offered.
+    expect(within(row).getByRole("button", { name: /Merge line 5 into the line above/ })).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Merge line 5 into the next line, AVOCADO 3.95 F" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({ into_line_id: avocado.id }));
+  });
+
   it("opens the product picker in a full-width row under its line", async () => {
     // #61: inside the Product cell the picker made the table wider than its
     // column, and the receipt text scrolled or squeezed out of view.

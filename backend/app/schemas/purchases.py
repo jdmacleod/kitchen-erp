@@ -276,6 +276,12 @@ class LineEdit(ApiModel):
     clear_qty: bool = False
 
 
+class LineMerge(ApiModel):
+    """Join a line that is only a weight or count to the item it belongs to (#87)."""
+
+    into_line_id: uuid.UUID
+
+
 class LineAdd(ApiModel):
     raw_text: str | None = None
     line_kind: Literal["item", "discount", "tax", "deposit", "fee"] = "item"
