@@ -67,6 +67,34 @@ async def test_density_change_recomputes_exactly_the_dependents(
     assert (await admin_client.get("/api/v1/price-book/needs-bridge")).json()["items"] == []
 
 
+async def test_canonical_unit_change_renormalizes_same_dimension_prices(admin_client):
+    # A price in the old canonical unit needed no bridge, so the bridge-only
+    # recompute skipped it and left a per-ml price beside per-g ones.
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    oil = await make_product(admin_client, "Olive oil", "Estate oil", canonical_unit="ml")
+    o = await shelf(admin_client, oil["id"], loc["id"], "4.00", qty="500", unit="ml")
+    assert o["norm"]["status"] == "ok" and o["norm"]["norm_unit"] == "ml"
+
+    r = await admin_client.patch(
+        f"/api/v1/ingredients/{oil['ingredient']['id']}", json={"canonical_unit": "g"}
+    )
+    assert r.status_code == 200, r.text
+    after = (await admin_client.get(f"/api/v1/price-observations/{o['id']}")).json()
+    assert after["norm"]["status"] == "no_density"
+    assert after["norm"]["norm_unit_price"] is None
+    listed = (await admin_client.get("/api/v1/price-book/needs-bridge")).json()["items"]
+    assert [i["status"] for i in listed] == ["no_density"]
+
+    r = await admin_client.patch(
+        f"/api/v1/ingredients/{oil['ingredient']['id']}",
+        json={"density_g_per_ml": "0.91", "density_source": "manual"},
+    )
+    assert r.status_code == 200, r.text
+    after = (await admin_client.get(f"/api/v1/price-observations/{o['id']}")).json()
+    assert after["norm"]["status"] == "ok" and after["norm"]["norm_unit"] == "g"
+    assert D(after["norm"]["canonical_qty"]) == D("500") * D("0.91")
+
+
 async def test_truncate_and_recompute_reproduces_all_but_computed_at(
     admin_client, db_session, owner_conn
 ):
