@@ -69,6 +69,26 @@ SYNONYMS: dict[str, CategoryKey] = {
     "coffee": "beverages",
     "tea": "beverages",
     "frozen": "frozen",
+    # USDA FoodData Central food groups (Foundation and SR Legacy), so a food's
+    # group maps onto a key (1G). Groups with no household meaning stay unmapped.
+    "dairy and egg products": "dairy",
+    "spices and herbs": "spices",
+    "fats and oils": "pantry",
+    "poultry products": "meat",
+    "soups, sauces, and gravies": "pantry",
+    "sausages and luncheon meats": "meat",
+    "breakfast cereals": "pantry",
+    "fruits and fruit juices": "produce",
+    "pork products": "meat",
+    "vegetables and vegetable products": "produce",
+    "nut and seed products": "pantry",
+    "beef products": "meat",
+    "finfish and shellfish products": "seafood",
+    "legumes and legume products": "pantry",
+    "lamb, veal, and game products": "meat",
+    "baked products": "bakery",
+    "sweets": "pantry",
+    "cereal grains and pasta": "pantry",
 }
 
 

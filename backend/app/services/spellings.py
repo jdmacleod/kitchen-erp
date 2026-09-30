@@ -21,6 +21,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.names import normalize_name, plural
+from app.catalog.standard import standard_list
 from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
@@ -176,6 +177,8 @@ class VocabularyReport:
     usda_loaded: bool = False
     # (ingredient, FDC id) for references the loaded USDA release doesn't have.
     absent_references: list[tuple[str, str]] = field(default_factory=list)
+    # (standard key, FDC id) for standard-list references the release doesn't have.
+    absent_standard: list[tuple[str, int]] = field(default_factory=list)
 
 
 async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
@@ -204,4 +207,13 @@ async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
             .order_by(Ingredient.name, IngredientRef.external_id)
         )
         report.absent_references = [(r.name, r.external_id) for r in rows]
+        wanted = {e.fdc: e.key for e in standard_list().ingredients if e.fdc is not None}
+        present = set(
+            (await db.execute(select(FdcFood.fdc_id).where(FdcFood.fdc_id.in_(wanted))))
+            .scalars()
+            .all()
+        )
+        report.absent_standard = sorted(
+            (key, fdc) for fdc, key in wanted.items() if fdc not in present
+        )
     return report

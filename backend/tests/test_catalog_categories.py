@@ -18,6 +18,32 @@ GROUPS = {
     "beverages": ["beverages", "beverage", "drinks", "coffee", "tea"],
     "frozen": ["frozen"],
 }
+# USDA FoodData Central food groups (1G).
+USDA_GROUPS = {
+    "dairy": ["dairy and egg products"],
+    "spices": ["spices and herbs"],
+    "meat": [
+        "poultry products",
+        "sausages and luncheon meats",
+        "pork products",
+        "beef products",
+        "lamb, veal, and game products",
+    ],
+    "produce": ["fruits and fruit juices", "vegetables and vegetable products"],
+    "seafood": ["finfish and shellfish products"],
+    "bakery": ["baked products"],
+    "pantry": [
+        "fats and oils",
+        "soups, sauces, and gravies",
+        "breakfast cereals",
+        "nut and seed products",
+        "legumes and legume products",
+        "sweets",
+        "cereal grains and pasta",
+    ],
+}
+for _key, _groups in USDA_GROUPS.items():
+    GROUPS[_key] = GROUPS[_key] + _groups
 
 
 def test_there_are_nine_keys_and_the_groups_cover_every_synonym():
