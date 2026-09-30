@@ -46,6 +46,7 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/shop/shelf-prices` | `/prices/new` |
 | `/shop/compare` | `/compare` (D7; moves to `/plan/compare` in Phase 4) |
 | `/catalog/ingredients`, `/catalog/ingredients/:id` | `/ingredients`, `/ingredients/:id` |
+| `/catalog/ingredients/link` | new in 1G (reached from the inbox and the Ingredients list; no nav item) |
 | `/catalog/products`, `/catalog/products/:id` | `/products`, `/products/:id` |
 | `/catalog/vendors`, `/catalog/vendors/:id` | `/vendors`, `/vendors/:id` |
 | `/catalog/vendors?view=map` | `/map` (T9) |
@@ -120,6 +121,8 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Identify | Unmatched lines on committed purchases, as one aggregate row (T6) | "23 receipt lines to identify" | Review lines → `/shop/receipts/identify` |
 | Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one row per product (T7) | "Oat milk, 1 L carton" | Add density or measure |
 | Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
+| Link | Ingredients still To review against the standard list, one aggregate row (03, 1G) | "13 ingredients to link to the standard list" | Review → `/catalog/ingredients/link` |
+| USDA | Linked ingredients with unreviewed USDA densities or measures, one aggregate row, only when USDA data is loaded (03, 1G) | "9 ingredients have USDA densities to review" | Review → `/catalog/bridges#usda` |
 | Recipe | Recipe lines that do not resolve to ingredients (Phase 3) | "[Recipe] has 2 unresolved lines" | Resolve |
 
 API (T5): `GET /api/v1/inbox`.

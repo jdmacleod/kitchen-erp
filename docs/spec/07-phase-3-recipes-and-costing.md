@@ -83,8 +83,9 @@ recipe_ingredient(                             -- derived; rebuilt when content_
   UNIQUE (recipe_id, seq)
 )
 
-ingredient_alias(
+ingredient_alias(                              -- created by 1G (02); Phase 3 adds kind/source values
   id, name_norm TEXT UNIQUE, ingredient_id FK,
+  kind, source,                                -- a recipe decision writes kind synonym, source recipe
   confirmed_count INT, last_seen_at
 )
 
@@ -208,10 +209,11 @@ column rather than raising.
 
 ## 3C — Ingredient resolution and the generalized queue
 
-Each `recipe_ingredient.raw_name` is normalized (lowercase, whitespace
-collapsed, punctuation and quantity fragments removed; a versioned pure function
-distinct from the receipt normalizer) and looked up in `ingredient_alias`. A hit
-resolves the line with `resolution = alias`. A miss leaves it `unmatched` with
+Each `recipe_ingredient.raw_name` is normalized by the 1G normalizer in
+`app/catalog/names.py` (a versioned pure function distinct from the receipt
+normalizer) and looked up against ingredient names and `ingredient_alias`, as
+1G's `search_ingredients` does. A hit resolves the line with
+`resolution = alias`; an inflection such as "eggs" for egg is a hit, not drift. A miss leaves it `unmatched` with
 suggestions from trigram similarity against ingredient names, ranked, never
 auto-applied. A person choosing an ingredient, creating one inline, or marking
 the name as not an ingredient upserts the alias, so the same name resolves on
@@ -320,6 +322,46 @@ to-identify page stays for receipt lines.
     labelled provisional.
 31. A ten-line recipe can be fully resolved and pinned from the keyboard.
 32. On a 390-pixel viewport the cost table reads without horizontal scrolling.
+
+## Amendments from sub-phase 1G (2026-09-30)
+
+The ingredient-vocabulary review (`12`, and 1G in `03`) moved its recipe work
+here. These amendments are part of this draft and wait for its approval.
+
+- **Extraction and report.** `kerp recipes vocabulary` lists the distinct
+  ingredient names across the mount with counts and files, bucketed as
+  conformant (a name or spelling), inflection, drift (a confident different
+  target) and unknown. Reports are written under `data/`, never into the mount
+  and never into the repository.
+- **Conform on the host (VC2).** `kerp recipes conform --apply` is a host
+  command, not an application feature. It rewrites only the ingredient token
+  spans of drift names, adds `{}` when a rewrite changes a single-word name to a
+  multi-word one, moves stripped prep words into the note (creating it, or
+  prepending to an existing one), and never commits: a person reads `git diff`
+  in `cooklang-recipes` and commits. A golden-file test shows the bytes outside
+  the rewritten spans are unchanged, and a second run reports no drift. The
+  running application still never writes to the mount.
+- **Close matches never apply themselves (VC3).** Trigram matches, however
+  close, are suggestions in the `recipe` inbox kind; only an exact name or
+  spelling resolves a line without a person.
+- **The matching cascade (VS2).** For names no spelling knows, 3C proposes in
+  this order: prep-word stripping ("minced garlic" → garlic with the note
+  "minced"; form words such as ground, dried, powder, canned, toasted and
+  unsalted are never stripped, and both lists are data files); USDA pool
+  matches from `fdc_food`; then the local model, whose JSON is accepted only if
+  it validates. Every proposal goes to review. FoodOn identifiers and the USDA
+  attribute table (common and scientific names) arrive with this work, and so
+  does the FoodOn licensing entry.
+- **Hierarchy (VC6).** Parent ingredients (cheese → parmesan →
+  Parmigiano-Reggiano), and whether a product satisfies an ingredient through
+  its parents, are decided with the costing rules in 3D.
+- **Density choice (VS5).** Choosing one USDA density per ingredient, and
+  keeping portion descriptors such as "chopped" or "packed" so a recipe note
+  selects the matching conversion, waits for recipes that need it.
+- **Lint.** `kerp recipes lint [--strict]` reports ingredient names that are
+  neither a name nor a spelling and suggests one; it is advisory unless
+  `--strict`. An optional pre-commit hook for `cooklang-recipes` is documented,
+  not installed.
 
 ## Fixtures and personal data
 

@@ -2,7 +2,7 @@
 
 Phase 1 builds everything that purchases will later point at: a running skeleton, the unit system and conversion library, the ingredient and product catalog, and vendors on a map. It ships no workflow that saves money or time by itself, so its success measure is different: at the end of Phase 1, adding a new product or a new farm stand should take well under a minute, and the conversion library should be trustworthy enough that nobody needs to think about it again.
 
-The phase is divided into five sub-phases. 1A must come first. 1B is independent of 1C–1E and can be built in parallel. 1E depends on 1D.
+The phase was divided into five sub-phases, and two more were added after it shipped: 1F (vendor interchange) and 1G (ingredient vocabulary). 1A must come first. 1B is independent of 1C–1E and can be built in parallel. 1E depends on 1D. 1F depends on 1D, and 1G on 1C.
 
 ## 1A — Foundation
 
@@ -211,6 +211,71 @@ The header stage already reads the printed phone and address. `match_location` s
 70. Accepting a suggestion writes the value and its provenance; accepting one whose field changed since it was proposed marks it stale.
 71. Pending suggestions appear as one inbox row and leave the inbox once decided.
 72. On synthetic receipts from a chain with three branches, the branch whose phone is printed is chosen without a click.
+
+## 1G — Ingredient vocabulary
+
+Added 2026-09-30 from a design-session handoff (`12-ingredient-vocabulary.md` keeps the record) and its CEO, engineering, design and outside-voice reviews. Ingredient names drift: "scallions", "green onions" and "scallion" end up as three ingredients with three price histories, and none has a USDA reference. This sub-phase gives each identity one canonical ingredient that any of its spellings reaches, a standard list to start from, and USDA references and suggestions reviewed by a person. Recipe work (extracting names from `cooklang-recipes`, conforming, linting) belongs to Phase 3 (`07`). The application never writes to the recipes repository.
+
+**Naming rules.** These rules apply to the standard list, to review, and to anything that later proposes names:
+1. Culinary word order, lowercase: "yellow onion", "ground cumin", "parmesan". Proper nouns keep their capitals (Parmigiano-Reggiano, Italian sausage).
+2. The natural recipe form of the noun: singular for count nouns (egg, onion), plural only where a cook writes it (green beans, almonds). Other inflections are spellings of the same ingredient.
+3. A form that changes what you buy is its own ingredient: garlic and garlic powder; whole and ground cumin; dried and canned beans; salted and unsalted butter; sesame oil and toasted sesame oil.
+4. Prep belongs in a recipe's note, not the name: garlic, not minced garlic.
+5. Cooking state is not identity. The USDA reference points at the raw or dry record, meaning what you buy and weigh.
+6. Brands never appear in ingredient names; they belong on products.
+
+Ingredients stay flat in 1G. A hierarchy (cheese → parmesan) is deferred (TODOS.md, Ingredients).
+
+**Spellings.** `ingredient_alias` (`02`) holds every other spelling of an ingredient: synonyms, generated plurals, and legacy names left behind by a rename or merge. The canonical name is never a spelling row. One versioned normalizer in `app/catalog/names.py` makes the key. A plural generator writes the plural of the last word of each name (s, x, ch and sh take es; a consonant before y becomes ies; an uncountables list is left alone). A generated form that another ingredient already has is skipped and logged, never an error; a spelling a person types that another ingredient has is refused with `409 alias_taken`. `kerp ingredients check` lists skipped plurals, ingredients without a USDA reference, and USDA references absent from the loaded release.
+
+**USDA import.** `kerp import usda --path <dir>` loads a local, unzipped FoodData Central CSV download in one transaction with one skip report, replacing the previous load. `kerp import usda-portions` stays as an alias. It checks each file's required columns first and exits naming the file and column that are missing. It records the release date. Alongside the portions table of 1C, it loads `fdc_food` for the Foundation, SR Legacy and FNDDS survey foods, with a usage count: how many FNDDS survey foods use each one as an input, found through `input_food`, `sr_legacy_food` and the FNDDS ingredient code table. USDA suggestions rank by that count, so "Onions, raw" comes before "Onions, dehydrated flakes". FoodOn identifiers and USDA attributes are not imported (Phase 3).
+
+**The standard list.** `backend/app/catalog/standard_ingredients.yaml` is a tracked, reviewed list of common household ingredients. Each entry has a key, a lowercase name, a category from the nine display keys, a canonical unit, other spellings, an optional USDA reference, and optional named measures. The list is flat. Dried and canned beans are separate entries; lemon zest and juice are measures on lemon, and bottled lemon juice is its own entry; coffee, wine, beer and common spirits are included. Its USDA references point at raw or dry records, chosen by a person with a helper that reads `fdc_food`. USDA food group names map onto the nine category keys in `app/catalog/categories.py`. CI checks the file's structure; `kerp ingredients check` checks its references against the loaded release. The list only offers names: it seeds nothing into the catalog.
+
+**Finding an ingredient.** One `search_ingredients` service matches ingredient names and their spellings, active ingredients only. It ranks an exact name or spelling first, then prefixes, then trigram similarity, and returns one row per ingredient. `GET /api/v1/ingredients/search?q=&include_standard=` exposes it, and the search palette uses it without standard names. With `include_standard=true`, standard-list entries the catalog doesn't have yet (no ingredient has their key as its slug) follow the catalog matches. The ingredient picker asks for them only where it may create an ingredient. `GET /api/v1/ingredients`, the paged list, is unchanged.
+
+**Creating from the standard list.** Choosing a standard name in the picker creates nothing until the form saves. On save, `IngredientCreate.standard_key` creates the ingredient, its spellings, its USDA reference and its measures in the form's own transaction, with the standard key as its slug and `reconcile_state = linked`. A taken name returns `409 ingredient_name_taken`; an unknown key returns `422 unknown_standard_entry`. Measures from the list are stored as `source = usda` or `manual` and unconfirmed.
+
+**Linking existing ingredients.** Ingredients created before 1G start `unreviewed`. A link page (`/catalog/ingredients/link`, reached from an inbox row, with no nav item) pairs each with its likely standard name and USDA food. Per row, a person can:
+- **Link**: take the standard name, slug, spellings and USDA reference. A name that changes is kept as a `legacy` spelling.
+- **Rename**: give the ingredient a new name. The old name is kept as a `legacy` spelling.
+- **Skip**: leave it as it is. Skipped rows can be reopened.
+
+`GET /api/v1/ingredients/link/summary` returns the counts of rows to review and skipped rows for the page and the Ingredients list.
+
+**Merging.** When a Link or Rename would give an ingredient a name another active ingredient already has, the page offers a merge instead. The person picks which ingredient survives, defaulting to the one with more products. The merge runs in one transaction with a single commit:
+1. The loser is renamed "<name> (merged into <survivor>)", then flushed, because the unique name index covers inactive rows.
+2. The survivor takes the standard name and slug, then is flushed.
+3. Products move to the survivor. The loser's spellings and references move, and its old name becomes a `legacy` spelling of the survivor.
+4. Named measures the person ticked are copied; they are pre-ticked when the units share a dimension.
+5. The loser is deactivated with `merged_into` set.
+6. Every price of the survivor is renormalized in full, as a change of canonical unit requires (#102), through a flush-only normalize core.
+
+A merge across canonical units is allowed. The confirmation names the unit change and how many prices will need a bridge, and those prices land in Needs a bridge.
+
+**USDA suggestions.** Once an ingredient has a USDA reference, its portions become suggestions reviewed on the Needs a bridge page (`10`). `GET /api/v1/usda/review` lists ingredients with unreviewed suggestions, grouped per ingredient. Suggestions are left out when they are densities for an ingredient that already has one, measures whose label (compared lowercase) it already has, or densities for an ingredient counted in `each`. An `each` ingredient with no measures to offer never appears. `POST /api/v1/usda/review/{ingredient_id}` takes `{density_portion?, measures[], skip}`. Accepted values go through the existing density and measure write paths as `source = usda`, unconfirmed, and trigger a recompute. The request records `usda_reviewed_fdc_id`, so a reviewed ingredient leaves the list until its reference changes. There is no accept-all. If a density was set since the list was read, the request returns `409` with the current value.
+
+**Inbox.** Two kinds join the unified inbox (`09`):
+- **Link**: "n ingredients to link to the standard list", while any are `unreviewed`.
+- **USDA**: "n ingredients have USDA densities to review", once no ingredient is `unreviewed` or a linked ingredient has suggestions, and only when USDA data is loaded.
+
+**Undo.** Merges are not undone in the app. The runbook in the README says to run `kerp backup` before `kerp import usda`, before linking, and before any downgrade.
+
+### Acceptance criteria
+
+74. The 1G migration applies and reverses cleanly. Existing ingredients get a unique generated slug and `reconcile_state = unreviewed`; new ingredients default to `not_applicable`, and no generated slug equals a standard key.
+75. The normalizer is pure and versioned, and property-based tests show it is idempotent, ignores case and accents in the key, and keeps in-word hyphens. The plural generator's table-driven tests cover each rule and the uncountables list.
+76. A generated plural that another ingredient already has is skipped, logged and listed by `kerp ingredients check`; a typed spelling another ingredient has is refused with `409 alias_taken`. At most one reference per ingredient and system is preferred, enforced by the database.
+77. `kerp import usda` on a synthetic FoodData Central fixture loads foods, portions and usage counts in one transaction, records the release date, reports skipped rows, and replaces an earlier load when run twice. A missing column exits non-zero naming the file and the column, and changes nothing. `kerp import usda-portions` still works, and the 1C USDA tests pass unchanged.
+78. USDA food suggestions rank a food used by more FNDDS survey foods above a less-used one of similar text similarity.
+79. The standard list validates in CI: unique keys and names, lowercase names except listed proper nouns, categories among the nine keys, canonical units among g, ml and each, and no spelling claimed by two entries.
+80. `search_ingredients` finds an ingredient by its name and by any spelling, ranks exact above prefix above trigram, returns one row per ingredient however many spellings match, never returns an inactive ingredient, and answers in under 100 ms at the 95th percentile with 5,000 ingredients and their spellings.
+81. With `include_standard=true`, a standard name appears only while no ingredient has its key as slug. Saving a product whose new ingredient came from the standard list creates the ingredient, its spellings and its USDA reference in the product's transaction; `409 ingredient_name_taken` and `422 unknown_standard_entry` leave nothing behind, and a discarded drawer creates nothing.
+82. Linking an ingredient gives it the standard name, slug and reference and keeps a changed name as a `legacy` spelling; Rename does the same with a typed name; Skip and Reopen change only `reconcile_state`; the summary counts follow.
+83. A merge in either survivor direction, including one where the survivor's id sorts first, moves every product, spelling and reference, keeps the loser's name as a spelling of the survivor, deactivates the loser with `merged_into`, copies only the ticked measures, and renormalizes every price of the survivor in the same single commit. A merge across canonical units sends the prices it cannot convert to Needs a bridge.
+84. The USDA review list never offers a density to an ingredient that has one or is counted in `each`, nor a measure whose label it has. Accepting stores `source = usda`, unconfirmed, recomputes affected prices, and removes the ingredient from the list; a density set since the list was read returns `409` with the current value.
+85. The Link inbox row appears while any ingredient is unreviewed and leaves when none is. The USDA row follows the rule above and is absent when no USDA data is loaded.
+86. `kerp ingredients check` reports skipped plurals, ingredients with no USDA reference, and references absent from the loaded release, and exits zero; it makes no change.
 
 ## Out of scope for Phase 1
 

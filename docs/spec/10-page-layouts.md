@@ -123,6 +123,60 @@ The most important detail page; search results and inbox items land here most of
 - **Right column:** Products as pill links. "Used in" recipes are dormant until Phase 3.
 - **Empty:** "No prices yet" with Log shelf price.
 
+## Ingredient vocabulary (1G)
+
+Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a link page, and USDA suggestions on Needs a bridge. Decision IDs in this section (DV1–DV25) refer to the 2026-09-30 design review.
+
+**Words (DV16).** The list is "the standard list"; one entry is a "standard name". Row actions are Link, Rename, Merge (only when needed) and Skip; states are To review, Linked, Merged and Skipped. "Confirm" stays reserved for bridges. Ingredient names are lowercase, except proper nouns.
+
+**Ingredient picker (DV9, DV22–DV24).**
+- Rows, in order: an exact name or spelling match, other catalog matches, a "From the standard list" group, then "Create new ingredient “…”".
+  - A spelling match shows "matches green onion" and is read aloud as "green onion, another name for scallion".
+  - One row per ingredient, however many of its spellings match.
+  - Standard names carry their category chip; nothing in the group is blue except the focus ring.
+  - The group heading is announced by screen readers.
+- "Create new" is hidden when the typed text equals any name, spelling or standard name (DV23).
+- Standard names appear only where the picker can create an ingredient, and not when editing a product. Compare and Map never show them.
+- Choosing a standard name creates nothing until the form saves (DV22). After a choice, the field shows "scallion · g" with the hint "matched green onion", or "New, from the standard list" (DV24). A `409` or `422` shows at the field.
+
+**Link page** (`/catalog/ingredients/link`; no nav item; DV1, DV3–DV5, DV10–DV17, DV25).
+- Header: "Link ingredients to the standard list", with the description "Give each ingredient its standard name so spellings and USDA data line up." A count strip below reads "13 to review · 4 skipped".
+- Rows, likely duplicates first. Each row shows the ingredient's name, canonical unit and product count; the suggested standard name ("→ scallion"), or "No standard name fits"; the USDA food it would link to; and the actions Link, Rename… and Skip. "Choose another standard name" opens a search of the standard list only (DV4).
+- Rename is an inline field with Save and Cancel. A name another ingredient has shows "scallion already exists · Merge into it" (DV13).
+- **Merge (DV10, DV15)** appears only when Link or Rename hits a name another active ingredient has. It opens an inline tomato-tinted panel, like Remove purchase:
+  - "Merge green onions into scallion? 3 products move. green onions becomes another spelling."
+  - When units differ: "Units differ (each → g): 4 prices will need a weight per bunch."
+  - "Keep:" radios for the two ingredients with their product counts, defaulting to the one with more products.
+  - Tickable measures to copy, pre-ticked when their units share a dimension.
+  - "This can't be undone here." then tomato-text "Merge" and Cancel. Focus starts on Cancel.
+- A decided row leaves. Focus moves to the next row's Link, or its search when it has no suggestion, and a polite live region says "Linked green onions to scallion. 12 left." (DV12). Skipped rows fold under "Skipped (4)", each with Reopen (DV3).
+- Finish (DV5): an olive Notice, "21 reviewed: 14 linked, 3 merged, 4 skipped.", with "Next: review USDA densities for 9 ingredients" when there are any.
+- States (DV17, DV25):
+  - Loading: "Loading…".
+  - Empty: "Every ingredient is linked or skipped" with Back to Home.
+  - A failed action shows an Alert inside its row and keeps the input.
+  - With no USDA data, rows omit the USDA line.
+- While any ingredients are skipped, the Ingredients list shows "4 ingredients skipped when linking · Review" (DV14).
+- Phone, below 1024px (DV11): each row stacks the name line, the "→ scallion" line with the USDA food, then Link, Rename and Skip as a row of 44px buttons. The count strip stays pinned under the header.
+
+**USDA suggestions on Needs a bridge (DV2, DV6–DV8, DV18–DV21).**
+- A first section, "USDA suggestions", sits above the existing table on Needs a bridge. There is no separate page.
+- Grouped rows, never cards (DV8). Each group shows:
+  - the ingredient, its unit and the USDA food it is linked to;
+  - the densities as radios, each with its portion, grams and the resulting g/ml;
+  - the measures as checkboxes, ticked by default;
+  - "Accept selected" and Skip.
+- A footer names the source: "Data: USDA FoodData Central, release 2026-04-30".
+- There is no accept-all (DV18). A decided ingredient leaves the section.
+- Values the ingredient already has are not offered (DV19). An ingredient counted in `each` gets measures only (DV21).
+- A race shows "scallion now has a density of 0.52 g/ml (unconfirmed). Keep it · Replace", with Keep it first (DV19).
+- After accepting (DV20): the Notice "Saved 3 values for scallion as unconfirmed. Confirm them on its page after checking a label · Open scallion". The ingredient's bridges show a neutral "Unconfirmed" badge.
+- With no USDA data loaded, the section says "USDA data isn't loaded yet. Whoever runs this Kitchen ERP can load it with kerp import usda." and no inbox row appears (DV6).
+
+**Inbox rows (DV1, DV7).**
+- Badge "Link", title "13 ingredients to link to the standard list", action "Review", while any ingredient is To review.
+- Badge "USDA", title "9 ingredients have USDA densities to review", linking to the section above. It appears once no ingredient is To review, or when a linked ingredient has suggestions. The link page's finish Notice points to it.
+
 ## Products (Products: search and catalog first · Products: add drawer · Add drawer: unsaved input)
 
 - **Header:** "Add product" is the primary action.

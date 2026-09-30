@@ -131,6 +131,80 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 3 (scoped tokens and vendor suggestions) merged.
 
+## Ingredients
+
+### Ingredient hierarchy and substitution
+
+**What:** Add parent ingredients (cheese → parmesan → Parmigiano-Reggiano) and decide whether a product satisfies an ingredient through its parents.
+
+**Why:** Recipes name ingredients at different levels ("cheese", "parmesan"), and substitution and cost rollups want the chain.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. Decide with the Phase 3 costing rules.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval
+
+### The full name-matching cascade for recipe text
+
+**What:** Prep-word stripping ("minced garlic" → garlic + note), USDA-pool proposals for unknown names, and the Ollama tier, as the handoff described (`12`, and 07's 1G amendments).
+
+**Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 draft is amended to carry it. FoodOn references and the USDA attribute table (common and scientific names) moved here too (outside-voice card O8): nothing in 1G reads them, and the FoodOn licensing entry waits with them.
+
+**Effort:** L (human) / M (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval, sub-phase 1G
+
+### Choosing one USDA density per ingredient
+
+**What:** Pick the plain "cup" portion or the median of the volume portions automatically, and keep descriptors ("chopped", "packed") so a recipe note can select the matching conversion.
+
+**Why:** Today each portion is its own suggestion and a person picks one.
+
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS5). It only pays off once recipe notes exist to choose between descriptors.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 3 approval
+
+### Merge from an ingredient's own page
+
+**What:** A "Merge into…" action (and "Link to standard name") on the ingredient detail page, reusing the link page's merge: survivor choice, retired name, moved products, copied measures, full recompute.
+
+**Why:** Duplicates keep appearing after the one-time link list is cleared, and merging is the lasting capability.
+
+**Context:** Proposed by the outside-voice review of sub-phase 1G on 2026-09-30 (card O12); the user kept the dedicated link page (DV1) and deferred this. Build on `app/services/ingredient_reconcile.py` once 1G ships.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P3
+**Depends on:** Sub-phase 1G
+
+### Ingredient vocabulary export and import
+
+**What:** `kerp export ingredients` and `kerp import ingredients [--dry-run]` reading and writing a versioned `kitchen-erp-ingredients/1` file, with the vendor file loader's rules and the 1F edit-wins merge, lifted into one module shared with vendors.
+
+**Why:** Moving the household's vocabulary between deployments, or sharing a standard list, needs a plain file.
+
+**Context:** CEO ruling VC1 (2026-09-30) made the database the source with this file as its interchange. The eng review the same day deferred the file itself (D1): nothing reads it yet, backups are full pg_dumps (`kerp backup`), and building it means refactoring `vendor_import.py`'s loader and `geo.py`'s `write_unless_edited` into a shared module. Start from `app/services/vendor_exchange.py` and `vendor_import.py`.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Sub-phase 1G; a reader for the file
+
+### Barcode lookup from USDA branded foods
+
+**What:** Load a slim table of branded foods (barcode, brand, description, category, package weight) and use it to suggest a product and ingredient for an unknown barcode.
+
+**Why:** Scanning an unknown barcode could pre-fill a new product instead of starting from nothing.
+
+**Context:** Deferred by the ingredient-vocabulary handoff itself (its task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Sub-phase 1G; the household's go-ahead
+
 ## Operations
 
 ### Backup refuses to overwrite an existing backup

@@ -2,7 +2,7 @@
 
 The UI work is organized into four sub-phases that can be built and merged independently, in order. A sub-phase is done when every criterion in its block passes, the test suite is green, and `docker compose up` yields a working system from a clean checkout.
 
-UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). Criteria marked **dormant** belong to a later phase and become due only when that phase is approved and built. Criteria marked **deferred** were moved out of this work on 2026-09-25 and are recorded in TODOS.md. Decision IDs in parentheses refer to that day's review record (see 08).
+UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was added with sub-phase 1G on 2026-09-30 and builds with it. Criteria marked **dormant** belong to a later phase and become due only when that phase is approved and built. Criteria marked **deferred** were moved out of this work on 2026-09-25 and are recorded in TODOS.md. Decision IDs in parentheses refer to that day's review record (see 08).
 
 ## UI-1 — Theme and polish
 
@@ -82,3 +82,16 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). Criteria m
 - **UI-4.8** *Dormant* until Phase 4 (T4): the at-the-store screen. Editing an item's price there records a shelf price observation, and "Done here" creates a purchase linked to the trip plan.
 - **UI-4.9** The More tab lists Shop's other pages, Catalog and Settings, plus Cook and Stock once they are built.
 - **UI-4.10** Receipt review on phone shows one line per card, "Needs you" lines first, with 44px suggestion buttons and Commit anchored in the thumb zone (G18).
+
+## UI-5 — Ingredient vocabulary (1G)
+
+Added 2026-09-30 with sub-phase 1G (`03`); layouts and copy are in 10. Decision IDs refer to that day's design review.
+
+- **UI-5.1** The ingredient picker lists an exact name or spelling match first, then other catalog matches, then "From the standard list", then "Create new". A spelling match shows "matches <spelling>", one row per ingredient, and "Create new" is hidden when the typed text equals any name, spelling or standard name (DV9, DV23).
+- **UI-5.2** Standard names appear only where the picker may create an ingredient and not in edit mode. Choosing one creates nothing until the form saves, and the chosen field shows "matched <spelling>" or "New, from the standard list" (DV22, DV24).
+- **UI-5.3** The link page lists rows to review with Link, Rename…, Skip and "Choose another standard name"; skipped rows fold with Reopen; its finish Notice summarises what was decided and points to USDA suggestions when there are any (DV3–DV5).
+- **UI-5.4** Merge appears only when Link or Rename hits another ingredient's name. It opens an inline tomato-tinted panel that names the products moving, any unit change and the prices needing a bridge, offers the survivor with a default, and starts focus on Cancel (DV10, DV15).
+- **UI-5.5** After a decision the row leaves, focus moves to the next row's first action, and a polite live region announces what happened and how many remain (DV12).
+- **UI-5.6** Needs a bridge shows USDA suggestions as grouped rows: densities as radios, measures as checkboxes, per-ingredient "Accept selected" and Skip, no accept-all, and the release footer. A race offers "Keep it · Replace" with Keep it first (DV8, DV18, DV19).
+- **UI-5.7** The Link and USDA inbox rows appear and leave as 03 describes; with no USDA data, the section shows the not-loaded copy and there is no USDA row (DV6, DV7).
+- **UI-5.8** Below 1024px, link-page rows stack with 44px action buttons and the count strip stays pinned; every 1G control has a visible focus ring and meets 4.5:1 contrast in both themes (DV11).
