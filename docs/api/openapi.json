@@ -11007,6 +11007,51 @@
         ]
       }
     },
+    "/api/v1/ingredients/in-text": {
+      "get": {
+        "description": "Ingredients a receipt line names outright, for a new product's picker (#88).",
+        "operationId": "ingredients_in_text_api_v1_ingredients_in_text_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "text",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Text",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientSearchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredients In Text",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/ingredients/link": {
       "get": {
         "operationId": "link_page_api_v1_ingredients_link_get",

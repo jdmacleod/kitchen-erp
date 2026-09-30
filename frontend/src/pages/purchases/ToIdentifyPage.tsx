@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { purchaseErrorMessage, useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
@@ -18,6 +18,17 @@ export function ToIdentifyPage() {
   usePageTitle("To identify");
   const queue = useToIdentify();
   const groups = queue.data ?? [];
+  // Once a group is answered it leaves the list, and the next one is where the
+  // work continues: its product box takes focus (#88).
+  const focusKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = focusKey.current;
+    if (key === null) return;
+    focusKey.current = null;
+    const at = groups.findIndex((g) => groupKey(g) === key);
+    // Its product box, or the ingredient box of the new product it is being given.
+    if (at >= 0) (document.getElementById(`identify-${at}`) ?? document.getElementById(`identify-${at}-new-ingredient`))?.focus();
+  });
 
   return (
     <>
@@ -42,9 +53,11 @@ export function ToIdentifyPage() {
       ) : (
         <ul aria-label="Lines to identify" className="flex flex-col gap-4">
           {groups.map((g, i) => (
-            <li key={`${g.vendor.id}:${g.raw_text_norm}`}>
+            <li key={groupKey(g)}>
               <Card>
-                <GroupCard group={g} index={i} />
+                <GroupCard group={g} index={i} onAnswered={() => {
+                    focusKey.current = groupKey(groups[i + 1] ?? groups[i - 1]);
+                  }} />
               </Card>
             </li>
           ))}
@@ -54,12 +67,18 @@ export function ToIdentifyPage() {
   );
 }
 
-function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) {
+function groupKey(g: ToIdentifyGroup | undefined): string | null {
+  return g ? `${g.vendor.id}:${g.raw_text_norm}` : null;
+}
+
+function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index: number; onAnswered: () => void }) {
   const apply = useApplyToIdentify();
   const notice = useNotice();
   // The group leaves the list once applied, so the confirmation lives in the Notice.
-  const onApplied = ({ applied }: { applied: number }) =>
+  const onApplied = ({ applied }: { applied: number }) => {
     notice.show({ tone: "success", message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.` });
+    onAnswered();
+  };
   const [all, setAll] = useState(true);
   const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
   const id = `identify-${index}`;
@@ -93,6 +112,7 @@ function GroupCard({ group, index }: { group: ToIdentifyGroup; index: number }) 
           id={id}
           label="Product"
           value={null}
+          lineText={group.raw_text_norm}
           onChange={(p) => p && apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() }, { onSuccess: onApplied })}
           disabled={apply.isPending}
         />
