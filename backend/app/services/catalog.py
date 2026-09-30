@@ -118,6 +118,7 @@ async def update_ingredient(
     db: AsyncSession, ingredient_id: uuid.UUID, payload: IngredientUpdate
 ) -> Ingredient:
     ingredient = await get_ingredient(db, ingredient_id)
+    old_unit = ingredient.canonical_unit
     data = payload.model_dump(exclude_unset=True)
     if data.pop("clear_density", False):
         ingredient.density_g_per_ml = None
@@ -133,17 +134,20 @@ async def update_ingredient(
         data["name"] = data["name"].strip()
     for key, value in data.items():
         setattr(ingredient, key, value)
+    set_fields = set(payload.model_dump(exclude_unset=True))
     bridge_changed = bool(
-        {"density_g_per_ml", "density_source", "clear_density", "canonical_unit"}
-        & set(payload.model_dump(exclude_unset=True))
+        {"density_g_per_ml", "density_source", "clear_density", "canonical_unit"} & set_fields
     )
+    unit_changed = "canonical_unit" in set_fields and ingredient.canonical_unit != old_unit
     try:
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
         raise _ingredient_conflict(exc) from exc
     if bridge_changed:
-        await _after_ingredient_bridge_change(db, ingredient_id)
+        await _after_ingredient_bridge_change(
+            db, ingredient_id, canonical_unit_changed=unit_changed
+        )
     return await get_ingredient(db, ingredient_id)
 
 
@@ -661,8 +665,10 @@ async def bench(db: AsyncSession, ingredient_id: uuid.UUID, payload: ConvertIn) 
 # module at all, and the dependency runs one way — so the import can say so.
 
 
-async def _after_ingredient_bridge_change(db: AsyncSession, ingredient_id: uuid.UUID) -> None:
-    await recompute_for_ingredient(db, ingredient_id)
+async def _after_ingredient_bridge_change(
+    db: AsyncSession, ingredient_id: uuid.UUID, *, canonical_unit_changed: bool = False
+) -> None:
+    await recompute_for_ingredient(db, ingredient_id, canonical_unit_changed=canonical_unit_changed)
 
 
 async def _after_product_bridge_change(db: AsyncSession, product_id: uuid.UUID) -> None:
