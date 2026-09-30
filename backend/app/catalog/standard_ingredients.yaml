@@ -17,6 +17,11 @@ ingredients:
     category: dairy
     unit: ml
     fdc: 171267
+  - key: acorn-squash
+    name: "acorn squash"
+    category: produce
+    unit: g
+    fdc: 168472
   - key: active-dry-yeast
     name: "active dry yeast"
     category: pantry
@@ -97,6 +102,11 @@ ingredients:
     category: produce
     unit: g
     fdc: 171688
+  - key: apricot
+    name: "apricot"
+    category: produce
+    unit: g
+    fdc: 171697
   - key: arugula
     name: "arugula"
     category: produce
@@ -646,6 +656,12 @@ ingredients:
     category: pantry
     unit: ml
     fdc: 171029
+  - key: corn-on-the-cob
+    name: "corn on the cob"
+    category: produce
+    unit: each
+    spellings: ["ears of corn"]
+    note: "Counted per ear. USDA's raw sweet corn record (169998) is corn kernels'; add a reference in review if one fits."
   - key: corn-tortilla
     name: "corn tortilla"
     category: bakery
@@ -1297,6 +1313,12 @@ ingredients:
     category: pantry
     unit: g
     fdc: 169640
+  - key: honeydew
+    name: "honeydew"
+    category: produce
+    unit: g
+    fdc: 169911
+    spellings: ["honeydew melon"]
   - key: horseradish
     name: "horseradish"
     category: pantry
@@ -1434,6 +1456,12 @@ ingredients:
     unit: ml
     fdc: 170857
     spellings: ["coffee cream", "table cream"]
+  - key: lima-beans
+    name: "lima beans"
+    category: produce
+    unit: g
+    fdc: 168396
+    note: "Fresh or frozen limas. Dried lima beans become their own entry, as \"dried lima beans\", when someone buys them."
   - key: lime
     name: "lime"
     category: produce
@@ -1652,6 +1680,12 @@ ingredients:
     category: produce
     unit: g
     fdc: 169097
+  - key: orange-bell-pepper
+    name: "orange bell pepper"
+    category: produce
+    unit: g
+    fdc: 2258591
+    note: "Foundation record: SR Legacy has no orange sweet pepper."
   - key: oyster-mushrooms
     name: "oyster mushrooms"
     category: produce
@@ -1700,6 +1734,11 @@ ingredients:
     category: produce
     unit: g
     fdc: 170416
+  - key: parsnip
+    name: "parsnip"
+    category: produce
+    unit: g
+    fdc: 170417
   - key: passion-fruit
     name: "passion fruit"
     category: produce
@@ -1821,6 +1860,12 @@ ingredients:
     fdc: 170497
     spellings: ["poblano pepper"]
     note: "Reference is USDA's green hot chili record; it has no poblano record."
+  - key: pomegranate
+    name: "pomegranate"
+    category: produce
+    unit: each
+    fdc: 169134
+    note: "Arils are a recipe note on pomegranate; no measure until one is confirmed on a real fruit."
   - key: poppy-seeds
     name: "poppy seeds"
     category: spices
@@ -1987,6 +2032,11 @@ ingredients:
     category: pantry
     unit: g
     fdc: 172438
+  - key: rhubarb
+    name: "rhubarb"
+    category: produce
+    unit: g
+    fdc: 167758
   - key: ribeye-steak
     name: "ribeye steak"
     category: meat
@@ -2044,6 +2094,12 @@ ingredients:
     unit: g
     fdc: 2346401
     spellings: ["idaho potato", "baking potato"]
+  - key: rutabaga
+    name: "rutabaga"
+    category: produce
+    unit: g
+    fdc: 168454
+    spellings: ["swede"]
   - key: rye-bread
     name: "rye bread"
     category: bakery
@@ -2255,6 +2311,11 @@ ingredients:
     category: pantry
     unit: ml
     fdc: 174277
+  - key: spaghetti-squash
+    name: "spaghetti squash"
+    category: produce
+    unit: g
+    fdc: 169298
   - key: spelt-flour
     name: "spelt flour"
     category: pantry
@@ -2331,6 +2392,13 @@ ingredients:
     unit: ml
     fdc: 171275
     spellings: ["condensed milk"]
+  - key: swiss-chard
+    name: "Swiss chard"
+    proper_noun: true
+    category: produce
+    unit: g
+    fdc: 169991
+    spellings: ["chard"]
   - key: swiss-cheese
     name: "Swiss cheese"
     proper_noun: true
@@ -2385,6 +2453,11 @@ ingredients:
     unit: g
     fdc: 172449
     note: "Reference is soft tofu; firm and silken are products or their own entries."
+  - key: tomatillo
+    name: "tomatillo"
+    category: produce
+    unit: g
+    fdc: 168566
   - key: tomato
     name: "tomato"
     category: produce
@@ -2566,6 +2639,11 @@ ingredients:
     unit: ml
     fdc: 171610
     spellings: ["worcestershire"]
+  - key: yellow-bell-pepper
+    name: "yellow bell pepper"
+    category: produce
+    unit: g
+    fdc: 169383
   - key: yellow-mustard
     name: "yellow mustard"
     category: pantry
