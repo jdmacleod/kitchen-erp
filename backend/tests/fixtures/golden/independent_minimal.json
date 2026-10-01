@@ -1,0 +1,128 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "Rosalind's Corner Grocery",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-03-22T23:05:00+00:00",
+    "purchased_at_local": "2026-03-22 16:05",
+    "store_identifier": null,
+    "subtotal": null,
+    "tax": null,
+    "total": "24.41"
+  },
+  "lines": {
+    "line_count": 5,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "6.50",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "Sourdough loaf        6.50",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "9.00",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "Local honey 12oz      9.00",
+        "seq": 2,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "5.75",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "Butter 1lb            5.75",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.06",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2.04",
+        "raw_text": "Apples 2.04 lb @ 1.50/lb   3.06",
+        "seq": 4,
+        "unit": "lb",
+        "unit_price": "1.50"
+      },
+      {
+        "flags": [],
+        "line_kind": "fee",
+        "line_total": "0.10",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Bag fee               0.10",
+        "seq": 5,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "24.41",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "0",
+      "fees": "0.10",
+      "items": "24.31",
+      "mismatch": false,
+      "printed_total": "24.41",
+      "tax": "0",
+      "tax_source": "none"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "anmiomjcnfjoghoc",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "okplggeodipfjoic",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 35.0,
+      "stage": "lines"
+    }
+  ]
+}

@@ -7,6 +7,15 @@ and answers from a fixture's ``llm_responses`` map. A value may be a single obje
 of objects consumed in order (the last one repeats), so a test can script
 "invalid, then valid". Strings are sent verbatim, which lets a fixture record
 malformed JSON.
+
+A key of the form ``"<stage>@<model>"`` (``"lines@vision-a"``) answers only
+requests for that model and wins over the plain stage key, so a test can script
+two readers that send the same schema. Requests for any other model fall back
+to the plain key.
+
+Replies carry the usage fields Ollama reports, derived from the request and the
+answer so they are the same on every run: about four characters to a token, a
+second per reply and no load time.
 """
 
 from __future__ import annotations
@@ -37,25 +46,33 @@ class RecordedTransport(httpx.AsyncBaseTransport):
         body = json.loads(request.content or b"{}")
         title = body.get("format", {}).get("title") if isinstance(body, dict) else None
         stage = STAGE_BY_SCHEMA_TITLE.get(title, title)
+        model = body.get("model") if isinstance(body, dict) else None
         self.requests.append(
             {
                 "stage": stage,
+                "model": model,
                 "url": str(request.url),
                 "body": body,
                 # What httpx was told to wait: connect, read, write and pool, in seconds.
                 "timeout": request.extensions.get("timeout"),
             }
         )
-        queue = self._queues.get(stage or "")
+        queue = self._queues.get(f"{stage}@{model}") or self._queues.get(stage or "")
         if not queue:
             return httpx.Response(500, json={"error": f"no recorded response for {stage}"})
         item = queue.pop(0) if len(queue) > 1 else queue[0]
         content = item if isinstance(item, str) else json.dumps(item)
+        prompt = json.dumps(body.get("messages"), ensure_ascii=False)
         return httpx.Response(
             200,
             json={
-                "model": body.get("model"),
+                "model": model,
                 "message": {"role": "assistant", "content": content},
                 "done": True,
+                "done_reason": "stop",
+                "prompt_eval_count": len(prompt) // 4,
+                "eval_count": len(content) // 4,
+                "total_duration": 1_000_000_000,
+                "load_duration": 0,
             },
         )

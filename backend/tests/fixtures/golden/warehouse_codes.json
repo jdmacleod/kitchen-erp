@@ -1,0 +1,154 @@
+{
+  "header": {
+    "address_text": "7800 TIDEWATER PKWY",
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "SUMMIT WHOLESALE CLUB",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-03-20T18:32:00+00:00",
+    "purchased_at_local": "2026-03-20 11:32",
+    "store_identifier": "118",
+    "subtotal": "77.90",
+    "tax": "1.90",
+    "total": "79.80"
+  },
+  "lines": {
+    "line_count": 7,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "14.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "E  184201 KS ALMONDS 3LB        14.99",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "7.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "E  552310 ORG EGGS 24CT          7.49",
+        "seq": 2,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "16.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "E  993004 OLIVE OIL 2L          16.99",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "3.00",
+        "parent_seq": 3,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "993004 / 3.00-",
+        "seq": 4,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "19.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "A  301778 PAPER TWL 12RL        19.99",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "qty_assumed"
+        ],
+        "line_kind": "item",
+        "line_total": "21.44",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "E  776120 CHKN BRST 6.5LB       21.44",
+        "seq": 6,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "tax",
+        "line_total": "1.90",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX                                1.90",
+        "seq": 7,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "79.80",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "3.00",
+      "fees": "0",
+      "items": "80.90",
+      "mismatch": false,
+      "printed_total": "79.80",
+      "tax": "1.90",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "bmfmlelcppfdklnk",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "hcgclemofekggddj",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 53.0,
+      "stage": "lines"
+    }
+  ]
+}

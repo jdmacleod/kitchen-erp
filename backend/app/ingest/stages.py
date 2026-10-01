@@ -34,12 +34,12 @@ from app.core.config import get_settings
 from app.core.logging import get_logger, job_id_var
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
-from app.ingest import parsers
-from app.ingest.errors import IngestError, InvalidModelOutput, ModelTimeout, RetryableError
+from app.ingest import parsers, readers
+from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
 from app.ingest.paths import document_path
-from app.ingest.schemas import ReceiptHeader, ReceiptLine, ReceiptLines
+from app.ingest.schemas import ReceiptLines
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
 from app.services import resolution
 
@@ -141,11 +141,9 @@ async def stage_ocr(ctx: StageContext) -> StageOutcome:
 async def stage_header(ctx: StageContext) -> StageOutcome:
     settings = get_settings()
     text = ctx.receipt_text()
-    header: ReceiptHeader | None
-    try:
-        header, attempts = await ctx.llm.extract(ReceiptHeader, header_stage.HEADER_TASK, text)
-    except InvalidModelOutput:
-        header, attempts = None, 1 + max(ctx.llm.max_retries, 0)
+    header, attempts = await readers.read_header(
+        ctx.llm, text, deadline_at=readers.stage_deadline_at()
+    )
     flags: list[str] = []
     purchased_at = None
     if header is not None:
@@ -154,17 +152,8 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         )
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
-        # The model's total is untrusted like the rest of its output. A line
-        # labelled TOTAL (or AMOUNT/BALANCE DUE) wins over a different model
-        # total, which may be an item price that is printed too; a bare
-        # BALANCE line only fills in a total the model missed or invented.
-        printed = header_stage.printed_total_line(text)
-        if printed is not None:
-            amount, strong = printed
-            missing = header.total is None or not header_stage.amount_in_text(header.total, text)
-            if amount != header.total and (strong or missing):
-                header = header.model_copy(update={"total": amount})
-                flags.append("total_from_text")
+        header, total_flags = readers.apply_printed_total(header, text)
+        flags.extend(total_flags)
     match = await header_stage.match_location(
         ctx.db,
         document_id=ctx.document.id,
@@ -191,93 +180,6 @@ def _decimal(value: Any) -> Decimal | None:
 
 def _uuid(value: Any) -> uuid.UUID | None:
     return None if value is None else uuid.UUID(str(value))
-
-
-# Enough to change the answer that a temperature-0 request repeats, little enough
-# not to invent lines: on the real receipt whose item part came back empty, 0.3
-# returned its five items three times out of three.
-EMPTY_PART_RETRY_TEMPERATURE = 0.3
-
-
-async def _read_lines_in_parts(
-    ctx: StageContext, text: str
-) -> tuple[ReceiptLines | None, int, str | None, list[int], int]:
-    """Ask the model for the lines of each part of the receipt, and join them.
-
-    Returns (lines or None, attempts, reason of the last failure, 1-based numbers
-    of the parts that could not be read, number of parts). Every part shares the
-    stage's one deadline. A parent_index points within its own part, so it is
-    offset into the joined list; one that points outside its part is dropped and
-    the item printed above is used instead, as for any unattached discount.
-    """
-    parts = lines_stage.split_receipt(text)
-    deadline = lines_stage.lines_deadline_seconds()
-    started = time.monotonic()
-    joined: list[ReceiptLine] = []
-    attempts, reason, unread = 0, None, []
-    for index, part in enumerate(parts, start=1):
-        remaining = deadline - (time.monotonic() - started)
-        if remaining <= 0 and joined:
-            # Out of time with parts already read: keep them, mark the rest.
-            unread.extend(range(index, len(parts) + 1))
-            reason = "model_timeout"
-            break
-        try:
-            answer, used = await ctx.llm.extract(
-                ReceiptLines,
-                lines_stage.part_task(index, len(parts)),
-                part,
-                timeout_seconds=lines_stage.lines_budget_seconds(part),
-                deadline_seconds=max(remaining, 0.001),
-            )
-        except InvalidModelOutput as exc:
-            attempts += exc.attempts or 1 + max(ctx.llm.max_retries, 0)
-            reason = exc.code
-            unread.append(index)
-            continue
-        except ModelTimeout:
-            if not joined:
-                raise  # nothing read yet: the job's own retry policy applies
-            # Parts already read are kept; the one that timed out and the rest are
-            # unread. A server that is not there (ModelUnavailable) still raises,
-            # so the job waits and reads the whole receipt when it is back.
-            unread.extend(range(index, len(parts) + 1))
-            reason = ModelTimeout.code
-            break
-        attempts += used
-        if (
-            not any(line.line_kind == "item" for line in answer.lines)
-            and lines_stage.item_like_rows(part) >= lines_stage.EMPTY_PART_MIN_ROWS
-        ):
-            # A valid answer with no items for a part that plainly has them. At
-            # temperature 0 the same request would say the same, so ask once
-            # more a little differently; if that is empty too, the part is unread.
-            try:
-                answer, used = await ctx.llm.extract(
-                    ReceiptLines,
-                    lines_stage.part_task(index, len(parts)),
-                    part,
-                    timeout_seconds=lines_stage.lines_budget_seconds(part),
-                    deadline_seconds=max(deadline - (time.monotonic() - started), 0.001),
-                    temperature=EMPTY_PART_RETRY_TEMPERATURE,
-                )
-                attempts += used
-            except InvalidModelOutput as exc:
-                attempts += exc.attempts or 1 + max(ctx.llm.max_retries, 0)
-                answer = None
-            if answer is None or not any(line.line_kind == "item" for line in answer.lines):
-                unread.append(index)
-                reason = "empty_part"
-                continue
-        offset = len(joined)
-        for line in answer.lines:
-            parent = line.parent_index
-            if parent is not None:
-                parent = parent + offset if parent < len(answer.lines) else None
-            joined.append(line.model_copy(update={"parent_index": parent}))
-    if not joined:
-        return None, attempts, reason, unread, len(parts)
-    return ReceiptLines.model_construct(lines=joined), attempts, reason, unread, len(parts)
 
 
 async def stage_lines(ctx: StageContext) -> StageOutcome:
@@ -307,7 +209,9 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     unread_parts: list[int] = []
     part_count = 1
     if result is None:
-        result, attempts, reason, unread_parts, part_count = await _read_lines_in_parts(ctx, text)
+        reading = await readers.read_lines(ctx.llm, text, deadline_at=readers.stage_deadline_at())
+        result, attempts, reason = reading.lines, reading.attempts, reading.reason
+        unread_parts, part_count = reading.unread_parts, reading.part_count
     parsed = [] if result is None else lines_stage.parse_model_lines(result)
     parsed, merged_rows = lines_stage.merge_quantity_lines(parsed)
     parsed, informational = lines_stage.fold_regular_prices(parsed)

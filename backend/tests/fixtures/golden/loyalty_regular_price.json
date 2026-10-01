@@ -1,0 +1,132 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "HARBOURSIDE PROVISIONS",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-07-05T00:42:00+00:00",
+    "purchased_at_local": "2026-07-04 17:42",
+    "store_identifier": "0217",
+    "subtotal": null,
+    "tax": null,
+    "total": "13.99"
+  },
+  "lines": {
+    "dropped_rows": [
+      "Regular Price          9.00",
+      "Regular Price          3.19"
+    ],
+    "line_count": 5,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "9.00",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "SMOKED TROUT           7.25 S",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "1.75",
+        "parent_seq": 1,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Card Savings           1.75-",
+        "seq": 2,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.19",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "OAT MILK 1L            2.49 S",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "0.70",
+        "parent_seq": 3,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Card Savings           0.70-",
+        "seq": 4,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "4.25",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "RYE BREAD              4.25",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "13.99",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "2.45",
+      "fees": "0",
+      "items": "16.44",
+      "mismatch": false,
+      "printed_total": "13.99",
+      "tax": "0",
+      "tax_source": "none"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "nkldoccdllncaomp",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "ceenmikabebfadij",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 35.0,
+      "stage": "lines"
+    }
+  ]
+}
