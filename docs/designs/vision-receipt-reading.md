@@ -34,7 +34,7 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 | gap-stating re-ask in Phase 1 | deferred to TODOS.md | OV6a |
 | "soft secondary" candidate buttons | `SegmentedControl` per line | UI5 |
 | separate `ingest/vision.py` | image prep lives in `ingest/raster.py` | eng D2 |
-| grid: `qwen3-vl:8b` and `minicpm-v4.5:8b` instruct tags | `qwen3.5:9b`, `gemma4:12b`, `minicpm-v4.5:8b`, `qwen3.6:27b` (+ `gemma4:26b-a4b` if pulled) | MS4 (user request, 2026-10-01) |
+| grid: `qwen3-vl:8b` and `minicpm-v4.5:8b` instruct tags | `qwen3.5:9b`, `qwen3-vl:8b-instruct`, `gemma4:12b`, `minicpm-v4.5:8b`, `qwen3.6:27b`, `gemma4:26b-a4b` | MS4 (user request, 2026-10-01) |
 | "10.6–12.8 GB usable GPU memory" | about 16.2 GB for one model; 10.6–12.8 GB is the limit for a pair | MS1 |
 | arm (d) pairs with "the other family" | the best (c) model from another family (Qwen, Gemma or MiniCPM) | MS5 |
 
@@ -230,7 +230,7 @@ Per-receipt files stay under `data/` and are never read by the assistant.
 Arm (c) runs in two variants: one call for header and lines, and separate calls.
 
 **Grid (OV4, reduced).**
-- Candidates: ~~one per family, the instruct tags of `qwen3-vl:8b` and `minicpm-v4.5:8b` (OV9)~~ superseded by MS4: `qwen3.5:9b`, `gemma4:12b`, `minicpm-v4.5:8b` and `qwen3.6:27b`, plus `gemma4:26b-a4b` if pulled. Instruct or `think: false` only (OV9). `glm-ocr` runs in arm (b) only.
+- Candidates: ~~one per family, the instruct tags of `qwen3-vl:8b` and `minicpm-v4.5:8b` (OV9)~~ superseded by MS4: `qwen3.5:9b`, `qwen3-vl:8b-instruct`, `gemma4:12b`, `minicpm-v4.5:8b`, `qwen3.6:27b` and `gemma4:26b-a4b`. Instruct or `think: false` only (OV9). `glm-ocr` runs in arm (b) only.
 - Long-side cap: 2000 px only.
 - Arm (c) runs only the separate-calls variant. The one-call variant is dropped unless a later run shows it is much faster.
 - Whole images only; slicing is deferred (VH1, which also removes R2-11).
@@ -310,6 +310,8 @@ These are clean renders of short receipts, so accuracy here only screens out bro
 | `qwen3-vl:30b` (default tag, MoE) | 24 | 2 | 3/3 | 20.03 / 15.46 | 15–18 | 1,111–1,123 | thinking variant: ~2,200 chars of thinking anyway; 85–93 s each |
 | `qwen3.6:27b` | 24 | 0 | 3/3 | 17.62 / 15.73 | 12–13 | 467–715 | honours `think: false`; spills ~1.9 GB |
 | `qwen3.8:27b` | 24 | 1 | 3/3 | 18.27 / 14.61 | 8–10 | 467–715 | honours `think: false`; spills ~3.7 GB |
+| `qwen3-vl:8b-instruct` (pulled after the survey) | 24 | 1 | 3/3 | 6.68 / 6.68 | 44 | 1,111–1,123 | instruct tag: no thinking; same image cost as the thinking tag |
+| `gemma4:26b-a4b` (MoE, pulled after the survey) | 23 | 1 | 3/3 | 4.39 / 1.75 reported | 47–58 | 253–358 | 18.7 GB on disk; Ollama reports only part of it as loaded, so the GPU share is unclear, but it is fast |
 | `mistral-small3.2` (24B) | 21 | 0 | 3/3 | 20.75 / 16.19 | 10–12 | 1,091–1,430 | slow; no edge |
 | `llama3.2-vision:11b` | — | — | — | — | — | — | fails to load: "unknown model architecture: 'mllama'" |
 | `ibm/granite3.3-vision:2b` | — | — | — | — | — | — | 500 on every call with a JSON-schema `format` ("Unexpected empty grammar stack") |
@@ -322,8 +324,8 @@ Two findings change how the benchmark runs:
 
 | Model | Size at Q4 | Verdict for a 24 GB laptop |
 |---|---|---|
-| `gemma4:26b-a4b` (MoE, about 4B active) | 16–18 GB (QAT 16 GB) | **Candidate.** It is about the GPU ceiling, and few active parameters keep it fast even if it spills. Pull before Phase 0. |
-| `qwen3-vl:8b-instruct`, `qwen3-vl:30b-a3b-instruct` | 6.1 GB, 20 GB | The OV9 instruct tags. Pull 8b-instruct if the qwen3-vl family stays in the grid; 30b spills and gains nothing over `qwen3.6:27b` at 4× the image tokens. |
+| `gemma4:26b-a4b` (MoE, about 4B active) | 16–18 GB (QAT 16 GB) | **Candidate; now pulled and probed** (MS2 table). |
+| `qwen3-vl:8b-instruct`, `qwen3-vl:30b-a3b-instruct` | 6.1 GB, 20 GB | The OV9 instruct tags. 8b-instruct is now pulled and probed (MS2 table). 30b spills and gains nothing over `qwen3.6:27b`, at about twice the image tokens. |
 | `ornith-1.5:9b` | 6.6 GB | Possible later; vision input, but lineage and document scores are unpublished. The installed `ornith:9b` is text-only. |
 | `muse-glimmer` (30B, Apache 2.0) | 18 GB | Possible later: agent-tuned, and like the 27Bs it would spill. |
 | `minicpm-v4.6:1b` | about 1 GB | Possible arm (b) transcriber; too small to be a reader. |
@@ -335,21 +337,25 @@ Two findings change how the benchmark runs:
 
 Published scores, for context only: Qwen3.6-27B has OCRBench 89.4 and CC-OCR 81.2 (model card). Qwen3.6-35B-A3B has OCRBench 90.0 and Gemma 4 31B 86.1. A third-party 24 GB test had Qwen3.8-27B answer 23 of 24 document questions, Gemma 4 31B 22, and Qwen3.6-27B 8. That test ran thinking off at temperature 1.0 on a CUDA card, so read it as a warning to measure, not as a ranking.
 
-**Grid change (MS4, supersedes the OV4 candidate list; the reduced grid's other limits stand).** Arm (c) screens four configurations, two per tier, in three families:
+**Grid change (MS4, supersedes the OV4 candidate list; the reduced grid's other limits stand; amended 2026-10-01 after the two pulls).** Arm (c) screens six configurations in three families:
 
 | Tier | Model | Why |
 |---|---|---|
-| fits on GPU | `qwen3.5:9b` | Replaces `qwen3-vl:8b-instruct` as the Qwen entry. It is the newer, natively multimodal line and honours `think: false`. Its image tokens are about 40% fewer on these renders. |
-| fits on GPU | `gemma4:12b` | A new family. It was the most accurate of the models that fit on the GPU here. |
+| fits on GPU | `qwen3.5:9b` | The newer, natively multimodal Qwen line. It honours `think: false`, and its image tokens are about 40% fewer than qwen3-vl's on these renders. |
+| fits on GPU | `qwen3-vl:8b-instruct` | The OV9 instruct tag, kept beside qwen3.5 now that it is measured: 24 of 24 amounts at 44 tok/s, with no thinking. |
+| fits on GPU | `gemma4:12b` | A new family, and the most accurate of the models that fit on the GPU here. |
 | fits on GPU | `minicpm-v4.5:8b` | Kept from OV4. |
 | quality | `qwen3.6:27b` | The user's suggestion. It found every amount here with nothing invented, but spills about 1.9 GB at the default limit. |
+| quality | `gemma4:26b-a4b` | MoE with about 4B active. It ran at 47–58 tok/s, as fast as the small models, with the size of a quality-tier model. |
 
-- `gemma4:26b-a4b` joins the quality tier if the household pulls it before the run. Otherwise it is added later with `--models`, against the stored best.
 - `qwen3.8:27b` is held back: the same family as `qwen3.6:27b`, slower here (spills about 3.7 GB), with no gain on these fixtures. Add it with `--models` if `qwen3.6:27b` wins.
-- `qwen3-vl:8b-instruct` is also available through `--models`.
 - `glm-ocr` stays arm (b)'s transcriber.
 - The decision rule is unchanged. A quality-tier model that wins must also fit the per-stage and per-receipt budgets measured in Phase 0 (`seconds_max` within the 480 s stage cap). If it fits only with a raised GPU limit, that becomes a T6 amendment item, not a silent requirement.
-- **Run time.** Four arm (c) configurations instead of two. At the measured speeds, an average 30-line receipt (about 1,000 output tokens) takes about 25–40 s with a 9B–12B model and about 80 s with `qwen3.6:27b`. Arms (a) and (b) keep today's 30–140 s text stage. That is roughly 6 minutes per receipt for all configurations, so 12–20 receipts take about 1–2 hours, within the earlier 3-hour estimate.
+- **Run time.** Six arm (c) configurations instead of two. At the measured speeds, an average 30-line receipt (about 1,000 output tokens) takes:
+  - about 25–40 s with a 9B–12B model or `gemma4:26b-a4b`;
+  - about 80 s with `qwen3.6:27b`.
+
+  Arms (a) and (b) keep today's 30–140 s text stage. That is roughly 7 minutes per receipt for all configurations, so 12–20 receipts take about 1.5–2.5 hours, within the earlier 3-hour estimate.
 
 **Arm (d) pairing (MS5).** Consensus needs a second model from another family. Gemma joins Qwen and MiniCPM as an option, so arm (d) pairs the best (c) model with the best (c) model from a different family. A pair that can't be resident together costs a swap per receipt (E2), and the 27B models can't share the GPU with anything.
 
