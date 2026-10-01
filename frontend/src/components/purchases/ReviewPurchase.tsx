@@ -671,7 +671,7 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit"];
 
 /** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
 function editableMoney(stored: string | null | undefined): string {
@@ -700,6 +700,8 @@ const FLAG_LABELS: Record<string, string> = {
   // #59: a price printed with no decimal point, or a line over the whole receipt.
   decimal_missing: "decimal point missing?",
   exceeds_total: "more than the receipt total",
+  // A tax letter OCR read as a third decimal ("6.378"), cut back to the cents.
+  tax_code_as_digit: "tax letter read as a digit",
 };
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */
