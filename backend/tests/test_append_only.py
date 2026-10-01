@@ -9,7 +9,12 @@ import pytest
 
 from app.core.ids import new_id
 
-TABLES = ("price_observation", "price_observation_void", "ingest_stage_result")
+TABLES = (
+    "price_observation",
+    "price_observation_void",
+    "ingest_stage_result",
+    "product_stage_result",
+)
 
 
 async def _seed_observation(owner: asyncpg.Connection) -> tuple[uuid.UUID, uuid.UUID]:

@@ -12,6 +12,7 @@ from app.catalog.attributes import ProductKind
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import Symbology as BarcodeSymbology
 from app.schemas.base import ApiModel, DecimalStr
+from app.schemas.product_photos import PhotoSummary
 
 CanonicalUnit = Literal["g", "ml", "each"]
 BridgeSource = Literal["usda", "label", "measured", "llm", "manual"]
@@ -234,6 +235,8 @@ class ProductOut(ApiModel):
     density_override_confirmed: bool
     active: bool
     notes: str | None
+    # The main photo (1I); None shows the category placeholder.
+    photo: PhotoSummary | None = None
     created_at: datetime
     updated_at: datetime
 

@@ -80,6 +80,9 @@ class Settings(BaseSettings):
 
     tiles_path: str = "/data/tiles"
     receipts_path: str = "/data/receipts"
+    # Product photos (03, 1I): originals/ and masks/ are kept and backed up;
+    # derived/ is rebuildable with `kerp images rebuild`.
+    media_path: str = "/data/media"
     recipes_path: str = "/data/recipes"  # read-only mount of the cooklang-recipes checkout
 
     household_timezone: str = "America/Los_Angeles"

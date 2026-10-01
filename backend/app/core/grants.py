@@ -21,8 +21,13 @@ BASE = (
     f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE}",
 )
 
-# Facts: SELECT and INSERT only (0005). A trigger is the second line of defence.
-APPEND_ONLY = ("price_observation", "price_observation_void", "ingest_stage_result")
+# Facts: SELECT and INSERT only (0005, 0018). A trigger is the second line of defence.
+APPEND_ONLY = (
+    "price_observation",
+    "price_observation_void",
+    "ingest_stage_result",
+    "product_stage_result",
+)
 
 # Append-only apart from the decision columns, which the runtime role may set (0012).
 DECISION_ONLY = {"vendor_suggestion": ("status", "decided_by", "decided_at")}

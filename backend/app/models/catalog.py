@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
     Boolean,
@@ -26,6 +26,9 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
+
+if TYPE_CHECKING:
+    from app.models.photos import ProductImage
 
 BRIDGE_SOURCES = ("usda", "label", "measured", "llm", "manual")
 
@@ -221,6 +224,9 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     # Foreign key to vendor.id is added by the geography migration; the model
     # keeps it a plain column so the catalog does not import the geo mappers.
     exclusive_vendor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # The main photo, chosen by app.catalog.photos.select_primary (1I). Plain
+    # column: the deferrable foreign key to product_image is in migration 0018.
+    primary_image_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     density_override: Mapped[Decimal | None] = mapped_column(Numeric(10, 5))
     density_override_source: Mapped[str | None] = mapped_column(String(16))
     density_override_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -228,6 +234,13 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="products")
+    # The main photo, loaded with the product so a list can show it.
+    photo: Mapped[ProductImage | None] = relationship(
+        "ProductImage",
+        primaryjoin="foreign(Product.primary_image_id) == ProductImage.id",
+        viewonly=True,
+        lazy="selectin",
+    )
     identifiers: Mapped[list[ProductIdentifier]] = relationship(
         back_populates="product",
         lazy="selectin",
