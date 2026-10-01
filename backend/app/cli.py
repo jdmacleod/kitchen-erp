@@ -86,11 +86,81 @@ def _run_alembic(action, revision: str, verb: str) -> None:
 
 
 @cli.command()
-def migrate(revision: str = typer.Argument("head")) -> None:
+def migrate(
+    revision: str = typer.Argument("head"),
+    check_barcodes: bool = typer.Option(
+        False,
+        "--check-barcodes",
+        help="Only count how migration 0017 will move product barcodes; change nothing.",
+    ),
+) -> None:
     """Apply migrations as the owner role, then seed reference units (idempotent)."""
+    if check_barcodes:
+        _check_barcodes()
+        return
     _run_alembic(command.upgrade, revision, "migrating")
     if revision == "head":
         _seed_units()
+
+
+def _check_barcodes() -> None:
+    """Dry run of 0017's barcode move, using the migration's own frozen classifier."""
+    import importlib.util
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import get_settings
+
+    path = Path(__file__).resolve().parent.parent / "alembic/versions/0017_product_identity.py"
+    spec = importlib.util.spec_from_file_location("migration_0017", path)
+    assert spec is not None and spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    async def _run() -> list[tuple]:
+        engine = create_async_engine(get_settings().migration_database_url, poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                has_column = (
+                    await conn.execute(
+                        text(
+                            "SELECT 1 FROM information_schema.columns "
+                            "WHERE table_name = 'product' AND column_name = 'barcode'"
+                        )
+                    )
+                ).first()
+                if has_column is None:
+                    return []
+                rows = await conn.execute(
+                    text(
+                        "SELECT id, barcode, exclusive_vendor_id FROM product "
+                        "WHERE barcode IS NOT NULL ORDER BY created_at, id"
+                    )
+                )
+                return [tuple(r) for r in rows]
+        finally:
+            await engine.dispose()
+
+    rows = asyncio.run(_run())
+    if not rows:
+        typer.echo("No product barcodes to move (already migrated, or none set).")
+        return
+    _, counts = migration.plan(rows)
+    labels = {
+        "gtin": "become barcodes (GTIN-14)",
+        "plu": "become produce codes for the product's own vendor",
+        "plu_without_vendor": "4-5 digits with no exclusive vendor: kept as other codes",
+        "ambiguous_8_digit": "8 digits valid as EAN-8 and as UPC-E: kept as other codes",
+        "duplicate_gtin": "the same barcode as an earlier product: kept as other codes",
+        "other": "kept as other codes",
+    }
+    typer.echo(f"{len(rows)} product barcodes would move:")
+    for outcome, label in labels.items():
+        if counts.get(outcome):
+            typer.echo(f"  {counts[outcome]:>5}  {label}")
+    typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
 
 
 def _seed_units() -> None:

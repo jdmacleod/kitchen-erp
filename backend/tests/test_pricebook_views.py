@@ -238,7 +238,7 @@ async def test_comparison_views_p95_under_500ms_with_20000_observations(
             products.append(
                 await owner_conn.fetchval(
                     "INSERT INTO product (id, ingredient_id, name, quality_rating, pack_qty, "
-                    "pack_unit) VALUES ($1, $2, $3, $4, 1, 'each') RETURNING id",
+                    "pack_unit, kind) VALUES ($1, $2, $3, $4, 1, 'each', 'loose') RETURNING id",
                     new_id(),
                     iid,
                     f"Perf product {k}-{j}",

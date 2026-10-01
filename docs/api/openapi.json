@@ -6076,6 +6076,18 @@
       "ProductCreate": {
         "additionalProperties": false,
         "properties": {
+          "attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributes"
+          },
           "barcode": {
             "anyOf": [
               {
@@ -6088,6 +6100,21 @@
               }
             ],
             "title": "Barcode"
+          },
+          "barcode_symbology": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ean8",
+                  "upce"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode Symbology"
           },
           "brand": {
             "anyOf": [
@@ -6168,6 +6195,24 @@
               }
             ],
             "title": "Ingredient Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "branded",
+                  "private_label",
+                  "random_weight",
+                  "loose",
+                  "unbranded_vendor"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
           },
           "name": {
             "maxLength": 200,
@@ -6294,6 +6339,11 @@
             "title": "Active",
             "type": "boolean"
           },
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
+          },
           "barcode": {
             "anyOf": [
               {
@@ -6373,6 +6423,17 @@
           },
           "ingredient": {
             "$ref": "#/components/schemas/IngredientSummary"
+          },
+          "kind": {
+            "enum": [
+              "branded",
+              "private_label",
+              "random_weight",
+              "loose",
+              "unbranded_vendor"
+            ],
+            "title": "Kind",
+            "type": "string"
           },
           "last_paid": {
             "anyOf": [
@@ -6446,6 +6507,8 @@
           "pack_qty",
           "pack_unit",
           "barcode",
+          "kind",
+          "attributes",
           "quality_rating",
           "exclusive_vendor_id",
           "density_override",
@@ -6465,6 +6528,11 @@
           "active": {
             "title": "Active",
             "type": "boolean"
+          },
+          "attributes": {
+            "additionalProperties": true,
+            "title": "Attributes",
+            "type": "object"
           },
           "barcode": {
             "anyOf": [
@@ -6546,6 +6614,17 @@
           "ingredient": {
             "$ref": "#/components/schemas/IngredientSummary"
           },
+          "kind": {
+            "enum": [
+              "branded",
+              "private_label",
+              "random_weight",
+              "loose",
+              "unbranded_vendor"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -6608,6 +6687,8 @@
           "pack_qty",
           "pack_unit",
           "barcode",
+          "kind",
+          "attributes",
           "quality_rating",
           "exclusive_vendor_id",
           "density_override",
@@ -6684,6 +6765,18 @@
       "ProductUpdate": {
         "additionalProperties": false,
         "properties": {
+          "attributes": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attributes"
+          },
           "barcode": {
             "anyOf": [
               {
@@ -6696,6 +6789,21 @@
               }
             ],
             "title": "Barcode"
+          },
+          "barcode_symbology": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ean8",
+                  "upce"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Barcode Symbology"
           },
           "brand": {
             "anyOf": [
@@ -6786,6 +6894,24 @@
               }
             ],
             "title": "Ingredient Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "branded",
+                  "private_label",
+                  "random_weight",
+                  "loose",
+                  "unbranded_vendor"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
           },
           "name": {
             "anyOf": [

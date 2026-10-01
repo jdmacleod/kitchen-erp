@@ -5,6 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import (
     Boolean,
@@ -21,7 +22,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
@@ -198,7 +199,10 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
             "(density_override IS NULL) = (density_override_source IS NULL)",
             name="ck_product_density_pair",
         ),
-        Index("uq_product_barcode", "barcode", unique=True, postgresql_where="barcode IS NOT NULL"),
+        CheckConstraint(
+            "kind IN ('branded', 'private_label', 'random_weight', 'loose', 'unbranded_vendor')",
+            name="ck_product_kind",
+        ),
     )
 
     ingredient_id: Mapped[uuid.UUID] = mapped_column(
@@ -208,7 +212,11 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     pack_qty: Mapped[Decimal | None] = mapped_column(Numeric)
     pack_unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
-    barcode: Mapped[str | None] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    # Validated per kind and category by app.catalog.attributes.
+    attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # {field: {source, ref, checked_at, imported}}, as on vendor (1F).
+    field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     quality_rating: Mapped[int | None] = mapped_column(SmallInteger)
     # Foreign key to vendor.id is added by the geography migration; the model
     # keeps it a plain column so the catalog does not import the geo mappers.
@@ -220,6 +228,77 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     notes: Mapped[str | None] = mapped_column(Text)
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="products")
+    identifiers: Mapped[list[ProductIdentifier]] = relationship(
+        back_populates="product",
+        lazy="selectin",
+        order_by="(ProductIdentifier.created_at, ProductIdentifier.id)",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def barcode_identifier(self) -> ProductIdentifier | None:
+        """The identifier the API's ``barcode`` field shows: the earliest GTIN or other code."""
+        return next((i for i in self.identifiers if i.scheme in ("gtin", "other")), None)
+
+    @property
+    def barcode(self) -> str | None:
+        from app.catalog.identifiers import display
+
+        ident = self.barcode_identifier
+        return display(ident.scheme, ident.value) if ident else None
+
+
+class ProductIdentifier(UUIDPrimaryKey, Base):
+    """One code a product is known by (03, 1H). Vendor-scoped schemes carry a vendor."""
+
+    __tablename__ = "product_identifier"
+    __table_args__ = (
+        CheckConstraint(
+            "scheme IN ('gtin', 'plu', 'vendor_sku', 'rw_item', 'other')",
+            name="ck_product_identifier_scheme",
+        ),
+        CheckConstraint(
+            "(scheme IN ('plu', 'vendor_sku', 'rw_item')) = (vendor_id IS NOT NULL)",
+            name="ck_product_identifier_vendor",
+        ),
+        # The unique index is NULLS NOT DISTINCT, created in migration 0017.
+    )
+
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", ondelete="CASCADE"), nullable=False
+    )
+    scheme: Mapped[str] = mapped_column(String(16), nullable=False)
+    value: Mapped[str] = mapped_column(String(64), nullable=False)
+    # Plain column like product.exclusive_vendor_id: the catalog doesn't import the geo mappers.
+    vendor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    source: Mapped[str] = mapped_column(String(24), nullable=False)
+    legacy_value: Mapped[str | None] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    product: Mapped[Product] = relationship(back_populates="identifiers")
+
+
+class VendorListing(UUIDPrimaryKey, Timestamped, Base):
+    """A vendor's page for a product (03, 1H), keyed by vendor and canonical address."""
+
+    __tablename__ = "vendor_listing"
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'gone', 'ignored')", name="ck_listing_status"),
+        UniqueConstraint("vendor_id", "canonical_url", name="uq_listing_vendor_url"),
+    )
+
+    vendor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    product_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", ondelete="SET NULL")
+    )
+    canonical_url: Mapped[str] = mapped_column(Text, nullable=False)
+    vendor_sku: Mapped[str | None] = mapped_column(String(64))
+    store_ref: Mapped[str | None] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    last_captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
 
 
 class RefUsdaPortion(UUIDPrimaryKey, Base):

@@ -114,11 +114,18 @@ async def test_typeahead_under_100ms_with_5000_products(
                 gs1(f"{BASE + i:011d}"),
             )
         )
+    # Barcodes live in product_identifier since 1H, as GTIN-14.
     await owner_conn.executemany(
-        "INSERT INTO product (id, ingredient_id, brand, name, barcode) VALUES ($1, $2, $3, $4, $5)",
-        rows,
+        "INSERT INTO product (id, ingredient_id, brand, name, kind) "
+        "VALUES ($1, $2, $3, $4, 'branded')",
+        [r[:4] for r in rows],
     )
-    await owner_conn.execute("ANALYZE product; ANALYZE ingredient")
+    await owner_conn.executemany(
+        "INSERT INTO product_identifier (id, product_id, scheme, value, source) "
+        "VALUES (gen_random_uuid(), $1, 'gtin', $2, 'manual')",
+        [(r[0], r[4].zfill(14)) for r in rows],
+    )
+    await owner_conn.execute("ANALYZE product; ANALYZE ingredient; ANALYZE product_identifier")
 
     queries = [
         "org",

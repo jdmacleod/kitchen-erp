@@ -7,7 +7,9 @@ from app.models.catalog import (
     IngredientMeasure,
     IngredientRef,
     Product,
+    ProductIdentifier,
     RefUsdaPortion,
+    VendorListing,
 )
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.purchases import (
@@ -55,6 +57,8 @@ __all__ = [
     "ReceiptAlias",
     "ReceiptDocument",
     "Product",
+    "ProductIdentifier",
+    "VendorListing",
     "RefUsdaPortion",
     "Session",
     "UnitRow",
