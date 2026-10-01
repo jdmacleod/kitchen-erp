@@ -52,7 +52,7 @@ A receipt enters as an image, optionally accompanied by client-side OCR text, ca
 
 The worker advances each job through stages, appending an `ingest_stage_result` for every attempt. A stage that fails is retried with exponential backoff up to a limit and then marked `failed` with its last error, from which a person can retry it or fall back to entering the purchase manually against the same document. Stages are idempotent: re-running one appends a new result and the latest result wins.
 
-The **OCR** stage produces text. Adapters are tried in a configured order. The `client` adapter uses text supplied at upload, which is what the future capture app will send from on-device recognition, and is preferred when present. The `tesseract` adapter runs in the worker image as the server-side fallback for browser uploads. The adapter interface leaves room for a vision-model adapter later; do not build one now.
+The **OCR** stage produces text. Adapters are tried in a configured order. The `client` adapter uses text supplied at upload, which is what the future capture app will send from on-device recognition, and is preferred when present. The `tesseract` adapter runs in the worker image as the server-side fallback for browser uploads. The adapter interface leaves room for a vision-model adapter later; do not build one now. 2J allows measuring vision readers first.
 
 The **header** stage extracts vendor, location, purchase time, subtotal, tax, and total. Times printed on a receipt are local and carry no zone; they are interpreted in `HOUSEHOLD_TIMEZONE` and stored in UTC. Location matching combines evidence: a match between text on the receipt and a location's `receipt_identifiers`, proximity of the capture coordinates to a location, and fuzzy similarity between the printed merchant name and vendor names. A confident single match is accepted; anything else is left for review with ranked candidates. Extraction of the fields themselves uses the language model constrained to a JSON schema, and the response is accepted only if it validates.
 
@@ -238,6 +238,24 @@ A row that fails keeps its fields and shows its error; the others are unaffected
 
 Create a corpus of synthetic receipts under `backend/tests/fixtures/receipts/`. Each fixture has OCR text, a generated image of that text for the Tesseract path, the expected header, the expected parsed lines, and recorded model responses for deterministic replay. The corpus should cover at least six distinct layouts modelled on common receipt styles: a supermarket with loyalty discounts printed beneath items, a supermarket with weighted produce and deposit lines, a discount grocer with terse abbreviated names, a warehouse store with item codes before names, a small independent market with minimal formatting, and one deliberately poor OCR sample with broken lines and misread characters. Invent store names, addresses, and items; do not reproduce real receipts. The opt-in `llm` suite runs the corpus against a live model and reports header accuracy, line-classification accuracy, and field-level accuracy for quantity and price, so that swapping models is an informed decision.
 
+## 2J — Measuring vision readers (note, 2026-10-01)
+
+Before vision-model reading can be specified, it has to be measured against today's pipeline on the household's own receipts. This note allows the groundwork for that measurement and nothing more. Vision reading in the ingest pipeline stays out of scope until a later amendment to this document names the winning reader and its acceptance criteria. The design record is `docs/designs/vision-receipt-reading.md`.
+
+Allowed now:
+
+- **A benchmark command.** `kerp reading-benchmark` reads a set of receipts with today's pipeline and with candidate vision readers, scores each reading against the committed purchase, and prints aggregate results with their sample size. It is measurement only. Its database access is SELECT inside a transaction that is always rolled back; it never runs a stage, drafts a purchase, or writes an observation or alias. It writes only under `data/benchmarks/`. It calls only local models through `OLLAMA_BASE_URL`.
+- **A behaviour-preserving extraction.** Today's text reading and the header total rule move out of the `lines` and `header` stages into pure functions that the stages call, so the benchmark measures the same code the pipeline runs. Stage output must not change.
+- **Image parts in the language-model client.** The client can send images with a request, reports usage and load time, tells a missing model apart from a model that is still loading, and takes a per-call retry policy. Every new setting is documented in `.env.example` and forwarded by `compose.yaml`. A model's answer about an image is untrusted in the same way as one about text: it is accepted only if it validates against the expected schema.
+- **Shared image orientation.** One orientation step and a colour render serve both the benchmark and the review screen's receipt images. Tesseract keeps its grayscale input.
+
+### Acceptance criteria
+
+66. On every receipt fixture, the `header` and `lines` stage outputs after the extraction are identical to those before it.
+67. A benchmark run on fixtures leaves the row counts of `ingest_stage_result`, `purchase`, `purchase_line`, `price_observation`, and `receipt_alias` unchanged.
+68. The ingest pipeline never sends an image to a model; only the benchmark does.
+69. A reading whose reply fails validation, or validates with no item lines, counts as not reconciled; it is never scored from a partial reply. Timeouts and out-of-room replies are reported together as the runaway rate.
+
 ## Out of scope for Phase 2
 
-The native capture app itself, barcode lookup against external databases, vendor-specific deterministic parsers, vision-model OCR, any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.
+The native capture app itself, barcode lookup against external databases, vendor-specific deterministic parsers, vision-model OCR in the ingest pipeline (2J allows measuring it), any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.
