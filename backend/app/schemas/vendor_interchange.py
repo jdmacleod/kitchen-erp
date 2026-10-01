@@ -62,8 +62,8 @@ class LocationEntry(_Strict):
     opening_hours: Annotated[str, Field(max_length=2000)] | None = None
     osm: OsmRef | None = None
     parent: LocationKey | None = None  # another location's key, for a stall
-    sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
     platform_store_ref: Annotated[str, Field(min_length=1, max_length=64)] | None = None  # /2
+    sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
 
 
 class HouseholdLocation(_Strict):
@@ -123,14 +123,14 @@ class VendorEntry(_Strict):
     website: Text | None = None
     brand: Annotated[str, Field(max_length=200)] | None = None
     wikidata: Annotated[str, Field(pattern=r"^Q[0-9]+$", max_length=20)] | None = None
-    sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
-    locations: list[LocationEntry] = Field(default_factory=list)
-    household: HouseholdVendor | None = None
     # /2 (1H): absent means "not given", never "clear".
     platform: Annotated[str, Field(pattern=r"^[a-z0-9_]+$", max_length=64)] | None = None
     fetch_policy: Literal["server_fetch", "capture_only", "none"] | None = None
     rw_layout: RwLayoutEntry | None = None
     code_position: CodePositionEntry | None = None
+    sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
+    locations: list[LocationEntry] = Field(default_factory=list)
+    household: HouseholdVendor | None = None
 
 
 V2_VENDOR_FIELDS = ("platform", "fetch_policy", "rw_layout", "code_position")
