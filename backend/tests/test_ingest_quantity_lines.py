@@ -220,3 +220,48 @@ def test_the_issue_pairs_reconcile_with_the_printed_total():
     assert not lines_mod.reconcile(kept, printed_total, None)["mismatch"]
     # The saving printed beneath the avocados still belongs to them.
     assert [(k.raw_text, k.parent_seq) for k in kept][-1] == ("MEMBER SAVINGS 0.50-", 2)
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # OCR reads "lb" as "Ib", "1b" or "|b", and some tills print a rate with
+        # no leading zero; found reading real receipts after #87.
+        ("1.84 Ib @ $ 5.35/ Ib", ("1.84", "lb", "5.35")),
+        ("2.07 1b @ $ 3.15/ Ib", ("2.07", "lb", "3.15")),
+        ("3.12 lb @$ .65 / |b", ("3.12", "lb", "0.65")),
+    ],
+)
+def test_ocr_spellings_of_a_weight_row_are_read(raw, expected):
+    printed = lines_mod.quantity_only(raw)
+    assert printed is not None
+    assert (str(printed.qty), printed.unit, str(printed.rate)) == expected
+
+
+def test_a_tax_letter_read_as_a_digit_is_cut_back_to_the_cents():
+    # "6.37 S" OCR'd as "6.378"; the model rounds it to 6.38.
+    [line] = _read(("GOAT CHEESE LOG 6.378", "item", "6.38"))
+    assert line.line_total == Decimal("6.37") and "tax_code_as_digit" in line.flags
+    # A reading that doesn't match the three-decimal amount is left alone.
+    [line] = _read(("GOAT CHEESE LOG 6.378", "item", "9.99"))
+    assert line.line_total == Decimal("9.99") and "tax_code_as_digit" not in line.flags
+    [line] = _read(("GOAT CHEESE LOG 6.37 S", "item", "6.37"))
+    assert line.flags == []
+
+
+def test_an_ocr_weight_row_joins_an_item_whose_tax_letter_was_read_as_a_digit():
+    lines = _read(
+        ("0.52 Ib @ $3.45 /Ib", "item", "0.52"),
+        ("FRESH GINGER 1.795", "item", "1.80"),
+        ("OAT MILK 3.49 F", "item", "3.49"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["0.52 Ib @ $3.45 /Ib"]
+    ginger = kept[0]
+    assert (ginger.qty, ginger.unit, ginger.unit_price, ginger.line_total) == (
+        Decimal("0.52"),
+        "lb",
+        Decimal("3.45"),
+        Decimal("1.79"),
+    )
+    assert not lines_mod.reconcile(kept, Decimal("5.28"), None)["mismatch"]
