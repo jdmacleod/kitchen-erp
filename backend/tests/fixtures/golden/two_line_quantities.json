@@ -1,0 +1,127 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "LANTERN ROW GROCERY",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-03-20T18:05:00+00:00",
+    "purchased_at_local": "2026-03-20 11:05",
+    "store_identifier": "0412",
+    "subtotal": "19.84",
+    "tax": null,
+    "total": "19.84"
+  },
+  "lines": {
+    "line_count": 4,
+    "lines": [
+      {
+        "flags": [
+          "qty_from_line_above"
+        ],
+        "line_kind": "item",
+        "line_total": "10.81",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2.71",
+        "raw_text": "WT BROCCOLI CROWNS      10.81 F",
+        "seq": 1,
+        "unit": "lb",
+        "unit_price": "3.99"
+      },
+      {
+        "flags": [
+          "qty_from_line_above"
+        ],
+        "line_kind": "item",
+        "line_total": "3.95",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "5",
+        "raw_text": "AVOCADO                  3.95 F",
+        "seq": 2,
+        "unit": "each",
+        "unit_price": "0.79"
+      },
+      {
+        "flags": [
+          "qty_from_line_below"
+        ],
+        "line_kind": "item",
+        "line_total": "1.59",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2.31",
+        "raw_text": "BANANAS",
+        "seq": 3,
+        "unit": "lb",
+        "unit_price": "0.69"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "OAT MILK 1L              3.49 F",
+        "seq": 4,
+        "unit": "each",
+        "unit_price": null
+      }
+    ],
+    "merged_rows": [
+      "2.71 lb @ 3.99 /lb",
+      "5 @ 0.79",
+      "2.31 lb @ 0.69/lb      1.59 F"
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "19.84",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "0",
+      "fees": "0",
+      "items": "19.84",
+      "mismatch": false,
+      "printed_total": "19.84",
+      "tax": "0",
+      "tax_source": "none"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "fkdaofmjnpabggcm",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "hampeafcchokclkg",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 41.0,
+      "stage": "lines"
+    }
+  ]
+}

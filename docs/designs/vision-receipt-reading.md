@@ -1115,11 +1115,11 @@ The full record is in `~/.gstack/projects/kitchen-erp/ceo-plans/2026-10-01-visio
 
 Synthesized from this review's findings. Each task derives from a specific finding above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **T1 (P1, human: ~1h / CC: ~15min)** — spec — Write the short spec 04 note allowing the benchmark, the extraction and image parts
+- [x] **T1 (P1, human: ~1h / CC: ~15min)** — spec — Write the short spec 04 note allowing the benchmark, the extraction and image parts
   - Surfaced by: Outside voice OV10
   - Files: docs/spec/04-phase-2-purchases-and-price-book.md
   - Verify: user approval recorded on the PR
-- [ ] **T2 (P1, human: ~1 day / CC: ~45min)** — ingest — Extract the text reading and the header total rule into pure functions, with unchanged output
+- [x] **T2 (P1, human: ~1 day / CC: ~45min)** — ingest — Extract the text reading and the header total rule into pure functions, with unchanged output
   - Surfaced by: Section 1, N3-2
   - Files: backend/app/ingest/readers.py, backend/app/ingest/stages.py, backend/tests/test_ingest_pipeline.py
   - Verify: `pytest backend/tests/test_ingest_pipeline.py`, with golden stage outputs identical on all 12 fixtures
@@ -1486,7 +1486,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
   - Surfaced by: A2, E1/D3, E2/D4, EV1, EV2, Q1
   - Files: backend/app/ingest/llm.py, backend/app/ingest/errors.py, backend/tests/test_ingest_llm_options.py
   - Verify: `uv run pytest backend/tests/test_ingest_llm_options.py` (bare 404 and 5xx still wait; the two bodies raise ModelMissing)
-- [ ] **ET2 (P1, human: ~1 day / CC: ~45min)** — ingest — extract TextReader into readers.py with an absolute deadline; header read gets a deadline; golden stage outputs
+- [x] **ET2 (P1, human: ~1 day / CC: ~45min)** — ingest — extract TextReader into readers.py with an absolute deadline; header read gets a deadline; golden stage outputs
   - Surfaced by: A1, N3-2, CRITICAL regression 1
   - Files: backend/app/ingest/readers.py, backend/app/ingest/stages.py, backend/tests/test_ingest_pipeline.py
   - Verify: stage outputs identical on all 12 fixtures

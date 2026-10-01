@@ -1,0 +1,176 @@
+{
+  "header": {
+    "address_text": "1200 HARBOR VISTA BLVD, SAN MARISOL, CALIF",
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "HARBORVIEW MARKET",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": "(555) 555-0142",
+    "purchased_at": "2026-03-05T01:42:00+00:00",
+    "purchased_at_local": "2026-03-04 17:42",
+    "store_identifier": "0412",
+    "subtotal": "29.44",
+    "tax": "0.95",
+    "total": "30.39"
+  },
+  "lines": {
+    "line_count": 9,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "5.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "ORG WHOLE MILK 1GAL          5.99 F",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "1.00",
+        "parent_seq": 1,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "HRBV CARD SAVINGS          1.00-",
+        "seq": 2,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "9.47",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "CHKN THIGHS B/S              9.47 F",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "2.48",
+        "parent_seq": 3,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "MEMBER PRICE               2.48-",
+        "seq": 4,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "ITAL BRD LOAF                3.49 F",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.98",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2",
+        "raw_text": "GRK YOGURT PLN 5.3Z  2 @ 1.99   3.98 F",
+        "seq": 6,
+        "unit": "each",
+        "unit_price": "1.99"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "12.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "PAPER TOWELS 6RL            12.99 T",
+        "seq": 7,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "3.00",
+        "parent_seq": 7,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "HRBV CARD SAVINGS          3.00-",
+        "seq": 8,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "tax",
+        "line_total": "0.95",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX                          0.95",
+        "seq": 9,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "30.39",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "6.48",
+      "fees": "0",
+      "items": "35.92",
+      "mismatch": false,
+      "printed_total": "30.39",
+      "tax": "0.95",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "iabonmmigjnjmflh",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "conhjommljpnlhlc",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 65.0,
+      "stage": "lines"
+    }
+  ]
+}
