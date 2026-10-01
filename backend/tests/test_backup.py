@@ -9,6 +9,7 @@ import pytest
 from app.core.config import get_settings
 from app.core.db import dispose_engine, get_sessionmaker
 from app.services.backup import backup, restore
+from tests.grants_helpers import privileges
 from tests.pricebook_helpers import make_location, make_product, shelf
 
 needs_pg_tools = pytest.mark.skipif(
@@ -41,6 +42,7 @@ async def test_backup_and_restore_round_trip(
     assert r.status_code == 200, r.text
     removed_sql = "SELECT count(*) FROM purchase_line WHERE removed_at IS NOT NULL"
     before = {t: await owner_conn.fetchval(f"SELECT count(*) FROM {t}") for t in TABLES}
+    granted = await privileges(owner_conn)
     assert before["price_observation"] == 3
 
     out = tmp_path / "backup"
@@ -65,5 +67,7 @@ async def test_backup_and_restore_round_trip(
     assert result["restored_receipts"] == 1
     after = {t: await owner_conn.fetchval(f"SELECT count(*) FROM {t}") for t in TABLES}
     assert after == before
+    # The dump carries no privileges; the runtime role gets back exactly what it had.
+    assert await privileges(owner_conn) == granted
     assert await owner_conn.fetchval(removed_sql) == 1
     assert image.read_bytes() == b"\x89PNG synthetic bytes"

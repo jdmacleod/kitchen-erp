@@ -22,6 +22,7 @@ from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.core.errors import ApiError
+from app.core.grants import statements as grant_statements
 from app.services.health import expected_migration_head
 
 COUNT_TABLES = (
@@ -104,19 +105,6 @@ async def database_is_empty(db: AsyncSession) -> bool:
     return sum(counts.values()) + users + ingredients == 0
 
 
-GRANTS = (
-    "GRANT USAGE ON SCHEMA public TO kerp_app",
-    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO kerp_app",
-    "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kerp_app",
-    "ALTER DEFAULT PRIVILEGES IN SCHEMA public "
-    "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO kerp_app",
-    "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO kerp_app",
-    "REVOKE UPDATE, DELETE ON price_observation, price_observation_void, ingest_stage_result "
-    "FROM kerp_app",
-    "GRANT TRUNCATE ON price_norm TO kerp_app",
-)
-
-
 async def _as_owner(statements: tuple[str, ...]) -> None:
     """Run DDL as the owner role on a dedicated connection (AUTOCOMMIT)."""
     engine = create_async_engine(get_settings().migration_database_url, poolclass=NullPool)
@@ -131,7 +119,7 @@ async def _as_owner(statements: tuple[str, ...]) -> None:
 
 async def reapply_grants() -> None:
     """The dump carries no privileges; the runtime role's grants are re-applied."""
-    await _as_owner(GRANTS)
+    await _as_owner(grant_statements())
 
 
 async def restore(db: AsyncSession, src: Path, *, force: bool = False) -> dict[str, Any]:
