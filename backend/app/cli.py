@@ -469,7 +469,7 @@ def export_vendors(
     mode: str = typer.Option("public", "--mode", help="public or household"),
     out: Path = EXPORT_OUT,
 ) -> None:
-    """Write the vendor list as a kitchen-erp-vendors/1 file.
+    """Write the vendor list as a kitchen-erp-vendors file (/1, or /2 when it holds product facts).
 
     Public mode holds only what may be contributed; household mode holds
     everything, including store codes and home bases: keep it private.
@@ -503,7 +503,7 @@ def import_vendors(
         False, "--dry-run", help="Report what would change; write nothing."
     ),
 ) -> None:
-    """Import a kitchen-erp-vendors/1 file (YAML or JSON). A field someone edited is kept."""
+    """Import a kitchen-erp-vendors/1 or /2 file (YAML or JSON). A field someone edited is kept."""
     from app.core.db import dispose_engine, get_sessionmaker
     from app.core.errors import ApiError
     from app.services import vendor_import

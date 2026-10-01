@@ -365,6 +365,36 @@
         "title": "Check",
         "type": "object"
       },
+      "CodePositionEntry": {
+        "additionalProperties": false,
+        "description": "Where a vendor's receipts print item codes (04, 2K).",
+        "properties": {
+          "kind": {
+            "const": "leading_token",
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_len": {
+            "maximum": 14.0,
+            "minimum": 3.0,
+            "title": "Max Len",
+            "type": "integer"
+          },
+          "min_len": {
+            "maximum": 14.0,
+            "minimum": 3.0,
+            "title": "Min Len",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "min_len",
+          "max_len"
+        ],
+        "title": "CodePositionEntry",
+        "type": "object"
+      },
       "CompareCell": {
         "additionalProperties": false,
         "properties": {
@@ -4225,6 +4255,19 @@
             ],
             "title": "Phone"
           },
+          "platform_store_ref": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Store Ref"
+          },
           "sources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/FieldSourceEntry"
@@ -7908,6 +7951,52 @@
         "title": "RowError",
         "type": "object"
       },
+      "RwLayoutEntry": {
+        "additionalProperties": false,
+        "description": "Where the item code and price sit in a weighed-item label (positions 1-10).",
+        "properties": {
+          "item_len": {
+            "default": 5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Item Len",
+            "type": "integer"
+          },
+          "item_start": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Item Start",
+            "type": "integer"
+          },
+          "price_kind": {
+            "default": "price_cents",
+            "enum": [
+              "price_cents",
+              "weight_hundredths_lb",
+              "none"
+            ],
+            "title": "Price Kind",
+            "type": "string"
+          },
+          "price_len": {
+            "default": 5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Price Len",
+            "type": "integer"
+          },
+          "price_start": {
+            "default": 6,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Price Start",
+            "type": "integer"
+          }
+        },
+        "title": "RwLayoutEntry",
+        "type": "object"
+      },
       "SearchHit": {
         "additionalProperties": false,
         "properties": {
@@ -9235,6 +9324,32 @@
             ],
             "title": "Brand"
           },
+          "code_position": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodePositionEntry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fetch_policy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "server_fetch",
+                  "capture_only",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetch Policy"
+          },
           "household": {
             "anyOf": [
               {
@@ -9274,6 +9389,19 @@
             "title": "Name",
             "type": "string"
           },
+          "platform": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[a-z0-9_]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
           "price_scope": {
             "enum": [
               "chain",
@@ -9281,6 +9409,16 @@
             ],
             "title": "Price Scope",
             "type": "string"
+          },
+          "rw_layout": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RwLayoutEntry"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sources": {
             "additionalProperties": {
@@ -9328,8 +9466,11 @@
         "additionalProperties": false,
         "properties": {
           "format": {
-            "const": "kitchen-erp-vendors/1",
             "default": "kitchen-erp-vendors/1",
+            "enum": [
+              "kitchen-erp-vendors/1",
+              "kitchen-erp-vendors/2"
+            ],
             "title": "Format",
             "type": "string"
           },
@@ -16487,7 +16628,7 @@
               },
               "application/yaml": {}
             },
-            "description": "A kitchen-erp-vendors/1 file (spec 03 1F), as YAML or JSON."
+            "description": "A kitchen-erp-vendors/1 or /2 file (spec 03 1F, 1H), as YAML or JSON."
           },
           "422": {
             "content": {
@@ -16569,7 +16710,7 @@
               }
             }
           },
-          "description": "A kitchen-erp-vendors/1 file, at most 5 MB.",
+          "description": "A kitchen-erp-vendors/1 or /2 file, at most 5 MB.",
           "required": true
         },
         "responses": {

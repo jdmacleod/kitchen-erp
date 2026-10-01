@@ -1,4 +1,4 @@
-"""Import a ``kitchen-erp-vendors/1`` file: dry run, then apply (spec 03 §1F, Phase 2).
+"""Import a ``kitchen-erp-vendors/1`` or ``/2`` file: dry run, then apply (spec 03 §1F, Phase 2).
 
 ```
 file ─▶ ≤ 5 MB ─▶ loader (no anchors or aliases, no floats) ─▶ VendorFile
@@ -41,6 +41,8 @@ from sqlalchemy.orm import selectinload
 from app.core.errors import ApiError
 from app.models.geo import GeographyPoint, HomeBase, Place, Vendor, VendorLocation
 from app.schemas.vendor_interchange import (
+    FORMATS,
+    V2_VENDOR_FIELDS,
     FieldChange,
     FieldConflict,
     ImportCounts,
@@ -112,8 +114,10 @@ def parse(raw: bytes, fmt: str | None = None) -> VendorFile:
         raise _bad(f"The file is not valid {fmt.upper()}: {exc}") from None
     if not isinstance(data, dict):
         raise _bad("The file must hold one document with a format, a source and vendors.")
-    if data.get("format") != "kitchen-erp-vendors/1":
-        raise _bad(f"Unsupported format {data.get('format')!r}; expected 'kitchen-erp-vendors/1'.")
+    if data.get("format") not in FORMATS:
+        raise _bad(
+            f"Unsupported format {data.get('format')!r}; expected one of {', '.join(FORMATS)}."
+        )
     try:
         file = VendorFile.model_validate(data)
     except ValidationError as exc:
@@ -122,8 +126,7 @@ def parse(raw: bytes, fmt: str | None = None) -> VendorFile:
             for e in exc.errors()[:20]
         ]
         raise _bad(
-            f"The file does not match kitchen-erp-vendors/1: {errors[0]['at']}: "
-            f"{errors[0]['problem']}",
+            f"The file does not match {data['format']}: {errors[0]['at']}: {errors[0]['problem']}",
             errors=errors,
         ) from None
     return file
@@ -329,6 +332,20 @@ VENDOR_FIELDS = ("name", "kind", "price_scope", "website", "brand", "wikidata")
 LOCATION_FIELDS = ("name", "address", "phone", "opening_hours")
 
 
+def _v2_vendor_values(entry: VendorEntry) -> list[tuple[str, Any]]:
+    """The /2 product facts a file gives (1H), as stored; absent ones are left out."""
+    values: list[tuple[str, Any]] = []
+    if entry.platform is not None:
+        values.append(("platform", entry.platform))
+    if entry.fetch_policy is not None:
+        values.append(("fetch_policy", entry.fetch_policy))
+    if entry.rw_layout is not None:
+        values.append(("rw_layout", entry.rw_layout.model_dump()))
+    if entry.code_position is not None:
+        values.append(("code_position", entry.code_position.model_dump()))
+    return values
+
+
 def _clean_location_values(entry: LocationEntry) -> dict[str, Any]:
     """The same checks the edit form applies (names, phones, opening hours)."""
     return {
@@ -382,8 +399,10 @@ async def _import_vendor(ctx: _Context, entry: VendorEntry) -> list[ImportItem]:
             active=house.active if house else True,
             slug=entry.key if await _key_free(db, Vendor.slug, entry.key) else None,
         )
+        for fname, value in _v2_vendor_values(entry):
+            setattr(vendor, fname, value)
         row.item.outcome = "created"
-        row.record(vendor, VENDOR_FIELDS, ref=ctx.ref, now=ctx.now)
+        row.record(vendor, VENDOR_FIELDS + V2_VENDOR_FIELDS, ref=ctx.ref, now=ctx.now)
     else:
         name = geo._clean(entry.name, required=True)
         for fname, value in (
@@ -397,6 +416,8 @@ async def _import_vendor(ctx: _Context, entry: VendorEntry) -> list[ImportItem]:
             # A field the file leaves out is left alone: import never clears one.
             if value is not None:
                 row.write(vendor, fname, value, ref=ctx.ref, now=ctx.now)
+        for fname, value in _v2_vendor_values(entry):
+            row.write(vendor, fname, value, ref=ctx.ref, now=ctx.now)
         if house is not None:
             if house.notes is not None:
                 row.write(vendor, "notes", house.notes, ref=ctx.ref, now=ctx.now)
@@ -483,14 +504,20 @@ async def _import_location(
             )
         location = await geo.create_location_row(db, data, vendor=vendor)
         ctx.created_locations[entry.key] = location
+        if entry.platform_store_ref is not None:
+            location.platform_store_ref = entry.platform_store_ref
         row.item.outcome = "created"
-        row.record(location, LOCATION_FIELDS, ref=ctx.ref, now=ctx.now)
+        row.record(location, LOCATION_FIELDS + ("platform_store_ref",), ref=ctx.ref, now=ctx.now)
         return row.done()
 
     for fname in LOCATION_FIELDS:
         value = clean[fname]
         if value is not None:
             row.write(location, fname, value, ref=ctx.ref, now=ctx.now)
+    if entry.platform_store_ref is not None:
+        row.write(
+            location, "platform_store_ref", entry.platform_store_ref, ref=ctx.ref, now=ctx.now
+        )
     if entry.osm is not None and (location.osm_type, location.osm_id) != (
         entry.osm.type,
         entry.osm.id,

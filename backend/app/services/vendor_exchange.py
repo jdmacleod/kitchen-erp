@@ -1,4 +1,4 @@
-"""Vendor files in the ``kitchen-erp-vendors/1`` format: export (1F, Phase 1).
+"""Vendor files in the ``kitchen-erp-vendors`` formats (/1, and /2 since 1H): export (1F, Phase 1).
 
 A household's list of the stores it visits is personal data even with every
 household field removed (SECURITY.md), so there are two modes:
@@ -28,6 +28,9 @@ from sqlalchemy.orm import selectinload
 
 from app.models.geo import HomeBase, Vendor, VendorLocation
 from app.schemas.vendor_interchange import (
+    FORMAT,
+    FORMAT_V2,
+    CodePositionEntry,
     FieldSourceEntry,
     FileSource,
     HouseholdLocation,
@@ -35,8 +38,10 @@ from app.schemas.vendor_interchange import (
     LocationEntry,
     Mode,
     OsmRef,
+    RwLayoutEntry,
     VendorEntry,
     VendorFile,
+    uses_v2,
 )
 from app.services.geo import sources_of
 
@@ -74,6 +79,7 @@ def _location(location: VendorLocation, keys: dict[Any, str]) -> LocationEntry:
         ),
         parent=keys.get(location.parent_location_id),
         sources=_sources(location, LOCATION_SOURCE_FIELDS),
+        platform_store_ref=location.platform_store_ref,
     )
 
 
@@ -114,6 +120,13 @@ async def build(db: AsyncSession, mode: Mode, *, now: datetime | None = None) ->
             wikidata=vendor.wikidata,
             sources=_sources(vendor, ("website", "brand", "wikidata")),
             locations=[_location(loc, keys) for loc in locations],
+            platform=vendor.platform,
+            # The default is left out, so a file without product facts stays /1.
+            fetch_policy=None if vendor.fetch_policy == "capture_only" else vendor.fetch_policy,  # type: ignore[arg-type]
+            rw_layout=RwLayoutEntry(**vendor.rw_layout) if vendor.rw_layout else None,
+            code_position=CodePositionEntry(**vendor.code_position)
+            if vendor.code_position
+            else None,
         )
         if not public:
             entry.household = HouseholdVendor(
@@ -134,6 +147,7 @@ async def build(db: AsyncSession, mode: Mode, *, now: datetime | None = None) ->
             )
         entries.append(entry)
     return VendorFile(
+        format=FORMAT_V2 if uses_v2(entries) else FORMAT,
         source=FileSource(name=SOURCE_NAME, exported_at=now or datetime.now(UTC), mode=mode),
         vendors=entries,
     )
