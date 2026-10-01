@@ -649,8 +649,8 @@ ingredients:
     name: "corn kernels"
     category: produce
     unit: g
-    fdc: 169998
-    spellings: ["sweet corn"]
+    fdc: 168398
+    note: "Frozen kernels, the usual way loose kernels are bought; the raw record (169998) is corn on the cob's, by the ear."
   - key: corn-oil
     name: "corn oil"
     category: pantry
@@ -660,8 +660,9 @@ ingredients:
     name: "corn on the cob"
     category: produce
     unit: each
-    spellings: ["ears of corn"]
-    note: "Counted per ear. USDA's raw sweet corn record (169998) is corn kernels'; add a reference in review if one fits."
+    fdc: 169998
+    spellings: ["sweet corn", "ears of corn"]
+    note: "Counted per ear; USDA weighs a medium ear at about 102 g."
   - key: corn-tortilla
     name: "corn tortilla"
     category: bakery

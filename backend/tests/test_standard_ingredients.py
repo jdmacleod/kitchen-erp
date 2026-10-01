@@ -58,6 +58,10 @@ def test_the_seasonal_produce_decisions_are_in_the_list():
     entry = by_key()
     assert (entry["pomegranate"].unit, entry["pomegranate"].measures) == ("each", ())
     assert entry["corn-on-the-cob"].unit == "each"
+    # Corn: the raw record is by the ear, so it is corn on the cob's, and so is
+    # "sweet corn"; loose kernels reference the frozen record.
+    assert (entry["corn-on-the-cob"].fdc, entry["corn-kernels"].fdc) == (169998, 168398)
+    assert named[normalize_name("sweet corn")] == "corn-on-the-cob"
 
 
 def test_proper_nouns_are_the_only_capitals():
