@@ -180,6 +180,7 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 **Discarded jobs.**
 - `GET /ingest-jobs` leaves them out, and `GET /ingest-jobs/{id}` returns `404 receipt_removed` for one.
 - Uploading the same file again revives the job. It returns to `pending` at stage `captured`, the image is written again if missing, and the response says `revived: true`. New stage results append to the old ones.
+- The same holds for a finished read whose purchase was removed (voided): uploading the file again revives its job with `purchase_id` cleared, so it is read into a new draft, and the voided purchase stays as the record of the prices it voided.
 
 **What the client is told.** A single-purchase response (GET and every mutation returning one purchase) carries:
 - `removal: {outcome: delete | void, prices, photo, blocked: null | still_reading}` from `removal_plan`;

@@ -75,6 +75,14 @@ class UploadResult:
     revived: bool = False
 
 
+async def _purchase_was_removed(db: AsyncSession, job: IngestJob) -> bool:
+    """A finished read whose purchase has since been removed (voided)."""
+    if job.status != "done" or job.purchase_id is None:
+        return False
+    purchase = await db.get(Purchase, job.purchase_id)
+    return purchase is not None and purchase.status == "voided"
+
+
 async def upload_receipt(
     db: AsyncSession,
     *,
@@ -115,12 +123,16 @@ async def upload_receipt(
                 .execution_options(populate_existing=True)
             )
         ).scalar_one()
-        if job.status != "discarded":
+        removed = job.status == "discarded" or await _purchase_was_removed(db, job)
+        if not removed:
             return UploadResult(existing, job, created=False)
-        # Removed before: its photo was deleted with it. Uploading it again is
-        # the way back, so it is stored again and read from the start; the
-        # earlier stage results stay (append-only) and the new ones follow.
+        # Removed before: a discarded read's photo was deleted with it, and a
+        # removed purchase is voided and read-only. Uploading it again is the way
+        # back, so it is stored again and read from the start into a new draft;
+        # the voided purchase stays as the record of the prices it voided, and
+        # the earlier stage results stay (append-only) with the new ones after.
         _store(Path(settings.receipts_path) / existing.image_path, data)
+        job.purchase_id = None
         job.status = "pending"
         job.stage = "captured"
         job.attempts = 0
