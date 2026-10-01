@@ -47,7 +47,14 @@ async def claim_job(db: AsyncSession, locked_by: str) -> IngestJob | None:
                 (IngestJob.status == "running") & (IngestJob.locked_at < stale),
             ),
         )
-        .order_by(IngestJob.next_attempt_at.nulls_first(), IngestJob.created_at)
+        # A receipt already part-read is finished before a new one is started:
+        # oldest-first alone left a read whose slow stages were done waiting
+        # behind every older upload for a stage that takes milliseconds.
+        .order_by(
+            (IngestJob.stage == "captured").asc(),
+            IngestJob.next_attempt_at.nulls_first(),
+            IngestJob.created_at,
+        )
         .limit(1)
         .with_for_update(skip_locked=True)
     )

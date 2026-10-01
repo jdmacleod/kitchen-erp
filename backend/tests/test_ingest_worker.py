@@ -77,6 +77,22 @@ async def test_run_once_claims_and_runs_one_stage(
     assert final.locked_by is None
 
 
+async def test_a_part_read_receipt_is_finished_before_a_new_one_starts(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+):
+    fixture = load_fixture("independent_minimal")
+    _, older = await upload_fixture(admin_client, fixture)
+    _, newer = await upload_fixture(admin_client, load_fixture("supermarket_loyalty"))
+    # The newer one has had its slow stages; only matching products is left.
+    await _set(newer["id"], stage="resolve")
+    async with get_sessionmaker()() as db:
+        claimed = await claim_job(db, "w")
+        assert claimed is not None and str(claimed.id) == newer["id"]
+        await db.rollback()
+    assert (await load_job(older["id"])).stage == "captured"
+
+
 async def test_claim_skips_locked_future_and_running_jobs(
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,

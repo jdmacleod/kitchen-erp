@@ -339,7 +339,7 @@ describe("receipts", () => {
     renderApp("/shop/receipts");
     await screen.findByText("No receipts yet");
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", { type: "image/png" });
-    await user.upload(screen.getByLabelText("Photo"), file);
+    await user.upload(screen.getByLabelText("Receipt photos or PDFs"), file);
     await user.click(screen.getByRole("button", { name: "Upload" }));
     const notice = await screen.findByTestId("notice");
     expect(notice).toHaveTextContent("You've uploaded this receipt before, so it isn't read again.");
@@ -355,7 +355,7 @@ describe("receipts", () => {
     renderApp("/shop/receipts");
     await screen.findByText("No receipts yet");
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", { type: "image/png" });
-    await user.upload(screen.getByLabelText("Photo"), file);
+    await user.upload(screen.getByLabelText("Receipt photos or PDFs"), file);
     await user.click(screen.getByRole("button", { name: "Upload" }));
     expect(await screen.findByTestId("notice")).toHaveTextContent("This receipt was removed before; it's being read again.");
   });
