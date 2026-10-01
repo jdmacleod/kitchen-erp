@@ -182,3 +182,30 @@ def plural(name: str) -> str | None:
     elif last[0].isupper():
         word = word[0].upper() + word[1:]
     return f"{head} {word}" if head else word
+
+
+def singulars(text: str) -> list[str]:
+    """Singular readings of a phrase whose last word may be plural, likeliest first.
+
+    "parsnips" → ["parsnip"], "cherries" → ["cherry", "cherrie", "cherri"],
+    "loaves" → ["loaf", ...]. Only ever tried as exact lookups, so a reading that
+    is no word ("cherri") simply finds nothing.
+    """
+    head, _, last = text.strip().rpartition(" ")
+    word = last.lower()
+    if not word.isalpha() or len(word) < 3:
+        return []
+    found: list[str] = []
+    found += [s for s, p in IRREGULAR.items() if p == word]
+    if word.endswith("ies"):
+        found.append(word[:-3] + "y")
+    if word.endswith("s") and not word.endswith("ss"):
+        found.append(word[:-1])
+    if word.endswith("es"):
+        found.append(word[:-2])
+    out: list[str] = []
+    for single in found:
+        phrase = f"{head} {single}" if head else single
+        if phrase not in out:
+            out.append(phrase)
+    return out

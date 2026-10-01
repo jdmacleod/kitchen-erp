@@ -46,3 +46,32 @@ async def test_a_catalog_ingredient_hides_its_standard_twin(admin_client, db_ses
     await make_ingredient(admin_client, "broccoli")
     items = await _in_text(admin_client, "BROCCOLI")
     assert [i["kind"] for i in items] == ["ingredient"]
+
+
+async def test_a_plural_finds_its_singular_standard_name(admin_client, db_session):
+    # Found dogfooding: the model answers in plurals, and none of them matched.
+    await seed_units_via_service(db_session)
+    r = await admin_client.get(
+        "/api/v1/ingredients/search", params={"q": "parsnips", "include_standard": "true"}
+    )
+    items = r.json()["items"]
+    assert (items[0]["kind"], items[0]["key"], items[0]["exact"]) == ("standard", "parsnip", True)
+    found = await _in_text(admin_client, "PARSNIPS LOOSE")
+    assert found[0]["key"] == "parsnip"
+
+
+async def test_a_longer_standard_name_beats_a_shorter_catalog_one(admin_client, db_session):
+    # "garlic" is in the catalog; the line is garlic powder, which is not yet.
+    await seed_units_via_service(db_session)
+    await make_ingredient(admin_client, "garlic")
+    items = await _in_text(admin_client, "GARLIC POWDER JAR")
+    assert [(i["kind"], i["name"]) for i in items][:2] == [
+        ("standard", "garlic powder"),
+        ("ingredient", "garlic"),
+    ]
+
+
+async def test_a_pair_printed_noun_first_is_read_the_other_way(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    items = await _in_text(admin_client, "SQUASH BUTTERNUT EA")
+    assert items[0]["key"] == "butternut-squash"

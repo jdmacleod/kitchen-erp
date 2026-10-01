@@ -441,6 +441,31 @@ describe("the commit notice (review follow-ups)", () => {
     expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
   });
 
+  it("says where the lines went when a commit adds no prices because none is identified", async () => {
+    // Found dogfooding a first receipt: every line unidentified, and the notice
+    // said its prices were "already in the price book".
+    const unidentified = receiptPurchase.lines.map((l) => ({ ...l, product: null, resolution: "unmatched", observation_id: null, suggestions: [] }));
+    let purchase: Purchase = { ...receiptPurchase, lines: unidentified };
+    mockApi({
+      ...baseRoutes(() => purchase),
+      [`POST ${base}/commit`]: () => {
+        purchase = { ...purchase, status: "committed" };
+        return jsonResponse(200, purchase);
+      },
+      "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    rows[0].focus();
+    await user.keyboard("c");
+    await user.keyboard("{Enter}");
+    const notice = await screen.findByTestId("notice");
+    const items = unidentified.filter((l) => l.line_kind === "item").length;
+    expect(notice).toHaveTextContent(`Committed. No prices yet: ${items} lines wait in To identify`);
+    expect(within(notice).getByRole("link", { name: "Name them" })).toHaveAttribute("href", "/shop/receipts/identify?mode=name");
+  });
+
   it("does not count prices a recommit kept as added", async () => {
     // Reopened with its observations live; committing again without changes adds none.
     let purchase: Purchase = { ...receiptPurchase, status: "reviewed", lines: receiptPurchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)) };

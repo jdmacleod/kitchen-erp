@@ -12,7 +12,7 @@ from sqlalchemy.orm import selectinload
 
 from app.catalog import categories, standard
 from app.catalog.categories import CategoryKey
-from app.catalog.names import normalize_name
+from app.catalog.names import normalize_name, singulars
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.models.catalog import Ingredient, IngredientMeasure, IngredientRef, Product
@@ -137,7 +137,12 @@ def _standard_rank(norm: str, candidate: str) -> int | None:
 
 
 async def search_ingredients(
-    db: AsyncSession, q: str, *, include_standard: bool = False, limit: int = 10
+    db: AsyncSession,
+    q: str,
+    *,
+    include_standard: bool = False,
+    limit: int = 10,
+    try_singular: bool = True,
 ) -> list[IngredientMatch]:
     """Active ingredients whose name or other spelling matches ``q``, best first (1G).
 
@@ -185,6 +190,18 @@ async def search_ingredients(
     out = [m for _, _, m in found]
     if include_standard:
         out += await _standard_matches(db, norm)
+    if try_singular and not any(m.exact for m in out):
+        # "parsnips" names the parsnip: a plural the catalog or the list
+        # has no row for still finds its singular, exactly (found dogfooding:
+        # the model answers in plurals, and none of its ingredients matched).
+        for single in singulars(ql):
+            hits = await search_ingredients(
+                db, single, include_standard=include_standard, limit=limit, try_singular=False
+            )
+            exact = [m for m in hits if m.exact]
+            if exact:
+                seen = {(m.kind, m.id, m.key) for m in exact}
+                return exact + [m for m in out if (m.kind, m.id, m.key) not in seen]
     return out
 
 
@@ -199,8 +216,11 @@ async def ingredients_in_text(
 
     Each run of up to three words of the line is looked up, longest first, and
     only an exact name or spelling counts: "WT BROCCOLI CROWNS" offers broccoli,
-    "BNLS CHKN BRST" offers nothing. Catalog ingredients come before standard
-    names the catalog doesn't have yet. A suggestion is only ever offered.
+    "BNLS CHKN BRST" offers nothing. A plural finds its singular, and a pair of
+    words is tried in both orders ("SQUASH BUTTERNUT" offers butternut squash). The longest
+    phrase comes first ("garlic powder" before "garlic"); at the same length a
+    catalog ingredient comes before a standard name the catalog doesn't have
+    yet. A suggestion is only ever offered.
     """
     words = [w for w in normalize_receipt_text(receipt_text).casefold().split() if w.isalpha()]
     phrases: list[str] = []
@@ -209,17 +229,25 @@ async def ingredients_in_text(
             phrase = " ".join(words[i : i + n])
             if phrase not in phrases:
                 phrases.append(phrase)
-    existing: list[IngredientMatch] = []
-    standard_names: list[IngredientMatch] = []
+            # Tills print the noun first ("SQUASH BUTTERNUT", "PEPPERS RED"): a pair
+            # is tried the other way round too, still only as an exact name.
+            if n == 2 and (swapped := f"{words[i + 1]} {words[i]}") not in phrases:
+                phrases.append(swapped)
+    # The longest phrase names the most specific thing ("garlic powder" over
+    # "garlic"); at the same length a catalog ingredient comes before a
+    # standard name the catalog doesn't have yet.
+    found: list[tuple[int, int, int, IngredientMatch]] = []
     seen: set[str] = set()
-    for phrase in phrases:
+    for order, phrase in enumerate(phrases):
         for match in await search_ingredients(db, phrase, include_standard=True, limit=5):
             ident = f"i:{match.id}" if match.kind == "ingredient" else f"s:{match.key}"
             if not match.exact or ident in seen:
                 continue
             seen.add(ident)
-            (existing if match.kind == "ingredient" else standard_names).append(match)
-    return (existing + standard_names)[:limit]
+            kind = 0 if match.kind == "ingredient" else 1
+            found.append((-len(phrase.split()), kind, order, match))
+    found.sort(key=lambda t: t[:3])
+    return [m for *_, m in found][:limit]
 
 
 async def _standard_matches(db: AsyncSession, norm: str) -> list[IngredientMatch]:

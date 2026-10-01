@@ -116,13 +116,25 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     // lines that did not change, and those were in the price book already.
     const before = new Set(purchase.lines.map((l) => l.observation_id).filter(Boolean));
     const n = committed.lines.filter((l) => l.observation_id && !before.has(l.observation_id)).length;
+    // Lines with no product emit no price: they wait in To identify, and on a
+    // household's first receipts that is every line. "Already in the price
+    // book" was said then, when nothing had been added at all.
+    const waiting = committed.lines.filter((l) => l.line_kind === "item" && !l.product && l.resolution !== "ignored").length;
+    const lines = `${waiting} ${waiting === 1 ? "line waits" : "lines wait"} in To identify`;
+    const priced = committed.lines.some((l) => l.observation_id);
     const message =
-      n === 0
-        ? "Committed. Its prices were already in the price book."
-        : `Committed. ${n} ${n === 1 ? "price" : "prices"} added to the price book.`;
+      n > 0
+        ? `Committed. ${n} ${n === 1 ? "price" : "prices"} added to the price book.${waiting > 0 ? ` ${lines}.` : ""}`
+        : !priced && waiting > 0
+          ? `Committed. No prices yet: ${lines}, and each one's price is added once it's named.`
+          : `Committed. Its prices were already in the price book.${waiting > 0 ? ` ${lines}.` : ""}`;
     // Said at once. "Next draft" joins it when the lookup answers, and only if
     // this notice is still showing: a reopen in the meantime dismisses it.
-    const id = notice.show({ tone: "success", message });
+    const id = notice.show({
+      tone: "success",
+      message,
+      action: waiting > 0 ? { label: "Name them", to: "/shop/receipts/identify?mode=name" } : undefined,
+    });
     const next = await fetchNextDraft(committed.id).catch(() => null);
     if (next) notice.update(id, { action: { label: "Next draft", to: `/shop/purchases/${next.id}` } });
   };
