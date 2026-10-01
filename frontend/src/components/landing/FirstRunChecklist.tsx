@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { primaryLinkClass, secondaryLinkClass } from "../ui";
+import { focusRing, primaryLinkClass, secondaryLinkClass } from "../ui";
 
 /**
  * The two-step first-run checklist.
@@ -103,8 +103,12 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         state={{ firstPurchase: true }}
         action="New purchase"
       >
-        Products, and the ingredients behind them, are created as you type them. There is
-        nothing to set up first.
+        Type it in, or{" "}
+        <Link to="/shop/receipts" className={`rounded underline ${focusRing}`}>
+          upload receipts
+        </Link>{" "}
+        and their lines are read for you. Products, and the ingredients behind them, are
+        created as you go. There is nothing to set up first.
       </Step>
     </ol>
   );

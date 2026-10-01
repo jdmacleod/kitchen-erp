@@ -37,11 +37,11 @@ describe("receipts", () => {
     expect(await screen.findByText("No receipts yet")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Upload" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Choose a photo of the receipt.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose a receipt photo or PDF.");
 
     // A synthetic image; no real receipt is ever part of the tree.
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", { type: "image/png" });
-    await user.upload(screen.getByLabelText("Photo"), file);
+    await user.upload(screen.getByLabelText("Receipt photos or PDFs"), file);
     await user.click(screen.getByRole("button", { name: "Upload" }));
 
     const post = await waitFor(() => {
@@ -56,7 +56,28 @@ describe("receipts", () => {
     expect(await screen.findByTestId("notice")).toHaveTextContent("Receipt uploaded. It'll appear in Needs you once it's read.");
     const list = await screen.findByRole("list", { name: "Ingest jobs" });
     expect(within(list).getByTestId("ingest-job")).toHaveAttribute("data-status", "pending");
-    expect(within(list).getByText("queued")).toBeInTheDocument();
+    expect(within(list).getByText("waiting to be read")).toBeInTheDocument();
+  });
+
+  it("uploads several receipts in turn and says what happened to all of them", async () => {
+    // One already uploaded, two new: one notice, not three.
+    let n = 0;
+    const calls = mockApi({
+      ...baseRoutes(() => []),
+      "POST /receipts": () => {
+        n += 1;
+        const job = { ...reviewJob, id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a0${n}`, stage: "captured", status: "pending", purchase_id: null };
+        return n === 2 ? jsonResponse(200, { document: { id: receiptDocumentId }, job, created: false }) : jsonResponse(201, { document: { id: receiptDocumentId }, job, created: true });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts");
+    await screen.findByText("No receipts yet");
+    const files = ["a.png", "b.png", "c.pdf"].map((name) => new File([new Uint8Array([1, 2, 3])], name, { type: name.endsWith(".pdf") ? "application/pdf" : "image/png" }));
+    await user.upload(screen.getByLabelText("Receipt photos or PDFs"), files);
+    await user.click(screen.getByRole("button", { name: "Upload" }));
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Uploaded 2 receipts. They'll appear in Needs you once read. 1 was uploaded before and isn't read again.");
+    expect(calls.filter((c) => c.method === "POST" && c.path === "/receipts")).toHaveLength(3);
   });
 
   it("offers to view, not review, the purchase of a finished job", async () => {
@@ -187,7 +208,7 @@ describe("receipts", () => {
     const rows = within(await screen.findByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job");
     expect(rows[0]).toHaveTextContent("retrying");
     expect(rows[0]).toHaveTextContent("The model server could not be reached");
-    expect(rows[1]).toHaveTextContent("queued");
+    expect(rows[1]).toHaveTextContent("waiting to be read");
   });
 
   it("falls back to the bare code for a code it has no sentence for", async () => {

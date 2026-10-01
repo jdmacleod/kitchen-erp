@@ -108,11 +108,11 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
 test("the receipts page uploads nothing by itself and lists jobs; the to-identify queue loads", async ({ page }) => {
   await login(page);
   await page.goto("/shop/receipts");
-  await expect(page.getByRole("heading", { name: "Upload a receipt" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Upload receipts" })).toBeVisible();
   // A PDF is named because the picker accepts one: an emailed receipt is not a photo.
-  await expect(page.getByText("A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.")).toBeVisible();
+  await expect(page.getByText("Choose one or several, or drop them here. They stay on this deployment; nothing is sent elsewhere.")).toBeVisible();
   await page.getByRole("button", { name: "Upload" }).click();
-  await expect(page.getByRole("alert")).toContainText("Choose a photo of the receipt.");
+  await expect(page.getByRole("alert")).toContainText("Choose a receipt photo or PDF.");
 
   await page.goto("/shop/receipts/identify");
   await expect(page.getByRole("heading", { name: "To identify" })).toBeVisible();

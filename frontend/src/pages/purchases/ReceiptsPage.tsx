@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { jobInFlight, useIngestJob, useIngestJobs, useJobToManual, useRemoveJob, useRetryJob, useUploadReceipt, type IngestJob } from "../../api/ingest";
+import { useIngestJob, useIngestJobs, useJobToManual, useRemoveJob, useRetryJob, useUploadReceipt, type IngestJob, type ReceiptUploadResult } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -25,54 +25,94 @@ export function ReceiptsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState<string | null>(null);
 
+  const [dragging, setDragging] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; of: number } | null>(null);
+
+  // Several receipts at once (a week's shopping, a folder of PDFs): each is sent
+  // on its own, in turn, and one notice says what happened to all of them.
+  const send = async (files: File[]) => {
+    if (files.length === 0) return setInvalid("Choose a receipt photo or PDF.");
+    setInvalid(null);
+    const results: ReceiptUploadResult[] = [];
+    const failed: string[] = [];
+    setProgress({ done: 0, of: files.length });
+    for (const file of files) {
+      try {
+        results.push(await upload.mutateAsync({ image: file }));
+      } catch (error) {
+        failed.push(`${file.name}: ${errorMessage(error)}`);
+      }
+      setProgress({ done: results.length + failed.length, of: files.length });
+    }
+    setProgress(null);
+    if (fileRef.current) fileRef.current.value = "";
+    if (failed.length > 0) setInvalid(failed.length === 1 ? `Not uploaded: ${failed[0]}` : `${failed.length} weren't uploaded. ${failed.join("; ")}`);
+    if (results.length === 1 && failed.length === 0) {
+      const result = results[0];
+      if (result.revived) notice.show({ tone: "info", message: "This receipt was removed before; it's being read again." });
+      else if (result.created === false)
+        // Nothing new is read: saying "once it's read" sent people waiting for nothing.
+        notice.show({
+          tone: "info",
+          message: "You've uploaded this receipt before, so it isn't read again.",
+          action: result.job.purchase_id ? { label: "Open its purchase", to: `/shop/purchases/${result.job.purchase_id}` } : undefined,
+        });
+      else notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
+    } else if (results.length > 1) {
+      const fresh = results.filter((r) => r.created !== false || r.revived).length;
+      const seen = results.length - fresh;
+      const parts = [`Uploaded ${fresh} ${fresh === 1 ? "receipt" : "receipts"}. ${fresh === 1 ? "It" : "They"}'ll appear in Needs you once read.`];
+      if (seen > 0) parts.push(`${seen} ${seen === 1 ? "was" : "were"} uploaded before and ${seen === 1 ? "isn't" : "aren't"} read again.`);
+      notice.show({ tone: fresh > 0 ? "success" : "info", message: parts.join(" ") });
+    }
+  };
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const file = fileRef.current?.files?.[0];
-    if (!file) return setInvalid("Choose a photo of the receipt.");
-    setInvalid(null);
-    upload.mutate(
-      { image: file },
-      {
-        onSuccess: (result) => {
-          if (fileRef.current) fileRef.current.value = "";
-          if (result.revived) notice.show({ tone: "info", message: "This receipt was removed before; it's being read again." });
-          else if (result.created === false)
-            // Nothing new is read: saying "once it's read" sent people waiting for nothing.
-            notice.show({
-              tone: "info",
-              message: "You've uploaded this receipt before, so it isn't read again.",
-              action: result.job.purchase_id ? { label: "Open its purchase", to: `/shop/purchases/${result.job.purchase_id}` } : undefined,
-            });
-          else notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
-        },
-      },
-    );
+    void send([...(fileRef.current?.files ?? [])]);
   };
+  const onDrop = (event: DragEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setDragging(false);
+    if (!progress) void send([...event.dataTransfer.files]);
+  };
+  const busy = progress !== null;
 
   return (
     <>
-      <PageHeader title="Receipts" description="Upload a photo and its lines are read for you to review." />
+      <PageHeader title="Receipts" description="Upload receipts and their lines are read for you to review." />
       <div className="flex flex-col gap-6">
         <Card>
-          <form onSubmit={submit} aria-labelledby="upload-heading" className="flex flex-col gap-3" noValidate>
+          <form
+            onSubmit={submit}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            aria-labelledby="upload-heading"
+            className={`flex flex-col gap-3 rounded-md ${dragging ? "outline-2 outline-dashed outline-offset-8 outline-neutral-400" : ""}`}
+            noValidate
+          >
             <h2 id="upload-heading" className="text-lg font-medium">
-              Upload a receipt
+              Upload receipts
             </h2>
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {upload.error ? <Alert tone="error">{errorMessage(upload.error)}</Alert> : null}
             <div className="flex flex-col gap-1">
               <label htmlFor="receipt-image" className="text-sm font-medium">
-                Photo
+                Receipt photos or PDFs
               </label>
               {/* The server's allowlist (app/ingest/formats.py) is the one that
                   decides; this only filters the picker, and image/* alone used to
                   hide the PDFs that emailed receipts arrive as. */}
-              <input id="receipt-image" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" capture="environment" className={`min-h-11 text-sm lg:min-h-0 ${focusRing}`} />
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">A photo or a PDF. It stays on this deployment; nothing is sent elsewhere.</p>
+              <input id="receipt-image" ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" className={`min-h-11 text-sm lg:min-h-0 ${focusRing}`} />
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">Choose one or several, or drop them here. They stay on this deployment; nothing is sent elsewhere.</p>
             </div>
             <div>
-              <Button type="submit" disabled={upload.isPending}>
-                {upload.isPending ? "Uploading…" : "Upload"}
+              <Button type="submit" disabled={busy}>
+                {progress ? `Uploading ${progress.done + 1} of ${progress.of}…` : "Upload"}
               </Button>
             </div>
           </form>
@@ -124,11 +164,20 @@ export function ReceiptsPage() {
 }
 
 const statusText: Record<string, string> = {
-  pending: "queued",
-  running: "running",
+  pending: "waiting to be read",
+  running: "reading",
   needs_review: "ready to review",
   done: "done",
   failed: "failed",
+};
+
+/** What a running job is doing, in words; the stage codes are the pipeline's. */
+const stageText: Record<string, string> = {
+  captured: "starting",
+  ocr: "reading the text",
+  header: "finding the store and date",
+  lines: "reading the lines",
+  resolve: "matching products",
 };
 
 /**
@@ -170,7 +219,7 @@ function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) 
       ) : null}
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <Badge tone={tone}>{jobStatusText(job)}</Badge>
-        {job.stage && jobInFlight(job) ? <span className="text-neutral-600 dark:text-neutral-400">stage {job.stage}</span> : null}
+        {job.status === "running" && job.stage && stageText[job.stage] ? <span className="text-neutral-600 dark:text-neutral-400">{stageText[job.stage]}</span> : null}
         {job.created_at ? <time dateTime={job.created_at}>{formatDateTime(job.created_at)}</time> : null}
         {error ? (
           <span className="text-red-700 dark:text-red-300">

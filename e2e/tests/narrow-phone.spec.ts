@@ -98,7 +98,7 @@ test("the receipt upload and map pages fit the viewport", async ({ page }) => {
   await login(page);
 
   await page.goto("/shop/receipts");
-  await expect(page.getByRole("heading", { name: "Receipts" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Receipts", exact: true })).toBeVisible();
   await expectNoSidewaysScroll(page, "/shop/receipts");
 
   await page.goto("/catalog/vendors?view=map");

@@ -105,3 +105,36 @@ async def test_uploading_a_removed_receipt_again_reads_it_again(admin_client, re
     # A plain duplicate is not a revival.
     r = await upload(admin_client, png_bytes("revive"))
     assert r.json()["revived"] is False
+
+
+async def test_uploading_a_receipt_whose_purchase_was_removed_reads_it_again(
+    admin_client, receipts_dir: Path
+):
+    # Found in a dogfood pass: removing a committed receipt voids its purchase and
+    # left its read "done", so the same file uploaded again was answered "uploaded
+    # before" with a link to the voided purchase, and could never be read again.
+    from tests.pricebook_helpers import make_location, make_product
+
+    loc = await make_location(admin_client, "Quayside Grocer", "Quayside Grocer North")
+    product = await make_product(admin_client, "Pear", "Orchard pears")
+    body, pid = await receipt_draft(
+        admin_client, "voided", location_id=loc["id"], product_id=product["id"]
+    )
+    assert (await admin_client.post(f"/api/v1/purchases/{pid}/commit")).status_code == 200
+    job_id = body["job"]["id"]
+    async with get_sessionmaker()() as db:
+        job = await db.get(IngestJob, uuid.UUID(job_id))
+        job.status, job.stage = "done", "committed"
+        await db.commit()
+    r = await admin_client.post(f"/api/v1/purchases/{pid}/remove")
+    assert r.json()["outcome"] == "void"
+
+    r = await upload(admin_client, png_bytes("voided"))
+    assert r.status_code == 200, r.text
+    again = r.json()
+    assert again["revived"] is True and again["job"]["id"] == job_id
+    assert (again["job"]["status"], again["job"]["stage"]) == ("pending", "captured")
+    assert again["job"]["purchase_id"] is None
+    # The voided purchase stays, as the record of the prices it voided.
+    voided = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()
+    assert voided["status"] == "voided"
