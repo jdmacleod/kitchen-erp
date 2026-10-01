@@ -1502,7 +1502,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
   - Surfaced by: A4, EV2, EV5, EV6
   - Files: backend/app/services/reading_benchmark.py, backend/app/cli.py, backend/tests/test_reading_benchmark.py
   - Verify: row counts unchanged; guard test; decision-rule table tests
-- [ ] **ET6 (P1, human: ~1 day / CC: ~45min)** — raster — colour-preserving vision and review render, shared orientation including scaled JPEG thumbnails, page 1 only, 80 MP cap
+- [x] **ET6 (P1, human: ~1 day / CC: ~45min)** — raster — colour-preserving vision and review render, shared orientation including scaled JPEG thumbnails, page 1 only, 80 MP cap
   - Surfaced by: EV10, EV7, N3-8, SC-1
   - Files: backend/app/ingest/raster.py, backend/app/services/receipt_images.py, backend/tests/test_receipt_images.py
   - Verify: rotated JPEG and HEIC fixtures render upright; a multi-page PDF gives pages_truncated

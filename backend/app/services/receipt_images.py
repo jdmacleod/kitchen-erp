@@ -2,12 +2,15 @@
 
 A browser shows JPEG, PNG and WebP as they are, so those are served untouched. A
 PDF, and a HEIC photograph outside Safari, it cannot show, so the review screen
-was blank for them (#30). Those are rendered to PNG with the converters the OCR
-stage already uses, page 1 only and bounded the same way.
+was blank for them (#30). Those are rendered to PNG in colour, page 1 only,
+with the render a vision model is shown (``raster.render_page``), so both see
+the page the same way up.
 
 A rendering is a derivation, rebuildable from the immutable original at any
 time (non-negotiable 5), so it is made on request and never stored. A thumbnail
 (`width`) is the same, scaled down, for telling receipts apart in a list (#28).
+Every rendering is turned upright first; a scaled photo taken sideways used to
+come out sideways, because the browser's own EXIF handling never saw it.
 
 The stored bytes are untrusted input (non-negotiable 7): they are decoded by a
 library, never executed, and the converters cap the pixel count before they
@@ -17,7 +20,6 @@ render.
 from __future__ import annotations
 
 import io
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,7 +28,7 @@ import anyio
 from app.core.errors import ApiError
 from app.ingest.errors import StageFailure
 from app.ingest.formats import BY_MIME
-from app.ingest.raster import MAX_MEGAPIXELS, to_png
+from app.ingest.raster import render_page
 
 THUMB_MIN = 32
 THUMB_MAX = 1024
@@ -42,29 +44,16 @@ class Displayable:
 
 
 def _render(converter: str | None, source: Path, width: int | None) -> bytes:
-    """PNG bytes for `source`, converted if it needs it and scaled to `width` if given."""
-    from PIL import Image, UnidentifiedImageError
+    """PNG bytes for `source`: upright, in colour, scaled to `width` if given."""
+    from PIL import Image
 
-    with tempfile.TemporaryDirectory(prefix="kerp-display-") as tmp:
-        path = to_png(converter, source, Path(tmp) / "page.png") if converter else source
-        try:
-            with Image.open(path) as opened:
-                # The same ceiling the converters hold a PDF or HEIC to, checked
-                # from the header before any pixels are decoded: a small file can
-                # declare an enormous image.
-                if opened.width * opened.height > MAX_MEGAPIXELS * 1_000_000:
-                    raise StageFailure(
-                        code="image_too_large", detail=f"{opened.width}x{opened.height}"
-                    )
-                shown = opened
-                if width is not None and opened.width > width:
-                    height = max(1, round(opened.height * width / opened.width))
-                    shown = opened.resize((width, height))
-                out = io.BytesIO()
-                shown.save(out, format="PNG")
-                return out.getvalue()
-        except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as exc:
-            raise StageFailure(code="image_unreadable", detail=type(exc).__name__) from None
+    image = render_page(source, converter).image
+    if width is not None and image.width > width:
+        height = max(1, round(image.height * width / image.width))
+        image = image.resize((width, height), Image.Resampling.LANCZOS)
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return out.getvalue()
 
 
 async def displayable(source: Path, mime: str, width: int | None = None) -> Displayable:
