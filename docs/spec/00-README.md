@@ -26,6 +26,7 @@ Where this package records a decision, treat it as settled unless implementation
 | `10-page-layouts.md` | Approved layout of each desktop and phone page, with their states |
 | `11-ui-acceptance-criteria.md` | UI sub-phases UI-1 to UI-4 with numbered acceptance criteria; approved alongside Phases 1–2, with later-phase criteria marked dormant |
 | `12-ingredient-vocabulary.md` | Record of the ingredient-vocabulary handoff (USDA FoodData Central, naming rules, profiling findings), folded into 02, 03 (§1G), 07, 10 and 11 on 2026-09-30 |
+| `13-product-ingestion-and-photos.md` | Assisted product ingestion (vendor pages, barcodes, store photos), product identifiers and listings, and a product photo pipeline; a draft handoff awaiting approval |
 | `assets/tier-a-ingredients.csv` | Draft source for the 1G standard list; untracked (`*.csv` is gitignored), superseded by `backend/app/catalog/standard_ingredients.yaml` |
 
 ## Roadmap
