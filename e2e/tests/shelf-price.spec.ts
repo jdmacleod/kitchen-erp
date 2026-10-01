@@ -5,13 +5,15 @@ import { login, nextTag } from "./helpers";
 const LAST_LOCATION = "kerp.lastVendorLocationId";
 
 /**
- * A barcode no real product carries: the 2-prefix is GS1's in-store range, and
- * the digits are random per run so the unique index never collides.
+ * A barcode no real product carries: the 2-prefix is GS1's in-store range, the
+ * body is random per run so the unique index never collides, and the last digit
+ * is the GS1 check digit, which the API validates.
  */
 function syntheticBarcode(): string {
-  let digits = "2";
-  while (digits.length < 13) digits += Math.floor(Math.random() * 10).toString();
-  return digits;
+  let body = "2";
+  while (body.length < 12) body += Math.floor(Math.random() * 10).toString();
+  const total = [...body].reverse().reduce((sum, ch, i) => sum + Number(ch) * (i % 2 === 0 ? 3 : 1), 0);
+  return body + ((10 - (total % 10)) % 10).toString();
 }
 
 async function seedStoreAndProduct(page: Page, stamp: string) {
