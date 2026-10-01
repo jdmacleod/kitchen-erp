@@ -7,11 +7,11 @@ Kitchen ERP is a self-hosted household kitchen system: vendors, products, purcha
 1. Money and quantities are `Decimal` in Python and `numeric` in PostgreSQL. No floats anywhere in the path from input to storage to arithmetic to API output. API responses serialize decimals as strings.
 2. Primary keys are UUIDs (v7 where available, otherwise v4), except `unit.code`.
 3. All timestamps are `timestamptz`, stored and transmitted in UTC. The frontend localizes for display.
-4. `price_observation`, `price_observation_void`, and `ingest_stage_result` are append-only. This is enforced in the database: the runtime role has no `UPDATE` or `DELETE` privilege on them, and a trigger rejects both as a second line of defence. Corrections are made by voiding and re-observing, never by editing.
+4. `price_observation`, `price_observation_void`, `ingest_stage_result`, and `product_stage_result` are append-only. This is enforced in the database: the runtime role has no `UPDATE` or `DELETE` privilege on them, and a trigger rejects both as a second line of defence. Corrections are made by voiding and re-observing, never by editing. The runtime role's privileges are listed once in `backend/app/core/grants.py`; a migration that changes them updates that list.
 5. Facts are immutable; derivations are rebuildable. Normalized unit prices live in `price_norm`, which may be truncated and recomputed at any time from observations plus current bridges.
 6. Unit conversion never guesses. `convert()` returns a canonical quantity or a typed failure. No default densities, no silent fallbacks.
-7. Text from receipts, OCR, and language models is untrusted data. It is parsed against a schema and validated; it is never interpolated into SQL, never executed, and never treated as instructions. Model output is accepted only if it validates against the expected Pydantic model.
-8. Nothing below the auto-accept bar commits without a human. An unresolved receipt line never blocks the rest of the receipt.
+7. Text from receipts, OCR, and language models is untrusted data. It is parsed against a schema and validated; it is never interpolated into SQL, never executed, and never treated as instructions. Model output is accepted only if it validates against the expected Pydantic model. Model and helper answers only fill fields or choose from a shortlist. Structured page data is kept as raw text and parsed with `parse_float=Decimal`.
+8. Nothing below the auto-accept bar commits without a human. An unresolved receipt line never blocks the rest of the receipt. Product captures and helper answers become proposals; only a person's accept writes products, identifiers, listings, photos or prices.
 9. No required outbound network calls at runtime. Optional integrations (Overpass, public Nominatim) are off by default, rate-limited, cached, and send only public place data.
 
 ## Personal data and the public repository
@@ -23,6 +23,7 @@ This repository is public, or will be. The deployment it describes holds receipt
 - NEVER put real vendor visits, home coordinates, loyalty numbers, or receipt text into fixtures, tests, test names, docstrings, comments, commit messages, or PR descriptions. Invent vendors. Use the synthetic geography and the synthetic-data rules in `SECURITY.md`.
 - NEVER write an absolute path under a home directory into a tracked file. Use relative paths or `$HOME`.
 - Run `make check-pii` before every commit. Never bypass the hooks with `--no-verify`. If the scanner flags something benign, suppress that one line with `# pii-scan: allow <reason>`; never a whole file, never a rule.
+- Retailer adapters show which stores the household uses: they live in `data/plugins/` or the private `kitchen-erp-products` repository, never here. Their fixtures are hand-written for invented retailers, never saved pages.
 - If you believe real data has entered the working tree, STOP and tell the user. Do not attempt to clean history yourself.
 
 ## Stack
@@ -53,7 +54,7 @@ kitchen-erp/
       fixtures/receipts/     synthetic OCR text and images
   frontend/
     src/
-  data/                      gitignored: receipts/, tiles/, usda/
+  data/                      gitignored: receipts/, media/, plugins/, tiles/, usda/
   reference/                 gitignored: cloned open-source projects
 ```
 
@@ -76,7 +77,7 @@ On macOS, run Ollama natively on the host rather than in Docker, because contain
 
 ## Working agreements
 
-Keep routers thin and put logic in `services/`. Keep `app/units/` pure: no database access, no I/O, fully covered by property-based tests. Every migration is reversible. Every endpoint has a request and response schema and at least one test. When a specification detail proves unworkable, stop and surface it rather than diverging silently. Commit in small units that each leave the test suite green.
+Keep routers thin and put logic in `services/`. Keep `app/units/` pure: no database access, no I/O, fully covered by property-based tests. Every migration is reversible. Every endpoint has a request and response schema and at least one test. When a specification detail proves unworkable, stop and surface it rather than diverging silently. Commit in small units that each leave the test suite green. Outbound product work (Open Food Facts, USDA online, page fetching, listing photos, background removal) lives in the private `kitchen-erp-products` helper, which talks to this application only through the `products:read` and `products:suggest` scopes. GTINs are stored as GTIN-14, `plu`, `vendor_sku` and `rw_item` always carry a vendor, and the API's `barcode` field stays as the view of a product's barcode identifier. Photo originals and masks are stripped of all metadata and never colour-adjusted; media is served only under `/api/v1/media` with a session or token.
 
 ## UI conventions
 

@@ -15,7 +15,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 ## Home (Home: unified inbox · Home: first run · Home: inbox loading, empty, error)
 
 - **Header:** a time-of-day greeting without a name ("Good afternoon") and a one-line summary, "3 things need you" or "Nothing needs you" (G12).
-- **Reading line:** when receipts are being read, "Reading n receipts…" sits above Needs you. It turns squash with "Check System" when reading has stalled (G1, D21).
+- **Reading line:** when receipts, product pages or product photos are being read, one line sits above Needs you: "Reading 2 receipts and 1 product page…". It turns squash, "This is taking longer than usual · Check System", when reading has stalled (G1, D21, PD7).
 - **Layout:** two columns, roughly 1.65 : 1.
 - **Left, Needs you:** one card of inbox rows, oldest first.
   - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button.
@@ -183,7 +183,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - **Search:** a 48px field matching name, brand, ingredient or barcode. It searches on the server (`GET /api/v1/products?q=`, D12).
 - **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and a "Show inactive" checkbox at the right.
 - **Table card:**
-  - Columns: Product (name over brand), Ingredient (name and category chip), Pack, Quality, and Last paid (price over vendor and date).
+  - Columns: Product (a 40px photo or placeholder, then name over brand; PD5), Ingredient (name and category chip), Pack, Quality, and Last paid (price over vendor and date).
   - Quality shows walnut stars with an accessible label (T13b), or "—" when unrated.
   - Rows are ordered by name.
   - Last paid comes from committed purchases (T16).
@@ -191,6 +191,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 
 **Add product drawer.**
 - **Fields, in order:**
+  - Start from a web address (optional, PD20). Name and item number taken from the address carry the hint "From the address", and a pasted address counts as typed input for the discard rule. With the products helper set up, the Notice after saving reads "Added {name}. Details from the page will arrive in Needs you"; without it, the field says "This page can't be read from here. Use Save to Kitchen ERP on the page."
   - Ingredient: search, with the hint "no match creates a new ingredient".
   - Brand and Name, side by side.
   - Pack size: quantity plus unit.
@@ -205,6 +206,19 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
   - If the new row is visible, it takes focus.
   - Otherwise the Notice reads "Added {name} · Open it", with focus on the link (G10).
 
+**Product page: photos and labels (PD4, PD16).**
+- A Photos card sits right after the meta line. It shows the main photo at 480px (its cutout on the card surface when it has one) and the other photos as thumbnails.
+  - Per photo: "Use as main photo" and "Hide". "Show hidden (n)" brings hidden photos back, like "Show voided".
+  - "Cutout | Original" is a segmented control, shown only when a cutout exists.
+  - "Add photo" (secondary) uploads up to four photos with a role each.
+  - Attribution, when a source requires it, is a caption under the photo.
+- **Photo states:**
+  - A photo being prepared is a neutral tile reading "Preparing photo…".
+  - A photo that failed reads "Couldn't process this photo · Retry".
+  - No photo at all shows the category placeholder (08) beside "Add photo".
+- A Labels card follows, one row per label photo (Front label, Nutrition, Ingredients, Shelf tag) with its read text beneath.
+- In Price records, a posted price reads "Posted online, not counted in cheapest".
+
 **Product page: price records (#73).**
 - A "Price records" card sits under the prices chart and lists every current price for the product: amount per quantity, location, date, and whether it was a shelf price or came from a purchase.
 - **Shelf price:** a "Void" action (tomato, secondary weight) opens an inline form under the row. A reason is required ("Why is it wrong?") and is kept with the voided price. Confirming voids it; it leaves the chart, cheapest and compare, and the original stays for audit.
@@ -212,6 +226,60 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - **Show voided:** a checkbox at the card's right brings back voided prices, struck through, with "Voided: {reason}" and no actions.
 
 **Ingredients** follows the same pattern as Products: search and catalog first, "Add ingredient" in a drawer, and a category field that suggests the nine known categories.
+
+## Product review (2L; PD1, PD2, PD6, PD10, PD13, PD18)
+
+Reached from the inbox at `/catalog/products/review/:id`; no nav item. Laid out like receipt review.
+
+- **Left, sticky:** the evidence. This is the main photo or cutout, then the source address as plain text and the capture's channel and date.
+- **Right, one surface, sections divided by space and Fraunces headings (no stacked cards):**
+  - **Header:** h1 "New product: {title}" or "Update {product}", with the meta line "From {vendor} · {how it arrived} · {date}".
+  - **Match:** neutral radio rows, "Update {product}" (preselected on a strong match) or "Create new product".
+  - **Summary:** name, brand, pack and barcode on one line. A field with alternatives or a conflict opens beneath it with its choices as radio rows, each with a neutral source badge; a model's guess carries a squash outline. Identity conflicts are squash, side by side, with no default.
+  - **Ingredient:** the ingredient picker (1G).
+  - **Images:** photo tiles (08) as a radio group for the main photo, each with a role select and a Hide checkbox.
+  - **Kind:** a segmented control: Branded, Store brand, Weighed, Loose, Market stall.
+  - **Price:** shown when the capture had one. "Not one of your stores" is a squash outline with a location picker and defaults to recording no price.
+- **Collapsed form:** with a strong match, no conflicts and an ingredient chosen, the page shows the summary with Accept and "Edit details".
+- **Look this up online:** a secondary action, shown only when a products helper is set up (PD8).
+  - After a click it reads "Asked the lookup helper 2 min ago".
+  - Past the waiting threshold it turns squash: "No answer yet · Check System".
+  - Answers carry the source badge "Lookup helper".
+- **Sticky bar:** Reject (secondary) and Accept (primary). Accept stays disabled with its reason while something blocks it ("Choose an ingredient to accept").
+- **After deciding:** while other proposals wait, the next oldest opens with the Notice "Added {name} · Open it"; after the last, the product's page. Reject has no confirmation dialog; its Notice reads "Rejected. The capture is kept."
+- **States:**
+  - **Still reading:** skeleton rows, "Reading this page…".
+  - **Photo preparing:** a "Preparing photo…" tile; Accept stays available.
+  - **Superseded or no longer pending:** an info Notice, "A newer capture replaced this · Open it", and the page is read-only.
+  - **Decided earlier:** read-only, "Accepted Oct 1 · Open {product}".
+  - **Barcode taken:** an inline squash panel by the barcode, "Barcode {code} already belongs to {product}", with "Update {product} instead" and "Keep reviewing".
+  - **Accept failed:** a tomato Alert above the bar, choices kept.
+  - **Nothing read:** "Nothing could be read from this photo. Fill in what you know.", with the fields empty and editable.
+- **Keyboard:** Tab follows the sections; Match and the main photo move with the arrow keys; alternatives use the Combobox; Accept is Ctrl/Cmd+Enter or the button; focus starts on Match; the shortcut legend is receipt review's.
+
+## Clip window (2M; PD9, PD21)
+
+A small window, about 420×560, with no app chrome. h1 "Save this product".
+- **Shows:**
+  - the page title and address as text;
+  - how many images came along;
+  - the matched vendor, or "Not one of your vendors" with a vendor picker and "Save without a store".
+- **Actions:** primary Save, and Cancel.
+- **States:**
+  - "Waiting for the page…" until the page answers.
+  - Signed out: a sign-in form inside the window, then the exchange repeats.
+  - "This site blocks clipping. Paste the address in Add product instead."
+  - "This page is too large to save."
+  - "Already saved · Open it".
+  - Success: "Saved · Review it in Needs you". The window stays open until closed.
+
+## Settings: capture (2M; PD19)
+
+`/settings/capture`.
+- A draggable link styled as a secondary button, "Save to Kitchen ERP". It is not herb, because clicking it here does nothing.
+- One sentence on dragging it to the bookmarks bar.
+- The address it is tied to, with "Reinstall if this address changes".
+- "Copy the code" for browsers that can't drag (iOS Safari).
 
 ## Vendors (Vendors · Vendors: map view)
 
@@ -295,7 +363,18 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 **Capture sheet (Phone: capture sheet).**
 - A bottom sheet over a scrim with a drag handle and the title "Capture".
 - The detected store: "Near {vendor}", or "Last used: {vendor} · change" in a squash outline when location is unavailable (G2).
-- Three 76px option rows, each with an icon tile, title and one-line description: Log a shelf price, Scan a receipt, Enter a purchase.
+- Four 76px option rows, each with an icon tile, title and one-line description: Log a shelf price, Scan a receipt, Enter a purchase, Photograph a product (PD12).
+
+**Photograph a product (PD11, PD12).**
+- Opens the camera.
+- After the first photo, it offers "Add another photo of this product" (up to four), each with a role.
+- Sending shows a determinate upload bar, then the Notice "Photo saved. It'll appear in Needs you once it's identified."
+- Errors are inline and keep the photo: "This photo is over 50 megapixels." and "This file isn't a photo we can read."
+
+**Product review (Phone, PD17).**
+- One column: a 120px photo band, then Match, the summary, Ingredient, Images (two-column tiles), Kind and Price.
+- Alternatives open as full-width radio lists.
+- Reject and Accept (56px) are anchored at the bottom.
 - Cancel at the bottom.
 
 **Shelf price (Phone: shelf price).**

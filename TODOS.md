@@ -91,6 +91,18 @@ source is named so it can be traced back.
 **Priority:** P2
 **Depends on:** None
 
+### Strip GPS and other metadata from receipt photos
+
+**What:** Remove EXIF, XMP and GPS from receipt originals on upload, and add a one-off command that does the same to files already stored.
+
+**Why:** A receipt photographed at home keeps the home's coordinates. Originals are stored byte for byte and served untouched (`services/receipt_images.py`), while product photos will be stripped (spec 13 §6.2).
+
+**Context:** Found in the 2026-10-01 CEO review of draft spec 13 (ruling TODO1); outside that plan's scope. Content addressing means a stripped file gets a new sha256, so the command must update `receipt_document.sha256` and `image_path` together and keep the receipt's link to its purchase. Reuse the stripping code spec 13 adds for product images.
+
+**Effort:** S (human) / S (CC)
+**Priority:** P2
+**Depends on:** Spec 13's image normalization (sub-phase 1I), or written first and shared
+
 ### Flag a second photo of the same receipt
 
 **What:** After a receipt is read, flag it in review when a committed or draft purchase at the same location has the same date and total ("possible duplicate"), with Remove one step away.
@@ -236,18 +248,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Effort:** M (human) / S (CC)
 **Priority:** P3
 **Depends on:** Sub-phase 1G; a reader for the file
-
-### Barcode lookup from USDA branded foods
-
-**What:** Load a slim table of branded foods (barcode, brand, description, category, package weight) and use it to suggest a product and ingredient for an unknown barcode.
-
-**Why:** Scanning an unknown barcode could pre-fill a new product instead of starting from nothing.
-
-**Context:** Deferred by the ingredient-vocabulary handoff itself (its task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
-
-**Effort:** M (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G; the household's go-ahead
 
 ## Operations
 

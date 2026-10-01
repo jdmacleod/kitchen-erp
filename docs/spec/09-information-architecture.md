@@ -24,7 +24,7 @@ Reference data (ingredients, products, vendors) is the foundation under the loop
 | Shop | 2 (exists) | Purchases, Receipts, Shelf prices, Compare prices | Compare lives here until Phase 4 moves it to Plan (D7). |
 | Stock | 5 | Pantry, Par levels | Dormant until Phase 5 is approved. |
 | Catalog | 1 (exists) | Ingredients, Products, Vendors | Footer entry. The ingredient detail page is the hub. Vendors has a list/map toggle (T9). |
-| Settings | exists | Kitchens (home bases), Users, API tokens, System | System holds health detail and "log out everywhere" (T10). |
+| Settings | exists | Kitchens (home bases), Users, API tokens, Capture, System | System holds health detail and "log out everywhere" (T10). |
 
 **Phase gating.** The sidebar shows only sections whose phase is built. Today those are Home, Shop and Catalog, plus Settings.
 - **Source:** the authenticated `GET /api/v1/health` response carries a `features` list derived from the migration head (S4). It carries that list even when the response status is 503.
@@ -48,10 +48,13 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/catalog/ingredients`, `/catalog/ingredients/:id` | `/ingredients`, `/ingredients/:id` |
 | `/catalog/ingredients/link` | new in 1G (reached from the inbox and the Ingredients list; no nav item) |
 | `/catalog/products`, `/catalog/products/:id` | `/products`, `/products/:id` |
+| `/catalog/products/review/:id` | new in 2L (reached from the inbox; no nav item, PD1) |
 | `/catalog/vendors`, `/catalog/vendors/:id` | `/vendors`, `/vendors/:id` |
 | `/catalog/vendors?view=map` | `/map` (T9) |
 | `/catalog/bridges` | `/price-book/needs-bridge` (reached from the inbox; no nav item) |
 | `/settings/kitchens`, `/settings/users`, `/settings/tokens`, `/settings/system` | `/settings/home-bases`, `/settings/users`, `/settings/tokens` |
+| `/settings/capture` | new in 2M: the bookmarklet (PD19) |
+| `/capture/clip` | new in 2M: the clip window the bookmarklet opens; no chrome |
 
 Dormant routes, built with their phase: `/cook/recipes`, `/cook/recipes/:id`, `/cook/costing` (Phase 3); `/plan/list`, `/plan/trips`, `/plan/trips/:id`, `/plan/compare` (Phase 4); `/stock/pantry`, `/stock/par` (Phase 5).
 
@@ -96,15 +99,16 @@ A command palette opened by the Search button or ⌘K, and the Search tab on pho
 
 ## Capture
 
-One entry point for getting data in, with three modes:
+One entry point for getting data in, with four modes:
 
 | Mode | For | Leads to |
 |---|---|---|
 | Log a shelf price | Spotting a price without buying | Price entry by barcode or product name (G3) |
 | Scan a receipt | Store purchases | Photo upload, then the confirmation notice "Receipt uploaded. It'll appear in Needs you once it's read." (G1) |
 | Enter a purchase | Markets and stands without receipts | Manual purchase entry |
+| Photograph a product | A product not in the catalog yet (2L, PD12) | Camera, up to four photos with roles, then the notice "Photo saved. It'll appear in Needs you once it's identified." |
 
-- **Where it opens:** a bottom sheet on phone and tablet; a small centred dialog with the same three options on desktop (G14).
+- **Where it opens:** a bottom sheet on phone and tablet; a small centred dialog with the same four options on desktop (G14).
 - **Store detection:**
   - With geolocation, Capture pre-fills the nearest adopted vendor location ("Near {vendor}") with one tap to change, and shows "Finding where you are…" with Skip while it waits.
   - Without geolocation, it pre-fills the last-used location and says so, "Last used: {vendor} · change", in a squash outline. It never says "Near" (G2).
@@ -123,11 +127,14 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
 | Link | Ingredients still To review against the standard list, one aggregate row (03, 1G) | "13 ingredients to link to the standard list" | Review → `/catalog/ingredients/link` |
 | USDA | Linked ingredients with unreviewed USDA densities or measures, one aggregate row, only when USDA data is loaded (03, 1G) | "9 ingredients have USDA densities to review" | Review → `/catalog/bridges#usda` |
+| New product | Pending new-product proposals, one aggregate row (2L, PD3) | "5 products to review" | Review → the oldest proposal |
+| Product update | Pending product-update proposals, one aggregate row (2N) | "2 product updates to review" | Review → the oldest |
+| Posted prices | Refreshed listing prices awaiting a decision, one aggregate row (2N) | "4 posted prices changed" | Review |
 | Recipe | Recipe lines that do not resolve to ingredients (Phase 3) | "[Recipe] has 2 unresolved lines" | Resolve |
 
 API (T5): `GET /api/v1/inbox`.
 - **Rows:** items with `kind`, `title`, `detail`, `action_label`, `action_route` and `created_at`, oldest first. Each kind is computed from existing tables; no inbox table is required.
-- **Reading line:** the response also carries `reading: {count, oldest_at}` for receipts being read (pending or running ingest jobs). Home shows it as "Reading n receipts…" above the list, and it is not counted in the badge (G1).
+- **Reading line:** the response also carries `reading: {count, oldest_at}` for receipts being read (pending or running ingest jobs), and the same for product pages and photos (2L). Home shows one line, "Reading 2 receipts and 1 product page…", above the list, and it is not counted in the badge (G1, PD7). Lookups waiting on the products helper get their own line only when overdue: "3 barcodes waiting for the lookup helper since 2 pm · Check System" (PD7).
 - **Stalled reading:** when `oldest_at` is older than `INGEST_STALL_MINUTES` (default 10), the line turns squash: "Reading is taking longer than usual · Check System" (D21).
 - **Errors:** any kind's query failing fails the whole request, and Home shows an error, never "Nothing needs you" (D6).
 - **Freshness:** mutations that resolve an item invalidate the inbox, so it leaves without a manual refresh.
