@@ -35,6 +35,7 @@ async def get_media(sha: str, name: str, _: CurrentUser) -> FileResponse:
         raise ApiError(404, "not_found", "No such media.")
     path = await anyio.to_thread.run_sync(media.ensure, sha, parsed.variant, parsed.mask_sha)
     if path is None:
-        log.warning("media source missing", extra={"sha256": sha, "variant": parsed.variant})
+        # The address is the request's own input, so it is not logged (CodeQL log injection).
+        log.warning("media source missing", extra={"variant": parsed.variant})
         raise ApiError(404, "not_found", "No such media.")
     return FileResponse(path, media_type="image/webp", headers={"Cache-Control": CACHE_CONTROL})
