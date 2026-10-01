@@ -12,7 +12,7 @@ Mode: Builder
 
 **Read in this order:**
 1. This section.
-2. "Phase 0: `kerp reading-benchmark`".
+2. "Phase 0: `kerp reading-benchmark`", then "Model survey (2026-10-01, MS1–MS6)" right after it.
 3. "Phase 1-B" (including "Review: pick one of these and crops").
 4. "Eng Review (2026-10-01)": scope record, A1–A4, E1, E2, Q1–Q4, the outside voice EV-1 to EV-11, and Sections 3–4.
 5. The three Implementation Tasks lists:
@@ -22,7 +22,7 @@ Mode: Builder
 
 The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the record of why. Consult it only when a rule's reason matters.
 
-**When two passages disagree, the later decision wins:** EV-* > eng D1–D4/E1–E2 > OV* > D12–D18 > VD* > VX*. Superseded values, so you don't trip on old text:
+**When two passages disagree, the later decision wins:** MS* > EV-* > eng D1–D4/E1–E2 > OV* > D12–D18 > VD* > VX*. Superseded values, so you don't trip on old text:
 
 | Old value | Current value | Decided by |
 |---|---|---|
@@ -34,6 +34,9 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 | gap-stating re-ask in Phase 1 | deferred to TODOS.md | OV6a |
 | "soft secondary" candidate buttons | `SegmentedControl` per line | UI5 |
 | separate `ingest/vision.py` | image prep lives in `ingest/raster.py` | eng D2 |
+| grid: `qwen3-vl:8b` and `minicpm-v4.5:8b` instruct tags | `qwen3.5:9b`, `gemma4:12b`, `minicpm-v4.5:8b`, `qwen3.6:27b` (+ `gemma4:26b-a4b` if pulled) | MS4 (user request, 2026-10-01) |
+| "10.6–12.8 GB usable GPU memory" | about 16.2 GB for one model; 10.6–12.8 GB is the limit for a pair | MS1 |
+| arm (d) pairs with "the other family" | the best (c) model from another family (Qwen, Gemma or MiniCPM) | MS5 |
 
 **Build order (Phase 0 first; Phase 1 only after Phase 0's decision rule and the spec 04 amendment):**
 1. **T1:** a short spec 04 note allowing the benchmark, the behaviour-preserving extraction and image parts in `llm.py` (OV10). It needs the user's approval (PR comment) before T2.
@@ -72,11 +75,11 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 - Small PRs, each leaving the suite green.
 
 **Measured on the LAN Ollama 0.34.4 host (2026-10-01):**
-- **Models:**
+- **Models** (the MS2 probe adds `qwen3.5:9b` 5.81 GB at 39 tok/s, `gemma4:12b` 9.28 GB at 27 tok/s, and `qwen3.6:27b` 17.62 GB with 15.73 GB on the GPU at 12–13 tok/s):
   - qwen3-vl:8b is 6.55 GB at 16k context and runs at about 36 tok/s;
   - minicpm-v4.5:8b is 10.29 GB at 16k;
   - gpt-oss:20b is 12.83 GB and evicts both;
-  - usable GPU memory is about 10.6–12.8 GB.
+  - one model can use about 16.2 GB of GPU memory (MS1); larger ones spill to the CPU.
 - **Image tokens:** an 800×2000 image costs about 1,600 tokens on qwen, and always 612 on minicpm.
 - **Plan timings:** about 150 s per 60-line reading; per-stage cap 480 s (0.8 × the 600 s lock); 900 s budget per receipt.
 
@@ -96,7 +99,7 @@ Receipt reading misses the printed total too often to trust. In the most recent 
 
 Review then means re-keying numbers, which defeats the point of ingest.
 
-A vision-capable model reads the photo directly, the way a person does. The household's LAN Ollama host already serves several: `qwen3-vl:30b`, `qwen3-vl:8b`, `minicpm-v4.5:8b`, `glm-ocr`, `granite3.3-vision:2b`, `llama3.2-vision:11b`, `mistral-small3.2`, and the Gemma 3 and 4 families.
+A vision-capable model reads the photo directly, the way a person does. The household's LAN Ollama host already serves several: `qwen3-vl:30b`, `qwen3-vl:8b`, `minicpm-v4.5:8b`, `glm-ocr`, `granite3.3-vision:2b`, `llama3.2-vision:11b`, `mistral-small3.2`, and the Gemma 3 and 4 families. The 2026-10-01 survey adds `qwen3.5:9b`, `qwen3.6:27b` and `qwen3.8:27b`, already on the host, and finds two of the original list unusable (see "Model survey").
 
 The goal (D3) is **totals reconcile, and review becomes a glance and a confirm.**
 
@@ -227,11 +230,11 @@ Per-receipt files stay under `data/` and are never read by the assistant.
 Arm (c) runs in two variants: one call for header and lines, and separate calls.
 
 **Grid (OV4, reduced).**
-- Candidates: one per family, the instruct tags of `qwen3-vl:8b` and `minicpm-v4.5:8b` (OV9). `glm-ocr` runs in arm (b) only.
+- Candidates: ~~one per family, the instruct tags of `qwen3-vl:8b` and `minicpm-v4.5:8b` (OV9)~~ superseded by MS4: `qwen3.5:9b`, `gemma4:12b`, `minicpm-v4.5:8b` and `qwen3.6:27b`, plus `gemma4:26b-a4b` if pulled. Instruct or `think: false` only (OV9). `glm-ocr` runs in arm (b) only.
 - Long-side cap: 2000 px only.
 - Arm (c) runs only the separate-calls variant. The one-call variant is dropped unless a later run shows it is much faster.
 - Whole images only; slicing is deferred (VH1, which also removes R2-11).
-- Arm (d), in step 2 only, pairs the best (c) model with the candidate from the other family.
+- Arm (d), in step 2 only, pairs the best (c) model with the best (c) model from another family (MS5).
 
 **Staged runs (VD11, R2-6).**
 - **Order:** arms (a), (b) and (c) first; arm (d) after the best (c) configuration is known.
@@ -283,6 +286,79 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 **Hold-out (R1-15).** Success is declared only after the chosen configuration holds within one receipt of its share on the next dogfood batch of at least 10 receipts that took no part in tuning.
 
 `backend/scripts/ocr_benchmark.py` stays as it is; the new command replaces it for vision work.
+
+## Model survey (2026-10-01, MS1–MS6)
+
+The user asked for a survey of the Ollama vision catalogue as of October 2026, for a 24 GB Apple M4 Pro laptop, because newer models such as `qwen3.6:27b` were missing from the grid. This section records the survey and a probe of every vision model already on the LAN host. Where it changes an earlier value, the "Start here" table lists the change.
+
+**Hardware correction (MS1).** On the LAN host (Ollama 0.34.4), one model can hold up to about 16.2 GB in GPU memory. That is consistent with macOS's default GPU limit on a 24 GB Apple silicon machine, about two-thirds of RAM. The earlier "10.6–12.8 GB usable" came from which *pairs* of models stayed resident, not from a single model's ceiling. A model larger than about 16 GB at 16k context still loads, but its excess layers run on the CPU and generation slows to 8–13 tok/s. Raising the limit (`sudo sysctl iogpu.wired_limit_mb=20480`, reset at reboot) should let a 27B model fit entirely, at the cost of memory for everything else. Nothing in the plan assumes it; only the household can decide to do that, and it is not tested.
+
+**Probe (MS2).** Method:
+- Three synthetic fixtures (`supermarket_loyalty`, `discount_grocer_terse`, `warehouse_codes`) were rendered with the test helper.
+- Each model got one call per fixture: JSON-schema `format`, temperature 0, 16k context, 8192 output cap, `think: false` where the model supports thinking.
+- The score is the printed line amounts recovered (24 in total across the three fixtures), the amounts invented (extra), and whether the total was read correctly.
+
+These are clean renders of short receipts, so accuracy here only screens out broken models. It does not rank the good ones; Phase 0 on real photos does that. Fit, speed, image tokens and thinking behaviour do carry over.
+
+| Model (installed tag) | Amounts found / 24 | Extra | Totals | Loaded size / on GPU (GB) | tok/s | Image prompt tokens | Notes |
+|---|---|---|---|---|---|---|---|
+| `qwen3.5:9b` | 22 | 0 | 3/3 | 5.81 / 5.81 | 39 | 467–715 | honours `think: false` |
+| `gemma4:e4b` | 20 | 1 | 3/3 | 3.58 / 3.58 | 53 | 249–354 | fastest; misses lines |
+| `gemma4:12b` | 24 | 1 | 3/3 | 9.28 / 9.28 | 27 | 253–358 | best fully on GPU |
+| `minicpm-v4.5:8b` | 21 | 2 | 3/3 | 10.63 / 10.63 | 44 | 268–400 | current grid |
+| `qwen3-vl:8b` (default tag) | 7 | 0 | 1/3 | 6.68 / 6.68 | 41 | 1,111–1,123 | thinking variant: ignored `think: false`, ran out of output on 2 of 3 (4096 cap, first run) |
+| `qwen3-vl:30b` (default tag, MoE) | 24 | 2 | 3/3 | 20.03 / 15.46 | 15–18 | 1,111–1,123 | thinking variant: ~2,200 chars of thinking anyway; 85–93 s each |
+| `qwen3.6:27b` | 24 | 0 | 3/3 | 17.62 / 15.73 | 12–13 | 467–715 | honours `think: false`; spills ~1.9 GB |
+| `qwen3.8:27b` | 24 | 1 | 3/3 | 18.27 / 14.61 | 8–10 | 467–715 | honours `think: false`; spills ~3.7 GB |
+| `mistral-small3.2` (24B) | 21 | 0 | 3/3 | 20.75 / 16.19 | 10–12 | 1,091–1,430 | slow; no edge |
+| `llama3.2-vision:11b` | — | — | — | — | — | — | fails to load: "unknown model architecture: 'mllama'" |
+| `ibm/granite3.3-vision:2b` | — | — | — | — | — | — | 500 on every call with a JSON-schema `format` ("Unexpected empty grammar stack") |
+
+Two findings change how the benchmark runs:
+- **Thinking (confirms OV9).** The default `qwen3-vl` tags are the thinking variants and ignore `think: false`. `qwen3-vl:8b` spent its whole 4,096-token budget thinking on 2 of 3 receipts. Pin `-instruct` tags for that family. The Qwen 3.5, 3.6 and 3.8 hybrids, Gemma 4 and MiniCPM-V 4.5 all honoured `think: false` (0 thinking characters).
+- **Output size.** A transcribed line costs about 30–35 output tokens without boxes. A 60-line receipt is therefore about 2,000 tokens; the 4,000–5,000 estimate with boxes (E2) is still unverified. At 12.6 tok/s, `qwen3.6:27b` takes about 160 s for 60 lines without boxes, but about 400 s at 5,000 tokens. That is over the 300 s call timeout, so with boxes a 27B model only fits the budget if the GPU limit is raised.
+
+**Catalogue (MS3).** These were in Ollama's vision category on 2026-10-01 and are not on the host:
+
+| Model | Size at Q4 | Verdict for a 24 GB laptop |
+|---|---|---|
+| `gemma4:26b-a4b` (MoE, about 4B active) | 16–18 GB (QAT 16 GB) | **Candidate.** It is about the GPU ceiling, and few active parameters keep it fast even if it spills. Pull before Phase 0. |
+| `qwen3-vl:8b-instruct`, `qwen3-vl:30b-a3b-instruct` | 6.1 GB, 20 GB | The OV9 instruct tags. Pull 8b-instruct if the qwen3-vl family stays in the grid; 30b spills and gains nothing over `qwen3.6:27b` at 4× the image tokens. |
+| `ornith-1.5:9b` | 6.6 GB | Possible later; vision input, but lineage and document scores are unpublished. The installed `ornith:9b` is text-only. |
+| `muse-glimmer` (30B, Apache 2.0) | 18 GB | Possible later: agent-tuned, and like the 27Bs it would spill. |
+| `minicpm-v4.6:1b` | about 1 GB | Possible arm (b) transcriber; too small to be a reader. |
+| `gemma4:31b` | 19–20 GB | Spills more than `qwen3.6:27b`, with OCRBench 86.1 to its 89.4. Not worth it. |
+| `qwen3.6:35b-a3b`, `qwen3.5:35b` | 23–24 GB | Do not fit in 24 GB of RAM alongside the OS. |
+| `nemotron3:33b` | 28 GB | Does not fit. |
+| `glm-5.3-flash`, `kimi-k3`, `minimax-m3`, `deepseek-v4.1-flash`, `qwen3.8-flash-next`, `mistral-medium-3.5` | far over 24 GB, or cloud | Out (non-negotiable 9: local only). |
+| `medgemma`, `medgemma1.5`, `translategemma` | — | Wrong domain. |
+
+Published scores, for context only: Qwen3.6-27B has OCRBench 89.4 and CC-OCR 81.2 (model card). Qwen3.6-35B-A3B has OCRBench 90.0 and Gemma 4 31B 86.1. A third-party 24 GB test had Qwen3.8-27B answer 23 of 24 document questions, Gemma 4 31B 22, and Qwen3.6-27B 8. That test ran thinking off at temperature 1.0 on a CUDA card, so read it as a warning to measure, not as a ranking.
+
+**Grid change (MS4, supersedes the OV4 candidate list; the reduced grid's other limits stand).** Arm (c) screens four configurations, two per tier, in three families:
+
+| Tier | Model | Why |
+|---|---|---|
+| fits on GPU | `qwen3.5:9b` | Replaces `qwen3-vl:8b-instruct` as the Qwen entry. It is the newer, natively multimodal line and honours `think: false`. Its image tokens are about 40% fewer on these renders. |
+| fits on GPU | `gemma4:12b` | A new family. It was the most accurate of the models that fit on the GPU here. |
+| fits on GPU | `minicpm-v4.5:8b` | Kept from OV4. |
+| quality | `qwen3.6:27b` | The user's suggestion. It found every amount here with nothing invented, but spills about 1.9 GB at the default limit. |
+
+- `gemma4:26b-a4b` joins the quality tier if the household pulls it before the run. Otherwise it is added later with `--models`, against the stored best.
+- `qwen3.8:27b` is held back: the same family as `qwen3.6:27b`, slower here (spills about 3.7 GB), with no gain on these fixtures. Add it with `--models` if `qwen3.6:27b` wins.
+- `qwen3-vl:8b-instruct` is also available through `--models`.
+- `glm-ocr` stays arm (b)'s transcriber.
+- The decision rule is unchanged. A quality-tier model that wins must also fit the per-stage and per-receipt budgets measured in Phase 0 (`seconds_max` within the 480 s stage cap). If it fits only with a raised GPU limit, that becomes a T6 amendment item, not a silent requirement.
+- **Run time.** Four arm (c) configurations instead of two. At the measured speeds, an average 30-line receipt (about 1,000 output tokens) takes about 25–40 s with a 9B–12B model and about 80 s with `qwen3.6:27b`. Arms (a) and (b) keep today's 30–140 s text stage. That is roughly 6 minutes per receipt for all configurations, so 12–20 receipts take about 1–2 hours, within the earlier 3-hour estimate.
+
+**Arm (d) pairing (MS5).** Consensus needs a second model from another family. Gemma joins Qwen and MiniCPM as an option, so arm (d) pairs the best (c) model with the best (c) model from a different family. A pair that can't be resident together costs a swap per receipt (E2), and the 27B models can't share the GPU with anything.
+
+**Benchmark handling (MS6).** These refine ET1 and ET5.
+- A model that fails to load, like the "unknown model architecture" 500 above, is listed as skipped (load failed), just as a text-only model is skipped as not multimodal (D3). The model is not scored as zero.
+- A 500 from the grammar engine on a schema `format` counts as a failed reading, toward the retry and then the fallback, like any other invalid reply. If every reading of a configuration fails that way, the configuration is listed as skipped (schema unsupported).
+- `reading.csv` already records `model_tag` and `model_digest`, so a re-pulled tag shows up as a different digest.
+
+Sources: [Ollama vision models](https://ollama.com/search?c=vision), [qwen3.6 tags](https://ollama.com/library/qwen3.6/tags), [gemma4 tags](https://ollama.com/library/gemma4/tags), [qwen3-vl tags](https://ollama.com/library/qwen3-vl/tags), [Qwen3.6-27B model card](https://huggingface.co/Qwen/Qwen3.6-27B), [Qwen3.8 vs Qwen3.6 vs Gemma 4 on a 24 GB GPU](https://kingy.ai/blog/qwen3-8-27b-vs-qwen3-6-27b-vs-gemma-4-31b/). The probe script ran from a scratch directory and is not committed. It sends only synthetic fixture renders.
 
 ## Phase 1-B: vision reader, consensus and crops (if B wins)
 
@@ -345,7 +421,7 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 - **Vision retries (EV1).** A vision call makes one attempt, then one retry at temperature 0.3 (`EMPTY_PART_RETRY_TEMPERATURE`, the #60 rule), then falls back. The text path keeps `1 + LLM_MAX_RETRIES` tries. `extract()` takes the retry policy as an argument, since it is shared.
 - **Thinking off (OV9).** Settings name exact instruct tags, never thinking variants. Vision calls pass `think: false` where the model supports it, and `reading.csv` records the tag. This guards against #60's failure, where reasoning filled the context and the answer came back empty.
 - **Load time (OV7).** `last_usage` also carries `load_seconds`, from Ollama's `load_duration`. The budget counts it, because swaps are real time. The benchmark reports it separately, and arm (d) runs interleaved (primary, then second model) per receipt, as production would.
-- **Measured (eng E2, 2026-10-01).** The host keeps only one vision model resident at a time, with roughly 10.6–12.8 GB usable GPU memory. qwen3-vl:8b is 6.55 GB at 16k and minicpm-v4.5:8b is 10.29 GB at 16k, so together they don't fit, and gpt-oss:20b (12.83 GB) evicts both.
+- **Measured (eng E2, 2026-10-01; ceiling corrected by MS1).** The host keeps only one vision model resident at a time. One model can use up to about 16.2 GB of GPU memory; the 10.6–12.8 GB figure was the limit for a pair. qwen3-vl:8b is 6.55 GB at 16k and minicpm-v4.5:8b is 10.29 GB at 16k, so together they don't fit, and gpt-oss:20b (12.83 GB) evicts both.
   - Consensus therefore pays a model swap on every receipt (2–4 s measured), and a text fallback pays another.
   - Generation runs at about 36 tok/s, so a 60-line answer with boxes (about 5,000 tokens) takes about 2–3 minutes per reading.
   - The README states the 16k context and this single-resident behaviour, and Phase 0 prints the measured swap cost.
