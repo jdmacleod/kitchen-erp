@@ -9,6 +9,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
+import type { PhotoSummary } from "./productPhotos";
 import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { ListResponse } from "./types";
@@ -98,6 +99,8 @@ export interface Product {
   density_override_confirmed: boolean;
   active: boolean;
   notes: string | null;
+  /** The main photo (1I); null shows the category placeholder. */
+  photo?: PhotoSummary | null;
   created_at: string;
   updated_at: string;
 }

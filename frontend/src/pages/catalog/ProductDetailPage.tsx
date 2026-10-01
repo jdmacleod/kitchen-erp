@@ -13,6 +13,7 @@ import {
   type ProductUpdateInput,
 } from "../../api/catalog";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
+import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -92,6 +93,9 @@ function ProductDetail({ product }: { product: Product }) {
           {product.active ? <Badge tone="good">active</Badge> : <Badge tone="warn">inactive</Badge>}
         </p>
         {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
+
+        <ProductPhotosCard product={product} />
+        <ProductLabelsCard product={product} />
 
         {product.density_override !== null ? (
           <Card>

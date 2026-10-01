@@ -144,6 +144,23 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Product cutouts (08, PD14): a cutout sits on the card surface it is  */
+/* shown on, with a drop shadow built from --shadow-card's walnut.      */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --shadow-cutout: drop-shadow(0 1px 1px oklch(0.40 0.03 60 / 0.12)) drop-shadow(0 6px 10px oklch(0.40 0.03 60 / 0.12));
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-cutout: drop-shadow(0 1px 1px oklch(0.10 0.02 60 / 0.45)) drop-shadow(0 6px 10px oklch(0.10 0.02 60 / 0.45));
+  }
+}
+.cutout-shadow {
+  filter: var(--shadow-cutout);
+}
+
+/* ------------------------------------------------------------------ */
 /* Ingredient category accents                                         */
 /* Each category is just a hue + chroma; light/dark tints derive from  */
 /* it, so adding a category is a two-line change.                      */
@@ -174,6 +191,22 @@
 .cat-spices    { --cat-h: 35;  --cat-c: 0.160; } /* paprika */
 .cat-beverages { --cat-h: 330; --cat-c: 0.100; } /* plum */
 .cat-frozen    { --cat-h: 220; --cat-c: 0.035; } /* frost */
+
+/* A product with no photo (08, PD15): a square in the category's tint with
+   the product's first letter in Fraunces. Decorative; the name is beside it. */
+.cat-placeholder {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--cat-bg);
+  color: var(--cat-fg);
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
+}
 
 /* Chip: tinted pill with a solid dot. The dot carries the color;
    the label stays readable, so color is never the only signal. */

@@ -15,6 +15,7 @@ import {
 } from "../../api/catalog";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
@@ -235,16 +236,21 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
         {items.map((p) => (
           <tr key={p.id}>
             <td className="px-4 py-2 align-top">
-              <Link id={`product-row-${p.id}`} to={`/catalog/products/${p.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-                {p.name}
-              </Link>
-              {p.active ? null : (
-                <>
-                  {" "}
-                  <Badge tone="warn">inactive</Badge>
-                </>
-              )}
-              {p.brand ? <span className={`block ${muted}`}>{p.brand}</span> : null}
+              <div className="flex items-start gap-3">
+                <ProductThumb name={p.name} photo={p.photo} categoryKey={p.ingredient.category_key} />
+                <div className="min-w-0">
+                  <Link id={`product-row-${p.id}`} to={`/catalog/products/${p.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+                    {p.name}
+                  </Link>
+                  {p.active ? null : (
+                    <>
+                      {" "}
+                      <Badge tone="warn">inactive</Badge>
+                    </>
+                  )}
+                  {p.brand ? <span className={`block ${muted}`}>{p.brand}</span> : null}
+                </div>
+              </div>
             </td>
             <td className="px-4 py-2 align-top">
               <span className="block">{p.ingredient.name}</span>
