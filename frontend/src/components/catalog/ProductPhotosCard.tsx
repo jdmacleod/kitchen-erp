@@ -129,7 +129,8 @@ function MainPhoto({
         </span>
         {photo.attribution ? <span className={muted}>{photo.attribution}</span> : null}
         {photo.has_cutout ? (
-          <SegmentedControl
+          <span className="self-start">
+            <SegmentedControl
             label="Show the photo as"
             value={view}
             onChange={setView}
@@ -137,7 +138,8 @@ function MainPhoto({
               { value: "cutout", label: "Cutout" },
               { value: "original", label: "Original" },
             ]}
-          />
+            />
+          </span>
         ) : null}
         <span className="flex flex-wrap gap-2">
           {photo.pinned ? (
