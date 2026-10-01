@@ -103,6 +103,50 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** #74 (Remove purchase)
 
+### Read long receipts in overlapping slices
+
+**What:** Slice tall receipt images into overlapping bands, read each with the vision model, and drop duplicate rows only inside the overlap bands.
+
+**Why:** A very long receipt may exceed what one vision call reads reliably.
+
+**Context:** Deferred by the vision-reading CEO review on 2026-10-01 (board VH1). Phase 0 reads whole images only and reports reconciliation by receipt length; build this only if long receipts fail there. Spec-review findings R1-18 and R2-11 (overlap-only dedup, a trigger known before reading) apply. Design: `docs/designs/vision-receipt-reading.md`.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Phase 0 results by receipt length
+
+### Re-ask the vision model once when a receipt doesn't add up
+
+**What:** After the vision reader (and consensus, if shipped) leaves a receipt unreconciled, ask the primary model once more, stating the gap ("the lines sum to X; the total reads Y"). Its lines become candidates only.
+
+**Why:** A skipped or misread line is a common cause of a total that doesn't add up, and a second look may catch it.
+
+**Context:** Accepted on the vision-reading scope board (VX3), then deferred by the outside voice (OV6a, 2026-10-01). The re-ask can tempt a model to invent the missing line, and with only about 12 receipts its value can't be measured before Phase 1. The design is settled; build it as decided:
+- VD6: last resort only; never removes the first reading.
+- D13: skipped when the OCR total disagrees.
+- D14: works without consensus.
+- A line only the re-ask produced stays unticked unless OCR or a second model independently shows its amount.
+- After a re-ask a line can have 4 candidates, so the search caps at 9 disagreeing lines.
+- `reconciled_after_reask` is reported apart from the headline.
+
+Design: `docs/designs/vision-receipt-reading.md`.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Vision Phase 1-B live. Build it when `kerp reading-stats` shows more than 1 in 5 receipts unreconciled after 30 receipts.
+
+### Show where each number on a receipt line came from
+
+**What:** Record per number whether it was read from the paper, worked out by code (weight × rate), or repaired (decimal restored), show it in review, and never let a recompute overwrite a person's edit.
+
+**Why:** Makes a later data fix traceable and tells the reviewer which numbers to trust.
+
+**Context:** Deferred by the vision-reading CEO review on 2026-10-01 (board VX6). Phase 1 records only "read by vision" on the stage result; existing line flags (`qty_inferred`, `decimals_restore_total`) cover part of this. Idea from cartlog's PRINTED / EXTRACTED / REPAIRED / INFERRED / MANUAL. Needs a reversible migration.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Vision reading Phase 1
+
 ## Purchases
 
 ### Restore a voided purchase
