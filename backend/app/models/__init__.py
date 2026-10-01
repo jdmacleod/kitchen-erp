@@ -13,6 +13,7 @@ from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.purchases import (
     IngestJob,
     IngestStageResult,
+    NamingSuggestion,
     PriceNorm,
     PriceObservation,
     PriceObservationVoid,
@@ -44,6 +45,7 @@ __all__ = [
     "IngredientRef",
     "IngestJob",
     "IngestStageResult",
+    "NamingSuggestion",
     "IngredientMeasure",
     "PriceNorm",
     "PriceObservation",

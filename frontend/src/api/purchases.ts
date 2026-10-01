@@ -3,7 +3,7 @@
 // strings and are localized only for display.
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { qs, validationMessages, type CanonicalUnit, type Page, type ProductCreateInput } from "./catalog";
+import { qs, validationMessages, type CanonicalUnit, type IngredientCreateInput, type IngredientMatch, type Page, type ProductCreateInput } from "./catalog";
 import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
@@ -582,6 +582,73 @@ export function useToIdentify() {
     queryKey: purchaseKeys.toIdentify,
     queryFn: () => api<{ items: ToIdentifyGroup[] }>("/to-identify"),
     select: (data) => data.items,
+  });
+}
+
+// --- naming new products in bulk (04, 2I; #88) --------------------------------
+
+/** A waiting group with the product its wording suggests. */
+export interface NamingRow {
+  vendor: { id: string; name: string };
+  raw_text_norm: string | null;
+  line_count: number;
+  raw_text: string | null;
+  name: string;
+  ingredient: IngredientMatch | null;
+  pack_qty: string | null;
+  pack_unit: string | null;
+  /** The model's suggestion, once asked for (N2, N3). */
+  model: { status: "asking" | "done" | "failed"; name: string | null; ingredient: IngredientMatch | null } | null;
+}
+
+export type NameProductRow = {
+  vendor_id: string;
+  raw_text_norm: string;
+  name: string;
+  pack_qty?: string;
+  pack_unit?: string;
+} & ({ ingredient_id: string } | { ingredient: IngredientCreateInput });
+
+export interface NamedProduct {
+  vendor_id: string;
+  raw_text_norm: string;
+  product_id: string | null;
+  applied: number;
+  error: { code: string; message: string } | null;
+}
+
+export function useNamingRows(enabled: boolean) {
+  return useQuery({
+    queryKey: [...purchaseKeys.toIdentify, "naming"],
+    queryFn: () => api<{ items: NamingRow[] }>("/to-identify/naming"),
+    select: (data) => data.items,
+    enabled,
+    // The worker answers one line at a time; look again while any is waiting.
+    refetchInterval: (query) => (query.state.data?.items.some((r) => r.model?.status === "asking") ? 3000 : false),
+  });
+}
+
+/** Ask the model about the rows the wording couldn't name (N3). */
+export function useSuggestNames() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ queued: number }>("/to-identify/naming/suggest", { method: "POST" }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: [...purchaseKeys.toIdentify, "naming"] }),
+  });
+}
+
+export function useNameProducts() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: NameProductRow[]) =>
+      api<{ results: NamedProduct[] }>("/to-identify/name-products", { method: "POST", body: { rows } }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
+      void client.invalidateQueries({ queryKey: ["products"] });
+      void client.invalidateQueries({ queryKey: ["ingredients"] });
+      invalidatePurchases(client, "all");
+      invalidateObservations(client);
+    },
   });
 }
 

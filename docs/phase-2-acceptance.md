@@ -58,6 +58,12 @@ frontend unit tests under `frontend/src/test/`, browser tests under `e2e/tests/`
 | 48a–48d | Export import: purchases per transaction, barcode resolution, queue, idempotence, exact amounts, `realdata` skip | `test_importer.py` |
 | 49 | Backup and restore reproduce rows and images by count and hash | `test_backup.py` (runs where `pg_dump` exists: the api container) |
 | 50 | Restore refuses a non-empty database unless forced | same test |
+| 60 | Naming mode offered once three groups wait | `name-products.test.tsx` |
+| 61 | Naming rows suggest a name, ingredient and pack from the wording; unknown pack tokens stay in the name | `test_naming.py::test_the_wording_gives_a_name_and_a_pack`, `::test_every_waiting_group_is_a_row_with_suggestions` |
+| 62 | Confirmed rows create products, identify every line of the group, and reuse a new ingredient named twice | `test_naming.py::test_confirmed_rows_become_products_and_identify_their_lines` |
+| 63 | A failing row stands alone | `test_naming.py::test_a_failing_row_stands_alone`; `name-products.test.tsx` (input kept) |
+| 64 | Only ticked rows are sent; rows start unticked and editing ticks | `name-products.test.tsx` |
+| 65 | Model suggestions validated and never overwrite edits | `test_naming_model.py`; `name-products.test.tsx` (edited fields kept) |
 
 All Phase 2 criteria pass as of 2026-09-21: backend 325 tests (plus the container-only backup and Tesseract tests), frontend 76, browser 20.
 
