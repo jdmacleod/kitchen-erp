@@ -112,7 +112,7 @@ async def delete_home_base(home_base_id: uuid.UUID, _: CurrentUser, db: DbSessio
     responses={
         200: {
             "model": VendorFile,
-            "description": "A kitchen-erp-vendors/1 file (spec 03 1F), as YAML or JSON.",
+            "description": "A kitchen-erp-vendors/1 or /2 file (spec 03 1F, 1H), as YAML or JSON.",
             "content": {"application/yaml": {}},
         }
     },
@@ -152,7 +152,7 @@ async def export_vendors(
     openapi_extra={
         "requestBody": {
             "required": True,
-            "description": "A kitchen-erp-vendors/1 file, at most 5 MB.",
+            "description": "A kitchen-erp-vendors/1 or /2 file, at most 5 MB.",
             "content": {
                 "application/yaml": {"schema": {"type": "string"}},
                 "application/json": {"schema": {"$ref": "#/components/schemas/VendorFile"}},

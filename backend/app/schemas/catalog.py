@@ -3,12 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, computed_field, model_validator
 
 from app.catalog import categories
+from app.catalog.attributes import ProductKind
 from app.catalog.categories import CategoryKey
+from app.catalog.identifiers import Symbology as BarcodeSymbology
 from app.schemas.base import ApiModel, DecimalStr
 
 CanonicalUnit = Literal["g", "ml", "each"]
@@ -168,6 +170,9 @@ class ProductCreate(_PackPair):
     brand: str | None = Field(default=None, max_length=200)
     name: str = Field(min_length=1, max_length=200)
     barcode: str | None = Field(default=None, min_length=4, max_length=32)
+    barcode_symbology: BarcodeSymbology | None = None
+    kind: ProductKind | None = None
+    attributes: dict[str, Any] | None = None
     quality_rating: int | None = Field(default=None, ge=1, le=5)
     exclusive_vendor_id: uuid.UUID | None = None
     density_override: Decimal | None = Field(default=None, gt=0)
@@ -191,7 +196,10 @@ class ProductUpdate(ApiModel):
     pack_unit: str | None = Field(default=None, max_length=16)
     clear_pack: bool = False
     barcode: str | None = Field(default=None, min_length=4, max_length=32)
+    barcode_symbology: BarcodeSymbology | None = None
     clear_barcode: bool = False
+    kind: ProductKind | None = None
+    attributes: dict[str, Any] | None = None
     quality_rating: int | None = Field(default=None, ge=1, le=5)
     exclusive_vendor_id: uuid.UUID | None = None
     clear_exclusive_vendor: bool = False
@@ -217,6 +225,8 @@ class ProductOut(ApiModel):
     pack_qty: DecimalStr | None
     pack_unit: str | None
     barcode: str | None
+    kind: ProductKind
+    attributes: dict[str, Any]
     quality_rating: int | None
     exclusive_vendor_id: uuid.UUID | None
     density_override: DecimalStr | None

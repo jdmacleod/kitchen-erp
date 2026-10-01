@@ -67,8 +67,8 @@ async def test_pack_pair_enforced_by_api_and_database(
     assert "pack_qty and pack_unit" in msg
     with pytest.raises(asyncpg.CheckViolationError):
         await owner_conn.execute(
-            "INSERT INTO product (id, ingredient_id, name, pack_qty) "
-            "VALUES (gen_random_uuid(), $1, 'x', 1)",
+            "INSERT INTO product (id, ingredient_id, name, pack_qty, kind) "
+            "VALUES (gen_random_uuid(), $1, 'x', 1, 'loose')",
             uuid.UUID(ing["id"]),
         )
     r = await admin_client.post(

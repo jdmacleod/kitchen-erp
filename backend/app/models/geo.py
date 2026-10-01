@@ -110,6 +110,12 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # {field: {source, ref, checked_at, imported}}; see services.geo.write_unless_edited.
     field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # 1H: storefront software (chooses an adapter), whether pages may be fetched,
+    # weighed-item label layout, and where receipts print item codes.
+    platform: Mapped[str | None] = mapped_column(String(64))
+    fetch_policy: Mapped[str] = mapped_column(String(16), nullable=False, default="capture_only")
+    rw_layout: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    code_position: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     locations: Mapped[list[VendorLocation]] = relationship(back_populates="vendor")
 
@@ -176,6 +182,8 @@ class VendorLocation(UUIDPrimaryKey, Timestamped, Base):
     # May appear in a public export (1F). A location linked to OSM always may; a stand never.
     publishable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     field_source: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    # 1H: the storefront's own id for this store; unique per vendor when set.
+    platform_store_ref: Mapped[str | None] = mapped_column(String(64))
 
     vendor: Mapped[Vendor] = relationship(back_populates="locations", lazy="joined")
     place: Mapped[Place] = relationship(lazy="joined")

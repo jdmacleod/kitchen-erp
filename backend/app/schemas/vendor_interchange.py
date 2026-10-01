@@ -1,11 +1,14 @@
-"""The ``kitchen-erp-vendors/1`` file format (spec 03 §1F).
+"""The ``kitchen-erp-vendors`` file formats (spec 03 §1F; /2 since 1H).
 
 One model, written as YAML or JSON. Coordinates and every other non-integer
 number are strings, so a file never carries a float. ``household`` blocks appear
 only in a household-mode file; a public file holds public facts only.
 
 The models are strict (unknown keys refused) because import (Phase 2 of 1F)
-reads files through them.
+reads files through them. ``/2`` adds the vendor facts products need (1H):
+storefront platform, fetch policy, weighed-item label layout, receipt code
+position, and a location's storefront store id. A ``/1`` file that carries any
+of them is refused, so ``/1`` readers never meet a field they don't know.
 """
 
 from __future__ import annotations
@@ -13,9 +16,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 FORMAT = "kitchen-erp-vendors/1"
+FORMAT_V2 = "kitchen-erp-vendors/2"
+FORMATS = (FORMAT, FORMAT_V2)
 LICENSE = "ODbL-1.0"
 
 Mode = Literal["public", "household"]
@@ -57,6 +62,7 @@ class LocationEntry(_Strict):
     opening_hours: Annotated[str, Field(max_length=2000)] | None = None
     osm: OsmRef | None = None
     parent: LocationKey | None = None  # another location's key, for a stall
+    platform_store_ref: Annotated[str, Field(min_length=1, max_length=64)] | None = None  # /2
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
 
 
@@ -78,6 +84,37 @@ class HouseholdVendor(_Strict):
     locations: dict[str, HouseholdLocation] = Field(default_factory=dict)
 
 
+class RwLayoutEntry(_Strict):
+    """Where the item code and price sit in a weighed-item label (positions 1-10)."""
+
+    item_start: Annotated[int, Field(ge=1, le=10)] = 1
+    item_len: Annotated[int, Field(ge=1, le=10)] = 5
+    price_start: Annotated[int, Field(ge=1, le=10)] = 6
+    price_len: Annotated[int, Field(ge=1, le=10)] = 5
+    price_kind: Literal["price_cents", "weight_hundredths_lb", "none"] = "price_cents"
+
+    @model_validator(mode="after")
+    def _inside(self):
+        for start, length in ((self.item_start, self.item_len), (self.price_start, self.price_len)):
+            if start + length > 11:
+                raise ValueError("a field must end before the check digit")
+        return self
+
+
+class CodePositionEntry(_Strict):
+    """Where a vendor's receipts print item codes (04, 2K)."""
+
+    kind: Literal["leading_token"]
+    min_len: Annotated[int, Field(ge=3, le=14)]
+    max_len: Annotated[int, Field(ge=3, le=14)]
+
+    @model_validator(mode="after")
+    def _range(self):
+        if self.min_len > self.max_len:
+            raise ValueError("min_len must not exceed max_len")
+        return self
+
+
 class VendorEntry(_Strict):
     key: VendorKey
     name: Annotated[str, Field(min_length=1, max_length=200)]
@@ -86,16 +123,41 @@ class VendorEntry(_Strict):
     website: Text | None = None
     brand: Annotated[str, Field(max_length=200)] | None = None
     wikidata: Annotated[str, Field(pattern=r"^Q[0-9]+$", max_length=20)] | None = None
+    # /2 (1H): absent means "not given", never "clear".
+    platform: Annotated[str, Field(pattern=r"^[a-z0-9_]+$", max_length=64)] | None = None
+    fetch_policy: Literal["server_fetch", "capture_only", "none"] | None = None
+    rw_layout: RwLayoutEntry | None = None
+    code_position: CodePositionEntry | None = None
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
     locations: list[LocationEntry] = Field(default_factory=list)
     household: HouseholdVendor | None = None
 
 
+V2_VENDOR_FIELDS = ("platform", "fetch_policy", "rw_layout", "code_position")
+
+
+def uses_v2(vendors: list[VendorEntry]) -> bool:
+    return any(
+        any(getattr(v, f) is not None for f in V2_VENDOR_FIELDS)
+        or any(loc.platform_store_ref is not None for loc in v.locations)
+        for v in vendors
+    )
+
+
 class VendorFile(_Strict):
-    format: Literal["kitchen-erp-vendors/1"] = FORMAT
+    format: Literal["kitchen-erp-vendors/1", "kitchen-erp-vendors/2"] = FORMAT
     license: Literal["ODbL-1.0"] = LICENSE
     source: FileSource
     vendors: list[VendorEntry]
+
+    @model_validator(mode="after")
+    def _v1_has_no_v2_fields(self):
+        if self.format == FORMAT and uses_v2(self.vendors):
+            raise ValueError(
+                "platform, fetch_policy, rw_layout, code_position and platform_store_ref "
+                f"need format {FORMAT_V2}"
+            )
+        return self
 
 
 # --- import report ------------------------------------------------------------

@@ -11,11 +11,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.catalog import categories, standard
+from app.catalog.attributes import validate_attributes
 from app.catalog.categories import CategoryKey
+from app.catalog.identifiers import (
+    AmbiguousCode,
+    InvalidGtin,
+    classify_barcode,
+    display,
+    lookup_keys,
+)
 from app.catalog.names import normalize_name, singulars
 from app.core.errors import ApiError
 from app.core.logging import get_logger
-from app.models.catalog import Ingredient, IngredientMeasure, IngredientRef, Product
+from app.models.catalog import (
+    Ingredient,
+    IngredientMeasure,
+    IngredientRef,
+    Product,
+    ProductIdentifier,
+)
 from app.schemas.catalog import (
     ConvertIn,
     ConvertOut,
@@ -571,7 +585,9 @@ async def delete_measure(db: AsyncSession, measure_id: uuid.UUID) -> None:
 
 
 def _product_query():
-    return select(Product).options(selectinload(Product.ingredient))
+    return select(Product).options(
+        selectinload(Product.ingredient), selectinload(Product.identifiers)
+    )
 
 
 async def get_product(db: AsyncSession, product_id: uuid.UUID) -> Product:
@@ -600,8 +616,7 @@ async def list_products(
     """
     category_values = await _category_values(db, category) if category else None
     if barcode:
-        hits = await search_products(db, barcode, limit)
-        rows = await _products_by_id(db, [h.id for h in hits if h.barcode == barcode])
+        rows = await _products_by_barcode(db, barcode, limit)
         next_cursor = None
     elif category_values == []:
         return [], None
@@ -675,6 +690,34 @@ async def _products_by_id(db: AsyncSession, ids: list[uuid.UUID]) -> list[Produc
     return [found[i] for i in ids if i in found]
 
 
+def _identifier_keys(code: str) -> list[str]:
+    """ "scheme:value" keys a typed or scanned code may be stored under (never raises)."""
+    return [f"{scheme}:{value}" for scheme, value in lookup_keys(code)]
+
+
+async def _products_by_barcode(db: AsyncSession, code: str, limit: int) -> list[Product]:
+    """Active products whose GTIN or other code is ``code``, in any of its written forms."""
+    keys = _identifier_keys(code)
+    if not keys:
+        return []
+    ids = (
+        await db.execute(
+            select(Product.id)
+            .join(Ingredient, Ingredient.id == Product.ingredient_id)
+            .join(ProductIdentifier, ProductIdentifier.product_id == Product.id)
+            .where(
+                Product.active,
+                Ingredient.active,
+                ProductIdentifier.vendor_id.is_(None),
+                (ProductIdentifier.scheme + ":" + ProductIdentifier.value).in_(keys),
+            )
+            .order_by(Product.name, Product.id)
+            .limit(limit)
+        )
+    ).scalars()
+    return await _products_by_id(db, list(dict.fromkeys(ids)))
+
+
 async def _category_values(db: AsyncSession, key: CategoryKey) -> list[str]:
     """The stored free-text categories that map to ``key``.
 
@@ -722,7 +765,7 @@ async def _last_paid(db: AsyncSession, product_ids: list[uuid.UUID]) -> dict[uui
 
 def _product_conflict(exc: IntegrityError) -> ApiError:
     message = str(exc.orig)
-    if "uq_product_barcode" in message:
+    if "uq_product_identifier_value" in message:
         return ApiError(409, "barcode_taken", "Another product already has that barcode.")
     if "uq_ingredient_name_lower" in message:
         return ApiError(409, "ingredient_name_taken", "An ingredient with that name exists.")
@@ -735,6 +778,67 @@ def _product_conflict(exc: IntegrityError) -> ApiError:
     return ApiError(409, "conflict", "The product could not be saved.")
 
 
+def _barcode_code(raw: str, symbology: str | None) -> tuple[str, str]:
+    try:
+        return classify_barcode(raw, symbology)  # type: ignore[arg-type]
+    except AmbiguousCode as exc:
+        raise ApiError(
+            422,
+            "ambiguous_barcode",
+            "These eight digits are a valid EAN-8 and a valid UPC-E; "
+            "say which in barcode_symbology.",
+        ) from exc
+    except InvalidGtin as exc:
+        raise ApiError(422, "invalid_gtin", "That barcode's check digit is wrong.") from exc
+
+
+async def _set_barcode(
+    db: AsyncSession, product: Product, raw: str | None, symbology: str | None
+) -> None:
+    """Write the API's barcode field: replace the product's barcode identifier (03, 1H)."""
+    current = product.barcode_identifier
+    if raw is None:
+        if current is not None:
+            product.identifiers.remove(current)
+        return
+    scheme, value = _barcode_code(raw, symbology)
+    if current is not None and (current.scheme, current.value) == (scheme, value):
+        return
+    taken = (
+        await db.execute(
+            select(ProductIdentifier.product_id).where(
+                ProductIdentifier.scheme == scheme,
+                ProductIdentifier.value == value,
+                ProductIdentifier.vendor_id.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if taken is not None and taken != product.id:
+        raise ApiError(409, "barcode_taken", "Another product already has that barcode.")
+    if current is not None:
+        product.identifiers.remove(current)
+        await db.flush()
+    product.identifiers.append(ProductIdentifier(scheme=scheme, value=value, source="manual"))
+
+
+def _kind_from_evidence(
+    brand: str | None, barcode: str | None, exclusive_vendor_id: uuid.UUID | None
+) -> str:
+    """The kind a product starts with when none is given (03, 1H)."""
+    if exclusive_vendor_id is not None:
+        return "unbranded_vendor"
+    if (brand or "").strip() or barcode:
+        return "branded"
+    return "loose"
+
+
+def _attributes(ingredient: Ingredient, data: dict | None) -> dict:
+    try:
+        return validate_attributes(categories.key(ingredient.category), data)
+    except ValueError as exc:
+        raise ApiError(422, "invalid_attributes", str(exc).splitlines()[0]) from exc
+
+
 async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
     """Create a product, and its ingredient inline if asked, in one transaction."""
     try:
@@ -743,7 +847,8 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             ingredient_id = ingredient.id
         else:
             assert payload.ingredient_id is not None
-            if await db.get(Ingredient, payload.ingredient_id) is None:
+            ingredient = await db.get(Ingredient, payload.ingredient_id)
+            if ingredient is None:
                 raise ApiError(404, "not_found", "No such ingredient.")
             ingredient_id = payload.ingredient_id
         product = Product(
@@ -752,7 +857,9 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             name=payload.name.strip(),
             pack_qty=payload.pack_qty,
             pack_unit=payload.pack_unit,
-            barcode=payload.barcode,
+            kind=payload.kind
+            or _kind_from_evidence(payload.brand, payload.barcode, payload.exclusive_vendor_id),
+            attributes=_attributes(ingredient, payload.attributes),
             quality_rating=payload.quality_rating,
             exclusive_vendor_id=payload.exclusive_vendor_id,
             density_override=payload.density_override,
@@ -760,7 +867,9 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             density_override_confirmed=False,
             notes=payload.notes,
         )
+        product.identifiers = []
         db.add(product)
+        await _set_barcode(db, product, payload.barcode, payload.barcode_symbology)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
@@ -784,8 +893,20 @@ async def update_product(
         product.pack_unit = data.pop("pack_unit")
     data.pop("pack_qty", None)
     data.pop("pack_unit", None)
+    symbology = data.pop("barcode_symbology", None)
     if data.pop("clear_barcode", False):
-        product.barcode = None
+        await _set_barcode(db, product, None, None)
+    if data.get("barcode") is not None:
+        try:
+            await _set_barcode(db, product, data["barcode"], symbology)
+        except ApiError:
+            await db.rollback()
+            raise
+    data.pop("barcode", None)
+    if "attributes" in data:
+        ingredient = await db.get(Ingredient, data.get("ingredient_id") or product.ingredient_id)
+        assert ingredient is not None
+        data["attributes"] = _attributes(ingredient, data["attributes"])
     if data.pop("clear_exclusive_vendor", False):
         product.exclusive_vendor_id = None
     if data.pop("clear_density_override", False):
@@ -806,7 +927,7 @@ async def update_product(
     if "name" in data and data["name"] is not None:
         data["name"] = data["name"].strip()
     for key, value in data.items():
-        if value is None and key in {"name"}:
+        if value is None and key in {"name", "kind"}:
             continue
         setattr(product, key, value)
     bridge_changed = bool(
@@ -850,17 +971,31 @@ async def confirm_density_override(db: AsyncSession, product_id: uuid.UUID) -> P
 # --- typeahead --------------------------------------------------------------
 
 _SEARCH_SQL = """
-    SELECT p.id, p.name, p.brand, p.barcode, p.pack_qty, p.pack_unit, p.quality_rating,
+    SELECT p.id, p.name, p.brand, bc.scheme AS barcode_scheme, bc.value AS barcode_value,
+           p.pack_qty, p.pack_unit, p.quality_rating,
            i.id AS ingredient_id, i.name AS ingredient_name, i.canonical_unit,
            i.active AS ingredient_active, i.category,
-           coalesce(p.barcode = :q, false) AS barcode_hit,  -- NULL would sort first
+           EXISTS (
+               SELECT 1 FROM product_identifier pi
+               WHERE pi.product_id = p.id AND pi.vendor_id IS NULL
+                 AND pi.scheme || ':' || pi.value = ANY(CAST(:codes AS text[]))
+           ) AS barcode_hit,
            word_similarity(:ql, lower(p.name)) AS s_name,
            word_similarity(:ql, lower(coalesce(p.brand, ''))) AS s_brand,
            word_similarity(:ql, lower(i.name)) AS s_ingredient
     FROM product p
     JOIN ingredient i ON i.id = p.ingredient_id
+    LEFT JOIN LATERAL (
+        SELECT scheme, value FROM product_identifier
+        WHERE product_id = p.id AND scheme IN ('gtin', 'other')
+        ORDER BY created_at, id LIMIT 1
+    ) bc ON true
     WHERE {filters} AND (
-        p.barcode = :q
+        EXISTS (
+            SELECT 1 FROM product_identifier pi
+            WHERE pi.product_id = p.id AND pi.vendor_id IS NULL
+              AND pi.scheme || ':' || pi.value = ANY(CAST(:codes AS text[]))
+        )
         OR lower(p.name) LIKE :like
         OR lower(coalesce(p.brand, '')) LIKE :like
         OR lower(i.name) LIKE :like
@@ -890,7 +1025,7 @@ async def search_products(
     if not ql:
         return []
     params: dict[str, object] = {
-        "q": q.strip(),
+        "codes": _identifier_keys(q),
         "ql": ql,
         "like": f"%{like_escape(ql)}%",
         "prefix": f"{like_escape(ql)}%",
@@ -923,7 +1058,9 @@ async def search_products(
                 id=r["id"],
                 name=r["name"],
                 brand=r["brand"],
-                barcode=r["barcode"],
+                barcode=display(r["barcode_scheme"], r["barcode_value"])
+                if r["barcode_scheme"]
+                else None,
                 pack_qty=r["pack_qty"],
                 pack_unit=r["pack_unit"],
                 quality_rating=r["quality_rating"],

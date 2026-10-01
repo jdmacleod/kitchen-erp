@@ -19,6 +19,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.catalog.identifiers import gs1_ok
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
@@ -29,6 +30,7 @@ from app.models import (
     PriceObservation,
     PriceObservationVoid,
     Product,
+    ProductIdentifier,
     Purchase,
     PurchaseLine,
     ReceiptAlias,
@@ -79,14 +81,9 @@ def install_default_ranker() -> bool:
 _BARCODE = re.compile(r"(?<!\d)(\d{12,14})(?!\d)")
 
 
-def gs1_ok(digits: str) -> bool:
-    body, check = digits[:-1], int(digits[-1])
-    total = sum(int(ch) * (3 if i % 2 == 0 else 1) for i, ch in enumerate(reversed(body)))
-    return (10 - total % 10) % 10 == check
-
-
 def barcodes_in(raw: str) -> list[str]:
-    return [m for m in _BARCODE.findall(raw or "") if gs1_ok(m)]
+    """GTIN-14s of the 12–14 digit runs on a line that carry a valid check digit."""
+    return [m.zfill(14) for m in _BARCODE.findall(raw or "") if gs1_ok(m)]
 
 
 # --- price sanity -----------------------------------------------------------
@@ -250,7 +247,15 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
     # 1. Barcode.
     for code in barcodes_in(line.raw_text or ""):
         product = (
-            await db.execute(select(Product).where(Product.barcode == code, Product.active))
+            await db.execute(
+                select(Product)
+                .join(ProductIdentifier, ProductIdentifier.product_id == Product.id)
+                .where(
+                    ProductIdentifier.scheme == "gtin",
+                    ProductIdentifier.value == code,
+                    Product.active,
+                )
+            )
         ).scalar_one_or_none()
         if product is not None:
             line.product_id = product.id
