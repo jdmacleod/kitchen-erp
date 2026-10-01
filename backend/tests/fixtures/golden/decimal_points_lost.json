@@ -1,0 +1,125 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "HARBOURSIDE PROVISIONS",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-07-05T00:42:00+00:00",
+    "purchased_at_local": "2026-07-04 17:42",
+    "store_identifier": "0217",
+    "subtotal": null,
+    "tax": null,
+    "total": "9.49"
+  },
+  "lines": {
+    "line_count": 4,
+    "lines": [
+      {
+        "flags": [
+          "decimal_missing",
+          "exceeds_total"
+        ],
+        "line_kind": "item",
+        "line_total": "349",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "OAT MILK 1L            349",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "decimal_missing",
+          "exceeds_total"
+        ],
+        "line_kind": "item",
+        "line_total": "425",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "RYE BREAD              425",
+        "seq": 2,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "fee",
+        "line_total": "0.10",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "BAG FEE               0.10",
+        "seq": 3,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.65",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "EGGS DOZEN 18CT       1.65",
+        "seq": 4,
+        "unit": "each",
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [
+      "reconcile_mismatch",
+      "decimals_restore_total"
+    ],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "775.75",
+      "deposits": "0",
+      "difference": "766.26",
+      "discounts": "0",
+      "fees": "0.10",
+      "items": "775.65",
+      "mismatch": true,
+      "printed_total": "9.49",
+      "tax": "0",
+      "tax_source": "none"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "ebdinbfffihbakep",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "ajcmcplifmmaeipj",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 26.0,
+      "stage": "lines"
+    }
+  ]
+}

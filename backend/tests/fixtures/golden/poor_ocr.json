@@ -1,0 +1,142 @@
+{
+  "header": {
+    "address_text": "1200 HARBOR VISTA BLVD",
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "HARBORVIEW MARKET",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": "(555) 555-0142",
+    "purchased_at": "2026-03-10T01:01:00+00:00",
+    "purchased_at_local": "2026-03-09 18:01",
+    "store_identifier": "0412",
+    "subtotal": "19.36",
+    "tax": "0.00",
+    "total": "19.36"
+  },
+  "lines": {
+    "line_count": 6,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "5.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "ORG WH0LE MILK 1GAL 5.99 F",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "discount",
+        "line_total": "1.00",
+        "parent_seq": 1,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "HRBV CARD SAVlNGS 1.OO-",
+        "seq": 2,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "9.41",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "CHKN THlGHS B/S 9.4l F",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.41",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2.05",
+        "raw_text": "BANANAS 2.O5 lb @ O.69/lb 1.4l",
+        "seq": 4,
+        "unit": "lb",
+        "unit_price": "0.69"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "ITAL BRD L0AF 3.49 F",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "tax",
+        "line_total": "0.00",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX O.OO",
+        "seq": 6,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [
+      "reconcile_mismatch"
+    ],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "19.30",
+      "deposits": "0",
+      "difference": "-0.06",
+      "discounts": "1.00",
+      "fees": "0",
+      "items": "20.30",
+      "mismatch": true,
+      "printed_total": "19.36",
+      "tax": "0.00",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "hmiedcmjncjhoaam",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "gmimgmifjclecobj",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 44.0,
+      "stage": "lines"
+    }
+  ]
+}

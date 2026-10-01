@@ -1,0 +1,164 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "THRIFTWAY BASICS",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-03-15T21:07:00+00:00",
+    "purchased_at_local": "2026-03-15 14:07",
+    "store_identifier": "0230",
+    "subtotal": "19.75",
+    "tax": "0.12",
+    "total": "19.87"
+  },
+  "lines": {
+    "line_count": 8,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.29",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "WHL MLK GAL          3.29",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "2.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "EGGS LG 12CT         2.49",
+        "seq": 2,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "6.84",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1.96",
+        "raw_text": "BNLS CHKN BRST       6.84 1.96 lb @ 3.49/lb",
+        "seq": 3,
+        "unit": "lb",
+        "unit_price": "3.49"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.58",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2",
+        "raw_text": "BLK BNS 15OZ  2 @ 0.79   1.58",
+        "seq": 4,
+        "unit": "each",
+        "unit_price": "0.79"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "TORT FLR 10CT        1.99",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "2.07",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "3",
+        "raw_text": "AVOCADO HASS  3 @ 0.69  2.07",
+        "seq": 6,
+        "unit": "each",
+        "unit_price": "0.69"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "DISH SOAP            1.49 T",
+        "seq": 7,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "tax",
+        "line_total": "0.12",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX                  0.12",
+        "seq": 8,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "19.87",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "0",
+      "fees": "0",
+      "items": "19.75",
+      "mismatch": false,
+      "printed_total": "19.87",
+      "tax": "0.12",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "fdkdabmfpmkgcmgh",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "ckbbpppofidkphjo",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 50.0,
+      "stage": "lines"
+    }
+  ]
+}

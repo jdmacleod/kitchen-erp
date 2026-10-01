@@ -1,0 +1,168 @@
+{
+  "header": {
+    "address_text": "ROUTE 9 AT SEAGRASS WAY, NORTH POINT, CALIF",
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "PACIFIC FRESH FOODS",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": "(555) 555-0199",
+    "purchased_at": "2026-03-11T16:15:00+00:00",
+    "purchased_at_local": "2026-03-11 09:15",
+    "store_identifier": "77",
+    "subtotal": "22.08",
+    "tax": "0.00",
+    "total": "22.08"
+  },
+  "lines": {
+    "line_count": 8,
+    "lines": [
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "1.59",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "2.31",
+        "raw_text": "BANANAS 2.31 lb @ 0.69/lb            1.59",
+        "seq": 1,
+        "unit": "lb",
+        "unit_price": "0.69"
+      },
+      {
+        "flags": [
+          "qty_inferred"
+        ],
+        "line_kind": "item",
+        "line_total": "4.47",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1.12",
+        "raw_text": "HEIRLOOM TOMATO 1.12 lb @ 3.99/lb            4.47",
+        "seq": 2,
+        "unit": "lb",
+        "unit_price": "3.99"
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "6.99",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "SPARKLING WATER 12PK          6.99",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "deposit",
+        "line_total": "1.20",
+        "parent_seq": 3,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "CRV                          1.20",
+        "seq": 4,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "3.49",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "KOMBUCHA 16OZ                 3.49",
+        "seq": 5,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "parent_inferred"
+        ],
+        "line_kind": "deposit",
+        "line_total": "0.05",
+        "parent_seq": 5,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "CA REDEMPTION VAL            0.05",
+        "seq": 6,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "item",
+        "line_total": "4.29",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "CHEDDAR SHARP 8OZ             4.29",
+        "seq": 7,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "line_kind": "tax",
+        "line_total": "0.00",
+        "parent_seq": null,
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX                           0.00",
+        "seq": 8,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "7",
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "22.08",
+      "deposits": "1.25",
+      "difference": "0.00",
+      "discounts": "0",
+      "fees": "0",
+      "items": "20.83",
+      "mismatch": false,
+      "printed_total": "22.08",
+      "tax": "0.00",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "iobkmlmnnnklaikk",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "jfcjngbndelnndde",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 56.0,
+      "stage": "lines"
+    }
+  ]
+}
