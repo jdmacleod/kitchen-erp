@@ -214,10 +214,10 @@ async def test_a_thumbnail_holds_the_same_pixel_ceiling_as_a_rendering(
     admin_client: httpx.AsyncClient, receipts_dir: Path, monkeypatch: pytest.MonkeyPatch
 ):
     """A small file can declare an enormous image; it is refused from the header."""
-    from app.services import receipt_images
+    from app.ingest import raster
 
     # 96x24 is 2,304 pixels; lower the ceiling under it rather than decode a bomb.
-    monkeypatch.setattr(receipt_images, "MAX_MEGAPIXELS", 0.001)
+    monkeypatch.setattr(raster, "MAX_MEGAPIXELS", 0.001)
     document = (await upload(admin_client, png_bytes("bomb"))).json()["document"]
     r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 48})
     assert r.status_code == 422
