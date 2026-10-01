@@ -249,20 +249,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Sub-phase 1G; a reader for the file
 
-### Barcode lookup from USDA branded foods
-
-**What:** Load a slim table of branded foods (barcode, brand, description, category, package weight) and use it to suggest a product and ingredient for an unknown barcode.
-
-**Why:** Scanning an unknown barcode could pre-fill a new product instead of starting from nothing.
-
-**Context:** Deferred by the ingredient-vocabulary handoff itself (its task T11) and kept deferred by the 2026-09-30 review. The branded CSV is 954 MB, mostly label text, which should never be imported. Pairs with camera scanning (UI section).
-
-**Effort:** M (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G; the household's go-ahead
-
-**Status (2026-10-01):** Taken into the product-ingestion plan (draft spec 13, ruling PV9) as the first enrichment source of sub-phase 2L. Remove this entry when spec 13 is folded.
-
 ## Operations
 
 ### Backup refuses to overwrite an existing backup

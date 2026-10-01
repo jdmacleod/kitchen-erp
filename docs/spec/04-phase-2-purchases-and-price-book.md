@@ -79,9 +79,9 @@ Receipt text and model output are untrusted. Prompts present the receipt text as
 
 Resolution decides which product each item line is. It runs as the `resolve` stage and again, per line, whenever a reviewer asks. Before matching, `raw_text` is normalized to `raw_text_norm`: uppercased, whitespace collapsed, leading item codes and PLU digits removed, trailing tax and category flags removed, and embedded price tokens removed. The normalization function is pure, versioned, and heavily tested, because alias quality depends on it.
 
-The ladder has five rungs. A **barcode** match, when a line carries a UPC or EAN that equals a `product.barcode`, resolves the line with `resolution = barcode` and no human action; receipt lines rarely carry one, import lines and Phase 6 scans usually do. An **exact alias** match on vendor and normalized text resolves the line with `resolution = alias`, or marks it `ignored` if the alias says to ignore. A **fuzzy alias** match uses trigram similarity against the same vendor's aliases and produces a suggestion, never an automatic resolution. A **model suggestion** is requested when neither applies: the service shortlists candidate products by trigram similarity of the raw text against product, brand, and ingredient names, narrowed by price plausibility where history exists, and asks the model to rank the shortlist or answer that none fits; the answer must validate and may only reference shortlisted identifiers. Finally the **human** chooses, creates a product, or marks the line as ignored.
+The ladder has five rungs. (2K widens the first into an identifier rung.) A **barcode** match, when a line carries a UPC or EAN that equals one of a product's GTIN identifiers (03, 1H), resolves the line with `resolution = barcode` and no human action; receipt lines rarely carry one, import lines and Phase 6 scans usually do. An **exact alias** match on vendor and normalized text resolves the line with `resolution = alias`, or marks it `ignored` if the alias says to ignore. A **fuzzy alias** match uses trigram similarity against the same vendor's aliases and produces a suggestion, never an automatic resolution. A **model suggestion** is requested when neither applies: the service shortlists candidate products by trigram similarity of the raw text against product, brand, and ingredient names, narrowed by price plausibility where history exists, and asks the model to rank the shortlist or answer that none fits; the answer must validate and may only reference shortlisted identifiers. Finally the **human** chooses, creates a product, or marks the line as ignored.
 
-`resolution` always names the rung whose answer was used, and `resolved_by` names the person who confirmed it; only `barcode` and `alias` may leave `resolved_by` null. Only the first two rungs resolve without a person, and only when the alias has been confirmed at least once and the line passes a price sanity check: if the implied normalized unit price differs from the median of the product's last five observations by more than a configurable factor, the line is resolved tentatively and flagged `price_outlier` for a glance. This catches the two ways aliases go stale, a vendor reusing an abbreviation for a different item and a change in pack size.
+`resolution` always names the rung whose answer was used, and `resolved_by` names the person who confirmed it; only `barcode`, `identifier` and `alias` may leave `resolved_by` null. Only the first two rungs resolve without a person, and only when the alias has been confirmed at least once and the line passes a price sanity check: if the implied normalized unit price differs from the median of the product's last five observations by more than a configurable factor, the line is resolved tentatively and flagged `price_outlier` for a glance. This catches the two ways aliases go stale, a vendor reusing an abbreviation for a different item and a change in pack size.
 
 Every human confirmation writes or updates an alias. Accepting a suggestion, choosing a product, or marking ignore each upsert `receipt_alias` for that vendor and normalized text, increment `confirmed_count`, and update `last_seen_at`. Re-pointing an existing alias to a different product is allowed and resets its count to one.
 
@@ -253,9 +253,169 @@ Allowed now:
 
 66. On every receipt fixture, the `header` and `lines` stage outputs after the extraction are identical to those before it.
 67. A benchmark run on fixtures leaves the row counts of `ingest_stage_result`, `purchase`, `purchase_line`, `price_observation`, and `receipt_alias` unchanged.
-68. The ingest pipeline never sends an image to a model; only the benchmark does.
+68. Receipt reading never sends an image to a model; only the benchmark does. (Product photo identification, 2L, may.)
 69. A reading whose reply fails validation, or validates with no item lines, counts as not reconciled; it is never scored from a partial reply. Timeouts and out-of-room replies are reported together as the runaway rate.
+
+## 2K — Receipt lines matched by item code
+
+Added 2026-10-01 with Phase 1 sub-phases 1H and 1I (`13-product-ingestion-and-photos.md` keeps the record). Warehouse-style receipts print an item code before the name, and weighed items print their label's code. Once a product carries that code (1H), a line can resolve by it.
+
+**The first rung widens.** The barcode rung (2D) becomes the identifier rung, still the first. It matches, for the receipt's vendor:
+- a 12–14 digit code with a valid check digit, as a GTIN;
+- a weighed-item label, as its `rw_item`;
+- a code in the position the vendor prints them (`vendor.code_position`, for example the leading token), as a `vendor_sku`, `rw_item` or `plu`.
+
+The code is read before normalization strips leading codes from `raw_text_norm`, using anchored patterns that cannot backtrack. A match resolves the line with `resolution = identifier` (old rows keep `barcode`), may leave `resolved_by` empty like an alias, and passes the same price-outlier check. A short digit run anywhere else is only a suggestion.
+
+**Learning a code.** When a reviewer identifies a line that carries a code (in review or the to-identify queue), the form offers "Remember {code} for {product}". Accepting records the identifier for that vendor. Nothing is recorded without that click.
+
+**Count first.** Before this sub-phase is built, a counts-only query on the household's committed receipts reports, per vendor, how many lines carry a code-shaped token. Only aggregate counts leave the database. If few do, the order of the remaining sub-phases is revisited.
+
+### Acceptance criteria
+
+70. A synthetic warehouse-style receipt fixture carries item codes in the leading position, one of which matches a seeded `rw_item` for its vendor. That line resolves with `resolution = identifier`, and an outlier price on it is flagged as for aliases.
+71. A digit run of the same length elsewhere on a line, or on a receipt from a vendor without `code_position`, produces a suggestion, never a resolution.
+72. Identifying a queued line that carries a code offers to remember the code, and records it only on confirmation.
+
+## 2L — Product proposals and review
+
+A product can now start from a photo, a scanned barcode, a vendor page (2M) or a lookup (2N). Each arrives as a **proposal** that a person reviews. Nothing becomes a product, identifier, listing, photo or price without that person's accept.
+
+**What a proposal holds.** A capture (`product_capture`) is the evidence. A proposal (`product_proposal`) is what the evidence says:
+- field candidates with their source;
+- matches against the catalog;
+- photos (`product_image` rows pointing at the proposal);
+- an optional listing and price.
+
+Captures are deduplicated by a hash of their payload, without the capture time, and only against captures whose proposal is still pending. A page's text (`dom_text`) is purged when its proposal is decided: the runtime role may update only `payload` on `product_capture`, and a trigger allows only that removal.
+
+**Fields and their sources.** Each field keeps its chosen value, its source and the alternatives. The merge follows a precedence table, and confidence only breaks ties within one source. A model's answer can only fill a field, never override one; its confidence is capped (0.6 for text, 0.5 for a photo). Identity conflicts are flagged and never resolved silently: a page GTIN against a scanned one, or two sizes more than 5% apart. Money, quantities and sizes are Decimals from input to storage; a captured page's structured data is parsed from its raw text with `parse_float=Decimal`.
+
+| Field | Precedence |
+|---|---|
+| brand, GTIN, pack | person > manufacturer > page data > adapter > page meta > model > address |
+| title | person > adapter > page data > manufacturer > page meta > model > address |
+| item number, item code, price, average weight, on sale, store, address | person > adapter > page data > page meta > model > address |
+| ingredients text | person > manufacturer > adapter > model |
+
+**Where the evidence comes from in this sub-phase.**
+- **Photos.** Photos come through Capture's "Photograph a product" (09). One request carries up to four photos with their roles, and becomes one proposal.
+  - With a barcode in a photo, it is treated as a barcode capture.
+  - Without one, the configured vision model reads it, using the same setting as vision receipt reading (2J).
+  - With no vision model set, the server reads the photo with Tesseract and sends the text to the text model.
+  - A proposal is always created, even if nothing could be read.
+- **Barcodes.** `POST /api/v1/barcode-lookups` looks a code up in the catalog first.
+  - A weighed-item label needs a store: the given location, or one within 150 m of the given position. Otherwise it answers with the parsed code, price and weight, and the screen asks "Which store is this label from?".
+  - An unknown GTIN is looked up in the local USDA branded table, then becomes a proposal.
+- **USDA branded foods.** `kerp import usda --branded` adds an opt-in, slim table of branded foods: GTIN, brand, description, category and package size. It keeps the latest row per GTIN, zero-pads codes before checking their digit, and lists invalid ones. It is a local read; nothing is sent anywhere.
+
+**Reading a proposal.** `GET /api/v1/product-proposals/{id}` returns the proposal with its fields, sources, alternatives, matches, photos (with their processing status) and the status of its jobs; it is also how a client follows a capture it posted.
+
+**Matching.** An identifier or a known listing gives a strong match, and the review preselects "Update {product}". Otherwise trigram similarity over title and brand offers up to eight candidates, and the local model may pick one or answer "new". An id outside the shortlist is rejected.
+
+**Accept.** Accept runs in one transaction:
+- it locks the proposal;
+- it creates or updates the product, its identifiers, listing and photos (merging a photo the product already has);
+- it runs the main-photo choice and the stock-photo check;
+- it records at most one listing price through `pricebook.observe`;
+- it closes the proposal.
+
+A barcode another product holds answers `409 identifier_taken` with that product, and review offers "Update {product} instead". A proposal that is no longer pending answers `409 proposal_not_pending`. Any failure rolls everything back and leaves the proposal pending. Photos still processing finish after accept.
+
+**One pending proposal per page or barcode.** A newer capture of the same vendor page supersedes the older pending proposal. A newer capture with the same GTIN supersedes one only when neither has a page. Generated columns `listing_key` and `gtin_key` carry partial unique indexes on pending rows. Every insert or update that changes them goes through one helper: lock, supersede, write, retrying once on a conflict.
+
+**Posted prices.** A listing price is a `price_observation` with `source = listing` and the listing it came from. Posted prices are kept out of the price book's default views, which are the ones comparison, cheapest, best recent price and costing read. They are also kept out of receipt resolution's outlier and narrowing checks. A parallel `*_all` view chain serves the "Include posted prices" filter. A chain-priced vendor's price is recorded at the location the reviewer confirms, preselected as the household's most recently used location of that vendor, and applies to all its locations through `offer_applicable`. A location-priced vendor's price needs its store mapped, and with no mapping the review defaults to recording no price.
+
+**Live-model checks.** The opt-in `pytest -m llm` suite gains product cases: invented captures and label photos generated at test time. It reports field accuracy per model beside the receipt cases and never runs in CI.
+
+**Inbox and background lines.** Proposals appear in Needs you as one row per kind (09):
+- "5 products to review";
+- product updates;
+- "4 posted prices changed" (2N).
+
+The reading line also counts product pages and photos being read, and says when they stall (09).
+
+### Acceptance criteria
+
+73. A capture's proposal lists every field with its chosen value, source and alternatives. A page GTIN that conflicts with a scanned one is flagged and never resolved silently.
+74. A proposal whose GTIN matches a product preselects "Update". A fuzzy-only match preselects nothing, and a model answer naming a product outside the shortlist is rejected.
+75. Accepting a new-product proposal creates the product, identifiers, listing, photos and main photo in one transaction. A forced failure mid-accept leaves no rows and the proposal pending. Accepting with a barcode another product holds answers `409 identifier_taken` naming it.
+76. Two captures of one page at once leave one pending proposal; an update that adds a GTIN matching another pending proposal supersedes it. Both completion orders of accept and supersede are tested with pause points. A newer capture with the same GTIN supersedes a pending proposal only when neither has a page.
+77. A capture of the same page after its proposal was decided creates a new capture and proposal. A retry with the same payload and a new capture time returns the existing one.
+78. Once a proposal is decided its page text is gone, and an update to any other capture column is refused by privilege and by trigger.
+79. A listing observation newer than a receipt observation changes no default view, no outlier result and no narrowing; with the filter on, it appears.
+80. A barcode lookup returns a product on an identifier hit. A weighed-item label at a store with that `rw_item` returns the product with its price. A weighed-item label with no store or nearby location returns the parsed fields and no product. An unknown code returns a proposal, with USDA branded fields when the table is loaded.
+81. Four photos in one request make one proposal. A photo with nothing readable still makes one. With no vision model, the Tesseract-then-text path runs, and the proposal says which path it took.
+82. Proposal rows appear in the inbox as aggregates and leave on accept or reject. The reading line counts product work and turns to its stalled wording past `INGEST_STALL_MINUTES`.
+83. Every product path makes no network request, verified by the existing network guard.
+
+## 2M — Capturing a vendor page
+
+**The bookmarklet.** Settings → Capture (09) serves a bookmarklet tied to the app's address. On a vendor page it collects:
+- the page and canonical addresses;
+- the title and meta tags;
+- each structured-data block as its raw text;
+- the visible text of the product region (`<main>` or its equivalent, never navigation or headers), up to 200 KB;
+- up to 12 image addresses.
+
+It also tries to read up to four of those images itself (5 MB each). This is best effort: many sites forbid it, the addresses are always kept, and nothing depends on it. It never collects cookies, storage or form values.
+
+**The clip window.** The bookmarklet opens `/capture/clip`:
+1. The window says it is ready, and only then does the page send its message.
+2. The window accepts one message, only from the window that opened it, and validates it.
+3. It shows what will be saved and saves only on the person's click.
+
+If the person is signed out, they sign in inside the window and the exchange repeats. A site that cuts the link between page and window gets "This site blocks clipping. Paste the address in Add product instead." Its states and words are in 10.
+
+**Vendors.** The window matches the page to a vendor by its address. A page from a store the household hasn't added offers a vendor picker, or "Save without a store", which keeps the product details but no listing or price.
+
+**Extraction.** Generic extraction runs on every capture: structured data, meta tags, the address and the model. Retailer-specific adapters are pure functions loaded from a read-only plugin folder (`data/plugins/`, mounted at `/plugins`) named by `PRODUCT_ADAPTERS` (module and function). A missing or failing adapter is logged and skipped, and health detail lists which loaded. An adapter that raises during a capture is recorded on the stage result, and generic extraction carries on. The public repository holds the interface, and tests it on an invented retailer.
+
+**Paste an address.** The Add product drawer takes an optional web address first (10). Name and item number from the address are prefilled. With the lookup helper set up, saving queues the page for it; without one, the drawer says the page can't be read from here.
+
+### Acceptance criteria
+
+84. A capture whose page text is over 200 KB is refused with a 413-class error naming the field. A retry with the same `Idempotency-Key` returns the original response.
+85. The clip window ignores a message from any window but its opener and saves nothing without a click. With a cut-off opener it shows the blocking message. On a second-origin test page it completes the ready handshake, including after signing in.
+86. Structured data with a price such as 0.10 or 19.99 reaches the proposal and the observation as exact Decimals.
+87. On an invented storefront fixture, the extraction ladder fills title, price, size and item number from structured data and meta tags. On a meta-only fixture, it fills the title and photo from meta and the item number from the address. An installed test adapter adds its fields, and a missing or raising adapter leaves the generic fields.
+88. Pasting an address for a capture-only vendor makes no network request and prefills from the address.
+
+## 2N — The products helper contract
+
+Outbound work for products (Open Food Facts and USDA lookups, fetching pages, downloading listing photos, refreshing listings, retailer-specific scraping, background removal) lives outside this application, in a separate private repository, `kitchen-erp-products`. This application makes none of those calls. It exposes only:
+- **A lookup queue (`lookup_request`).** It holds:
+  - the barcodes and pages a person asked about with "Look this up online" (for a proposal) or by pasting an address in Add product (for the product it created);
+  - every unknown scanned barcode, but only if the household turns that setting on (off by default);
+  - `cutout` requests for the household's photos that have no mask. These are queued automatically, because the photo never leaves the machine; the helper may read that one photo's original.
+
+  Page captures with an installed adapter never use the queue.
+- **Two token scopes.**
+  - `products:read` reads the queue and nothing else.
+  - `products:suggest` posts answers.
+  - Both are default-deny, as in 1F.
+- **A versioned answer format, `kitchen-erp-products/1`.** An answer holds field candidates with their source, confidence and source address, plus photos with their attribution and masks. The app validates it like a model reply, merges it into the proposal, and a person still accepts. Unknown fields and over-cap confidences are refused.
+  - An answer to an accepted proposal opens a Product update if it would change anything.
+  - An answer to a rejected one is recorded and closed.
+- **Listing refreshes.** The helper may report changed posted prices. They appear as one inbox row, "4 posted prices changed", and nothing is recorded until a person accepts.
+
+The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
+- HTTP and HTTPS only;
+- refusing loopback, private, link-local and multicast addresses, re-checked after each redirect;
+- size and type limits;
+- no cookies and no credentials;
+- an identifying User-Agent with no contact address;
+- `robots.txt` and per-host rate limits.
+
+This sub-phase is built just before the helper itself.
+
+### Acceptance criteria
+
+89. A `products:read` token reads only the lookup queue, and every other route answers 403 (route walk). A `products:suggest` token posts only answers.
+90. An answer that validates merges into its pending proposal with each field's source. An answer with an unknown field or an over-cap confidence is refused and recorded. An answer to an accepted proposal opens a Product update; one to a rejected proposal is recorded and closed.
+91. Refreshed listing prices appear as one aggregate inbox row and are recorded only for the rows a person accepts.
+92. The `kitchen-erp-products/1` schema is checked by a contract test that the helper repository runs too. A `products:read` token can read the original of a photo only through an open `cutout` request for it, and a mask posted for it produces `cutout_source = tool`.
 
 ## Out of scope for Phase 2
 
-The native capture app itself, barcode lookup against external databases, vendor-specific deterministic parsers, vision-model OCR in the ingest pipeline (2J allows measuring it), any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.
+The native capture app itself, barcode lookup against external databases (the optional products helper does it outside this application, 2N), vendor-specific deterministic parsers, vision-model OCR in the ingest pipeline (2J allows measuring it), any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.

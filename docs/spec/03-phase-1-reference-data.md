@@ -277,6 +277,132 @@ A merge across canonical units is allowed. The confirmation names the unit chang
 85. The Link inbox row appears while any ingredient is unreviewed and leaves when none is. The USDA row follows the rule above and is absent when no USDA data is loaded.
 86. `kerp ingredients check` reports skipped plurals, ingredients with no USDA reference, and references absent from the loaded release, and exits zero; it makes no change.
 
+## 1H — Product identity, kinds and listings
+
+Added 2026-10-01 from a design-session handoff (`13-product-ingestion-and-photos.md` keeps the record) and its CEO, engineering and design reviews. A product has had one free-text `barcode`. This sub-phase gives it every code it is known by (barcodes, produce codes, a store's item numbers, the item code inside a weighed-item label), a kind that says how it is identified, and the vendor pages it is sold on. It is the foundation for product photos (1I), receipt matching by code (04, 2K) and assisted product creation (04, 2L–2N). Nothing here makes an outbound request.
+
+**Build order.** The product sub-phases are built in this order, each landing on its own: 1H, then 1I, then 2L, then 2M, then 2K, then 2N just before the products helper. 2K moved after 2M on 2026-10-01: a count of the household's receipts found item codes on 3 of 166 lines (04, 2K).
+
+**Identifiers.** `product_identifier` (`02`) holds one row per code:
+- `gtin`: barcodes, stored as GTIN-14 with a valid check digit. UPC-A, EAN-13, EAN-8 and GTIN-14 normalize to the same value; UPC-E expands to UPC-A first. An 8-digit code that is valid both as EAN-8 and as UPC-E is read by the symbology the client reports; typed without one, the form asks "Is this EAN-8 or UPC-E?".
+- `plu`, `vendor_sku`, `rw_item`: produce codes, a store's own item numbers, and the item code inside a weighed-item label. All three belong to one vendor; the same code may sit on each vendor's own product.
+- `other`: a code that is none of the above, kept exactly as entered and matched exactly.
+
+One pure module, `app/catalog/identifiers.py`, normalizes and validates codes and replaces the check-digit code in receipt resolution; `app/catalog/barcodes.py` parses weighed-item labels. Both are free of I/O and covered by table-driven and property-based tests.
+
+**The barcode field stays.** The API keeps `barcode` and `clear_barcode` on product create, update and read, `barcode` on search hits, and `?barcode=` on the product list. They read and write the product's barcode identifier: its earliest `gtin` or `other` identifier, shown in display form (a GTIN-14 shortened to 8, 12 or 13 digits). PATCH replaces that identifier and leaves any others. The list parameter, search and the receipt rung normalize the query before matching, and a code another product holds still answers `409 barcode_taken`. An 8, 12, 13 or 14 digit code with a wrong check digit is refused with `422 invalid_gtin`; any other code is stored as `other`. The capture contract (04, 2F) does not change.
+
+**Moving existing barcodes.** One reversible migration moves `product.barcode` into `product_identifier` and drops the column. Each moved row keeps the original string as `legacy_value` and `source = migrated_barcode`:
+- valid GTIN forms become `gtin`;
+- an 8-digit value valid both ways becomes `other` and is listed;
+- a 4–5 digit value becomes a `plu` scoped to the product's exclusive vendor, or `other` when the product has none;
+- anything else becomes `other`.
+
+`kerp migrate --check-barcodes` prints the counts per outcome before the migration runs. The down migration restores the column byte for byte from `legacy_value`. The migration carries its own copy of the normalizer, so later changes to app code cannot change it.
+
+**Kinds.** `product.kind` says how a product is identified:
+
+| Kind | Shown as | For | Identified by |
+|---|---|---|---|
+| `branded` | Branded | A manufacturer's packaged product | GTIN |
+| `private_label` | Store brand | A store's own brand | The store's item number, plus a GTIN when scanned |
+| `random_weight` | Weighed | Meat, deli and cheese sold with a printed weight-and-price label | The label's item code at that store |
+| `loose` | Loose | Produce sold by PLU or weight at the register, with no label | PLU at that store, or nothing |
+| `unbranded_vendor` | Market stall | One stand's or market's own item | Its exclusive vendor |
+
+The migration sets kinds from evidence: an exclusive vendor gives Market stall; a brand or a barcode gives Branded; anything else is Loose. The kind stays editable.
+
+**Attributes.** `product.attributes` holds kind-specific details, validated by a Pydantic model chosen from the kind and the ingredient's category. Only meat and seafood have one in 1H:
+- species;
+- primal and cut, as free text;
+- bone (bone-in or boneless);
+- skin (skin-on or skinless);
+- grade;
+- form (whole, sliced, cubed or ground).
+
+Other categories accept an empty object.
+
+**Whose value wins.** `product.field_source` records where each field came from, as `vendor.field_source` does (1F). When a person accepts a proposal (04, 2L), what they chose is written. Only an answer the lookup helper sends after a proposal was decided (04, 2N) uses 1F's rule, and then a person's edit always wins.
+
+**Vendor facts for products.** These facts sit on `vendor`:
+- `platform`: which storefront software its pages run on.
+- `fetch_policy`: whether anything may fetch its pages.
+  - `capture_only` is the default.
+  - `server_fetch` lets the lookup helper fetch them.
+  - `none` turns capture off for that vendor.
+- `rw_layout`: where the item code and price sit in its weighed-item labels.
+- `code_position`: where its receipts print item codes.
+
+`vendor_location.platform_store_ref` maps a storefront's own store id to one of the household's locations. The interchange format becomes `kitchen-erp-vendors/2`, which carries these fields:
+- Import reads `/1` and `/2`.
+- Export writes `/1` when the new fields are empty and `/2` otherwise.
+- The `kitchen-erp-vendors` repository's checks learn `/2` in the same change.
+
+**Listings.** `vendor_listing` is a vendor's page for a product. It is keyed by vendor and canonical address: the page's canonical link, with the query string, fragment and any store-scope path removed. The removed scope is kept as `store_ref`.
+
+### Acceptance criteria
+
+87. GTIN normalization maps every UPC-A, UPC-E, EAN-8, EAN-13 and GTIN-14 form in its test table to the same GTIN-14 and refuses a wrong check digit. An 8-digit code valid both as EAN-8 and as UPC-E needs a symbology, and without one is never read silently. Invalid-check-digit vectors in tests carry an inline `pii-scan: allow`.
+88. `parse_random_weight` reads the item code and price or weight from a table of labels under each supported layout and returns exact Decimals, or `None` for a zeroed price field.
+89. A `vendor_sku`, `rw_item` or `plu` identifier without a vendor, or a `gtin` or `other` identifier with one, fails a check constraint. A duplicate scheme, value and vendor fails the unique index, which treats a missing vendor as equal (`NULLS NOT DISTINCT`).
+90. The barcode migration has a seeded test. It upgrades from the previous head with synthetic barcodes of every form: GTIN forms, an ambiguous 8-digit value, 4–5 digit values with and without an exclusive vendor, and other text. It asserts each outcome, then downgrades and asserts the column is byte-equal to before. `kerp migrate --check-barcodes` prints the counts and changes nothing.
+91. The existing barcode tests keep their assertions; only how fixtures set barcodes may change. These are the search, product, resolution, import, ingest and capture-contract tests, plus the 100 ms typeahead test (criterion 15). The OpenAPI document does not change for `barcode` fields or parameters.
+92. A product's kind is set by the migration from the rules above, and each kind's attribute model refuses an unknown species and accepts `{}` for categories without a model.
+93. `kitchen-erp-vendors/1` files import unchanged. A `/2` file round-trips its new fields, and an export with no new fields writes `/1`.
+94. Canonical-address normalization strips query strings, fragments and known store-scope segments, and records the scope as `store_ref`. It is tested on invented storefront addresses.
+
+## 1I — Product photos
+
+Added 2026-10-01 with 1H. Every product gets a main photo: the household's own, a manufacturer's, or one from a vendor page, with a placeholder when there is none. The household's own photos look consistent because the product can be lifted off its background (a cutout) and shown on the card surface in either theme. Photos can be added to existing products here; photos that start a new product arrive with proposals (04, 2L).
+
+**Storage.**
+- **Originals** are kept under `MEDIA_PATH` (default `/data/media`) at `originals/<aa>/<bb>/<sha256>.<ext>`:
+  - every original is stored with all metadata, including GPS, removed;
+  - it is oriented upright and converted to sRGB;
+  - it is capped at 3,000 px on the long edge, at quality 90;
+  - nothing else in its pixels is changed (no colour adjustments).
+- **Masks** are stored the same way under `masks/`. A mask is a single-channel PNG in the photo's displayed (post-EXIF) orientation, at the uploaded size. The server applies the same rotation and resize to the mask as to the photo.
+- **Derivatives** are WebP at 160, 480 and 1,200 px, plus cutout renditions with alpha (`cutout-480`, `cutout-1200`, square, 8% padding). They live under `derived/`, keyed by the photo's sha, the pipeline version and, for cutouts, the mask's sha. They are disposable: `kerp images rebuild` recreates them byte for byte for a given pipeline version, and the pipeline version changes whenever Pillow or libwebp does.
+- **Masks that cover too little or too much.** A mask covering under 5% or over 95% of the photo is discarded, and the photo has no cutout.
+
+**Processing.** An upload is stored and queued without decoding. The api reads only the header, to refuse an unreadable type (`415 unsupported_image`), a photo over 50 megapixels (`422 image_too_large`) or a mask of the wrong size (`422 mask_mismatch`). The worker checks the size again before decoding. Receipts reuse the same guard in `ingest/raster.py`, with their own limit. A row starts with status `processing`, deduplicated on the uploaded bytes (`upload_sha256`), so the same photo twice returns the same image. The worker decodes, normalizes, hashes, makes derivatives and sets the photo `active`. A photo that fails to process says so on the product page, with Retry.
+
+**Jobs.** Product work runs in `product_job`, with each stage's output recorded in `product_stage_result` (append-only, protected like `ingest_stage_result`). The worker claims receipts first, then product jobs, then name suggestions. It commits before any model call.
+
+**Main photo.** `select_primary` is a pure function that runs on every insert, hide, use-as-main and unset. The person's choice wins. Otherwise the order is:
+1. The household's photo with a cutout.
+2. The household's photo without one.
+3. A manufacturer's or Open Food Facts photo.
+4. A vendor-page photo.
+
+Within that order, higher resolution comes first, then the newest. A vendor-page photo matching photos on three or more other products of the same vendor is marked as a likely stock photo and ranks last (checked when a proposal is accepted, 2L). Choosing a main photo never deletes one. The worker and the person's choice both lock the product row before choosing.
+
+**Serving.** `GET /api/v1/media/<sha>/<variant>-<pipeline_version>[-<mask_sha>]` requires a session or token and answers `Cache-Control: private, max-age=31536000, immutable`. Because the address names its version, a change produces a new address and nothing goes stale. A missing derivative whose original exists is rebuilt; a missing original is a `404`, and the product shows its placeholder.
+
+**Backups.** `kerp backup` copies originals and masks (not derivatives) and records their hashes; `kerp restore` verifies each one and reports mismatches. Restore re-applies the runtime role's privileges from `app/core/grants.py` (`01`); the new append-only table is registered there.
+
+**Cutouts.** A cutout comes from a mask. The Phase 6 app will send one; until then the optional products helper (04, 2N) sends one made by a background-removal model. The helper finds photos without a cutout through `cutout` lookup requests, queued automatically because the photo never leaves the machine (04, 2N). Its licence must allow this use (u2net is Apache-2.0, BiRefNet is MIT; isnet-general-use and BRIA RMBG-2.0 are refused), and the choice is recorded in `docs/licensing.md`. Without a mask, a photo simply has no cutout.
+
+**Adding photos.** `POST /api/v1/product-photos` with `product_id` adds up to four photos to an existing product, each with a role:
+- Product;
+- Front label;
+- Nutrition;
+- Ingredients;
+- Shelf tag.
+
+The first is an `active` product photo; the label roles never become the main photo. The product page has "Use as main photo", "Hide" and "Show hidden (n)" (10).
+
+### Acceptance criteria
+
+95. Uploading the same photo twice to a product returns the same image. Stored originals, masks and derivatives contain no EXIF, XMP or GPS data, checked on a generated JPEG carrying GPS tags. A generated HEIC produces every derivative.
+96. Deleting `derived/` and running `kerp images rebuild` reproduces byte-identical derivatives for the current pipeline version. A media address with a different pipeline version or mask sha is a different address.
+97. A generated portrait photo with EXIF orientation 6 and a mask in displayed orientation produces a square cutout with alpha and 8% padding. A mask covering 2% of the photo produces no cutout, and the photo stays usable.
+98. A photo whose header declares more than 50 megapixels is refused with `422 image_too_large` before decoding. An unreadable type is refused with `415`.
+99. `select_primary` matches a table of photo sets covering the person's choice, stock-photo marks and the source order; choosing and then unsetting a main photo restores the rule's choice, and concurrent choices end with one main photo.
+100. Media requires a session or token, answers `private, immutable` caching, and is served under `/api/v1` with no proxy change.
+101. `kerp backup` and `kerp restore` include originals and masks, and restore reports any hash mismatch. Privileges after restore equal those after migrating, `product_stage_result` included.
+102. With no mask, a photo is processed without a cutout. With a mask posted by a stub helper, it gets `cutout_source = tool`.
+
 ## Out of scope for Phase 1
 
-Barcode lookup against external product databases, geocoding of typed addresses, drive times and routing, recipes, and anything involving purchases or prices. Address geocoding through a proxied public Nominatim is a small optional addition that may be made at the end of the phase if wanted, behind `ENABLE_NOMINATIM`, subject to the same no-outbound-by-default test as Overpass.
+Barcode lookup against external product databases (the optional products helper does that outside this application; see 04, 2N), geocoding of typed addresses, drive times and routing, recipes, and anything involving purchases or prices. Address geocoding through a proxied public Nominatim is a small optional addition that may be made at the end of the phase if wanted, behind `ENABLE_NOMINATIM`, subject to the same no-outbound-by-default test as Overpass.

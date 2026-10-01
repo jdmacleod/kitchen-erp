@@ -104,7 +104,7 @@ Category colours are the only place produce hues appear. `theme.css` defines eac
 
 When category becomes a managed list, use exactly these nine keys so the chip mapping needs no change. Adding a category is two lines in `theme.css` plus one synonym entry in the backend module.
 
-The `.cat-edge` class (a category-coloured leading edge on list rows) exists in `theme.css` but is not used in the approved layouts. Prefer chips.
+The `.cat-edge` class (a category-coloured leading edge on list rows) exists in `theme.css` but is not used in the approved layouts. Prefer chips. The one other use of category colour is the placeholder for a product with no photo (PD15): a square in `--cat-bg` with the product's first letter in Fraunces `--cat-fg`, no glyph and `alt=""`; no category uses the neutral chip colours.
 
 ## Typography
 
@@ -142,7 +142,7 @@ Scale and rules:
 
 Radius scales with hierarchy: controls are smaller than the surfaces that contain them.
 
-Depth is quiet. Cards use a 1px `neutral-200` border and, for primary surfaces only, the warm `--shadow-card` shadow. Drawers, sheets, dialogs and the search palette get a stronger shadow over a walnut scrim at roughly 32–40% opacity. No gradients.
+Depth is quiet. Cards use a 1px `neutral-200` border and, for primary surfaces only, the warm `--shadow-card` shadow. A product cutout sits on the card surface it is shown on (`white`, `neutral-900` in dark) with `--shadow-cutout`, a drop shadow built from `--shadow-card`'s walnut values; photos without a cutout fill square tiles and sit contained on `neutral-100` in a detail view (PD14). Drawers, sheets, dialogs and the search palette get a stronger shadow over a walnut scrim at roughly 32–40% opacity. No gradients.
 
 ## Core components
 
@@ -168,6 +168,7 @@ These are patterns, not a component library; build them as the pages need them.
   - It can be carried across a navigation in router state. The destination page consumes that state on mount and replaces the history entry, so Back and reload do not show the notice again.
   - Only one notice shows at a time. It stays until dismissed or until the user navigates, except the shelf-price "Saved" notice, which clears after 3 seconds (G4).
   - Floating toasts are not used.
+- **Product photo tiles (PD13)**: a source badge (Your photo, Open Food Facts, Manufacturer, Store page) is a neutral pill, and a field filled by the products helper carries the neutral badge "Lookup helper"; quality and stock flags (Low resolution, Blurry, May be a stock photo) are squash pills; the main photo has a neutral raised border and a "Main photo" label, never a herb ring, which is reserved for focus.
 - **Empty state**: one sentence saying what to do next, plus the relevant action. A filtered-empty list names the filter and offers "Clear filters"; a truly empty list offers the first create action (G11). Never an empty table with no guidance.
 
 ## Accessibility floor

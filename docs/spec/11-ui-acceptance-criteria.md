@@ -33,7 +33,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-2.4 to UI-2.7** *Deferred* (S3): the kitchen switcher, the per-user current kitchen, kitchen tags, and kitchen-scoped endpoint rules. They return with Phase 4.
 - **UI-2.8** ⌘K / Ctrl+K opens search from any page. Results are grouped by type with ingredients first, fully keyboard-navigable, and barcodes match exactly. `q` is 1–200 characters. Before typing, the palette shows device recents or the hint (G15).
 - **UI-2.9** *Deferred* (S2): searchable actions.
-- **UI-2.10** Capture offers the three modes in 09: a bottom sheet on phone and tablet, a dialog on desktop (G14).
+- **UI-2.10** Capture offers the modes in 09 (four since 2L, PD12): a bottom sheet on phone and tablet, a dialog on desktop (G14).
   - With geolocation granted, it pre-fills the nearest adopted vendor location, labelled "Near".
   - Without geolocation, it pre-fills the last-used location, labelled "Last used · change" (G2).
 - **UI-2.11** `GET /api/v1/inbox` returns receipt, couldn't-read, identify and bridge items, oldest first, with the fields listed in 09 plus `reading: {count, oldest_at}`.
@@ -75,7 +75,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-4.1** Below 1024px the sidebar is replaced by the five-tab bar in 09, with Capture raised in the centre and the second tab labelled "Purchases" (G19, T18).
 - **UI-4.2** All interactive elements on phone and tablet layouts are at least 44×44px. Layouts work from 360px to 1023px wide with no horizontal scroll, which e2e checks at 360, 375, 390 and 1000px, comparing against the configured viewport width.
 - **UI-4.3** The phone Home shows the wordmark, the top three inbox items with "See all" expanding in place, and recent purchases (G13, G6).
-- **UI-4.4** Capture opens as a bottom sheet with the three modes and the detected or last-used store, labelled as in UI-2.10.
+- **UI-4.4** Capture opens as a bottom sheet with the four modes and the detected or last-used store, labelled as in UI-2.10.
 - **UI-4.5** Log a shelf price accepts a barcode or a product name, lists the last five products logged at the store before typing, and shows the matched product, the price field, the on-sale toggle, last paid here and best known (G3). Camera scanning is *deferred* to Phase 6 (S1).
 - **UI-4.6** The shelf price field opens a decimal keypad. Save and "Save and scan another" are anchored in the bottom thumb zone and behave as 10 specifies (G4).
 - **UI-4.7** An unknown barcode offers to create the product with the barcode pre-filled, then returns to price entry.
@@ -95,3 +95,23 @@ Added 2026-09-30 with sub-phase 1G (`03`); layouts and copy are in 10. Decision 
 - **UI-5.6** Needs a bridge shows USDA suggestions as grouped rows: densities as radios, measures as checkboxes, per-ingredient "Accept selected" and Skip, no accept-all, and the release footer. A race offers "Keep it · Replace" with Keep it first (DV8, DV18, DV19).
 - **UI-5.7** The Link and USDA inbox rows appear and leave as 03 describes; with no USDA data, the section shows the not-loaded copy and there is no USDA row (DV6, DV7).
 - **UI-5.8** Below 1024px, link-page rows stack with 44px action buttons and the count strip stays pinned; every 1G control has a visible focus ring and meets 4.5:1 contrast in both themes (DV11).
+
+## UI-6 — Product ingestion and photos (1H–2N)
+
+Added 2026-10-01 with sub-phases 1H, 1I and 2K–2N (`03`, `04`); layouts and copy are in 10. Decision IDs (PD1–PD21) refer to that day's design review, recorded in `13`.
+
+- **UI-6.1** Proposals appear in Needs you as one aggregate row per kind ("5 products to review", product updates, "4 posted prices changed"), with neutral badges and no image; Review opens the oldest (PD3).
+- **UI-6.2** The review page shows the photo first and opens only fields with alternatives or conflicts; with a strong match, no conflicts and an ingredient chosen it collapses to the summary, and Accept stays disabled with its reason while something blocks it (PD1, PD2).
+- **UI-6.3** Every review state in 10 shows its words: still reading, photo preparing, superseded, decided earlier, barcode taken, accept failed and nothing read (PD6).
+- **UI-6.4** After accept, the next proposal opens with the "Added … · Open it" Notice while any wait; after the last, the product page. Reject shows "Rejected. The capture is kept." with no dialog (PD10).
+- **UI-6.5** A full review, including choosing the main photo and an ingredient, completes without a pointing device: Tab order follows the sections, radio groups move with arrow keys, and Accept is Ctrl/Cmd+Enter (PD18).
+- **UI-6.6** Below 1024px the review is one column with Reject and Accept anchored at 56px; every control is at least 44px (PD17).
+- **UI-6.7** Source badges are neutral, flags and conflicts are squash, the main photo is marked by a neutral border and label, and no new element uses herb except actions (PD13).
+- **UI-6.8** A cutout sits on the card surface with `--shadow-cutout` in both themes, and a product without a photo shows the category-letter placeholder (PD14, PD15).
+- **UI-6.9** The product page's Photos card offers "Use as main photo", "Hide", "Show hidden (n)", "Cutout | Original" when a cutout exists, and the attribution caption; the Labels card shows each label's read text (PD4, PD16).
+- **UI-6.10** The Products table leads each row with a 40px photo or placeholder (PD5).
+- **UI-6.11** Capture offers four modes; "Photograph a product" sends up to four photos as one proposal and confirms with the Notice (PD11, PD12).
+- **UI-6.12** The reading line counts product work in one sentence and turns squash when stalled; an overdue lookup gets its own line; neither counts in the badge (PD7).
+- **UI-6.13** "Look this up online" is absent without a products helper, and shows its waiting, overdue and answered states with one (PD8).
+- **UI-6.14** The clip window shows every state in 10, including signing in inside the window and the blocked-site message, and stays open after saving (PD9, PD21).
+- **UI-6.15** Settings → Capture offers the draggable link, the address it is tied to and a copy-code fallback; the Add product drawer's address field prefills with the "From the address" hint and counts as typed input (PD19, PD20).

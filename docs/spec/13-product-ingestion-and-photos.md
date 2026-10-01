@@ -1,6 +1,16 @@
 # 13 — Assisted Product Ingestion and Product Photos
 
-**Status: draft for review, 2026-10-01. Not approved for implementation; `CLAUDE.md` names Phases 1 and 2 as the approved scope.** This document arrived as a handoff from a design session and is kept close to how it arrived. It was renumbered from 14, its cross-references now follow this repository's documents, and its examples use invented vendors, codes and prices. Its tensions with documents 00–12 are being settled in planning.
+**Status: folded, 2026-10-01. Kept as the record of the design-session handoff; it is not a work order.** After CEO, engineering and design reviews (each with an independent second reader), the work became Phase 1 sub-phases 1H and 1I (`03`) and Phase 2 sub-phases 2K–2N (`04`), with tables in `02`, settings and storage in `01`, and screens in `08`–`11`. Where this document and those disagree, they win. It was renumbered from 14, and its examples use invented vendors, codes and prices. Notable changes from this record:
+- Everything that needs the internet moved out of this application into a separate private helper, `kitchen-erp-products`, which reads a lookup queue and posts answers a person reviews (2N). Non-negotiable 9 stands unchanged.
+- Barcode lookups start from a local, opt-in USDA branded table.
+- Retailer adapters load from a private plugin folder, never this repository.
+- Posted web prices are kept out of the default price views and receipt resolution.
+- Media is served under `/api/v1/media` with versioned addresses.
+- Page text is purged after a decision.
+- PLUs belong to a vendor, and a `loose` kind was added.
+- The API keeps its `barcode` field.
+- Proposals review on their own page.
+- Capture gains "Photograph a product".
 
 This document adds assisted product ingestion to Kitchen ERP. Products and their vendor listings are built from vendor web pages, manufacturer data keyed by barcode, and photos taken in the store. A product photo pipeline gives every product a consistent, good-looking image. The document follows the conventions of documents 00–05 (architecture, data model, capture API), the UI documents 08–11, and the ingredient vocabulary (sub-phase 1G in `03`, recorded in `12`).
 

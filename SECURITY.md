@@ -46,6 +46,24 @@ Removing a purchase or a failed read (spec 04, 2H) erases only what it can:
 - A browser that already showed the photo may keep a private copy for up to a
   day (`Cache-Control: private, max-age=86400`).
 
+## Product captures and photos
+
+A page saved with the bookmarklet (spec 04, 2M) carries the product region's
+visible text, which on a signed-in store can include the account name or the
+cart. That text is removed once its proposal is accepted or rejected; earlier
+backups still hold it. It is never sent off the machine. Product photos are
+stored without EXIF, XMP or GPS data, and served only to a signed-in session or
+token, with `Cache-Control: private`.
+
+Retailer adapters show which stores a household uses, so they live in
+`data/plugins/` or the private `kitchen-erp-products` repository, never here.
+Their tests use invented retailers and hand-written pages.
+
+The optional `kitchen-erp-products` helper is the only thing that sends product
+data out: a barcode it looks up tells that provider what was bought. It reads only
+the lookup queue, which holds what a person asked to look up (plus every unknown
+scanned barcode if the household turns that setting on).
+
 ## Vendor exports
 
 A **household** vendor export (spec 03, 1F) holds the household's notes, home

@@ -11,7 +11,8 @@ The central idea is a three-way separation. An ingredient is what a recipe asks 
 ```
 app_user(id, email UNIQUE, display_name, password_hash, role CHECK IN (admin, member), active)
 api_token(id, user_id FK, name, token_hash UNIQUE, last_used_at?, revoked_at?,
-          scopes TEXT[] DEFAULT '{*}')      -- 1F: '*' is full rights; vendors:read is the public export only; vendors:suggest posts suggestions only
+          scopes TEXT[] DEFAULT '{*}')      -- 1F: '*' is full rights; vendors:read is the public export only; vendors:suggest posts suggestions only;
+                                    -- 2N: products:read reads the lookup queue only; products:suggest posts answers only
 session(id, user_id FK, expires_at, last_seen_at, revoked_at?)
 idempotency_key(id, user_id FK, key, request_hash, status_code, response_body JSONB, created_at, UNIQUE (user_id, key))
 ```
@@ -94,7 +95,10 @@ product(
   id, ingredient_id FK,
   brand?, name,
   pack_qty NUMERIC?, pack_unit FK unit?,     -- both null means sold by variable weight or loose
-  barcode? (unique when present),
+  kind CHECK IN (branded, private_label, random_weight, loose, unbranded_vendor),   -- 1H
+  attributes JSONB DEFAULT '{}',             -- 1H: validated per kind and category (meat and seafood only so far)
+  primary_image_id FK product_image? DEFERRABLE INITIALLY DEFERRED,   -- 1I: chosen by select_primary
+  field_source JSONB DEFAULT '{}',           -- 1H: as on vendor (1F)
   quality_rating SMALLINT? CHECK (1..5),
   exclusive_vendor_id FK vendor?,            -- single-source items and vendor-specific produce
   density_override NUMERIC(10,5)?, density_override_source?, density_override_confirmed BOOLEAN DEFAULT false,
@@ -105,6 +109,68 @@ product(
 ```
 
 A brandless product tied to a vendor is how unbranded produce keeps its identity: the strawberries from one stand are a different product from a supermarket's, with their own quality rating and price history, while both fulfil the ingredient strawberries. The density override exists because density sometimes varies by brand enough to matter, kosher salt being the standard example.
+
+`product.barcode` was moved into `product_identifier` by 1H and dropped; the API keeps a `barcode` field that reads and writes the product's earliest `gtin` or `other` identifier (03, 1H).
+
+### Product identity and listings (1H)
+
+```
+product_identifier(
+  id, product_id FK,
+  scheme CHECK IN (gtin, plu, vendor_sku, rw_item, other),
+  value TEXT,                                -- gtin: GTIN-14; others as printed, trimmed
+  vendor_id FK vendor?,                      -- required for plu, vendor_sku, rw_item; null for gtin, other
+  source CHECK IN (barcode_scan, listing, manufacturer, manual, receipt, migrated_barcode),
+  legacy_value TEXT?,                        -- migrated_barcode only: the original product.barcode string
+  created_at,
+  UNIQUE NULLS NOT DISTINCT (scheme, value, vendor_id),
+  CHECK ((scheme IN ('plu', 'vendor_sku', 'rw_item')) = (vendor_id IS NOT NULL))
+)
+
+vendor_listing(
+  id, vendor_id FK, product_id FK?,          -- null until a proposal is accepted
+  canonical_url, vendor_sku?, store_ref?, title,
+  last_captured_at,
+  status CHECK IN (active, gone, ignored) DEFAULT active,
+  UNIQUE (vendor_id, canonical_url)
+)
+```
+
+A code belongs to one product per vendor, or to one product overall for `gtin` and `other`. `vendor_listing` is a vendor's page for a product; `store_ref` keeps the store scope stripped from its address.
+
+### Product photos (1I)
+
+```
+product_image(
+  id, product_id FK?, proposal_id FK product_proposal?,   -- a candidate has a proposal, not yet a product
+  vendor_id FK vendor?,                      -- from the capture's listing; scopes the stock-photo check
+  upload_sha256,                             -- of the uploaded bytes; a repeat upload returns this row
+  sha256?,                                   -- of the stored original; null while processing
+  source_kind CHECK IN (user_photo, manufacturer, open_food_facts, vendor_listing),
+  source_url?, attribution?,
+  role CHECK IN (product, label_front, label_nutrition, label_ingredients, shelf_tag) DEFAULT product,
+  status CHECK IN (processing, candidate, active, hidden, failed),
+  width INT?, height INT?, phash BIGINT?,    -- null while processing
+  mask_sha256?, cutout_source CHECK IN (device, tool)?,
+  is_stock_suspect BOOLEAN DEFAULT false, pinned BOOLEAN DEFAULT false, pinned_at?,
+  ocr_text?, captured_at?, created_at,
+  UNIQUE (product_id, upload_sha256), UNIQUE (proposal_id, upload_sha256)
+)
+
+product_job(
+  id, kind CHECK IN (extract, resolve, image_process, identify),
+  product_capture_id FK?, product_image_id FK?,
+  status CHECK IN (pending, running, done, failed), attempts INT,
+  last_error?, locked_at?, locked_by?
+)
+
+product_stage_result(                        -- append-only
+  id, job_id FK product_job, stage, adapter, adapter_version,
+  output JSONB, duration_ms, created_at
+)
+```
+
+Files live under `MEDIA_PATH` (`01`): originals and masks are kept and backed up; derivatives are rebuildable. `product_stage_result` is protected like `ingest_stage_result` and is listed in `app/core/grants.py`.
 
 ### Geography and vendors
 
@@ -120,7 +186,11 @@ vendor(
   website?, notes?,
   slug UNIQUE?,                              -- 1F: the stable key in kitchen-erp-vendors files
   brand?, wikidata?,                         -- 1F
-  field_source JSONB DEFAULT '{}'            -- 1F: {field: {source, ref, checked_at, imported}}
+  field_source JSONB DEFAULT '{}',           -- 1F: {field: {source, ref, checked_at, imported}}
+  platform?,                                 -- 1H: storefront software, chooses an adapter
+  fetch_policy CHECK IN (server_fetch, capture_only, none) DEFAULT capture_only,   -- 1H
+  rw_layout JSONB?,                          -- 1H: item and price positions in weighed-item labels
+  code_position JSONB?                       -- 1H: where receipts print item codes (04, 2K)
 )
 
 vendor_location(
@@ -138,6 +208,7 @@ vendor_location(
   phone?,                                    -- 1F: as printed or published; matched on its digits
   publishable BOOLEAN DEFAULT false,         -- 1F: may appear in a public export
   field_source JSONB DEFAULT '{}',           -- 1F
+  platform_store_ref?,                       -- 1H: the storefront's own store id; UNIQUE with vendor_id when set
   CHECK (parent_location_id IS DISTINCT FROM id)
 )
 
@@ -173,6 +244,11 @@ fdc_food(
 ref_usda_portion(id, fdc_id, food_description, portion_label, portion_amount, portion_unit TEXT,
                  gram_weight, data_type)
 ```
+
+fdc_branded(                          -- 2L, opt-in: kerp import usda --branded
+  gtin TEXT PK,                       -- GTIN-14; the latest release's row per code
+  fdc_id INT, brand?, description, category?, package_size?, release_date DATE
+)
 
 Loaded by `kerp import usda` from a local, unzipped USDA FoodData Central download, in one transaction that replaces the previous load. They are used only to suggest standard-list links, densities and measures; nothing reads them at costing time, and the system works fully without them. `ref_usda_portion` keeps its 1C shape; `fdc_food` and `fndds_uses` let suggestions rank by how often USDA's survey recipes use a food.
 
@@ -226,8 +302,8 @@ purchase_line(
   line_kind CHECK IN (item, discount, tax, deposit, fee),
   product_id FK?, parent_line_id FK purchase_line?,   -- discounts and deposits attach to an item
   qty NUMERIC?, unit FK unit?, unit_price NUMERIC?, line_total NUMERIC,
-  resolution CHECK IN (barcode, alias, fuzzy, llm, manual, unmatched, ignored),   -- the rung whose answer was used
-  resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode and alias
+  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, manual, unmatched, ignored),   -- the rung whose answer was used; 2K writes identifier
+  resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode, identifier and alias
   resolution_confidence NUMERIC?, flags TEXT[],
   removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
   CHECK (line_kind = 'item' OR product_id IS NULL)
@@ -258,7 +334,8 @@ price_observation(                            -- append-only
   price NUMERIC(12,4),                        -- amount paid or posted for qty × unit, after attached discounts
   qty NUMERIC, unit FK unit,                  -- "1 each" means one pack of the product
   is_promo BOOLEAN,
-  source CHECK IN (receipt, manual, shelf, import),
+  source CHECK IN (receipt, manual, shelf, import, listing),   -- listing: a posted web price (04, 2L)
+  listing_id FK vendor_listing?,              -- set exactly when source = listing
   entered_by FK app_user, created_at
 )
 
@@ -279,9 +356,40 @@ price_norm(                                   -- derived; rebuildable
 
 An observation records only what was seen: this much money for this quantity in this unit. It never stores a normalized price, because normalization depends on densities and measures that improve over time. `price_norm` holds the normalized figure and is recomputed whenever a bridge that affects it changes; the provenance columns make "every observation that depended on this density" a query. A unique constraint on `purchase_line_id` is deliberately absent, because a voided observation stays in the table and the re-emitted one shares its line; the trigger enforces uniqueness among non-voided rows instead. Deposits and tax are never part of `price`. This supersedes the earlier sketch in which the normalized price sat on the observation itself.
 
+### Product ingestion (2L–2N)
+
+```
+product_capture(                              -- append-only except purging payload.dom_text after a decision
+  id, sha256,                                 -- of the canonical payload without its capture time
+  channel CHECK IN (clip, paste_url, barcode, photo, helper),
+  source_url?, payload JSONB,                 -- structured data kept as raw text; page text up to 200 KB
+  captured_at, capture_geo GEOGRAPHY(Point,4326)?, created_by FK app_user
+)
+
+product_proposal(
+  id, capture_id FK product_capture?,         -- null for a Product update opened by a late helper answer
+  kind CHECK IN (new_product, product_update),
+  product_id FK?,                             -- the product a Product update is for
+  status CHECK IN (pending, accepted, rejected, superseded),
+  fields JSONB, match JSONB, listing JSONB?, price JSONB?,
+  listing_key TEXT GENERATED, gtin_key TEXT GENERATED,   -- partial UNIQUE indexes WHERE status = 'pending'
+  decided_at?, decided_by FK app_user?, result JSONB?
+)
+
+lookup_request(
+  id, kind CHECK IN (gtin, page, cutout),
+  proposal_id FK product_proposal?, product_id FK?, product_image_id FK?,   -- exactly one, matching kind (cutout: product_image_id)
+  value?,                                     -- the GTIN or page address; null for cutout
+  requested_by FK app_user?,                  -- null when queued automatically (auto-queue setting, cutouts)
+  status CHECK IN (open, answered, closed), created_at, answered_at?
+)
+```
+
+The runtime role may update only `payload` on `product_capture`, and a trigger allows only removing `dom_text`; both are listed in `app/core/grants.py`.
+
 ### Views
 
-`price_current` joins non-voided observations to `price_norm`. `offer_latest` yields, for each product and vendor location, the most recent current observation that applies there; for vendors with `price_scope = chain`, an observation at any of the vendor's locations applies to every active location of that vendor. `ingredient_offer` builds on `offer_latest` to give, per ingredient and location, the candidate products with their normalized unit prices and quality ratings, which is what comparison screens and the Phase 4 planner consume.
+`price_current` joins non-voided observations to `price_norm`, leaving out posted prices (`source = listing`, 2L); `price_current_all` and the views built on it include them, for the "Include posted prices" filter. `offer_latest` yields, for each product and vendor location, the most recent current observation that applies there; for vendors with `price_scope = chain`, an observation at any of the vendor's locations applies to every active location of that vendor. `ingredient_offer` builds on `offer_latest` to give, per ingredient and location, the candidate products with their normalized unit prices and quality ratings, which is what comparison screens and the Phase 4 planner consume.
 
 ## Forward compatibility
 
