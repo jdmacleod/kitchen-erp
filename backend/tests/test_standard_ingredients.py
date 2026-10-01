@@ -35,6 +35,35 @@ def test_the_review_decisions_are_in_the_list():
     assert {"sesame-oil", "toasted-sesame-oil"} <= keys
 
 
+def test_the_seasonal_produce_decisions_are_in_the_list():
+    # #111: a bare word that could mean several entries maps to none of them (L1-L3),
+    # so typing it lists them all rather than picking one.
+    entries = standard_list().ingredients
+    named = {normalize_name(t): e.key for e in entries for t in (e.name, *e.spellings)}
+    for word in ("bell pepper", "winter squash", "lettuce"):
+        assert normalize_name(word) not in named, word
+    keys = set(by_key())
+    assert {
+        "green-bell-pepper",
+        "red-bell-pepper",
+        "yellow-bell-pepper",
+        "orange-bell-pepper",
+    } <= keys
+    assert {"butternut-squash", "acorn-squash", "spaghetti-squash"} <= keys
+    # L4: "yam" stays on sweet potato, as US stores label it.
+    assert named[normalize_name("yam")] == "sweet-potato"
+    # L5: lima beans are the fresh entry; no dried one yet.
+    assert "lima-beans" in keys and "dried-lima-beans" not in keys
+    # L6 and L7: pomegranate and corn on the cob are counted; arils are a note.
+    entry = by_key()
+    assert (entry["pomegranate"].unit, entry["pomegranate"].measures) == ("each", ())
+    assert entry["corn-on-the-cob"].unit == "each"
+    # Corn: the raw record is by the ear, so it is corn on the cob's, and so is
+    # "sweet corn"; loose kernels reference the frozen record.
+    assert (entry["corn-on-the-cob"].fdc, entry["corn-kernels"].fdc) == (169998, 168398)
+    assert named[normalize_name("sweet corn")] == "corn-on-the-cob"
+
+
 def test_proper_nouns_are_the_only_capitals():
     capitalized = {e.key for e in standard_list().ingredients if e.name != e.name.lower()}
     assert capitalized == {e.key for e in standard_list().ingredients if e.proper_noun}
