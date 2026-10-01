@@ -87,14 +87,21 @@ GENERIC_PARSER = "llm-generic"
 # 4: long receipts are read in parts of LINES_CHUNK_ROWS rows (#60).
 # 5: regular-price rows are folded into the item and its saving (#64).
 # 6: a weight or count printed on a row of its own joins the item it belongs to (#87).
-GENERIC_PARSER_VERSION = "6"
+# 7: OCR's "Ib", "1b" and "|b" read as pounds and ".89" as a rate; an amount whose tax
+#    letter OCR read as a third decimal digit is cut back to its cents.
+GENERIC_PARSER_VERSION = "7"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
+# A rate as tills print it, with or without a leading zero ("@ $ .89").
+_RATE = r"\$?\s*(\d+(?:\.\d+)?|\.\d+)"
+# Pounds as OCR reads them too: "Ib", "1b" and "|b" for "lb". The "@ rate" that must
+# follow makes the reading safe; a bare "Ib" is only ever a loose weight (below).
+_POUND_OCR = re.compile(r"[il1|]bs?", re.IGNORECASE)
 WEIGHT_PATTERN = re.compile(
-    r"(?<![\d.])(\d+(?:\.\d+)?)\s*(lbs?|kg|oz|g)\b\s*@\s*\$?\s*(\d+(?:\.\d+)?)", re.IGNORECASE
+    r"(?<![\d.])(\d+(?:\.\d+)?)\s*(lbs?|[il1|]bs?|kg|oz|g)\b\s*@\s*" + _RATE, re.IGNORECASE
 )
-COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*\$?\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
+COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*" + _RATE, re.IGNORECASE)
 # A weight that is printed but did not survive OCR cleanly: "1.24 1b", "0.85 Ib", a
 # weight with no "@ price". Enough to know the line is weighed, not enough to read it.
 # Grams count only with more after them on the line: a trailing single letter is as
@@ -236,6 +243,8 @@ def lines_deadline_seconds() -> float:
 def _unit(text: str | None) -> str | None:
     if text is None or not text.strip():
         return None
+    if _POUND_OCR.fullmatch(text.strip()):
+        return "lb"
     parsed = parse_unit(text)
     return None if isinstance(parsed, UnitParseFailure) else parsed
 
@@ -283,6 +292,11 @@ def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
             qty, unit = Decimal("1"), "each"
         if unit is None:
             unit = "each"
+    line_total = line.line_total
+    fixed = _tax_code_read_as_digit(line.raw_text, line_total)
+    if fixed is not None:
+        line_total = fixed
+        flags.append("tax_code_as_digit")
     return ParsedLine(
         seq=seq,
         raw_text=line.raw_text,
@@ -290,9 +304,28 @@ def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
         qty=qty,
         unit=unit,
         unit_price=unit_price,
-        line_total=line.line_total,
+        line_total=line_total,
         flags=flags,
     )
+
+
+def _tax_code_read_as_digit(raw_text: str, line_total: Decimal) -> Decimal | None:
+    """The amount a line really prints when OCR read its tax letter as a digit.
+
+    Tills print cents and a tax letter after them ("4.49 S"). When OCR joins the
+    letter to the amount as a digit ("4.498"), the model reads a third decimal
+    place and rounds it ("4.50"). An amount at the end of the line with exactly
+    three decimals, which the model's reading matches to the cent, is the
+    printed cents with the letter cut off: never rounded, always truncated.
+    """
+    match = _TRAILING_AMOUNT.search(raw_text.strip())
+    token = match.group(1) if match else ""
+    if not re.fullmatch(r"\d+\.\d{3}", token):
+        return None
+    read = Decimal(token)
+    if abs(read - line_total) > CENTS:
+        return None
+    return Decimal(token[:-1])
 
 
 def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> None:
@@ -330,7 +363,9 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 #   and nothing else.
 #   A single digit is left alone: its hundredth is rarely a price.
 # exceeds_total: one line costs more than the whole printed receipt.
-PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total"})
+# tax_code_as_digit: the amount read as "4.498" was the printed 4.49 and its tax
+#   letter; it was cut back to the cents (see _tax_code_read_as_digit).
+PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total", "tax_code_as_digit"})
 
 # The last amount on a line, and whatever tax or flag letters follow it.
 _TRAILING_AMOUNT = re.compile(r"(\d[\d.,]*)\s*(?:[A-Za-z*]{1,2}\s*)?$")
@@ -513,7 +548,7 @@ class PrintedQuantity:
 
 # "/lb" after a rate, and what may be left once the quantity and amounts are out
 # of a quantity row: nothing, or a tax letter or two.
-_RATE_UNIT = re.compile(r"/\s*(?:lbs?|kg|oz|g|ea|each)\b", re.IGNORECASE)
+_RATE_UNIT = re.compile(r"/\s*(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.IGNORECASE)
 _TAX_CODE = re.compile(r"[A-Za-z*]{0,2}")
 
 
