@@ -287,3 +287,26 @@ async def test_one_ledger_records_every_attempt_of_every_client():
         "prompt_tokens": None,
         "completion_tokens": None,
     }
+
+
+async def test_recorded_answers_can_be_scripted_per_model():
+    transport = RecordedTransport(
+        {"header": VALID_HEADER, "header@vision-b": '{"merchant_name": "OTHER", "total": "1.00"}'}
+    )
+    default = LlmClient(model="vision-a", transport=transport)
+    second = LlmClient(model="vision-b", transport=transport)
+
+    first, _ = await default.extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    other, _ = await second.extract(ReceiptHeader, HEADER_TASK, "TOTAL 1.00")
+
+    assert (first.merchant_name, other.merchant_name) == ("LANTERN GROCERY", "OTHER")
+    assert [r["model"] for r in transport.requests] == ["vision-a", "vision-b"]
+    # Replies carry usage, the same on every run.
+    assert second.last_usage == Usage(
+        prompt_tokens=second.last_usage.prompt_tokens,
+        completion_tokens=len('{"merchant_name": "OTHER", "total": "1.00"}') // 4,
+        seconds=1.0,
+        load_seconds=0.0,
+    )
+    assert second.last_usage.prompt_tokens > 0
+    assert second.ledger.calls[-1].completion_tokens == second.last_usage.completion_tokens

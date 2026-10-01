@@ -1484,7 +1484,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
   - Surfaced by: A1, N3-2, CRITICAL regression 1
   - Files: backend/app/ingest/readers.py, backend/app/ingest/stages.py, backend/tests/test_ingest_pipeline.py
   - Verify: stage outputs identical on all 12 fixtures
-- [ ] **ET3 (P1, human: ~2h / CC: ~15min)** — tests — RecordedTransport: "lines@<model>" routing and usage fields in replies
+- [x] **ET3 (P1, human: ~2h / CC: ~15min)** — tests — RecordedTransport: "lines@<model>" routing and usage fields in replies
   - Surfaced by: A3, EV11
   - Files: backend/app/ingest/replay.py, backend/tests/ingest_helpers.py
   - Verify: existing pipeline tests unchanged; a new two-model fixture routes correctly
