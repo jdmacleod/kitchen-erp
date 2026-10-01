@@ -18,13 +18,8 @@ from dataclasses import dataclass, field
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
 from app.ingest.errors import InvalidModelOutput, ModelTimeout
-from app.ingest.llm import LlmClient
+from app.ingest.llm import EMPTY_PART_RETRY_TEMPERATURE, LlmClient
 from app.ingest.schemas import ReceiptHeader, ReceiptLine, ReceiptLines
-
-# Enough to change the answer that a temperature-0 request repeats, little enough
-# not to invent lines: on the real receipt whose item part came back empty, 0.3
-# returned its five items three times out of three.
-EMPTY_PART_RETRY_TEMPERATURE = 0.3
 
 # The least time handed to extract() as a deadline, which must be positive. A
 # read that reaches it gets a request that times out at once, as before #34.

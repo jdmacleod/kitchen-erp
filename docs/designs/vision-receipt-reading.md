@@ -1123,7 +1123,7 @@ Synthesized from this review's findings. Each task derives from a specific findi
   - Surfaced by: Section 1, N3-2
   - Files: backend/app/ingest/readers.py, backend/app/ingest/stages.py, backend/tests/test_ingest_pipeline.py
   - Verify: `pytest backend/tests/test_ingest_pipeline.py`, with golden stage outputs identical on all 12 fixtures
-- [ ] **T3 (P1, human: ~1 day / CC: ~45min)** — llm — Images in chat(), `last_usage` with load_seconds, `ModelMissing` on the Ollama body, think:false
+- [x] **T3 (P1, human: ~1 day / CC: ~45min)** — llm — Images in chat(), `last_usage` with load_seconds, `ModelMissing` on the Ollama body, think:false
   - Surfaced by: F5-1, F5-2, N2-8, OV7, OV9
   - Files: backend/app/ingest/llm.py, backend/tests/test_ingest_llm_options.py
   - Verify: fake-transport tests for the 404 body vs a bare 404, ns→s, the think flag
@@ -1482,7 +1482,7 @@ There are 0 critical gaps.
 ## Implementation Tasks (eng review)
 Synthesized from this review's findings. They refine T1–T11 above. Run with Claude Code or Codex; checkbox as you ship.
 
-- [ ] **ET1 (P1, human: ~1 day / CC: ~45min)** — llm — images in extract(), vision system prompt, ModelMissing (404 body and 400 multimodal), last_usage with load_seconds, think:false, retry-policy argument, VISION_NUM_CTX=16384 / VISION_NUM_PREDICT=8192, shared CallLedger
+- [x] **ET1 (P1, human: ~1 day / CC: ~45min)** — llm — images in extract(), vision system prompt, ModelMissing (404 body and 400 multimodal), last_usage with load_seconds, think:false, retry-policy argument, VISION_NUM_CTX=16384 / VISION_NUM_PREDICT=8192, shared CallLedger
   - Surfaced by: A2, E1/D3, E2/D4, EV1, EV2, Q1
   - Files: backend/app/ingest/llm.py, backend/app/ingest/errors.py, backend/tests/test_ingest_llm_options.py
   - Verify: `uv run pytest backend/tests/test_ingest_llm_options.py` (bare 404 and 5xx still wait; the two bodies raise ModelMissing)

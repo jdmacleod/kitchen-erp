@@ -55,6 +55,24 @@ class ModelUnavailable(RetryableError):
     code = "model_unavailable"
 
 
+class ModelMissing(ModelUnavailable):
+    """The server answered, and said this model cannot serve the request.
+
+    ``reason`` is ``not_found`` for Ollama's 404 "model … not found", or
+    ``not_multimodal`` for its 400 "Multimodal data provided, but model does not
+    support multimodal requests". Any other non-200 answer, a proxy's bare 404
+    included, stays a plain :class:`ModelUnavailable`.
+
+    It keeps its parent's code, detail and retry policy, so the text path and
+    naming wait exactly as before. Only a vision reader tells it apart, and
+    falls back to text instead of waiting.
+    """
+
+    def __init__(self, reason: str, *, detail: str | None = None) -> None:
+        super().__init__(detail=detail)
+        self.reason = reason
+
+
 class ModelTimeout(IngestError):
     """The model server was reached but did not answer within the timeout.
 
