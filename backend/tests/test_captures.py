@@ -19,6 +19,7 @@ from app.core.db import get_sessionmaker
 from app.services import product_jobs
 from app.services.barcode_lookup import pack_from_text
 from tests import geo_helpers as gh
+from tests import ingest_helpers as ih
 from tests.pricebook_helpers import make_location, make_product
 from tests.test_usda_branded import write as write_branded
 
@@ -223,3 +224,106 @@ async def test_a_bad_photo_in_the_batch_stores_nothing(admin_client, owner_conn,
     assert r.status_code == 415
     assert await owner_conn.fetchval("SELECT count(*) FROM product_capture") == 0
     assert not media_root.exists() or not any(media_root.rglob("*.*"))
+
+
+# --- reading a photo with a model (S6; criterion 81, model paths) -------------------------
+
+recorded = ih.recorded
+
+
+@pytest.fixture
+def ocr_text(monkeypatch):
+    """Tesseract's reading of each photo, by its position; the binary is not needed."""
+    from app.services import identify
+
+    texts: list[str] = []
+
+    async def fake(data: bytes) -> str:
+        return texts.pop(0) if texts else ""
+
+    monkeypatch.setattr(identify, "_ocr_text", fake)
+    return texts
+
+
+async def proposal_of(client, proposal_id: str) -> dict:
+    return (await client.get(f"/api/v1/product-proposals/{proposal_id}")).json()
+
+
+async def test_without_a_vision_model_tesseract_then_the_text_model_reads_it(
+    admin_client, recorded, ocr_text, no_network
+):
+    ocr_text.extend(
+        ["HOLLOW CREEK\nCut green beans\nNET WT 14.5 OZ", "Ingredients: green beans, water, salt"]
+    )
+    transport = recorded(
+        {
+            "ProductReading": {
+                "name": "Cut green beans",
+                "brand": "Hollow Creek",
+                "pack_qty": 14.5,
+                "pack_unit": "oz",
+                "category": "canned beans",
+                "ingredients_text": "green beans, water, salt",
+                "confidence": 0.9,
+            }
+        }
+    )
+    r = await post_photos(
+        admin_client, photo(), photo((90, 90, 90)), roles=["product", "label_ingredients"]
+    )
+    await work()
+    proposal = await proposal_of(admin_client, r.json()["id"])
+    assert proposal["reading"] == {"path": "ocr_text", "error": None}
+    fields = proposal["fields"]
+    assert fields["title"]["value"] == "Cut green beans" and fields["title"]["source"] == "model"
+    assert fields["title"]["confidence"] == "0.6"  # capped for text
+    assert fields["pack"]["value"] == {"qty": "14.5", "unit": "oz"}
+    label = [p for p in proposal["photos"] if p["role"] == "label_ingredients"][0]
+    assert label["ocr_text"] == "Ingredients: green beans, water, salt"
+    [request] = transport.requests
+    assert "images" not in request["body"]["messages"][1]
+    assert "BEGIN RECEIPT TEXT" in request["body"]["messages"][1]["content"]
+    assert "grocery products" in request["body"]["messages"][0]["content"]
+
+
+async def test_with_a_vision_model_it_reads_the_photos(
+    admin_client, recorded, monkeypatch, no_network
+):
+    monkeypatch.setattr(get_settings(), "vision_model", "test-vl:8b")
+    transport = recorded(
+        {"ProductReading": {"name": "Oat drink", "brand": "Brightfield", "confidence": 0.95}}
+    )
+    r = await post_photos(admin_client, photo())
+    await work()
+    proposal = await proposal_of(admin_client, r.json()["id"])
+    assert proposal["reading"] == {"path": "vision", "error": None}
+    assert proposal["fields"]["title"]["value"] == "Oat drink"
+    assert proposal["fields"]["title"]["confidence"] == "0.5"  # capped for a photo
+    [request] = transport.requests
+    assert request["model"] == "test-vl:8b"
+    assert len(request["body"]["messages"][1]["images"]) == 1
+    assert request["body"]["think"] is False
+
+
+async def test_an_answer_that_does_not_validate_fills_nothing(
+    admin_client, recorded, ocr_text, no_network
+):
+    ocr_text.append("SOME LABEL TEXT")
+    recorded({"ProductReading": {"name": "x", "colour": "red"}})
+    r = await post_photos(admin_client, photo())
+    await work()
+    proposal = await proposal_of(admin_client, r.json()["id"])
+    assert proposal["status"] == "pending" and proposal["fields"] == {}
+    assert proposal["reading"] == {"path": "ocr_text", "error": "invalid_model_output"}
+
+
+async def test_with_no_model_server_the_proposal_still_waits_for_a_person(
+    admin_client, ocr_text, no_network
+):
+    ocr_text.extend(["LABEL", "LABEL", "LABEL"])
+    r = await post_photos(admin_client, photo())
+    await work()
+    proposal = await proposal_of(admin_client, r.json()["id"])
+    assert proposal["status"] == "pending" and proposal["fields"] == {}
+    assert proposal["reading"]["error"] == "model_unavailable"
+    assert {j["status"] for j in proposal["jobs"]} == {"done"}

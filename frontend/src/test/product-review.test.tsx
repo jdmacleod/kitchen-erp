@@ -189,9 +189,10 @@ describe("product review", () => {
   });
 
   it("asks the reader to fill in what they know when nothing was read", async () => {
-    mockApi(routes(proposal({ fields: {}, capture: { ...proposal().capture!, channel: "photo" } })));
+    mockApi(routes(proposal({ fields: {}, capture: { ...proposal().capture!, channel: "photo" }, reading: { path: "ocr_text", error: "model_unavailable" } })));
     renderApp(`/catalog/products/review/${proposalId}`);
     expect(await screen.findByText("Nothing could be read from this photo. Fill in what you know.")).toBeInTheDocument();
+    expect(screen.getByText("The model couldn't be reached, so nothing was read.")).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("");
   });
 });

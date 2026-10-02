@@ -119,19 +119,21 @@ def sanitize_receipt_text(text: str) -> str:
     return "\n".join(out)
 
 
-def build_messages(task: str, receipt_text: str) -> list[dict[str, str]]:
+def build_messages(task: str, receipt_text: str, system: str | None = None) -> list[dict[str, str]]:
     """The chat messages for one extraction. Receipt text appears only inside the block."""
     user = f"{task}\n\n{BEGIN_DELIMITER}\n{sanitize_receipt_text(receipt_text)}\n{END_DELIMITER}"
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": system or SYSTEM_PROMPT},
         {"role": "user", "content": user},
     ]
 
 
-def build_image_messages(task: str, images: list[bytes]) -> list[dict[str, Any]]:
+def build_image_messages(
+    task: str, images: list[bytes], system: str | None = None
+) -> list[dict[str, Any]]:
     """The chat messages for one extraction from receipt images."""
     return [
-        {"role": "system", "content": VISION_SYSTEM_PROMPT},
+        {"role": "system", "content": system or VISION_SYSTEM_PROMPT},
         {
             "role": "user",
             "content": task,
@@ -395,6 +397,7 @@ class LlmClient:
         images: list[bytes] | None = None,
         retry: RetryPolicy | None = None,
         think: bool | None = None,
+        system: str | None = None,
     ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt. Returns (value, attempts).
 
@@ -405,15 +408,17 @@ class LlmClient:
         :class:`ModelUnavailable` immediately (the job backs off instead).
         ``think`` is sent only when given; vision calls send False, because a
         reasoning reply can fill the output cap before the answer starts (#60).
+        ``system`` replaces the receipt system prompt for other documents, such
+        as product photos and labels (2L); it must keep the same guard.
         """
         policy = retry if retry is not None else RetryPolicy(retries=self.max_retries)
         retry_temperature = temperature if policy.temperature is None else policy.temperature
         temperatures = [temperature] + [retry_temperature] * max(policy.retries, 0)
         if images:
-            messages = build_image_messages(task, images)
+            messages = build_image_messages(task, images, system)
             num_ctx, num_predict = VISION_NUM_CTX, VISION_NUM_PREDICT
         else:
-            messages = build_messages(task, receipt_text)
+            messages = build_messages(task, receipt_text, system)
             num_ctx, num_predict = NUM_CTX, NUM_PREDICT
         payload: dict[str, Any] = {
             "model": self.model,

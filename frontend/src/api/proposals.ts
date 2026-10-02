@@ -89,6 +89,8 @@ export interface Proposal {
   price: { amount: string; qty?: string; unit?: string; is_promo?: boolean } | null;
   photos: ProductPhoto[];
   jobs: ProductJob[];
+  /** How the capture was identified (criterion 81). */
+  reading?: { path: "barcode" | "vision" | "ocr_text" | "unread"; error: string | null } | null;
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;
@@ -246,4 +248,15 @@ export function photographProduct(
     };
     xhr.send(form);
   });
+}
+
+/** The evidence column's line about how a capture was read. */
+export function readingWords(reading: Proposal["reading"]): string | null {
+  if (!reading) return null;
+  if (reading.error === "model_unavailable") return "The model couldn't be reached, so nothing was read.";
+  if (reading.error) return "The model's answer couldn't be used, so nothing was read.";
+  if (reading.path === "barcode") return "Read from the barcode in the photo.";
+  if (reading.path === "vision") return "Read from the photo by the vision model.";
+  if (reading.path === "ocr_text") return "Read from the label text by the model.";
+  return null;
 }

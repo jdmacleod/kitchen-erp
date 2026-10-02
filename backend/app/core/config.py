@@ -56,6 +56,10 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://host.docker.internal:11434"
     llm_model: str = "gpt-oss:20b"
+    # A local vision model that reads product photos (04, 2L), the setting vision
+    # receipt reading will use (2J). Empty: photos are read by Tesseract and the
+    # text model instead.
+    vision_model: str = ""
     # Ingest (Phase 2C). OCR adapters are tried in order; `client` uses text sent
     # with the upload, `tesseract` runs the binary in the worker image. As an
     # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.

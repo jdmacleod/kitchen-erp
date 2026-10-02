@@ -25,6 +25,7 @@ x-e2e-env: &e2e-env
   # model, and the household's OLLAMA_BASE_URL may point at one.
   OLLAMA_BASE_URL: http://127.0.0.1:9
   LLM_MODEL: gpt-oss:20b
+  VISION_MODEL: ""
   ENABLE_OVERPASS: "false"
   ENABLE_NOMINATIM: "false"
   HOUSEHOLD_TIMEZONE: America/Los_Angeles
