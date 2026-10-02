@@ -24,9 +24,13 @@ from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
-from app.services import naming, product_jobs
+from app.services import lookups, naming, product_jobs
 
 log = get_logger(__name__)
+
+# How often an idle worker checks for listings due a refresh (the interval itself
+# is LISTING_REFRESH_DAYS).
+LISTING_REFRESH_CHECK_SECONDS = 3600
 
 
 def worker_id() -> str:
@@ -104,6 +108,7 @@ async def run(poll_seconds: float = 5.0) -> None:
     me = worker_id()
     log.info("worker started", extra={"poll_seconds": poll_seconds, "worker": me})
     sessionmaker = get_sessionmaker()
+    last_refresh = float("-inf")
     while not stop.is_set():
         try:
             async with sessionmaker() as db:
@@ -119,6 +124,16 @@ async def run(poll_seconds: float = 5.0) -> None:
             ran = False
         if ran:
             continue
+        # Idle: at most hourly, queue listings due a refresh for the products helper.
+        if loop.time() - last_refresh >= LISTING_REFRESH_CHECK_SECONDS:
+            last_refresh = loop.time()
+            try:
+                async with sessionmaker() as db:
+                    queued = await lookups.queue_listing_refreshes(db)
+                if queued:
+                    log.info("listing refreshes queued", extra={"count": queued})
+            except Exception as exc:
+                log.error("listing refresh error", extra=loop_error_fields(exc))
         try:
             await asyncio.wait_for(stop.wait(), timeout=poll_seconds)
         except TimeoutError:

@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # Queue every unknown scanned barcode for the products helper (04, 2N); off by
     # default, so only what a person asks about is handed out.
     products_autoqueue_gtins: bool = False
+    # While a products helper token exists, queue a page request for each active
+    # listing this often, so the helper can report changed posted prices (2N).
+    # 0 turns scheduled refreshes off.
+    listing_refresh_days: int = 7
     tesseract_command: str = "tesseract"
     receipt_max_bytes: int = 32 * 1024 * 1024
     ingest_max_attempts: int = 5

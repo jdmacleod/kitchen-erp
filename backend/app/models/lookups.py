@@ -36,6 +36,10 @@ class LookupRequest(UUIDPrimaryKey, Base):
     product_image_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("product_image.id", ondelete="CASCADE")
     )
+    # A scheduled refresh of this listing (page requests only, 0024).
+    listing_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendor_listing.id", ondelete="CASCADE")
+    )
     value: Mapped[str | None] = mapped_column(Text)
     requested_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id")
