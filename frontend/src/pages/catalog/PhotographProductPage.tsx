@@ -83,7 +83,6 @@ export function PhotographProductPage() {
           <ul aria-label="Photos to send" className="flex flex-col gap-3">
             {staged.map((s, i) => (
               <li key={s.key} className="flex flex-wrap items-center gap-2 text-sm">
-                <img src={URL.createObjectURL(s.file)} alt="" className="size-14 flex-none rounded-md bg-neutral-100 object-cover dark:bg-neutral-800" />
                 <span className="min-w-0 flex-1 truncate">{s.file.name}</span>
                 <label className="sr-only" htmlFor={`${id}-role-${i}`}>
                   What photo {i + 1} shows
