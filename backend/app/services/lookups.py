@@ -426,6 +426,8 @@ async def report_prices(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
         listing = await db.get(VendorListing, price.listing_id)
         if listing is None or listing.product_id is None:
             continue
+        if await _already_known(db, listing.id, price):
+            continue
         db.add(
             ListingPriceChange(
                 id=new_id(),
@@ -440,6 +442,31 @@ async def report_prices(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
         added += 1
     await _record(db, None, token_id, {"prices": added}, "merged")
     return added
+
+
+async def _already_known(db: AsyncSession, listing_id: uuid.UUID, price: Any) -> bool:
+    """Whether a reported price equals the listing's latest posted price or its latest
+    reported change (pending, accepted or rejected): only a change reaches a person."""
+    rows = await db.execute(
+        text(
+            """
+            (SELECT o.price AS amount, o.qty, o.unit, o.is_promo
+             FROM price_observation o
+             WHERE o.listing_id = :listing
+               AND NOT EXISTS (SELECT 1 FROM price_observation_void v
+                               WHERE v.observation_id = o.id)
+             ORDER BY o.observed_at DESC, o.created_at DESC LIMIT 1)
+            UNION ALL
+            (SELECT c.amount, c.qty, c.unit, c.is_promo
+             FROM listing_price_change c
+             WHERE c.listing_id = :listing
+             ORDER BY c.created_at DESC, c.id DESC LIMIT 1)
+            """
+        ),
+        {"listing": listing_id},
+    )
+    reported = (price.amount, price.qty, price.unit, price.is_promo)
+    return any((r.amount, r.qty, r.unit, r.is_promo) == reported for r in rows)
 
 
 async def pending_price_changes(db: AsyncSession) -> list[dict[str, Any]]:
