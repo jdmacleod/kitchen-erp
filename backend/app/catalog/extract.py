@@ -1,0 +1,247 @@
+"""Generic extraction from a captured vendor page (04, 2M). Pure: no I/O.
+
+The ladder, each rung a source the merge ranks (app.catalog.proposals):
+
+```
+structured data (JSON-LD, raw text)  ─▶ page_data   name, brand, GTIN, SKU, price, size, images
+meta tags (Open Graph, product:*)    ─▶ page_meta   title, brand, price, item number, image
+the address                          ─▶ address     a title from the slug, an item number
+```
+
+Everything a page sends is untrusted (non-negotiable 7). Structured data is
+parsed from its raw text with ``parse_float=Decimal``, so a price such as 0.10
+stays exactly 0.10 from the page to the observation (non-negotiable 1); a block
+that is not JSON is skipped, never evaluated.
+"""
+
+from __future__ import annotations
+
+import json
+import re
+from collections.abc import Iterator, Mapping
+from dataclasses import dataclass, field
+from decimal import Decimal, InvalidOperation
+from typing import Any
+from urllib.parse import parse_qs, unquote, urlsplit
+
+from app.catalog.identifiers import AmbiguousCode, InvalidGtin, classify_barcode
+from app.catalog.proposals import Candidate
+from app.units.parse import UnitParseFailure, parse_unit
+
+MAX_IMAGES = 12
+_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|kg|mg|g|ml|l|lbs?|oz|ct|count)\b", re.IGNORECASE)
+_METRIC = {"g", "kg", "mg", "ml", "l"}
+_SKU_PARAMS = ("sku", "item", "itemid", "item_id", "productid", "product_id", "pid")
+_DIGITS = re.compile(r"(?<![0-9])([0-9]{4,14})(?![0-9])")
+
+
+@dataclass
+class PageEvidence:
+    candidates: list[Candidate] = field(default_factory=list)
+    images: list[str] = field(default_factory=list)
+
+
+def pack_from_text(text: str | None) -> dict[str, str] | None:
+    """A pack size in text such as "15.5 oz/439 g", metric preferred; None when there is none."""
+    if not text:
+        return None
+    found = []
+    for qty, unit_text in _PACK.findall(text):
+        word = unit_text.lower()
+        unit = parse_unit("each" if word in ("ct", "count") else unit_text)
+        if not isinstance(unit, UnitParseFailure):
+            found.append({"qty": format(Decimal(qty), "f"), "unit": unit})
+    metric = [p for p in found if p["unit"] in _METRIC]
+    return (metric or found or [None])[0]
+
+
+def _money(value: Any) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        amount = Decimal(str(value).strip())
+    except InvalidOperation:
+        return None
+    return format(amount, "f") if amount >= 0 else None
+
+
+def _gtin(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        scheme, code = classify_barcode(str(value).strip())
+    except (InvalidGtin, AmbiguousCode, ValueError):
+        return None
+    return code if scheme == "gtin" else None
+
+
+def _text(value: Any) -> str | None:
+    if isinstance(value, Mapping):
+        value = value.get("name")
+    if isinstance(value, list):
+        value = value[0] if value else None
+    if value is None:
+        return None
+    text = " ".join(str(value).split())
+    return text[:200] or None
+
+
+def _types(node: Mapping[str, Any]) -> set[str]:
+    kind = node.get("@type")
+    kinds = kind if isinstance(kind, list) else [kind]
+    return {str(k).rsplit("/", 1)[-1] for k in kinds if k}
+
+
+def _nodes(data: Any) -> Iterator[Mapping[str, Any]]:
+    if isinstance(data, list):
+        for item in data:
+            yield from _nodes(item)
+    elif isinstance(data, Mapping):
+        yield data
+        if "@graph" in data:
+            yield from _nodes(data["@graph"])
+
+
+def _images(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Mapping):
+        url = value.get("url") or value.get("contentUrl")
+        return [url] if isinstance(url, str) else []
+    if isinstance(value, list):
+        return [u for item in value for u in _images(item)]
+    return []
+
+
+def _offer(offers: Any) -> str | None:
+    """The first offer's price."""
+    for offer in offers if isinstance(offers, list) else [offers]:
+        if not isinstance(offer, Mapping):
+            continue
+        price = _money(offer.get("price") or offer.get("lowPrice"))
+        if price is None and isinstance(offer.get("priceSpecification"), Mapping):
+            price = _money(offer["priceSpecification"].get("price"))
+        if price is not None:
+            return price
+    return None
+
+
+def _size(node: Mapping[str, Any], name: str | None) -> dict[str, str] | None:
+    for key in ("size", "weight", "netContent"):
+        value = node.get(key)
+        if isinstance(value, Mapping):
+            qty, unit = value.get("value"), value.get("unitText") or value.get("unitCode")
+            if qty is not None and unit:
+                found = pack_from_text(f"{qty} {unit}")
+                if found:
+                    return found
+        elif isinstance(value, str) and (found := pack_from_text(value)):
+            return found
+    return pack_from_text(name)
+
+
+def from_structured_data(blocks: list[str]) -> PageEvidence:
+    out = PageEvidence()
+    for raw in blocks:
+        try:
+            data = json.loads(raw, parse_float=Decimal)
+        except (ValueError, RecursionError):
+            continue
+        for node in _nodes(data):
+            if "Product" not in _types(node) and "ProductGroup" not in _types(node):
+                continue
+            name = _text(node.get("name"))
+            add = out.candidates.append
+            if name:
+                add(Candidate("title", name, "page_data"))
+            if brand := _text(node.get("brand")):
+                add(Candidate("brand", brand, "page_data"))
+            for key in ("gtin14", "gtin13", "gtin12", "gtin8", "gtin"):
+                if code := _gtin(node.get(key)):
+                    add(Candidate("gtin", code, "page_data"))
+                    break
+            for key in ("sku", "productID", "mpn"):
+                if sku := _text(node.get(key)):
+                    add(Candidate("item_number", sku, "page_data"))
+                    break
+            if (price := _offer(node.get("offers"))) is not None:
+                add(Candidate("price", price, "page_data"))
+            if pack := _size(node, name):
+                add(Candidate("pack", pack, "page_data"))
+            out.images.extend(_images(node.get("image")))
+    return out
+
+
+_META_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("title", ("og:title", "twitter:title")),
+    ("brand", ("product:brand", "og:brand")),
+    ("price", ("product:price:amount", "og:price:amount")),
+    ("item_number", ("product:retailer_item_id", "product:sku")),
+)
+
+
+def from_meta(meta: Mapping[str, str]) -> PageEvidence:
+    out = PageEvidence()
+    lowered = {k.strip().lower(): v for k, v in meta.items() if isinstance(v, str)}
+    for field_name, keys in _META_FIELDS:
+        for key in keys:
+            value = lowered.get(key)
+            if not value:
+                continue
+            value = _money(value) if field_name == "price" else _text(value)
+            if value:
+                out.candidates.append(Candidate(field_name, value, "page_meta"))
+                break
+    if (title := lowered.get("og:title")) and (pack := pack_from_text(title)):
+        out.candidates.append(Candidate("pack", pack, "page_meta"))
+    for key in ("og:image", "og:image:url", "twitter:image"):
+        if lowered.get(key):
+            out.images.append(lowered[key])
+            break
+    return out
+
+
+def from_address(url: str) -> PageEvidence:
+    """A title from the address's slug and an item number from its digits or query."""
+    out = PageEvidence()
+    parts = urlsplit(url)
+    segments = [unquote(s) for s in parts.path.split("/") if s]
+    query = {k.lower(): v for k, v in parse_qs(parts.query).items()}
+    for key in _SKU_PARAMS:
+        if query.get(key) and (value := query[key][0].strip()):
+            out.candidates.append(Candidate("item_number", value[:64], "address"))
+            break
+    else:
+        for segment in reversed(segments):
+            if found := _DIGITS.search(segment):
+                out.candidates.append(Candidate("item_number", found.group(1), "address"))
+                break
+    slug = next((s for s in reversed(segments) if re.search(r"[A-Za-z]{3,}", s) and "-" in s), None)
+    if slug:
+        words = re.sub(r"\.[a-z]{2,5}$", "", slug)
+        words = _DIGITS.sub(" ", words)
+        title = " ".join(w for w in re.split(r"[-_+\s]+", words) if w).strip()
+        if title:
+            out.candidates.append(Candidate("title", title[:1].upper() + title[1:], "address"))
+            if pack := pack_from_text(title):
+                out.candidates.append(Candidate("pack", pack, "address"))
+    return out
+
+
+def extract(
+    page_url: str,
+    *,
+    meta: Mapping[str, str] | None = None,
+    structured_data: list[str] | None = None,
+) -> PageEvidence:
+    """Every generic rung together; the merge decides which value each field keeps."""
+    out = PageEvidence()
+    for rung in (
+        from_structured_data(structured_data or []),
+        from_meta(meta or {}),
+        from_address(page_url),
+    ):
+        out.candidates.extend(rung.candidates)
+        out.images.extend(i for i in rung.images if i not in out.images)
+    out.images = out.images[:MAX_IMAGES]
+    return out

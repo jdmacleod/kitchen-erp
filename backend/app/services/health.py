@@ -114,12 +114,22 @@ async def check_ingest_queue(db: AsyncSession) -> Check:
         return Check(status="failed", detail={"error": type(exc).__name__})
 
 
+def check_product_adapters() -> Check:
+    """Which retailer adapters loaded (04, 2M); a missing one degrades, never fails."""
+    from app.services import plugins
+
+    found = plugins.statuses()
+    status = "ok" if all(s == "loaded" for s in found.values()) else "degraded"
+    return Check(status=status, detail={"adapters": found})
+
+
 async def health(db: AsyncSession) -> HealthOut:
     checks = {
         "database": await check_database(db),
         "migrations": await check_migrations(db),
         "model_server": await check_model_server(),
         "ingest_queue": await check_ingest_queue(db),
+        "product_adapters": check_product_adapters(),
     }
     if any(c.status == "failed" for c in checks.values()):
         overall = "failed"

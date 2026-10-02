@@ -90,7 +90,7 @@ export interface Proposal {
   photos: ProductPhoto[];
   jobs: ProductJob[];
   /** How the capture was identified (criterion 81). */
-  reading?: { path: "barcode" | "vision" | "ocr_text" | "unread"; error: string | null } | null;
+  reading?: { path: "barcode" | "vision" | "ocr_text" | "unread" | "page"; error: string | null } | null;
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;
@@ -258,5 +258,6 @@ export function readingWords(reading: Proposal["reading"]): string | null {
   if (reading.path === "barcode") return "Read from the barcode in the photo.";
   if (reading.path === "vision") return "Read from the photo by the vision model.";
   if (reading.path === "ocr_text") return "Read from the label text by the model.";
+  if (reading.path === "page") return "Read from the page.";
   return null;
 }

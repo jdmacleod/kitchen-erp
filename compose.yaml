@@ -52,6 +52,7 @@ services:
       LLM_LINES_SECONDS_PER_LINE: ${LLM_LINES_SECONDS_PER_LINE:-3}
       LLM_MAX_RETRIES: ${LLM_MAX_RETRIES:-2}
       OCR_ADAPTERS: ${OCR_ADAPTERS:-["client","tesseract"]}
+      PRODUCT_ADAPTERS: ${PRODUCT_ADAPTERS:-[]}
       INGEST_MAX_ATTEMPTS: ${INGEST_MAX_ATTEMPTS:-5}
       INGEST_BACKOFF_BASE_SECONDS: ${INGEST_BACKOFF_BASE_SECONDS:-5}
       INGEST_BACKOFF_FACTOR: ${INGEST_BACKOFF_FACTOR:-4}
@@ -62,6 +63,7 @@ services:
     volumes:
       - ./data:/data
       - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
+      - ./data/plugins:/plugins:ro   # private retailer adapters (04, 2M); empty is fine
       - ./docs:/srv/docs:ro   # the checked-in capture contract, for the drift test
     depends_on:
       db:
@@ -82,6 +84,7 @@ services:
     volumes:
       - ./data:/data
       - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
+      - ./data/plugins:/plugins:ro   # private retailer adapters (04, 2M); empty is fine
     depends_on:
       db:
         condition: service_healthy

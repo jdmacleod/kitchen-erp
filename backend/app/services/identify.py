@@ -259,10 +259,7 @@ async def _read_with_model(db: AsyncSession, proposal: ProductProposal, images: 
         await db.commit()
         if not joined.strip():
             return {"path": "ocr_text", "read": False}
-        reading, _ = await llm.LlmClient().extract(
-            ProductReading, PRODUCT_TASK, joined, system=PRODUCT_SYSTEM_PROMPT
-        )
-        candidates = reading_candidates(reading, photo=False)
+        candidates = await read_text(joined)
         path = "ocr_text"
     proposal = await proposals.get_proposal(db, proposal.id, lock=True)
     if proposal.status != "pending" or not candidates:
@@ -272,3 +269,11 @@ async def _read_with_model(db: AsyncSession, proposal: ProductProposal, images: 
     match = await proposals.match_catalog(db, fields, proposal.listing)
     await proposals.write_proposal(db, proposal, fields=fields, match=match)
     return {"path": path, "read": True, "fields": sorted({c.field for c in candidates})}
+
+
+async def read_text(text: str) -> list[merging.Candidate]:
+    """The text model's reading of label or page text, as capped ``model`` candidates."""
+    reading, _ = await llm.LlmClient().extract(
+        ProductReading, PRODUCT_TASK, text, system=PRODUCT_SYSTEM_PROMPT
+    )
+    return reading_candidates(reading, photo=False)

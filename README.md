@@ -127,6 +127,20 @@ links reach outside the deployment, and only when switched on.
   directory name USDA gives it: the release date is read from it.
   `kerp import usda-portions` is the command's earlier name.
 
+- **Retailer adapters for captured pages (optional, 2M).** Every captured
+  product page is read generically: its structured data, meta tags and address,
+  then the text model. A retailer-specific adapter can add fields. It is a pure
+  Python function `adapter(page: dict) -> list[dict]` returning
+  `[{"field": "price", "value": "3.49"}, ...]`, kept outside this repository in
+  `data/plugins/` (mounted read-only at `/plugins`) and named in `.env`:
+
+  ```bash
+  PRODUCT_ADAPTERS=["my_shop:read"]
+  ```
+
+  An adapter does no I/O. A missing or failing one is skipped, and
+  `/api/v1/health` lists which loaded.
+
 - **USDA branded foods by barcode (optional, 2L).** A scanned barcode the
   catalog does not know is looked up in a local table of USDA branded foods
   before it becomes a proposal. Download the "Branded" CSV bundle from the same

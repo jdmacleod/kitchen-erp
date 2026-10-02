@@ -3,6 +3,7 @@
 ```
 product_job ─▶ image_process ─▶ product_photos.run_job
             ─▶ identify      ─▶ identify.run_job
+            ─▶ extract       ─▶ page_captures.run_job
 ```
 
 It sits above the modules that do the work, so none of them imports another to
@@ -16,13 +17,14 @@ from collections.abc import Awaitable, Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ProductJob
-from app.services import identify, product_photos
+from app.services import identify, page_captures, product_photos
 
 Runner = Callable[[AsyncSession, ProductJob], Awaitable[None]]
 
 RUNNERS: dict[str, Runner] = {
     "image_process": product_photos.run_job,
     "identify": identify.run_job,
+    "extract": page_captures.run_job,
 }
 
 

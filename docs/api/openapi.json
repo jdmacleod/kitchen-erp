@@ -142,6 +142,72 @@
         "title": "AcceptIn",
         "type": "object"
       },
+      "AddressIn": {
+        "additionalProperties": false,
+        "properties": {
+          "page_url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Page Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_url"
+        ],
+        "title": "AddressIn",
+        "type": "object"
+      },
+      "AddressPreviewOut": {
+        "additionalProperties": false,
+        "description": "What an address alone says; nothing is fetched (criterion 88).",
+        "properties": {
+          "canonical_url": {
+            "title": "Canonical Url",
+            "type": "string"
+          },
+          "item_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Number"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/app__schemas__captures__VendorRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "vendor",
+          "canonical_url",
+          "title",
+          "item_number"
+        ],
+        "title": "AddressPreviewOut",
+        "type": "object"
+      },
       "ApiTokenCreate": {
         "additionalProperties": false,
         "properties": {
@@ -671,6 +737,27 @@
           "captured_at"
         ],
         "title": "CaptureOut",
+        "type": "object"
+      },
+      "CapturedImage": {
+        "additionalProperties": false,
+        "description": "An image the page's own browser could read (best effort, 2M).",
+        "properties": {
+          "data_base64": {
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2048,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "data_base64"
+        ],
+        "title": "CapturedImage",
         "type": "object"
       },
       "CheapestOut": {
@@ -6622,6 +6709,117 @@
         "title": "OsmRef",
         "type": "object"
       },
+      "PageCaptureIn": {
+        "additionalProperties": false,
+        "description": "What the bookmarklet collects, or just a pasted address (2M).\n\n``dom_text`` and ``structured_data`` are checked for size by the endpoint, so a\npage that is too large gets a 413 naming the field rather than a 422.",
+        "properties": {
+          "canonical_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Url"
+          },
+          "channel": {
+            "default": "clip",
+            "enum": [
+              "clip",
+              "paste_url"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "dom_text": {
+            "default": "",
+            "title": "Dom Text",
+            "type": "string"
+          },
+          "image_urls": {
+            "default": [],
+            "items": {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            "maxItems": 12,
+            "title": "Image Urls",
+            "type": "array"
+          },
+          "images": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CapturedImage"
+            },
+            "maxItems": 4,
+            "title": "Images",
+            "type": "array"
+          },
+          "meta": {
+            "additionalProperties": {
+              "maxLength": 4000,
+              "type": "string"
+            },
+            "default": {},
+            "maxProperties": 300,
+            "title": "Meta",
+            "type": "object"
+          },
+          "page_url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Page Url",
+            "type": "string"
+          },
+          "structured_data": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Structured Data",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "without_store": {
+            "default": false,
+            "title": "Without Store",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page_url"
+        ],
+        "title": "PageCaptureIn",
+        "type": "object"
+      },
       "PasswordChange": {
         "additionalProperties": false,
         "description": "Changing your own password: the current one proves it is you.",
@@ -8227,7 +8425,8 @@
               "barcode",
               "vision",
               "ocr_text",
-              "unread"
+              "unread",
+              "page"
             ],
             "title": "Path",
             "type": "string"
@@ -12075,6 +12274,26 @@
         "title": "WeighedLabel",
         "type": "object"
       },
+      "app__schemas__captures__VendorRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "VendorRef",
+        "type": "object"
+      },
       "app__schemas__geo__VendorRef": {
         "additionalProperties": false,
         "properties": {
@@ -14793,6 +15012,103 @@
         "summary": "Void Observation",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/product-captures": {
+      "post": {
+        "description": "A vendor page from the bookmarklet, or a pasted address, becomes a proposal.",
+        "operationId": "capture_page_api_v1_product_captures_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PageCaptureIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "the same page, already pending"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "413": {
+            "description": "the page text or product data is too large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Capture Page",
+        "tags": [
+          "product captures"
+        ]
+      }
+    },
+    "/api/v1/product-captures/address": {
+      "post": {
+        "description": "The vendor, title and item number an address says; nothing is fetched.",
+        "operationId": "preview_address_api_v1_product_captures_address_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressPreviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Address",
+        "tags": [
+          "product captures"
         ]
       }
     },
