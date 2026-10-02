@@ -20,7 +20,7 @@ from app.schemas.proposals import (
     ProposalOut,
     ProposalSummary,
 )
-from app.services import proposals
+from app.services import lookups, proposals
 
 router = APIRouter(tags=["product proposals"])
 
@@ -43,6 +43,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         ],
         jobs=[ProductJobOut.model_validate(j) for j in await proposals.jobs_of(db, proposal)],
         reading=await proposals.reading_of(db, proposal),  # type: ignore[arg-type]
+        lookup=await lookups.request_for_proposal(db, proposal.id),  # type: ignore[arg-type]
         decided_at=proposal.decided_at,
         result=proposal.result,
         created_at=proposal.created_at,

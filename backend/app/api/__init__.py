@@ -8,6 +8,7 @@ from app.api import (
     health,
     inbox,
     ingredient_link,
+    lookups,
     media,
     product_captures,
     product_photos,
@@ -38,3 +39,4 @@ router.include_router(product_photos.router)
 router.include_router(product_proposals.router)
 router.include_router(product_captures.router)
 router.include_router(media.router)
+router.include_router(lookups.router)

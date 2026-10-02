@@ -94,6 +94,9 @@ class Candidate:
     value: Any
     source: str
     confidence: Decimal | None = None
+    # Who brought it, when not the capture itself: "helper" for the products
+    # helper's answers (2N), shown as the badge "Lookup helper".
+    via: str | None = None
 
 
 def model_confidence(value: Decimal | float | str | None, *, photo: bool) -> Decimal | None:
@@ -160,6 +163,8 @@ def _as_json(c: Candidate) -> dict[str, Any]:
     out: dict[str, Any] = {"value": c.value, "source": c.source}
     if c.confidence is not None:
         out["confidence"] = str(c.confidence)
+    if c.via is not None:
+        out["via"] = c.via
     return out
 
 
@@ -201,6 +206,7 @@ def candidates_of(fields: Mapping[str, Mapping[str, Any]]) -> list[Candidate]:
                     entry["value"],
                     entry["source"],
                     Decimal(confidence) if confidence is not None else None,
+                    entry.get("via"),
                 )
             )
     return out

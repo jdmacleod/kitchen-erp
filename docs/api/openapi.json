@@ -208,6 +208,39 @@
         "title": "AddressPreviewOut",
         "type": "object"
       },
+      "AnswerOut": {
+        "additionalProperties": false,
+        "properties": {
+          "outcome": {
+            "enum": [
+              "merged",
+              "update_opened",
+              "no_change",
+              "closed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          }
+        },
+        "required": [
+          "outcome",
+          "proposal_id"
+        ],
+        "title": "AnswerOut",
+        "type": "object"
+      },
       "ApiTokenCreate": {
         "additionalProperties": false,
         "properties": {
@@ -222,11 +255,13 @@
               "enum": [
                 "*",
                 "vendors:read",
-                "vendors:suggest"
+                "vendors:suggest",
+                "products:read",
+                "products:suggest"
               ],
               "type": "string"
             },
-            "maxItems": 3,
+            "maxItems": 5,
             "minItems": 1,
             "title": "Scopes",
             "type": "array"
@@ -559,6 +594,21 @@
           "photos"
         ],
         "title": "Body_add_product_photos_api_v1_product_photos_post",
+        "type": "object"
+      },
+      "Body_lookup_mask_api_v1_lookup_requests__request_id__mask_post": {
+        "properties": {
+          "mask": {
+            "contentMediaType": "application/octet-stream",
+            "description": "single-channel PNG, the photo's size",
+            "title": "Mask",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mask"
+        ],
+        "title": "Body_lookup_mask_api_v1_lookup_requests__request_id__mask_post",
         "type": "object"
       },
       "Body_photograph_product_api_v1_product_captures_photos_post": {
@@ -1405,6 +1455,17 @@
           },
           "value": {
             "title": "Value"
+          },
+          "via": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via"
           }
         },
         "required": [
@@ -1686,6 +1747,21 @@
           "status"
         ],
         "title": "HealthOut",
+        "type": "object"
+      },
+      "HelperStatus": {
+        "additionalProperties": false,
+        "description": "Whether \"Look this up online\" is offered: a products helper token exists (PD8).",
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured"
+        ],
+        "title": "HelperStatus",
         "type": "object"
       },
       "HistoryPoint": {
@@ -2274,7 +2350,9 @@
               "vendor_suggestions",
               "link",
               "usda",
-              "new_product"
+              "new_product",
+              "product_update",
+              "posted_prices"
             ],
             "title": "Kind",
             "type": "string"
@@ -2323,6 +2401,23 @@
           "count": {
             "title": "Count",
             "type": "integer"
+          },
+          "lookups_overdue": {
+            "default": 0,
+            "title": "Lookups Overdue",
+            "type": "integer"
+          },
+          "lookups_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lookups Since"
           },
           "oldest_at": {
             "anyOf": [
@@ -5042,6 +5137,127 @@
         "title": "LoginOut",
         "type": "object"
       },
+      "LookupQueue": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LookupRequestOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "LookupQueue",
+        "type": "object"
+      },
+      "LookupRequestOut": {
+        "additionalProperties": false,
+        "properties": {
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "gtin",
+              "page",
+              "cutout"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "answered",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "value",
+          "status",
+          "created_at",
+          "answered_at"
+        ],
+        "title": "LookupRequestOut",
+        "type": "object"
+      },
+      "LookupState": {
+        "additionalProperties": false,
+        "properties": {
+          "answered_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "answered",
+              "closed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "created_at",
+          "answered_at"
+        ],
+        "title": "LookupState",
+        "type": "object"
+      },
       "ManualPurchaseIn": {
         "additionalProperties": false,
         "properties": {
@@ -7001,6 +7217,178 @@
         "title": "PhotoUrls",
         "type": "object"
       },
+      "PriceChangeDecided": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "observation_id"
+        ],
+        "title": "PriceChangeDecided",
+        "type": "object"
+      },
+      "PriceChangeDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "vendor_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Location Id"
+          }
+        },
+        "title": "PriceChangeDecision",
+        "type": "object"
+      },
+      "PriceChangeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PriceChangeOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "PriceChangeList",
+        "type": "object"
+      },
+      "PriceChangeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "canonical_url": {
+            "title": "Canonical Url",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_promo": {
+            "title": "Is Promo",
+            "type": "boolean"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          },
+          "qty": {
+            "title": "Qty",
+            "type": "string"
+          },
+          "seen_at": {
+            "format": "date-time",
+            "title": "Seen At",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "amount",
+          "qty",
+          "unit",
+          "is_promo",
+          "seen_at",
+          "listing_id",
+          "title",
+          "canonical_url",
+          "product_id",
+          "product_name",
+          "vendor_id",
+          "vendor_name",
+          "created_at"
+        ],
+        "title": "PriceChangeOut",
+        "type": "object"
+      },
+      "PricesReported": {
+        "additionalProperties": false,
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "added"
+        ],
+        "title": "PricesReported",
+        "type": "object"
+      },
       "ProductCreate": {
         "additionalProperties": false,
         "properties": {
@@ -8239,6 +8627,17 @@
           },
           "value": {
             "title": "Value"
+          },
+          "via": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via"
           }
         },
         "required": [
@@ -8341,6 +8740,16 @@
               }
             ],
             "title": "Listing"
+          },
+          "lookup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LookupState"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "match": {
             "additionalProperties": true,
@@ -14275,6 +14684,278 @@
         ]
       }
     },
+    "/api/v1/listing-price-changes": {
+      "get": {
+        "operationId": "price_changes_api_v1_listing_price_changes_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceChangeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Price Changes",
+        "tags": [
+          "products helper"
+        ]
+      },
+      "post": {
+        "description": "Posted prices that changed; each waits for a person before it is recorded.",
+        "operationId": "report_listing_prices_api_v1_listing_price_changes_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesReported"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Report Listing Prices",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/listing-price-changes/{change_id}/accept": {
+      "post": {
+        "operationId": "accept_price_change_api_v1_listing_price_changes__change_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceChangeDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceChangeDecided"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Price Change",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/listing-price-changes/{change_id}/reject": {
+      "post": {
+        "operationId": "reject_price_change_api_v1_listing_price_changes__change_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "change_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Change Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceChangeDecided"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Price Change",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/lookup-answers": {
+      "post": {
+        "description": "An answer in ``kitchen-erp-products/1``. Refused answers are recorded too.",
+        "operationId": "lookup_answer_api_v1_lookup_answers_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnswerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Lookup Answer",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/lookup-requests": {
+      "get": {
+        "description": "Open lookup requests, oldest first: the one thing products:read may read.",
+        "operationId": "lookup_queue_api_v1_lookup_requests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupQueue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Lookup Queue",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/lookup-requests/{request_id}/mask": {
+      "post": {
+        "description": "A cutout mask for an open cutout request; the photo gets cutout_source = tool.",
+        "operationId": "lookup_mask_api_v1_lookup_requests__request_id__mask_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_lookup_mask_api_v1_lookup_requests__request_id__mask_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Mask",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
+    "/api/v1/lookup-requests/{request_id}/original": {
+      "get": {
+        "description": "A photo's original, only through an open cutout request for it.",
+        "operationId": "lookup_original_api_v1_lookup_requests__request_id__original_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Original",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
     "/api/v1/map/places": {
       "get": {
         "description": "Places by name from the map extract: towns anywhere in it, and with lat and\nlon, neighbourhoods and shops near that point. Nothing leaves the deployment.",
@@ -15748,6 +16429,50 @@
         ]
       }
     },
+    "/api/v1/product-proposals/{proposal_id}/look-up": {
+      "post": {
+        "description": "\"Look this up online\": hand the proposal's barcode or page to the helper.",
+        "operationId": "look_up_api_v1_product_proposals__proposal_id__look_up_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Look Up",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
     "/api/v1/product-proposals/{proposal_id}/reject": {
       "post": {
         "operationId": "reject_proposal_api_v1_product_proposals__proposal_id__reject_post",
@@ -15980,6 +16705,27 @@
         "summary": "Create Product",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/products-helper": {
+      "get": {
+        "operationId": "products_helper_api_v1_products_helper_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HelperStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Products Helper",
+        "tags": [
+          "products helper"
         ]
       }
     },

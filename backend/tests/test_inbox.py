@@ -67,7 +67,15 @@ async def test_empty_inbox_is_empty_not_an_error(admin_client: httpx.AsyncClient
     body = await get_inbox(admin_client)
     assert body == {
         "items": [],
-        "reading": {"count": 0, "photos": 0, "pages": 0, "oldest_at": None, "stalled": False},
+        "reading": {
+            "count": 0,
+            "photos": 0,
+            "pages": 0,
+            "oldest_at": None,
+            "stalled": False,
+            "lookups_overdue": 0,
+            "lookups_since": None,
+        },
     }
 
 

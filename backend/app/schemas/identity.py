@@ -65,7 +65,7 @@ class LoginOut(ApiModel):
     user: UserOut
 
 
-TokenScope = Literal["*", "vendors:read", "vendors:suggest"]
+TokenScope = Literal["*", "vendors:read", "vendors:suggest", "products:read", "products:suggest"]
 
 
 class ApiTokenOut(ApiModel):
@@ -81,7 +81,7 @@ class ApiTokenOut(ApiModel):
 class ApiTokenCreate(ApiModel):
     name: str = Field(min_length=1, max_length=200)
     # Full access by default, as every token had before scopes existed.
-    scopes: list[TokenScope] = Field(default_factory=lambda: ["*"], min_length=1, max_length=3)
+    scopes: list[TokenScope] = Field(default_factory=lambda: ["*"], min_length=1, max_length=5)
 
     @model_validator(mode="after")
     def _full_alone(self) -> ApiTokenCreate:

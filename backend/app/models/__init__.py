@@ -13,6 +13,7 @@ from app.models.catalog import (
     VendorListing,
 )
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
+from app.models.lookups import ListingPriceChange, LookupAnswer, LookupRequest
 from app.models.photos import ProductImage, ProductJob, ProductStageResult
 from app.models.proposals import ProductCapture, ProductProposal
 from app.models.purchases import (
@@ -53,6 +54,9 @@ __all__ = [
     "IngestStageResult",
     "NamingSuggestion",
     "IngredientMeasure",
+    "ListingPriceChange",
+    "LookupAnswer",
+    "LookupRequest",
     "PriceNorm",
     "PriceObservation",
     "PriceObservationVoid",

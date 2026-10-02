@@ -750,10 +750,15 @@ def export_openapi(out: Path = OPENAPI_OUT) -> None:
     import json
 
     from app.main import app
+    from app.schemas.products_interchange import contract_schema
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n")
     typer.echo(f"wrote {out}")
+    # The products helper's contract (2N) sits beside it; the helper checks against it.
+    helper = out.parent / "kitchen-erp-products-1.schema.json"
+    helper.write_text(json.dumps(contract_schema(), indent=2, sort_keys=True) + "\n")
+    typer.echo(f"wrote {helper}")
 
 
 def main() -> None:

@@ -28,7 +28,14 @@ clean_geo = gh.clean_geo
 DECLARED = {
     ("GET", "/api/v1/vendors/export"): "vendors:read",
     ("POST", "/api/v1/vendor-suggestions"): "vendors:suggest",
+    # The products helper (04, 2N): the queue to read, and answers to post.
+    ("GET", "/api/v1/lookup-requests"): "products:read",
+    ("GET", "/api/v1/lookup-requests/{request_id}/original"): "products:read",
+    ("POST", "/api/v1/lookup-requests/{request_id}/mask"): "products:suggest",
+    ("POST", "/api/v1/lookup-answers"): "products:suggest",
+    ("POST", "/api/v1/listing-price-changes"): "products:suggest",
 }
+SCOPED = ("vendors:read", "vendors:suggest", "products:read", "products:suggest")
 # Walking these with a session would end the session the rest of the walk uses.
 SKIP_FOR_SESSION = {("POST", "/api/v1/auth/logout")}
 
@@ -72,15 +79,14 @@ async def call(client: httpx.AsyncClient, method: str, path: str, headers=None) 
 async def test_scoped_tokens_reach_only_their_routes(
     admin_client: httpx.AsyncClient, bearer_client: httpx.AsyncClient
 ):
-    read = await token(admin_client, "vendors:read")
-    suggest = await token(admin_client, "vendors:suggest")
+    tokens = [(await token(admin_client, scope), scope) for scope in SCOPED]
     walked = 0
     for method, path in routes():
         anonymous = await call(bearer_client, method, path)
         if anonymous.status_code != 401:
             continue  # a public route (health, login): no user, so no scope either
         walked += 1
-        for headers, scope in ((read, "vendors:read"), (suggest, "vendors:suggest")):
+        for headers, scope in tokens:
             r = await call(bearer_client, method, path, headers)
             if DECLARED.get((method, path)) == scope:
                 assert r.status_code != 403, (method, path, scope, r.text)

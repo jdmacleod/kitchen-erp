@@ -14,6 +14,7 @@ TABLES = (
     "price_observation_void",
     "ingest_stage_result",
     "product_stage_result",
+    "lookup_answer",
 )
 
 
