@@ -29,7 +29,15 @@ from app.catalog.proposals import Candidate
 from app.units.parse import UnitParseFailure, parse_unit
 
 MAX_IMAGES = 12
-_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|kg|mg|g|ml|l|lbs?|oz|ct|count)\b", re.IGNORECASE)
+# Bounded on every side so a long run of digits cannot make it backtrack: a
+# quantity starts where no digit precedes it, has at most six digits before the
+# point and four after, and sits at most three spaces from its unit.
+_PACK = re.compile(
+    r"(?<![\d.])(\d{1,6}(?:\.\d{1,4})?)\s{0,3}(fl\.?\s{0,2}oz|kg|mg|g|ml|l|lbs?|oz|ct|count)\b",
+    re.IGNORECASE,
+)
+# Pack sizes are read from titles and short texts; never scan more than this.
+PACK_TEXT_LIMIT = 2000
 _METRIC = {"g", "kg", "mg", "ml", "l"}
 _SKU_PARAMS = ("sku", "item", "itemid", "item_id", "productid", "product_id", "pid")
 _DIGITS = re.compile(r"(?<![0-9])([0-9]{4,14})(?![0-9])")
@@ -46,7 +54,7 @@ def pack_from_text(text: str | None) -> dict[str, str] | None:
     if not text:
         return None
     found = []
-    for qty, unit_text in _PACK.findall(text):
+    for qty, unit_text in _PACK.findall(text[:PACK_TEXT_LIMIT]):
         word = unit_text.lower()
         unit = parse_unit("each" if word in ("ct", "count") else unit_text)
         if not isinstance(unit, UnitParseFailure):

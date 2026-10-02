@@ -261,3 +261,17 @@ async def test_an_installed_adapter_adds_its_fields_and_a_bad_one_is_skipped(
     health = (await admin_client.get("/api/v1/health")).json()
     statuses = health["checks"]["product_adapters"]["detail"]["adapters"]
     assert sorted(statuses.values()) == ["loaded", "loaded", "missing"]
+
+
+def test_reading_a_pack_size_stays_fast_on_hostile_text():
+    """CodeQL py/polynomial-redos: a long run of digits must not make it backtrack."""
+    import time
+
+    from app.catalog.extract import pack_from_text
+
+    started = time.monotonic()
+    assert pack_from_text("0" * 100_000) is None
+    assert pack_from_text("1" + "0" * 50_000 + " g") is None
+    assert time.monotonic() - started < 1
+    assert pack_from_text("Oats 500 g") == {"qty": "500", "unit": "g"}
+    assert pack_from_text("Rolled oats 1.5kg") == {"qty": "1.5", "unit": "kg"}
