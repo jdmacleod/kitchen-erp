@@ -1,0 +1,311 @@
+{
+  "$id": "kitchen-erp-products/1",
+  "answer": {
+    "$defs": {
+      "AnswerCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Confidence"
+          },
+          "field": {
+            "maxLength": 40,
+            "title": "Field",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "manufacturer",
+              "usda_branded",
+              "page_data",
+              "page_meta",
+              "adapter",
+              "model"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "pattern": "^https?://",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Url"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "type": "object"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "field",
+          "value",
+          "source"
+        ],
+        "title": "AnswerCandidate",
+        "type": "object"
+      },
+      "AnswerPhoto": {
+        "additionalProperties": false,
+        "properties": {
+          "attribution": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Attribution"
+          },
+          "data_base64": {
+            "maxLength": 8000000,
+            "title": "Data Base64",
+            "type": "string"
+          },
+          "mask_base64": {
+            "anyOf": [
+              {
+                "maxLength": 8000000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Mask Base64"
+          },
+          "role": {
+            "default": "product",
+            "enum": [
+              "product",
+              "label_front",
+              "label_nutrition",
+              "label_ingredients",
+              "shelf_tag"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "source_kind": {
+            "enum": [
+              "manufacturer",
+              "open_food_facts",
+              "vendor_listing"
+            ],
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "pattern": "^https?://",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Url"
+          }
+        },
+        "required": [
+          "data_base64",
+          "source_kind"
+        ],
+        "title": "AnswerPhoto",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "The helper's answer to one lookup request.",
+    "properties": {
+      "candidates": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/AnswerCandidate"
+        },
+        "maxItems": 100,
+        "title": "Candidates",
+        "type": "array"
+      },
+      "format": {
+        "const": "kitchen-erp-products/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "found": {
+        "default": true,
+        "title": "Found",
+        "type": "boolean"
+      },
+      "photos": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/AnswerPhoto"
+        },
+        "maxItems": 4,
+        "title": "Photos",
+        "type": "array"
+      },
+      "request_id": {
+        "format": "uuid",
+        "title": "Request Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "format",
+      "request_id"
+    ],
+    "title": "HelperAnswer",
+    "type": "object"
+  },
+  "listing_prices": {
+    "$defs": {
+      "ListingPrice": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "is_promo": {
+            "default": false,
+            "title": "Is Promo",
+            "type": "boolean"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Qty"
+          },
+          "seen_at": {
+            "format": "date-time",
+            "title": "Seen At",
+            "type": "string"
+          },
+          "unit": {
+            "default": "each",
+            "maxLength": 16,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id",
+          "amount",
+          "seen_at"
+        ],
+        "title": "ListingPrice",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "Posted prices the helper saw change; each waits for a person (PR2).",
+    "properties": {
+      "format": {
+        "const": "kitchen-erp-products/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "prices": {
+        "items": {
+          "$ref": "#/$defs/ListingPrice"
+        },
+        "maxItems": 500,
+        "title": "Prices",
+        "type": "array"
+      }
+    },
+    "required": [
+      "format",
+      "prices"
+    ],
+    "title": "ListingPriceReport",
+    "type": "object"
+  },
+  "title": "kitchen-erp-products/1"
+}

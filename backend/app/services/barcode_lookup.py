@@ -168,4 +168,9 @@ async def lookup(
         lat=lat,
         lon=lon,
     )
+    if created.created:
+        from app.services import lookups
+
+        await lookups.queue_unknown_scan(db, created.proposal, value)
+        await db.commit()
     return Lookup(result="proposal", proposal_id=created.proposal.id)

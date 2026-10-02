@@ -4,6 +4,7 @@
 product_job ─▶ image_process ─▶ product_photos.run_job
             ─▶ identify      ─▶ identify.run_job
             ─▶ extract       ─▶ page_captures.run_job
+a prepared household photo without a mask ─▶ lookups.queue_cutout (2N)
 ```
 
 It sits above the modules that do the work, so none of them imports another to
@@ -16,8 +17,8 @@ from collections.abc import Awaitable, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ProductJob
-from app.services import identify, page_captures, product_photos
+from app.models import ProductImage, ProductJob
+from app.services import identify, lookups, page_captures, product_photos
 
 Runner = Callable[[AsyncSession, ProductJob], Awaitable[None]]
 
@@ -37,6 +38,12 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
         await db.commit()
         return
     await runner(db, job)
+    if job.kind == "image_process" and job.status == "done" and job.product_image_id:
+        # A household photo without a mask: the products helper may make one (2N).
+        image = await db.get(ProductImage, job.product_image_id)
+        if image is not None:
+            await lookups.queue_cutout(db, image)
+            await db.commit()
 
 
 async def run_once(db: AsyncSession, *, locked_by: str | None = None) -> bool:

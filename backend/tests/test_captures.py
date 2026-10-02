@@ -91,6 +91,7 @@ async def test_an_unknown_gtin_becomes_a_proposal(admin_client, no_network):
         "value": "0" + UNKNOWN,
         "source": "scan",
         "confidence": None,
+        "via": None,
         "alternatives": [],
         "conflict": False,
     }

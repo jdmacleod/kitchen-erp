@@ -16,6 +16,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     usda             usda_review.review_list, when linking is done  one aggregate row
                      or a linked ingredient has suggestions (1G)
     new_product      pending new-product proposals (2L)             one aggregate row
+    product_update   pending product-update proposals (2N)          one aggregate row
+    posted_prices    refreshed posted prices awaiting a person (2N) one aggregate row
 
 Receipts, product photos and product pages still being read are not items: they
 come back as ``reading`` so Home can show one line above the list.
@@ -40,7 +42,14 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
-from app.services import pricebook, proposals, resolution, usda_review, vendor_suggestions
+from app.services import (
+    lookups,
+    pricebook,
+    proposals,
+    resolution,
+    usda_review,
+    vendor_suggestions,
+)
 
 log = get_logger(__name__)
 
@@ -324,6 +333,41 @@ async def _new_products(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _product_updates(db: AsyncSession) -> list[InboxItem]:
+    rows = await proposals.list_pending(db, limit=1000)
+    updates = [p for p in rows if p.kind == "product_update"]
+    if not updates:
+        return []
+    noun = "product update" if len(updates) == 1 else "product updates"
+    return [
+        InboxItem(
+            kind="product_update",
+            title=f"{len(updates)} {noun} to review",
+            detail="The lookup helper found something new about products you have.",
+            action_label="Review",
+            action_route=f"/catalog/products/review/{updates[0].id}",
+            created_at=updates[0].created_at,
+        )
+    ]
+
+
+async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
+    changes = await lookups.pending_price_changes(db)
+    if not changes:
+        return []
+    n = len(changes)
+    return [
+        InboxItem(
+            kind="posted_prices",
+            title=f"{n} posted {'price' if n == 1 else 'prices'} changed",
+            detail="Accept the ones to record. Posted prices are not counted in cheapest.",
+            action_label="Review",
+            action_route="/catalog/products/posted-prices",
+            created_at=changes[0]["created_at"],
+        )
+    ]
+
+
 def _earliest(*moments: datetime | None) -> datetime | None:
     present = [m for m in moments if m is not None]
     return min(present) if present else None
@@ -341,6 +385,9 @@ async def _reading(db: AsyncSession) -> InboxReading:
     progress = _latest(row["last_progress_at"], products["last_progress_at"])
     stall = timedelta(minutes=get_settings().ingest_stall_minutes)
     now = datetime.now(UTC)
+    # Lookups have their own line, only once the oldest has waited past the limit.
+    waiting = await lookups.counts(db)
+    overdue = waiting["since"] is not None and now - waiting["since"] > stall
     # Stalled means nothing is moving, not that something has waited: a batch of
     # receipts on a slow model keeps its last one waiting well past the limit
     # while the worker finishes a stage every minute or two.
@@ -348,6 +395,8 @@ async def _reading(db: AsyncSession) -> InboxReading:
         count=row["n"],
         photos=products["photos"],
         pages=products["pages"],
+        lookups_overdue=waiting["waiting"] if overdue else 0,
+        lookups_since=waiting["since"] if overdue else None,
         oldest_at=oldest,
         stalled=oldest is not None
         and now - oldest > stall
@@ -364,6 +413,8 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("link", _link),
     ("usda", _usda),
     ("new_product", _new_products),
+    ("product_update", _product_updates),
+    ("posted_prices", _posted_prices),
 ]
 
 

@@ -68,6 +68,9 @@ class Settings(BaseSettings):
     # plugins_path (04, 2M). Empty by default: generic extraction only.
     product_adapters: list[str] = []
     plugins_path: str = "/plugins"
+    # Queue every unknown scanned barcode for the products helper (04, 2N); off by
+    # default, so only what a person asks about is handed out.
+    products_autoqueue_gtins: bool = False
     tesseract_command: str = "tesseract"
     receipt_max_bytes: int = 32 * 1024 * 1024
     ingest_max_attempts: int = 5

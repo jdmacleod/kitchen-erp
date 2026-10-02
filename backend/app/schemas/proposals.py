@@ -21,6 +21,8 @@ class FieldCandidateOut(ApiModel):
     value: Any
     source: str
     confidence: str | None = None
+    # "helper" when the products helper brought it (2N): the badge "Lookup helper".
+    via: str | None = None
 
 
 class ProposalFieldOut(FieldCandidateOut):
@@ -66,6 +68,12 @@ class ProposalReading(ApiModel):
     error: str | None = None
 
 
+class LookupState(ApiModel):
+    status: Literal["open", "answered", "closed"]
+    created_at: datetime
+    answered_at: datetime | None
+
+
 class ProposalOut(ApiModel):
     id: uuid.UUID
     kind: ProposalKind
@@ -80,6 +88,8 @@ class ProposalOut(ApiModel):
     photos: list[ProductPhotoOut]
     jobs: list[ProductJobOut]
     reading: ProposalReading | None = None
+    # The latest "Look this up online" request, for its asked / overdue / answered state.
+    lookup: LookupState | None = None
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime

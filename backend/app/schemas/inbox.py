@@ -14,6 +14,8 @@ InboxKind = Literal[
     "link",
     "usda",
     "new_product",
+    "product_update",
+    "posted_prices",
 ]
 
 
@@ -40,6 +42,9 @@ class InboxReading(ApiModel):
     photos: int = 0
     pages: int = 0
     oldest_at: datetime | None = None
+    # Barcodes and pages waiting on the products helper, only once overdue (PD7).
+    lookups_overdue: int = 0
+    lookups_since: datetime | None = None
     # True once the oldest has been in flight longer than INGEST_STALL_MINUTES, so a
     # stopped worker is not mistaken for a busy one (D21).
     stalled: bool = False

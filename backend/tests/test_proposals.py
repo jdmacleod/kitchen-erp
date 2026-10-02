@@ -119,7 +119,7 @@ async def test_a_proposal_lists_each_field_with_source_and_alternatives(admin_cl
     assert fields["title"]["value"] == "Rolled oats tin"
     assert fields["title"]["source"] == "page_data"
     assert fields["title"]["alternatives"] == [
-        {"value": "Oats | Juniper Market", "source": "page_meta", "confidence": None}
+        {"value": "Oats | Juniper Market", "source": "page_meta", "confidence": None, "via": None}
     ]
     assert fields["pack"]["value"] == {"qty": "500", "unit": "g"}
     # The scanned code outranks the page's, and the two are flagged, not settled.

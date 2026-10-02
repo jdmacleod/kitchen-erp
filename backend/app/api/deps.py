@@ -31,7 +31,7 @@ DbSession = Annotated[AsyncSession, Depends(get_session)]
 
 
 FULL_SCOPE = "*"
-SCOPES = ("vendors:read", "vendors:suggest")
+SCOPES = ("vendors:read", "vendors:suggest", "products:read", "products:suggest")
 
 
 def token_scopes(request: Request) -> tuple[str, ...] | None:
