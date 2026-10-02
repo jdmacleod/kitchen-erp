@@ -121,12 +121,60 @@ def _images(value: Any) -> list[str]:
     return []
 
 
-def _offer(offers: Any) -> str | None:
-    """The first offer's price."""
+# UN/CEFACT Rec 20 codes schema.org uses for a unit price's reference quantity.
+_UNIT_CODES = {
+    "LBR": "lb",
+    "KGM": "kg",
+    "GRM": "g",
+    "ONZ": "oz",
+    "LTR": "l",
+    "MLT": "ml",
+    "OZA": "fl_oz",
+    "H87": "each",
+    "EA": "each",
+    "C62": "each",
+}
+_UNKNOWN = object()
+
+
+def _unit_price(spec: Any) -> dict[str, str] | object | None:
+    """A UnitPriceSpecification as {amount, qty, unit}; _UNKNOWN when its unit is not
+    one this deployment knows; None when it is not a unit price."""
+    if not isinstance(spec, Mapping) or "UnitPriceSpecification" not in _types(spec):
+        return None
+    ref = spec.get("referenceQuantity")
+    amount = _money(spec.get("price"))
+    if not isinstance(ref, Mapping) or amount is None:
+        return None
+    code = str(ref.get("unitCode") or "").strip().upper()
+    unit = _UNIT_CODES.get(code)
+    if unit is None and isinstance(ref.get("unitText"), str):
+        parsed = parse_unit(ref["unitText"])
+        unit = None if isinstance(parsed, UnitParseFailure) else parsed
+    qty = _money(ref.get("value", 1))
+    if unit is None or qty is None or Decimal(qty) <= 0:
+        return _UNKNOWN
+    return {"amount": amount, "qty": qty, "unit": unit}
+
+
+def _offer(offers: Any) -> str | dict[str, str] | None:
+    """The first offer's price: a bare amount (for 1 each), or {amount, qty, unit} when
+    the offer's own price is a unit price ("0.69 per pound"). A unit price that only
+    sits beside a different offer price is a comparison figure and is not taken; a
+    unit price in a unit this deployment does not know gives no price at all."""
     for offer in offers if isinstance(offers, list) else [offers]:
         if not isinstance(offer, Mapping):
             continue
         price = _money(offer.get("price") or offer.get("lowPrice"))
+        specs = offer.get("priceSpecification")
+        specs = specs if isinstance(specs, list) else [specs]
+        for spec in specs:
+            unit_price = _unit_price(spec)
+            if unit_price is None:
+                continue
+            own = price is None or Decimal(_money(spec.get("price")) or "-1") == Decimal(price)
+            if own:  # the offer's price is this unit price
+                return None if unit_price is _UNKNOWN else unit_price  # type: ignore[return-value]
         if price is None and isinstance(offer.get("priceSpecification"), Mapping):
             price = _money(offer["priceSpecification"].get("price"))
         if price is not None:

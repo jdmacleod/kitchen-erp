@@ -224,3 +224,75 @@ async def test_a_per_pound_price_on_a_counted_product_waits_for_a_bridge(
         "SELECT status FROM price_norm WHERE observation_id = $1", observation
     )
     assert status == "unknown_measure"
+
+
+# --- PB2: schema.org unit prices in structured data -------------------------------------------
+
+
+def _ld(offer: dict) -> list[str]:
+    import json
+
+    return [
+        json.dumps(
+            {
+                "@context": "https://schema.org",
+                "@type": "Product",
+                "name": "Loose bananas",
+                "offers": {"@type": "Offer", "priceCurrency": "USD", **offer},
+            }
+        )
+    ]
+
+
+def _price_of(offer: dict):
+    from app.catalog.extract import from_structured_data
+
+    found = [c for c in from_structured_data(_ld(offer)).candidates if c.field == "price"]
+    return found[0].value if found else None
+
+
+def _unit(price: str, code: str, value: object = 1) -> dict:
+    return {
+        "@type": "UnitPriceSpecification",
+        "price": price,
+        "referenceQuantity": {"@type": "QuantitativeValue", "value": value, "unitCode": code},
+    }
+
+
+@pytest.mark.parametrize(
+    ("code", "unit"), [("LBR", "lb"), ("KGM", "kg"), ("GRM", "g"), ("ONZ", "oz"), ("H87", "each")]
+)
+def test_an_offer_priced_per_unit_keeps_its_basis(code, unit):
+    value = _price_of({"price": "0.69", "priceSpecification": _unit("0.69", code)})
+    assert value == {"amount": "0.69", "qty": "1", "unit": unit}
+
+
+def test_a_unit_price_with_no_offer_price_is_the_price():
+    value = _price_of({"priceSpecification": [_unit("1.52", "KGM")]})
+    assert value == {"amount": "1.52", "qty": "1", "unit": "kg"}
+
+
+def test_a_comparison_unit_price_beside_the_price_is_not_taken():
+    # 3.49 for the pack, shown as 6.98 per kg for comparison: the price is 3.49 each.
+    assert _price_of({"price": "3.49", "priceSpecification": _unit("6.98", "KGM")}) == "3.49"
+
+
+def test_a_reference_quantity_other_than_one():
+    value = _price_of({"price": "2.50", "priceSpecification": _unit("2.50", "GRM", 100)})
+    assert value == {"amount": "2.50", "qty": "100", "unit": "g"}
+
+
+def test_an_unknown_unit_code_gives_no_price_rather_than_a_guess():
+    assert _price_of({"price": "0.69", "priceSpecification": _unit("0.69", "XYZ")}) is None
+
+
+def test_the_exact_amount_survives_json_numbers():
+    from app.catalog.extract import from_structured_data
+
+    raw = (
+        '{"@type": "Product", "name": "Bananas", "offers": {"@type": "Offer", "price": 0.10, '
+        '"priceSpecification": {"@type": "UnitPriceSpecification", "price": 0.10, '
+        '"referenceQuantity": {"value": 1, "unitCode": "LBR"}}}}'
+    )
+    (price,) = [c for c in from_structured_data([raw]).candidates if c.field == "price"]
+    assert price.value == {"amount": "0.10", "qty": "1", "unit": "lb"}
