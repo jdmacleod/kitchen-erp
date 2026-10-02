@@ -16,7 +16,7 @@ from PIL import Image
 from app.catalog.identifiers import check_digit
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
-from app.services import product_photos
+from app.services import product_jobs
 from app.services.barcode_lookup import pack_from_text
 from tests import geo_helpers as gh
 from tests.pricebook_helpers import make_location, make_product
@@ -168,7 +168,7 @@ async def post_photos(client, *photos: bytes, roles=None):
 
 async def work() -> None:
     async with get_sessionmaker()() as db:
-        while await product_photos.run_once(db, locked_by="test"):
+        while await product_jobs.run_once(db, locked_by="test"):
             pass
 
 

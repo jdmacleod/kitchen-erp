@@ -447,12 +447,7 @@ async def record(
 
 
 async def run_job(db: AsyncSession, job: ProductJob) -> None:
-    """Run one claimed job: prepare a photo, or identify a captured product (2L)."""
-    if job.kind == "identify":
-        from app.services import identify
-
-        await identify.run_job(db, job)
-        return
+    """Prepare one photo (an ``image_process`` job). app.services.product_jobs dispatches."""
     started = time.monotonic()
     image = await get_image(db, job.product_image_id)  # type: ignore[arg-type]
     try:
@@ -508,15 +503,6 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     for path in processed.used:
         path.unlink(missing_ok=True)
     log.info("photo processed", extra={"image_id": str(image.id)})
-
-
-async def run_once(db: AsyncSession, *, locked_by: str | None = None) -> bool:
-    """Claim and run one product job. Returns False when none was waiting."""
-    job = await claim_job(db, locked_by or worker_id())
-    if job is None:
-        return False
-    await run_job(db, job)
-    return True
 
 
 async def rebuild_derivatives(db: AsyncSession) -> int:
