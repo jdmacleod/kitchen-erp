@@ -62,17 +62,30 @@ def _row(r) -> dict[str, Any]:
     return dict(r)
 
 
-async def product_history(db: AsyncSession, product_id: uuid.UUID) -> dict[str, Any]:
+def _view(name: str, include_posted: bool) -> str:
+    """A price-book view, or its ``_all`` twin that also holds posted prices (2L).
+
+    Posted prices (``source = listing``) are out of the default views; only the
+    "Include posted prices" filter reads the ``_all`` chain.
+    """
+    return f"{name}_all" if include_posted else name
+
+
+async def product_history(
+    db: AsyncSession, product_id: uuid.UUID, *, include_posted: bool = False
+) -> dict[str, Any]:
     """Every current observation of a product, plus the latest at each location with its age."""
+    current = _view("price_current", include_posted)
+    latest_view = _view("offer_latest", include_posted)
     points = await db.execute(
         text(
-            """
+            f"""
             SELECT pc.observation_id, pc.observed_at, pc.price, pc.qty, pc.unit, pc.is_promo,
                    pc.source, pc.norm_unit_price, pc.norm_unit, pc.norm_status,
                    vl.id AS location_id, vl.name AS location_name,
                    v.id AS vendor_id, v.name AS vendor_name, v.price_scope,
                    CASE WHEN v.price_scope = 'chain' THEN v.id::text ELSE vl.id::text END AS series
-            FROM price_current pc
+            FROM {current} pc
             JOIN vendor_location vl ON vl.id = pc.vendor_location_id
             JOIN vendor v ON v.id = vl.vendor_id
             WHERE pc.product_id = CAST(:pid AS uuid)
@@ -92,7 +105,7 @@ async def product_history(db: AsyncSession, product_id: uuid.UUID) -> dict[str, 
                        AS age_days,
                    (CAST(:now AS timestamptz) - ol.observed_at)
                        > make_interval(days => {_STALE_SQL}) AS stale
-            FROM offer_latest ol
+            FROM {latest_view} ol
             JOIN vendor_location vl ON vl.id = ol.applies_to_location_id
             JOIN vendor v ON v.id = vl.vendor_id
             JOIN product p ON p.id = ol.product_id
@@ -112,14 +125,13 @@ async def product_history(db: AsyncSession, product_id: uuid.UUID) -> dict[str, 
 # One point per day (the household's day), the cheapest that day with its product
 # and vendor, so a year of frequent prices is at most 366 points. The range is
 # taken over every price in the window, not just the daily points.
-_INGREDIENT_HISTORY_SQL = text(
-    """
+_INGREDIENT_HISTORY_SQL = """
     WITH window_prices AS (
         SELECT pc.observation_id, pc.observed_at, pc.norm_unit_price, pc.norm_unit, pc.is_promo,
                pc.source, p.id AS product_id, p.name AS product_name,
                vl.id AS location_id, v.id AS vendor_id, v.name AS vendor_name,
                (pc.observed_at AT TIME ZONE CAST(:tz AS text))::date AS day
-        FROM price_current pc
+        FROM {current} pc
         JOIN product p ON p.id = pc.product_id AND p.active
         JOIN vendor_location vl ON vl.id = pc.vendor_location_id
         JOIN vendor v ON v.id = vl.vendor_id
@@ -136,14 +148,13 @@ _INGREDIENT_HISTORY_SQL = text(
     SELECT DISTINCT ON (w.day) w.*, r.low, r.high
     FROM window_prices w CROSS JOIN price_range r
     ORDER BY w.day, w.norm_unit_price, w.observed_at, w.observation_id
-    """
-)
+"""
 
 _RANGE_KEYS = ("day", "low", "high")
 
 
 async def ingredient_history(
-    db: AsyncSession, ingredient_id: uuid.UUID, days: int
+    db: AsyncSession, ingredient_id: uuid.UUID, days: int, *, include_posted: bool = False
 ) -> dict[str, Any]:
     """Normalized unit prices of an ingredient's active products over the last ``days``.
 
@@ -156,7 +167,9 @@ async def ingredient_history(
     rows = list(
         (
             await db.execute(
-                _INGREDIENT_HISTORY_SQL,
+                text(
+                    _INGREDIENT_HISTORY_SQL.format(current=_view("price_current", include_posted))
+                ),
                 {"iid": ingredient_id, "since": since, "tz": get_settings().household_timezone},
             )
         ).mappings()
@@ -177,8 +190,9 @@ async def ingredient_offers(
     min_quality: int | None = None,
     exclude_stale: bool = False,
     exclude_promo: bool = False,
+    include_posted: bool = False,
 ) -> list[dict[str, Any]]:
-    view = "offer_latest_regular" if exclude_promo else "offer_latest"
+    view = _view("offer_latest_regular" if exclude_promo else "offer_latest", include_posted)
     rows = await db.execute(
         text(
             f"""
@@ -218,11 +232,12 @@ async def compare(
     min_quality: int | None = None,
     exclude_stale: bool = False,
     exclude_promo: bool = False,
+    include_posted: bool = False,
 ) -> dict[str, Any]:
     """Vendors as columns, ingredients as rows, best qualifying normalized price per cell."""
     if not ingredient_ids:
         return {"vendors": [], "rows": []}
-    view = "offer_latest_regular" if exclude_promo else "offer_latest"
+    view = _view("offer_latest_regular" if exclude_promo else "offer_latest", include_posted)
     rows = await db.execute(
         text(
             f"""
@@ -293,7 +308,7 @@ async def compare(
 
 
 async def location_panel(
-    db: AsyncSession, location_id: uuid.UUID, days: int = 30
+    db: AsyncSession, location_id: uuid.UUID, days: int = 30, *, include_posted: bool = False
 ) -> dict[str, Any]:
     since = datetime.now(UTC) - timedelta(days=days)
     visit = await db.execute(
@@ -312,11 +327,11 @@ async def location_panel(
     summary = dict(visit.mappings().one())
     recent = await db.execute(
         text(
-            """
+            f"""
             SELECT pc.observation_id, pc.observed_at, pc.price, pc.qty, pc.unit, pc.is_promo,
                    pc.norm_unit_price, pc.norm_unit, pc.norm_status,
                    p.id AS product_id, p.name AS product_name, p.brand
-            FROM price_current pc
+            FROM {_view("price_current", include_posted)} pc
             JOIN product p ON p.id = pc.product_id
             WHERE pc.vendor_location_id = CAST(:lid AS uuid)
             ORDER BY pc.observed_at DESC, pc.observation_id DESC
@@ -340,6 +355,7 @@ async def cheapest_by_location(
     *,
     min_quality: int | None = None,
     exclude_stale: bool = False,
+    include_posted: bool = False,
 ) -> list[dict[str, Any]]:
     """Per active location, the best qualifying normalized price for an ingredient."""
     rows = await db.execute(
@@ -353,7 +369,7 @@ async def cheapest_by_location(
                        ol.norm_unit_price, ol.norm_unit,
                        (CAST(:now AS timestamptz) - ol.observed_at)
                            > make_interval(days => {_STALE_SQL}) AS stale
-                FROM offer_latest ol
+                FROM {_view("offer_latest", include_posted)} ol
                 JOIN product p ON p.id = ol.product_id AND p.active
                 JOIN ingredient i ON i.id = p.ingredient_id
                 JOIN (

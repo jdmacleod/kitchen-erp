@@ -59,6 +59,13 @@ export function PriceRecords({ productId }: { productId: string }) {
   );
 }
 
+/** How a record was seen. A posted price is labelled as left out of cheapest (10). */
+export function recordKind(record: Pick<Observation, "source">): string {
+  if (record.source === "shelf") return "Shelf price";
+  if (record.source === "listing") return "Posted online, not counted in cheapest";
+  return `${sourceLabel[record.source]} purchase`;
+}
+
 function PriceRecord({ record }: { record: Observation }) {
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
@@ -91,7 +98,7 @@ function PriceRecord({ record }: { record: Observation }) {
             {formatMoney(record.price)} / {stripZeros(record.qty)} {record.unit} <PromoBadge promo={record.is_promo} />
           </span>
           <span className={`text-xs ${muted}`}>
-            {where} · <time dateTime={record.observed_at}>{formatDateTime(record.observed_at)}</time> · {record.source === "shelf" ? "Shelf price" : `${sourceLabel[record.source]} purchase`}
+            {where} · <time dateTime={record.observed_at}>{formatDateTime(record.observed_at)}</time> · {recordKind(record)}
           </span>
           {record.voided ? (
             <span className={`text-xs ${muted}`}>

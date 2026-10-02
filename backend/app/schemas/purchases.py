@@ -10,7 +10,7 @@ from pydantic import Field, model_validator
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import Categorized, IngredientCreate, IngredientMatch, ProductCreate
 
-ObservationSource = Literal["receipt", "manual", "shelf", "import"]
+ObservationSource = Literal["receipt", "manual", "shelf", "import", "listing"]
 NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
 BridgeKind = Literal["none", "density", "density_override", "measure", "pack"]
 
@@ -67,6 +67,8 @@ class ObservationOut(ApiModel):
     unit: str
     is_promo: bool
     source: ObservationSource
+    # The vendor page a posted price came from (source = listing, 2L).
+    listing_id: uuid.UUID | None = None
     voided: bool
     void_reason: str | None = None
     norm: NormOut | None

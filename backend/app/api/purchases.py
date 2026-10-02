@@ -97,6 +97,7 @@ def observation_out(o) -> ObservationOut:
         unit=o.unit,
         is_promo=o.is_promo,
         source=o.source,
+        listing_id=o.listing_id,
         voided=o.void is not None,
         void_reason=o.void.reason if o.void is not None else None,
         norm=o.norm,
@@ -526,9 +527,16 @@ async def name_products(
 
 
 @router.get("/products/{product_id}/prices", response_model=ProductHistory)
-async def product_prices(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ProductHistory:
+async def product_prices(
+    product_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
+) -> ProductHistory:
     await catalog.get_product(db, product_id)
-    return ProductHistory(**await pricebook_views.product_history(db, product_id))
+    return ProductHistory(
+        **await pricebook_views.product_history(db, product_id, include_posted=include_posted)
+    )
 
 
 @router.get("/ingredients/{ingredient_id}/price-history", response_model=IngredientPriceHistory)
@@ -537,10 +545,13 @@ async def ingredient_price_history(
     _: CurrentUser,
     db: DbSession,
     days: int = Query(default=90, ge=1, le=365),
+    include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
 ) -> IngredientPriceHistory:
     await catalog.get_ingredient(db, ingredient_id)
     return IngredientPriceHistory(
-        **await pricebook_views.ingredient_history(db, ingredient_id, days)
+        **await pricebook_views.ingredient_history(
+            db, ingredient_id, days, include_posted=include_posted
+        )
     )
 
 
@@ -552,6 +563,7 @@ async def ingredient_offers(
     min_quality: int | None = Query(default=None, ge=1, le=5),
     exclude_stale: bool = False,
     exclude_promo: bool = False,
+    include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
 ) -> OfferList:
     await catalog.get_ingredient(db, ingredient_id)
     items = await pricebook_views.ingredient_offers(
@@ -560,6 +572,7 @@ async def ingredient_offers(
         min_quality=min_quality,
         exclude_stale=exclude_stale,
         exclude_promo=exclude_promo,
+        include_posted=include_posted,
     )
     return OfferList(items=items, stale_thresholds=pricebook_views.stale_thresholds())
 
@@ -572,15 +585,22 @@ async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareO
         min_quality=payload.min_quality,
         exclude_stale=payload.exclude_stale,
         exclude_promo=payload.exclude_promo,
+        include_posted=payload.include_posted,
     )
     return CompareOut(**result, stale_thresholds=pricebook_views.stale_thresholds())
 
 
 @router.get("/vendor-locations/{location_id}/price-panel", response_model=LocationPanel)
 async def location_price_panel(
-    location_id: uuid.UUID, _: CurrentUser, db: DbSession, days: int = Query(30, ge=1, le=3650)
+    location_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    days: int = Query(30, ge=1, le=3650),
+    include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
 ) -> LocationPanel:
-    return LocationPanel(**await pricebook_views.location_panel(db, location_id, days))
+    return LocationPanel(
+        **await pricebook_views.location_panel(db, location_id, days, include_posted=include_posted)
+    )
 
 
 @router.get("/price-book/cheapest", response_model=CheapestOut)
@@ -590,9 +610,14 @@ async def cheapest(
     ingredient_id: uuid.UUID,
     min_quality: int | None = Query(default=None, ge=1, le=5),
     exclude_stale: bool = False,
+    include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
 ) -> CheapestOut:
     ingredient = await catalog.get_ingredient(db, ingredient_id)
     items = await pricebook_views.cheapest_by_location(
-        db, ingredient_id, min_quality=min_quality, exclude_stale=exclude_stale
+        db,
+        ingredient_id,
+        min_quality=min_quality,
+        exclude_stale=exclude_stale,
+        include_posted=include_posted,
     )
     return CheapestOut(items=items, unit=ingredient.canonical_unit)

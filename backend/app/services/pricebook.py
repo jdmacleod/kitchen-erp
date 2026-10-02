@@ -196,9 +196,14 @@ async def observe(
     is_promo: bool = False,
     observed_at: datetime | None = None,
     purchase_line_id: uuid.UUID | None = None,
+    listing_id: uuid.UUID | None = None,
 ) -> PriceObservation:
     """Insert an observation and its normalization. Flushes; the caller commits,
-    so a recommit's voids and replacements land together or not at all."""
+    so a recommit's voids and replacements land together or not at all.
+
+    A posted price (``source = listing``) names the listing it came from; the
+    default price-book views leave it out (2L).
+    """
     user_id = entered_by.id if isinstance(entered_by, AppUser) else entered_by
     observation = PriceObservation(
         product_id=product_id,
@@ -210,6 +215,7 @@ async def observe(
         unit=unit,
         is_promo=is_promo,
         source=source,
+        listing_id=listing_id,
         entered_by=user_id,
     )
     db.add(observation)

@@ -582,6 +582,11 @@
             "title": "Exclude Stale",
             "type": "boolean"
           },
+          "include_posted": {
+            "default": false,
+            "title": "Include Posted",
+            "type": "boolean"
+          },
           "ingredient_ids": {
             "items": {
               "format": "uuid",
@@ -5602,6 +5607,18 @@
             "title": "Is Promo",
             "type": "boolean"
           },
+          "listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
           "norm": {
             "anyOf": [
               {
@@ -5657,7 +5674,8 @@
               "receipt",
               "manual",
               "shelf",
-              "import"
+              "import",
+              "listing"
             ],
             "title": "Source",
             "type": "string"
@@ -12724,6 +12742,18 @@
               "title": "Exclude Promo",
               "type": "boolean"
             }
+          },
+          {
+            "description": "also count posted web prices (2L)",
+            "in": "query",
+            "name": "include_posted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also count posted web prices (2L)",
+              "title": "Include Posted",
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -12778,6 +12808,18 @@
               "minimum": 1,
               "title": "Days",
               "type": "integer"
+            }
+          },
+          {
+            "description": "also count posted web prices (2L)",
+            "in": "query",
+            "name": "include_posted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also count posted web prices (2L)",
+              "title": "Include Posted",
+              "type": "boolean"
             }
           }
         ],
@@ -13397,6 +13439,18 @@
             "schema": {
               "default": false,
               "title": "Exclude Stale",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "also count posted web prices (2L)",
+            "in": "query",
+            "name": "include_posted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also count posted web prices (2L)",
+              "title": "Include Posted",
               "type": "boolean"
             }
           }
@@ -14634,6 +14688,18 @@
               "format": "uuid",
               "title": "Product Id",
               "type": "string"
+            }
+          },
+          {
+            "description": "also count posted web prices (2L)",
+            "in": "query",
+            "name": "include_posted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also count posted web prices (2L)",
+              "title": "Include Posted",
+              "type": "boolean"
             }
           }
         ],
@@ -16840,6 +16906,18 @@
               "minimum": 1,
               "title": "Days",
               "type": "integer"
+            }
+          },
+          {
+            "description": "also count posted web prices (2L)",
+            "in": "query",
+            "name": "include_posted",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "also count posted web prices (2L)",
+              "title": "Include Posted",
+              "type": "boolean"
             }
           }
         ],
