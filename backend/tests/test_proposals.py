@@ -409,7 +409,7 @@ async def test_supersede_then_accept(admin_client, user, store, monkeypatch):
     gate.release.set()
     later = await newer
     with pytest.raises(ApiError) as refused:
-        await accepting
+        await asyncio.wait_for(accepting, timeout=10)
     assert refused.value.code == "proposal_not_pending"
     assert await status_of(old.proposal.id) == "superseded"
     assert await status_of(later.proposal.id) == "pending"
