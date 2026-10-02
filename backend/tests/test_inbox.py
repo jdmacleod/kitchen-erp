@@ -65,7 +65,10 @@ async def test_requires_a_session(client: httpx.AsyncClient):
 
 async def test_empty_inbox_is_empty_not_an_error(admin_client: httpx.AsyncClient):
     body = await get_inbox(admin_client)
-    assert body == {"items": [], "reading": {"count": 0, "oldest_at": None, "stalled": False}}
+    assert body == {
+        "items": [],
+        "reading": {"count": 0, "photos": 0, "pages": 0, "oldest_at": None, "stalled": False},
+    }
 
 
 async def test_a_draft_receipt_is_an_item_with_its_day_and_line_count(admin_client, admin):

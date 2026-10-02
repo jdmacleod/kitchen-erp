@@ -24,7 +24,7 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,7 +44,7 @@ from app.models import (
     ProductProposal,
     VendorListing,
 )
-from app.models.geo import VendorLocation, point_expr
+from app.models.geo import Vendor, VendorLocation, point_expr
 from app.services import pricebook, product_photos
 from app.services.catalog import search_products
 
@@ -378,6 +378,46 @@ async def jobs_of(db: AsyncSession, proposal: ProductProposal) -> list[ProductJo
     )
 
 
+async def vendor_context(db: AsyncSession, proposal: ProductProposal) -> dict[str, Any] | None:
+    """The page's vendor, its stores, and the one to preselect for a posted price.
+
+    The preselected store is the household's most recently used location of
+    that vendor (04, 2L); with none, the review records no price by default.
+    """
+    if not proposal.listing:
+        return None
+    vendor = await db.get(Vendor, uuid.UUID(str(proposal.listing["vendor_id"])))
+    if vendor is None:
+        return None
+    locations = (
+        await db.execute(
+            select(VendorLocation.id, VendorLocation.name)
+            .where(VendorLocation.vendor_id == vendor.id, VendorLocation.active)
+            .order_by(VendorLocation.name)
+        )
+    ).all()
+    suggested = (
+        await db.execute(
+            text(
+                """
+                SELECT p.vendor_location_id FROM purchase p
+                JOIN vendor_location vl ON vl.id = p.vendor_location_id
+                WHERE vl.vendor_id = :vendor AND vl.active AND p.status = 'committed'
+                ORDER BY p.purchased_at DESC LIMIT 1
+                """
+            ),
+            {"vendor": vendor.id},
+        )
+    ).scalar_one_or_none()
+    return {
+        "id": vendor.id,
+        "name": vendor.name,
+        "price_scope": vendor.price_scope,
+        "locations": [{"id": i, "name": n} for i, n in locations],
+        "suggested_location_id": suggested,
+    }
+
+
 async def list_pending(db: AsyncSession, limit: int = 50) -> list[ProductProposal]:
     return list(
         (
@@ -463,6 +503,10 @@ class AcceptInput:
     edits: dict[str, Any] = field(default_factory=dict)
     record_price: bool = False
     vendor_location_id: uuid.UUID | None = None
+    # The reviewer's photo choices: the main photo, each photo's role, and ones to hide.
+    main_photo_id: uuid.UUID | None = None
+    photo_roles: dict[uuid.UUID, str] = field(default_factory=dict)
+    hidden_photo_ids: list[uuid.UUID] = field(default_factory=list)
 
 
 def _purge(capture: ProductCapture | None) -> None:
@@ -557,7 +601,9 @@ async def _stock_check(db: AsyncSession, image: ProductImage) -> None:
     image.is_stock_suspect = int(others) >= STOCK_PHOTO_PRODUCTS
 
 
-async def _attach_photos(db: AsyncSession, proposal: ProductProposal, product: Product) -> int:
+async def _attach_photos(
+    db: AsyncSession, proposal: ProductProposal, product: Product, data: AcceptInput
+) -> int:
     attached = 0
     existing = set(
         (
@@ -572,8 +618,19 @@ async def _attach_photos(db: AsyncSession, proposal: ProductProposal, product: P
         if image.upload_sha256 in existing:
             continue  # the product already has this photo: keep the one it has
         image.product_id = product.id
-        if image.status == "candidate":
+        image.role = data.photo_roles.get(image.id, image.role)
+        if image.id in data.hidden_photo_ids and image.status in ("candidate", "active"):
+            image.status = "hidden"
+        elif image.status == "candidate":
             image.status = "active"
+        if image.id == data.main_photo_id and image.role == "product":
+            # The reviewer's choice wins, as "Use as main photo" does (1I).
+            await db.execute(
+                update(ProductImage)
+                .where(ProductImage.product_id == product.id, ProductImage.pinned)
+                .values(pinned=False, pinned_at=None)
+            )
+            image.pinned, image.pinned_at = True, datetime.now(UTC)
         await db.flush()
         await _stock_check(db, image)
         attached += 1
@@ -727,7 +784,7 @@ async def accept(
             listing.vendor_id,  # type: ignore[union-attr]
         ):
             identifiers.append(str(sku))
-        attached = await _attach_photos(db, proposal, product)
+        attached = await _attach_photos(db, proposal, product, data)
         await product_photos.reselect(db, product)
         observation_id = await _record_price(db, proposal, product, listing, data, user)
         proposal.status = "accepted"

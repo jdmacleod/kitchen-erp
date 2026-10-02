@@ -15,9 +15,10 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
                      standard list (1G)
     usda             usda_review.review_list, when linking is done  one aggregate row
                      or a linked ingredient has suggestions (1G)
+    new_product      pending new-product proposals (2L)             one aggregate row
 
-Receipts still being read are not items: they come back as ``reading`` so Home can
-show one line above the list.
+Receipts, product photos and product pages still being read are not items: they
+come back as ``reading`` so Home can show one line above the list.
 
 The identify and bridge kinds reuse the queries behind their own pages rather
 than restating them, so the inbox can never count something those pages do not
@@ -39,7 +40,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
-from app.services import pricebook, resolution, usda_review, vendor_suggestions
+from app.services import pricebook, proposals, resolution, usda_review, vendor_suggestions
 
 log = get_logger(__name__)
 
@@ -79,6 +80,18 @@ _READING_SQL = text(
     SELECT count(*) AS n, min(created_at) AS oldest_at,
            (SELECT max(created_at) FROM ingest_stage_result) AS last_progress_at
     FROM ingest_job WHERE status IN ('pending', 'running')
+    """
+)
+
+# Product captures being identified (2L): one per capture, by how it arrived.
+_PRODUCT_READING_SQL = text(
+    """
+    SELECT count(*) FILTER (WHERE c.channel = 'photo') AS photos,
+           count(*) FILTER (WHERE c.channel IN ('clip', 'paste_url')) AS pages,
+           min(j.created_at) AS oldest_at,
+           (SELECT max(created_at) FROM product_stage_result) AS last_progress_at
+    FROM product_job j JOIN product_capture c ON c.id = j.product_capture_id
+    WHERE j.status IN ('pending', 'running')
     """
 )
 
@@ -292,9 +305,40 @@ async def _usda(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _new_products(db: AsyncSession) -> list[InboxItem]:
+    rows = await proposals.list_pending(db, limit=1000)
+    new = [p for p in rows if p.kind == "new_product"]
+    if not new:
+        return []
+    oldest = new[0]
+    noun = "product" if len(new) == 1 else "products"
+    return [
+        InboxItem(
+            kind="new_product",
+            title=f"{len(new)} {noun} to review",
+            detail="Check what was read, choose the ingredient, and accept or reject.",
+            action_label="Review",
+            action_route=f"/catalog/products/review/{oldest.id}",
+            created_at=oldest.created_at,
+        )
+    ]
+
+
+def _earliest(*moments: datetime | None) -> datetime | None:
+    present = [m for m in moments if m is not None]
+    return min(present) if present else None
+
+
+def _latest(*moments: datetime | None) -> datetime | None:
+    present = [m for m in moments if m is not None]
+    return max(present) if present else None
+
+
 async def _reading(db: AsyncSession) -> InboxReading:
     row = (await db.execute(_READING_SQL)).mappings().one()
-    oldest, progress = row["oldest_at"], row["last_progress_at"]
+    products = (await db.execute(_PRODUCT_READING_SQL)).mappings().one()
+    oldest = _earliest(row["oldest_at"], products["oldest_at"])
+    progress = _latest(row["last_progress_at"], products["last_progress_at"])
     stall = timedelta(minutes=get_settings().ingest_stall_minutes)
     now = datetime.now(UTC)
     # Stalled means nothing is moving, not that something has waited: a batch of
@@ -302,6 +346,8 @@ async def _reading(db: AsyncSession) -> InboxReading:
     # while the worker finishes a stage every minute or two.
     return InboxReading(
         count=row["n"],
+        photos=products["photos"],
+        pages=products["pages"],
         oldest_at=oldest,
         stalled=oldest is not None
         and now - oldest > stall
@@ -317,6 +363,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("vendor_suggestions", _suggestions),
     ("link", _link),
     ("usda", _usda),
+    ("new_product", _new_products),
 ]
 
 

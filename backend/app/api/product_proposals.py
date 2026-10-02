@@ -36,6 +36,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         fields=proposal.fields,  # type: ignore[arg-type]
         match=proposal.match,
         listing=proposal.listing,
+        vendor=await proposals.vendor_context(db, proposal),  # type: ignore[arg-type]
         price=proposal.price,
         photos=[
             ProductPhotoOut.model_validate(p) for p in await proposals.photos_of(db, proposal.id)

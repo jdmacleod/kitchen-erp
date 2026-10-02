@@ -479,3 +479,90 @@ async def test_a_gtin_given_at_accept_supersedes_the_pending_scan_with_it(admin_
     )
     assert r.status_code == 200, r.text
     assert await status_of(by_scan.proposal.id) == "superseded"
+
+
+# --- review support (S5) ---------------------------------------------------------------
+
+
+async def test_pending_proposals_are_one_inbox_row_that_leaves_on_decision(
+    admin_client, user, store
+):
+    """Criterion 82, first part."""
+    first = await capture(user, page_evidence(store, gtin_value=None))
+    await capture(
+        user,
+        page_evidence(store, url="https://shop.example.test/p/2", gtin_value=None),
+        url="https://shop.example.test/p/2",
+    )
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    rows = [i for i in items if i["kind"] == "new_product"]
+    assert [r["title"] for r in rows] == ["2 products to review"]
+    assert rows[0]["action_route"] == f"/catalog/products/review/{first.proposal.id}"
+    for p in (await admin_client.get("/api/v1/product-proposals")).json()["items"]:
+        await admin_client.post(f"/api/v1/product-proposals/{p['id']}/reject")
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    assert not [i for i in items if i["kind"] == "new_product"]
+
+
+async def test_the_reading_line_counts_photos_being_identified(admin_client, user):
+    """Criterion 82, last part: counted, and stalled past INGEST_STALL_MINUTES."""
+    async with get_sessionmaker()() as db:
+        await proposals.capture_photos(db, user, [PhotoUpload(jpeg())])
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert (reading["count"], reading["photos"], reading["pages"]) == (0, 1, 0)
+    assert reading["stalled"] is False
+    async with get_sessionmaker()() as db:
+        from sqlalchemy import text as sql
+
+        await db.execute(sql("UPDATE product_job SET created_at = now() - interval '1 hour'"))
+        await db.commit()
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert reading["stalled"] is True
+    await work()
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert reading["photos"] == 0
+
+
+async def test_the_proposal_names_its_vendor_and_stores(admin_client, user, store):
+    result = await capture(user, page_evidence(store, gtin_value=None))
+    body = (await admin_client.get(f"/api/v1/product-proposals/{result.proposal.id}")).json()
+    assert body["vendor"]["name"] == "Juniper Market"
+    assert body["vendor"]["locations"] == [{"id": store["id"], "name": "Juniper Market"}]
+    assert body["vendor"]["suggested_location_id"] is None  # never bought there yet
+
+
+async def test_accept_applies_the_reviewers_photo_choices(admin_client, user, store):
+    result = await capture(user, page_evidence(store, gtin_value=None))
+    async with get_sessionmaker()() as db:
+        images = await product_photos.add_photos(
+            db,
+            None,
+            [
+                PhotoUpload(jpeg((200, 30, 30))),
+                PhotoUpload(jpeg((30, 200, 30))),
+                PhotoUpload(jpeg((30, 30, 200))),
+            ],
+            proposal_id=result.proposal.id,
+        )
+    await work()
+    first, second, third = (str(i.id) for i in images)
+    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{result.proposal.id}/accept",
+        json={
+            "action": "new",
+            "ingredient_id": ing["id"],
+            "main_photo_id": second,
+            "photo_roles": {third: "label_nutrition"},
+            "hidden_photo_ids": [first],
+        },
+    )
+    assert r.status_code == 200, r.text
+    product_id = r.json()["result"]["product_id"]
+    photos = {
+        p["id"]: p
+        for p in (await admin_client.get(f"/api/v1/products/{product_id}/photos")).json()["items"]
+    }
+    assert photos[second]["is_main"] and photos[second]["pinned"]
+    assert photos[first]["status"] == "hidden"
+    assert photos[third]["role"] == "label_nutrition"
