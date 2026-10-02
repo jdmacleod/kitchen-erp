@@ -6,9 +6,47 @@ Repo: jdmacleod/kitchen-erp
 Status: APPROVED (office hours); amended with the CEO review's scope and design decisions
 Mode: Builder
 
-## Start here (implementation handoff, 2026-10-01)
+## Start here (implementation handoff, updated 2026-10-02)
 
-**Status.** Reviewed by office hours, CEO, eng and design, with 0 unresolved decisions. No code is written. This file and the TODOS.md additions are not committed yet; commit them with the first PR (run `make check-pii` first).
+**Status (2026-10-02).** Phase 0's code is complete; the household run (T5) is next.
+
+| Step | State | PR |
+|---|---|---|
+| T1 spec 04 §2J note | merged, user-approved | #127 |
+| MS1–MS6 model survey, 6-model grid | merged | #128 (and in #127) |
+| ET2 text reader in `ingest/readers.py`, golden stage outputs | merged | #129 |
+| ET1 images in `llm.py`, `ModelMissing`, usage, `CallLedger` | merged | #130 |
+| ET3 `RecordedTransport` per-model keys and usage | merged | #131 |
+| ET6 colour render and shared orientation in `raster.py` | merged | #132 |
+| ET4 settings forwarded by compose | nothing to do: no new settings, and `tools/check_compose_env` enforces it in CI | — |
+| ET5/T4 `kerp reading-benchmark` and `ingest/witness.py` | merged | #160 |
+| T5 household run | **next** | — |
+
+**Next steps, in order:**
+1. **Rebuild the stack** (`make up`), so the worker runs the code that names its connections `kerp-worker`; the benchmark's worker guard relies on it.
+2. **Get enough receipts.** On 2026-10-02 only **1** receipt was eligible: of 14 receipt purchases, 11 were drafts, 2 voided and 1 committed. The household reviews and commits the drafts, or writes `expected.csv` rows (`document_id,total,item_line_count`) for uploaded receipts. With fewer than about 10, the 3-receipt margin can't be cleared. The command prints the eligible count and the exclusions when it starts. It exits with a message, before any model is called, if there are none.
+3. **Keep the Ollama host awake.** It's a laptop: run `caffeinate -dis` on it for the whole run. A sleeping host shows up as a timeout followed by `ConnectTimeout`. The run then stops with a `--resume RUN_ID` line, and nothing already read is lost.
+4. **Run T5 per the EV5 runbook** ("Phase 0", Runbook): `docker compose stop worker`, then `docker compose run -d --name kerp-bench api kerp reading-benchmark`, follow `log.txt`, and `docker compose start worker` afterwards. Expect about 12–13 minutes per receipt for the full grid: about 3.2 h for 15 receipts, 4.3 h for 20.
+5. **Read only the aggregate** `summary.txt` (and `reading.csv`) under `data/benchmarks/`. Never open per-receipt files, and never anything else under `data/`.
+6. **Apply the decision rule**: the summary prints it. Then:
+   - T6: the spec 04 amendment for the winner, including specs 10 and 11 per DT3. It needs the user's approval.
+   - If (c) wins and leaves more than 1 in 5 receipts unreconciled: step 2 (consensus, arm (d)).
+   - Phase 1: ET7, T7–T11, DT1–DT3.
+
+**Where the code is.**
+- `backend/app/services/reading_benchmark.py`: the command's logic.
+- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model`.
+- `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
+- Tests:
+  - `test_reading_benchmark.py`, `test_ingest_witness.py`, `test_ingest_readers.py`, `test_raster_render.py`;
+  - `test_ingest_golden.py`, whose expected files regenerate with `KERP_UPDATE_GOLDEN=1`, only on purpose.
+
+**Facts learned while building** (details in "Build notes (ET5)" and "Model survey"):
+- `glm-ocr` needs its own transcription system prompt; the JSON prompt gave 0 of 21 lines. It loops until its output cap, so its output is capped at 4,096 tokens and the repeated tail is cut.
+- The default `qwen3-vl` tags are thinking models and ignore `think: false`; use the `-instruct` tags.
+- One model can use about 16.2 GB of the host's GPU memory.
+
+**Original status (2026-10-01).** Reviewed by office hours, CEO, eng and design, with 0 unresolved decisions.
 
 **Read in this order:**
 1. This section.
