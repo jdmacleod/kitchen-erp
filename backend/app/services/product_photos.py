@@ -447,12 +447,7 @@ async def record(
 
 
 async def run_job(db: AsyncSession, job: ProductJob) -> None:
-    """Run one claimed job: prepare a photo, or identify a captured product (2L)."""
-    if job.kind == "identify":
-        from app.services import identify
-
-        await identify.run_job(db, job)
-        return
+    """Prepare one photo (an ``image_process`` job). app.services.product_jobs dispatches."""
     started = time.monotonic()
     image = await get_image(db, job.product_image_id)  # type: ignore[arg-type]
     try:
