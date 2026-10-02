@@ -35,6 +35,8 @@ type Overlay = "search" | "capture" | "more" | "shelf" | null;
  * shelf price).
  */
 const TASK_PATHS = new Set(["/shop/shelf-prices"]);
+/** Product review is a task screen too (10, PD17): Reject and Accept own the thumb zone. */
+const isTaskPath = (pathname: string) => TASK_PATHS.has(pathname) || pathname.startsWith("/catalog/products/review/");
 
 /**
  * Authenticated layout. At lg (1024px) and wider: a fixed sidebar. Below lg
@@ -44,7 +46,7 @@ const TASK_PATHS = new Set(["/shop/shelf-prices"]);
 export function AppShell() {
   const user = useCurrentUser();
   const location = useLocation();
-  const task = TASK_PATHS.has(location.pathname);
+  const task = isTaskPath(location.pathname);
   // One overlay at a time: opening one replaces whichever is up. Each remembers
   // the history entry it was opened on, so any navigation (a link, Back,
   // Forward) closes it without an effect. The shelf-price drawer is the

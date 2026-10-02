@@ -10,7 +10,7 @@ from pydantic import Field
 
 from app.catalog.attributes import ProductKind
 from app.schemas.base import ApiModel
-from app.schemas.product_photos import ProductPhotoOut
+from app.schemas.product_photos import PhotoRole, ProductPhotoOut
 
 ProposalStatus = Literal["pending", "accepted", "rejected", "superseded"]
 ProposalKind = Literal["new_product", "product_update"]
@@ -44,6 +44,21 @@ class ProductJobOut(ApiModel):
     last_error: str | None
 
 
+class LocationChoice(ApiModel):
+    id: uuid.UUID
+    name: str
+
+
+class ProposalVendor(ApiModel):
+    """The page's vendor, for the meta line and the posted price's store."""
+
+    id: uuid.UUID
+    name: str
+    price_scope: Literal["chain", "location"]
+    locations: list[LocationChoice]
+    suggested_location_id: uuid.UUID | None
+
+
 class ProposalOut(ApiModel):
     id: uuid.UUID
     kind: ProposalKind
@@ -53,6 +68,7 @@ class ProposalOut(ApiModel):
     fields: dict[str, ProposalFieldOut]
     match: dict[str, Any]
     listing: dict[str, Any] | None
+    vendor: ProposalVendor | None = None
     price: dict[str, Any] | None
     photos: list[ProductPhotoOut]
     jobs: list[ProductJobOut]
@@ -91,3 +107,6 @@ class AcceptIn(ApiModel):
     edits: dict[str, Any] = {}
     record_price: bool = False
     vendor_location_id: uuid.UUID | None = None
+    main_photo_id: uuid.UUID | None = None
+    photo_roles: dict[uuid.UUID, PhotoRole] = {}
+    hidden_photo_ids: list[uuid.UUID] = []

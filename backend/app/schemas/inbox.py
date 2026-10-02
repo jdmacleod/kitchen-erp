@@ -6,7 +6,14 @@ from typing import Literal
 from app.schemas.base import ApiModel
 
 InboxKind = Literal[
-    "receipt", "receipt_failed", "identify", "bridge", "vendor_suggestions", "link", "usda"
+    "receipt",
+    "receipt_failed",
+    "identify",
+    "bridge",
+    "vendor_suggestions",
+    "link",
+    "usda",
+    "new_product",
 ]
 
 
@@ -23,9 +30,15 @@ class InboxItem(ApiModel):
 
 
 class InboxReading(ApiModel):
-    """Receipts still being read: shown as a line above the inbox, not as items."""
+    """What is still being read: shown as a line above the inbox, not as items.
+
+    ``count`` is receipts; ``photos`` and ``pages`` are product captures being
+    identified (2L). ``oldest_at`` and ``stalled`` cover all of them.
+    """
 
     count: int
+    photos: int = 0
+    pages: int = 0
     oldest_at: datetime | None = None
     # True once the oldest has been in flight longer than INGEST_STALL_MINUTES, so a
     # stopped worker is not mistaken for a busy one (D21).

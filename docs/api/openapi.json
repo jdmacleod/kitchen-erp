@@ -37,6 +37,15 @@
             "title": "Edits",
             "type": "object"
           },
+          "hidden_photo_ids": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Hidden Photo Ids",
+            "type": "array"
+          },
           "ingredient_id": {
             "anyOf": [
               {
@@ -66,6 +75,36 @@
               }
             ],
             "title": "Kind"
+          },
+          "main_photo_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Photo Id"
+          },
+          "photo_roles": {
+            "additionalProperties": {
+              "enum": [
+                "product",
+                "label_front",
+                "label_nutrition",
+                "label_ingredients",
+                "shelf_tag"
+              ],
+              "type": "string"
+            },
+            "default": {},
+            "propertyNames": {
+              "format": "uuid"
+            },
+            "title": "Photo Roles",
+            "type": "object"
           },
           "product_id": {
             "anyOf": [
@@ -2123,7 +2162,8 @@
               "bridge",
               "vendor_suggestions",
               "link",
-              "usda"
+              "usda",
+              "new_product"
             ],
             "title": "Kind",
             "type": "string"
@@ -2167,7 +2207,7 @@
       },
       "InboxReading": {
         "additionalProperties": false,
-        "description": "Receipts still being read: shown as a line above the inbox, not as items.",
+        "description": "What is still being read: shown as a line above the inbox, not as items.\n\n``count`` is receipts; ``photos`` and ``pages`` are product captures being\nidentified (2L). ``oldest_at`` and ``stalled`` cover all of them.",
         "properties": {
           "count": {
             "title": "Count",
@@ -2184,6 +2224,16 @@
               }
             ],
             "title": "Oldest At"
+          },
+          "pages": {
+            "default": 0,
+            "title": "Pages",
+            "type": "integer"
+          },
+          "photos": {
+            "default": 0,
+            "title": "Photos",
+            "type": "integer"
           },
           "stalled": {
             "default": false,
@@ -4633,6 +4683,26 @@
           "name"
         ],
         "title": "LinkedLocationRef",
+        "type": "object"
+      },
+      "LocationChoice": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "LocationChoice",
         "type": "object"
       },
       "LocationEntry": {
@@ -8096,6 +8166,16 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "vendor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalVendor"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -8204,6 +8284,57 @@
           "created_at"
         ],
         "title": "ProposalSummary",
+        "type": "object"
+      },
+      "ProposalVendor": {
+        "additionalProperties": false,
+        "description": "The page's vendor, for the meta line and the posted price's store.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "locations": {
+            "items": {
+              "$ref": "#/components/schemas/LocationChoice"
+            },
+            "title": "Locations",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "price_scope": {
+            "enum": [
+              "chain",
+              "location"
+            ],
+            "title": "Price Scope",
+            "type": "string"
+          },
+          "suggested_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Location Id"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price_scope",
+          "locations",
+          "suggested_location_id"
+        ],
+        "title": "ProposalVendor",
         "type": "object"
       },
       "ProvenanceOut": {

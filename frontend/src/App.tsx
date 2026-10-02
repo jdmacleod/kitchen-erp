@@ -8,6 +8,8 @@ import { RedirectTo } from "./components/RedirectTo";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientLinkPage } from "./pages/catalog/IngredientLinkPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
+import { PhotographProductPage } from "./pages/catalog/PhotographProductPage";
+import { ProductReviewPage } from "./pages/catalog/ProductReviewPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
@@ -84,6 +86,8 @@ export function App() {
             <Route path="/catalog/ingredients/link" element={<IngredientLinkPage />} />
             <Route path="/catalog/ingredients/:id" element={<IngredientDetailPage />} />
             <Route path="/catalog/products" element={<ProductsPage />} />
+            <Route path="/catalog/products/review/:id" element={<ProductReviewPage />} />
+            <Route path="/catalog/products/photograph" element={<PhotographProductPage />} />
             <Route path="/catalog/products/:id" element={<ProductDetailPage />} />
             <Route path="/catalog/vendors" element={<VendorsPage />} />
             <Route path="/catalog/vendors/:id" element={<VendorDetailPage />} />
