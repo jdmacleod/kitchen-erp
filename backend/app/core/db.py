@@ -19,14 +19,29 @@ from app.core.config import get_settings
 class _State:
     engine: AsyncEngine | None = None
     sessionmaker: async_sessionmaker[AsyncSession] | None = None
+    application_name: str = "kerp"
+
+
+# What the worker's connections are called in pg_stat_activity, so another
+# process (the reading benchmark) can tell whether a worker is running.
+WORKER_APPLICATION_NAME = "kerp-worker"
 
 
 _state = _State()
 
 
+def set_application_name(name: str) -> None:
+    """Name this process's database connections. Call before the first query."""
+    _state.application_name = name
+
+
 def get_engine() -> AsyncEngine:
     if _state.engine is None:
-        _state.engine = create_async_engine(get_settings().database_url, pool_pre_ping=True)
+        _state.engine = create_async_engine(
+            get_settings().database_url,
+            pool_pre_ping=True,
+            connect_args={"server_settings": {"application_name": _state.application_name}},
+        )
         _state.sessionmaker = async_sessionmaker(_state.engine, expire_on_commit=False)
     return _state.engine
 

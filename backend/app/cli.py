@@ -246,9 +246,11 @@ def create_admin(
 def worker() -> None:
     """Run the ingest worker."""
     from app.core.config import get_settings
+    from app.core.db import WORKER_APPLICATION_NAME, set_application_name
     from app.worker import run
 
     configure_logging(get_settings().log_level)
+    set_application_name(WORKER_APPLICATION_NAME)
     asyncio.run(run())
 
 
@@ -732,6 +734,98 @@ def import_purchases(
                 "or add the store code to a location (vendor page, Edit, Store codes on receipts).",
                 err=True,
             )
+
+    asyncio.run(_run())
+
+
+BENCH_MODELS = typer.Option(
+    None,
+    "--models",
+    help="Comma-separated vision models: run only arm (c) for these, against the stored rows.",
+)
+BENCH_RESUME = typer.Option(None, "--resume", help="Continue a stopped run by its RUN_ID.")
+BENCH_EXPECTED = typer.Option(
+    None,
+    "--expected",
+    exists=True,
+    dir_okay=False,
+    resolve_path=True,
+    help="CSV of document_id,total,item_line_count for receipts never committed.",
+)
+BENCH_FORCE = typer.Option(False, "--force", help="Run even though a worker is connected.")
+BENCH_OUT = typer.Option(
+    None, "--out", file_okay=False, help="Where runs go (default: beside the receipts store)."
+)
+BENCH_OCR_MODEL = typer.Option("glm-ocr", "--ocr-model", help="Arm (b)'s transcription model.")
+BENCH_TEXT_MODEL = typer.Option(
+    None, "--text-model", help="Arms (a) and (b)'s text model (default: LLM_MODEL)."
+)
+
+
+@cli.command("reading-benchmark")
+def reading_benchmark(
+    models: str | None = BENCH_MODELS,
+    resume: str | None = BENCH_RESUME,
+    expected: Path | None = BENCH_EXPECTED,
+    force: bool = BENCH_FORCE,
+    out: Path | None = BENCH_OUT,
+    ocr_model: str = BENCH_OCR_MODEL,
+    text_model: str | None = BENCH_TEXT_MODEL,
+) -> None:
+    """Measure receipt readers on committed receipts (spec 04, 2J). Writes no app data.
+
+    Stop the worker first (docker compose stop worker), run detached, and read
+    summary.txt when it is done. Progress is checkpointed per reading.
+    """
+    from app.core.config import get_settings
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import reading_benchmark as bench
+
+    settings = get_settings()
+    configure_logging(settings.log_level)
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            try:
+                selection = await bench.select_receipts(db, expected)
+                running = await bench.worker_running(db)
+            finally:
+                await db.rollback()
+        await dispose_engine()
+        if running and not force:
+            typer.echo(
+                "error: a worker is connected. It would swap models during the run. "
+                "Stop it (docker compose stop worker) or pass --force.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        if not selection.receipts:
+            typer.echo(
+                f"error: no eligible receipts (excluded: {selection.excluded}). Commit some "
+                "receipts, or pass --expected with rows for uploaded ones.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        text = text_model or settings.llm_model
+        if models:
+            vision = [m.strip() for m in models.split(",") if m.strip()]
+            configs = [
+                bench.Config("c", m, bench.VISION_PROMPT_VERSION, bench.LONG_SIDE) for m in vision
+            ]
+        else:
+            configs = bench.default_configs(
+                text_model=text, ocr_model=ocr_model, vision_models=bench.DEFAULT_VISION_MODELS
+            )
+        options = bench.RunOptions(
+            out_dir=out or Path(settings.receipts_path).parent / "benchmarks",
+            configs=configs,
+            expected_csv=expected,
+            resume=resume,
+            compare_with_stored=bool(models),
+        )
+        result = await bench.run(selection, options, echo=typer.echo)
+        typer.echo("")
+        typer.echo(result.summary)
 
     asyncio.run(_run())
 
