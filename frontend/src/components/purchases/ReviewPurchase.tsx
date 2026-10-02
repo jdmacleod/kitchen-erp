@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
-import { Link } from "react-router";
+import { Link, useParams } from "react-router";
 import { RemovedLinesCaption } from "./RemovePurchase";
+import { errorMessage } from "../../api/client";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
 import { useLocations } from "../../api/geo";
 import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
@@ -18,6 +19,7 @@ import {
   usePatchPurchase,
   useReResolveLine,
   useRememberStoreCode,
+  useRememberCode,
   useResolveLine,
   useStoreCodeOffer,
   type AcceptedKind,
@@ -42,7 +44,7 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
 
-const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm" };
+const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm", code: "code" };
 
 const ATTACHABLE = new Set(["discount", "deposit"]);
 
@@ -861,6 +863,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
             {suggestions.length > 1 ? ` (+${suggestions.length - 1})` : ""}
           </span>
         ) : null}
+        {line.code_offer && line.product ? <RememberCode line={line} /> : null}
       </span>
     );
   }
@@ -876,7 +879,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
     );
   }
 
-  const kindLabel = (s: Suggestion) => (s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : "fuzzy");
+  const kindLabel = (s: Suggestion) => (s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : s.kind === "code" ? "item code" : "fuzzy");
 
   return (
     <>
@@ -900,6 +903,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
           {line.resolved_by_name ? <span className="text-neutral-600 dark:text-neutral-400"> by {line.resolved_by_name}</span> : null}
         </span>
       ) : null}
+      {line.code_offer && line.product ? <RememberCode line={line} /> : null}
       {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
         <ul aria-label={`Suggestions for line ${line.seq}`} className={`mt-1 flex flex-col ${touch ? "gap-2" : "gap-1"}`}>
           {suggestions.map((s, i) =>
@@ -1303,5 +1307,20 @@ function AddLineForm({ itemLines, busy, onAdd }: { itemLines: PurchaseLine[]; bu
         </Button>
       </div>
     </div>
+  );
+}
+
+/** "Remember {code} for {product}" (04, 2K): nothing is recorded without this click. */
+function RememberCode({ line }: { line: PurchaseLine }) {
+  const { id = "" } = useParams<{ id: string }>();
+  const remember = useRememberCode(id);
+  if (!line.code_offer || !line.product) return null;
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+      <Button variant="secondary" className="min-h-11 px-2 text-xs lg:min-h-8" disabled={remember.isPending} onClick={() => remember.mutate(line.id)}>
+        Remember {line.code_offer.value} for {productTitle(line.product)}
+      </Button>
+      {remember.isError ? <span className="text-red-800 dark:text-red-300">{errorMessage(remember.error)}</span> : null}
+    </span>
   );
 }

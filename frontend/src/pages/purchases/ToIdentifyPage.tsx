@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { purchaseErrorMessage, useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
+import { purchaseErrorMessage, useApplyToIdentify, useRememberCode, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
 import { SelectField } from "../../components/catalog/fields";
 import { NameProducts } from "../../components/purchases/NameProducts";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
@@ -26,6 +26,8 @@ export function ToIdentifyPage() {
   // Once a group is answered it leaves the list, and the next one is where the
   // work continues: its product box takes focus (#88).
   const focusKey = useRef<string | null>(null);
+  // An answered group with an item code: the person may remember it (2K).
+  const [offer, setOffer] = useState<Offer | null>(null);
   useEffect(() => {
     const key = focusKey.current;
     if (key === null) return;
@@ -45,6 +47,7 @@ export function ToIdentifyPage() {
           </Button>
         ) : null}
       </PageHeader>
+      {offer ? <RememberOffer offer={offer} onDone={() => setOffer(null)} /> : null}
       {naming ? (
         <NameProducts />
       ) : queue.isPending ? (
@@ -72,8 +75,9 @@ export function ToIdentifyPage() {
                 <GroupCard
                   group={g}
                   index={i}
-                  onAnswered={() => {
+                  onAnswered={(next) => {
                     focusKey.current = groupKey(groups[i + 1] ?? groups[i - 1]);
+                    setOffer(next);
                   }}
                 />
               </Card>
@@ -92,13 +96,46 @@ function groupKey(g: ToIdentifyGroup | undefined): string | null {
   return g ? `${g.vendor.id}:${g.raw_text_norm}` : null;
 }
 
-function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index: number; onAnswered: () => void }) {
+interface Offer {
+  purchaseId: string;
+  lineId: string;
+  code: string;
+  product: string;
+}
+
+/** "Remember {code} for {product}" after a group with an item code is answered (2K). */
+function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) {
+  const remember = useRememberCode(offer.purchaseId);
+  return (
+    <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
+      {remember.isSuccess ? (
+        <span>
+          Remembered {offer.code} for {offer.product}.
+        </span>
+      ) : (
+        <>
+          <span>This line carries the item code {offer.code}.</span>
+          <Button variant="secondary" disabled={remember.isPending} onClick={() => remember.mutate(offer.lineId)}>
+            Remember {offer.code} for {offer.product}
+          </Button>
+          {remember.isError ? <span className="text-red-800 dark:text-red-300">{purchaseErrorMessage(remember.error)}</span> : null}
+        </>
+      )}
+      <Button variant="secondary" onClick={onDone}>
+        {remember.isSuccess ? "Done" : "No thanks"}
+      </Button>
+    </div>
+  );
+}
+
+function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index: number; onAnswered: (offer: Offer | null) => void }) {
   const apply = useApplyToIdentify();
   const notice = useNotice();
   // The group leaves the list once applied, so the confirmation lives in the Notice.
-  const onApplied = ({ applied }: { applied: number }) => {
+  const onApplied = ({ applied }: { applied: number }, chosen: string | null) => {
     notice.show({ tone: "success", message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.` });
-    onAnswered();
+    const first = all ? group.lines[0] : group.lines.find((l) => l.line_id === lineId);
+    onAnswered(group.code && chosen && first ? { purchaseId: first.purchase_id, lineId: first.line_id, code: group.code.value, product: chosen } : null);
   };
   const [all, setAll] = useState(true);
   const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
@@ -134,11 +171,20 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
           label="Product"
           value={null}
           lineText={group.raw_text_norm}
-          onChange={(p) => p && apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() }, { onSuccess: onApplied })}
+          onChange={(p) => {
+            if (!p) return;
+            apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() }, { onSuccess: (r) => onApplied(r, p.name) });
+          }}
           disabled={apply.isPending}
         />
         <div className="flex items-end">
-          <Button variant="secondary" disabled={apply.isPending} onClick={() => apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", ignore: true, ...scope() }, { onSuccess: onApplied })}>
+          <Button
+            variant="secondary"
+            disabled={apply.isPending}
+            onClick={() => {
+              apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", ignore: true, ...scope() }, { onSuccess: (r) => onApplied(r, null) });
+            }}
+          >
             Ignore
           </Button>
         </div>

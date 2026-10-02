@@ -146,6 +146,11 @@ class LineProductRef(Categorized):
     pack_unit: str | None
 
 
+class CodeOffer(ApiModel):
+    scheme: Literal["vendor_sku", "rw_item", "plu"]
+    value: str
+
+
 class LineOut(ApiModel):
     id: uuid.UUID
     seq: int
@@ -169,6 +174,9 @@ class LineOut(ApiModel):
     # Whether this line ever reached the price book, so removing it voids a
     # price. On a single purchase only; null in lists.
     recorded: bool | None = None
+    # A code on the line its product could be remembered by, for this vendor
+    # (04, 2K): offered as "Remember {code} for {product}", recorded on a click.
+    code_offer: CodeOffer | None = None
 
 
 class PurchaseLocationRef(ApiModel):
@@ -256,7 +264,7 @@ class LineDecision(ApiModel):
     product_id: uuid.UUID | None = None
     ignore: bool = False
     product: ProductCreate | None = None  # create inline, then choose it
-    accepted_kind: Literal["alias", "fuzzy", "llm"] | None = None
+    accepted_kind: Literal["alias", "fuzzy", "llm", "code"] | None = None
 
     @model_validator(mode="after")
     def _one(self):
@@ -326,6 +334,9 @@ class QueueGroup(ApiModel):
     raw_text_norm: str | None
     line_count: int
     lines: list[QueueLine]
+    # The item code these lines carry where the vendor prints codes (04, 2K): once
+    # identified, the person may remember it for the product.
+    code: CodeOffer | None = None
 
 
 class QueueList(ApiModel):
@@ -419,3 +430,11 @@ class NamedProduct(ApiModel):
 
 class NameProductsOut(ApiModel):
     results: list[NamedProduct]
+
+
+class RememberCodeOut(ApiModel):
+    """The code now known for the line's product at this vendor."""
+
+    scheme: Literal["vendor_sku", "rw_item", "plu"]
+    value: str
+    product_id: uuid.UUID

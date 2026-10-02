@@ -40,7 +40,7 @@ async def test_import_creates_committed_purchases_and_resolves_barcodes(admin_cl
     assert first["purchased_at"].startswith("2026-03-05T02:22")
     by_text = {ln["raw_text"]: ln for ln in first["lines"]}
     rig_line = by_text[f"{UPC} RIGATONI 16OZ"]
-    assert rig_line["resolution"] == "barcode" and rig_line["product"]["id"] == rig["id"]
+    assert rig_line["resolution"] == "identifier" and rig_line["product"]["id"] == rig["id"]
     assert rig_line["observation_id"]
     bananas = by_text["ORG BANANAS"]
     assert bananas["resolution"] == "unmatched" and bananas["observation_id"] is None

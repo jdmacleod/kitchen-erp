@@ -7,7 +7,6 @@ and reopen of receipt purchases, and the to-identify queue.
 
 from __future__ import annotations
 
-import re
 import statistics
 import uuid
 from collections.abc import Awaitable, Callable
@@ -19,7 +18,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.catalog.identifiers import gs1_ok
+from app.catalog import receipt_codes
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
@@ -35,7 +34,7 @@ from app.models import (
     PurchaseLine,
     ReceiptAlias,
 )
-from app.models.geo import VendorLocation
+from app.models.geo import Vendor, VendorLocation
 from app.services import pricebook
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
@@ -78,12 +77,154 @@ def install_default_ranker() -> bool:
     return True
 
 
-_BARCODE = re.compile(r"(?<!\d)(\d{12,14})(?!\d)")
+async def _identified(
+    db: AsyncSession, codes: receipt_codes.LineCodes, vendor_id: uuid.UUID | None
+) -> Product | None:
+    """The active product a line's codes name, if one does."""
+    for code in codes.gtins:
+        product = await _by_identifier(db, "gtin", code, None)
+        if product is not None:
+            return product
+    if vendor_id is None:
+        return None
+    for scheme, value in codes.positioned:
+        product = await _by_identifier(db, scheme, value, vendor_id)
+        if product is not None:
+            return product
+    return None
 
 
-def barcodes_in(raw: str) -> list[str]:
-    """GTIN-14s of the 12–14 digit runs on a line that carry a valid check digit."""
-    return [m.zfill(14) for m in _BARCODE.findall(raw or "") if gs1_ok(m)]
+async def _by_identifier(
+    db: AsyncSession, scheme: str, value: str, vendor_id: uuid.UUID | None
+) -> Product | None:
+    vendor_clause = (
+        ProductIdentifier.vendor_id == vendor_id
+        if vendor_id is not None
+        else ProductIdentifier.vendor_id.is_(None)
+    )
+    return (
+        await db.execute(
+            select(Product)
+            .join(ProductIdentifier, ProductIdentifier.product_id == Product.id)
+            .where(
+                ProductIdentifier.scheme == scheme,
+                ProductIdentifier.value == value,
+                vendor_clause,
+                Product.active,
+            )
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+
+async def _loose_code_suggestions(
+    db: AsyncSession, codes: receipt_codes.LineCodes, vendor_id: uuid.UUID | None
+) -> list[dict[str, Any]]:
+    """Digit runs outside the vendor's code position that match one of its codes."""
+    if vendor_id is None or not codes.loose:
+        return []
+    rows = (
+        await db.execute(
+            select(ProductIdentifier.value, Product.id, Product.name)
+            .join(Product, Product.id == ProductIdentifier.product_id)
+            .where(
+                ProductIdentifier.vendor_id == vendor_id,
+                ProductIdentifier.scheme.in_(receipt_codes.VENDOR_SCHEMES),
+                ProductIdentifier.value.in_(codes.loose),
+                Product.active,
+            )
+        )
+    ).all()
+    return [
+        {
+            "kind": "code",
+            "product_id": str(pid),
+            "ignore": False,
+            "label": f"{name} (code {value})",
+            "score": "1",
+        }
+        for value, pid, name in rows
+    ]
+
+
+async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, dict[str, str]]:
+    """Per line, the code its chosen product could be remembered by (04, 2K)."""
+    location = purchase.vendor_location
+    vendor = location.vendor if location is not None else None
+    if vendor is None:
+        return {}
+    out: dict[uuid.UUID, dict[str, str]] = {}
+    for line in purchase.lines:
+        if line.line_kind != "item" or line.product_id is None:
+            continue
+        offer = receipt_codes.read(
+            line.raw_text or "", vendor.code_position, vendor.rw_layout
+        ).offer
+        if offer is None or line.resolution in ("identifier", "barcode"):
+            continue
+        known = await _by_identifier(db, offer[0], offer[1], vendor.id)
+        if known is None:
+            out[line.id] = {"scheme": offer[0], "value": offer[1]}
+    return out
+
+
+async def queue_codes(
+    db: AsyncSession, groups: list[dict[str, Any]]
+) -> dict[tuple[str, str | None], dict[str, str]]:
+    """Per to-identify group, the code its lines carry, read with its vendor's layout."""
+    out: dict[tuple[str, str | None], dict[str, str]] = {}
+    vendors: dict[str, Vendor | None] = {}
+    for group in groups:
+        key = str(group["vendor_id"])
+        if key not in vendors:
+            vendors[key] = await db.get(Vendor, uuid.UUID(key))
+        vendor = vendors[key]
+        if vendor is None or not group["lines"]:
+            continue
+        raw = group["lines"][0].get("raw_text") or ""
+        offer = receipt_codes.read(raw, vendor.code_position, vendor.rw_layout).offer
+        if offer is not None:
+            out[(key, group["raw_text_norm"])] = {"scheme": offer[0], "value": offer[1]}
+    return out
+
+
+async def remember_code(
+    db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID
+) -> ProductIdentifier:
+    """Record the line's code for its product at this vendor; only on a person's click."""
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    line = await _line_of(purchase, line_id)
+    offer = (await code_offers(db, purchase)).get(line.id)
+    if offer is None or line.product_id is None:
+        raise ApiError(409, "no_code", "This line has no code to remember for its product.")
+    vendor_id = purchase.vendor_location.vendor_id  # type: ignore[union-attr]
+    owner = (
+        await db.execute(
+            select(ProductIdentifier.product_id).where(
+                ProductIdentifier.scheme == offer["scheme"],
+                ProductIdentifier.value == offer["value"],
+                ProductIdentifier.vendor_id == vendor_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if owner is not None and owner != line.product_id:
+        other = await db.get(Product, owner)
+        raise ApiError(
+            409,
+            "identifier_taken",
+            f"{other.name if other else 'Another product'} already has that code here.",
+            {"product_id": str(owner), "name": other.name if other else None},
+        )
+    identifier = ProductIdentifier(
+        product_id=line.product_id,
+        scheme=offer["scheme"],
+        value=offer["value"],
+        vendor_id=vendor_id,
+        source="receipt",
+    )
+    db.add(identifier)
+    await db.commit()
+    return identifier
 
 
 # --- price sanity -----------------------------------------------------------
@@ -244,27 +385,32 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
         record["rung"] = "not_item"
         return record
 
-    # 1. Barcode.
-    for code in barcodes_in(line.raw_text or ""):
-        product = (
-            await db.execute(
-                select(Product)
-                .join(ProductIdentifier, ProductIdentifier.product_id == Product.id)
-                .where(
-                    ProductIdentifier.scheme == "gtin",
-                    ProductIdentifier.value == code,
-                    Product.active,
-                )
-            )
-        ).scalar_one_or_none()
-        if product is not None:
-            line.product_id = product.id
-            line.resolution = "barcode"
-            line.resolved_by = None
-            line.resolution_confidence = Decimal("1")
-            line.suggestions = []
-            record["rung"] = "barcode"
-            return record
+    # 1. Identifier (2K): a GTIN, a weighed-item label, or a code where the vendor
+    # prints them. Read from the raw text, before normalization drops leading codes.
+    vendor = await db.get(Vendor, vendor_id) if vendor_id is not None else None
+    codes = receipt_codes.read(
+        line.raw_text or "",
+        vendor.code_position if vendor else None,
+        vendor.rw_layout if vendor else None,
+    )
+    record["code"] = codes.offer[1] if codes.offer else None
+    product = await _identified(db, codes, vendor_id)
+    if product is not None:
+        line.product_id = product.id
+        line.resolution = "identifier"
+        line.resolved_by = None
+        line.resolution_confidence = Decimal("1")
+        # The same price check as an alias (04, 2K).
+        flags = [f for f in line.flags if f != "price_outlier"]
+        if await is_price_outlier(db, product, line.qty, line.unit, line.line_total):
+            flags.append("price_outlier")
+        line.flags = flags
+        line.suggestions = []
+        record["rung"] = "identifier"
+        record["price_outlier"] = "price_outlier" in flags
+        return record
+    # A digit run anywhere else is only ever a suggestion.
+    suggestions.extend(await _loose_code_suggestions(db, codes, vendor_id))
 
     if vendor_id is not None and norm:
         # 2. Exact alias.
@@ -338,7 +484,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
                 record["llm_rejected"] = "outside_shortlist"
 
     line.suggestions = suggestions
-    if line.resolution in ("barcode", "alias"):
+    if line.resolution in ("barcode", "identifier", "alias"):
         # Re-resolving a previously auto-resolved line that no longer matches.
         line.resolution = "unmatched"
         line.product_id = None
@@ -351,7 +497,10 @@ async def resolve_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> dict[str
     purchase = await get_purchase(db, purchase_id, lock=True)
     records = []
     for line in purchase.lines:
-        if line.resolution in ("manual", "ignored", "barcode", "alias") and line.resolved_by:
+        if (
+            line.resolution in ("manual", "ignored", "barcode", "identifier", "alias")
+            and line.resolved_by
+        ):
             continue  # a person already decided
         if line.resolution == "manual":
             continue
@@ -361,7 +510,7 @@ async def resolve_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> dict[str
         "normalize_version": NORMALIZE_VERSION,
         "resolve_version": RESOLVE_VERSION,
         "lines": records,
-        "auto_resolved": sum(1 for r in records if r["rung"] in ("barcode", "alias")),
+        "auto_resolved": sum(1 for r in records if r["rung"] in ("identifier", "alias")),
     }
 
 

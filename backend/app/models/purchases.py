@@ -35,7 +35,17 @@ INGEST_STATUSES = ("pending", "running", "needs_review", "done", "failed", "disc
 PURCHASE_STATUSES = ("draft", "reviewed", "committed", "voided")
 PURCHASE_SOURCES = ("receipt", "manual", "import")
 LINE_KINDS = ("item", "discount", "tax", "deposit", "fee")
-RESOLUTIONS = ("barcode", "alias", "fuzzy", "llm", "manual", "unmatched", "ignored")
+# "barcode" is kept for lines resolved before 2K; new matches by code are "identifier".
+RESOLUTIONS = (
+    "barcode",
+    "identifier",
+    "alias",
+    "fuzzy",
+    "llm",
+    "manual",
+    "unmatched",
+    "ignored",
+)
 OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
 NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack")
