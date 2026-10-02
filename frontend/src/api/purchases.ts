@@ -11,7 +11,8 @@ import type { PriceScope, VendorKind } from "./geo";
 // --- types ------------------------------------------------------------------
 
 export type NormStatus = "ok" | "no_density" | "unknown_measure" | "no_pack" | "no_qty";
-export type ObservationSource = "receipt" | "manual" | "shelf" | "import";
+/** `listing` is a price posted on a vendor's web page (2L), kept out of the default views. */
+export type ObservationSource = "receipt" | "manual" | "shelf" | "import" | "listing";
 export type PurchaseStatus = "draft" | "reviewed" | "committed" | "voided";
 
 export interface ObservationProduct {
@@ -52,6 +53,8 @@ export interface Observation {
   unit: string;
   is_promo: boolean;
   source: ObservationSource;
+  /** The vendor page a posted price came from (source = listing). */
+  listing_id?: string | null;
   voided: boolean;
   void_reason?: string | null;
   norm: PriceNorm | null;
@@ -717,6 +720,7 @@ export const sourceLabel: Record<ObservationSource, string> = {
   manual: "Manual",
   shelf: "Shelf",
   import: "Import",
+  listing: "Posted online",
 };
 
 /** "Vendor — Location", or just the name when they coincide; "No location yet" when unset. */

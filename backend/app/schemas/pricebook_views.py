@@ -115,6 +115,8 @@ class CompareIn(ApiModel):
     min_quality: int | None = Field(default=None, ge=1, le=5)
     exclude_stale: bool = False
     exclude_promo: bool = False
+    # Also count posted web prices (2L); they are out of comparison by default.
+    include_posted: bool = False
 
 
 class CompareCell(ApiModel):

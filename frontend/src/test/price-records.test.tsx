@@ -100,4 +100,15 @@ describe("price records on the product page", () => {
     const row = await screen.findByText(/Voided: purchase removed/);
     expect(within(row).getByRole("link", { name: "Open the purchase" })).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
   });
+
+  it("labels a posted web price as left out of cheapest", async () => {
+    const posted: Observation = { ...shelf, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04", price: "3.10", source: "listing", listing_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b04" };
+    mockApi({
+      ...routes({ voided: new Set() }),
+      "GET /price-observations": () => jsonResponse(200, { items: [posted], next_cursor: null }),
+    });
+    renderApp(`/catalog/products/${flourProductId}`);
+    const list = await screen.findByRole("list", { name: "Price records" });
+    expect(within(list).getByText(/Posted online, not counted in cheapest/)).toBeInTheDocument();
+  });
 });

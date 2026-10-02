@@ -36,7 +36,7 @@ PURCHASE_STATUSES = ("draft", "reviewed", "committed", "voided")
 PURCHASE_SOURCES = ("receipt", "manual", "import")
 LINE_KINDS = ("item", "discount", "tax", "deposit", "fee")
 RESOLUTIONS = ("barcode", "alias", "fuzzy", "llm", "manual", "unmatched", "ignored")
-OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import")
+OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
 NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack")
 
@@ -288,6 +288,9 @@ class PriceObservation(UUIDPrimaryKey, Base):
         CheckConstraint(_in("source", OBSERVATION_SOURCES), name="ck_price_observation_source"),
         CheckConstraint("price >= 0", name="ck_price_observation_price"),
         CheckConstraint("qty > 0", name="ck_price_observation_qty"),
+        CheckConstraint(
+            "(source = 'listing') = (listing_id IS NOT NULL)", name="ck_price_observation_listing"
+        ),
     )
 
     product_id: Mapped[uuid.UUID] = mapped_column(
@@ -305,6 +308,10 @@ class PriceObservation(UUIDPrimaryKey, Base):
     unit: Mapped[str] = mapped_column(String(16), ForeignKey("unit.code"), nullable=False)
     is_promo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     source: Mapped[str] = mapped_column(String(16), nullable=False)
+    # The vendor page a posted price came from; set exactly when source = listing (2L).
+    listing_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendor_listing.id")
+    )
     entered_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=False
     )
