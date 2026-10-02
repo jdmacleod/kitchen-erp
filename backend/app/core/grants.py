@@ -29,8 +29,13 @@ APPEND_ONLY = (
     "product_stage_result",
 )
 
-# Append-only apart from the decision columns, which the runtime role may set (0012).
-DECISION_ONLY = {"vendor_suggestion": ("status", "decided_by", "decided_at")}
+# Append-only apart from the columns the runtime role may set: a suggestion's
+# decision (0012), and a capture's payload, from which a trigger lets it remove
+# only the page text once the proposal is decided (0021).
+DECISION_ONLY = {
+    "vendor_suggestion": ("status", "decided_by", "decided_at"),
+    "product_capture": ("payload",),
+}
 
 # Derived data the runtime role may empty wholesale before a rebuild (0005).
 TRUNCATABLE = ("price_norm",)

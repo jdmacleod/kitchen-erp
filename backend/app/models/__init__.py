@@ -14,6 +14,7 @@ from app.models.catalog import (
 )
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.photos import ProductImage, ProductJob, ProductStageResult
+from app.models.proposals import ProductCapture, ProductProposal
 from app.models.purchases import (
     IngestJob,
     IngestStageResult,
@@ -60,9 +61,11 @@ __all__ = [
     "ReceiptAlias",
     "ReceiptDocument",
     "Product",
+    "ProductCapture",
     "ProductIdentifier",
     "ProductImage",
     "ProductJob",
+    "ProductProposal",
     "ProductStageResult",
     "VendorListing",
     "RefUsdaPortion",
