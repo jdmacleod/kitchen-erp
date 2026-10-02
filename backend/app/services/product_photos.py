@@ -510,15 +510,6 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     log.info("photo processed", extra={"image_id": str(image.id)})
 
 
-async def run_once(db: AsyncSession, *, locked_by: str | None = None) -> bool:
-    """Claim and run one product job. Returns False when none was waiting."""
-    job = await claim_job(db, locked_by or worker_id())
-    if job is None:
-        return False
-    await run_job(db, job)
-    return True
-
-
 async def rebuild_derivatives(db: AsyncSession) -> int:
     """`kerp images rebuild`: make every current derivative that is missing.
 
