@@ -9,15 +9,21 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, UploadFile, status
 from fastapi.responses import JSONResponse
 
-from app.api.deps import CurrentUser, DbSession
+from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.api.product_photos import _read
 from app.api.product_proposals import proposal_out
 from app.core.errors import ApiError
-from app.schemas.captures import BarcodeLookupIn, BarcodeLookupOut
+from app.schemas.captures import (
+    AddressIn,
+    AddressPreviewOut,
+    BarcodeLookupIn,
+    BarcodeLookupOut,
+    PageCaptureIn,
+)
 from app.schemas.catalog import ProductOut
 from app.schemas.product_photos import PhotoRole
 from app.schemas.proposals import ProposalOut
-from app.services import barcode_lookup, proposals
+from app.services import barcode_lookup, page_captures, proposals
 from app.services.product_photos import MAX_PHOTOS_PER_UPLOAD, PhotoUpload
 
 router = APIRouter(tags=["product captures"])
@@ -87,4 +93,52 @@ async def photograph_product(
     body = await proposal_out(db, result.proposal)
     return JSONResponse(
         status_code=201 if result.created else 200, content=body.model_dump(mode="json")
+    )
+
+
+@router.post(
+    "/product-captures",
+    response_model=ProposalOut,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        200: {"model": ProposalOut, "description": "the same page, already pending"},
+        413: {"description": "the page text or product data is too large"},
+    },
+)
+async def capture_page(
+    payload: PageCaptureIn, user: CurrentUser, db: DbSession, guard: Idempotency
+) -> JSONResponse:
+    """A vendor page from the bookmarklet, or a pasted address, becomes a proposal."""
+    if guard.replay is not None:
+        return guard.replay
+    result = await page_captures.capture_page(
+        db,
+        user,
+        page_captures.PageCapture(
+            page_url=payload.page_url,
+            channel=payload.channel,
+            canonical_url=payload.canonical_url,
+            title=payload.title,
+            meta=payload.meta,
+            structured_data=payload.structured_data,
+            dom_text=payload.dom_text,
+            image_urls=payload.image_urls,
+            images=[(i.url, i.data_base64) for i in payload.images],
+            vendor_id=payload.vendor_id,
+            without_store=payload.without_store,
+        ),
+    )
+    body = (await proposal_out(db, result.proposal)).model_dump(mode="json")
+    return await guard.commit(201 if result.created else 200, body)
+
+
+@router.post("/product-captures/address", response_model=AddressPreviewOut)
+async def preview_address(payload: AddressIn, _: CurrentUser, db: DbSession) -> AddressPreviewOut:
+    """The vendor, title and item number an address says; nothing is fetched."""
+    found = await page_captures.preview(db, payload.page_url)
+    return AddressPreviewOut(
+        vendor={"id": found.vendor.id, "name": found.vendor.name} if found.vendor else None,  # type: ignore[arg-type]
+        canonical_url=found.canonical_url,
+        title=found.title,
+        item_number=found.item_number,
     )

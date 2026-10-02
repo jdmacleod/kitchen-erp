@@ -64,6 +64,10 @@ class Settings(BaseSettings):
     # with the upload, `tesseract` runs the binary in the worker image. As an
     # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.
     ocr_adapters: list[str] = ["client", "tesseract"]
+    # Retailer adapters for captured pages, as "module:function", imported from
+    # plugins_path (04, 2M). Empty by default: generic extraction only.
+    product_adapters: list[str] = []
+    plugins_path: str = "/plugins"
     tesseract_command: str = "tesseract"
     receipt_max_bytes: int = 32 * 1024 * 1024
     ingest_max_attempts: int = 5

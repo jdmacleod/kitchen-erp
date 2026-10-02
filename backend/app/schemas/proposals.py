@@ -62,7 +62,7 @@ class ProposalVendor(ApiModel):
 class ProposalReading(ApiModel):
     """How the capture was identified: a barcode, the vision model, or text and a model."""
 
-    path: Literal["barcode", "vision", "ocr_text", "unread"]
+    path: Literal["barcode", "vision", "ocr_text", "unread", "page"]
     error: str | None = None
 
 

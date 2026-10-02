@@ -13,7 +13,6 @@ machine: the USDA table is a local read (non-negotiable 9).
 
 from __future__ import annotations
 
-import re
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
@@ -23,17 +22,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.barcodes import RwLayout, as_upca, parse_random_weight
+from app.catalog.extract import pack_from_text
 from app.catalog.identifiers import AmbiguousCode, InvalidGtin, classify_barcode
 from app.catalog.proposals import Candidate
 from app.core.errors import ApiError
 from app.models import AppUser, Product, ProductIdentifier
 from app.models.geo import Place, Vendor, VendorLocation, point_expr
 from app.services import catalog, proposals, usda_branded
-from app.units.parse import UnitParseFailure, parse_unit
 
 NEARBY_METRES = 150
-_PACK = re.compile(r"(\d+(?:\.\d+)?)\s*(fl\.?\s*oz|kg|mg|g|ml|l|lbs?|oz)\b", re.IGNORECASE)
-_METRIC = {"g", "kg", "mg", "ml", "l"}
 
 
 @dataclass
@@ -44,19 +41,6 @@ class Lookup:
     label: dict[str, Any] | None = None
     vendor_location_id: uuid.UUID | None = None
     needs_store: bool = False
-
-
-def pack_from_text(text: str | None) -> dict[str, str] | None:
-    """A pack from USDA's package text such as "15.5 oz/439 g"; metric preferred."""
-    if not text:
-        return None
-    found = []
-    for qty, unit_text in _PACK.findall(text):
-        unit = parse_unit(unit_text)
-        if not isinstance(unit, UnitParseFailure):
-            found.append({"qty": format(Decimal(qty), "f"), "unit": unit})
-    metric = [p for p in found if p["unit"] in _METRIC]
-    return (metric or found or [None])[0]
 
 
 async def _nearby_location(db: AsyncSession, lat: Decimal, lon: Decimal) -> VendorLocation | None:

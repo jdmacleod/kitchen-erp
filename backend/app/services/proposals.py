@@ -429,7 +429,7 @@ async def reading_of(db: AsyncSession, proposal: ProductProposal) -> dict[str, A
             .join(ProductJob, ProductJob.id == ProductStageResult.job_id)
             .where(
                 ProductJob.product_capture_id == proposal.capture_id,
-                ProductStageResult.stage == "identify",
+                ProductStageResult.stage.in_(("identify", "extract")),
                 ProductStageResult.output.has_key("path"),
             )
             .order_by(ProductStageResult.created_at.desc())
