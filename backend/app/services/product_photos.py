@@ -496,10 +496,6 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     await db.flush()
     if product is not None:
         await reselect(db, product)
-        from app.services import lookups
-
-        # A household photo without a mask: the products helper may make one (2N).
-        await lookups.queue_cutout(db, image)
     await record(db, job, started, output)
     job.status = "done"
     job.last_error = None
