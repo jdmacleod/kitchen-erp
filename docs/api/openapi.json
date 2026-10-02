@@ -20,6 +20,89 @@
         "title": "AcceptAllOut",
         "type": "object"
       },
+      "AcceptIn": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "new",
+              "update"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "edits": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Edits",
+            "type": "object"
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "branded",
+                  "private_label",
+                  "random_weight",
+                  "loose",
+                  "unbranded_vendor"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "record_price": {
+            "default": false,
+            "title": "Record Price",
+            "type": "boolean"
+          },
+          "vendor_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Location Id"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "AcceptIn",
+        "type": "object"
+      },
       "ApiTokenCreate": {
         "additionalProperties": false,
         "properties": {
@@ -284,6 +367,51 @@
           "image"
         ],
         "title": "Body_upload_receipt_api_v1_receipts_post",
+        "type": "object"
+      },
+      "CaptureOut": {
+        "additionalProperties": false,
+        "properties": {
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "channel": {
+            "enum": [
+              "clip",
+              "paste_url",
+              "barcode",
+              "photo",
+              "helper"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "required": [
+          "id",
+          "channel",
+          "source_url",
+          "captured_at"
+        ],
+        "title": "CaptureOut",
         "type": "object"
       },
       "CheapestOut": {
@@ -885,6 +1013,35 @@
           "public"
         ],
         "title": "ExportSummaryOut",
+        "type": "object"
+      },
+      "FieldCandidateOut": {
+        "additionalProperties": false,
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "source"
+        ],
+        "title": "FieldCandidateOut",
         "type": "object"
       },
       "FieldChange": {
@@ -6552,6 +6709,43 @@
         "title": "ProductHistory",
         "type": "object"
       },
+      "ProductJobOut": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "last_error"
+        ],
+        "title": "ProductJobOut",
+        "type": "object"
+      },
       "ProductList": {
         "additionalProperties": false,
         "properties": {
@@ -7469,6 +7663,327 @@
           }
         },
         "title": "ProductUpdate",
+        "type": "object"
+      },
+      "ProposalEditIn": {
+        "additionalProperties": false,
+        "description": "A person's values, by field; they win over every other source.",
+        "properties": {
+          "edits": {
+            "additionalProperties": true,
+            "minProperties": 1,
+            "title": "Edits",
+            "type": "object"
+          }
+        },
+        "required": [
+          "edits"
+        ],
+        "title": "ProposalEditIn",
+        "type": "object"
+      },
+      "ProposalFieldOut": {
+        "additionalProperties": false,
+        "description": "The chosen value and where it came from, with every other candidate (criterion 73).",
+        "properties": {
+          "alternatives": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/FieldCandidateOut"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "conflict": {
+            "default": false,
+            "title": "Conflict",
+            "type": "boolean"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value",
+          "source"
+        ],
+        "title": "ProposalFieldOut",
+        "type": "object"
+      },
+      "ProposalList": {
+        "additionalProperties": false,
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "counts"
+        ],
+        "title": "ProposalList",
+        "type": "object"
+      },
+      "ProposalOut": {
+        "additionalProperties": false,
+        "properties": {
+          "capture": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaptureOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "fields": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProposalFieldOut"
+            },
+            "title": "Fields",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/ProductJobOut"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "new_product",
+              "product_update"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "listing": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing"
+          },
+          "match": {
+            "additionalProperties": true,
+            "title": "Match",
+            "type": "object"
+          },
+          "photos": {
+            "items": {
+              "$ref": "#/components/schemas/ProductPhotoOut"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "product_id",
+          "capture",
+          "fields",
+          "match",
+          "listing",
+          "price",
+          "photos",
+          "jobs",
+          "decided_at",
+          "result",
+          "created_at"
+        ],
+        "title": "ProposalOut",
+        "type": "object"
+      },
+      "ProposalSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "enum": [
+                  "clip",
+                  "paste_url",
+                  "barcode",
+                  "photo",
+                  "helper"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "has_conflict": {
+            "title": "Has Conflict",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "new_product",
+              "product_update"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "title",
+          "brand",
+          "channel",
+          "has_conflict",
+          "created_at"
+        ],
+        "title": "ProposalSummary",
         "type": "object"
       },
       "ProvenanceOut": {
@@ -14116,6 +14631,245 @@
         "summary": "Use As Main",
         "tags": [
           "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-proposals": {
+      "get": {
+        "description": "Pending proposals, oldest first, with the counts the inbox shows.",
+        "operationId": "list_proposals_api_v1_product_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Proposals",
+        "tags": [
+          "product proposals"
+        ]
+      }
+    },
+    "/api/v1/product-proposals/{proposal_id}": {
+      "get": {
+        "description": "A proposal with its fields, sources, alternatives, matches, photos and jobs.",
+        "operationId": "get_proposal_api_v1_product_proposals__proposal_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Proposal",
+        "tags": [
+          "product proposals"
+        ]
+      },
+      "patch": {
+        "description": "Set fields as a person; a new GTIN may supersede another pending proposal.",
+        "operationId": "edit_proposal_api_v1_product_proposals__proposal_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProposalEditIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Proposal",
+        "tags": [
+          "product proposals"
+        ]
+      }
+    },
+    "/api/v1/product-proposals/{proposal_id}/accept": {
+      "post": {
+        "description": "Create or update the product, its codes, listing, photos and posted price, together.",
+        "operationId": "accept_proposal_api_v1_product_proposals__proposal_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Proposal",
+        "tags": [
+          "product proposals"
+        ]
+      }
+    },
+    "/api/v1/product-proposals/{proposal_id}/reject": {
+      "post": {
+        "operationId": "reject_proposal_api_v1_product_proposals__proposal_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Proposal",
+        "tags": [
+          "product proposals"
         ]
       }
     },

@@ -160,29 +160,45 @@ def _probe(data: bytes) -> tuple[str, tuple[int, int]]:
         raise _refuse(exc) from None
 
 
-async def add_photos(
-    db: AsyncSession,
-    product_id: uuid.UUID,
-    uploads: list[PhotoUpload],
-    *,
-    source_kind: str = "user_photo",
-    captured_at: datetime | None = None,
-) -> list[ProductImage]:
-    """Store up to four photos for a product and queue them; a repeat returns the same image."""
+def check_uploads(uploads: list[PhotoUpload]) -> list[str]:
+    """Each photo's MIME type, or the refusal; every file is checked before any is stored."""
     if not 1 <= len(uploads) <= MAX_PHOTOS_PER_UPLOAD:
         raise ApiError(422, "validation_error", "Add between one and four photos at a time.")
-    if await db.get(Product, product_id) is None:
+    return [_probe(u.data)[0] for u in uploads]
+
+
+async def add_photos(
+    db: AsyncSession,
+    product_id: uuid.UUID | None,
+    uploads: list[PhotoUpload],
+    *,
+    proposal_id: uuid.UUID | None = None,
+    vendor_id: uuid.UUID | None = None,
+    source_kind: str = "user_photo",
+    captured_at: datetime | None = None,
+    commit: bool = True,
+) -> list[ProductImage]:
+    """Store up to four photos for a product, or for a proposal, and queue them.
+
+    A repeat upload to the same product or proposal returns the same image. A
+    proposal's photos are candidates until it is accepted (2L).
+    """
+    if (product_id is None) == (proposal_id is None):
+        raise ValueError("a photo belongs to a product or to a proposal")
+    mimes = check_uploads(uploads)
+    if product_id is not None and await db.get(Product, product_id) is None:
         raise ApiError(404, "not_found", "No such product.")
-    # Every file is checked before any is stored, so a refusal stores nothing.
-    probed = [(_probe(u.data)[0], u) for u in uploads]
+    owner = (
+        ProductImage.product_id == product_id
+        if product_id is not None
+        else ProductImage.proposal_id == proposal_id
+    )
     out: list[ProductImage] = []
-    for mime, upload in probed:
+    for mime, upload in zip(mimes, uploads, strict=True):
         digest = hashlib.sha256(upload.data).hexdigest()
         existing = (
             await db.execute(
-                select(ProductImage).where(
-                    ProductImage.product_id == product_id, ProductImage.upload_sha256 == digest
-                )
+                select(ProductImage).where(owner, ProductImage.upload_sha256 == digest)
             )
         ).scalar_one_or_none()
         if existing is not None:
@@ -194,6 +210,8 @@ async def add_photos(
         image = ProductImage(
             id=new_id(),
             product_id=product_id,
+            proposal_id=proposal_id,
+            vendor_id=vendor_id,
             upload_sha256=digest,
             source_kind=source_kind,
             role=upload.role,
@@ -204,10 +222,24 @@ async def add_photos(
         await db.flush()
         db.add(ProductJob(id=new_id(), kind="image_process", product_image_id=image.id))
         out.append(image)
+    if not commit:
+        await db.flush()
+        return out
     await db.commit()
     for image in out:
         await db.refresh(image)
     return out
+
+
+async def _lock_image(db: AsyncSession, image_id: uuid.UUID) -> ProductImage:
+    return (
+        await db.execute(
+            select(ProductImage)
+            .where(ProductImage.id == image_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one()
 
 
 async def get_image(db: AsyncSession, image_id: uuid.UUID) -> ProductImage:
@@ -252,7 +284,9 @@ async def add_mask(
 
 async def _choose(db: AsyncSession, image_id: uuid.UUID, action: str) -> ProductImage:
     image = await get_image(db, image_id)
-    product = await lock_product(db, image.product_id)  # type: ignore[arg-type]
+    if image.product_id is None:
+        raise ApiError(409, "not_a_product_photo", "This photo is waiting on a proposal.")
+    product = await lock_product(db, image.product_id)
     image = await get_image(db, image_id)  # re-read under the lock
     if action == "use_as_main":
         if not eligible(facts(image)):
@@ -437,8 +471,12 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
         await db.commit()
         return
 
-    product = await lock_product(db, image.product_id)  # type: ignore[arg-type]
-    image = await get_image(db, image.id)
+    # Lock in accept's order, product then photo, so an accept that attaches this
+    # photo to a product while it was being prepared is seen here (2L).
+    product = await lock_product(db, image.product_id) if image.product_id else None
+    image = await _lock_image(db, image.id)
+    if product is None and image.product_id is not None:
+        product = await lock_product(db, image.product_id)
     output: dict[str, object] = {}
     if processed.original is not None:
         o = processed.original
@@ -453,9 +491,11 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
         image.cutout_source = None
         output["mask"] = "discarded"
     if image.status in ("processing", "failed"):
-        image.status = "active"
+        # A proposal's photo is a candidate until the proposal is accepted.
+        image.status = "active" if image.product_id else "candidate"
     await db.flush()
-    await reselect(db, product)
+    if product is not None:
+        await reselect(db, product)
     await _record(db, job, started, output)
     job.status = "done"
     job.last_error = None

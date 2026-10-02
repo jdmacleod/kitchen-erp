@@ -52,9 +52,11 @@ class ProductImage(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint(
             "(mask_sha256 IS NULL) = (cutout_source IS NULL)", name="ck_product_image_mask_pair"
         ),
-        # Until proposals arrive (2L), every photo belongs to a product.
-        CheckConstraint("product_id IS NOT NULL", name="ck_product_image_owner"),
+        CheckConstraint(
+            "product_id IS NOT NULL OR proposal_id IS NOT NULL", name="ck_product_image_owner"
+        ),
         UniqueConstraint("product_id", "upload_sha256", name="uq_product_image_upload"),
+        UniqueConstraint("proposal_id", "upload_sha256", name="uq_product_image_proposal_upload"),
         # The person's choice of main photo: at most one per product.
         Index(
             "uq_product_image_one_pinned",
@@ -66,6 +68,10 @@ class ProductImage(UUIDPrimaryKey, Timestamped, Base):
 
     product_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("product.id", ondelete="CASCADE"), index=True
+    )
+    # A candidate photo belongs to a proposal until it is accepted (2L, PR13).
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_proposal.id", ondelete="CASCADE"), index=True
     )
     # Plain column like product.exclusive_vendor_id: the catalog doesn't import the geo mappers.
     vendor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
@@ -103,6 +109,9 @@ class ProductJob(UUIDPrimaryKey, Timestamped, Base):
     )
 
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    product_capture_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product_capture.id"), index=True
+    )
     product_image_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("product_image.id", ondelete="CASCADE"), index=True
     )
