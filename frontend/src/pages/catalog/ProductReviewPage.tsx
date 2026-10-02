@@ -19,6 +19,7 @@ import {
   useRejectProposal,
   type AcceptInput,
   type FieldCandidate,
+  type PriceBasis,
   type Pack,
   type ProductKind,
   type Proposal,
@@ -29,7 +30,8 @@ import { IngredientPicker, type IngredientChoice } from "../../components/catalo
 import { useNavigateWithNotice } from "../../components/Notice";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
-import { formatMoney } from "../../lib/decimal";
+import { UnitSelect } from "../../components/catalog/UnitSelect";
+import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -45,6 +47,27 @@ const REVIEWED: [string, string][] = [
   ["gtin", "Barcode"],
 ];
 
+/** What a price is for, as a person reads it: "" for 1 each, " / lb", " / 100 g". */
+export function basisText(qty: string | undefined, unit: string | undefined): string {
+  const q = stripZeros(qty ?? "1");
+  const u = (unit ?? "each").replace("_", " ");
+  if (u === "each" && q === "1") return "";
+  return q === "1" ? ` / ${u}` : ` / ${q} ${u}`;
+}
+
+export function showPrice(price: { amount: string; qty?: string; unit?: string }, sayEach = false): string {
+  const basis = basisText(price.qty, price.unit);
+  return `${formatMoney(price.amount)}${basis || (sayEach ? " each" : "")}`;
+}
+
+/** A price candidate side by side with others: "each" is said, not implied. */
+function comparedPrice(value: unknown): string {
+  if (typeof value === "string") return `${formatMoney(value)} each`;
+  return showPrice(value as PriceBasis, true);
+}
+
+const DECIMAL = /^\d{1,8}(\.\d{1,4})?$/;
+
 /** A field's value as a person reads it. */
 export function showValue(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
@@ -54,6 +77,7 @@ export function showValue(field: string, value: unknown): string {
   }
   if (field === "gtin" && typeof value === "string") return value.replace(/^0+(?=\d{12,13}$)/, "");
   if (field === "price" && typeof value === "string") return formatMoney(value);
+  if (field === "price" && typeof value === "object") return showPrice(value as PriceBasis);
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return String(value);
 }
@@ -130,6 +154,13 @@ function Review({ proposal }: { proposal: Proposal }) {
   const vendor = proposal.vendor;
   const [recordPrice, setRecordPrice] = useState(Boolean(proposal.price && vendor?.suggested_location_id));
   const [location, setLocation] = useState<string | null>(vendor?.suggested_location_id ?? null);
+  // A page that prices per different quantities (per lb and each) must be settled by a person.
+  const priceConflict = Boolean(fields.price?.conflict);
+  const pagePrice: PriceBasis | null = proposal.price
+    ? { amount: proposal.price.amount, qty: proposal.price.qty ?? "1", unit: proposal.price.unit ?? "each" }
+    : null;
+  const [priceEdit, setPriceEdit] = useState<PriceBasis | null>(priceConflict ? pagePrice : null);
+  const priceValid = !priceEdit || (DECIMAL.test(priceEdit.amount.trim()) && DECIMAL.test(priceEdit.qty.trim()) && Number(priceEdit.qty) > 0 && priceEdit.unit !== "");
   const [taken, setTaken] = useState<{ product_id: string; name: string | null } | null>(null);
   const isNew = match === "new";
   const conflicts = REVIEWED.filter(([name]) => fields[name]?.conflict && choices[name]?.index === null);
@@ -157,6 +188,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     if (isNew && !ingredient) return "Choose an ingredient to accept";
     if (isNew && !title) return "Give the product a name to accept";
     if (recordPrice && !location) return "Choose the store for the posted price";
+    if (recordPrice && !priceValid) return "Give the posted price an amount and what it is for";
     return null;
   })();
 
@@ -204,6 +236,7 @@ function Review({ proposal }: { proposal: Proposal }) {
       photo_roles: roles,
       hidden_photo_ids: [...hidden],
       record_price: recordPrice,
+      price: recordPrice && priceEdit ? { amount: priceEdit.amount.trim(), qty: priceEdit.qty.trim(), unit: priceEdit.unit } : undefined,
       vendor_location_id: recordPrice ? (location ?? undefined) : undefined,
     };
     if (target === "new") {
@@ -385,9 +418,44 @@ function Review({ proposal }: { proposal: Proposal }) {
                 Price
               </h2>
               <p className="text-sm">
-                Posted at {formatMoney(proposal.price.amount)}
+                Posted at {showPrice(proposal.price)}
                 {proposal.price.is_promo ? " on sale" : ""}. Posted prices are kept, but not counted in cheapest.
               </p>
+              {priceConflict ? (
+                <p className="mt-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
+                  The page gives more than one price:{" "}
+                  {candidates(fields.price as ProposalField)
+                    .map((c) => comparedPrice(c.value))
+                    .join(" and ")}
+                  . Say what the posted price is for.
+                </p>
+              ) : null}
+              {priceEdit ? (
+                <fieldset className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3" disabled={readOnly}>
+                  <legend className="sr-only">Posted price</legend>
+                  <Field
+                    id={`${id}-price-amount`}
+                    label="Posted price"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={priceEdit.amount}
+                    onChange={(e) => setPriceEdit({ ...priceEdit, amount: e.target.value })}
+                  />
+                  <Field
+                    id={`${id}-price-qty`}
+                    label="For"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={priceEdit.qty}
+                    onChange={(e) => setPriceEdit({ ...priceEdit, qty: e.target.value })}
+                  />
+                  <UnitSelect id={`${id}-price-unit`} label="Unit" value={priceEdit.unit} onChange={(unit) => setPriceEdit({ ...priceEdit, unit })} />
+                </fieldset>
+              ) : !readOnly && pagePrice ? (
+                <button type="button" onClick={() => setPriceEdit(pagePrice)} className={`mt-1 inline-flex min-h-11 items-center text-sm text-blue-700 underline lg:min-h-9 dark:text-blue-300 ${focusRing}`}>
+                  Change the price or what it is for
+                </button>
+              ) : null}
               {vendor && vendor.locations.length > 0 ? (
                 <div className="mt-2 flex flex-col gap-2">
                   <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
