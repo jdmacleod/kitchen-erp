@@ -1001,6 +1001,12 @@ def _fmt(value: Any, pct: bool = True) -> str:
     return f"{float(value):.0f}"
 
 
+SUMMARY_HEADER = (
+    "arm model                  reconcile [80% CI]    runaway total  items±  alias  "
+    + "amounts witness/tol/false  boxes  s p50/max  tok p50"
+)
+
+
 def _summary_row(row: dict[str, Any]) -> str:
     mad = "-" if row["item_count_mad"] is None else f"{row['item_count_mad']:.1f}"
     witness = "/".join(
@@ -1034,8 +1040,7 @@ def render_summary(
         f"receipts: n={n} (set {set_hash[:12]}); excluded: "
         + ", ".join(f"{k}={v}" for k, v in excluded.items()),
         "",
-        "arm model                  reconcile [80% CI]    runaway total  items±  alias  "
-        "amounts witness/tol/false  boxes  s p50/max  tok p50",
+        SUMMARY_HEADER,
     ]
     out += [_summary_row(row) for row in rows]
     for key, reason in skipped.items():
