@@ -38,6 +38,7 @@ the paper or standard it implements and work from that.
 | Tesseract OCR | Apache-2.0 | Notice preserved in the worker image. |
 | `pypdfium2` (renders the first page of a PDF receipt) | Apache-2.0 / BSD-3-Clause; bundles PDFium, BSD-3-Clause | Notice preserved. Permissive, so nothing reaches this project's licence. |
 | `pillow-heif` (decodes HEIC photographs) | Apache-2.0; the wheels bundle **libheif**, LGPL-3.0 | Notice preserved. LGPL reaches the library, not the program that calls it: Kitchen ERP stays MIT because it uses libheif as a separately installed shared library, not by copying its source. Do not vendor libheif source into this repository, and do not statically link it into a redistributed binary, either of which would change that. HEIC decoding is not optional — it is the iPhone camera default — and there is no permissive decoder. |
+| `zxing-cpp` (reads retail barcodes in product photos, 2L; tests also draw barcodes with it) | Apache-2.0 | Notice preserved. Permissive. It runs locally in the worker; nothing is sent anywhere. |
 | Ollama and default model `gpt-oss:20b` | MIT (Ollama), Apache-2.0 (gpt-oss) | Notices preserved. Model weights are downloaded locally, never committed. |
 | Cooklang specification and `cooklang` parser crate / bindings | MIT | Notice preserved if vendored; prefer a dependency. |
 | `opening-hours-py` (OSM opening_hours parser) | MIT or Apache-2.0 | Notice preserved. Avoid `pyopening-hours`, which wraps `opening_hours.js` and is GPL-3.0. |

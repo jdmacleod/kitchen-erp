@@ -9,6 +9,7 @@ from app.api import (
     inbox,
     ingredient_link,
     media,
+    product_captures,
     product_photos,
     product_proposals,
     purchases,
@@ -35,4 +36,5 @@ router.include_router(search.router)
 router.include_router(vendor_suggestions.router)
 router.include_router(product_photos.router)
 router.include_router(product_proposals.router)
+router.include_router(product_captures.router)
 router.include_router(media.router)
