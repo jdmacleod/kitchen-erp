@@ -50,6 +50,7 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/catalog/products`, `/catalog/products/:id` | `/products`, `/products/:id` |
 | `/catalog/products/review/:id` | new in 2L (reached from the inbox; no nav item, PD1) |
 | `/catalog/products/photograph` | new in 2L: Capture's "Photograph a product" (PD12; no nav item) |
+| `/catalog/products/posted-prices` | new in 2N: the "posted prices changed" inbox row's Review (no nav item) |
 | `/catalog/vendors`, `/catalog/vendors/:id` | `/vendors`, `/vendors/:id` |
 | `/catalog/vendors?view=map` | `/map` (T9) |
 | `/catalog/bridges` | `/price-book/needs-bridge` (reached from the inbox; no nav item) |

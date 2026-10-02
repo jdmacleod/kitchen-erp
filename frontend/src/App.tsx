@@ -9,6 +9,7 @@ import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientLinkPage } from "./pages/catalog/IngredientLinkPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { PhotographProductPage } from "./pages/catalog/PhotographProductPage";
+import { PostedPricesPage } from "./pages/catalog/PostedPricesPage";
 import { ProductReviewPage } from "./pages/catalog/ProductReviewPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
@@ -92,6 +93,7 @@ export function App() {
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/catalog/products/review/:id" element={<ProductReviewPage />} />
             <Route path="/catalog/products/photograph" element={<PhotographProductPage />} />
+            <Route path="/catalog/products/posted-prices" element={<PostedPricesPage />} />
             <Route path="/catalog/products/:id" element={<ProductDetailPage />} />
             <Route path="/catalog/vendors" element={<VendorsPage />} />
             <Route path="/catalog/vendors/:id" element={<VendorDetailPage />} />

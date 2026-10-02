@@ -10,7 +10,10 @@ import {
   isReading,
   readingWords,
   takenBy,
+  LOOKUP_OVERDUE_MINUTES,
   useAcceptProposal,
+  useLookUp,
+  useProductsHelper,
   usePendingProposals,
   useProposal,
   useRejectProposal,
@@ -244,6 +247,7 @@ function Review({ proposal }: { proposal: Proposal }) {
             {how[0].toUpperCase() + how.slice(1)} · <time dateTime={when}>{formatDateTime(when)}</time>
           </p>
           {readingWords(proposal.reading) ? <p className={`text-sm ${muted}`}>{readingWords(proposal.reading)}</p> : null}
+          {readOnly ? null : <LookUp proposal={proposal} />}
         </aside>
 
         <div className="flex min-w-0 flex-col gap-8">
@@ -322,7 +326,7 @@ function Review({ proposal }: { proposal: Proposal }) {
                         disabled={readOnly}
                         value={typed[name] ?? (field ? showValue(name, field.value).replace(/^—$/, "") : "")}
                         onChange={(e) => setTyped({ ...typed, [name]: e.target.value })}
-                        hint={field ? `${SOURCE_BADGES[field.source]}${field.source === "model" ? " · a guess" : ""}` : undefined}
+                        hint={field ? `${field.via === "helper" ? "Lookup helper" : SOURCE_BADGES[field.source]}${field.source === "model" ? " · a guess" : ""}` : undefined}
                       />
                     </div>
                   );
@@ -505,7 +509,7 @@ function Alternatives({
         {candidates(field).map((c, i) => (
           <RadioRow key={`${name}-${i}`} name={`${id}-${name}`} checked={index === i} onChange={() => onChoose(i)} outline={c.source === "model"}>
             <span className="mr-2">{showValue(name, c.value)}</span>
-            <Badge>{SOURCE_BADGES[c.source]}</Badge>
+            <Badge>{c.via === "helper" ? "Lookup helper" : SOURCE_BADGES[c.source]}</Badge>
           </RadioRow>
         ))}
       </div>
@@ -653,4 +657,52 @@ function StatusNotice({ proposal }: { proposal: Proposal }) {
       Rejected {when}. The capture is kept.
     </Alert>
   );
+}
+
+/**
+ * "Look this up online" (2N; PD8, UI-6.13): absent without a products helper;
+ * then the asked, overdue and answered states.
+ */
+function LookUp({ proposal }: { proposal: Proposal }) {
+  const helper = useProductsHelper();
+  const ask = useLookUp(proposal.id);
+  // A clock for "n min ago", held in state so rendering stays pure.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(tick);
+  }, []);
+  if (!helper.data?.configured) return null;
+  const lookup = proposal.lookup;
+  if (!lookup) {
+    return (
+      <span className="flex flex-col gap-1">
+        <Button variant="secondary" className="self-start" disabled={ask.isPending} onClick={() => ask.mutate()}>
+          {ask.isPending ? "Asking…" : "Look this up online"}
+        </Button>
+        {ask.isError ? <span className="text-sm text-red-800 dark:text-red-300">{errorMessage(ask.error)}</span> : null}
+      </span>
+    );
+  }
+  if (lookup.status !== "open") {
+    return <p className={`text-sm ${muted}`}>The lookup helper answered{lookup.answered_at ? ` ${minutesAgo(lookup.answered_at, now)}` : ""}.</p>;
+  }
+  const waited = (now - new Date(lookup.created_at).getTime()) / 60_000;
+  if (waited > LOOKUP_OVERDUE_MINUTES) {
+    return (
+      <p className="rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
+        No answer yet ·{" "}
+        <Link to="/settings/system" className={`rounded font-medium underline ${focusRing}`}>
+          Check System
+        </Link>
+      </p>
+    );
+  }
+  return <p className={`text-sm ${muted}`}>Asked the lookup helper {minutesAgo(lookup.created_at, now)}.</p>;
+}
+
+function minutesAgo(iso: string, now: number): string {
+  const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return "just now";
+  return minutes === 1 ? "1 min ago" : `${minutes} min ago`;
 }

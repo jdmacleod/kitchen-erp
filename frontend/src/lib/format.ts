@@ -20,3 +20,13 @@ export function formatDate(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return iso;
   return dateOnly.format(d);
 }
+
+const timeOnly = new Intl.DateTimeFormat(undefined, { timeStyle: "short" });
+
+/** Render a UTC ISO-8601 timestamp as a time of day, e.g. "2:00 PM". */
+export function formatTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return timeOnly.format(d);
+}
