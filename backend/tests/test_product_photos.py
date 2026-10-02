@@ -18,7 +18,7 @@ from PIL import Image
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
-from app.services import media, product_photos
+from app.services import media, product_jobs, product_photos
 from tests.pricebook_helpers import make_product
 
 RED, BLUE = (200, 30, 30), (30, 60, 200)
@@ -94,7 +94,7 @@ async def work() -> int:
     """Run the worker's product jobs until none is waiting."""
     ran = 0
     async with get_sessionmaker()() as db:
-        while await product_photos.run_once(db, locked_by="test"):
+        while await product_jobs.run_once(db, locked_by="test"):
             ran += 1
     return ran
 

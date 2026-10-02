@@ -759,3 +759,51 @@ async def reject(db: AsyncSession, user: AppUser, proposal_id: uuid.UUID) -> Pro
     _purge(await db.get(ProductCapture, proposal.capture_id) if proposal.capture_id else None)
     await db.commit()
     return await get_proposal(db, proposal_id)
+
+
+# --- photographing a product (2L) ------------------------------------------------------
+
+
+async def capture_photos(
+    db: AsyncSession,
+    user: AppUser,
+    uploads: list[product_photos.PhotoUpload],
+    *,
+    captured_at: datetime | None = None,
+    lat: Decimal | None = None,
+    lon: Decimal | None = None,
+) -> CaptureResult:
+    """Up to four photos become one proposal, and an ``identify`` job reads them.
+
+    Every photo is checked before anything is stored. The same photos again,
+    while their proposal is pending, return that proposal.
+    """
+    product_photos.check_uploads(uploads)
+    payload = {
+        "photos": [{"sha256": hashlib.sha256(u.data).hexdigest(), "role": u.role} for u in uploads]
+    }
+    result = await create_capture(
+        db,
+        user=user,
+        channel="photo",
+        payload=payload,
+        evidence=Evidence(),
+        captured_at=captured_at,
+        lat=lat,
+        lon=lon,
+        commit=False,
+    )
+    if result.created:
+        await product_photos.add_photos(
+            db,
+            None,
+            uploads,
+            proposal_id=result.proposal.id,
+            captured_at=captured_at,
+            commit=False,
+        )
+        # After the photos' own jobs, so a single worker prepares them first.
+        db.add(ProductJob(id=new_id(), kind="identify", product_capture_id=result.capture.id))
+    await db.commit()
+    await db.refresh(result.proposal)
+    return result

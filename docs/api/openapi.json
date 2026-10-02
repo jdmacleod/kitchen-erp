@@ -228,6 +228,152 @@
         "title": "ApiTokenOut",
         "type": "object"
       },
+      "BarcodeLookupIn": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 32,
+            "minLength": 4,
+            "title": "Code",
+            "type": "string"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "maximum": 90.0,
+                "minimum": -90.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": -180.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "symbology": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ean8",
+                  "upce"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbology"
+          },
+          "vendor_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Location Id"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "BarcodeLookupIn",
+        "type": "object"
+      },
+      "BarcodeLookupOut": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeighedLabel"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "needs_store": {
+            "default": false,
+            "title": "Needs Store",
+            "type": "boolean"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "proposal_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposal Id"
+          },
+          "result": {
+            "enum": [
+              "product",
+              "label",
+              "proposal",
+              "unknown"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "vendor_location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Location Id"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "title": "BarcodeLookupOut",
+        "type": "object"
+      },
       "Body_add_mask_api_v1_product_photos__image_id__mask_post": {
         "properties": {
           "mask": {
@@ -308,6 +454,80 @@
           "photos"
         ],
         "title": "Body_add_product_photos_api_v1_product_photos_post",
+        "type": "object"
+      },
+      "Body_photograph_product_api_v1_product_captures_photos_post": {
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "photos": {
+            "description": "one to four photos",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "roles": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "product",
+                    "label_front",
+                    "label_nutrition",
+                    "label_ingredients",
+                    "shelf_tag"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "one per photo, in order",
+            "title": "Roles"
+          }
+        },
+        "required": [
+          "photos"
+        ],
+        "title": "Body_photograph_product_api_v1_product_captures_photos_post",
         "type": "object"
       },
       "Body_upload_receipt_api_v1_receipts_post": {
@@ -11643,6 +11863,45 @@
         "title": "VoidIn",
         "type": "object"
       },
+      "WeighedLabel": {
+        "additionalProperties": false,
+        "description": "What a weighed-item label's digits say: its item code, and its price or weight.",
+        "properties": {
+          "item": {
+            "title": "Item",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "required": [
+          "item",
+          "price",
+          "weight"
+        ],
+        "title": "WeighedLabel",
+        "type": "object"
+      },
       "app__schemas__geo__VendorRef": {
         "additionalProperties": false,
         "properties": {
@@ -11946,6 +12205,48 @@
         "summary": "Change Password",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/barcode-lookups": {
+      "post": {
+        "description": "The catalog first; a weighed-item label needs its store; an unknown GTIN proposes.",
+        "operationId": "lookup_barcode_api_v1_barcode_lookups_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BarcodeLookupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarcodeLookupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Lookup Barcode",
+        "tags": [
+          "product captures"
         ]
       }
     },
@@ -14319,6 +14620,58 @@
         "summary": "Void Observation",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/product-captures/photos": {
+      "post": {
+        "description": "Up to four photos of one product become one proposal, read in the background.",
+        "operationId": "photograph_product_api_v1_product_captures_photos_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_photograph_product_api_v1_product_captures_photos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "the same photos, already pending"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProposalOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Photograph Product",
+        "tags": [
+          "product captures"
         ]
       }
     },

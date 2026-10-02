@@ -430,7 +430,7 @@ def _process_files(image: ProductImage) -> _Processed:
     return _Processed(original, mask, mask_source, discarded, used)
 
 
-async def _record(
+async def record(
     db: AsyncSession, job: ProductJob, started: float, output: dict[str, object]
 ) -> None:
     db.add(
@@ -447,13 +447,13 @@ async def _record(
 
 
 async def run_job(db: AsyncSession, job: ProductJob) -> None:
-    """Run one claimed job. Only ``image_process`` exists until proposals (2L)."""
+    """Prepare one photo (an ``image_process`` job). app.services.product_jobs dispatches."""
     started = time.monotonic()
     image = await get_image(db, job.product_image_id)  # type: ignore[arg-type]
     try:
         processed = await anyio.to_thread.run_sync(_process_files, image)
     except StageFailure as exc:
-        await _record(db, job, started, {"error": exc.code, "detail": exc.detail})
+        await record(db, job, started, {"error": exc.code, "detail": exc.detail})
         job.status = "failed"
         job.last_error = exc.code
         if image.status == "processing":
@@ -463,7 +463,7 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
         return
     except OSError as exc:
         # The disk, not the photo: try again, up to a limit.
-        await _record(db, job, started, {"error": "io_error", "detail": type(exc).__name__})
+        await record(db, job, started, {"error": "io_error", "detail": type(exc).__name__})
         job.last_error = "io_error"
         job.status = "pending" if job.attempts < MAX_ATTEMPTS else "failed"
         if job.status == "failed" and image.status == "processing":
@@ -496,22 +496,13 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     await db.flush()
     if product is not None:
         await reselect(db, product)
-    await _record(db, job, started, output)
+    await record(db, job, started, output)
     job.status = "done"
     job.last_error = None
     await db.commit()
     for path in processed.used:
         path.unlink(missing_ok=True)
     log.info("photo processed", extra={"image_id": str(image.id)})
-
-
-async def run_once(db: AsyncSession, *, locked_by: str | None = None) -> bool:
-    """Claim and run one product job. Returns False when none was waiting."""
-    job = await claim_job(db, locked_by or worker_id())
-    if job is None:
-        return False
-    await run_job(db, job)
-    return True
 
 
 async def rebuild_derivatives(db: AsyncSession) -> int:

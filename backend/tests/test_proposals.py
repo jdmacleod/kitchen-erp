@@ -23,7 +23,7 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.core.errors import ApiError
 from app.models import AppUser
-from app.services import pricebook, product_photos, proposals
+from app.services import pricebook, product_jobs, product_photos, proposals
 from app.services.product_photos import PhotoUpload
 from app.services.proposals import AcceptInput, Evidence
 from tests.pricebook_helpers import make_location, make_product
@@ -102,7 +102,7 @@ def jpeg(colour=(30, 60, 200)) -> bytes:
 
 async def work() -> None:
     async with get_sessionmaker()() as db:
-        while await product_photos.run_once(db, locked_by="test"):
+        while await product_jobs.run_once(db, locked_by="test"):
             pass
 
 
