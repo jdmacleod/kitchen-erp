@@ -295,13 +295,13 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
   - The user prompt is `glm-ocr`'s own, "Text Recognition:".
   - `glm-ocr` transcribes the receipt and then repeats lines until the output cap (22 distinct lines in 112). Repeat and presence penalties didn't stop it and cost accuracy. So the cap is 4,096 tokens (about 25 s at 165 tok/s), and the loop is cut at the first repeated run of 3 lines.
   - Hitting that cap isn't counted as a runaway; an OCR timeout still is.
-  - An uncapped first try ran into the 300 s call timeout. Ollama kept generating after the client gave up, and `/api/ps` hung for about a minute. The cap prevents that.
+  - Uncapped, the loop runs to the 8,192-token vision cap: about 56 s per receipt at 150 tok/s (measured 2026-10-02). The 4,096 cap halves that. A first try that timed out at 300 s was the model server's laptop going to sleep, not `glm-ocr`; it was repeated with the host awake.
 - **Boxes.** Arm (c) asks every model for boxes (`prompt_version` `vision-box-1`), and `box_valid_share` reports how many came back valid. A model that gives poor boxes is still scored on its lines, because an invalid box is dropped rather than failing the reply.
 - **Line amounts** are aligned as a multiset: the reading's item amounts against the committed item amounts. That answers the open alignment question in its simplest form. Arm (d) will need a positional alignment.
 - **Margin.** Measured in shares, "3 receipts" is 3/n, which is never smaller than 1/n, so the margin is always 3/n. The rule is implemented as written.
 - **Eligible receipts on 2026-10-02:** 1. The household has 14 receipt purchases: 11 drafts, 2 voided and 1 committed. Before T5, commit the drafts or add `expected.csv` rows, or the run can't support a decision.
 - **Run time, revised.** The real lines schema plus boxes is about 58 output tokens per line, roughly twice my MS4 assumption. So budget about 12–13 minutes per receipt for the full grid: about 2.5 h for 12 receipts, 3.2 h for 15 and 4.3 h for 20.
-- **Live smoke run** on two synthetic receipts against the LAN host (2026-10-02): all three arms reconciled both. Arm (a) `gpt-oss:20b` took about 47 s per receipt, arm (b) `glm-ocr` plus `gpt-oss:20b` about 77 s, and arm (c) `qwen3.5:9b` about 27 s with 100% valid boxes.
+- **Live smoke run** on two synthetic receipts against the LAN host (2026-10-02, repeated with the host confirmed awake): all three arms reconciled both. Arm (a) `gpt-oss:20b` took about 47 s per receipt, arm (b) `glm-ocr` plus `gpt-oss:20b` about 77 s, and arm (c) `qwen3.5:9b` about 27 s with 100% valid boxes.
 
 ## Model survey (2026-10-01, MS1–MS6)
 
