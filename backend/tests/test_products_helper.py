@@ -280,6 +280,25 @@ async def test_refreshed_posted_prices_wait_for_a_person(
     items = (await admin_client.get("/api/v1/inbox")).json()["items"]
     assert not [i for i in items if i["kind"] == "posted_prices"]
 
+    # A weekly refresh re-reports what it sees: only a change reaches a person.
+    async def report_again(*prices: dict) -> int:
+        body = json.dumps({"format": FORMAT, "prices": list(prices)})
+        r = await helper.post(
+            "/api/v1/listing-price-changes",
+            content=body,
+            headers={**helper.suggest_headers, "Content-Type": "application/json"},
+        )
+        return r.json()["added"]
+
+    later = datetime.now(UTC).isoformat()
+    accepted = {"listing_id": str(listing_id), "amount": "3.1900", "seen_at": later}
+    rejected = {"listing_id": str(listing_id), "amount": 2.99, "is_promo": True, "seen_at": later}
+    assert await report_again(accepted) == 0  # the posted price, unchanged
+    assert await report_again({**accepted, "amount": 3.29}) == 1
+    assert await report_again({**accepted, "amount": 3.29}) == 0  # already waiting
+    assert await report_again(rejected) == 1  # differs from the latest change (3.29)
+    assert await report_again(rejected) == 0
+
 
 # --- 92 -------------------------------------------------------------------------------------
 

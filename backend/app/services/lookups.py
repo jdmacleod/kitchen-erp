@@ -143,6 +143,45 @@ async def queue_unknown_scan(db: AsyncSession, proposal: ProductProposal, gtin: 
         db.add(LookupRequest(id=new_id(), kind="gtin", proposal_id=proposal.id, value=gtin))
 
 
+async def queue_listing_refreshes(db: AsyncSession, now: datetime | None = None) -> int:
+    """Queue a ``page`` request for each active listing due a refresh (2N, 2026-10-02).
+
+    Only while a products helper token exists, and at most once per listing every
+    ``LISTING_REFRESH_DAYS``; an open request for a listing is never doubled.
+    """
+    days = get_settings().listing_refresh_days
+    if days <= 0 or not await helper_configured(db):
+        return 0
+    now = now or datetime.now(UTC)
+    due = (
+        await db.execute(
+            text(
+                """
+                SELECT l.id, l.product_id, l.canonical_url FROM vendor_listing l
+                WHERE l.status = 'active' AND l.product_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lookup_request r
+                      WHERE r.listing_id = l.id
+                        AND (r.status = 'open'
+                             OR r.created_at
+                                > CAST(:now AS timestamptz) - make_interval(days => :days))
+                  )
+                ORDER BY l.last_captured_at
+                """
+            ),
+            {"now": now, "days": days},
+        )
+    ).all()
+    for listing_id, product_id, url in due:
+        db.add(
+            LookupRequest(
+                id=new_id(), kind="page", product_id=product_id, listing_id=listing_id, value=url
+            )
+        )
+    await db.commit()
+    return len(due)
+
+
 async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
     return list(
         (
@@ -387,6 +426,8 @@ async def report_prices(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
         listing = await db.get(VendorListing, price.listing_id)
         if listing is None or listing.product_id is None:
             continue
+        if await _already_known(db, listing.id, price):
+            continue
         db.add(
             ListingPriceChange(
                 id=new_id(),
@@ -401,6 +442,31 @@ async def report_prices(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
         added += 1
     await _record(db, None, token_id, {"prices": added}, "merged")
     return added
+
+
+async def _already_known(db: AsyncSession, listing_id: uuid.UUID, price: Any) -> bool:
+    """Whether a reported price equals the listing's latest posted price or its latest
+    reported change (pending, accepted or rejected): only a change reaches a person."""
+    rows = await db.execute(
+        text(
+            """
+            (SELECT o.price AS amount, o.qty, o.unit, o.is_promo
+             FROM price_observation o
+             WHERE o.listing_id = :listing
+               AND NOT EXISTS (SELECT 1 FROM price_observation_void v
+                               WHERE v.observation_id = o.id)
+             ORDER BY o.observed_at DESC, o.created_at DESC LIMIT 1)
+            UNION ALL
+            (SELECT c.amount, c.qty, c.unit, c.is_promo
+             FROM listing_price_change c
+             WHERE c.listing_id = :listing
+             ORDER BY c.created_at DESC, c.id DESC LIMIT 1)
+            """
+        ),
+        {"listing": listing_id},
+    )
+    reported = (price.amount, price.qty, price.unit, price.is_promo)
+    return any((r.amount, r.qty, r.unit, r.is_promo) == reported for r in rows)
 
 
 async def pending_price_changes(db: AsyncSession) -> list[dict[str, Any]]:

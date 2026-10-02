@@ -5188,6 +5188,18 @@
             "title": "Kind",
             "type": "string"
           },
+          "listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
           "status": {
             "enum": [
               "open",

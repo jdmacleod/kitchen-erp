@@ -397,7 +397,11 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
 - **A versioned answer format, `kitchen-erp-products/1`.** An answer holds field candidates with their source, confidence and source address, plus photos with their attribution and masks. The app validates it like a model reply, merges it into the proposal, and a person still accepts. Unknown fields and over-cap confidences are refused.
   - An answer to an accepted proposal opens a Product update if it would change anything.
   - An answer to a rejected one is recorded and closed.
-- **Listing refreshes.** The helper may report changed posted prices. They appear as one inbox row, "4 posted prices changed", and nothing is recorded until a person accepts.
+- **Listing refreshes.** The helper may report changed posted prices. They appear as one inbox row, "4 posted prices changed", and nothing is recorded until a person accepts. A reported price equal to the listing's latest posted price, or to its latest reported change in any state, is not added, so an unchanged or already-rejected price never reaches a person again.
+  - The helper learns which listings to refresh through the queue (decided 2026-10-02):
+    - while a helper token exists, the app queues a `page` request for each active listing every `LISTING_REFRESH_DAYS` (default 7; 0 turns it off);
+    - each such request carries its `listing_id`, so a changed price can be reported against that listing;
+    - `products:read` still reads the queue and nothing else.
 
 The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
 - HTTP and HTTPS only;

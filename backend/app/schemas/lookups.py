@@ -13,6 +13,8 @@ class LookupRequestOut(ApiModel):
     id: uuid.UUID
     kind: Literal["gtin", "page", "cutout"]
     value: str | None
+    # Set on a scheduled listing refresh: report changed prices against it.
+    listing_id: uuid.UUID | None = None
     status: Literal["open", "answered", "closed"]
     created_at: datetime
     answered_at: datetime | None
