@@ -525,6 +525,8 @@ class AcceptInput:
     kind: str | None = None
     edits: dict[str, Any] = field(default_factory=dict)
     record_price: bool = False
+    # The reviewer's price {amount, qty, unit}, over the page's.
+    price: dict[str, Any] | None = None
     vendor_location_id: uuid.UUID | None = None
     # The reviewer's photo choices: the main photo, each photo's role, and ones to hide.
     main_photo_id: uuid.UUID | None = None
@@ -701,7 +703,9 @@ async def _record_price(
     user: AppUser,
 ) -> uuid.UUID | None:
     """At most one posted price, at the location the reviewer confirmed."""
-    if not data.record_price or not proposal.price or listing is None:
+    if not data.record_price or listing is None:
+        return None
+    if not proposal.price and data.price is None:
         return None
     if data.vendor_location_id is None:
         raise ApiError(422, "location_required", "Say which store this posted price is for.")
@@ -710,15 +714,27 @@ async def _record_price(
         raise ApiError(
             422, "location_mismatch", "That store is not one of this page's vendor's stores."
         )
-    price = proposal.price
+    if data.price is not None:
+        given = {k: str(v) for k, v in data.price.items()}
+        basis = merging.price_basis(given)
+        if basis is None:
+            raise ApiError(422, "unknown_unit", f"There is no unit {given.get('unit')!r}.")
+    elif proposal.fields.get("price", {}).get("conflict"):
+        raise ApiError(
+            409,
+            "price_conflict",
+            "The page gives this price per different quantities. Say what it is for.",
+        )
+    else:
+        basis = proposal.price
     observation = await pricebook.observe(
         db,
         product_id=product.id,
         vendor_location_id=location.id,
-        price=Decimal(str(price["amount"])),
-        qty=Decimal(str(price.get("qty", "1"))),
-        unit=str(price.get("unit", "each")),
-        is_promo=bool(price.get("is_promo", False)),
+        price=Decimal(str(basis["amount"])),
+        qty=Decimal(str(basis.get("qty", "1"))),
+        unit=str(basis.get("unit", "each")),
+        is_promo=bool((proposal.price or {}).get("is_promo", False)),
         source="listing",
         listing_id=listing.id,
         entered_by=user,

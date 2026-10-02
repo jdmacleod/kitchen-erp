@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from decimal import Decimal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
@@ -117,6 +118,14 @@ class ProposalEditIn(ApiModel):
     edits: dict[str, Any] = Field(min_length=1)
 
 
+class PriceIn(ApiModel):
+    """The reviewer's posted price: what was paid for how much (0.69 for 1 lb)."""
+
+    amount: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
+    qty: Annotated[Decimal, Field(gt=0)] = Decimal("1")
+    unit: Annotated[str, Field(min_length=1, max_length=16)] = "each"
+
+
 class AcceptIn(ApiModel):
     action: Literal["new", "update"]
     product_id: uuid.UUID | None = None
@@ -124,6 +133,8 @@ class AcceptIn(ApiModel):
     kind: ProductKind | None = None
     edits: dict[str, Any] = {}
     record_price: bool = False
+    # Overrides the page's price and what it is for; it also settles a price conflict.
+    price: PriceIn | None = None
     vendor_location_id: uuid.UUID | None = None
     main_photo_id: uuid.UUID | None = None
     photo_roles: dict[uuid.UUID, PhotoRole] = {}

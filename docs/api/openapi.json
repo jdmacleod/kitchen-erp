@@ -106,6 +106,16 @@
             "title": "Photo Roles",
             "type": "object"
           },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "product_id": {
             "anyOf": [
               {
@@ -7385,6 +7395,51 @@
           "created_at"
         ],
         "title": "PriceChangeOut",
+        "type": "object"
+      },
+      "PriceIn": {
+        "additionalProperties": false,
+        "description": "The reviewer's posted price: what was paid for how much (0.69 for 1 lb).",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Qty"
+          },
+          "unit": {
+            "default": "each",
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount"
+        ],
+        "title": "PriceIn",
         "type": "object"
       },
       "PricesReported": {

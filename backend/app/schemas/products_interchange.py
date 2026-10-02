@@ -31,9 +31,17 @@ class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class PriceValue(_Strict):
+    """A price for a quantity: 0.69 for 1 lb. A bare number is a price for 1 each."""
+
+    amount: Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
+    qty: Annotated[Decimal, Field(gt=0)]
+    unit: Annotated[str, Field(max_length=16)]
+
+
 class AnswerCandidate(_Strict):
     field: Annotated[str, Field(max_length=40)]
-    value: str | bool | Decimal | dict[str, str | Decimal]
+    value: str | bool | Decimal | PriceValue | dict[str, str | Decimal]
     source: HelperSource
     confidence: Annotated[Decimal, Field(ge=0, le=1)] | None = None
     source_url: Url | None = None

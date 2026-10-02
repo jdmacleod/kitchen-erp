@@ -80,14 +80,22 @@ def statuses() -> dict[str, str]:
     return {a.name: a.status for a in adapters()}
 
 
+def _no_floats(value: Any) -> Any:
+    """An adapter's numbers as exact strings: never a float past this point."""
+    if isinstance(value, float):
+        return format(Decimal(str(value)), "f")
+    if isinstance(value, dict):
+        return {k: _no_floats(v) for k, v in value.items()}
+    return value
+
+
 def _candidate(item: Any) -> merging.Candidate | None:
     if not isinstance(item, dict):
         return None
     field, value = item.get("field"), item.get("value")
     if not isinstance(field, str) or value is None:
         return None
-    if isinstance(value, float):
-        value = format(Decimal(str(value)), "f")  # never a float past this point
+    value = _no_floats(value)
     candidate = merging.Candidate(field, value, "adapter")
     try:
         merging._check(candidate)
