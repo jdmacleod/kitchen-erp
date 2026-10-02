@@ -89,6 +89,10 @@ interface ProductFormProps {
   children?: ReactNode;
   /** A notice rendered above the fields (e.g. success). */
   notice?: ReactNode;
+  /** A field before the others, such as Add product's web address (2M). */
+  lead?: ReactNode;
+  /** A hint under Name, e.g. "From the address" when it was prefilled (PD20). */
+  nameHint?: string;
   densityHint?: ReactNode;
   /**
    * "drawer": the drawer supplies the title and the submit button, which submits
@@ -137,6 +141,8 @@ export function ProductForm({
   busyLabel,
   children,
   notice,
+  lead,
+  nameHint,
   densityHint,
   layout = "page",
   formId,
@@ -175,6 +181,7 @@ export function ProductForm({
         </h2>
       ) : null}
       {notice}
+      {lead}
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {error ? <Alert tone="error">{catalogErrorMessage(error)}</Alert> : null}
 
@@ -205,6 +212,7 @@ export function ProductForm({
           label="Name"
           autoComplete="off"
           required
+          hint={nameHint}
           value={values.name}
           onChange={(e) => set("name", e.target.value)}
         />

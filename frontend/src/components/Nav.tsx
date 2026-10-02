@@ -64,6 +64,7 @@ export const FOOTER_SECTIONS: NavSection[] = [
       { to: "/settings/kitchens", label: "Kitchens" },
       { to: "/settings/users", label: "Users", adminOnly: true },
       { to: "/settings/tokens", label: "API tokens" },
+      { to: "/settings/capture", label: "Capture" },
       { to: "/settings/system", label: "System" },
     ],
   },

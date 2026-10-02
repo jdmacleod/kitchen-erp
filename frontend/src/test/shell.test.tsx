@@ -60,7 +60,7 @@ describe("app shell", () => {
 
     // Shop's other pages, Catalog and Settings (UI-4.9); Purchases has its own tab.
     const links = within(sheet).getAllByRole("link").map((l) => l.textContent);
-    expect(links).toEqual(["Receipts", "Shelf prices", "Compare prices", "Ingredients", "Products", "Vendors", "Kitchens", "Users", "API tokens", "System"]);
+    expect(links).toEqual(["Receipts", "Shelf prices", "Compare prices", "Ingredients", "Products", "Vendors", "Kitchens", "Users", "API tokens", "Capture", "System"]);
     expect(within(sheet).getByRole("button", { name: "Log out" })).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
