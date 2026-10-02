@@ -111,6 +111,13 @@ export interface ProposalSummary {
   created_at: string;
 }
 
+/** A price for a quantity: 0.69 for 1 lb. A bare amount is for 1 each. */
+export interface PriceBasis {
+  amount: string;
+  qty: string;
+  unit: string;
+}
+
 export interface AcceptInput {
   action: "new" | "update";
   product_id?: string;
@@ -118,6 +125,8 @@ export interface AcceptInput {
   kind?: ProductKind;
   edits?: Record<string, unknown>;
   record_price?: boolean;
+  /** The reviewer's posted price and what it is for, over the page's. */
+  price?: PriceBasis;
   vendor_location_id?: string;
   main_photo_id?: string;
   photo_roles?: Record<string, PhotoRole>;
