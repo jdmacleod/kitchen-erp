@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { errorMessage } from "../../api/client";
+import { api, errorMessage } from "../../api/client";
 import {
   formatPack,
   ingredientSummary,
@@ -19,7 +19,7 @@ import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, EmptyState, PageHeader, focusRing, tapTarget } from "../../components/ui";
+import { Alert, Button, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
@@ -324,8 +324,24 @@ function AddProductForm({
   const [invalid, setInvalid] = useState<string | null>(null);
   // A half-typed ingredient search is typed input too (D5).
   const [ingredientText, setIngredientText] = useState("");
+  // A web address to start from (2M, PD20); a pasted one counts as typed input.
+  const [address, setAddress] = useState("");
+  const [fromAddress, setFromAddress] = useState<{ name: string | null; item: string | null } | null>(null);
   // Typed input, not a preselected ingredient, is what closing must ask about.
-  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || ingredientText.trim() !== "";
+  const dirty = JSON.stringify(values) !== JSON.stringify(initial) || ingredientText.trim() !== "" || address.trim() !== "";
+
+  const readAddress = async (raw: string) => {
+    const url = raw.trim();
+    if (!/^https?:\/\//i.test(url)) return;
+    try {
+      const found = await api<{ title: string | null; item_number: string | null }>("/product-captures/address", { method: "POST", body: { page_url: url } });
+      setFromAddress({ name: found.title, item: found.item_number });
+      if (found.title && !values.name.trim()) setValues((v) => ({ ...v, name: found.title ?? "" }));
+    } catch {
+      setFromAddress(null);
+    }
+  };
+  const nameFromAddress = fromAddress?.name && values.name === fromAddress.name ? "From the address" : undefined;
 
   const onSubmit = () => {
     const problem = validateProductValues(values);
@@ -365,6 +381,29 @@ function AddProductForm({
         busy={create.isPending}
         submitLabel="Add product"
         busyLabel="Adding…"
+        nameHint={nameFromAddress}
+        lead={
+          <div className="flex flex-col gap-1">
+            <Field
+              id="new-product-address"
+              label="Web address (optional)"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
+              placeholder="https://"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              onBlur={(e) => void readAddress(e.target.value)}
+              onPaste={(e) => void readAddress(e.clipboardData.getData("text"))}
+            />
+            {address.trim() ? (
+              <p className={`text-xs ${muted}`}>
+                {fromAddress?.item ? `Item number ${fromAddress.item} · From the address. ` : ""}
+                This page can't be read from here. Use Save to Kitchen ERP on the page.
+              </p>
+            ) : null}
+          </div>
+        }
       />
     </Drawer>
   );

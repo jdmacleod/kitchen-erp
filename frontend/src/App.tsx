@@ -22,6 +22,8 @@ import { PurchasesPage } from "./pages/purchases/PurchasesPage";
 import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
 import { ToIdentifyPage } from "./pages/purchases/ToIdentifyPage";
+import { ClipPage } from "./pages/capture/ClipPage";
+import { CapturePage } from "./pages/settings/CapturePage";
 import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
@@ -68,6 +70,8 @@ export function App() {
       <AuthBridge />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* The bookmarklet's window: no app chrome, and it signs in inside itself (2M). */}
+        <Route path="/capture/clip" element={<ClipPage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
@@ -105,6 +109,7 @@ export function App() {
             />
             <Route path="/settings/tokens" element={<TokensPage />} />
             <Route path="/settings/system" element={<SystemPage />} />
+            <Route path="/settings/capture" element={<CapturePage />} />
 
             {SECTION_ROOTS.map(({ from, to }) => (
               <Route key={from} path={from} element={<RedirectTo to={to} />} />
