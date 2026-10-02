@@ -346,10 +346,47 @@ def _import_usda(path: Path) -> None:
         raise typer.Exit(1) from exc
 
 
+def _import_usda_branded(path: Path) -> None:
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.usda import UsdaFormatError
+    from app.services.usda_branded import import_branded
+
+    async def _run() -> None:
+        try:
+            async with get_sessionmaker()() as db:
+                result = await import_branded(db, path)
+        finally:
+            await dispose_engine()
+        typer.echo(f"imported {result.loaded} branded foods by GTIN")
+        if result.duplicates:
+            typer.echo(f"  {result.duplicates} code(s) listed more than once; the latest row kept")
+        if result.invalid:
+            typer.echo(f"  {result.invalid} code(s) are not valid GTINs, for example:")
+            for code in result.invalid_examples:
+                typer.echo(f"    {code}")
+
+    try:
+        asyncio.run(_run())
+    except UsdaFormatError as exc:
+        typer.echo(f"error: {exc}. Nothing was imported.", err=True)
+        raise typer.Exit(1) from exc
+
+
+BRANDED_OPTION = typer.Option(
+    False, "--branded", help="the path is a branded-foods download: load the GTIN table (2L)"
+)
+
+
 @import_cli.command("usda")
-def import_usda_command(path: Path = PATH_OPTION) -> None:
-    """Load foods, portions and usage counts from a local, unzipped FoodData Central download."""
-    _import_usda(path)
+def import_usda_command(path: Path = PATH_OPTION, branded: bool = BRANDED_OPTION) -> None:
+    """Load foods, portions and usage counts from a local, unzipped FoodData Central download.
+
+    With --branded, load branded foods by barcode from the separate branded download.
+    """
+    if branded:
+        _import_usda_branded(path)
+    else:
+        _import_usda(path)
 
 
 @import_cli.command("usda-portions")
