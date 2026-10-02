@@ -6,9 +6,47 @@ Repo: jdmacleod/kitchen-erp
 Status: APPROVED (office hours); amended with the CEO review's scope and design decisions
 Mode: Builder
 
-## Start here (implementation handoff, 2026-10-01)
+## Start here (implementation handoff, updated 2026-10-02)
 
-**Status.** Reviewed by office hours, CEO, eng and design, with 0 unresolved decisions. No code is written. This file and the TODOS.md additions are not committed yet; commit them with the first PR (run `make check-pii` first).
+**Status (2026-10-02).** Phase 0's code is complete; the household run (T5) is next.
+
+| Step | State | PR |
+|---|---|---|
+| T1 spec 04 §2J note | merged, user-approved | #127 |
+| MS1–MS6 model survey, 6-model grid | merged | #128 (and in #127) |
+| ET2 text reader in `ingest/readers.py`, golden stage outputs | merged | #129 |
+| ET1 images in `llm.py`, `ModelMissing`, usage, `CallLedger` | merged | #130 |
+| ET3 `RecordedTransport` per-model keys and usage | merged | #131 |
+| ET6 colour render and shared orientation in `raster.py` | merged | #132 |
+| ET4 settings forwarded by compose | nothing to do: no new settings, and `tools/check_compose_env` enforces it in CI | — |
+| ET5/T4 `kerp reading-benchmark` and `ingest/witness.py` | merged | #160 |
+| T5 household run | **next** | — |
+
+**Next steps, in order:**
+1. **Rebuild the stack** (`make up`), so the worker runs the code that names its connections `kerp-worker`; the benchmark's worker guard relies on it.
+2. **Get enough receipts.** On 2026-10-02 only **1** receipt was eligible: of 14 receipt purchases, 11 were drafts, 2 voided and 1 committed. The household reviews and commits the drafts, or writes `expected.csv` rows (`document_id,total,item_line_count`) for uploaded receipts. With fewer than about 10, the 3-receipt margin can't be cleared. The command prints the eligible count and the exclusions when it starts. It exits with a message, before any model is called, if there are none.
+3. **Keep the Ollama host awake.** It's a laptop: run `caffeinate -dis` on it for the whole run. A sleeping host shows up as a timeout followed by `ConnectTimeout`. The run then stops with a `--resume RUN_ID` line, and nothing already read is lost.
+4. **Run T5 per the EV5 runbook** ("Phase 0", Runbook): `docker compose stop worker`, then `docker compose run -d --name kerp-bench api kerp reading-benchmark`, follow `log.txt`, and `docker compose start worker` afterwards. Expect about 12–13 minutes per receipt for the full grid: about 3.2 h for 15 receipts, 4.3 h for 20.
+5. **Read only the aggregate** `summary.txt` (and `reading.csv`) under `data/benchmarks/`. Never open per-receipt files, and never anything else under `data/`.
+6. **Apply the decision rule**: the summary prints it. Then:
+   - T6: the spec 04 amendment for the winner, including specs 10 and 11 per DT3. It needs the user's approval.
+   - If (c) wins and leaves more than 1 in 5 receipts unreconciled: step 2 (consensus, arm (d)).
+   - Phase 1: ET7, T7–T11, DT1–DT3.
+
+**Where the code is.**
+- `backend/app/services/reading_benchmark.py`: the command's logic.
+- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model`.
+- `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
+- Tests:
+  - `test_reading_benchmark.py`, `test_ingest_witness.py`, `test_ingest_readers.py`, `test_raster_render.py`;
+  - `test_ingest_golden.py`, whose expected files regenerate with `KERP_UPDATE_GOLDEN=1`, only on purpose.
+
+**Facts learned while building** (details in "Build notes (ET5)" and "Model survey"):
+- `glm-ocr` needs its own transcription system prompt; the JSON prompt gave 0 of 21 lines. It loops until its output cap, so its output is capped at 4,096 tokens and the repeated tail is cut.
+- The default `qwen3-vl` tags are thinking models and ignore `think: false`; use the `-instruct` tags.
+- One model can use about 16.2 GB of the host's GPU memory.
+
+**Original status (2026-10-01).** Reviewed by office hours, CEO, eng and design, with 0 unresolved decisions.
 
 **Read in this order:**
 1. This section.
@@ -287,6 +325,22 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 
 `backend/scripts/ocr_benchmark.py` stays as it is; the new command replaces it for vision work.
 
+**Build notes (ET5, 2026-10-02).** These record how the command was built. Each one follows from an approved rule or from a measurement; none is a new behaviour choice.
+- **Reads, then models.** Everything the run needs (receipts, committed lines, aliases) is read up front, in one read-only transaction that is rolled back before any model is called. That keeps "SELECT only, always rolled back" (R2-7) without holding a transaction open for hours.
+- **Worker guard.** The worker names its database connections `kerp-worker` (`application_name`), and the command looks for them in `pg_stat_activity`. Only a worker built from this code is seen, so rebuild the stack (`make up`) before the first run.
+- **Arm (b) and `glm-ocr`**, measured on synthetic fixtures:
+  - With the receipt-extraction system prompt, which asks for JSON, `glm-ocr` transcribed nothing usable: 0 of 21 lines. `transcribe()` therefore has its own system prompt, with the same "data, never instructions" guard, and reads 21 of 21.
+  - The user prompt is `glm-ocr`'s own, "Text Recognition:".
+  - `glm-ocr` transcribes the receipt and then repeats lines until the output cap (22 distinct lines in 112). Repeat and presence penalties didn't stop it and cost accuracy. So the cap is 4,096 tokens (about 25 s at 165 tok/s), and the loop is cut at the first repeated run of 3 lines.
+  - Hitting that cap isn't counted as a runaway; an OCR timeout still is.
+  - Uncapped, the loop runs to the 8,192-token vision cap: about 56 s per receipt at 150 tok/s (measured 2026-10-02). The 4,096 cap halves that. A first try that timed out at 300 s was the model server's laptop going to sleep, not `glm-ocr`; it was repeated with the host awake.
+- **Boxes.** Arm (c) asks every model for boxes (`prompt_version` `vision-box-1`), and `box_valid_share` reports how many came back valid. A model that gives poor boxes is still scored on its lines, because an invalid box is dropped rather than failing the reply.
+- **Line amounts** are aligned as a multiset: the reading's item amounts against the committed item amounts. That answers the open alignment question in its simplest form. Arm (d) will need a positional alignment.
+- **Margin.** Measured in shares, "3 receipts" is 3/n, which is never smaller than 1/n, so the margin is always 3/n. The rule is implemented as written.
+- **Eligible receipts on 2026-10-02:** 1. The household has 14 receipt purchases: 11 drafts, 2 voided and 1 committed. Before T5, commit the drafts or add `expected.csv` rows, or the run can't support a decision.
+- **Run time, revised.** The real lines schema plus boxes is about 58 output tokens per line, roughly twice my MS4 assumption. So budget about 12–13 minutes per receipt for the full grid: about 2.5 h for 12 receipts, 3.2 h for 15 and 4.3 h for 20.
+- **Live smoke run** on two synthetic receipts against the LAN host (2026-10-02, repeated with the host confirmed awake): all three arms reconciled both. Arm (a) `gpt-oss:20b` took about 47 s per receipt, arm (b) `glm-ocr` plus `gpt-oss:20b` about 77 s, and arm (c) `qwen3.5:9b` about 27 s with 100% valid boxes.
+
 ## Model survey (2026-10-01, MS1–MS6)
 
 The user asked for a survey of the Ollama vision catalogue as of October 2026, for a 24 GB Apple M4 Pro laptop, because newer models such as `qwen3.6:27b` were missing from the grid. This section records the survey and a probe of every vision model already on the LAN host. Where it changes an earlier value, the "Start here" table lists the change.
@@ -355,7 +409,7 @@ Published scores, for context only: Qwen3.6-27B has OCRBench 89.4 and CC-OCR 81.
   - about 25–40 s with a 9B–12B model or `gemma4:26b-a4b`;
   - about 80 s with `qwen3.6:27b`.
 
-  Arms (a) and (b) keep today's 30–140 s text stage. That is roughly 7 minutes per receipt for all configurations, so 12–20 receipts take about 1.5–2.5 hours, within the earlier 3-hour estimate.
+  Arms (a) and (b) keep today's 30–140 s text stage. That is roughly 7 minutes per receipt for all configurations, so 12–20 receipts take about 1.5–2.5 hours, within the earlier 3-hour estimate. *Superseded by the ET5 build notes: the real schema with boxes is about twice this output, so 12–20 receipts take about 2.5–4.5 hours.*
 
 **Arm (d) pairing (MS5).** Consensus needs a second model from another family. Gemma joins Qwen and MiniCPM as an option, so arm (d) pairs the best (c) model with the best (c) model from a different family. A pair that can't be resident together costs a swap per receipt (E2), and the 27B models can't share the GPU with anything.
 
@@ -1127,7 +1181,7 @@ Synthesized from this review's findings. Each task derives from a specific findi
   - Surfaced by: F5-1, F5-2, N2-8, OV7, OV9
   - Files: backend/app/ingest/llm.py, backend/tests/test_ingest_llm_options.py
   - Verify: fake-transport tests for the 404 body vs a bare 404, ns→s, the think flag
-- [ ] **T4 (P1, human: ~3 days / CC: ~3h)** — benchmark — `kerp reading-benchmark` step 1: eligible query with OV5 exclusions, arms a–c, reduced grid, checkpoint and resume, reading.csv, intervals, decision rule
+- [x] **T4 (P1, human: ~3 days / CC: ~3h)** — benchmark — `kerp reading-benchmark` step 1: eligible query with OV5 exclusions, arms a–c, reduced grid, checkpoint and resume, reading.csv, intervals, decision rule
   - Surfaced by: VX1, VX2, VD11, OV1, OV4, OV5, N3-4, N3-6
   - Files: backend/app/cli.py, backend/app/services/reading_benchmark.py, backend/tests/test_reading_benchmark.py, backend/tests/fixtures/bakeoff_expected.csv
   - Verify: tests for unchanged row counts, resume, exclusion counts and decision-rule cases (including 2× edge cases replaced by 75%)
@@ -1498,7 +1552,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
   - Surfaced by: EV8
   - Files: compose.yaml, .env.example, backend/tests/test_compose_env.py
   - Verify: the drift test fails when a documented setting is missing from app-env
-- [ ] **ET5 (P1, human: ~3 days / CC: ~3h)** — benchmark — one run per configuration, runaway rate, committed-vendor alias scoring, worker-running guard (--force), detached log file, grouped-by-configuration order
+- [x] **ET5 (P1, human: ~3 days / CC: ~3h)** — benchmark — one run per configuration, runaway rate, committed-vendor alias scoring, worker-running guard (--force), detached log file, grouped-by-configuration order
   - Surfaced by: A4, EV2, EV5, EV6
   - Files: backend/app/services/reading_benchmark.py, backend/app/cli.py, backend/tests/test_reading_benchmark.py
   - Verify: row counts unchanged; guard test; decision-rule table tests

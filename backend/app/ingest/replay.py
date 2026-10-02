@@ -8,7 +8,8 @@ of objects consumed in order (the last one repeats), so a test can script
 "invalid, then valid". Strings are sent verbatim, which lets a fixture record
 malformed JSON.
 
-A key of the form ``"<stage>@<model>"`` (``"lines@vision-a"``) answers only
+A request without a schema, such as an OCR model's plain transcription, is the
+``chat`` stage. A key of the form ``"<stage>@<model>"`` (``"lines@vision-a"``) answers only
 requests for that model and wins over the plain stage key, so a test can script
 two readers that send the same schema. Requests for any other model fall back
 to the plain key.
@@ -45,7 +46,8 @@ class RecordedTransport(httpx.AsyncBaseTransport):
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content or b"{}")
         title = body.get("format", {}).get("title") if isinstance(body, dict) else None
-        stage = STAGE_BY_SCHEMA_TITLE.get(title, title)
+        # A request with no schema (a plain transcription) is the "chat" stage.
+        stage = STAGE_BY_SCHEMA_TITLE.get(title, title) if title else "chat"
         model = body.get("model") if isinstance(body, dict) else None
         self.requests.append(
             {

@@ -8,7 +8,7 @@ here. Anything that does not validate is discarded (non-negotiable 7).
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator
 
@@ -108,6 +108,53 @@ class ReceiptLines(ModelOutput):
         "order. Do not include headers, footers, subtotal, total, tender, change, "
         "loyalty summaries or blank lines.",
     )
+
+
+class VisionReceiptLine(ReceiptLine):
+    """A receipt line read from the image, with where it sits on the page.
+
+    ``box`` is left loose on purpose. A reader that gets the position wrong but
+    the amount right still gave a good line, so an invalid box is dropped by the
+    caller (see :func:`valid_box`) rather than failing the whole reply.
+    """
+
+    box: list[Any] | None = Field(
+        default=None,
+        description="Where the line is printed: [x0, y0, x1, y1] as whole numbers from 0 "
+        "to 1000, the left, top, right and bottom edges in thousandths of the page's "
+        "width and height. Null if unsure.",
+    )
+
+
+class VisionReceiptLines(ModelOutput):
+    """What a vision reader is asked for: the lines stage's answer, with boxes.
+
+    Titled ``ReceiptLines`` so recorded answers route like the text reader's.
+    """
+
+    model_config = ConfigDict(title="ReceiptLines")
+
+    lines: list[VisionReceiptLine] = Field(
+        max_length=500,
+        description=ReceiptLines.model_fields["lines"].description,
+    )
+
+    def without_boxes(self) -> ReceiptLines:
+        return ReceiptLines(
+            lines=[
+                ReceiptLine.model_validate(line.model_dump(exclude={"box"})) for line in self.lines
+            ]
+        )
+
+
+def valid_box(box: Any) -> bool:
+    """[x0, y0, x1, y1] integers with 0 <= x0 < x1 <= 1000 and 0 <= y0 < y1 <= 1000."""
+    if not isinstance(box, list) or len(box) != 4:
+        return False
+    if not all(isinstance(v, int) and not isinstance(v, bool) for v in box):
+        return False
+    x0, y0, x1, y1 = box
+    return 0 <= x0 < x1 <= 1000 and 0 <= y0 < y1 <= 1000
 
 
 class LineNaming(ModelOutput):
