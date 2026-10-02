@@ -340,6 +340,21 @@ class FdcFood(Base):
     fndds_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
+class FdcBranded(Base):
+    """A USDA branded food by GTIN-14 (2L, opt-in): what an unknown barcode is looked up in."""
+
+    __tablename__ = "fdc_branded"
+    __table_args__ = (CheckConstraint("gtin ~ '^[0-9]{14}$'", name="ck_fdc_branded_gtin"),)
+
+    gtin: Mapped[str] = mapped_column(String(14), primary_key=True)
+    fdc_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    brand: Mapped[str | None] = mapped_column(Text)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str | None] = mapped_column(Text)
+    package_size: Mapped[str | None] = mapped_column(Text)
+    release_date: Mapped[date | None] = mapped_column(Date)
+
+
 class FdcRelease(UUIDPrimaryKey, Base):
     """One ``kerp import usda`` run; the latest row describes the loaded data."""
 

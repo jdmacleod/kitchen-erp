@@ -127,6 +127,19 @@ links reach outside the deployment, and only when switched on.
   directory name USDA gives it: the release date is read from it.
   `kerp import usda-portions` is the command's earlier name.
 
+- **USDA branded foods by barcode (optional, 2L).** A scanned barcode the
+  catalog does not know is looked up in a local table of USDA branded foods
+  before it becomes a proposal. Download the "Branded" CSV bundle from the same
+  page, unzip it under `data/usda/`, then:
+
+  ```bash
+  docker compose exec api kerp import usda --branded --path /data/usda/<unzipped-branded-dir>
+  ```
+
+  It keeps the latest row for each barcode and lists the codes that are not
+  valid barcodes. Like the import above, it is a local read: nothing is sent
+  anywhere.
+
 - **The standard ingredient list and USDA suggestions (1G).** Upgrading to a
   release with the ingredient vocabulary is a few steps, in this order:
 
