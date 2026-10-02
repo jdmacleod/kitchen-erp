@@ -41,6 +41,8 @@ export interface FieldCandidate {
   value: unknown;
   source: FieldSource;
   confidence: string | null;
+  /** "helper" when the products helper brought it: the badge "Lookup helper" (2N). */
+  via?: string | null;
 }
 
 export interface ProposalField extends FieldCandidate {
@@ -91,6 +93,8 @@ export interface Proposal {
   jobs: ProductJob[];
   /** How the capture was identified (criterion 81). */
   reading?: { path: "barcode" | "vision" | "ocr_text" | "unread" | "page"; error: string | null } | null;
+  /** The latest "Look this up online" request (2N). */
+  lookup?: { status: "open" | "answered" | "closed"; created_at: string; answered_at: string | null } | null;
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;
@@ -260,4 +264,64 @@ export function readingWords(reading: Proposal["reading"]): string | null {
   if (reading.path === "ocr_text") return "Read from the label text by the model.";
   if (reading.path === "page") return "Read from the page.";
   return null;
+}
+
+// --- the products helper (2N) -----------------------------------------------------------
+
+/** Whether "Look this up online" is offered: a products helper token exists (PD8). */
+export function useProductsHelper() {
+  return useQuery({
+    queryKey: ["products-helper"],
+    queryFn: () => api<{ configured: boolean }>("/products-helper"),
+    staleTime: 60_000,
+  });
+}
+
+export function useLookUp(proposalId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api(`/product-proposals/${encodeURIComponent(proposalId)}/look-up`, { method: "POST" }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) }),
+  });
+}
+
+/** How long a lookup may wait before it reads as overdue: Home's stall threshold. */
+export const LOOKUP_OVERDUE_MINUTES = 10;
+
+export interface PriceChange {
+  id: string;
+  amount: string;
+  qty: string;
+  unit: string;
+  is_promo: boolean;
+  seen_at: string;
+  listing_id: string;
+  title: string;
+  canonical_url: string;
+  product_id: string;
+  product_name: string;
+  vendor_id: string;
+  vendor_name: string;
+  created_at: string;
+}
+
+const priceChangesKey = ["listing-price-changes"] as const;
+
+export function usePriceChanges() {
+  return useQuery({ queryKey: priceChangesKey, queryFn: () => api<{ items: PriceChange[] }>("/listing-price-changes") });
+}
+
+export function useDecidePriceChange() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, accept, vendor_location_id }: { id: string; accept: boolean; vendor_location_id?: string }) =>
+      api(`/listing-price-changes/${encodeURIComponent(id)}/${accept ? "accept" : "reject"}`, {
+        method: "POST",
+        body: accept ? { vendor_location_id } : undefined,
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: priceChangesKey });
+      void client.invalidateQueries({ queryKey: inboxKey });
+    },
+  });
 }

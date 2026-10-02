@@ -3,7 +3,7 @@ import { api } from "./client";
 
 /** The unified inbox (docs/spec/09, Unified inbox). */
 
-export type InboxKind = "receipt" | "receipt_failed" | "identify" | "bridge" | "vendor_suggestions" | "link" | "usda" | "new_product";
+export type InboxKind = "receipt" | "receipt_failed" | "identify" | "bridge" | "vendor_suggestions" | "link" | "usda" | "new_product" | "product_update" | "posted_prices";
 
 export interface InboxItem {
   kind: InboxKind;
@@ -22,6 +22,9 @@ export interface InboxReading {
   /** Product photos and product pages being identified (2L). */
   photos?: number;
   pages?: number;
+  /** Barcodes and pages waiting on the products helper, only once overdue (2N, PD7). */
+  lookups_overdue?: number;
+  lookups_since?: string | null;
   oldest_at: string | null;
   /** The oldest read has waited longer than INGEST_STALL_MINUTES (D21). */
   stalled: boolean;

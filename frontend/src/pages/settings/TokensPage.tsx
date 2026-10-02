@@ -19,6 +19,12 @@ export const TOKEN_ACCESS = [
     label: "Read and suggest vendor facts",
     hint: "For an enrichment tool. Suggestions wait for your review. Cannot see notes, home bases, purchases or receipts.",
   },
+  {
+    value: "products",
+    scopes: ["products:read", "products:suggest"],
+    label: "Products lookup helper",
+    hint: "For the kitchen-erp-products helper (2N). It reads only the lookup queue and posts answers, which wait for your review.",
+  },
 ] as const;
 type Access = (typeof TOKEN_ACCESS)[number]["value"];
 

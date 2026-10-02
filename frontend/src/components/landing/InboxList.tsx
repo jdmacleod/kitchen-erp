@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { InboxItem, InboxKind } from "../../api/inbox";
 import { readingSentence, readingTotal, useInbox } from "../../api/inbox";
+import { formatTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
 import { useChrome } from "../chrome";
@@ -18,6 +19,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   link: { label: "Link", tone: "neutral" },
   usda: { label: "USDA", tone: "neutral" },
   new_product: { label: "Products", tone: "neutral" },
+  product_update: { label: "Products", tone: "neutral" },
+  posted_prices: { label: "Prices", tone: "neutral" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */
@@ -129,21 +132,37 @@ export function InboxList() {
 export function ReadingLine() {
   const inbox = useInbox();
   const reading = inbox.data?.reading;
-  if (!reading || readingTotal(reading) === 0) return null;
+  if (!reading) return null;
+  const overdue = reading.lookups_overdue ?? 0;
+  const lookupLine = overdue > 0 && reading.lookups_since ? (
+    <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
+      {overdue} {overdue === 1 ? "lookup" : "lookups"} waiting for the lookup helper since {formatTime(reading.lookups_since)} ·{" "}
+      <Link to="/settings/system" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
+        Check System
+      </Link>
+    </p>
+  ) : null;
+  if (readingTotal(reading) === 0) return lookupLine;
   if (reading.stalled) {
     return (
+      <>
+      {lookupLine}
       <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
         Reading is taking longer than usual ·{" "}
         <Link to="/settings/system" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
           Check System
         </Link>
       </p>
+      </>
     );
   }
   return (
-    <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-      {readingSentence(reading)}
-    </p>
+    <>
+      {lookupLine}
+      <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+        {readingSentence(reading)}
+      </p>
+    </>
   );
 }
 
