@@ -141,14 +141,16 @@ describe("the bookmarklet and Settings → Capture", () => {
     expect(code).toContain('const APP = "https://kitchen.example.test"');
     expect(code).toContain('e.data.type !== "kerp-clip-ready"');
     expect(code).not.toMatch(/document\.cookie|localStorage|sessionStorage|\.value\b/);
-    expect(bookmarkletHref("https://kitchen.example.test").startsWith("javascript:")).toBe(true);
+    // The link is exactly the code, encoded: nothing added, nothing dropped.
+    const origin = "https://kitchen.example.test";
+    expect(bookmarkletHref(origin)).toBe(`javascript:${encodeURIComponent(bookmarkletCode(origin))}`);
   });
 
   it("offers the draggable link, the address it is tied to, and Copy the code", async () => {
     mockApi(routes({ "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }) }));
     renderApp("/settings/capture");
     const link = await screen.findByTestId("bookmarklet");
-    await waitFor(() => expect(link.getAttribute("href")).toMatch(/^javascript:/));
+    await waitFor(() => expect(link.getAttribute("href")).toBe(bookmarkletHref(window.location.origin)));
     expect(link).toHaveTextContent("Save to Kitchen ERP");
     expect(screen.getByText(window.location.origin)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy the code" })).toBeInTheDocument();
