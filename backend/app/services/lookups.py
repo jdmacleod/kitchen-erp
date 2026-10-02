@@ -49,7 +49,7 @@ from app.models import (
     VendorListing,
 )
 from app.models.geo import VendorLocation
-from app.schemas.products_interchange import HelperAnswer, ListingPriceReport
+from app.schemas.products_interchange import HelperAnswer, ListingPriceReport, PriceValue
 from app.services import media, pricebook, product_photos, proposals
 
 HELPER_SCOPES = ("products:read", "products:suggest")
@@ -271,6 +271,8 @@ def _candidates(answer: HelperAnswer) -> list[merging.Candidate]:
     out = []
     for c in answer.candidates:
         value: Any = c.value
+        if isinstance(value, PriceValue):
+            value = value.model_dump()
         if isinstance(value, Decimal):
             value = format(value, "f")
         elif isinstance(value, dict):

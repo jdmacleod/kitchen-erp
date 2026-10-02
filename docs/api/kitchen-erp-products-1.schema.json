@@ -70,6 +70,9 @@
                 "type": "string"
               },
               {
+                "$ref": "#/$defs/PriceValue"
+              },
+              {
                 "additionalProperties": {
                   "anyOf": [
                     {
@@ -173,6 +176,50 @@
           "source_kind"
         ],
         "title": "AnswerPhoto",
+        "type": "object"
+      },
+      "PriceValue": {
+        "additionalProperties": false,
+        "description": "A price for a quantity: 0.69 for 1 lb. A bare number is a price for 1 each.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Qty"
+          },
+          "unit": {
+            "maxLength": 16,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "qty",
+          "unit"
+        ],
+        "title": "PriceValue",
         "type": "object"
       }
     },

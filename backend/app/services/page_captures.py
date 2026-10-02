@@ -130,15 +130,11 @@ async def preview(db: AsyncSession, page_url: str) -> AddressPreview:
 
 
 def _price(fields: dict[str, Any]) -> dict[str, Any] | None:
-    amount = merging.value(fields, "price")
-    if amount is None:
+    """The posted price with what it is for: 1 each, or the basis the page gave."""
+    basis = merging.price_basis(merging.value(fields, "price"))
+    if basis is None:
         return None
-    return {
-        "amount": str(amount),
-        "qty": "1",
-        "unit": "each",
-        "is_promo": bool(merging.value(fields, "on_sale")),
-    }
+    return {**basis, "is_promo": bool(merging.value(fields, "on_sale"))}
 
 
 async def capture_page(

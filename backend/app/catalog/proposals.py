@@ -111,6 +111,37 @@ def model_confidence(value: Decimal | float | str | None, *, photo: bool) -> Dec
     return max(Decimal(0), min(given, cap))
 
 
+_PRICE_KEYS = frozenset({"amount", "qty", "unit"})
+
+
+def price_basis(value: Any) -> dict[str, str] | None:
+    """A price candidate's value as {amount, qty, unit}: a bare amount is for 1 each,
+    and a page that says "0.69 / lb" sends {"amount": "0.69", "qty": "1", "unit": "lb"}.
+    None when it is not a price in a unit this deployment knows (never a guess)."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, Mapping):
+        if set(value) != _PRICE_KEYS:
+            return None
+        amount, qty, unit = value["amount"], value["qty"], value["unit"]
+    else:
+        amount, qty, unit = value, "1", "each"
+    if any(isinstance(v, (bool, float)) for v in (amount, qty)) or not isinstance(unit, str):
+        return None
+    try:
+        a, q = Decimal(str(amount).strip()), Decimal(str(qty).strip())
+    except InvalidOperation:
+        return None
+    if not (a.is_finite() and q.is_finite()) or a < 0 or q <= 0 or unit not in _UNITS:
+        return None
+    return {"amount": format(a, "f"), "qty": format(q, "f"), "unit": unit}
+
+
+def _price_dimension(value: Any) -> str | None:
+    basis = price_basis(value)
+    return _UNITS[basis["unit"]].dimension if basis else None
+
+
 def _rank(candidate: Candidate) -> tuple[int, Decimal]:
     order = PRECEDENCE[candidate.field]
     return (order.index(candidate.source), -(candidate.confidence or Decimal(0)))
@@ -122,6 +153,8 @@ def _check(candidate: Candidate) -> None:
         raise UnknownCandidate(f"unknown field {candidate.field!r}")
     if candidate.source not in order:
         raise UnknownCandidate(f"{candidate.field} never comes from {candidate.source}")
+    if candidate.field == "price" and price_basis(candidate.value) is None:
+        raise UnknownCandidate("a price is an amount, or {amount, qty, unit} in a known unit")
     over = candidate.confidence is not None and candidate.confidence > MODEL_TEXT_CAP
     if candidate.source == "model" and over:
         raise UnknownCandidate("a model's confidence is over its cap")
@@ -156,6 +189,10 @@ def _conflicts(field: str, chosen: Candidate, others: list[Candidate]) -> bool:
         return any(o.value != chosen.value for o in others)
     if field == "pack":
         return any(packs_disagree(o.value, chosen.value) for o in others)
+    if field == "price":
+        # Per pound against per each: the reviewer must say which the page means.
+        mine = _price_dimension(chosen.value)
+        return any(_price_dimension(o.value) != mine for o in others)
     return False
 
 
@@ -226,4 +263,6 @@ def value(fields: Mapping[str, Mapping[str, Any]], field: str) -> Any:
 
 
 def has_conflict(fields: Mapping[str, Mapping[str, Any]]) -> list[str]:
-    return [f for f, state in fields.items() if state.get("conflict")]
+    """Conflicts that stop an accept. A price conflict stops only recording the price
+    (the reviewer says what it is for, or records none), not the product."""
+    return [f for f, state in fields.items() if state.get("conflict") and f != "price"]
