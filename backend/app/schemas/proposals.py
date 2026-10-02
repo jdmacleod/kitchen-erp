@@ -59,6 +59,13 @@ class ProposalVendor(ApiModel):
     suggested_location_id: uuid.UUID | None
 
 
+class ProposalReading(ApiModel):
+    """How the capture was identified: a barcode, the vision model, or text and a model."""
+
+    path: Literal["barcode", "vision", "ocr_text", "unread"]
+    error: str | None = None
+
+
 class ProposalOut(ApiModel):
     id: uuid.UUID
     kind: ProposalKind
@@ -72,6 +79,7 @@ class ProposalOut(ApiModel):
     price: dict[str, Any] | None
     photos: list[ProductPhotoOut]
     jobs: list[ProductJobOut]
+    reading: ProposalReading | None = None
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime

@@ -42,6 +42,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
             ProductPhotoOut.model_validate(p) for p in await proposals.photos_of(db, proposal.id)
         ],
         jobs=[ProductJobOut.model_validate(j) for j in await proposals.jobs_of(db, proposal)],
+        reading=await proposals.reading_of(db, proposal),  # type: ignore[arg-type]
         decided_at=proposal.decided_at,
         result=proposal.result,
         created_at=proposal.created_at,

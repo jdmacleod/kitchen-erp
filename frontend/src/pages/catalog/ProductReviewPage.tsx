@@ -8,6 +8,7 @@ import {
   KIND_LABELS,
   SOURCE_BADGES,
   isReading,
+  readingWords,
   takenBy,
   useAcceptProposal,
   usePendingProposals,
@@ -242,6 +243,7 @@ function Review({ proposal }: { proposal: Proposal }) {
           <p className={`text-sm ${muted}`}>
             {how[0].toUpperCase() + how.slice(1)} · <time dateTime={when}>{formatDateTime(when)}</time>
           </p>
+          {readingWords(proposal.reading) ? <p className={`text-sm ${muted}`}>{readingWords(proposal.reading)}</p> : null}
         </aside>
 
         <div className="flex min-w-0 flex-col gap-8">

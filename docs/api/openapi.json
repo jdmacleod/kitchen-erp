@@ -8145,6 +8145,16 @@
             ],
             "title": "Product Id"
           },
+          "reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalReading"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "result": {
             "anyOf": [
               {
@@ -8195,6 +8205,38 @@
           "created_at"
         ],
         "title": "ProposalOut",
+        "type": "object"
+      },
+      "ProposalReading": {
+        "additionalProperties": false,
+        "description": "How the capture was identified: a barcode, the vision model, or text and a model.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "path": {
+            "enum": [
+              "barcode",
+              "vision",
+              "ocr_text",
+              "unread"
+            ],
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ProposalReading",
         "type": "object"
       },
       "ProposalSummary": {

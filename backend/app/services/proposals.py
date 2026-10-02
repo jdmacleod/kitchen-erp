@@ -42,6 +42,7 @@ from app.models import (
     ProductImage,
     ProductJob,
     ProductProposal,
+    ProductStageResult,
     VendorListing,
 )
 from app.models.geo import Vendor, VendorLocation, point_expr
@@ -416,6 +417,28 @@ async def vendor_context(db: AsyncSession, proposal: ProductProposal) -> dict[st
         "locations": [{"id": i, "name": n} for i, n in locations],
         "suggested_location_id": suggested,
     }
+
+
+async def reading_of(db: AsyncSession, proposal: ProductProposal) -> dict[str, Any] | None:
+    """Which path identified the capture's photos, and any error (criterion 81)."""
+    if proposal.capture_id is None:
+        return None
+    output = (
+        await db.execute(
+            select(ProductStageResult.output)
+            .join(ProductJob, ProductJob.id == ProductStageResult.job_id)
+            .where(
+                ProductJob.product_capture_id == proposal.capture_id,
+                ProductStageResult.stage == "identify",
+                ProductStageResult.output.has_key("path"),
+            )
+            .order_by(ProductStageResult.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if output is None:
+        return None
+    return {"path": output["path"], "error": output.get("error")}
 
 
 async def list_pending(db: AsyncSession, limit: int = 50) -> list[ProductProposal]:
