@@ -143,6 +143,45 @@ async def queue_unknown_scan(db: AsyncSession, proposal: ProductProposal, gtin: 
         db.add(LookupRequest(id=new_id(), kind="gtin", proposal_id=proposal.id, value=gtin))
 
 
+async def queue_listing_refreshes(db: AsyncSession, now: datetime | None = None) -> int:
+    """Queue a ``page`` request for each active listing due a refresh (2N, 2026-10-02).
+
+    Only while a products helper token exists, and at most once per listing every
+    ``LISTING_REFRESH_DAYS``; an open request for a listing is never doubled.
+    """
+    days = get_settings().listing_refresh_days
+    if days <= 0 or not await helper_configured(db):
+        return 0
+    now = now or datetime.now(UTC)
+    due = (
+        await db.execute(
+            text(
+                """
+                SELECT l.id, l.product_id, l.canonical_url FROM vendor_listing l
+                WHERE l.status = 'active' AND l.product_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lookup_request r
+                      WHERE r.listing_id = l.id
+                        AND (r.status = 'open'
+                             OR r.created_at
+                                > CAST(:now AS timestamptz) - make_interval(days => :days))
+                  )
+                ORDER BY l.last_captured_at
+                """
+            ),
+            {"now": now, "days": days},
+        )
+    ).all()
+    for listing_id, product_id, url in due:
+        db.add(
+            LookupRequest(
+                id=new_id(), kind="page", product_id=product_id, listing_id=listing_id, value=url
+            )
+        )
+    await db.commit()
+    return len(due)
+
+
 async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
     return list(
         (
