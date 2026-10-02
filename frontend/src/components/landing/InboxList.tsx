@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { InboxItem, InboxKind } from "../../api/inbox";
-import { useInbox } from "../../api/inbox";
+import { readingSentence, readingTotal, useInbox } from "../../api/inbox";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
 import { useChrome } from "../chrome";
@@ -17,6 +17,7 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   vendor_suggestions: { label: "Vendors", tone: "neutral" },
   link: { label: "Link", tone: "neutral" },
   usda: { label: "USDA", tone: "neutral" },
+  new_product: { label: "Products", tone: "neutral" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */
@@ -124,11 +125,11 @@ export function InboxList() {
   );
 }
 
-/** Receipts being read: above Needs you and not counted in the badge (G1, D21). */
+/** Receipts and products being read: above Needs you, not counted in the badge (G1, D21, PD7). */
 export function ReadingLine() {
   const inbox = useInbox();
   const reading = inbox.data?.reading;
-  if (!reading || reading.count === 0) return null;
+  if (!reading || readingTotal(reading) === 0) return null;
   if (reading.stalled) {
     return (
       <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
@@ -141,7 +142,7 @@ export function ReadingLine() {
   }
   return (
     <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-      Reading {reading.count} {reading.count === 1 ? "receipt" : "receipts"}…
+      {readingSentence(reading)}
     </p>
   );
 }

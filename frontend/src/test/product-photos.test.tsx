@@ -164,7 +164,7 @@ describe("product photos", () => {
     await user.selectOptions(within(staged).getByLabelText("Role for back.jpg"), "Nutrition");
 
     await user.click(screen.getByRole("button", { name: "Upload 2 photos" }));
-    expect(await screen.findByText("That photo is over 50 megapixels. Try a smaller one.")).toBeInTheDocument();
+    expect(await screen.findByText("This photo is over 50 megapixels.")).toBeInTheDocument();
 
     refuse = false;
     await user.click(screen.getByRole("button", { name: "Upload 2 photos" }));

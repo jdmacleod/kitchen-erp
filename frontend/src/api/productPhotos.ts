@@ -119,8 +119,8 @@ export async function addProductPhotos({ productId, photos }: PhotoUploadInput):
 /** What to say when adding a photo is refused (PD6). */
 export function photoErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "image_too_large") return "That photo is over 50 megapixels. Try a smaller one.";
-    if (error.code === "unsupported_image") return "That file isn't a photo this can read. Use JPEG, PNG, WebP or HEIC.";
+    if (error.code === "image_too_large") return "This photo is over 50 megapixels.";
+    if (error.code === "unsupported_image") return "This file isn't a photo we can read.";
     if (error.code === "payload_too_large") return "That photo is too large to upload.";
     return error.message;
   }

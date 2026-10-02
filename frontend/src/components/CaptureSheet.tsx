@@ -27,6 +27,13 @@ const MODES = [
     description: "A market or stand without a receipt",
     icon: "M4 20h4L19 9l-4-4L4 16v4Zm9-13 4 4",
   },
+  {
+    to: "/catalog/products/photograph",
+    title: "Photograph a product",
+    description: "A product that isn't in your catalog yet",
+    // pii-scan: allow SVG path coordinates for the camera icon, not a number
+    icon: "M4 8h3l2-3h6l2 3h3v11H4V8Zm8 9a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z",
+  },
 ] as const;
 
 /**
