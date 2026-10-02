@@ -470,6 +470,14 @@ def scan_paths(paths: Iterable[str], denylist: Denylist) -> list[Finding]:
     return findings
 
 
+# Generated lockfiles, skipped in history as the working-tree scan skips them
+# (SKIP_SUFFIXES). Their added lines are package URLs and hashes, and the
+# denylist's window matching can find an entry inside a random hash: a uv.lock
+# hash for hypothesis 6.168.3 did (#135). Only this suffix: the history scan
+# otherwise reads everything, including files the tree scan never sees.
+HISTORY_SKIP_SUFFIXES = {".lock"}
+
+
 def scan_history(rev_range: str | None, denylist: Denylist) -> list[Finding]:
     """Scan commit messages and added lines across history.
 
@@ -511,6 +519,8 @@ def scan_diff_stream(out: str, denylist: Denylist = EMPTY_DENYLIST) -> list[Find
             continue
         if line.startswith("+++ b/"):
             current_file, prev_line = line[6:], ""
+            if Path(current_file).suffix.lower() in HISTORY_SKIP_SUFFIXES:
+                current_file = ""  # its added lines are skipped below
             continue
         if line.startswith("@@"):
             m = HUNK_HEADER.match(line)
