@@ -1,6 +1,12 @@
 # Pinned action SHAs do not rot on their own, and a pin nobody updates is just an
 # old version with extra steps. Dependabot rewrites the SHA and the version
 # comment together.
+#
+# Updates are grouped so a month's bumps arrive as one PR per ecosystem rather
+# than one each: branch protection makes every PR rebase and rerun the full CI
+# after the one before it merges. All action bumps share a group, because
+# codeql-action/init and /analyze fail CI unless they move together. Major
+# versions stay separate PRs, since they are the ones that need reading.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -9,6 +15,9 @@ updates:
       interval: monthly
     commit-message:
       prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
 
   - package-ecosystem: uv
     directory: "/backend"
@@ -16,6 +25,9 @@ updates:
       interval: monthly
     commit-message:
       prefix: "backend"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: "/frontend"
@@ -23,6 +35,9 @@ updates:
       interval: monthly
     commit-message:
       prefix: "frontend"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: npm
     directory: "/e2e"
@@ -30,6 +45,9 @@ updates:
       interval: monthly
     commit-message:
       prefix: "e2e"
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]
 
   - package-ecosystem: docker
     directory: "/backend"
