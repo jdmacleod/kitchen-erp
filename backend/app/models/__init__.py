@@ -12,6 +12,7 @@ from app.models.catalog import (
     VendorListing,
 )
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
+from app.models.photos import ProductImage, ProductJob, ProductStageResult
 from app.models.purchases import (
     IngestJob,
     IngestStageResult,
@@ -58,6 +59,9 @@ __all__ = [
     "ReceiptDocument",
     "Product",
     "ProductIdentifier",
+    "ProductImage",
+    "ProductJob",
+    "ProductStageResult",
     "VendorListing",
     "RefUsdaPortion",
     "Session",

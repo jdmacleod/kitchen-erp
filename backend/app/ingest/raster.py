@@ -49,9 +49,14 @@ PDF_RENDER_SCALE = PDF_RENDER_DPI / 72
 # bomb. Checked before rendering, from the declared page size, not after.
 MAX_MEGAPIXELS = 80
 
+# The same ceiling for a product photo (03, 1I). A phone's largest mode is 48 MP.
+PHOTO_MAX_MEGAPIXELS = 50
 
-def _guard_megapixels(width: float, height: float, *, code: str) -> None:
-    if width * height > MAX_MEGAPIXELS * 1_000_000:
+
+def guard_megapixels(width: float, height: float, *, code: str, limit: int | None = None) -> None:
+    """Refuse an image larger than ``limit`` megapixels (receipts' ceiling by default)."""
+    ceiling = MAX_MEGAPIXELS if limit is None else limit
+    if width * height > ceiling * 1_000_000:
         raise StageFailure(code=code, detail=f"{int(width)}x{int(height)}")
 
 
@@ -67,7 +72,7 @@ def pdf_to_png(source: Path, target: Path) -> Path:
         if len(document) == 0:
             raise StageFailure(code="pdf_unreadable", detail="no_pages")
         page = document[0]
-        _guard_megapixels(
+        guard_megapixels(
             page.get_width() * PDF_RENDER_SCALE,
             page.get_height() * PDF_RENDER_SCALE,
             code="pdf_too_large",
@@ -86,7 +91,7 @@ def heif_to_png(source: Path, target: Path) -> Path:
     pillow_heif.register_heif_opener()
     try:
         with Image.open(source) as image:
-            _guard_megapixels(image.width, image.height, code="heif_too_large")
+            guard_megapixels(image.width, image.height, code="heif_too_large")
             image.convert("L").save(target, format="PNG")
     except (UnidentifiedImageError, OSError, ValueError) as exc:
         raise StageFailure(code="heif_unreadable", detail=type(exc).__name__) from None
@@ -155,7 +160,7 @@ def render_page(source: Path, converter: str | None) -> RenderedPage:
         with Image.open(source) as opened:
             # Checked from the header before any pixels are decoded: a small
             # file can declare an enormous image.
-            _guard_megapixels(opened.width, opened.height, code=f"{code}_too_large")
+            guard_megapixels(opened.width, opened.height, code=f"{code}_too_large")
             image = orient(opened).convert("RGB")
     except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError) as exc:
         raise StageFailure(code=f"{code}_unreadable", detail=type(exc).__name__) from None
@@ -173,7 +178,7 @@ def _render_pdf_page(source: Path) -> RenderedPage:
         if len(document) == 0:
             raise StageFailure(code="pdf_unreadable", detail="no_pages")
         page = document[0]
-        _guard_megapixels(
+        guard_megapixels(
             page.get_width() * PDF_RENDER_SCALE,
             page.get_height() * PDF_RENDER_SCALE,
             code="pdf_too_large",

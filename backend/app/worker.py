@@ -24,7 +24,7 @@ from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
-from app.services import naming
+from app.services import naming, product_photos
 
 log = get_logger(__name__)
 
@@ -108,7 +108,10 @@ async def run(poll_seconds: float = 5.0) -> None:
         try:
             async with sessionmaker() as db:
                 ran = await run_once(db, locked_by=me)
-                # Receipts first; with none waiting, one line for the naming pass (#88).
+                # Receipts first, then product work (1I), then one line for the
+                # naming pass (#88).
+                if not ran:
+                    ran = await product_photos.run_once(db, locked_by=me)
                 if not ran:
                     ran = await naming.run_suggestion_once(db)
         except Exception as exc:  # the database itself is unreachable, most likely

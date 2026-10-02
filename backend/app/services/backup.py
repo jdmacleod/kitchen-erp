@@ -1,9 +1,12 @@
-"""Backup and restore: a consistent database dump plus the receipt images.
+"""Backup and restore: a consistent database dump plus the receipt images and photos.
 
 `kerp backup --out DIR` writes `db.dump` (pg_dump custom format, owner role),
-copies every receipt image under `receipts/`, and writes `manifest.json` with
-hashes and counts. `kerp restore --from DIR` refuses a non-empty database
-unless forced, restores the dump, copies the images back, and verifies hashes.
+copies every receipt image under `receipts/` and every product photo original
+and mask under `media/` (derivatives are rebuildable, so they are left out),
+and writes `manifest.json` with hashes and counts. `kerp restore --from DIR`
+refuses a non-empty database unless forced, restores the dump, copies the files
+back, and verifies hashes: a receipt that does not match stops the restore, and
+photo files that do not match are reported.
 """
 
 from __future__ import annotations
@@ -25,7 +28,11 @@ from app.core.errors import ApiError
 from app.core.grants import statements as grant_statements
 from app.services.health import expected_migration_head
 
+# The photo files a backup keeps (1I); derived/ and incoming/ are not kept.
+MEDIA_KEPT = ("originals", "masks")
+
 COUNT_TABLES = (
+    "product_image",
     "purchase",
     "purchase_line",
     "price_observation",
@@ -44,6 +51,21 @@ def sha256_of(path: Path) -> str:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def media_files(root: Path) -> list[Path]:
+    return [p for kept in MEDIA_KEPT for p in receipt_files(root / kept)]
+
+
+def _copy_tree(files: list[Path], root: Path, dest: Path) -> list[dict[str, Any]]:
+    copied = []
+    for src in files:
+        rel = src.relative_to(root)
+        dst = dest / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        copied.append({"path": str(rel), "sha256": sha256_of(src), "bytes": src.stat().st_size})
+    return copied
 
 
 def receipt_files(root: Path) -> list[Path]:
@@ -79,19 +101,16 @@ async def backup(db: AsyncSession, out: Path) -> dict[str, Any]:
         capture_output=True,
     )
     receipts_root = Path(settings.receipts_path)
-    copied = []
-    for src in receipt_files(receipts_root):
-        rel = src.relative_to(receipts_root)
-        dst = out / "receipts" / rel
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(src, dst)
-        copied.append({"path": str(rel), "sha256": sha256_of(src), "bytes": src.stat().st_size})
+    copied = _copy_tree(receipt_files(receipts_root), receipts_root, out / "receipts")
+    media_root = Path(settings.media_path)
+    photos = _copy_tree(media_files(media_root), media_root, out / "media")
     manifest = {
         "format": "kitchen-erp-backup/1",
         "created_at": datetime.now(UTC).isoformat(),
         "migration_head": expected_migration_head(),
         "dump": {"file": "db.dump", "sha256": sha256_of(dump), "bytes": dump.stat().st_size},
         "receipts": copied,
+        "media": photos,
         "counts": await table_counts(db),
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
@@ -171,4 +190,22 @@ async def restore(db: AsyncSession, src: Path, *, force: bool = False) -> dict[s
         if sha256_of(target) != entry["sha256"]:
             raise ApiError(500, "restore_failed", f"Hash mismatch for {entry['path']}.")
         verified += 1
-    return {"restored_receipts": verified, "counts": manifest["counts"]}
+    media_root = Path(settings.media_path)
+    restored_media, mismatches = 0, []
+    # A backup made before product photos has no "media" entry.
+    for entry in manifest.get("media", []):
+        source = src / "media" / entry["path"]
+        target = media_root / entry["path"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if source.is_file():
+            shutil.copy2(source, target)
+        if not target.is_file() or sha256_of(target) != entry["sha256"]:
+            mismatches.append(entry["path"])
+            continue
+        restored_media += 1
+    return {
+        "restored_receipts": verified,
+        "restored_media": restored_media,
+        "media_mismatches": mismatches,
+        "counts": manifest["counts"],
+    }

@@ -570,8 +570,9 @@ def backup(out: Path = OUT_OPTION) -> None:
             manifest = await _backup(db, out)
         await dispose_engine()
         typer.echo(
-            f"backup written to {out}: {manifest['counts']} and "
-            f"{len(manifest['receipts'])} receipt image(s)"
+            f"backup written to {out}: {manifest['counts']}, "
+            f"{len(manifest['receipts'])} receipt image(s) and "
+            f"{len(manifest['media'])} photo file(s)"
         )
 
     asyncio.run(_run())
@@ -593,8 +594,47 @@ def restore(src: Path = FROM_OPTION, force: bool = FORCE_OPTION) -> None:
                 raise typer.Exit(code=1) from exc
         await dispose_engine()
         typer.echo(
-            f"restored {result['counts']} and {result['restored_receipts']} receipt image(s)"
+            f"restored {result['counts']}, {result['restored_receipts']} receipt image(s) "
+            f"and {result['restored_media']} photo file(s)"
         )
+        for path in result["media_mismatches"]:
+            typer.echo(f"hash mismatch: media/{path}", err=True)
+        if result["media_mismatches"]:
+            raise typer.Exit(code=1)
+
+    asyncio.run(_run())
+
+
+images_cli = typer.Typer(help="Product photos (1I).", no_args_is_help=True)
+cli.add_typer(images_cli, name="images")
+
+
+@images_cli.command("rebuild")
+def images_rebuild() -> None:
+    """Make every missing derivative for the current pipeline version."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import media, product_photos
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            count = await product_photos.rebuild_derivatives(db)
+        await dispose_engine()
+        typer.echo(f"{count} derivative file(s) present for pipeline {media.pipeline_version()}")
+
+    asyncio.run(_run())
+
+
+@images_cli.command("reselect")
+def images_reselect() -> None:
+    """Choose every product's main photo again by the current rule."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import product_photos
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            changed = await product_photos.reselect_all(db)
+        await dispose_engine()
+        typer.echo(f"{changed} product(s) have a different main photo")
 
     asyncio.run(_run())
 

@@ -36,6 +36,7 @@ services:
       ENABLE_NOMINATIM: ${ENABLE_NOMINATIM:-false}
       TILES_PATH: /data/tiles
       RECEIPTS_PATH: /data/receipts
+      MEDIA_PATH: /data/media
       RECIPES_PATH: /data/recipes
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       RECEIPT_DATE_ORDER: ${RECEIPT_DATE_ORDER:-MDY}

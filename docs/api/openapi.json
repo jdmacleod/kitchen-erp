@@ -145,6 +145,88 @@
         "title": "ApiTokenOut",
         "type": "object"
       },
+      "Body_add_mask_api_v1_product_photos__image_id__mask_post": {
+        "properties": {
+          "mask": {
+            "contentMediaType": "application/octet-stream",
+            "description": "single-channel PNG, the photo's size",
+            "title": "Mask",
+            "type": "string"
+          },
+          "source": {
+            "default": "tool",
+            "enum": [
+              "device",
+              "tool"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mask"
+        ],
+        "title": "Body_add_mask_api_v1_product_photos__image_id__mask_post",
+        "type": "object"
+      },
+      "Body_add_product_photos_api_v1_product_photos_post": {
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "photos": {
+            "description": "one to four photos",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
+            "title": "Photos",
+            "type": "array"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "roles": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "product",
+                    "label_front",
+                    "label_nutrition",
+                    "label_ingredients",
+                    "shelf_tag"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "one per photo, in order",
+            "title": "Roles"
+          }
+        },
+        "required": [
+          "product_id",
+          "photos"
+        ],
+        "title": "Body_add_product_photos_api_v1_product_photos_post",
+        "type": "object"
+      },
       "Body_upload_receipt_api_v1_receipts_post": {
         "properties": {
           "captured_at": {
@@ -6116,6 +6198,111 @@
         "title": "PasswordSet",
         "type": "object"
       },
+      "PhotoSummary": {
+        "additionalProperties": false,
+        "description": "A product's main photo, as a list or a header shows it.",
+        "properties": {
+          "has_cutout": {
+            "readOnly": true,
+            "title": "Has Cutout",
+            "type": "boolean"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "urls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoUrls"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "width",
+          "height",
+          "has_cutout",
+          "urls"
+        ],
+        "title": "PhotoSummary",
+        "type": "object"
+      },
+      "PhotoUrls": {
+        "additionalProperties": false,
+        "description": "Versioned media addresses; a cutout is present only when the photo has one.",
+        "properties": {
+          "cutout_large": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutout Large"
+          },
+          "cutout_medium": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutout Medium"
+          },
+          "large": {
+            "title": "Large",
+            "type": "string"
+          },
+          "medium": {
+            "title": "Medium",
+            "type": "string"
+          },
+          "small": {
+            "title": "Small",
+            "type": "string"
+          }
+        },
+        "required": [
+          "small",
+          "medium",
+          "large"
+        ],
+        "title": "PhotoUrls",
+        "type": "object"
+      },
       "ProductCreate": {
         "additionalProperties": false,
         "properties": {
@@ -6525,6 +6712,16 @@
             ],
             "title": "Pack Unit"
           },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "quality_rating": {
             "anyOf": [
               {
@@ -6705,6 +6902,16 @@
             ],
             "title": "Pack Unit"
           },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "quality_rating": {
             "anyOf": [
               {
@@ -6743,6 +6950,227 @@
           "updated_at"
         ],
         "title": "ProductOut",
+        "type": "object"
+      },
+      "ProductPhotoList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductPhotoOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "primary_image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Image Id"
+          }
+        },
+        "required": [
+          "items",
+          "primary_image_id"
+        ],
+        "title": "ProductPhotoList",
+        "type": "object"
+      },
+      "ProductPhotoOut": {
+        "additionalProperties": false,
+        "properties": {
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "cutout_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "device",
+                  "tool"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutout Source"
+          },
+          "has_cutout": {
+            "readOnly": true,
+            "title": "Has Cutout",
+            "type": "boolean"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_main": {
+            "default": false,
+            "title": "Is Main",
+            "type": "boolean"
+          },
+          "is_stock_suspect": {
+            "title": "Is Stock Suspect",
+            "type": "boolean"
+          },
+          "ocr_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ocr Text"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "role": {
+            "enum": [
+              "product",
+              "label_front",
+              "label_nutrition",
+              "label_ingredients",
+              "shelf_tag"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "source_kind": {
+            "enum": [
+              "user_photo",
+              "manufacturer",
+              "open_food_facts",
+              "vendor_listing"
+            ],
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "status": {
+            "enum": [
+              "processing",
+              "candidate",
+              "active",
+              "hidden",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "urls": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoUrls"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "width",
+          "height",
+          "product_id",
+          "role",
+          "status",
+          "source_kind",
+          "source_url",
+          "attribution",
+          "cutout_source",
+          "pinned",
+          "is_stock_suspect",
+          "ocr_text",
+          "captured_at",
+          "created_at",
+          "has_cutout",
+          "urls"
+        ],
+        "title": "ProductPhotoOut",
         "type": "object"
       },
       "ProductRef": {
@@ -12741,6 +13169,56 @@
         ]
       }
     },
+    "/api/v1/media/{sha}/{name}": {
+      "get": {
+        "operationId": "get_media_api_v1_media__sha___name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sha",
+            "required": true,
+            "schema": {
+              "title": "Sha",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/webp": {}
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Media",
+        "tags": [
+          "media"
+        ]
+      }
+    },
     "/api/v1/opening-hours/validate": {
       "post": {
         "operationId": "validate_opening_hours_api_v1_opening_hours_validate_post",
@@ -13275,6 +13753,318 @@
         ]
       }
     },
+    "/api/v1/product-photos": {
+      "post": {
+        "description": "Add up to four photos to a product. Each is prepared in the background.",
+        "operationId": "add_product_photos_api_v1_product_photos_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_product_photos_api_v1_product_photos_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Product Photos",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/hide": {
+      "post": {
+        "operationId": "hide_photo_api_v1_product_photos__image_id__hide_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hide Photo",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/mask": {
+      "post": {
+        "description": "Queue a mask for a processed photo; its cutouts are made in the background.",
+        "operationId": "add_mask_api_v1_product_photos__image_id__mask_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_mask_api_v1_product_photos__image_id__mask_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Mask",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/retry": {
+      "post": {
+        "operationId": "retry_photo_api_v1_product_photos__image_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Photo",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/show": {
+      "post": {
+        "operationId": "show_photo_api_v1_product_photos__image_id__show_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Photo",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/unset-main": {
+      "post": {
+        "description": "Give the choice back to the rule.",
+        "operationId": "unset_main_api_v1_product_photos__image_id__unset_main_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unset Main",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
+    "/api/v1/product-photos/{image_id}/use-as-main": {
+      "post": {
+        "operationId": "use_as_main_api_v1_product_photos__image_id__use_as_main_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Use As Main",
+        "tags": [
+          "product photos"
+        ]
+      }
+    },
     "/api/v1/products": {
       "get": {
         "operationId": "list_products_api_v1_products_get",
@@ -13785,6 +14575,50 @@
         "summary": "Last Purchase Unit",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/photos": {
+      "get": {
+        "description": "Every photo of a product, hidden and failed ones included, oldest first.",
+        "operationId": "list_product_photos_api_v1_products__product_id__photos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPhotoList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Product Photos",
+        "tags": [
+          "product photos"
         ]
       }
     },

@@ -8,6 +8,8 @@ from app.api import (
     health,
     inbox,
     ingredient_link,
+    media,
+    product_photos,
     purchases,
     receipts,
     search,
@@ -30,3 +32,5 @@ router.include_router(receipts.router)
 router.include_router(inbox.router)
 router.include_router(search.router)
 router.include_router(vendor_suggestions.router)
+router.include_router(product_photos.router)
+router.include_router(media.router)
