@@ -115,4 +115,27 @@ describe("to-identify queue", () => {
     expect(await screen.findByText("All lines identified")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Back to Home" })).toHaveAttribute("href", "/");
   });
+
+  it("offers to remember the group's item code once it is identified, and records it only on a click (2K)", async () => {
+    const coded: ToIdentifyGroup = { ...group, code: { scheme: "vendor_sku", value: "88001" } };
+    let remembered = 0;
+    const calls = mockApi({
+      ...baseRoutes(),
+      "GET /to-identify": () => jsonResponse(200, { items: remembered === 0 ? [coded] : [] }),
+      [`POST /purchases/${receiptPurchaseId}/lines/${group.lines[0].line_id}/remember-code`]: () => {
+        remembered += 1;
+        return jsonResponse(200, { scheme: "vendor_sku", value: "88001", product_id: hits[1].id });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify");
+    const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
+    await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
+    await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
+    const remember = await screen.findByRole("button", { name: `Remember 88001 for ${hits[1].name}` });
+    expect(calls.some((c) => c.path.endsWith("/remember-code"))).toBe(false);
+    await user.click(remember);
+    expect(await screen.findByText(`Remembered 88001 for ${hits[1].name}.`)).toBeInTheDocument();
+    expect(remembered).toBe(1);
+  });
 });

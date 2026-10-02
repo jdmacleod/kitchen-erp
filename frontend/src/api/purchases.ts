@@ -72,9 +72,9 @@ export interface PurchaseLineProduct {
   category_key: CategoryKey | null;
 }
 
-export type Resolution = "barcode" | "alias" | "fuzzy" | "llm" | "manual" | "unmatched" | "ignored";
-export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm";
-export type AcceptedKind = "alias" | "fuzzy" | "llm";
+export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "manual" | "unmatched" | "ignored";
+export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "code";
+export type AcceptedKind = "alias" | "fuzzy" | "llm" | "code";
 
 export interface Suggestion {
   kind: SuggestionKind;
@@ -86,7 +86,15 @@ export interface Suggestion {
 
 export const LINE_KINDS = ["item", "discount", "deposit", "tax", "fee"] as const;
 
+/** An item code a line's product could be remembered by at its vendor (2K). */
+export interface CodeOffer {
+  scheme: "vendor_sku" | "rw_item" | "plu";
+  value: string;
+}
+
 export interface PurchaseLine {
+  /** Offered as "Remember {code} for {product}" once the line has a product (2K). */
+  code_offer?: CodeOffer | null;
   id: string;
   seq: number;
   raw_text: string | null;
@@ -253,6 +261,8 @@ export interface ToIdentifyGroup {
   raw_text_norm: string | null;
   line_count: number;
   lines: ToIdentifyLine[];
+  /** The item code these lines carry where the vendor prints codes (2K). */
+  code?: CodeOffer | null;
 }
 
 export type ToIdentifyApplyInput = { vendor_id: string; raw_text_norm: string; line_ids?: string[] } & (
@@ -466,6 +476,16 @@ export function useResolveLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, ({ lineId, ...input }: ResolveInput & { lineId: string }) =>
     api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/resolve`, { method: "POST", body: input }),
   );
+}
+
+/** Remember a line's code for its product at its vendor; only ever on a person's click (2K). */
+export function useRememberCode(purchaseId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (lineId: string) =>
+      api<{ scheme: string; value: string; product_id: string }>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/remember-code`, { method: "POST" }),
+    onSuccess: () => void client.invalidateQueries({ queryKey: purchaseKeys.purchase(purchaseId) }),
+  });
 }
 
 export function useReResolveLine(purchaseId: string) {
@@ -702,6 +722,7 @@ export const purchaseStatusTone: Record<PurchaseStatus, "warn" | "neutral" | "go
 
 export const resolutionLabel: Record<Resolution, string> = {
   barcode: "barcode",
+  identifier: "item code",
   alias: "alias",
   fuzzy: "fuzzy alias",
   llm: "model",
@@ -712,7 +733,7 @@ export const resolutionLabel: Record<Resolution, string> = {
 
 /** Lines a reviewer need not look at: resolved automatically and unflagged. */
 export function isQuietLine(line: PurchaseLine): boolean {
-  return (line.resolution === "alias" || line.resolution === "barcode") && line.flags.length === 0;
+  return (line.resolution === "alias" || line.resolution === "barcode" || line.resolution === "identifier") && line.flags.length === 0;
 }
 
 export const sourceLabel: Record<ObservationSource, string> = {

@@ -156,4 +156,4 @@ async def test_receipt_barcode_rung_matches_any_form(admin_client, admin, db_ses
     spec = {"raw_text": f"0{UPC} RICE 2.49", "line_total": "2.49", "qty": "1", "unit": "each"}
     purchase = await make_receipt_purchase(admin.id, loc["id"], [spec])
     line = (await resolve(admin_client, purchase, db_session))["lines"][0]
-    assert line["resolution"] == "barcode" and line["product"]["id"] == p["id"]
+    assert line["resolution"] == "identifier" and line["product"]["id"] == p["id"]

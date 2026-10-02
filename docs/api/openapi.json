@@ -921,6 +921,30 @@
         "title": "Check",
         "type": "object"
       },
+      "CodeOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "scheme": {
+            "enum": [
+              "vendor_sku",
+              "rw_item",
+              "plu"
+            ],
+            "title": "Scheme",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme",
+          "value"
+        ],
+        "title": "CodeOffer",
+        "type": "object"
+      },
       "CodePositionEntry": {
         "additionalProperties": false,
         "description": "Where a vendor's receipts print item codes (04, 2K).",
@@ -3772,7 +3796,8 @@
                 "enum": [
                   "alias",
                   "fuzzy",
-                  "llm"
+                  "llm",
+                  "code"
                 ],
                 "type": "string"
               },
@@ -4029,6 +4054,16 @@
       "LineOut": {
         "additionalProperties": false,
         "properties": {
+          "code_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodeOffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "flags": {
             "items": {
               "type": "string"
@@ -9044,6 +9079,16 @@
       "QueueGroup": {
         "additionalProperties": false,
         "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CodeOffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "line_count": {
             "title": "Line Count",
             "type": "integer"
@@ -9377,6 +9422,37 @@
           "recomputed"
         ],
         "title": "RecomputeOut",
+        "type": "object"
+      },
+      "RememberCodeOut": {
+        "additionalProperties": false,
+        "description": "The code now known for the line's product at this vendor.",
+        "properties": {
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "scheme": {
+            "enum": [
+              "vendor_sku",
+              "rw_item",
+              "plu"
+            ],
+            "title": "Scheme",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scheme",
+          "value",
+          "product_id"
+        ],
+        "title": "RememberCodeOut",
         "type": "object"
       },
       "RememberStoreCodeIn": {
@@ -16942,6 +17018,60 @@
           }
         },
         "summary": "Re Resolve Line",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/lines/{line_id}/remember-code": {
+      "post": {
+        "description": "Remember the line's code for its product at this vendor (04, 2K).",
+        "operationId": "remember_line_code_api_v1_purchases__purchase_id__lines__line_id__remember_code_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "line_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RememberCodeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remember Line Code",
         "tags": [
           "purchases"
         ]

@@ -181,7 +181,7 @@ async def test_barcode_rung_resolves_without_a_person(admin_client, admin, db_se
         ],
     )
     line = (await resolve(admin_client, p, db_session))["lines"][0]
-    assert line["resolution"] == "barcode" and line["product"]["id"] == nuts["id"]
+    assert line["resolution"] == "identifier" and line["product"]["id"] == nuts["id"]
 
 
 async def test_price_outlier_flag_on_alias_resolution(admin_client, admin, db_session):

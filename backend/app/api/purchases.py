@@ -41,6 +41,7 @@ from app.schemas.purchases import (
     QueueApply,
     QueueList,
     RecomputeOut,
+    RememberCodeOut,
     RememberStoreCodeIn,
     RemovalOut,
     RemovedOut,
@@ -216,6 +217,7 @@ async def purchase_out(
     the removed-line count cost queries per row and no list shows them.
     """
     live = await purchases.live_observations(db, purchase)
+    offers = await resolution.code_offers(db, purchase) if detail else {}
     if names is None:
         names = await purchases.resolver_names(db, [purchase])
     recorded = await purchases.recorded_lines(db, purchase.lines) if detail else None
@@ -251,6 +253,7 @@ async def purchase_out(
             raw_text_norm=line.raw_text_norm,
             suggestions=line.suggestions or [],
             recorded=None if recorded is None else line.id in recorded,
+            code_offer=offers.get(line.id),  # type: ignore[arg-type]
         )
         for line in purchase.lines
     ]
@@ -476,6 +479,7 @@ async def reopen_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession)
 @router.get("/to-identify", response_model=QueueList)
 async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
     groups = await resolution.to_identify(db)
+    codes = await resolution.queue_codes(db, groups)
     return QueueList(
         items=[
             {
@@ -483,6 +487,7 @@ async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
                 "raw_text_norm": g["raw_text_norm"],
                 "line_count": g["line_count"],
                 "lines": g["lines"],
+                "code": codes.get((str(g["vendor_id"]), g["raw_text_norm"])),
             }
             for g in groups
         ]
@@ -621,3 +626,14 @@ async def cheapest(
         include_posted=include_posted,
     )
     return CheapestOut(items=items, unit=ingredient.canonical_unit)
+
+
+@router.post(
+    "/purchases/{purchase_id}/lines/{line_id}/remember-code", response_model=RememberCodeOut
+)
+async def remember_line_code(
+    purchase_id: uuid.UUID, line_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> RememberCodeOut:
+    """Remember the line's code for its product at this vendor (04, 2K)."""
+    found = await resolution.remember_code(db, purchase_id, line_id)
+    return RememberCodeOut(scheme=found.scheme, value=found.value, product_id=found.product_id)  # type: ignore[arg-type]
