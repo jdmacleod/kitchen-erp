@@ -146,6 +146,13 @@ links reach outside the deployment, and only when switched on.
   lists each adapter as loaded, missing or invalid, and reports "degraded" if
   any did not load.
 
+  The private `kitchen-erp-products` helper ships adapters for the stores it
+  knows, behind one entry point. To use them here, run
+  `kerp-products install-plugins --to <this folder>/data/plugins` from the helper,
+  set `PRODUCT_ADAPTERS=["kerp_products.adapters:adapt"]`, and restart with
+  `make up`. They matter most for stores that only a browser can read, whose pages
+  reach Kitchen ERP only through the clip window.
+
 - **USDA branded foods by barcode (optional, 2L).** A scanned barcode the
   catalog does not know is looked up in a local table of USDA branded foods
   before it becomes a proposal. Download the "Branded" CSV bundle from the same
