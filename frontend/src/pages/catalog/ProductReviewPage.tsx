@@ -146,7 +146,9 @@ function Review({ proposal }: { proposal: Proposal }) {
   const id = useId();
   const matchRef = useRef<HTMLFieldSetElement>(null);
 
-  const [match, setMatch] = useState<string | null>(proposal.match.preselect ?? null);
+  // With nothing in the catalog to update, a new product is the only answer: preselect it.
+  const nothingToUpdate = !proposal.match.strong && (proposal.match.candidates ?? []).length === 0 && proposal.kind === "new_product";
+  const [match, setMatch] = useState<string | null>(proposal.match.preselect ?? (nothingToUpdate ? "new" : null));
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
     Object.fromEntries(Object.entries(fields).map(([name, f]) => [name, { index: f && f.conflict ? null : 0 }])),
   );

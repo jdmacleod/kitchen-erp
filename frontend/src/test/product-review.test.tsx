@@ -107,16 +107,24 @@ describe("product review", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "New product: Strong white flour" })).toBeInTheDocument();
   });
 
-  it("keeps Accept disabled with its reason while something blocks it", async () => {
-    mockApi(routes(proposal()));
-    const user = userEvent.setup();
+  it("asks whether to update or create while the catalog offers a candidate", async () => {
+    const similar = proposal({ match: { strong: null, candidates: [{ product_id: otherProductId, name: "Bread flour", brand: null, score: "0.6" }], preselect: null } });
+    mockApi(routes(similar));
     renderApp(`/catalog/products/review/${proposalId}`);
     expect(await screen.findByText("Choose whether to update a product or create one")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: "Create new product" })).not.toBeChecked();
+  });
+
+  it("keeps Accept disabled with its reason while something blocks it", async () => {
+    mockApi(routes(proposal()));
+    renderApp(`/catalog/products/review/${proposalId}`);
+    // With nothing in the catalog to update, a new product is preselected (clip quality, CQ3).
+    expect(await screen.findByText("Choose an ingredient to accept")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
     // Focus starts on Match.
+    expect(screen.getByRole("radio", { name: "Create new product" })).toBeChecked();
     expect(screen.getByRole("radio", { name: "Create new product" })).toHaveFocus();
-    await user.click(screen.getByRole("radio", { name: "Create new product" }));
-    expect(screen.getByText("Choose an ingredient to accept")).toBeInTheDocument();
     // Only a field with alternatives opens as choices, with neutral source badges.
     const name = screen.getByRole("group", { name: "Name" });
     expect(within(name).getByRole("radio", { name: /Strong white flour/ })).toBeChecked();
