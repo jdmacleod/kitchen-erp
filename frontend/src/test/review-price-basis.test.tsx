@@ -136,6 +136,7 @@ describe("field choices", () => {
     renderApp(`/catalog/products/review/${proposalId}`);
     await user.click(await screen.findByRole("button", { name: "Edit details" }));
     const name = screen.getByRole("group", { name: "Name" });
-    expect(within(name).getAllByRole("radio")).toHaveLength(2);
+    // Besides keeping the product's own name, the two different values.
+    expect(within(name).getAllByRole("radio", { name: /^(?!Keep)/ })).toHaveLength(2);
   });
 });

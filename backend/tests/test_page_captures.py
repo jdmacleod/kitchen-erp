@@ -124,6 +124,26 @@ def test_the_address_alone_gives_a_title_and_item_number():
     assert value(fields, "title") == "Rolled oats 500g"
 
 
+# Regression: ISSUE-001 — a route segment ("product-details") was taken for the name
+# Found by /qa on 2026-10-05
+@pytest.mark.parametrize(
+    "path",
+    ["/product-details/40112/12/77881", "/item-detail/40112", "/shop/view-item/40112"],
+)
+def test_a_route_segment_is_not_a_name(path):
+    fields = merge(from_address(f"{SHOP}{path}").candidates)
+    assert "title" not in fields
+    assert value(fields, "item_number")
+
+
+# Regression: ISSUE-002 — a page titled only "Product Detail" offered it as a name
+# Found by /qa on 2026-10-05
+@pytest.mark.parametrize("title", ["Product Detail", "Product details", "Item"])
+def test_a_generic_page_title_is_not_a_name(title):
+    found = extract(f"{SHOP}/product-details/40112", meta={"og:title": title})
+    assert "title" not in merge(found.candidates)
+
+
 # --- the endpoint ------------------------------------------------------------------------
 
 

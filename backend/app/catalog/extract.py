@@ -41,6 +41,17 @@ PACK_TEXT_LIMIT = 2000
 _METRIC = {"g", "kg", "mg", "ml", "l"}
 _SKU_PARAMS = ("sku", "item", "itemid", "item_id", "productid", "product_id", "pid")
 _DIGITS = re.compile(r"(?<![0-9])([0-9]{4,14})(?![0-9])")
+# Words a store's routes and placeholder titles are made of ("product-details", "Item").
+_ROUTE_WORDS = frozenset(
+    {"product", "products", "prod", "detail", "details", "item", "items", "view"}
+    | {"p", "dp", "ip", "pd", "shop", "buy", "page"}
+)
+
+
+def _generic(text: str) -> bool:
+    """True when the text is only route words: a page's kind, not its product's name."""
+    words = re.findall(r"[a-z]+", text.lower())
+    return all(w in _ROUTE_WORDS for w in words)
 
 
 @dataclass
@@ -261,6 +272,8 @@ def from_meta(meta: Mapping[str, str]) -> PageEvidence:
             if not value:
                 continue
             value = _money(value) if field_name == "price" else _text(value)
+            if field_name == "title" and value and _generic(value):
+                continue
             if value:
                 out.candidates.append(Candidate(field_name, value, "page_meta"))
                 break
@@ -292,7 +305,14 @@ def from_address(url: str) -> PageEvidence:
             if found := _DIGITS.search(segment):
                 out.candidates.append(Candidate("item_number", found.group(1), "address"))
                 break
-    slug = next((s for s in reversed(segments) if re.search(r"[A-Za-z]{3,}", s) and "-" in s), None)
+    slug = next(
+        (
+            s
+            for s in reversed(segments)
+            if re.search(r"[A-Za-z]{3,}", s) and "-" in s and not _generic(s)
+        ),
+        None,
+    )
     if slug:
         words = re.sub(r"\.[a-z]{2,5}$", "", slug)
         words = _DIGITS.sub(" ", words)

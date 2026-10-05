@@ -58,7 +58,7 @@ export interface MatchCandidate {
 }
 
 export interface ProposalMatch {
-  strong?: { product_id: string; reason: "identifier" | "listing" } | null;
+  strong?: { product_id: string; reason: "identifier" | "listing" | "lookup" } | null;
   candidates?: MatchCandidate[];
   preselect?: string | null;
 }
