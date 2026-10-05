@@ -176,3 +176,51 @@ describe("products", () => {
     expect(screen.queryByRole("button", { name: "Confirm density override" })).not.toBeInTheDocument();
   });
 });
+
+describe("a pasted page with the lookup helper (2M)", () => {
+  const PAGE = "https://shop.example.test/p/rolled-oats-1kg-4417";
+
+  async function addWithAddress(configured: boolean) {
+    let products: Product[] = [];
+    const created: Product = { ...flourProduct, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e01", name: "Rolled Oats", brand: null, barcode: null };
+    const calls = mockApi({
+      ...baseRoutes(() => products),
+      "GET /products-helper": () => jsonResponse(200, { configured }),
+      "POST /product-captures/address": () => jsonResponse(200, { vendor: null, canonical_url: PAGE, title: "Rolled oats 1kg", item_number: "4417" }),
+      "POST /products": () => {
+        products = [created];
+        return jsonResponse(201, created);
+      },
+      [`POST /products/${created.id}/look-up`]: () =>
+        jsonResponse(200, { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", kind: "page", value: PAGE, listing_id: null, status: "open", created_at: "2026-10-05T10:00:00Z", answered_at: null }),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.click(within(form).getByLabelText("Web address (optional)"));
+    await user.paste(PAGE);
+    await waitFor(() => expect(within(form).getByLabelText("Name")).toHaveValue("Rolled oats 1kg"));
+    const hint = configured
+      ? /Saving asks the lookup helper to read this page\. What it finds waits on Home for review\./
+      : /This page can't be read from here\. Use Save to Kitchen ERP on the page\./;
+    expect(within(form).getByText(hint)).toBeInTheDocument();
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "rolled oats");
+    await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    return { calls, created };
+  }
+
+  it("sends the page to the helper after saving, and says so", async () => {
+    const { calls, created } = await addWithAddress(true);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/products/${created.id}/look-up`)).toBe(true));
+    expect(calls.find((c) => c.path === `/products/${created.id}/look-up`)?.body).toEqual({ page_url: PAGE });
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Added Rolled Oats. The lookup helper will read its page; what it finds will wait on Home for review.");
+  });
+
+  it("sends nothing without a helper", async () => {
+    const { calls } = await addWithAddress(false);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/products")).toBe(true));
+    expect(calls.some((c) => c.path.endsWith("/look-up"))).toBe(false);
+  });
+});

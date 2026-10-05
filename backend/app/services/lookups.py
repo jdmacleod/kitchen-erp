@@ -33,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import proposals as merging
 from app.catalog.identifiers import classify_barcode
+from app.catalog.listings import canonical_url
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.ids import new_id
@@ -50,7 +51,7 @@ from app.models import (
 )
 from app.models.geo import VendorLocation
 from app.schemas.products_interchange import HelperAnswer, ListingPriceReport, PriceValue
-from app.services import media, pricebook, product_photos, proposals
+from app.services import media, page_captures, pricebook, product_photos, proposals
 
 HELPER_SCOPES = ("products:read", "products:suggest")
 
@@ -113,7 +114,20 @@ async def ask_for_proposal(
 async def ask_for_product_page(
     db: AsyncSession, user: AppUser, product_id: uuid.UUID, page_url: str
 ) -> LookupRequest:
-    """A page pasted in Add product, for the product it created (2M with a helper)."""
+    """A page pasted in Add product, for the product it created (2M with a helper).
+
+    The helper reads it; its answer opens a Product update, with the page's listing and
+    posted price when the page is one of the household's vendors'."""
+    if not await helper_configured(db):
+        raise ApiError(
+            409, "no_helper", "No lookup helper is set up, so this page can't be read from here."
+        )
+    if await db.get(Product, product_id) is None:
+        raise ApiError(404, "not_found", "No such product.")
+    try:
+        page_url, _ = canonical_url(page_url)
+    except ValueError:
+        raise ApiError(422, "invalid_url", "That is not a web address.") from None
     existing = await _open(db, product_id=product_id, kind="page", value=page_url)
     if existing is not None:
         return existing
@@ -302,6 +316,17 @@ def _photos(answer: HelperAnswer) -> list[tuple[bytes, bytes | None, Any]]:
     return out
 
 
+async def _has_listing(db: AsyncSession, product_id: uuid.UUID, listing: dict[str, Any]) -> bool:
+    found = await db.execute(
+        select(VendorListing.id).where(
+            VendorListing.product_id == product_id,
+            VendorListing.vendor_id == uuid.UUID(listing["vendor_id"]),
+            VendorListing.canonical_url == listing["canonical_url"],
+        )
+    )
+    return found.first() is not None
+
+
 def _changes_product(product: Product, candidates: list[merging.Candidate]) -> bool:
     """Whether an answer would change a product the household already has."""
     current = {
@@ -390,7 +415,14 @@ async def answer(
     if product is None or not (candidates or photos) or not parsed.found:
         await _record(db, request.id, token_id, body, "no_change")
         return "no_change", None
-    if not _changes_product(product, candidates) and not photos:
+    fields = merging.merge(candidates)
+    # A pasted page (not a scheduled refresh) brings its listing and posted price along.
+    listing = None
+    if request.kind == "page" and request.listing_id is None and request.value:
+        listing = await page_captures.listing_for_page(db, request.value, fields)
+        if listing is not None and await _has_listing(db, product.id, listing):
+            listing = None
+    if not _changes_product(product, candidates) and not photos and listing is None:
         await _record(db, request.id, token_id, body, "no_change")
         return "no_change", None
     # A late answer about a product the household already has (PR7).
@@ -400,15 +432,18 @@ async def answer(
         kind="product_update",
         product_id=product.id,
         status="pending",
-        fields=merging.merge(candidates),
+        fields={},
         match={
             "strong": {"product_id": str(product.id), "reason": "identifier"},
             "candidates": [],
             "preselect": f"update:{product.id}",
         },
     )
-    db.add(update)
-    await db.flush()
+    price = None
+    if listing is not None:
+        price = page_captures._price(fields)
+    # Through the one writer: a pending proposal for the same page is superseded.
+    await proposals.write_proposal(db, update, fields=fields, listing=listing, price=price)
     await _store_photos(db, update, photos)
     await _record(db, request.id, token_id, body, "update_opened")
     return "update_opened", update.id

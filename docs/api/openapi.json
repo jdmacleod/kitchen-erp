@@ -8142,6 +8142,22 @@
         "title": "ProductOut",
         "type": "object"
       },
+      "ProductPageLookUp": {
+        "additionalProperties": false,
+        "properties": {
+          "page_url": {
+            "maxLength": 2048,
+            "minLength": 8,
+            "title": "Page Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "page_url"
+        ],
+        "title": "ProductPageLookUp",
+        "type": "object"
+      },
       "ProductPhotoList": {
         "additionalProperties": false,
         "properties": {
@@ -17114,6 +17130,60 @@
         "summary": "Last Purchase Unit",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/look-up": {
+      "post": {
+        "description": "A page pasted in Add product: the lookup helper reads it (2M with a helper).",
+        "operationId": "look_up_product_page_api_v1_products__product_id__look_up_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductPageLookUp"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Look Up Product Page",
+        "tags": [
+          "products helper"
         ]
       }
     },

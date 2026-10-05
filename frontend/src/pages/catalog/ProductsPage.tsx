@@ -13,6 +13,7 @@ import {
   type ProductCreateInput,
   type ProductListItem,
 } from "../../api/catalog";
+import { useProductsHelper } from "../../api/proposals";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
@@ -81,20 +82,25 @@ export function ProductsPage() {
   };
 
   const notice = useNotice();
-  const onCreated = async (product: Product) => {
+  const onCreated = async (product: Product, pageNote?: string) => {
     closeDrawer();
     await products.refetch();
     // G10: the new row takes focus when it is in the list; otherwise the Notice
-    // links to it and its link takes focus.
+    // links to it and its link takes focus. A pasted page's fate is always said.
     requestAnimationFrame(() => {
       const row = document.getElementById(`product-row-${product.id}`);
-      if (row) {
+      if (row && !pageNote) {
         row.focus();
+        return;
+      }
+      if (row && pageNote) {
+        row.focus();
+        notice.show({ tone: "success", message: `Added ${productTitle(product)}. ${pageNote}` });
         return;
       }
       notice.show({
         tone: "success",
-        message: `Added ${productTitle(product)}.`,
+        message: `Added ${productTitle(product)}.${pageNote ? ` ${pageNote}` : ""}`,
         action: { label: "Open it", to: `/catalog/products/${product.id}` },
         focusAction: true,
       });
@@ -286,7 +292,7 @@ function AddProductDrawer({
 }: {
   presetId: string | undefined;
   onClose: () => void;
-  onCreated: (product: Product) => void;
+  onCreated: (product: Product, pageNote?: string) => void;
 }) {
   // When arriving from an ingredient page, preselect that ingredient once it loads.
   const preset = useIngredient(presetId);
@@ -316,9 +322,10 @@ function AddProductForm({
 }: {
   initialIngredient: IngredientChoice | null;
   onClose: () => void;
-  onCreated: (product: Product) => void;
+  onCreated: (product: Product, pageNote?: string) => void;
 }) {
   const create = useCreateProduct();
+  const helper = useProductsHelper();
   const [initial] = useState(() => emptyProductValues(initialIngredient));
   const [values, setValues] = useState<ProductFormValues>(initial);
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -361,7 +368,19 @@ function AddProductForm({
       input.density_override = values.density_override.trim();
       input.density_override_source = values.density_override_source;
     }
-    create.mutate(input, { onSuccess: onCreated });
+    const page = address.trim();
+    create.mutate(input, {
+      onSuccess: async (product) => {
+        if (!page || !helper.data?.configured) return onCreated(product);
+        // The lookup helper reads the page; what it finds waits on Home as a product update.
+        try {
+          await api(`/products/${product.id}/look-up`, { method: "POST", body: { page_url: page } });
+          onCreated(product, "The lookup helper will read its page; what it finds will wait on Home for review.");
+        } catch (error) {
+          onCreated(product, `Its page was not sent to the lookup helper: ${errorMessage(error)}`);
+        }
+      },
+    });
   };
 
   return (
@@ -399,7 +418,9 @@ function AddProductForm({
             {address.trim() ? (
               <p className={`text-xs ${muted}`}>
                 {fromAddress?.item ? `Item number ${fromAddress.item} · From the address. ` : ""}
-                This page can't be read from here. Use Save to Kitchen ERP on the page.
+                {helper.data?.configured
+                  ? "Saving asks the lookup helper to read this page. What it finds waits on Home for review."
+                  : "This page can't be read from here. Use Save to Kitchen ERP on the page."}
               </p>
             ) : null}
           </div>

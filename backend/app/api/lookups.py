@@ -25,6 +25,7 @@ from app.schemas.lookups import (
     PriceChangeDecision,
     PriceChangeList,
     PricesReported,
+    ProductPageLookUp,
 )
 from app.schemas.product_photos import ProductPhotoOut
 from app.services import lookups
@@ -94,6 +95,15 @@ async def products_helper(_: CurrentUser, db: DbSession) -> HelperStatus:
 async def look_up(proposal_id: uuid.UUID, user: CurrentUser, db: DbSession) -> LookupRequestOut:
     """ "Look this up online": hand the proposal's barcode or page to the helper."""
     return LookupRequestOut.model_validate(await lookups.ask_for_proposal(db, user, proposal_id))
+
+
+@router.post("/products/{product_id}/look-up", response_model=LookupRequestOut)
+async def look_up_product_page(
+    product_id: uuid.UUID, payload: ProductPageLookUp, user: CurrentUser, db: DbSession
+) -> LookupRequestOut:
+    """A page pasted in Add product: the lookup helper reads it (2M with a helper)."""
+    request = await lookups.ask_for_product_page(db, user, product_id, payload.page_url)
+    return LookupRequestOut.model_validate(request)
 
 
 @router.get("/listing-price-changes", response_model=PriceChangeList)
