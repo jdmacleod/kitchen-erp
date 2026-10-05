@@ -128,18 +128,23 @@ links reach outside the deployment, and only when switched on.
   `kerp import usda-portions` is the command's earlier name.
 
 - **Retailer adapters for captured pages (optional, 2M).** Every captured
-  product page is read generically: its structured data, meta tags and address,
-  then the text model. A retailer-specific adapter can add fields. It is a pure
+  product page is read generically: its structured data, meta tags and address
+  when it is saved, then the text model in the background. A retailer-specific
+  adapter runs beside the model and can add fields. It receives the page's
+  addresses, title, meta tags, structured data and text, but not its images. It is a pure
   Python function `adapter(page: dict) -> list[dict]` returning
-  `[{"field": "price", "value": "3.49"}, ...]`, kept outside this repository in
-  `data/plugins/` (mounted read-only at `/plugins`) and named in `.env`:
+  `[{"field": "price", "value": "3.49"}, ...]`. A price by weight is
+  `{"amount": "0.69", "qty": "1", "unit": "lb"}`. Adapters are kept outside
+  this repository, because they show which stores you use: in `data/plugins/`
+  (mounted read-only at `/plugins`), named in `.env`:
 
   ```bash
   PRODUCT_ADAPTERS=["my_shop:read"]
   ```
 
-  An adapter does no I/O. A missing or failing one is skipped, and
-  `/api/v1/health` lists which loaded.
+  An adapter does no I/O. A missing or failing one is skipped. `/api/v1/health`
+  lists each adapter as loaded, missing or invalid, and reports "degraded" if
+  any did not load.
 
 - **USDA branded foods by barcode (optional, 2L).** A scanned barcode the
   catalog does not know is looked up in a local table of USDA branded foods
@@ -276,6 +281,87 @@ links reach outside the deployment, and only when switched on.
 5. **Mistakes** are corrected by reopening the purchase, or by removing it at the
    foot of its page: a receipt that never reached the price book is deleted with
    its photo; one that did is voided and kept.
+
+## Adding a product from a web page, start to finish
+
+A store's product page, or a brand's own page, can become a product in your
+catalog. Kitchen ERP never fetches the page itself: your browser sends what it
+shows, and nothing enters your catalog until you accept it.
+
+1. **Once: install the bookmarklet.** Open Settings → Capture and drag
+   **Save to Kitchen ERP** to the bookmarks bar. On an iPhone, use Copy the code,
+   bookmark any page, then paste the code as that bookmark's address. The
+   bookmarklet is tied to the address you installed it from. Reinstall it if
+   that address changes.
+2. **Once per store: give the vendor its website.** A page is matched to a
+   vendor by its host, so set the website on the store's vendor (Vendors → the
+   store → Edit vendor). A brand's own site needs no vendor.
+3. **Clip the page.** On the product's page, click the bookmark. Allow pop-ups
+   for that site if the browser asks, and sign in inside the small window if it
+   asks.
+   - The window shows the page title and "N images came along, M saved with
+     it". Up to four images your browser could read are kept as photos.
+   - Then it says either "From {store}" or "Not one of your vendors". In the
+     second case, Save stays disabled until you pick the vendor or tick
+     **Save without a store (no listing or price)**. Use that for a brand's site.
+   - Press **Save**. "Saved · Review it in Needs you" opens the review in a new
+     tab. Clipping the same page again while it waits gives "Already saved ·
+     Open it". A changed copy of the page replaces the waiting one.
+4. **Let it be read.** The page's structured data and tags are read at once.
+   Its text is read by the model in the background. The review then shows one
+   reading line: "Read from the page.", or why nothing was read (for example,
+   "The model couldn't be reached").
+5. **Review it.** Home shows "n products to review". On the review page:
+   - **Match:** update an existing product, or **Create new product**. For a
+     new one, choose its ingredient and kind. A strong match starts collapsed;
+     **Edit details** opens the fields.
+   - **Fields** (name, brand, pack, barcode): each value carries a badge for
+     where it came from (Store page, Manufacturer, Model's guess…). Where
+     sources offer different values, pick one; a conflict must be settled
+     before Accept. A field with a single value can be typed over.
+   - **Photos:** choose the main one, set roles, hide any you don't want.
+   - **Price** (store pages only): "Posted at $3.49", or "$0.69 / lb" when the
+     page prices by weight. **Record this posted price** comes pre-ticked, with
+     the store you last bought from at that vendor; otherwise tick it and choose
+     the store. A vendor with no stores gets "Not one of your stores, so no price
+     is recorded." **Change the price or what it is for** corrects the amount,
+     quantity or unit. A page that prices the same item both per pound and each
+     asks you to say which.
+   - **Accept** (or Ctrl/⌘+Enter) creates the product, or fills in the gaps on
+     the existing one (values it already has are kept). It also saves the
+     page's listing, its item number, and the posted price if ticked. A barcode
+     that belongs to another product offers "Update {that product} instead".
+     **Reject** drops the proposal; the capture record is kept.
+6. **Afterwards.** A posted price shows in the product's price records as
+   "Posted online, not counted in cheapest": only receipts and shelf prices
+   count there. Whether you accept or reject, the page text is deleted; the
+   page's address and tags are kept.
+
+**If the window says "This site blocks clipping"**, the page and the pop-up
+could not talk to each other: the store blocks it, or the page did not answer
+within 10 seconds. Use Products → Add product and paste the address into Web
+address. Only the name is filled in, and only if the name field is empty. The
+item number shows as a hint. Without the lookup helper (below), the page is not
+read and the address is not saved, so no listing or price is created: enter the
+rest by hand. With the helper connected, saving sends the page to it. What it
+finds (details, photos, and for one of your stores the listing and posted
+price) comes back as "1 product update to review" on Home.
+
+**The optional lookup helper.** `kitchen-erp-products` is a separate program
+that does the outbound work this app never does: it looks up barcodes and reads
+pages, and reports posted-price changes. To connect one:
+
+1. Make a token under Settings → API tokens, choosing **Products lookup helper**.
+2. Give that token to the helper.
+
+Once it is connected, the review page offers **Look this up online**, and an
+address pasted in Add product is sent to it on save. The helper's answer joins
+the proposal, or opens a product update for a product you already have; either
+way, you still accept it. The helper also
+revisits each product page every `LISTING_REFRESH_DAYS` (7 by default; 0 turns
+it off), while a helper token exists. Changed
+prices appear on Home as "n posted prices changed". Its Review opens the posted
+prices page, where each one waits until you accept or reject it.
 
 ## What a default deployment exposes
 
