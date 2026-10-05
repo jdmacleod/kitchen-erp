@@ -199,6 +199,18 @@ def test_canonical_link_wins_but_the_page_keeps_its_store():
     assert store == "store/417"
 
 
+def test_a_canonical_link_to_another_page_is_not_the_listing():
+    """Clip quality: a store's canonical link was its search page on every product."""
+    page = "https://www.larkspur.example/shop/products/pdp/hash-browns-061528"
+    url, _ = canonical_url(page, canonical="https://www.larkspur.example/shop/search.html")
+    assert url == page
+    url, _ = canonical_url(page, canonical="https://elsewhere.example/p/hash-browns-061528")
+    assert url == page
+    # The same product under a shorter address is still the canonical one.
+    url, _ = canonical_url(page, canonical="https://larkspur.example/p/061528")
+    assert url == "https://larkspur.example/p/061528"
+
+
 def test_unscoped_and_invalid_addresses():
     assert canonical_url("https://larkspur.example/p/hash-browns-061528") == (
         "https://larkspur.example/p/hash-browns-061528",

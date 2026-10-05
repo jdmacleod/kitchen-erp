@@ -23,7 +23,14 @@ def canonical_url(
     canonical: str | None = None,
     scope_patterns: Sequence[re.Pattern[str]] = DEFAULT_SCOPE_PATTERNS,
 ) -> tuple[str, str | None]:
-    """The address a listing is keyed by, and the store scope stripped from it."""
+    """The address a listing is keyed by, and the store scope stripped from it.
+
+    A page's canonical link is used only when it plausibly names the same product:
+    the same host, and a word or number from the page's own last path segment. A
+    store whose canonical link is its search page would otherwise give every
+    product one listing."""
+    if canonical and not _same_product(page_url, canonical):
+        canonical = None
     parts = urlsplit((canonical or page_url).strip())
     if parts.scheme not in ("http", "https") or not parts.netloc:
         raise ValueError("a listing address must be an http or https URL")
@@ -35,6 +42,20 @@ def canonical_url(
     if len(path) > 1:
         path = path.rstrip("/")
     return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, "", "")), store_ref
+
+
+_TOKENS = re.compile(r"[a-z0-9]{4,40}")
+
+
+def _same_product(page_url: str, canonical: str) -> bool:
+    page, canon = urlsplit(page_url.strip()), urlsplit(canonical.strip())
+    if (page.hostname or "").removeprefix("www.") != (canon.hostname or "").removeprefix("www."):
+        return False
+    segments = [s for s in (page.path or "").lower().split("/") if s]
+    tokens = _TOKENS.findall(segments[-1]) if segments else []
+    if not tokens:
+        return True  # nothing on the page's address to check against
+    return any(t in (canon.path or "").lower() for t in tokens)
 
 
 def _strip_scope(path: str, scope_patterns: Sequence[re.Pattern[str]]) -> tuple[str, str | None]:

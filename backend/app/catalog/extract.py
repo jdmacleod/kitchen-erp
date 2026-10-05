@@ -63,14 +63,22 @@ def pack_from_text(text: str | None) -> dict[str, str] | None:
     return (metric or found or [None])[0]
 
 
+_DOLLARS = re.compile(r"^\$?\s{0,2}(\d{1,3}(?:,\d{3}){0,3}|\d{1,9})(\.\d{1,4})?$")
+
+
 def _money(value: Any) -> str | None:
+    """An amount from structured data or a tag: 3.49, "3.49", or "$1,299.00" (a store's
+    microdata writes the sign). Nothing else is guessed at."""
     if value is None or isinstance(value, bool):
         return None
+    text = str(value).strip()
+    if found := _DOLLARS.match(text):
+        text = found.group(1).replace(",", "") + (found.group(2) or "")
     try:
-        amount = Decimal(str(value).strip())
+        amount = Decimal(text)
     except InvalidOperation:
         return None
-    return format(amount, "f") if amount >= 0 else None
+    return format(amount, "f") if amount.is_finite() and amount >= 0 else None
 
 
 def _gtin(value: Any) -> str | None:
@@ -228,11 +236,19 @@ def from_structured_data(blocks: list[str]) -> PageEvidence:
     return out
 
 
+# Open Graph and product tags, then the page's microdata (sent as "itemprop:<name>").
 _META_FIELDS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("title", ("og:title", "twitter:title")),
-    ("brand", ("product:brand", "og:brand")),
-    ("price", ("product:price:amount", "og:price:amount")),
-    ("item_number", ("product:retailer_item_id", "product:sku")),
+    ("title", ("og:title", "twitter:title", "itemprop:name")),
+    ("brand", ("product:brand", "og:brand", "itemprop:brand")),
+    ("price", ("product:price:amount", "og:price:amount", "itemprop:price")),
+    ("item_number", ("product:retailer_item_id", "product:sku", "itemprop:sku")),
+)
+_META_GTINS = (
+    "itemprop:gtin14",
+    "itemprop:gtin13",
+    "itemprop:gtin12",
+    "itemprop:gtin8",
+    "itemprop:gtin",
 )
 
 
@@ -248,6 +264,10 @@ def from_meta(meta: Mapping[str, str]) -> PageEvidence:
             if value:
                 out.candidates.append(Candidate(field_name, value, "page_meta"))
                 break
+    for key in _META_GTINS:
+        if code := _gtin(lowered.get(key)):
+            out.candidates.append(Candidate("gtin", code, "page_meta"))
+            break
     if (title := lowered.get("og:title")) and (pack := pack_from_text(title)):
         out.candidates.append(Candidate("pack", pack, "page_meta"))
     for key in ("og:image", "og:image:url", "twitter:image"):
