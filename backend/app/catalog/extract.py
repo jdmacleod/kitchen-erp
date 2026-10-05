@@ -304,7 +304,7 @@ def from_address(url: str) -> PageEvidence:
     return out
 
 
-# A title's site-name segment: "Hashbrowns | Trader Joe's", "Mayo, 30 oz - Ralphs".
+# A title's site-name segment: "Rolled Oats | Juniper Market", "Oats, 30 oz - Lantern".
 _SEPARATORS = re.compile(r"\s{1,3}[|\-\u2013\u2014]\s{1,3}|\s{0,3}:\s{1,3}")
 
 
@@ -342,7 +342,7 @@ def extract(
 ) -> PageEvidence:
     """Every generic rung together; the merge decides which value each field keeps.
 
-    Titles lose the store's own name ("| Trader Joe's", "- vons"), and a brand that is
+    Titles lose the store's own name ("| Juniper Market", "- lantern"), and a brand that is
     only the product's name again is dropped: neither is a fact about the product."""
     out = PageEvidence()
     for rung in (

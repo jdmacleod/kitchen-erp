@@ -361,6 +361,11 @@ pages, and reports posted-price changes. To connect one:
 1. Make a token under Settings → API tokens, choosing **Products lookup helper**.
 2. Give that token to the helper.
 
+The helper runs as its own container beside this stack, outside its Compose project,
+reaching the API at `http://host.docker.internal:8000` with that token. Its repository
+says how to build and start it, and how to update it. Check it with
+`docker logs kerp-products`: one line per request.
+
 Once it is connected, the review page offers **Look this up online**, and an
 address pasted in Add product is sent to it on save. The helper's answer joins
 the proposal, or opens a product update for a product you already have; either
