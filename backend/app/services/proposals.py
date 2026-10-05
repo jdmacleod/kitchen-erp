@@ -383,7 +383,8 @@ async def vendor_context(db: AsyncSession, proposal: ProductProposal) -> dict[st
     """The page's vendor, its stores, and the one to preselect for a posted price.
 
     The preselected store is the household's most recently used location of
-    that vendor (04, 2L); with none, the review records no price by default.
+    that vendor (04, 2L), or its only active location; with neither, the review
+    records no price by default.
     """
     if not proposal.listing:
         return None
@@ -410,6 +411,8 @@ async def vendor_context(db: AsyncSession, proposal: ProductProposal) -> dict[st
             {"vendor": vendor.id},
         )
     ).scalar_one_or_none()
+    if suggested is None and len(locations) == 1:
+        suggested = locations[0].id  # one store: no choice to make
     return {
         "id": vendor.id,
         "name": vendor.name,

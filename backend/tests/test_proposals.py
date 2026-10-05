@@ -528,7 +528,21 @@ async def test_the_proposal_names_its_vendor_and_stores(admin_client, user, stor
     body = (await admin_client.get(f"/api/v1/product-proposals/{result.proposal.id}")).json()
     assert body["vendor"]["name"] == "Juniper Market"
     assert body["vendor"]["locations"] == [{"id": store["id"], "name": "Juniper Market"}]
-    assert body["vendor"]["suggested_location_id"] is None  # never bought there yet
+    # Never bought there, but it is the vendor's only store: nothing to choose (CQ3).
+    assert body["vendor"]["suggested_location_id"] == store["id"]
+
+    # A second store makes it a choice again: no store is preselected.
+    from tests.pricebook_helpers import SYNTH, make_location
+
+    await make_location(
+        admin_client,
+        "Juniper Market",
+        "Juniper Market East",
+        vendor_id=store["vendor"]["id"],
+        coords=SYNTH[1],
+    )
+    body = (await admin_client.get(f"/api/v1/product-proposals/{result.proposal.id}")).json()
+    assert body["vendor"]["suggested_location_id"] is None
 
 
 async def test_accept_applies_the_reviewers_photo_choices(admin_client, user, store):
