@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Proposal, ProposalField } from "../api/proposals";
@@ -115,5 +115,27 @@ describe("posted price basis", () => {
     await user.click(screen.getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(accepted(calls)).toBeDefined());
     expect(accepted(calls)!.price).toEqual({ amount: "1.52", qty: "1", unit: "kg" });
+  });
+});
+
+describe("field choices", () => {
+  it("shows the same value from two sources once", async () => {
+    const p = proposal();
+    p.fields.title = {
+      value: "Bananas",
+      source: "page_data",
+      confidence: null,
+      alternatives: [
+        { value: "Bananas", source: "page_meta", confidence: null },
+        { value: "Organic bananas", source: "model", confidence: "0.4" },
+      ],
+      conflict: false,
+    } as ProposalField;
+    mockApi(routes(p));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await user.click(await screen.findByRole("button", { name: "Edit details" }));
+    const name = screen.getByRole("group", { name: "Name" });
+    expect(within(name).getAllByRole("radio")).toHaveLength(2);
   });
 });

@@ -121,8 +121,15 @@ interface Choice {
   index: number | null;
 }
 
+/** A field's choices, the merge's first; the same value from another source is one choice. */
 function candidates(field: ProposalField): FieldCandidate[] {
-  return [field, ...field.alternatives];
+  const seen = new Set<string>();
+  return [field, ...field.alternatives].filter((c) => {
+    const key = JSON.stringify(c.value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function Review({ proposal }: { proposal: Proposal }) {
