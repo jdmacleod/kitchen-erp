@@ -100,6 +100,9 @@ async def test_the_answer_for_a_stores_page_brings_its_listing_and_price(
     assert r.json()["outcome"] == "update_opened"
     update = (await admin_client.get(f"/api/v1/product-proposals/{r.json()['proposal_id']}")).json()
     assert update["kind"] == "product_update"
+    # Regression: ISSUE-003 — a lookup update said "Same barcode" for a product without one
+    # Found by /qa on 2026-10-05
+    assert update["match"]["strong"] == {"product_id": oats["id"], "reason": "lookup"}
     assert update["listing"]["canonical_url"] == PAGE
     assert update["listing"]["vendor_sku"] == "4417"
     assert update["price"] == {"amount": "3.79", "qty": "1", "unit": "each", "is_promo": False}

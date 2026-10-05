@@ -153,6 +153,9 @@ function Review({ proposal }: { proposal: Proposal }) {
     Object.fromEntries(Object.entries(fields).map(([name, f]) => [name, { index: f && f.conflict ? null : 0 }])),
   );
   const [typed, setTyped] = useState<Record<string, string>>({});
+  // Fields the person chose or typed; only these replace what an updated product has.
+  const [touched, setTouched] = useState<Set<string>>(new Set());
+  const touch = (name: string) => setTouched((t) => new Set(t).add(name));
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const productPhotos = proposal.photos.filter((p) => p.role === "product");
   const [mainPhoto, setMainPhoto] = useState<string | null>(productPhotos[0]?.id ?? null);
@@ -172,6 +175,17 @@ function Review({ proposal }: { proposal: Proposal }) {
   const priceValid = !priceEdit || (DECIMAL.test(priceEdit.amount.trim()) && DECIMAL.test(priceEdit.qty.trim()) && Number(priceEdit.qty) > 0 && priceEdit.unit !== "");
   const [taken, setTaken] = useState<{ product_id: string; name: string | null } | null>(null);
   const isNew = match === "new";
+  const targetProduct = useProduct(match?.startsWith("update:") ? match.slice("update:".length) : undefined);
+  /** What the product being updated already has; accepting keeps it unless the person changes it. */
+  const current = (name: string): unknown => {
+    const p = isNew ? undefined : targetProduct.data;
+    if (!p) return undefined;
+    if (name === "title") return p.name || undefined;
+    if (name === "brand") return p.brand || undefined;
+    if (name === "pack") return p.pack_qty && p.pack_unit ? { qty: p.pack_qty, unit: p.pack_unit } : undefined;
+    return undefined;
+  };
+  const kept = (name: string) => !touched.has(name) && current(name) !== undefined;
   const conflicts = REVIEWED.filter(([name]) => fields[name]?.conflict && choices[name]?.index === null);
   const collapsible = Boolean(strong) && match === proposal.match.preselect && conflicts.length === 0 && !nothingRead;
   const [editing, setEditing] = useState(!collapsible);
@@ -183,6 +197,7 @@ function Review({ proposal }: { proposal: Proposal }) {
 
   const chosenValue = (name: string): unknown => {
     if (typed[name] !== undefined) return typed[name];
+    if (kept(name)) return current(name);
     const field = fields[name];
     const index = choices[name]?.index;
     if (!field || index === null || index === undefined) return undefined;
@@ -204,10 +219,11 @@ function Review({ proposal }: { proposal: Proposal }) {
   const edits = (): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
     for (const [name, field] of Object.entries(fields)) {
-      if (!field || typed[name] !== undefined) continue;
+      if (!field || typed[name] !== undefined || kept(name)) continue;
       const index = choices[name]?.index;
-      // A choice other than the merge's, or one that settles a conflict, is the person's.
-      if (index !== null && index !== undefined && (index !== 0 || field.conflict)) out[name] = candidates(field)[index].value;
+      // A choice other than the merge's, one that settles a conflict, or one made over
+      // what the product has, is the person's.
+      if (index !== null && index !== undefined && (index !== 0 || field.conflict || touched.has(name))) out[name] = candidates(field)[index].value;
     }
     for (const [name, value] of Object.entries(typed)) {
       if (name === "pack") {
@@ -255,7 +271,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     accept.mutate(input, {
       onSuccess: (done) => {
         const name = title || "the product";
-        void goNext({ message: `Added ${name}.`, productId: done.result?.product_id });
+        void goNext({ message: `${input.action === "new" ? "Added" : "Updated"} ${name}.`, productId: done.result?.product_id });
       },
       onError: (e) => setTaken(takenBy(e)),
     });
@@ -349,9 +365,19 @@ function Review({ proposal }: { proposal: Proposal }) {
                         name={name}
                         label={label}
                         field={field}
-                        index={choices[name]?.index ?? null}
+                        index={kept(name) ? null : (choices[name]?.index ?? null)}
+                        keep={current(name) !== undefined ? showValue(name, current(name)) : undefined}
+                        keeping={kept(name)}
+                        onKeep={() => {
+                          setTouched((t) => {
+                            const next = new Set(t);
+                            next.delete(name);
+                            return next;
+                          });
+                        }}
                         disabled={readOnly}
                         onChoose={(index) => {
+                          touch(name);
                           setChoices({ ...choices, [name]: { index } });
                           const rest = { ...typed };
                           delete rest[name];
@@ -366,9 +392,18 @@ function Review({ proposal }: { proposal: Proposal }) {
                         id={`${id}-${name}`}
                         label={label}
                         disabled={readOnly}
-                        value={typed[name] ?? (field ? showValue(name, field.value).replace(/^—$/, "") : "")}
-                        onChange={(e) => setTyped({ ...typed, [name]: e.target.value })}
-                        hint={field ? `${field.via === "helper" ? "Lookup helper" : SOURCE_BADGES[field.source]}${field.source === "model" ? " · a guess" : ""}` : undefined}
+                        value={typed[name] ?? (kept(name) || field ? showValue(name, kept(name) ? current(name) : field?.value).replace(/^—$/, "") : "")}
+                        onChange={(e) => {
+                          touch(name);
+                          setTyped({ ...typed, [name]: e.target.value });
+                        }}
+                        hint={
+                          field && kept(name)
+                            ? `Kept from the product. ${field.via === "helper" ? "The lookup helper" : "The page"} says “${showValue(name, field.value)}”; type here to change it.`
+                            : field
+                              ? `${field.via === "helper" ? "Lookup helper" : SOURCE_BADGES[field.source]}${field.source === "model" ? " · a guess" : ""}`
+                              : undefined
+                        }
                       />
                     </div>
                   );
@@ -492,7 +527,16 @@ function Review({ proposal }: { proposal: Proposal }) {
                 </div>
               ) : (
                 <p className="mt-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
-                  Not one of your stores, so no price is recorded.
+                  {vendor ? (
+                    <>
+                      {vendor.name} has no stores yet, so no price is recorded.{" "}
+                      <Link to={`/catalog/vendors/${vendor.id}`} className={`rounded font-medium underline ${focusRing}`}>
+                        Add one
+                      </Link>
+                    </>
+                  ) : (
+                    "Not one of your stores, so no price is recorded."
+                  )}
                 </p>
               )}
             </section>
@@ -537,10 +581,16 @@ function matchName(match: string, proposal: Proposal, strongName: string | undef
   return proposal.match.candidates?.find((c) => c.product_id === pid)?.name ?? "product";
 }
 
+const STRONG_NOTES: Record<NonNullable<Proposal["match"]["strong"]>["reason"], string> = {
+  identifier: "Same barcode",
+  listing: "Same store page",
+  lookup: "Looked up for this product",
+};
+
 function matchOptions(proposal: Proposal, strongName: string | undefined) {
   const out: { value: string; label: string; note?: string }[] = [];
   const strong = proposal.match.strong;
-  if (strong) out.push({ value: `update:${strong.product_id}`, label: `Update ${strongName ?? "the matching product"}`, note: strong.reason === "identifier" ? "Same barcode" : "Same store page" });
+  if (strong) out.push({ value: `update:${strong.product_id}`, label: `Update ${strongName ?? "the matching product"}`, note: STRONG_NOTES[strong.reason] });
   for (const c of proposal.match.candidates ?? []) {
     if (c.product_id === strong?.product_id) continue;
     out.push({ value: `update:${c.product_id}`, label: `Update ${c.name}${c.brand ? ` (${c.brand})` : ""}`, note: "Similar name" });
@@ -567,6 +617,9 @@ function Alternatives({
   label,
   field,
   index,
+  keep,
+  keeping,
+  onKeep,
   disabled,
   onChoose,
 }: {
@@ -574,6 +627,10 @@ function Alternatives({
   label: string;
   field: ProposalField;
   index: number | null;
+  /** What the product being updated has, offered first. */
+  keep?: string;
+  keeping?: boolean;
+  onKeep?: () => void;
   disabled: boolean;
   onChoose: (index: number) => void;
 }) {
@@ -583,6 +640,12 @@ function Alternatives({
       <legend className="text-sm font-medium">{label}</legend>
       {field.conflict ? <p className="mb-1 text-sm text-amber-900 dark:text-amber-200">These disagree. Choose one.</p> : null}
       <div className="flex flex-col gap-1">
+        {keep !== undefined ? (
+          <RadioRow name={`${id}-${name}`} checked={Boolean(keeping)} onChange={() => onKeep?.()}>
+            <span className="mr-2">Keep “{keep}”</span>
+            <Badge>The product</Badge>
+          </RadioRow>
+        ) : null}
         {candidates(field).map((c, i) => (
           <RadioRow key={`${name}-${i}`} name={`${id}-${name}`} checked={index === i} onChange={() => onChoose(i)} outline={c.source === "model"}>
             <span className="mr-2">{showValue(name, c.value)}</span>

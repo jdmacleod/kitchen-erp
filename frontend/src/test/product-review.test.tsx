@@ -92,7 +92,8 @@ describe("product review", () => {
     const match = screen.getByRole("group", { name: "Match" });
     expect(within(match).getByRole("radio", { name: new RegExp(`Update ${flourProduct.name}`) })).toBeChecked();
     // Collapsed: the summary, with Edit details instead of the fields.
-    expect(screen.getByTestId("review-summary")).toHaveTextContent("Strong white flour · Larkfield · 1.5 kg · 5012345000022");
+    // An update keeps what the product has unless the person changes it.
+    expect(await screen.findByText(`${flourProduct.name} · ${flourProduct.brand} · 5 lb · 5012345000022`)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Edit details" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Brand")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Accept" })).toBeEnabled();
@@ -102,9 +103,55 @@ describe("product review", () => {
     const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as Record<string, unknown>;
     expect(sent.action).toBe("update");
     expect(sent.product_id).toBe(flourProductId);
-    expect(await screen.findByText("Added Strong white flour.")).toBeInTheDocument();
+    expect(await screen.findByText(`Updated ${flourProduct.name}.`)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open it" })).toHaveAttribute("href", `/catalog/products/${flourProductId}`);
     expect(await screen.findByRole("heading", { level: 1, name: "New product: Strong white flour" })).toBeInTheDocument();
+  });
+
+  // Regression: ISSUE-003/004/005 — a lookup update said "Same barcode", "Not one of your
+  // stores" for a known store without locations, and showed the helper's name and brand
+  // as if accepting would replace the product's own. Found by /qa on 2026-10-05.
+  it("shows a lookup update as keeping the product's own values unless one is chosen", async () => {
+    const vendorId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b40";
+    const looked = proposal({
+      kind: "product_update",
+      product_id: flourProductId,
+      capture: null,
+      fields: {
+        title: { value: "MILLSTONE PLAIN FLOUR", source: "adapter", confidence: null, via: "helper", alternatives: [{ value: "Product Detail", source: "page_meta", confidence: null, via: "helper" }], conflict: false },
+        brand: { value: "MILLSTONE", source: "adapter", confidence: null, via: "helper", alternatives: [], conflict: false },
+        gtin: { value: GTIN, source: "adapter", confidence: null, via: "helper", alternatives: [], conflict: false },
+      },
+      match: { strong: { product_id: flourProductId, reason: "lookup" }, candidates: [], preselect: `update:${flourProductId}` },
+      vendor: { id: vendorId, name: "Fennel Street Grocer", price_scope: "location", locations: [], suggested_location_id: null },
+    });
+    const calls = mockApi(
+      routes(looked, {
+        [`POST /product-proposals/${proposalId}/accept`]: () => jsonResponse(200, { ...looked, status: "accepted", result: { product_id: flourProductId } }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+
+    const match = await screen.findByRole("group", { name: "Match" });
+    expect(within(match).getByRole("radio", { name: /Looked up for this product/ })).toBeChecked();
+    expect(await screen.findByText(`${flourProduct.name} · ${flourProduct.brand} · 5 lb · 5012345000022`)).toBeInTheDocument();
+    expect(screen.getByText(/Fennel Street Grocer has no stores yet, so no price is recorded/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add one" })).toHaveAttribute("href", `/catalog/vendors/${vendorId}`);
+
+    await user.click(screen.getByRole("button", { name: "Edit details" }));
+    const name = screen.getByRole("group", { name: "Name" });
+    expect(within(name).getByRole("radio", { name: new RegExp(`^Keep “${flourProduct.name}”`) })).toBeChecked();
+    expect(screen.getByLabelText("Brand")).toHaveValue(flourProduct.brand);
+    expect(screen.getByText(/Kept from the product. The lookup helper says “MILLSTONE”/)).toBeInTheDocument();
+
+    // Choosing the helper's name replaces the product's; the untouched brand is kept.
+    await user.click(within(name).getByRole("radio", { name: /MILLSTONE PLAIN FLOUR/ }));
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
+    const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as { edits: Record<string, unknown> };
+    expect(sent.edits).toEqual({ title: "MILLSTONE PLAIN FLOUR" });
+    expect(await screen.findByText("Updated MILLSTONE PLAIN FLOUR.")).toBeInTheDocument();
   });
 
   it("asks whether to update or create while the catalog offers a candidate", async () => {

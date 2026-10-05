@@ -455,7 +455,7 @@ async def answer(
         status="pending",
         fields={},
         match={
-            "strong": {"product_id": str(product.id), "reason": "identifier"},
+            "strong": {"product_id": str(product.id), "reason": "lookup"},
             "candidates": [],
             "preselect": f"update:{product.id}",
         },
