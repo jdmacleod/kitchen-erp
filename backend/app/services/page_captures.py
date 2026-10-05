@@ -94,6 +94,23 @@ def _host(url: str | None) -> str | None:
     return host.removeprefix("www.") if host else None
 
 
+async def listing_for_page(
+    db: AsyncSession, page_url: str, fields: dict[str, Any]
+) -> dict[str, Any] | None:
+    """The listing a page would give, when it is one of the household's vendors' pages."""
+    vendor = await match_vendor(db, page_url)
+    if vendor is None:
+        return None
+    canonical, store_ref = canonical_url(page_url)
+    return {
+        "vendor_id": str(vendor.id),
+        "canonical_url": canonical,
+        "title": merging.value(fields, "title") or canonical,
+        "vendor_sku": merging.value(fields, "item_number"),
+        "store_ref": store_ref,
+    }
+
+
 async def match_vendor(db: AsyncSession, page_url: str) -> Vendor | None:
     """The household's vendor whose website is on the page's host, if one is."""
     host = _host(page_url)

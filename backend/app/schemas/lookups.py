@@ -6,6 +6,8 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
+from pydantic import Field
+
 from app.schemas.base import ApiModel, DecimalStr
 
 
@@ -18,6 +20,10 @@ class LookupRequestOut(ApiModel):
     status: Literal["open", "answered", "closed"]
     created_at: datetime
     answered_at: datetime | None
+
+
+class ProductPageLookUp(ApiModel):
+    page_url: str = Field(min_length=8, max_length=2048)
 
 
 class LookupQueue(ApiModel):
