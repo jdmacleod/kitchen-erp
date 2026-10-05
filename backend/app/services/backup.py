@@ -75,10 +75,22 @@ def receipt_files(root: Path) -> list[Path]:
 
 
 async def table_counts(db: AsyncSession) -> dict[str, int]:
+    """Row counts of the tables this schema has. A database older than the code (the
+    backup taken before a migration) lacks the newer tables; they are left out."""
     counts = {}
     for table in COUNT_TABLES:
+        exists = (await db.execute(text("SELECT to_regclass(:t)"), {"t": table})).scalar_one()
+        if exists is None:
+            continue
         counts[table] = int((await db.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one())
     return counts
+
+
+async def database_revision(db: AsyncSession) -> str | None:
+    """The migration the database is at, which is not always the code's head."""
+    if (await db.execute(text("SELECT to_regclass('alembic_version')"))).scalar_one() is None:
+        return None
+    return (await db.execute(text("SELECT version_num FROM alembic_version"))).scalar_one_or_none()
 
 
 async def backup(db: AsyncSession, out: Path) -> dict[str, Any]:
@@ -107,7 +119,9 @@ async def backup(db: AsyncSession, out: Path) -> dict[str, Any]:
     manifest = {
         "format": "kitchen-erp-backup/1",
         "created_at": datetime.now(UTC).isoformat(),
-        "migration_head": expected_migration_head(),
+        # The dump's own revision; the code's head is kept beside it.
+        "migration_head": await database_revision(db),
+        "code_head": expected_migration_head(),
         "dump": {"file": "db.dump", "sha256": sha256_of(dump), "bytes": dump.stat().st_size},
         "receipts": copied,
         "media": photos,

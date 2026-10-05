@@ -23,8 +23,11 @@ setup:  ## Install git hooks and create the local data directories
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."
 	@echo "It also writes tools/denylist.salt and refreshes tools/denylist.hashes."
 
-up:  ## Start the stack with build identity baked in (use this, not bare compose)
+up:  ## Start the stack with build identity baked in, then migrate (use this, not bare compose)
 	docker compose up -d --build
+	@# The api does not migrate on start: until it does, health reports "failed" and pages
+	@# that read new tables answer 500. `kerp migrate` is a no-op when already at head.
+	@for i in $$(seq 1 30); do docker compose exec -T api kerp migrate && exit 0; sleep 2; done; echo "migrate never succeeded: see docker compose logs api" >&2; exit 1
 	@echo "built $(BUILD_VERSION) ($(BUILD_COMMIT))"
 
 down:  ## Stop the stack (and Ollama, if started with the llm profile); data is kept
