@@ -169,9 +169,16 @@ async def capture_page(
             raise ApiError(404, "not_found", "No such vendor.")
     elif not data.without_store:
         vendor = await match_vendor(db, data.page_url)
-    evidence = ladder.extract(data.page_url, meta=data.meta, structured_data=data.structured_data)
+    evidence = ladder.extract(
+        data.page_url,
+        meta=data.meta,
+        structured_data=data.structured_data,
+        vendor_name=vendor.name if vendor else None,
+    )
     if data.title:
-        evidence.candidates.append(merging.Candidate("title", data.title[:200], "page_meta"))
+        names = ladder.site_names(data.page_url, data.meta, vendor.name if vendor else None)
+        title = ladder.clean_title(data.title[:200], names)
+        evidence.candidates.append(merging.Candidate("title", title, "page_meta"))
     fields = merging.merge(evidence.candidates)
     listing = None
     if vendor is not None:

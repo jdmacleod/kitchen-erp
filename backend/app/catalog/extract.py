@@ -284,13 +284,46 @@ def from_address(url: str) -> PageEvidence:
     return out
 
 
+# A title's site-name segment: "Hashbrowns | Trader Joe's", "Mayo, 30 oz - Ralphs".
+_SEPARATORS = re.compile(r"\s{1,3}[|\-\u2013\u2014]\s{1,3}|\s{0,3}:\s{1,3}")
+
+
+def _squash(text: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", text.lower())
+
+
+def site_names(page_url: str, meta: Mapping[str, str], vendor_name: str | None) -> set[str]:
+    """The names a store's pages call themselves: og:site_name, the vendor, the host label."""
+    names = {meta.get("og:site_name") or "", vendor_name or ""}
+    host = (urlsplit(page_url).hostname or "").removeprefix("www.")
+    names.add(host.split(".")[0])
+    return {_squash(n) for n in names if _squash(n)}
+
+
+def clean_title(title: str, names: set[str]) -> str:
+    """The title without a leading or trailing segment that is only the site's name."""
+    seps = list(_SEPARATORS.finditer(title[:PACK_TEXT_LIMIT]))
+    if not seps:
+        return title
+    last, first = seps[-1], seps[0]
+    if _squash(title[last.end() :]) in names and title[: last.start()].strip():
+        return title[: last.start()].strip()
+    if _squash(title[: first.start()]) in names and title[first.end() :].strip():
+        return title[first.end() :].strip()
+    return title
+
+
 def extract(
     page_url: str,
     *,
     meta: Mapping[str, str] | None = None,
     structured_data: list[str] | None = None,
+    vendor_name: str | None = None,
 ) -> PageEvidence:
-    """Every generic rung together; the merge decides which value each field keeps."""
+    """Every generic rung together; the merge decides which value each field keeps.
+
+    Titles lose the store's own name ("| Trader Joe's", "- vons"), and a brand that is
+    only the product's name again is dropped: neither is a fact about the product."""
     out = PageEvidence()
     for rung in (
         from_structured_data(structured_data or []),
@@ -300,4 +333,14 @@ def extract(
         out.candidates.extend(rung.candidates)
         out.images.extend(i for i in rung.images if i not in out.images)
     out.images = out.images[:MAX_IMAGES]
+    names = site_names(page_url, meta or {}, vendor_name)
+    titles = {_squash(str(c.value)) for c in out.candidates if c.field == "title"}
+    cleaned = []
+    for c in out.candidates:
+        if c.field == "title" and isinstance(c.value, str):
+            title = clean_title(c.value, names)
+            cleaned.append(Candidate(c.field, title, c.source, c.confidence, c.via))
+        elif not (c.field == "brand" and isinstance(c.value, str) and _squash(c.value) in titles):
+            cleaned.append(c)
+    out.candidates = cleaned
     return out
