@@ -13,7 +13,7 @@ from app.schemas.base import ApiModel, DecimalStr
 
 class LookupRequestOut(ApiModel):
     id: uuid.UUID
-    kind: Literal["gtin", "page", "cutout"]
+    kind: Literal["gtin", "page", "cutout", "image"]
     value: str | None
     # Set on a scheduled listing refresh: report changed prices against it.
     listing_id: uuid.UUID | None = None

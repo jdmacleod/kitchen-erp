@@ -391,6 +391,7 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
   - the barcodes and pages a person asked about with "Look this up online" (for a proposal) or by pasting an address in Add product (for the product it created);
   - every unknown scanned barcode, but only if the household turns that setting on (off by default);
   - `cutout` requests for the household's photos that have no mask. These are queued automatically, because the photo never leaves the machine; the helper may read that one photo's original.
+  - `image` requests for a clipped page whose images the browser could not read (another host refused it): up to four of the page's own image addresses, queued automatically when a helper exists. The helper fetches each one and answers with the photo. (Added 2026-10-05, clip quality.)
 
   Page captures with an installed adapter never use the queue.
 - **Two token scopes.**

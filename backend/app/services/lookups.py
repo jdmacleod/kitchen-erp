@@ -51,7 +51,7 @@ from app.models import (
 )
 from app.models.geo import VendorLocation
 from app.schemas.products_interchange import HelperAnswer, ListingPriceReport, PriceValue
-from app.services import media, page_captures, pricebook, product_photos, proposals
+from app.services import media, pricebook, product_photos, proposals, vendor_pages
 
 HELPER_SCOPES = ("products:read", "products:suggest")
 
@@ -147,6 +147,27 @@ async def queue_cutout(db: AsyncSession, image: ProductImage) -> None:
     if image.product_id is None or await _open(db, product_image_id=image.id) is not None:
         return
     db.add(LookupRequest(id=new_id(), kind="cutout", product_image_id=image.id))
+
+
+MAX_IMAGE_LOOKUPS = 4
+
+
+async def queue_page_images(
+    db: AsyncSession, proposal: ProductProposal, image_urls: list[str]
+) -> int:
+    """A clip whose images the browser could not read (another host refused it): the
+    helper may fetch up to four of them. Only addresses the page itself showed are
+    sent, and only to their own hosts. Not committed here."""
+    if not image_urls or not await helper_configured(db):
+        return 0
+    queued = 0
+    for url in image_urls[:MAX_IMAGE_LOOKUPS]:
+        if not url.startswith(("https://", "http://")):
+            continue
+        if await _open(db, proposal_id=proposal.id, kind="image", value=url) is None:
+            db.add(LookupRequest(id=new_id(), kind="image", proposal_id=proposal.id, value=url))
+            queued += 1
+    return queued
 
 
 async def queue_unknown_scan(db: AsyncSession, proposal: ProductProposal, gtin: str) -> None:
@@ -419,7 +440,7 @@ async def answer(
     # A pasted page (not a scheduled refresh) brings its listing and posted price along.
     listing = None
     if request.kind == "page" and request.listing_id is None and request.value:
-        listing = await page_captures.listing_for_page(db, request.value, fields)
+        listing = await vendor_pages.listing_for_page(db, request.value, fields)
         if listing is not None and await _has_listing(db, product.id, listing):
             listing = None
     if not _changes_product(product, candidates) and not photos and listing is None:
@@ -441,7 +462,7 @@ async def answer(
     )
     price = None
     if listing is not None:
-        price = page_captures._price(fields)
+        price = vendor_pages.posted_price(fields)
     # Through the one writer: a pending proposal for the same page is superseded.
     await proposals.write_proposal(db, update, fields=fields, listing=listing, price=price)
     await _store_photos(db, update, photos)

@@ -19,7 +19,6 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlsplit
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +32,7 @@ from app.core.logging import get_logger
 from app.ingest.errors import IngestError, ModelUnavailable
 from app.models import AppUser, ProductCapture, ProductJob, ProductProposal
 from app.models.geo import Vendor
-from app.services import plugins, product_photos, proposals
+from app.services import lookups, plugins, product_photos, proposals, vendor_pages
 from app.services.product_photos import PhotoUpload
 
 log = get_logger(__name__)
@@ -86,41 +85,10 @@ def check_sizes(data: PageCapture) -> list[bytes]:
     return decoded
 
 
-def _host(url: str | None) -> str | None:
-    try:
-        host = urlsplit(url or "").hostname
-    except ValueError:
-        return None
-    return host.removeprefix("www.") if host else None
-
-
-async def listing_for_page(
-    db: AsyncSession, page_url: str, fields: dict[str, Any]
-) -> dict[str, Any] | None:
-    """The listing a page would give, when it is one of the household's vendors' pages."""
-    vendor = await match_vendor(db, page_url)
-    if vendor is None:
-        return None
-    canonical, store_ref = canonical_url(page_url)
-    return {
-        "vendor_id": str(vendor.id),
-        "canonical_url": canonical,
-        "title": merging.value(fields, "title") or canonical,
-        "vendor_sku": merging.value(fields, "item_number"),
-        "store_ref": store_ref,
-    }
-
-
-async def match_vendor(db: AsyncSession, page_url: str) -> Vendor | None:
-    """The household's vendor whose website is on the page's host, if one is."""
-    host = _host(page_url)
-    if not host:
-        return None
-    for vendor in (await db.execute(select(Vendor).where(Vendor.website.is_not(None)))).scalars():
-        site = _host(vendor.website if "//" in (vendor.website or "") else f"//{vendor.website}")
-        if site and (host == site or host.endswith(f".{site}")):
-            return vendor
-    return None
+# A page's vendor, listing and posted price live in vendor_pages, which the lookup
+# helper's answers use too.
+match_vendor = vendor_pages.match_vendor
+listing_for_page = vendor_pages.listing_for_page
 
 
 @dataclass
@@ -146,12 +114,7 @@ async def preview(db: AsyncSession, page_url: str) -> AddressPreview:
     )
 
 
-def _price(fields: dict[str, Any]) -> dict[str, Any] | None:
-    """The posted price with what it is for: 1 each, or the basis the page gave."""
-    basis = merging.price_basis(merging.value(fields, "price"))
-    if basis is None:
-        return None
-    return {**basis, "is_promo": bool(merging.value(fields, "on_sale"))}
+_price = vendor_pages.posted_price
 
 
 async def capture_page(
@@ -226,6 +189,9 @@ async def capture_page(
             )
         if data.dom_text.strip() or plugins.adapters():
             db.add(ProductJob(id=new_id(), kind="extract", product_capture_id=result.capture.id))
+        if not images and data.image_urls:
+            # The browser could read none of the page's images: the helper may fetch them.
+            await lookups.queue_page_images(db, result.proposal, data.image_urls)
     await db.commit()
     await db.refresh(result.proposal)
     return result
