@@ -341,8 +341,11 @@ shows, and nothing enters your catalog until you accept it.
 could not talk to each other: the store blocks it, or the page did not answer
 within 10 seconds. Use Products → Add product and paste the address into Web
 address. Only the name is filled in, and only if the name field is empty. The
-item number shows as a hint. The page is not read and the address is not saved,
-so no listing or price is created: enter the rest by hand.
+item number shows as a hint. Without the lookup helper (below), the page is not
+read and the address is not saved, so no listing or price is created: enter the
+rest by hand. With the helper connected, saving sends the page to it. What it
+finds (details, photos, and for one of your stores the listing and posted
+price) comes back as "1 product update to review" on Home.
 
 **The optional lookup helper.** `kitchen-erp-products` is a separate program
 that does the outbound work this app never does: it looks up barcodes and reads
@@ -351,8 +354,10 @@ pages, and reports posted-price changes. To connect one:
 1. Make a token under Settings → API tokens, choosing **Products lookup helper**.
 2. Give that token to the helper.
 
-Once it is connected, the review page offers **Look this up online**. The
-helper's answer joins the proposal, and you still accept it. The helper also
+Once it is connected, the review page offers **Look this up online**, and an
+address pasted in Add product is sent to it on save. The helper's answer joins
+the proposal, or opens a product update for a product you already have; either
+way, you still accept it. The helper also
 revisits each product page every `LISTING_REFRESH_DAYS` (7 by default; 0 turns
 it off), while a helper token exists. Changed
 prices appear on Home as "n posted prices changed". Its Review opens the posted
