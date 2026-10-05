@@ -1,7 +1,7 @@
 import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { bookmarkletCode, bookmarkletHref } from "../lib/bookmarklet";
+import { CLIP_VERSION, bookmarkletCode, bookmarkletHref } from "../lib/bookmarklet";
 import { readClip } from "../pages/capture/ClipPage";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
@@ -121,6 +121,31 @@ describe("the clip window", () => {
     await screen.findByText("From Juniper Market");
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByText("This page is too large to save.")).toBeInTheDocument();
+  });
+});
+
+describe("an older bookmark (clip quality, CQ2)", () => {
+  it("asks for a reinstall, and never sends the version to the server", async () => {
+    const calls = mockApi(routes());
+    const user = userEvent.setup();
+    renderApp("/capture/clip");
+    await screen.findByText("Waiting for the page…");
+    deliver({ type: "kerp-clip", payload: clip }, opener);
+    expect(await screen.findByText(/This bookmark is an older version\. Reinstall it from Settings → Capture/)).toBeInTheDocument();
+    await screen.findByText("From Juniper Market");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/product-captures")).toBe(true));
+    const body = calls.find((c) => c.method === "POST" && c.path === "/product-captures")?.body as Record<string, unknown>;
+    expect("clip_version" in body).toBe(false);
+  });
+
+  it("says nothing for a current one", async () => {
+    mockApi(routes());
+    renderApp("/capture/clip");
+    await screen.findByText("Waiting for the page…");
+    deliver({ type: "kerp-clip", payload: { ...clip, clip_version: CLIP_VERSION } }, opener);
+    await screen.findByText("From Juniper Market");
+    expect(screen.queryByText(/older version/)).not.toBeInTheDocument();
   });
 });
 

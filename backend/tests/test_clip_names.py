@@ -98,3 +98,53 @@ def test_cleaning_stays_fast_on_hostile_titles():
     started = time.perf_counter()
     ladder.clean_title(hostile, names)
     assert time.perf_counter() - started < 0.5
+
+
+# --- CQ2: the page's microdata ---------------------------------------------------------------
+
+
+def test_microdata_gives_price_brand_item_number_and_a_valid_gtin():
+    from tests.test_captures import with_check
+
+    code = with_check("0 1234 5678 901")
+    meta = {
+        "og:title": "Sparkling Water",
+        "itemprop:price": "$2.49",
+        "itemprop:brand": "Lantern Bay",
+        "itemprop:sku": "LB-12",
+        "itemprop:gtin13": code[1:],
+    }
+    fields = merge(ladder.extract("https://shop.example.test/p/1", meta=meta).candidates)
+    assert (value(fields, "price"), value(fields, "brand"), value(fields, "item_number")) == (
+        "2.49",
+        "Lantern Bay",
+        "LB-12",
+    )
+    assert value(fields, "gtin") == code.zfill(14)
+
+
+def test_a_microdata_code_that_fails_its_check_digit_is_not_a_gtin():
+    from tests.test_captures import with_check
+
+    good = with_check("0 1234 5678 901")[1:]
+    meta = {"itemprop:gtin13": good[:-1] + str((int(good[-1]) + 1) % 10)}
+    assert "gtin" not in merge(
+        ladder.extract("https://shop.example.test/p/1", meta=meta).candidates
+    )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("$2.49", "2.49"),
+        ("2.49", "2.49"),
+        ("$1,299.00", "1299.00"),
+        ("$ 3", "3"),
+        ("free", None),
+        ("-1", None),
+        ("2.49 each", None),
+        ("$2,49", None),
+    ],
+)
+def test_money_from_a_tag(raw, expected):
+    assert ladder._money(raw) == expected

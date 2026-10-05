@@ -4,6 +4,7 @@ import { useVendors } from "../../api/geo";
 import { useLogin, useMe } from "../../api/queries";
 import type { Proposal } from "../../api/proposals";
 import { Alert, Button, Field, focusRing } from "../../components/ui";
+import { CLIP_VERSION } from "../../lib/bookmarklet";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 /** What the bookmarklet sends; everything in it is untrusted and checked here. */
@@ -16,6 +17,8 @@ export interface ClipPayload {
   dom_text: string;
   image_urls: string[];
   images: { url: string; data_base64: string }[];
+  /** The bookmarklet's version: 0 for one installed before versions were sent. */
+  clip_version: number;
 }
 
 const isHttp = (u: unknown): u is string => typeof u === "string" && u.length <= 2048 && /^https?:\/\//i.test(u);
@@ -46,6 +49,7 @@ export function readClip(data: unknown): ClipPayload | null {
     dom_text: typeof raw.dom_text === "string" ? raw.dom_text : "",
     image_urls: strings(raw.image_urls, 12).filter(isHttp),
     images,
+    clip_version: typeof raw.clip_version === "number" && Number.isInteger(raw.clip_version) ? raw.clip_version : 0,
   };
 }
 
@@ -172,8 +176,11 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
     setBusy(true);
     setError(null);
     try {
+      // The version is for this window only; the capture itself does not carry it.
+      const page: Partial<ClipPayload> = { ...clip };
+      delete page.clip_version;
       const body = {
-        ...clip,
+        ...page,
         channel: "clip",
         vendor_id: preview?.vendor ? preview.vendor.id : vendorId || undefined,
         without_store: !preview?.vendor && !vendorId && withoutStore,
@@ -203,6 +210,11 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1 text-sm">
         <p className="font-medium">{clip.title || preview?.title || "Untitled page"}</p>
+        {clip.clip_version < CLIP_VERSION ? (
+          <p className="text-amber-900 dark:text-amber-200">
+            This bookmark is an older version. Reinstall it from Settings → Capture to save prices and better photos.
+          </p>
+        ) : null}
         <p className="break-all text-neutral-600 dark:text-neutral-400">{clip.page_url}</p>
         <p className="text-neutral-600 dark:text-neutral-400">
           {clip.image_urls.length === 1 ? "1 image" : `${clip.image_urls.length} images`} came along
