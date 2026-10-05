@@ -19,7 +19,9 @@ class LookupRequest(UUIDPrimaryKey, Base):
 
     __tablename__ = "lookup_request"
     __table_args__ = (
-        CheckConstraint("kind IN ('gtin', 'page', 'cutout')", name="ck_lookup_request_kind"),
+        CheckConstraint(
+            "kind IN ('gtin', 'page', 'cutout', 'image')", name="ck_lookup_request_kind"
+        ),
         CheckConstraint(
             "status IN ('open', 'answered', 'closed')", name="ck_lookup_request_status"
         ),
