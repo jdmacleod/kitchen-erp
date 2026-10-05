@@ -111,3 +111,24 @@ async def test_restore_reports_a_photo_file_that_does_not_match(
     await dispose_engine()
     assert result["media_mismatches"] == ["originals/aa/bb/original.jpg"]
     assert result["restored_media"] == 0
+
+
+async def test_counts_leave_out_tables_an_older_schema_does_not_have(monkeypatch):
+    """A backup taken before a migration (the database behind the code) must finish:
+    tables the database does not have yet are left out of the counts."""
+    from app.services import backup as backup_service
+
+    monkeypatch.setattr(
+        backup_service, "COUNT_TABLES", ("price_observation", "table_from_a_later_migration")
+    )
+    async with get_sessionmaker()() as db:
+        counts = await backup_service.table_counts(db)
+    assert set(counts) == {"price_observation"}
+
+
+async def test_the_manifest_names_the_databases_own_revision(owner_conn):
+    from app.services import backup as backup_service
+
+    actual = await owner_conn.fetchval("SELECT version_num FROM alembic_version")
+    async with get_sessionmaker()() as db:
+        assert await backup_service.database_revision(db) == actual
