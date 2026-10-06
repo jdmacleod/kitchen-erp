@@ -11,7 +11,12 @@ crafted receipt, so the patterns below are written to fail fast instead:
 possessive quantifiers where a quantifier could otherwise give characters back,
 and plain string operations where a regex bought nothing.
 
-Behaviour is unchanged from version 1 and the version is therefore unchanged.
+Version 2 (#125) reads a comma as a decimal point inside a price, because OCR
+often prints "7,25" for 7.25: the fragment is removed exactly as "7.25" is, where
+version 1 left "7 25" in the wording and split one product into two groups. No
+other output changed; tests/test_normalize.py checks that against a frozen copy
+of version 1. Migration 0030 re-keys the stored lines, aliases and suggestions.
+
 Any edit that alters output for any input must bump NORMALIZE_VERSION, because
 `purchase_line.raw_text_norm` is stored and aliases are matched against it.
 """
@@ -20,12 +25,13 @@ from __future__ import annotations
 
 import re
 
-NORMALIZE_VERSION = "1"
+NORMALIZE_VERSION = "2"
 
 _WS = re.compile(r"\s+")
 # Leading item codes: 4+ digits, optionally with a letter prefix, possibly several.
 _LEADING_CODE = re.compile(r"^(?:[A-Z]?\d{4,}\s+)+")
-# Money and price-per-unit tokens: $3.99, -1.50, 3.99/LB, @ 3.99, 2 @ 1.99, 2.31 LB @ 3.99/LB.
+# Money and price-per-unit tokens: $3.99, -1.50, 3.99/LB, @ 3.99, 2 @ 1.99, 2.31 LB @ 3.99/LB,
+# and the same with a comma for the decimal point (version 2).
 #
 # Possessive quantifiers against the quadratic scan CodeQL flagged. A digit run
 # can never usefully be handed back here — what follows a number is always ".",
@@ -39,8 +45,8 @@ _LEADING_CODE = re.compile(r"^(?:[A-Z]?\d{4,}\s+)+")
 # price can legitimately begin there with a digit behind it — "$38.64644.58"
 # holds two. The differential test against version 1 caught it.
 _PRICE = re.compile(
-    r"(?:(?:\d++(?:\.\d++)?\s*+(?:LBS|LB|KG|OZ|EA)?\s*+@\s*+)?"
-    r"\$?-?\d++\.\d{2}(?:\s*+/\s*+(?:LB|KG|OZ|EA))?)"
+    r"(?:(?:\d++(?:[.,]\d++)?\s*+(?:LBS|LB|KG|OZ|EA)?\s*+@\s*+)?"
+    r"\$?-?\d++[.,]\d{2}(?:\s*+/\s*+(?:LB|KG|OZ|EA))?)"
 )
 # A bare "@" left over from a quantity. The surrounding whitespace used to be part
 # of this pattern, which made it rescan every run of spaces; the whitespace
