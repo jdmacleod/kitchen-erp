@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { photographProduct, type Proposal } from "../api/proposals";
+import { parsePieces } from "../pages/catalog/ProductReviewPage";
 import { readingSentence } from "../api/inbox";
 import { flourProduct, flourProductId, units } from "./catalog-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
@@ -152,6 +153,47 @@ describe("product review", () => {
     const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as { edits: Record<string, unknown> };
     expect(sent.edits).toEqual({ title: "MILLSTONE PLAIN FLOUR" });
     expect(await screen.findByText("Updated MILLSTONE PLAIN FLOUR.")).toBeInTheDocument();
+  });
+
+  it("shows a pack's pieces and takes typed ones as the person's", async () => {
+    const withPieces = proposal({
+      fields: {
+        ...proposal().fields,
+        pieces: { value: { count: "4", name: "link" }, source: "page_meta", confidence: null, alternatives: [], conflict: false },
+      },
+    });
+    const calls = mockApi(
+      routes(withPieces, {
+        "POST /ingredients": () => jsonResponse(201, { ...flourProduct.ingredient, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b50", name: "flour" }),
+        [`POST /product-proposals/${proposalId}/accept`]: () => jsonResponse(200, { ...withPieces, status: "accepted", result: { product_id: flourProductId } }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    expect(await screen.findByTestId("review-summary")).toHaveTextContent("1.5 kg · 4 links");
+
+    await user.click(screen.getByRole("radio", { name: "Create new product" }));
+    const pieces = screen.getByLabelText("Pieces");
+    expect(pieces).toHaveValue("4 links");
+    await user.clear(pieces);
+    await user.type(pieces, "6 Links");
+    expect(screen.getByTestId("review-summary")).toHaveTextContent("6 Links");
+    const ingredient = screen.getByRole("combobox", { name: "Ingredient" });
+    await user.type(ingredient, "flour");
+    await user.click(await screen.findByRole("option", { name: /Create new ingredient/ }));
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
+    const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as { edits: Record<string, unknown> };
+    expect(sent.edits.pieces).toEqual({ count: "6", name: "link" });
+  });
+
+  it("reads typed pieces", () => {
+    expect(parsePieces("5 links")).toEqual({ count: "5", name: "link" });
+    expect(parsePieces("3 patties")).toEqual({ count: "3", name: "patty" });
+    expect(parsePieces("2 boxes")).toEqual({ count: "2", name: "box" });
+    expect(parsePieces("12")).toEqual({ count: "12" });
+    expect(parsePieces("4.5 links")).toBeNull();
+    expect(parsePieces("0")).toBeNull();
   });
 
   it("asks whether to update or create while the catalog offers a candidate", async () => {

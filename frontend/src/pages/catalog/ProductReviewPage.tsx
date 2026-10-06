@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { api, errorMessage, isApiError } from "../../api/client";
-import { useProduct, type Ingredient } from "../../api/catalog";
+import { formatPieces, useProduct, type Ingredient } from "../../api/catalog";
 import { ROLE_LABELS, type PhotoRole, type ProductPhoto } from "../../api/productPhotos";
 import {
   CHANNEL_WORDS,
@@ -44,6 +44,7 @@ const REVIEWED: [string, string][] = [
   ["title", "Name"],
   ["brand", "Brand"],
   ["pack", "Pack"],
+  ["pieces", "Pieces"],
   ["gtin", "Barcode"],
 ];
 
@@ -74,6 +75,10 @@ export function showValue(field: string, value: unknown): string {
   if (field === "pack" && typeof value === "object") {
     const pack = value as Pack;
     return `${pack.qty.replace(/\.0+$|(\.\d*?)0+$/, "$1")} ${pack.unit}`;
+  }
+  if (field === "pieces" && typeof value === "object") {
+    const pieces = value as { count: string; name?: string };
+    return formatPieces(Number(pieces.count), pieces.name);
   }
   if (field === "gtin" && typeof value === "string") return value.replace(/^0+(?=\d{12,13}$)/, "");
   if (field === "price" && typeof value === "string") return formatMoney(value);
@@ -119,6 +124,14 @@ export function ProductReviewPage() {
 interface Choice {
   /** The index into [chosen, ...alternatives], or null while a conflict is open. */
   index: number | null;
+}
+
+/** "5 links" or "5" as pieces; the name singular, as the product stores it. */
+export function parsePieces(text: string): { count: string; name?: string } | null {
+  const m = text.trim().match(/^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/);
+  if (!m || Number(m[1]) <= 0) return null;
+  const name = m[2]?.trim().toLowerCase().replace(/(ies)$/, "y").replace(/(ches|shes|sses|xes|zes)$/, (s) => s.slice(0, -2)).replace(/([^s])s$/, "$1");
+  return { count: String(Number(m[1])), ...(name ? { name } : {}) };
 }
 
 /** A field's choices, the merge's first; the same value from another source is one choice. */
@@ -183,6 +196,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     if (name === "title") return p.name || undefined;
     if (name === "brand") return p.brand || undefined;
     if (name === "pack") return p.pack_qty && p.pack_unit ? { qty: p.pack_qty, unit: p.pack_unit } : undefined;
+    if (name === "pieces") return p.pack_count ? { count: String(p.pack_count), ...(p.piece_name ? { name: p.piece_name } : {}) } : undefined;
     return undefined;
   };
   const kept = (name: string) => !touched.has(name) && current(name) !== undefined;
@@ -229,6 +243,9 @@ function Review({ proposal }: { proposal: Proposal }) {
       if (name === "pack") {
         const m = value.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/);
         if (m) out.pack = { qty: m[1], unit: m[2].trim().toLowerCase() };
+      } else if (name === "pieces") {
+        const pieces = parsePieces(value);
+        if (pieces) out.pieces = pieces;
       } else if (value.trim() !== "") out[name] = value.trim();
     }
     return out;
@@ -336,7 +353,9 @@ function Review({ proposal }: { proposal: Proposal }) {
               Summary
             </h2>
             <p data-testid="review-summary" className="text-sm">
-              {REVIEWED.map(([name]) => showValue(name, chosenValue(name))).join(" · ")}
+              {REVIEWED.filter(([name]) => name !== "pieces" || chosenValue("pieces") !== undefined)
+                .map(([name]) => showValue(name, chosenValue(name)))
+                .join(" · ")}
             </p>
             {taken ? (
               <TakenPanel

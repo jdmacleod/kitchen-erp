@@ -319,6 +319,10 @@ def _candidates(answer: HelperAnswer) -> list[merging.Candidate]:
                 raise ValueError("gtin: not a valid barcode") from None
             if scheme != "gtin":
                 raise ValueError("gtin: not a barcode number")
+        if c.field == "pieces":
+            value = merging.pieces_value(value)
+            if value is None:
+                raise ValueError('pieces: a whole "count" and an optional "name"')
         candidate = merging.Candidate(c.field, value, c.source, c.confidence, "helper")
         merging._check(candidate)  # unknown fields, wrong sources, over-cap confidence
         out.append(candidate)
@@ -361,6 +365,10 @@ def _changes_product(product: Product, candidates: list[merging.Candidate]) -> b
         "gtin": product.barcode_identifier.value if product.barcode_identifier else None,
     }
     for c in candidates:
+        if c.field == "pieces":
+            if str(product.pack_count or "") != c.value["count"]:
+                return True
+            continue
         if c.field in current and current[c.field] in (None, ""):
             return True
         if c.field in current and current[c.field] != c.value and c.field != "title":
