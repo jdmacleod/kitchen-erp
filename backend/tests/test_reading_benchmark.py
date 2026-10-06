@@ -565,6 +565,7 @@ def test_the_command_runs_only_the_arms_asked_for(monkeypatch: pytest.MonkeyPatc
 
     # --models alone still means arm (c) only.
     result = _cli(monkeypatch, _one_receipt(), False, "--models", "v")
+    assert result.exit_code == 0, result.output
     assert [(c.arm, c.model) for c in seen["options"].configs] == [("c", "v")]
 
     result = _cli(monkeypatch, _one_receipt(), False, "--arms", "b,x")

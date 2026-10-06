@@ -1002,7 +1002,7 @@ def _stored_rows(
         return (row["arm"], row["model"], row["prompt_version"], text_model)
 
     have = {config_of(r) for r in current}
-    latest: dict[tuple[str, str, str], dict[str, Any]] = {}
+    latest: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in history:
         if row.get("receipt_set_hash") != set_hash:
             continue
@@ -1028,12 +1028,15 @@ def _append_csv(path: Path, rows: list[dict[str, Any]]) -> None:
             header = next(csv.reader(handle), None)
         if header != CSV_COLUMNS:
             # Written before a column was added: rewrite it under today's header, the
-            # old rows with the new columns empty.
+            # old rows with the new columns empty. Beside it first, so a run stopped
+            # halfway never loses the stored history.
             old = read_history(path)
-            with path.open("w", newline="") as handle:
+            rewritten = path.with_name(path.name + ".tmp")
+            with rewritten.open("w", newline="") as handle:
                 writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS, extrasaction="ignore")
                 writer.writeheader()
                 writer.writerows({k: row.get(k) or "" for k in CSV_COLUMNS} for row in old)
+            rewritten.replace(path)
     new = not path.is_file()
     with path.open("a", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS)
