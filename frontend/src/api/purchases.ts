@@ -72,9 +72,9 @@ export interface PurchaseLineProduct {
   category_key: CategoryKey | null;
 }
 
-export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "manual" | "unmatched" | "ignored";
-export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "code";
-export type AcceptedKind = "alias" | "fuzzy" | "llm" | "code";
+export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "similar" | "manual" | "unmatched" | "ignored";
+export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "similar" | "code";
+export type AcceptedKind = "alias" | "fuzzy" | "llm" | "similar" | "code";
 
 export interface Suggestion {
   kind: SuggestionKind;
@@ -726,6 +726,7 @@ export const resolutionLabel: Record<Resolution, string> = {
   alias: "alias",
   fuzzy: "fuzzy alias",
   llm: "model",
+  similar: "similar name",
   manual: "chosen",
   unmatched: "unmatched",
   ignored: "ignored",

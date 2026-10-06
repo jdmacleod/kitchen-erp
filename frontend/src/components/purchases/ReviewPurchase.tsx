@@ -44,7 +44,7 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
 
-const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm", code: "code" };
+const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm", similar: "similar", code: "code" };
 
 const ATTACHABLE = new Set(["discount", "deposit"]);
 
@@ -890,7 +890,8 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
     );
   }
 
-  const kindLabel = (s: Suggestion) => (s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : s.kind === "code" ? "item code" : "fuzzy");
+  const kindLabel = (s: Suggestion) =>
+    s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : s.kind === "code" ? "item code" : s.kind === "similar" ? "similar name" : "fuzzy";
 
   return (
     <>
