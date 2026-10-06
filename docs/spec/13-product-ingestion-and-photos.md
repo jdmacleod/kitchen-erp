@@ -342,7 +342,7 @@ class FieldCandidate:
 4. **LLM fallback.** Runs only for fields still missing after steps 1–3. It calls the local Ollama model (`OLLAMA_BASE_URL`, configured model) over a cleaned `dom_text` excerpt, with a strict JSON schema and recorded responses in fixtures. Its output may only fill missing fields, never override. Confidence is capped at 0.6.
 5. **URL slug.** Last resort for title and SKU. Confidence 0.3.
 
-Fields: `title`, `brand`, `gtin`, `vendor_sku`, `rw_item`, `size_text`, `pack` (quantity + unit, parsed from `size_text` through the Phase 1 conversion library), `price_amount`, `price_unit` (`each` or a weight/volume unit), `avg_weight`, `is_promo`, `category_path`, `ingredients_text`, `image_urls`, `canonical_url`, `store_ref`.
+Fields: `title`, `brand`, `gtin`, `vendor_sku`, `rw_item`, `size_text`, `pack` (quantity + unit, parsed from `size_text` through the Phase 1 conversion library), `pieces` (`{count, name?}`: the pieces a weight or volume pack holds, from "14 oz, 4 ct", a multipack "6 x 330 ml" whose `pack` is the total, or an adapter's nutrition panel; added 2026-10-05), `price_amount`, `price_unit` (`each` or a weight/volume unit), `avg_weight`, `is_promo`, `category_path`, `ingredients_text`, `image_urls`, `canonical_url`, `store_ref`.
 
 ### 5.2 Photo-only identification
 
@@ -372,14 +372,14 @@ For each field, the merged value is the highest-ranked candidate under this per-
 
 | Field group | Precedence |
 |---|---|
-| `brand`, `gtin`, `pack` | user > manufacturer > jsonld > adapter > meta > llm > url_slug |
+| `brand`, `gtin`, `pack`, `pieces` | user > manufacturer > jsonld > adapter > meta > llm > url_slug |
 | `title` | user > adapter > jsonld > manufacturer > meta > llm > url_slug |
 | `vendor_sku`, `rw_item`, `price_*`, `avg_weight`, `is_promo`, `store_ref`, `canonical_url` | user > adapter > jsonld > meta > llm > url_slug |
 | `ingredients_text` | user > manufacturer > adapter > llm |
 
 Ties go to higher confidence. `product_proposal.fields` stores, for each field, the chosen value, its source, and every losing candidate, so the review screen can offer alternates with one click.
 
-Conflicts that change identity are flagged on the proposal and are never resolved silently. Examples: a page GTIN different from a scanned GTIN, or a manufacturer size that disagrees with the vendor size by more than 5%.
+Conflicts that change identity are flagged on the proposal and are never resolved silently. Examples: a page GTIN different from a scanned GTIN, a manufacturer size that disagrees with the vendor size by more than 5%, or two piece counts that differ. Accepting an update that changes a product's pack or pieces re-prices what was recorded for it.
 
 ### 5.6 Resolution
 

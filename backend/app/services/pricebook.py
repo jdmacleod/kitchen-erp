@@ -24,6 +24,7 @@ from app.models import (
     PriceObservationVoid,
     Product,
 )
+from app.models.units import UnitRow
 from app.services.pagination import decode_cursor, encode_cursor
 from app.services.units import build_context
 from app.units import CanonicalQty, ConversionFailure, convert
@@ -146,12 +147,24 @@ async def recompute_for_ingredient(
 
 async def recompute_for_product(db: AsyncSession, product_id: uuid.UUID) -> int:
     """After a pack or density-override change on a product."""
+    n = await recompute_for_product_core(db, product_id)
+    await db.commit()
+    return n
+
+
+async def recompute_for_product_core(db: AsyncSession, product_id: uuid.UUID) -> int:
+    """The same inside a caller's transaction: flushes, never commits.
+
+    A count recorded without a pack ("1 each" of an ingredient counted in pieces) needed
+    no bridge then, and may cross one now, so counts are recomputed too."""
+    counts = select(UnitRow.code).where(UnitRow.dimension == "count")
     where = (PriceObservation.product_id == product_id) & (
         PriceNorm.observation_id.is_(None)
         | (PriceNorm.status != "ok")
         | (PriceNorm.bridge_kind != "none")
+        | PriceObservation.unit.in_(counts)
     )
-    return await normalize(db, await _dependents(db, where))
+    return await normalize_core(db, await _dependents(db, where))
 
 
 # --- observations -----------------------------------------------------------

@@ -12,7 +12,8 @@ more than 5% apart. A person's choice settles a conflict, because it is not
 silent.
 
 Values are JSON-safe: decimals as strings (never floats), a pack as
-``{"qty": "400", "unit": "g"}``, a GTIN as its GTIN-14.
+``{"qty": "400", "unit": "g"}``, the pieces it holds as ``{"count": "4", "name": "link"}``
+(the name optional), a GTIN as its GTIN-14.
 """
 
 from __future__ import annotations
@@ -65,6 +66,7 @@ PRECEDENCE: Mapping[str, tuple[str, ...]] = {
     "brand": _IDENTITY,
     "gtin": _IDENTITY,
     "pack": _IDENTITY,
+    "pieces": _IDENTITY,
     "title": _TITLE,
     "category": _TITLE,
     "item_number": _LISTING,
@@ -155,9 +157,34 @@ def _check(candidate: Candidate) -> None:
         raise UnknownCandidate(f"{candidate.field} never comes from {candidate.source}")
     if candidate.field == "price" and price_basis(candidate.value) is None:
         raise UnknownCandidate("a price is an amount, or {amount, qty, unit} in a known unit")
+    if candidate.field == "pieces" and pieces_value(candidate.value) != candidate.value:
+        raise UnknownCandidate('pieces are {"count": "4"} with an optional singular "name"')
     over = candidate.confidence is not None and candidate.confidence > MODEL_TEXT_CAP
     if candidate.source == "model" and over:
         raise UnknownCandidate("a model's confidence is over its cap")
+
+
+PIECE_NAME_LIMIT = 32
+_MAX_PIECES = 100000
+
+
+def pieces_value(value: Any) -> dict[str, str] | None:
+    """Pieces in their stored shape: a whole count as a string and an optional lower-case
+    singular name ("link"), or None when the value isn't that."""
+    if not isinstance(value, Mapping) or not set(value) <= {"count", "name"}:
+        return None
+    count, name = value.get("count"), value.get("name")
+    if isinstance(count, bool) or not isinstance(count, (int, str)):
+        return None
+    text = str(count).strip()
+    if not text.isdigit() or not 0 < int(text) <= _MAX_PIECES:
+        return None
+    out = {"count": str(int(text))}
+    if name is not None:
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > PIECE_NAME_LIMIT:
+            return None
+        out["name"] = name.strip().lower()
+    return out
 
 
 def _pack_grams(pack: Any) -> tuple[str, Decimal] | None:
@@ -189,6 +216,8 @@ def _conflicts(field: str, chosen: Candidate, others: list[Candidate]) -> bool:
         return any(o.value != chosen.value for o in others)
     if field == "pack":
         return any(packs_disagree(o.value, chosen.value) for o in others)
+    if field == "pieces":
+        return any(o.value["count"] != chosen.value["count"] for o in others)
     if field == "price":
         # Per pound against per each: the reviewer must say which the page means.
         mine = _price_dimension(chosen.value)

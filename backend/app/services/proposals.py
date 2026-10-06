@@ -490,6 +490,11 @@ def normalize_edits(edits: dict[str, Any]) -> dict[str, Any]:
         if qty <= 0 or unit not in merging._UNITS:
             raise ApiError(422, "invalid_pack", "A pack is a positive quantity and a known unit.")
         out["pack"] = {"qty": format(qty, "f"), "unit": unit}
+    if out.get("pieces") is not None:
+        pieces = merging.pieces_value(out["pieces"])
+        if pieces is None:
+            raise ApiError(422, "invalid_pieces", "Pieces are a whole number, like 5 links.")
+        out["pieces"] = pieces
     return out
 
 
@@ -562,8 +567,10 @@ def _source_note(fields: dict[str, Any], name: str, now: datetime) -> dict[str, 
 
 async def _apply_fields(
     product: Product, fields: dict[str, Any], *, overwrite: bool, now: datetime
-) -> None:
-    """Set the product's brand, name and pack from the fields; a reviewer's value always wins."""
+) -> bool:
+    """Set the product's brand, name, pack and pieces from the fields; a reviewer's value
+    always wins. True when the pack or its pieces changed, so its prices are recomputed."""
+    before = (product.pack_qty, product.pack_unit, product.pack_count)
     sources = dict(product.field_source or {})
     for name, attr in (("brand", "brand"), ("title", "name")):
         state = fields.get(name)
@@ -578,7 +585,25 @@ async def _apply_fields(
     ):
         product.pack_qty, product.pack_unit = qty, unit
         sources["pack"] = _source_note(fields, "pack", now)
+    pieces = merging.value(fields, "pieces")
+    if pieces and (overwrite or fields["pieces"]["source"] == "person" or not product.pack_count):
+        if _holds_pieces(product.pack_unit):
+            product.pack_count = int(pieces["count"])
+            product.piece_name = pieces.get("name")
+            sources["pieces"] = _source_note(fields, "pieces", now)
+        elif fields["pieces"]["source"] == "person":
+            raise ApiError(422, "pieces_need_size", "Pieces go with a pack's weight or volume.")
+    elif product.pack_count and not _holds_pieces(product.pack_unit):
+        # A new pack counted in pieces says how many itself.
+        product.pack_count, product.piece_name = None, None
     product.field_source = sources
+    return (product.pack_qty, product.pack_unit, product.pack_count) != before
+
+
+def _holds_pieces(unit: str | None) -> bool:
+    """Pieces go with a mass or volume pack; a count pack already says how many."""
+    known = merging._UNITS.get(unit or "")
+    return known is not None and known.dimension in ("mass", "volume")
 
 
 async def _add_identifier(
@@ -758,7 +783,10 @@ async def _product_for(
         if target is None:
             raise ApiError(422, "product_required", "Say which product to update.")
         product = await product_photos.lock_product(db, target)
-        await _apply_fields(product, fields, overwrite=False, now=now)
+        if await _apply_fields(product, fields, overwrite=False, now=now):
+            await db.flush()
+            # The pack or its pieces changed: what was recorded is priced again.
+            await pricebook.recompute_for_product_core(db, product.id)
         return product, False
     if data.ingredient_id is None:
         raise ApiError(422, "ingredient_required", "Choose the ingredient this product is.")

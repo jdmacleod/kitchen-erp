@@ -36,6 +36,16 @@ _PACK = re.compile(
     r"(?<![\d.])(\d{1,6}(?:\.\d{1,4})?)\s{0,3}(fl\.?\s{0,2}oz|kg|mg|g|ml|l|lbs?|oz|ct|count)\b",
     re.IGNORECASE,
 )
+# A multipack, "6 x 330 ml": at most three digits of pieces, then a size (bounded as above).
+_MULTIPACK = re.compile(
+    r"(?<![\d.])(\d{1,3})\s{0,2}[x\u00d7]\s{0,2}(\d{1,6}(?:\.\d{1,4})?)\s{0,3}"
+    r"(fl\.?\s{0,2}oz|kg|mg|g|ml|l|lbs?|oz)\b",
+    re.IGNORECASE,
+)
+# Pieces beside a size: "5 ct", "12 count", "6 pk", "6-pack", "8 pieces", "10 pcs".
+_PIECES = re.compile(
+    r"(?<![\d.])(\d{1,5})\s{0,2}-?\s{0,2}(ct|count|pk|pack|pieces|pcs)\b", re.IGNORECASE
+)
 # Pack sizes are read from titles and short texts; never scan more than this.
 PACK_TEXT_LIMIT = 2000
 _METRIC = {"g", "kg", "mg", "ml", "l"}
@@ -62,16 +72,45 @@ class PageEvidence:
 
 def pack_from_text(text: str | None) -> dict[str, str] | None:
     """A pack size in text such as "15.5 oz/439 g", metric preferred; None when there is none."""
+    return size_from_text(text)[0]
+
+
+def size_from_text(text: str | None) -> tuple[dict[str, str] | None, dict[str, str] | None]:
+    """A pack size and the pieces it holds, from text such as "6 x 330 ml" (1980 ml, 6
+    pieces) or "14 oz, 4 ct" (14 oz, 4 pieces). Metric is preferred for the size. A count
+    alone is the pack itself ("12 ct" is 12 each), and no pieces."""
     if not text:
-        return None
-    found = []
-    for qty, unit_text in _PACK.findall(text[:PACK_TEXT_LIMIT]):
+        return None, None
+    text = text[:PACK_TEXT_LIMIT]
+    if multi := _MULTIPACK.search(text):
+        count, qty, unit_text = multi.groups()
+        unit = parse_unit(unit_text)
+        if not isinstance(unit, UnitParseFailure) and int(count) > 0:
+            total = Decimal(qty) * int(count)
+            return {"qty": format(total, "f"), "unit": unit}, {"count": str(int(count))}
+    sizes, counts = [], []
+    for qty, unit_text in _PACK.findall(text):
         word = unit_text.lower()
         unit = parse_unit("each" if word in ("ct", "count") else unit_text)
-        if not isinstance(unit, UnitParseFailure):
-            found.append({"qty": format(Decimal(qty), "f"), "unit": unit})
-    metric = [p for p in found if p["unit"] in _METRIC]
-    return (metric or found or [None])[0]
+        if isinstance(unit, UnitParseFailure):
+            continue
+        (counts if unit == "each" else sizes).append(
+            {"qty": format(Decimal(qty), "f"), "unit": unit}
+        )
+    metric = [p for p in sizes if p["unit"] in _METRIC]
+    size = (metric or sizes or [None])[0]
+    if size is None:
+        return (counts or [None])[0], None
+    pieces = next((int(n) for n, _ in _PIECES.findall(text) if int(n) > 0), None)
+    return size, ({"count": str(pieces)} if pieces else None)
+
+
+def _size_candidates(text: str | None, source: str) -> list[Candidate]:
+    pack, pieces = size_from_text(text)
+    out = [Candidate("pack", pack, source)] if pack else []
+    if pack and pieces:
+        out.append(Candidate("pieces", pieces, source))
+    return out
 
 
 _DOLLARS = re.compile(r"^\$?\s{0,2}(\d{1,3}(?:,\d{3}){0,3}|\d{1,9})(\.\d{1,4})?$")
@@ -201,18 +240,20 @@ def _offer(offers: Any) -> str | dict[str, str] | None:
     return None
 
 
-def _size(node: Mapping[str, Any], name: str | None) -> dict[str, str] | None:
+def _size(node: Mapping[str, Any], name: str | None) -> list[Candidate]:
     for key in ("size", "weight", "netContent"):
         value = node.get(key)
         if isinstance(value, Mapping):
             qty, unit = value.get("value"), value.get("unitText") or value.get("unitCode")
-            if qty is not None and unit:
-                found = pack_from_text(f"{qty} {unit}")
-                if found:
-                    return found
-        elif isinstance(value, str) and (found := pack_from_text(value)):
+            if (
+                qty is not None
+                and unit
+                and (found := _size_candidates(f"{qty} {unit}", "page_data"))
+            ):
+                return found
+        elif isinstance(value, str) and (found := _size_candidates(value, "page_data")):
             return found
-    return pack_from_text(name)
+    return _size_candidates(name, "page_data")
 
 
 def from_structured_data(blocks: list[str]) -> PageEvidence:
@@ -241,8 +282,7 @@ def from_structured_data(blocks: list[str]) -> PageEvidence:
                     break
             if (price := _offer(node.get("offers"))) is not None:
                 add(Candidate("price", price, "page_data"))
-            if pack := _size(node, name):
-                add(Candidate("pack", pack, "page_data"))
+            out.candidates.extend(_size(node, name))
             out.images.extend(_images(node.get("image")))
     return out
 
@@ -281,8 +321,7 @@ def from_meta(meta: Mapping[str, str]) -> PageEvidence:
         if code := _gtin(lowered.get(key)):
             out.candidates.append(Candidate("gtin", code, "page_meta"))
             break
-    if (title := lowered.get("og:title")) and (pack := pack_from_text(title)):
-        out.candidates.append(Candidate("pack", pack, "page_meta"))
+    out.candidates.extend(_size_candidates(lowered.get("og:title"), "page_meta"))
     for key in ("og:image", "og:image:url", "twitter:image"):
         if lowered.get(key):
             out.images.append(lowered[key])
@@ -319,8 +358,7 @@ def from_address(url: str) -> PageEvidence:
         title = " ".join(w for w in re.split(r"[-_+\s]+", words) if w).strip()
         if title:
             out.candidates.append(Candidate("title", title[:1].upper() + title[1:], "address"))
-            if pack := pack_from_text(title):
-                out.candidates.append(Candidate("pack", pack, "address"))
+            out.candidates.extend(_size_candidates(title, "address"))
     return out
 
 
