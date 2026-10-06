@@ -199,6 +199,12 @@ async def test_the_inbox_row_waits_for_linking_unless_a_linked_ingredient_has_su
     garlic = await make_ingredient(admin_client, "Garlic")
     other = await make_ingredient(admin_client, "Sorrel")
     await _ref(owner_conn, garlic["id"], 1002)
+    # A typed-in name the standard list knows starts unreviewed (#189); start
+    # from nothing waiting to be linked.
+    await owner_conn.execute(
+        "UPDATE ingredient SET reconcile_state = 'not_applicable' WHERE id = $1",
+        uuid.UUID(garlic["id"]),
+    )
 
     def usda_rows(items):
         return [i for i in items if i["kind"] == "usda"]

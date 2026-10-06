@@ -23,6 +23,7 @@ from app.catalog.identifiers import (
     lookup_keys,
 )
 from app.catalog.names import normalize_name, singulars
+from app.catalog.standard_match import match_entry
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.models.catalog import (
@@ -436,11 +437,17 @@ async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient
     With ``standard_key``, the standard-list entry supplies the name, category
     and unit, and its spellings, USDA reference and measures are added too; the
     entry's key becomes the slug and the ingredient starts ``linked`` (03, 1G).
+    A name typed in starts ``unreviewed`` when a standard entry matches it, so
+    the link page offers that entry at once (#189), and ``not_applicable``
+    otherwise. Nothing is linked here.
     Raises ``IntegrityError`` for a taken name, like a plain create.
     """
     if spec.standard_key is None:
         ingredient = Ingredient(
             name=spec.name.strip(),
+            reconcile_state=(
+                "unreviewed" if match_entry(spec.name) is not None else "not_applicable"
+            ),
             category=spec.category,
             canonical_unit=spec.canonical_unit,
             density_g_per_ml=spec.density_g_per_ml,
