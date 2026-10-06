@@ -382,17 +382,23 @@ def savings_printed_negative(lines: list[ParsedLine], receipt_text: str = "") ->
 # --- 9. Loyalty points read as money ----------------------------------------
 
 _POINTS = re.compile(r"\b(?:pts|points?)\b", re.IGNORECASE)
+_EARNED = re.compile(r"\b(?:earn\w*|bonus|get|collected|balance)\b", re.IGNORECASE)
+_REDEEMED = re.compile(r"\b(?:redeem\w*|redemption|reward|used|applied)\b", re.IGNORECASE)
 
 
 def _is_points_count(text: str, amount: Decimal) -> bool:
-    """Whether ``amount`` is a whole number the text prints as points.
+    """Whether ``amount`` is a whole number the text speaks of as points.
 
-    Money is printed with its cents; a points count is not. The number must
-    stand beside the points word ("1300 PTS", "POINTS EARNED 125") and never
-    appear with cents.
+    Money is printed with its cents; a points count is not. Either the number
+    stands beside the points word ("1300 PTS", "POINTS EARNED 125"), or the
+    text prints no number at all and speaks of points earned ("POINTS EARNED",
+    the count read from the column beside it). Points redeemed are money off,
+    and a number printed with cents is never points.
     """
-    if amount != amount.to_integral_value() or amount <= 0:
+    if amount != amount.to_integral_value() or amount <= 0 or _REDEEMED.search(text):
         return False
+    if not re.search(r"\d", text):
+        return bool(_EARNED.search(text))
     whole = re.escape(str(int(amount)))
     bare = rf"(?<![\d.,]){whole}(?![\d]|[.,]\d)"
     if re.search(rf"(?<![\d.,]){whole}[.,]\d{{2}}", text):

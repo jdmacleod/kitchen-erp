@@ -273,6 +273,7 @@ def test_an_amount_not_proven_negative_stays_an_item(rows, text):
         ("Spend $40 get 500PTS 500 PTS", "discount", "500"),
         ("POINTS EARNED 60", "discount", "60"),
         ("Bonus 25 points", "item", "25"),
+        ("POINTS EARNED", "discount", "100"),  # the count printed in the amount column
     ],
 )
 def test_a_points_count_counts_for_nothing(raw, kind, amount):
@@ -288,6 +289,9 @@ def test_a_points_count_counts_for_nothing(raw, kind, amount):
         ("POINTS REDEEMED 5.00-", "5.00"),  # money, printed with its cents
         ("REWARD SAVING 3.00", "3.00"),  # no points word
         ("2 PT CRATE 12", "12"),  # PT is not points
+        ("POINTS DISCOUNT", "2.50"),  # read with cents: money
+        ("POINTS REWARD", "5.00"),  # points redeemed are money off
+        ("POINTS REDEEMED 500 PTS", "5"),  # even beside a points count
     ],
 )
 def test_money_beside_points_wording_is_left_alone(raw, amount):
