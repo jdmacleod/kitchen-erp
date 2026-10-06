@@ -64,10 +64,17 @@ def install_error_handlers(app: FastAPI) -> None:
     async def _validation(_: Request, exc: RequestValidationError) -> JSONResponse:
         # Error locations and messages are safe to echo; input values are not,
         # because request bodies may carry receipt text.
+        errors = exc.errors()
+        # An address whose id is not an id names nothing: "not found", as a well-formed
+        # id that names nothing would be, not a validation error a page can't explain.
+        if errors and all(
+            e.get("loc", ())[:1] == ("path",) and str(e.get("type", "")).startswith("uuid")
+            for e in errors
+        ):
+            return error_response(404, "not_found", "Not found.")
         details = {
             "errors": [
-                {"loc": [str(p) for p in e.get("loc", ())], "msg": e.get("msg", "")}
-                for e in exc.errors()
+                {"loc": [str(p) for p in e.get("loc", ())], "msg": e.get("msg", "")} for e in errors
             ]
         }
         return error_response(422, "validation_error", "Request failed validation.", details)

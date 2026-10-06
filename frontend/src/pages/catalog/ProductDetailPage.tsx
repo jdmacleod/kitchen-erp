@@ -14,6 +14,7 @@ import {
   type ProductUpdateInput,
 } from "../../api/catalog";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
+import { ProductLookUpCard } from "../../components/catalog/ProductLookUpCard";
 import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
@@ -96,6 +97,7 @@ function ProductDetail({ product }: { product: Product }) {
         {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
 
         <ProductPhotosCard product={product} />
+        <ProductLookUpCard product={product} />
         <ProductLabelsCard product={product} />
 
         {product.density_override !== null ? (

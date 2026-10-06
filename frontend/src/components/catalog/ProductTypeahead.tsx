@@ -1,6 +1,6 @@
 import { useState, type RefObject } from "react";
 import { errorMessage } from "../../api/client";
-import { formatPack, useProductSearch, type SearchHit } from "../../api/catalog";
+import { formatPack, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { Badge } from "./fields";
 import { Combobox } from "./Combobox";
@@ -102,7 +102,7 @@ export function ProductTypeahead({
           return;
         }
         const { hit } = option;
-        setText(clearOnSelect ? "" : hit.brand ? `${hit.brand} ${hit.name}` : hit.name);
+        setText(clearOnSelect ? "" : productTitle(hit));
         onSelect(hit);
       }}
       renderItem={(option) =>
@@ -120,8 +120,10 @@ export function ProductTypeahead({
 
 export function HitRow({ hit }: { hit: SearchHit }) {
   const pack = formatPack(hit.pack_qty, hit.pack_unit, hit.pack_count, hit.piece_name);
+  // Read aloud as one phrase with its parts apart, not "Wild salmon salmon name".
+  const spoken = [hit.name, hit.brand, pack, hit.ingredient.name].filter(Boolean).join(", ") + `, matched by ${matchLabel[hit.match]}`;
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+    <div aria-label={spoken} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
       <span className="min-w-0">
         <span className="font-medium">{hit.name}</span>
         {hit.brand ? <span className="text-neutral-600 dark:text-neutral-400"> · {hit.brand}</span> : null}

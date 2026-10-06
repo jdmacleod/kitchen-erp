@@ -174,7 +174,9 @@ describe("receipt review", () => {
     expect(rows[3]).not.toHaveAttribute("data-quiet");
     expect(within(rows[3]).getByText("price outlier")).toBeInTheDocument();
     expect(screen.getByText(/The receipt says \$12\.00 but the lines add up to \$11\.50/)).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "The receipt as photographed" })).toHaveAttribute("src", `/api/v1/receipts/${receiptDocumentId}/image`);
+    // A screen's width, not the multi-megabyte original, which the link opens.
+    expect(screen.getByRole("img", { name: "The receipt as photographed" })).toHaveAttribute("src", `/api/v1/receipts/${receiptDocumentId}/image?width=1024`);
+    expect(screen.getByRole("link", { name: "Open the receipt photo at full size" })).toHaveAttribute("href", `/api/v1/receipts/${receiptDocumentId}/image`);
     expect(screen.getByLabelText("Keyboard shortcuts")).toHaveTextContent("accept the top suggestion");
 
     rows[1].focus();

@@ -378,6 +378,10 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
             <ReceiptImage
               documentId={purchase.receipt_document_id}
               alt="The receipt as photographed"
+              // A phone photo or a PDF page is several megabytes at full size; the
+              // review needs a screen's width, and the link opens the original.
+              width={1024}
+              link={{ label: "Open the receipt photo at full size" }}
               className="max-h-[80dvh] w-full rounded-md border border-neutral-200 object-contain dark:border-neutral-800"
             />
           </Disclosure>

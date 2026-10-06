@@ -59,11 +59,15 @@ export function ReceiptsPage() {
         });
       else notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
     } else if (results.length > 1) {
-      const fresh = results.filter((r) => r.created !== false || r.revived).length;
-      const seen = results.length - fresh;
-      const parts = [`Uploaded ${fresh} ${fresh === 1 ? "receipt" : "receipts"}. ${fresh === 1 ? "It" : "They"}'ll appear in Needs you once read.`];
+      const fresh = results.filter((r) => r.created !== false && !r.revived).length;
+      const again = results.filter((r) => r.revived).length;
+      const seen = results.length - fresh - again;
+      const parts: string[] = [];
+      if (fresh > 0) parts.push(`Uploaded ${fresh} ${fresh === 1 ? "receipt" : "receipts"}.`);
+      if (again > 0) parts.push(`${again} removed before ${again === 1 ? "is" : "are"} being read again.`);
+      if (fresh + again > 0) parts.push(`${fresh + again === 1 ? "It" : "They"}'ll appear in Needs you once read.`);
       if (seen > 0) parts.push(`${seen} ${seen === 1 ? "was" : "were"} uploaded before and ${seen === 1 ? "isn't" : "aren't"} read again.`);
-      notice.show({ tone: fresh > 0 ? "success" : "info", message: parts.join(" ") });
+      notice.show({ tone: fresh + again > 0 ? "success" : "info", message: parts.join(" ") });
     }
   };
 

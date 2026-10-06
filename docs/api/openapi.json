@@ -8218,15 +8218,19 @@
         "additionalProperties": false,
         "properties": {
           "page_url": {
-            "maxLength": 2048,
-            "minLength": 8,
-            "title": "Page Url",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page Url"
           }
         },
-        "required": [
-          "page_url"
-        ],
         "title": "ProductPageLookUp",
         "type": "object"
       },
@@ -17282,7 +17286,7 @@
     },
     "/api/v1/products/{product_id}/look-up": {
       "post": {
-        "description": "A page pasted in Add product: the lookup helper reads it (2M with a helper).",
+        "description": "A page pasted in Add product or on a product's page, or the product's barcode:\nthe lookup helper reads it (2M, 2N with a helper).",
         "operationId": "look_up_product_page_api_v1_products__product_id__look_up_post",
         "parameters": [
           {
