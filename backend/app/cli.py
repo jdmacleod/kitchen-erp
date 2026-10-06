@@ -93,10 +93,18 @@ def migrate(
         "--check-barcodes",
         help="Only count how migration 0017 will move product barcodes; change nothing.",
     ),
+    check_normalize: bool = typer.Option(
+        False,
+        "--check-normalize",
+        help="Only count how migration 0030 will re-key receipt wording; change nothing.",
+    ),
 ) -> None:
     """Apply migrations as the owner role, then seed reference units (idempotent)."""
     if check_barcodes:
         _check_barcodes()
+        return
+    if check_normalize:
+        _check_normalize()
         return
     _run_alembic(command.upgrade, revision, "migrating")
     if revision == "head":
@@ -160,6 +168,47 @@ def _check_barcodes() -> None:
     for outcome, label in labels.items():
         if counts.get(outcome):
             typer.echo(f"  {counts[outcome]:>5}  {label}")
+    typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
+
+
+def _check_normalize() -> None:
+    """Dry run of 0030's re-keying, using the migration's own frozen normalizer and plan."""
+    import importlib.util
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import get_settings
+
+    path = Path(__file__).resolve().parent.parent / "alembic/versions/0030_normalize_v2.py"
+    spec = importlib.util.spec_from_file_location("migration_0030", path)
+    assert spec is not None and spec.loader is not None
+    migration = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(migration)
+
+    async def _run() -> tuple[bool, list[list[dict]]]:
+        engine = create_async_engine(get_settings().migration_database_url, poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                applied = (
+                    await conn.execute(text(f"SELECT to_regclass('{migration.BACKUP}')"))
+                ).scalar() is not None
+                rows = []
+                for sql in (migration.LINES_SQL, migration.ALIASES_SQL, migration.SUGGESTIONS_SQL):
+                    rows.append([dict(r) for r in (await conn.execute(text(sql))).mappings()])
+                return applied, rows
+        finally:
+            await engine.dispose()
+
+    applied, (lines, aliases, suggestions) = asyncio.run(_run())
+    if applied:
+        typer.echo("Migration 0030 has already run: receipt wording uses normalizer version 2.")
+        return
+    summary = migration.plan(lines, aliases, suggestions).summary()
+    typer.echo("Migration 0030 would re-key receipt wording (normalizer version 2):")
+    for label, n in summary.items():
+        typer.echo(f"  {n:>5}  {label}")
     typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
 
 
