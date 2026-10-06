@@ -1,7 +1,10 @@
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from app.services.normalize import NORMALIZE_VERSION
 from app.services.normalize import normalize_receipt_text as norm
+from tests.normalize_v1 import normalize_v1
 
 TABLE = [
     ("ITAL BOMBA HOT PEP", "ITAL BOMBA HOT PEP"),
@@ -32,6 +35,16 @@ TABLE = [
     # Leftmost match takes "12.34"; ".56" is not a price, so the dot goes and the
     # digits stay. Version 1 did the same — checked against it, not guessed.
     ("12.34.56", "56"),
+    # Version 2 (#125): a comma is a decimal point inside a price.
+    ("KELP CRISPS 7,25", "KELP CRISPS"),
+    ("KELP CRISPS 7.25", "KELP CRISPS"),
+    ("KELP CRISPS 7,25 F", "KELP CRISPS"),
+    ("COUPON -1,50", "COUPON"),
+    ("2,31 lb @ 3,99/lb FIELD TOM", "FIELD TOM"),
+    ("2 @ 1,99 QUINCE", "QUINCE"),
+    # A comma that is not inside a price is punctuation, as before.
+    ("SALT, FLAKED", "SALT FLAKED"),
+    ("PACK 6,4", "PACK 6 4"),
 ]
 
 
@@ -47,7 +60,47 @@ def test_idempotent(raw: str, _):
 
 
 def test_version_is_recorded_constant():
-    assert NORMALIZE_VERSION == "1"
+    assert NORMALIZE_VERSION == "2"
+
+
+# The differential test against version 1. Version 2 reads a comma exactly as
+# version 1 read a decimal point, and changes nothing else, so for any text:
+#   - with no comma, the versions agree;
+#   - with commas, version 2 equals version 1 run on the text with each comma
+#     made a point.
+# Both halves matter: the second alone would allow a change to text with no comma.
+_RECEIPT_ALPHABET = st.sampled_from(list("AB TX019.,@$/-*&%'\tLBOZKGEA"))
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+def test_v2_matches_v1_without_a_comma(raw: str):
+    raw = raw.replace(",", "")
+    assert norm(raw) == normalize_v1(raw)
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+def test_v2_reads_a_comma_as_v1_read_a_point(raw: str):
+    assert norm(raw) == normalize_v1(raw.replace(",", "."))
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+def test_v2_is_idempotent(raw: str):
+    once = norm(raw)
+    assert norm(once) == once
+
+
+@pytest.mark.parametrize(
+    ("raw", "v1"),
+    [
+        ("KELP CRISPS 7,25", "KELP CRISPS 7 25"),
+        ("COUPON -1,50", "COUPON -1 50"),
+        ("2,31 lb @ 3,99/lb FIELD TOM", "2 31 LB 3 99/LB FIELD TOM"),
+    ],
+)
+def test_the_intended_differences_from_v1(raw: str, v1: str):
+    """What version 1 left in the wording, and version 2 removes."""
+    assert normalize_v1(raw) == v1
+    assert norm(raw) == norm(raw.replace(",", "."))
 
 
 # The text reaching this module comes from OCR or from a language model reading a
