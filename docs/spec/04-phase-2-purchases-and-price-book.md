@@ -95,6 +95,12 @@ Every human confirmation writes or updates an alias. Accepting a suggestion, cho
 
 The review screen shows the receipt image beside the parsed purchase. The header is editable, with ranked location candidates when matching was not confident. Each line shows its raw text, its parsed fields, its resolution and how it was reached, and any flags. Lines that resolved by confirmed alias are visually quiet; attention is drawn to suggestions, unmatched lines, and flags. The reviewer can accept, change, or create a product with the same typeahead and inline creation as manual entry, can mark a line ignored, can correct parsed quantities and prices, can reattach a discount to a different item, and can add or delete lines. Deleting a line that reached the price book follows 2H. The whole screen is keyboard-operable: move between lines, accept the top suggestion, open the typeahead, mark ignore, commit.
 
+**Correcting the lines in one go (#182).** A badly read receipt can be retyped in one table instead of line by line. `PUT /purchases/{id}/lines` takes every line of a purchase that is not committed, in order, each as receipt text, quantity, unit, line total and kind. A row with an `id` edits that saved line; a row without one is a new line; a saved line left out is removed as Delete removes it (2H). A discount or deposit names the item it belongs to by `attach_to`, that item's position in the same list. The rules:
+- One transaction with the purchase locked, as every review edit takes it. A row that names a line of another purchase, names a line twice, attaches to anything but an item, or uses an unknown unit is refused with 422 and nothing changes. A committed purchase is refused with 409 `committed`: it is reopened first, or corrected through the void-and-redo path.
+- A line whose values did not change is left alone, so its product, resolution and flags survive. A changed quantity or unit clears the quantity flags, and a changed amount the price flags, as the single-line edit does. A printed rate is kept while it still makes the line's amount.
+- New lines, and lines whose wording changed or that became items, are resolved again. A line whose product a person already chose (or chose to ignore) keeps that choice; when its wording changed, the alias is learned under the corrected wording, as if the person had confirmed it again. Aliases learned afterwards use the corrected wording too.
+- Lines are numbered 1.. in the order sent; removed lines, kept only as the record behind a voided price, are numbered after them in their old order.
+
 Commit is allowed at any time. Lines still unresolved are committed as `unmatched`; they are part of the purchase and its total but emit no observation. They appear in a **to-identify queue** that lists unmatched lines across all purchases, grouped by vendor and normalized text so that identifying one instance offers to apply the same answer to the others. Identifying a line after commit emits its observation then, dated to the purchase time. Commit emits one observation per resolved item line, with the price reduced by attached discounts, `is_promo` set when any discount was attached, and deposits and tax excluded. A committed receipt purchase can be reopened under the same void-and-re-emit rule as a manual one.
 
 ### Acceptance criteria
@@ -111,6 +117,8 @@ Commit is allowed at any time. Lines still unresolved are committed as `unmatche
 35. An item with an attached discount emits an observation whose price is the line total less the discount and whose `is_promo` is true; a deposit attached to an item does not change its observation price.
 36. A complete review of a ten-line fixture receipt, including creating one new product, can be performed without a pointing device.
 37. Reopening a committed receipt purchase and re-pointing one line voids and re-emits only that line's observation and updates the alias.
+37a. A twenty-line receipt can be retyped and saved in one `PUT /purchases/{id}/lines`; the lines come back in the order sent, numbered from 1, and an unchanged line keeps its product and flags (#182).
+37b. A line whose garbled wording is corrected in that table resolves by the alias for the corrected wording, and a line whose product a person had chosen keeps it and teaches its alias the corrected wording (#182).
 
 ## 2E — Price book views and comparison
 
