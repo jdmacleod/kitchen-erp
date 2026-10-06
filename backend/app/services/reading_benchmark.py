@@ -45,7 +45,7 @@ from app.core.config import get_settings
 from app.core.db import WORKER_APPLICATION_NAME
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
-from app.ingest import llm, raster, readers
+from app.ingest import llm, raster, readers, structure
 from app.ingest.errors import (
     InvalidModelOutput,
     ModelMissing,
@@ -368,12 +368,16 @@ def drop_repeated_tail(transcript: str, run: int = REPEATED_RUN) -> str:
     return transcript
 
 
-def _post_passes(result: Any) -> list[lines_stage.ParsedLine]:
+def _post_passes(
+    result: Any, receipt_text: str = "", header: ReceiptHeader | None = None
+) -> list[lines_stage.ParsedLine]:
     """The lines stage's deterministic passes, exactly as the pipeline runs them."""
-    parsed = lines_stage.parse_model_lines(result)
-    parsed, _ = lines_stage.merge_quantity_lines(parsed)
-    parsed, _ = lines_stage.fold_regular_prices(parsed)
-    return parsed
+    return structure.post_passes(
+        result,
+        receipt_text,
+        None if header is None else header.total,
+        None if header is None else header.tax,
+    ).lines
 
 
 async def _read_text(client: LlmClient, receipt_text: str, reading: Reading) -> None:
@@ -388,7 +392,7 @@ async def _read_text(client: LlmClient, receipt_text: str, reading: Reading) -> 
     if lines.lines is None:
         reading.error = lines.reason or "lines_unparsed"
         return
-    reading.lines = _post_passes(lines.lines)
+    reading.lines = _post_passes(lines.lines, receipt_text, header)
     if lines.unread_parts:
         reading.error = "lines_partial"
 
@@ -438,7 +442,7 @@ async def _read_vision(client: LlmClient, image: bytes, reading: Reading) -> Non
             return
     reading.boxes_total = len(answer.lines)
     reading.boxes_valid = sum(1 for line in answer.lines if valid_box(line.box))
-    reading.lines = _post_passes(answer.without_boxes())
+    reading.lines = _post_passes(answer.without_boxes(), header=reading.header)
 
 
 async def read_receipt(

@@ -689,7 +689,7 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate"];
 
 /** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
 function editableMoney(stored: string | null | undefined): string {
@@ -720,6 +720,13 @@ const FLAG_LABELS: Record<string, string> = {
   exceeds_total: "more than the receipt total",
   // A tax letter OCR read as a third decimal ("6.378"), cut back to the cents.
   tax_code_as_digit: "tax letter read as a digit",
+  // #181: line structure fixed from the printed arithmetic.
+  qty_from_prefix: "count printed before the name",
+  no_amount_printed: "prints no amount",
+  kind_from_wording: "a product, not a saving",
+  regular_price_from_text: "regular price restored",
+  footer_text: "footer text?",
+  tax_from_rate: "tax from its rate",
 };
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */
