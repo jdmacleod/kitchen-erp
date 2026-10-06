@@ -101,7 +101,8 @@ async def look_up(proposal_id: uuid.UUID, user: CurrentUser, db: DbSession) -> L
 async def look_up_product_page(
     product_id: uuid.UUID, payload: ProductPageLookUp, user: CurrentUser, db: DbSession
 ) -> LookupRequestOut:
-    """A page pasted in Add product: the lookup helper reads it (2M with a helper)."""
+    """A page pasted in Add product or on a product's page, or the product's barcode:
+    the lookup helper reads it (2M, 2N with a helper)."""
     request = await lookups.ask_for_product_page(db, user, product_id, payload.page_url)
     return LookupRequestOut.model_validate(request)
 

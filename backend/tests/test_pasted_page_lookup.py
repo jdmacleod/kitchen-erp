@@ -156,3 +156,25 @@ async def test_a_page_from_no_known_store_brings_details_but_no_listing(
     assert r["outcome"] == "update_opened"
     update = (await admin_client.get(f"/api/v1/product-proposals/{r['proposal_id']}")).json()
     assert update["listing"] is None and update["price"] is None
+
+
+# "Look this up online" from a product's own page (found by /devex-review on 2026-10-05):
+# with no page, the product's barcode goes to the helper.
+async def test_a_product_with_a_barcode_is_looked_up_by_it(admin_client, helper):
+    oats = await make_product(
+        admin_client, "Oats", "Rolled oats", barcode="0 12345 67890 5".replace(" ", "")
+    )
+    r = await admin_client.post(f"/api/v1/products/{oats['id']}/look-up", json={})
+    assert r.status_code == 200, r.text
+    request = r.json()
+    assert request["kind"] == "gtin" and request["value"].endswith("012345678905")
+    again = await admin_client.post(f"/api/v1/products/{oats['id']}/look-up", json={})
+    assert again.json()["id"] == request["id"]
+    r = await post_answer(helper, answer(request["id"], price=None, title="Rolled Oats 1kg"))
+    assert r.json()["outcome"] == "update_opened", r.text
+
+
+async def test_without_a_barcode_a_page_is_needed(admin_client, helper):
+    oats = await make_product(admin_client, "Oats", "Rolled oats")
+    r = await admin_client.post(f"/api/v1/products/{oats['id']}/look-up", json={})
+    assert r.status_code == 409 and r.json()["error"]["code"] == "nothing_to_look_up"

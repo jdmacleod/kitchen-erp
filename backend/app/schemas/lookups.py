@@ -23,7 +23,8 @@ class LookupRequestOut(ApiModel):
 
 
 class ProductPageLookUp(ApiModel):
-    page_url: str = Field(min_length=8, max_length=2048)
+    # Without a page, the product's barcode is looked up (its photo, name and size).
+    page_url: str | None = Field(default=None, min_length=8, max_length=2048)
 
 
 class LookupQueue(ApiModel):

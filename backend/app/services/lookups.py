@@ -45,6 +45,7 @@ from app.models import (
     LookupRequest,
     Product,
     ProductCapture,
+    ProductIdentifier,
     ProductImage,
     ProductProposal,
     VendorListing,
@@ -112,9 +113,11 @@ async def ask_for_proposal(
 
 
 async def ask_for_product_page(
-    db: AsyncSession, user: AppUser, product_id: uuid.UUID, page_url: str
+    db: AsyncSession, user: AppUser, product_id: uuid.UUID, page_url: str | None
 ) -> LookupRequest:
-    """A page pasted in Add product, for the product it created (2M with a helper).
+    """A page pasted in Add product or on a product's page (2M with a helper), or, with
+    no page, the product's barcode: "Look this up online" for a product the household
+    already has.
 
     The helper reads it; its answer opens a Product update, with the page's listing and
     posted price when the page is one of the household's vendors'."""
@@ -122,8 +125,28 @@ async def ask_for_product_page(
         raise ApiError(
             409, "no_helper", "No lookup helper is set up, so this page can't be read from here."
         )
-    if await db.get(Product, product_id) is None:
+    product = await db.get(Product, product_id)
+    if product is None:
         raise ApiError(404, "not_found", "No such product.")
+    if page_url is None:
+        code = await db.scalar(
+            select(ProductIdentifier.value).where(
+                ProductIdentifier.product_id == product_id, ProductIdentifier.scheme == "gtin"
+            )
+        )
+        if code is None:
+            raise ApiError(
+                409, "nothing_to_look_up", "This product has no barcode; paste a page instead."
+            )
+        existing = await _open(db, product_id=product_id, kind="gtin", value=code)
+        if existing is not None:
+            return existing
+        request = LookupRequest(
+            id=new_id(), kind="gtin", product_id=product_id, value=code, requested_by=user.id
+        )
+        db.add(request)
+        await db.commit()
+        return request
     try:
         page_url, _ = canonical_url(page_url)
     except ValueError:
