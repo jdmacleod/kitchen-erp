@@ -720,7 +720,7 @@ const FLAG_LABELS: Record<string, string> = {
   exceeds_total: "more than the receipt total",
   // A tax letter OCR read as a third decimal ("6.378"), cut back to the cents.
   tax_code_as_digit: "tax letter read as a digit",
-  // #181: line structure fixed from the printed arithmetic.
+  // Issue 181: line structure fixed from the printed arithmetic.
   qty_from_prefix: "count printed before the name",
   no_amount_printed: "prints no amount",
   kind_from_wording: "a product, not a saving",
