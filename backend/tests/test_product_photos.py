@@ -465,3 +465,21 @@ async def test_the_same_photo_on_two_products_prepares_for_both(admin_client, pr
     for owner in (product["id"], other["id"]):
         [photo] = (await photos_of(admin_client, owner))["items"]
         assert photo["status"] == "active", photo
+
+
+async def test_needs_a_photo_lists_products_with_no_main_photo(admin_client, product):
+    """GET /products?no_photo=true: the products still to photograph (#184), also with
+    a search."""
+    bare = await make_product(admin_client, "Pearl barley", "Barley sack")
+    await upload(admin_client, product["id"], jpeg())
+    assert await work() == 1
+
+    async def names(**params) -> list[str]:
+        r = await admin_client.get("/api/v1/products", params=params)
+        assert r.status_code == 200, r.text
+        return [p["name"] for p in r.json()["items"]]
+
+    assert await names(no_photo="true") == [bare["name"]]
+    assert await names(no_photo="true", q="barley") == [bare["name"]]
+    assert await names(no_photo="true", q="oat") == []
+    assert sorted(await names()) == sorted([bare["name"], product["name"]])

@@ -249,6 +249,18 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Sub-phase 1G; a reader for the file
 
+### Stock photos for produce and counter items, by ingredient
+
+**What:** For a product with no photo whose ingredient has a freely licensed stock photo (for example from Wikimedia Commons, CC-licensed), show that photo marked as a stock photo, with its attribution, until the household adds its own.
+
+**Why:** Produce, loose goods and meat or deli counter items have no barcode and rarely a store page with a usable photo, so neither the barcode lookup nor the name search can give them one (#184).
+
+**Context:** Deferred by the issue rulings board on 2026-10-06 (card U2): the "Needs a photo" filter and the helper's search by name were built, this was not. It needs a design for where a licence, an author and a source address are stored and shown for a photo that belongs to an ingredient rather than a product, and it would be a new outbound source, so it lives in the private helper, off by default (non-negotiable 9).
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** A design for ingredient-level photos and their attribution
+
 ## Operations
 
 ### Backup refuses to overwrite an existing backup
