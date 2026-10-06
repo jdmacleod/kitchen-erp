@@ -11,6 +11,8 @@ import { Alert, Button, Card, focusRing, secondaryLinkClass, tapTarget } from ".
 
 const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   receipt: { label: "Receipt", tone: "neutral" },
+  // Squash, not tomato: nothing failed, but its lines are far off its total (issue 121).
+  receipt_held: { label: "Careful look", tone: "warn" },
   // The one kind in tomato: a read that failed is the only row about an error (G5).
   receipt_failed: { label: "Couldn't read", tone: "danger" },
   identify: { label: "Identify", tone: "neutral" },
