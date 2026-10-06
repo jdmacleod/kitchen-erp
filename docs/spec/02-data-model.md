@@ -105,10 +105,14 @@ product(
   exclusive_vendor_id FK vendor?,            -- single-source items and vendor-specific produce
   density_override NUMERIC(10,5)?, density_override_source?, density_override_confirmed BOOLEAN DEFAULT false,
   active BOOLEAN DEFAULT true, notes?,
+  merged_into FK product?,                   -- set on the duplicate of a product merge (#179, 0028)
   CHECK ((pack_qty IS NULL) = (pack_unit IS NULL)),
-  CHECK ((density_override IS NULL) = (density_override_source IS NULL))
+  CHECK ((density_override IS NULL) = (density_override_source IS NULL)),
+  CHECK (merged_into IS NULL OR (NOT active AND merged_into <> id))
 )
 ```
+
+Merging a duplicate product into the one to keep (#179) never touches its price observations, which are facts. The duplicate becomes inactive with `merged_into` naming the survivor, and the price views report its observations under the survivor, normalized against the survivor's pack and density. Its identifiers, vendor listings, photos, receipt aliases, receipt lines, pending update proposals and open lookups are re-pointed to the survivor in the same transaction; the survivor's own fields are not changed. Merges stay one level deep: merging A into B re-points anything already merged into A, and a merged product can't be a survivor or be reactivated.
 
 A brandless product tied to a vendor is how unbranded produce keeps its identity: the strawberries from one stand are a different product from a supermarket's, with their own quality rating and price history, while both fulfil the ingredient strawberries. The density override exists because density sometimes varies by brand enough to matter, kosher salt being the standard example.
 
@@ -392,7 +396,7 @@ The runtime role may update only `payload` on `product_capture`, and a trigger a
 
 ### Views
 
-`price_current` joins non-voided observations to `price_norm`, leaving out posted prices (`source = listing`, 2L); `price_current_all` and the views built on it include them, for the "Include posted prices" filter. `offer_latest` yields, for each product and vendor location, the most recent current observation that applies there; for vendors with `price_scope = chain`, an observation at any of the vendor's locations applies to every active location of that vendor. `ingredient_offer` builds on `offer_latest` to give, per ingredient and location, the candidate products with their normalized unit prices and quality ratings, which is what comparison screens and the Phase 4 planner consume.
+`price_current` joins non-voided observations to `price_norm`, reporting each under `COALESCE(product.merged_into, product_id)` with the recorded product kept as `observed_product_id` (#179), and leaving out posted prices (`source = listing`, 2L); `price_current_all` and the views built on it include them, for the "Include posted prices" filter. `offer_latest` yields, for each product and vendor location, the most recent current observation that applies there; for vendors with `price_scope = chain`, an observation at any of the vendor's locations applies to every active location of that vendor. `ingredient_offer` builds on `offer_latest` to give, per ingredient and location, the candidate products with their normalized unit prices and quality ratings, which is what comparison screens and the Phase 4 planner consume.
 
 ## Forward compatibility
 

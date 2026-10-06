@@ -228,6 +228,13 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - A Labels card follows, one row per label photo (Front label, Nutrition, Ingredients, Shelf tag) with its read text beneath.
 - In Price records, a posted price reads "Posted online, not counted in cheapest".
 
+**Product page: merging a duplicate (#179).**
+- The header's secondary actions are "Merge into…" and Deactivate (or Activate); below 1024px they share one "More actions" sheet, as on Vendors.
+- "Merge into…" opens a card under the meta line: a product typeahead labelled "Product to keep". Choosing the product itself says "Choose another product to keep."
+- Choosing another product opens a tomato confirmation panel, as the ingredient merge's: "Merge {this} into {kept}?", what goes there ("3 prices, 1 code and 1 receipt wording go to {kept}."), any unit warnings in a squash box (the packs' units differ; prices that wait on a density), "This can't be undone here.", then Merge (danger) and Cancel, with focus on Cancel. "Choose another product" goes back to the typeahead.
+- After the merge the Notice reads "Merged into {kept}." with "Open {kept}", and the page shows the merged state.
+- **Merged product:** a neutral notice under the header, "Merged into {kept}. Its prices, codes, photos and receipt wordings are there now.", linking to the kept product. The header has no actions.
+
 **Product page: price records (#73).**
 - A "Price records" card sits under the prices chart and lists every current price for the product: amount per quantity, location, date, and whether it was a shelf price or came from a purchase.
 - **Shelf price:** a "Void" action (tomato, secondary weight) opens an inline form under the row. A reason is required ("Why is it wrong?") and is kept with the voided price. Confirming voids it; it leaves the chart, cheapest and compare, and the original stays for audit.
