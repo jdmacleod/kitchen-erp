@@ -150,6 +150,14 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         purchased_at = header_stage.parse_local_datetime(
             header.purchased_at_local, settings.household_timezone, settings.receipt_date_order
         )
+        purchased_at, when_flags = header_stage.datetime_from_text(
+            header.purchased_at_local,
+            purchased_at,
+            text,
+            settings.household_timezone,
+            settings.receipt_date_order,
+        )
+        flags.extend(when_flags)
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
         header, total_flags = readers.apply_printed_total(header, text)
