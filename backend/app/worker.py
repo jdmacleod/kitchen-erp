@@ -24,7 +24,7 @@ from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
-from app.services import lookups, naming, product_jobs
+from app.services import lookups, naming, product_jobs, resolution
 
 log = get_logger(__name__)
 
@@ -100,13 +100,20 @@ def loop_error_fields(exc: BaseException) -> dict[str, str]:
     return fields
 
 
+def prepare() -> bool:
+    """What the worker sets up before its loop. Receipts are resolved here, not in
+    the api, so the model ranker is installed here too; True when it was."""
+    return resolution.install_default_ranker()
+
+
 async def run(poll_seconds: float = 5.0) -> None:
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
     me = worker_id()
-    log.info("worker started", extra={"poll_seconds": poll_seconds, "worker": me})
+    ranker = prepare()
+    log.info("worker started", extra={"poll_seconds": poll_seconds, "worker": me, "ranker": ranker})
     sessionmaker = get_sessionmaker()
     last_refresh = float("-inf")
     while not stop.is_set():

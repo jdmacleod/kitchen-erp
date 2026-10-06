@@ -445,3 +445,23 @@ async def test_stage_results_are_append_only(
         await app_conn.execute("UPDATE product_stage_result SET duration_ms = 0")
     with pytest.raises(asyncpg.IntegrityConstraintViolationError, match="append-only"):
         await owner_conn.execute("DELETE FROM product_stage_result WHERE id = $1", row["id"])
+
+
+# Regression: two clips whose pages share an image (a store's badge on every product
+# page) stored one upload; the first job removed it and the second failed with
+# upload_missing. Found by /devex-review on 2026-10-05.
+async def test_the_same_photo_on_two_products_prepares_for_both(admin_client, product):
+    other = (
+        await admin_client.post(
+            "/api/v1/products",
+            json={"ingredient_id": product["ingredient"]["id"], "name": "Second product"},
+        )
+    ).json()
+    shared = jpeg()
+    first = (await upload(admin_client, product["id"], shared)).json()["items"][0]
+    second = (await upload(admin_client, other["id"], shared)).json()["items"][0]
+    assert first["id"] != second["id"]
+    assert await work() == 2
+    for owner in (product["id"], other["id"]):
+        [photo] = (await photos_of(admin_client, owner))["items"]
+        assert photo["status"] == "active", photo

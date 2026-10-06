@@ -450,6 +450,24 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     """Prepare one photo (an ``image_process`` job). app.services.product_jobs dispatches."""
     started = time.monotonic()
     image = await get_image(db, job.product_image_id)  # type: ignore[arg-type]
+    if image.sha256 is None and _incoming_upload(image) is None:
+        # The same bytes for another product or proposal (a store's badge on every
+        # page it shows) share one upload, and the first job to prepare them removed
+        # it: use the original that job stored instead of failing.
+        done = (
+            await db.execute(
+                select(ProductImage)
+                .where(
+                    ProductImage.upload_sha256 == image.upload_sha256,
+                    ProductImage.sha256.is_not(None),
+                    ProductImage.id != image.id,
+                )
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if done is not None:
+            image.sha256, image.width, image.height = done.sha256, done.width, done.height
+            image.phash = done.phash
     try:
         processed = await anyio.to_thread.run_sync(_process_files, image)
     except StageFailure as exc:
