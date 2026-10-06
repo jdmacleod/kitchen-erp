@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import asdict
 from typing import Literal
 
 from fastapi import APIRouter, Query, Response, status
@@ -23,12 +24,14 @@ from app.schemas.catalog import (
     MeasureUpdate,
     ProductCreate,
     ProductList,
+    ProductMergeIn,
+    ProductMergeOut,
     ProductOut,
     ProductUpdate,
     SearchOut,
     UsdaSuggestionList,
 )
-from app.services import catalog, usda
+from app.services import catalog, product_merge, usda
 
 router = APIRouter(tags=["catalog"])
 
@@ -231,6 +234,25 @@ async def deactivate_product(product_id: uuid.UUID, _: CurrentUser, db: DbSessio
 @router.post("/products/{product_id}/activate", response_model=ProductOut)
 async def activate_product(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ProductOut:
     return ProductOut.model_validate(await catalog.set_product_active(db, product_id, True))
+
+
+@router.post("/products/{product_id}/merge/preview", response_model=ProductMergeOut)
+async def merge_product_preview(
+    product_id: uuid.UUID, body: ProductMergeIn, _: CurrentUser, db: DbSession
+) -> ProductMergeOut:
+    """What merging this product into another would do; nothing is written (#179)."""
+    done = await product_merge.merge_preview(db, body.survivor_id, product_id)
+    return ProductMergeOut(**asdict(done))
+
+
+@router.post("/products/{product_id}/merge", response_model=ProductMergeOut)
+async def merge_product(
+    product_id: uuid.UUID, body: ProductMergeIn, _: CurrentUser, db: DbSession
+) -> ProductMergeOut:
+    """Merge this product into ``survivor_id``: it becomes inactive, and its prices,
+    codes, listings, photos and receipt wordings belong to the survivor (#179)."""
+    done = await product_merge.merge(db, body.survivor_id, product_id)
+    return ProductMergeOut(**asdict(done))
 
 
 @router.post("/products/{product_id}/density-override/confirm", response_model=ProductOut)

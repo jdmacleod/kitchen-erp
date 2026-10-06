@@ -10,7 +10,7 @@ import uuid
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Context, Decimal
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -40,9 +40,21 @@ def unit_price(price: Decimal, canonical_qty: Decimal) -> Decimal:
 # --- normalization ----------------------------------------------------------
 
 
+def observed_as(product_ids):
+    """Observation product ids reported under ``product_ids``: themselves and every
+    product merged into one of them (#179; merges are one level deep)."""
+    return select(Product.id).where(
+        or_(Product.id.in_(product_ids), Product.merged_into.in_(product_ids))
+    )
+
+
 async def _norm_row(db: AsyncSession, observation: PriceObservation) -> PriceNorm:
     product = await db.get(Product, observation.product_id)
     assert product is not None
+    if product.merged_into is not None:
+        # A merged product's prices compare as its survivor's: its pack, its density.
+        product = await db.get(Product, product.merged_into)
+        assert product is not None
     ingredient = (
         await db.execute(
             select(Ingredient)
@@ -134,7 +146,7 @@ async def recompute_for_ingredient(
 
     With ``commit=False`` it only flushes (the merge's single commit, O2)."""
     product_ids = select(Product.id).where(Product.ingredient_id == ingredient_id)
-    where = PriceObservation.product_id.in_(product_ids)
+    where = PriceObservation.product_id.in_(observed_as(product_ids))
     if not canonical_unit_changed:
         where = where & (
             PriceNorm.observation_id.is_(None)
@@ -158,7 +170,7 @@ async def recompute_for_product_core(db: AsyncSession, product_id: uuid.UUID) ->
     A count recorded without a pack ("1 each" of an ingredient counted in pieces) needed
     no bridge then, and may cross one now, so counts are recomputed too."""
     counts = select(UnitRow.code).where(UnitRow.dimension == "count")
-    where = (PriceObservation.product_id == product_id) & (
+    where = PriceObservation.product_id.in_(observed_as([product_id])) & (
         PriceNorm.observation_id.is_(None)
         | (PriceNorm.status != "ok")
         | (PriceNorm.bridge_kind != "none")
@@ -274,7 +286,7 @@ async def list_observations(
 ) -> tuple[list[PriceObservation], str | None]:
     stmt = _observation_query().order_by(PriceObservation.id.desc()).limit(limit + 1)
     if product_id is not None:
-        stmt = stmt.where(PriceObservation.product_id == product_id)
+        stmt = stmt.where(PriceObservation.product_id.in_(observed_as([product_id])))
     if vendor_location_id is not None:
         stmt = stmt.where(PriceObservation.vendor_location_id == vendor_location_id)
     if not include_voided:
