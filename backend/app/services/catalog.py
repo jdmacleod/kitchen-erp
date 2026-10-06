@@ -729,6 +729,7 @@ async def list_products(
     q: str | None = None,
     category: CategoryKey | Literal["none"] | None = None,
     barcode: str | None = None,
+    no_photo: bool = False,
     limit: int = 50,
     cursor: str | None = None,
 ) -> tuple[list[ProductListItem], str | None]:
@@ -738,7 +739,8 @@ async def list_products(
     first page (D12). A ranked search has no next page, like the typeahead. A
     ``barcode`` is an exact match and ignores the other filters. ``category="none"``
     is the products whose ingredient has no category key: none at all, or free
-    text the synonym map doesn't know (they show no chip).
+    text the synonym map doesn't know (they show no chip). ``no_photo`` keeps the
+    products with no main photo, the ones still to photograph (#184).
     """
     uncategorized = category == "none"
     category_values = await _category_values(db, category) if category else None
@@ -756,6 +758,7 @@ async def list_products(
             ingredient_id=ingredient_id,
             category_values=category_values,
             uncategorized=uncategorized,
+            no_photo=no_photo,
         )
         rows, next_cursor = await _products_by_id(db, [h.id for h in hits]), None
     else:
@@ -765,6 +768,7 @@ async def list_products(
             include_inactive=include_inactive,
             category_values=category_values,
             uncategorized=uncategorized,
+            no_photo=no_photo,
             limit=limit,
             cursor=cursor,
         )
@@ -785,6 +789,7 @@ async def _product_page(
     limit: int,
     cursor: str | None,
     uncategorized: bool = False,
+    no_photo: bool = False,
 ) -> tuple[list[Product], str | None]:
     # Keyset on (lower(name), id), with lower(name) as Postgres computes it, so
     # the cursor compares exactly the way the ORDER BY sorts.
@@ -800,6 +805,8 @@ async def _product_page(
         )
     elif category_values is not None:
         stmt = stmt.join(Product.ingredient).where(Ingredient.category.in_(category_values))
+    if no_photo:
+        stmt = stmt.where(Product.primary_image_id.is_(None))
     after = decode_keyset(cursor)
     if after is not None:
         name_after, id_after = after
@@ -1206,6 +1213,7 @@ async def search_products(
     ingredient_id: uuid.UUID | None = None,
     category_values: list[str] | None = None,
     uncategorized: bool = False,
+    no_photo: bool = False,
 ) -> list[SearchHit]:
     ql = q.strip().lower()
     if not ql:
@@ -1228,6 +1236,8 @@ async def search_products(
     elif category_values is not None:
         filters.append("i.category = ANY(CAST(:category_values AS text[]))")
         params["category_values"] = category_values
+    if no_photo:
+        filters.append("p.primary_image_id IS NULL")
     sql = text(_SEARCH_SQL.format(filters=" AND ".join(filters) or "TRUE"))
     rows = await db.execute(sql, params)
     hits: list[SearchHit] = []
