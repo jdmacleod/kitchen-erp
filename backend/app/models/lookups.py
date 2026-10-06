@@ -15,12 +15,13 @@ from app.models.base import Base, UUIDPrimaryKey
 
 
 class LookupRequest(UUIDPrimaryKey, Base):
-    """Something the helper may look up: a barcode, a page, or a photo's cutout."""
+    """Something the helper may look up: a barcode, a page, a photo's cutout, an image, or
+    a branded product's name (#184)."""
 
     __tablename__ = "lookup_request"
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('gtin', 'page', 'cutout', 'image')", name="ck_lookup_request_kind"
+            "kind IN ('gtin', 'page', 'cutout', 'image', 'name')", name="ck_lookup_request_kind"
         ),
         CheckConstraint(
             "status IN ('open', 'answered', 'closed')", name="ck_lookup_request_status"

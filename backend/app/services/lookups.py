@@ -28,7 +28,7 @@ from typing import Any
 
 import anyio
 from pydantic import ValidationError
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import proposals as merging
@@ -112,8 +112,47 @@ async def ask_for_proposal(
     return request
 
 
+def name_query(product: Product) -> str:
+    """What a name search sends: the product's public facts only (non-negotiable 9)."""
+    query: dict[str, str] = {"brand": product.brand or "", "name": product.name}
+    if product.pack_qty is not None and product.pack_unit:
+        query["pack_qty"] = format(product.pack_qty.normalize(), "f")
+        query["pack_unit"] = product.pack_unit
+    return json.dumps(query, sort_keys=True)
+
+
+async def ask_by_name(db: AsyncSession, user: AppUser, product: Product) -> LookupRequest:
+    """ "Search by name" for a branded product with no barcode (#184): the helper
+    searches by brand, name and size, and a match it is sure of waits as a Product
+    update with its barcode and photo."""
+    if not (product.brand or "").strip():
+        raise ApiError(409, "nothing_to_look_up", "A search by name needs the product's brand.")
+    if any(i.scheme == "gtin" for i in product.identifiers):
+        raise ApiError(
+            409, "has_barcode", "This product has a barcode; look the barcode up instead."
+        )
+    existing = await _open(db, product_id=product.id, kind="name")
+    if existing is not None:
+        return existing
+    request = LookupRequest(
+        id=new_id(),
+        kind="name",
+        product_id=product.id,
+        value=name_query(product),
+        requested_by=user.id,
+    )
+    db.add(request)
+    await db.commit()
+    return request
+
+
 async def ask_for_product_page(
-    db: AsyncSession, user: AppUser, product_id: uuid.UUID, page_url: str | None
+    db: AsyncSession,
+    user: AppUser,
+    product_id: uuid.UUID,
+    page_url: str | None,
+    *,
+    by_name: bool = False,
 ) -> LookupRequest:
     """A page pasted in Add product or on a product's page (2M with a helper), or, with
     no page, the product's barcode: "Look this up online" for a product the household
@@ -128,6 +167,8 @@ async def ask_for_product_page(
     product = await db.get(Product, product_id)
     if product is None:
         raise ApiError(404, "not_found", "No such product.")
+    if by_name:
+        return await ask_by_name(db, user, product)
     if page_url is None:
         code = await db.scalar(
             select(ProductIdentifier.value).where(
@@ -657,7 +698,7 @@ async def counts(db: AsyncSession) -> dict[str, Any]:
         await db.execute(
             select(func.count(), func.min(LookupRequest.created_at)).where(
                 LookupRequest.status == "open",
-                or_(LookupRequest.kind == "gtin", LookupRequest.kind == "page"),
+                LookupRequest.kind.in_(("gtin", "page", "name")),
             )
         )
     ).one()

@@ -5380,7 +5380,8 @@
               "gtin",
               "page",
               "cutout",
-              "image"
+              "image",
+              "name"
             ],
             "title": "Kind",
             "type": "string"
@@ -8568,6 +8569,11 @@
       "ProductPageLookUp": {
         "additionalProperties": false,
         "properties": {
+          "by_name": {
+            "default": false,
+            "title": "By Name",
+            "type": "boolean"
+          },
           "page_url": {
             "anyOf": [
               {
@@ -17400,6 +17406,18 @@
             }
           },
           {
+            "description": "only products with no main photo",
+            "in": "query",
+            "name": "no_photo",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "only products with no main photo",
+              "title": "No Photo",
+              "type": "boolean"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -17839,7 +17857,7 @@
     },
     "/api/v1/products/{product_id}/look-up": {
       "post": {
-        "description": "A page pasted in Add product or on a product's page, or the product's barcode:\nthe lookup helper reads it (2M, 2N with a helper).",
+        "description": "A page pasted in Add product or on a product's page, the product's barcode, or\n(``by_name``) its brand, name and size: the lookup helper reads it (2M, 2N, #184).",
         "operationId": "look_up_product_page_api_v1_products__product_id__look_up_post",
         "parameters": [
           {
