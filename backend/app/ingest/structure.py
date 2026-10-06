@@ -21,6 +21,7 @@ from app.ingest.lines import (
     _REGULAR_PRICE,
     _SAVING,
     CENTS,
+    QTY_FLAGS,
     RECONCILE_TOLERANCE,
     ParsedLine,
     _amounts,
@@ -48,6 +49,12 @@ from app.ingest.schemas import ReceiptLines
 #   loyalty sentence; kept for review, never dropped (pattern 6).
 # tax_from_rate: the tax line was read at its taxable base; it takes the amount
 #   the base at the printed rate comes to (pattern 7).
+# negative_from_text: an item whose amount is printed with a trailing minus
+#   ("10.00-") is a saving, and became a discount (pattern 8).
+# points_not_money: a loyalty-points count ("1300 PTS") read as an amount counts
+#   for nothing (pattern 9).
+# payment_row: a payment ("GIFT CARD 18.10", "BAL 78.20") read as an item counts
+#   for nothing, and the receipt adds up more closely without it (pattern 10).
 STRUCTURE_FLAGS = frozenset(
     {
         "qty_from_prefix",
@@ -56,6 +63,9 @@ STRUCTURE_FLAGS = frozenset(
         "regular_price_from_text",
         "footer_text",
         "tax_from_rate",
+        "negative_from_text",
+        "points_not_money",
+        "payment_row",
     }
 )
 
@@ -81,10 +91,13 @@ def post_passes(
     parsed, dropped = fold_regular_prices(parsed)
     quantity_prefix(parsed)
     regular_price_from_text(parsed, receipt_text)
+    savings_printed_negative(parsed, receipt_text)
+    points_not_money(parsed)
     flag_footer_rows(parsed)
     unjoined_quantity_rows(parsed)
     tax_from_rate(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
+    payment_rows(parsed, printed_total, header_tax)
     return PostPasses(_renumber(parsed), merged, dropped)
 
 
@@ -321,14 +334,158 @@ def tax_from_rate(lines: list[ParsedLine]) -> None:
                 break
 
 
+# --- 8. A saving printed negative, read as an item ---------------------------
+
+
+def _money(amount: Decimal) -> str:
+    return f"{amount.quantize(CENTS)}"
+
+
+def _prints_negative(row: str, amount: Decimal) -> bool:
+    """Whether the row prints ``amount`` as a negative: "10.00-" or "-10.00"."""
+    figure = re.escape(_money(amount))
+    return bool(re.search(rf"(?<![\d.]){figure}\s*-|-\s*\$?{figure}(?![\d])", row))
+
+
+def _rows_with(receipt_text: str, raw_text: str) -> list[str]:
+    wanted = " ".join(raw_text.split()).lower()
+    return [row for row in _rows(receipt_text) if wanted in " ".join(row.split()).lower()]
+
+
+def savings_printed_negative(lines: list[ParsedLine], receipt_text: str = "") -> None:
+    """An item whose amount is printed negative is a saving: it becomes a discount.
+
+    A till prints a saving as "10.00-" (or "-10.00"), often on a row of its own
+    beneath the item. Read as an item, it was added instead of subtracted. The
+    proof is the print: the line's own text shows its amount negative, or the one
+    row of the receipt text that holds the line's text does. The discount
+    attaches to the item printed above it.
+    """
+    for i, line in enumerate(lines):
+        if line.line_kind != "item" or line.line_total <= 0:
+            continue
+        rows = [line.raw_text] if prints_an_amount(line.raw_text) else []
+        if not rows and receipt_text:
+            rows = _rows_with(receipt_text, line.raw_text)
+        if len(rows) != 1 or not _prints_negative(rows[0], line.line_total):
+            continue
+        line.line_kind = "discount"
+        line.qty = line.unit = line.unit_price = None
+        line.flags = [f for f in line.flags if f not in QTY_FLAGS]
+        line.flags.append("negative_from_text")
+        above = next((p for p in reversed(lines[:i]) if p.line_kind == "item"), None)
+        if above is not None:
+            line.parent_seq = above.seq
+            line.flags.append("parent_inferred")
+
+
+# --- 9. Loyalty points read as money ----------------------------------------
+
+_POINTS = re.compile(r"\b(?:pts|points?)\b", re.IGNORECASE)
+
+
+def _is_points_count(text: str, amount: Decimal) -> bool:
+    """Whether ``amount`` is a whole number the text prints as points.
+
+    Money is printed with its cents; a points count is not. The number must
+    stand beside the points word ("1300 PTS", "POINTS EARNED 125") and never
+    appear with cents.
+    """
+    if amount != amount.to_integral_value() or amount <= 0:
+        return False
+    whole = re.escape(str(int(amount)))
+    bare = rf"(?<![\d.,]){whole}(?![\d]|[.,]\d)"
+    if re.search(rf"(?<![\d.,]){whole}[.,]\d{{2}}", text):
+        return False
+    return bool(
+        re.search(rf"{bare}\s*(?:pts|points?)\b", text, re.IGNORECASE)
+        or re.search(rf"\b(?:pts|points?)\b[^\d$]{{0,20}}{bare}", text, re.IGNORECASE)
+    )
+
+
+def points_not_money(lines: list[ParsedLine]) -> None:
+    """A loyalty-points count read as an amount counts for nothing.
+
+    "Spend $125 get 1300PTS 1300 PTS" read as a 1,300 discount, or "POINTS
+    EARNED 125" as a 125 one, took the receipt far below its total. The row is
+    kept, as an item at zero, for review to see.
+    """
+    for line in lines:
+        if line.line_total <= 0 or line.line_kind == "tax":
+            continue
+        if not _POINTS.search(line.raw_text) or not _is_points_count(
+            line.raw_text, line.line_total
+        ):
+            continue
+        line.line_kind = "item"
+        line.line_total = Decimal("0")
+        line.parent_seq = None
+        line.unit_price = None
+        line.flags.append("points_not_money")
+    _detach_from(lines, "points_not_money")
+
+
+def _detach_from(lines: list[ParsedLine], flag: str) -> None:
+    """Nothing hangs off a row that is not a purchase of its own."""
+    for line in lines:
+        parent = next((p for p in lines if p.seq == line.parent_seq), None)
+        if parent is not None and flag in parent.flags:
+            line.parent_seq = None
+
+
+# --- 10. A payment read as an item ------------------------------------------
+
+# How a till names a payment, a balance or change. A purchased gift card prints
+# ACTIVATED or ACTIVATION, and is an item.
+_PAYMENT = re.compile(
+    r"\b(?:gift\s*card|shop\s*card|tender(?:ed)?|cash|change(?:\s+due)?|visa|master\s*card|"
+    r"amex|debit|credit|interac|bal(?:ance)?|amount\s+paid|paid|approved)\b",
+    re.IGNORECASE,
+)
+_ACTIVATED = re.compile(r"activat", re.IGNORECASE)
+
+
+def payment_rows(
+    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
+) -> None:
+    """A payment read as an item counts for nothing, when the receipt agrees.
+
+    Tender, gift-card and balance rows printed below the total are how the
+    receipt was paid, not what was bought. Read as items, they added the total
+    again. Worded as a payment and never as a purchased card, each such item
+    goes to zero only when the receipt then adds up more closely to its printed
+    total; without one, nothing changes. The row is kept for review.
+    """
+    if printed_total is None:
+        return
+    for line in lines:
+        if line.line_kind != "item" or line.line_total <= 0:
+            continue
+        text = line.raw_text
+        if not _PAYMENT.search(text) or _ACTIVATED.search(text):
+            continue
+        before = _difference(lines, printed_total, header_tax)
+        amount = line.line_total
+        line.line_total = Decimal("0")
+        if _difference(lines, printed_total, header_tax) < before:
+            line.unit_price = None
+            line.flags.append("payment_row")
+        else:
+            line.line_total = amount
+    _detach_from(lines, "payment_row")
+
+
 __all__ = [
     "STRUCTURE_FLAGS",
     "PostPasses",
     "flag_footer_rows",
     "items_read_as_discounts",
+    "payment_rows",
+    "points_not_money",
     "post_passes",
     "quantity_prefix",
     "regular_price_from_text",
+    "savings_printed_negative",
     "tax_from_rate",
     "unjoined_quantity_rows",
 ]

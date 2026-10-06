@@ -213,3 +213,122 @@ def test_a_tax_line_read_at_its_base_takes_the_amount():
 def test_a_tax_line_read_right_is_left_alone():
     (line,) = _passes(("SALES TAX 31.40 @ 8.25% = 2.59", "tax", "2.59"))
     assert line.line_total == Decimal("2.59") and line.flags == []
+
+
+# --- 8. A saving printed negative, read as an item ---------------------------
+
+
+def test_an_amount_printed_negative_is_a_saving_on_the_item_above():
+    lines = _passes(
+        ("2203 NORTHWIND PARKA 39.99 A", "item", "39.99"),
+        ("4471 SAVING/2203 8.00- A", "item", "8.00"),
+        ("1180 LARCH TEA 4.29", "item", "4.29"),
+    )
+    parka, saving, tea = lines
+    assert (saving.line_kind, saving.line_total, saving.parent_seq) == (
+        "discount",
+        Decimal("8.00"),
+        parka.seq,
+    )
+    assert saving.qty is None and saving.flags == ["negative_from_text", "parent_inferred"]
+    assert tea.line_kind == "item" and "negative_from_text" not in tea.flags
+
+
+def test_the_receipt_text_shows_the_minus_when_the_line_omits_its_amount():
+    # A vision or text reader gave the row without its amount; the scan has it.
+    text = "2203 NORTHWIND PARKA   39.99 A\n4471 SAVING/2203   8.00- A\nSUBTOTAL 31.99"
+    lines = _passes(
+        ("2203 NORTHWIND PARKA", "item", "39.99"),
+        ("4471 SAVING/2203", "item", "8.00"),
+        text=text,
+    )
+    assert [(line.line_kind, "negative_from_text" in line.flags) for line in lines] == [
+        ("item", False),
+        ("discount", True),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("rows", "text"),
+    [
+        # Printed positive: an item.
+        ((("4471 SAVING/2203 8.00 A", "item", "8.00"),), ""),
+        # The scan holds the line's text twice: which row is it?
+        ((("MOSS SOAP", "item", "3.00"),), "MOSS SOAP 3.00-\nMOSS SOAP 3.00"),
+        # A hyphen in a name is not a minus.
+        ((("2-PK WREN CANDLES 6.50", "item", "6.50"),), ""),
+    ],
+)
+def test_an_amount_not_proven_negative_stays_an_item(rows, text):
+    (line,) = _passes(*rows, text=text)
+    assert line.line_kind == "item" and "negative_from_text" not in line.flags
+
+
+# --- 9. Loyalty points read as money ----------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("raw", "kind", "amount"),
+    [
+        ("Spend $40 get 500PTS 500 PTS", "discount", "500"),
+        ("POINTS EARNED 60", "discount", "60"),
+        ("Bonus 25 points", "item", "25"),
+    ],
+)
+def test_a_points_count_counts_for_nothing(raw, kind, amount):
+    item, points = _passes(("HARBOR OATS 1KG 5.49", "item", "5.49"), (raw, kind, amount))
+    assert (points.line_kind, points.line_total, points.parent_seq) == ("item", Decimal("0"), None)
+    assert "points_not_money" in points.flags
+    assert item.line_total == Decimal("5.49")
+
+
+@pytest.mark.parametrize(
+    ("raw", "amount"),
+    [
+        ("POINTS REDEEMED 5.00-", "5.00"),  # money, printed with its cents
+        ("REWARD SAVING 3.00", "3.00"),  # no points word
+        ("2 PT CRATE 12", "12"),  # PT is not points
+    ],
+)
+def test_money_beside_points_wording_is_left_alone(raw, amount):
+    _, line = _passes(("HARBOR OATS 1KG 5.49", "item", "5.49"), (raw, "discount", amount))
+    assert line.line_kind == "discount" and line.line_total == Decimal(amount)
+    assert "points_not_money" not in line.flags
+
+
+# --- 10. A payment read as an item ------------------------------------------
+
+
+def test_payment_rows_count_for_nothing_when_the_receipt_then_adds_up():
+    lines = _passes(
+        ("FERN BREAD 12.50", "item", "12.50"),
+        ("COPPER JAM 7.50", "item", "7.50"),
+        ("GIFT CARD 15.00", "item", "15.00"),
+        ("BAL: 22.40", "item", "22.40"),
+        ("CASH 5.00", "item", "5.00"),
+        total="20.00",
+    )
+    by = _by_text(lines)
+    for raw in ("GIFT CARD 15.00", "BAL: 22.40", "CASH 5.00"):
+        assert (by[raw].line_total, "payment_row" in by[raw].flags) == (Decimal("0"), True)
+    assert by["FERN BREAD 12.50"].line_total == Decimal("12.50")
+
+
+def test_a_bought_gift_card_and_a_payment_word_that_is_bought_stay_items():
+    lines = _passes(
+        ("LANTERN GIFT CARD ACTIVATED 25.00", "item", "25.00"),
+        ("CASH BOX STEEL 9.00", "item", "9.00"),  # zeroing it would break the total
+        ("CASHEW MIX 4.00", "item", "4.00"),  # not the word "cash"
+        total="38.00",
+    )
+    assert [line.line_total for line in lines] == [
+        Decimal("25.00"),
+        Decimal("9.00"),
+        Decimal("4.00"),
+    ]
+    assert not any("payment_row" in line.flags for line in lines)
+
+
+def test_without_a_printed_total_payment_rows_are_left_as_read():
+    (line,) = _passes(("GIFT CARD 15.00", "item", "15.00"))
+    assert line.line_total == Decimal("15.00") and "payment_row" not in line.flags
