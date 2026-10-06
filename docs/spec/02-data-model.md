@@ -95,6 +95,8 @@ product(
   id, ingredient_id FK,
   brand?, name,
   pack_qty NUMERIC?, pack_unit FK unit?,     -- both null means sold by variable weight or loose
+  pack_count INTEGER?, piece_name?,           -- the pieces a mass or volume pack holds (19 oz, 5 links);
+                                              -- pack_qty stays the total ("6 x 330 ml" is 1980 ml, 6 pieces)
   kind CHECK IN (branded, private_label, random_weight, loose, unbranded_vendor),   -- 1H
   attributes JSONB DEFAULT '{}',             -- 1H: validated per kind and category (meat and seafood only so far)
   primary_image_id FK product_image? DEFERRABLE INITIALLY DEFERRED,   -- 1I: chosen by select_primary

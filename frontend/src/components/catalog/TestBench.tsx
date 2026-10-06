@@ -18,6 +18,7 @@ const bridgeLabel: Record<Provenance["bridge_kind"], string> = {
   density_override: "product density override",
   measure: "named measure",
   pack: "product pack",
+  pack_count: "pieces in the product's pack",
 };
 
 /**

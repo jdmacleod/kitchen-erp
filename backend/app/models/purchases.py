@@ -48,7 +48,7 @@ RESOLUTIONS = (
 )
 OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
 NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
-BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack")
+BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack", "pack_count")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:

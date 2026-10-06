@@ -6212,7 +6212,8 @@
               "density",
               "density_override",
               "measure",
-              "pack"
+              "pack",
+              "pack_count"
             ],
             "title": "Bridge Kind",
             "type": "string"
@@ -7615,6 +7616,19 @@
             ],
             "title": "Notes"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -7642,6 +7656,19 @@
               }
             ],
             "title": "Pack Unit"
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           },
           "quality_rating": {
             "anyOf": [
@@ -7881,6 +7908,17 @@
             ],
             "title": "Notes"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -7912,6 +7950,17 @@
                 "type": "null"
               }
             ]
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           },
           "quality_rating": {
             "anyOf": [
@@ -8071,6 +8120,17 @@
             ],
             "title": "Notes"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -8102,6 +8162,17 @@
                 "type": "null"
               }
             ]
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           },
           "quality_rating": {
             "anyOf": [
@@ -8406,6 +8477,17 @@
             "title": "Name",
             "type": "string"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -8427,6 +8509,17 @@
               }
             ],
             "title": "Pack Unit"
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           }
         },
         "required": [
@@ -8513,6 +8606,11 @@
           "clear_pack": {
             "default": false,
             "title": "Clear Pack",
+            "type": "boolean"
+          },
+          "clear_pieces": {
+            "default": false,
+            "title": "Clear Pieces",
             "type": "boolean"
           },
           "density_override": {
@@ -8615,6 +8713,19 @@
             ],
             "title": "Notes"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -8642,6 +8753,19 @@
               }
             ],
             "title": "Pack Unit"
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "maxLength": 32,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           },
           "quality_rating": {
             "anyOf": [
@@ -10166,6 +10290,17 @@
             "title": "Name",
             "type": "string"
           },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -10187,6 +10322,17 @@
               }
             ],
             "title": "Pack Unit"
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
           },
           "quality_rating": {
             "anyOf": [

@@ -275,7 +275,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
   };
 
   const busy = create.isPending;
-  const pack = product ? formatPack(product.pack_qty, product.pack_unit) : "";
+  const pack = product ? formatPack(product.pack_qty, product.pack_unit, product.pack_count, product.piece_name) : "";
   // Typed input of any kind, the search text included, is asked about before a
   // drawer discards it (D5).
   const dirty = product !== null || creating !== null || price.trim() !== "" || entryText.trim() !== "";
@@ -415,7 +415,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
 }
 
 function ProductCard({ product, onChange, disabled }: { product: ProductRef; onChange: () => void; disabled?: boolean }) {
-  const pack = formatPack(product.pack_qty, product.pack_unit);
+  const pack = formatPack(product.pack_qty, product.pack_unit, product.pack_count, product.piece_name);
   return (
     <Card>
       <div className="flex items-center justify-between gap-3">
@@ -561,7 +561,7 @@ function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undef
               className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
             >
               <span className="min-w-0 truncate font-medium">{productTitle(p)}</span>
-              <span className="shrink-0 text-neutral-600 dark:text-neutral-400">{formatPack(p.pack_qty, p.pack_unit)}</span>
+              <span className="shrink-0 text-neutral-600 dark:text-neutral-400">{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}</span>
             </button>
           </li>
         ))}
@@ -644,7 +644,7 @@ export function ObservationResult({ observation }: { observation: Observation })
   }
 
   if (norm.status === "ok") {
-    const bridge = norm.bridge_kind && norm.bridge_kind !== "none" ? ` via ${norm.bridge_kind}${norm.bridge_source ? ` (${norm.bridge_source}${norm.bridge_confirmed === false ? ", unconfirmed" : ""})` : ""}` : "";
+    const bridge = norm.bridge_kind && norm.bridge_kind !== "none" ? ` via ${norm.bridge_kind.replace("_", " ")}${norm.bridge_source ? ` (${norm.bridge_source}${norm.bridge_confirmed === false ? ", unconfirmed" : ""})` : ""}` : "";
     return (
       <Alert tone="success">
         {recorded}{" "}

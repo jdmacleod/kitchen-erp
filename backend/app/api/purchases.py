@@ -73,6 +73,8 @@ def observation_out(o) -> ObservationOut:
             "brand": o.product.brand,
             "pack_qty": o.product.pack_qty,
             "pack_unit": o.product.pack_unit,
+            "pack_count": o.product.pack_count,
+            "piece_name": o.product.piece_name,
             "ingredient": {
                 "id": o.product.ingredient.id,
                 "name": o.product.ingredient.name,

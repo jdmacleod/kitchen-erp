@@ -50,3 +50,20 @@ def test_conversion_is_monotone_and_positive(qty, dim, data):
     b = data.draw(st.sampled_from(BY_DIM[dim]))
     assert convert_between(qty, a, b, UNITS) > 0
     assert convert_between(qty * 2, a, b, UNITS) > convert_between(qty, a, b, UNITS)
+
+
+@settings(max_examples=300)
+@given(
+    quantities,
+    st.integers(min_value=1, max_value=10000),
+    st.sampled_from(BY_DIM["mass"] + BY_DIM["volume"]),
+    quantities,
+)
+def test_a_pack_of_pieces_is_exactly_its_count(packs, count, unit, size):
+    """One pack is `count` pieces, exactly, whatever its size or unit; no size leaks in."""
+    from app.units import ConversionContext, Pack, ProductContext, convert
+
+    ctx = ConversionContext("each", product=ProductContext(pack=Pack(size, unit, count)))
+    result = convert(packs, "each", ctx)
+    assert result.qty == packs * count
+    assert result.provenance.bridge_kind == "pack_count"

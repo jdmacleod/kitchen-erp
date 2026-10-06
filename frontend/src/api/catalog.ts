@@ -91,6 +91,9 @@ export interface Product {
   name: string;
   pack_qty: string | null;
   pack_unit: string | null;
+  /** The pieces a weighed or measured pack holds (19 oz, 5 links), and what one is called. */
+  pack_count?: number | null;
+  piece_name?: string | null;
   barcode: string | null;
   quality_rating: number | null;
   exclusive_vendor_id: string | null;
@@ -131,13 +134,15 @@ export interface SearchHit {
   barcode: string | null;
   pack_qty: string | null;
   pack_unit: string | null;
+  pack_count?: number | null;
+  piece_name?: string | null;
   quality_rating: number | null;
   ingredient: IngredientSummary;
   match: MatchKind;
   score: string;
 }
 
-export type BridgeKind = "none" | "density" | "density_override" | "measure" | "pack";
+export type BridgeKind = "none" | "density" | "density_override" | "measure" | "pack" | "pack_count";
 
 export interface Provenance {
   bridge_kind: BridgeKind;
@@ -231,6 +236,8 @@ export interface ProductCreateInput {
   name: string;
   pack_qty?: string;
   pack_unit?: string;
+  pack_count?: number;
+  piece_name?: string;
   barcode?: string;
   quality_rating?: number;
   exclusive_vendor_id?: string;
@@ -246,6 +253,9 @@ export interface ProductUpdateInput {
   pack_qty?: string;
   pack_unit?: string;
   clear_pack?: boolean;
+  pack_count?: number;
+  piece_name?: string;
+  clear_pieces?: boolean;
   barcode?: string;
   clear_barcode?: boolean;
   quality_rating?: number | null;
@@ -627,10 +637,24 @@ export function useConfirmDensityOverride(id: string) {
 
 // --- formatting -------------------------------------------------------------
 
-/** "12 oz" or "" when the product has no pack. */
-export function formatPack(pack_qty: string | null, pack_unit: string | null): string {
+/** "12 oz", "19 oz · 5 links", or "" when the product has no pack. */
+export function formatPack(pack_qty: string | null, pack_unit: string | null, pack_count?: number | null, piece_name?: string | null): string {
   if (pack_qty === null || pack_unit === null) return "";
-  return `${trimDecimal(pack_qty)} ${pack_unit}`;
+  const size = `${trimDecimal(pack_qty)} ${pack_unit}`;
+  return pack_count ? `${size} · ${formatPieces(pack_count, piece_name)}` : size;
+}
+
+/** "5 links", "1 link", "6 pieces" when the piece has no name. */
+export function formatPieces(count: number, name?: string | null): string {
+  const piece = name?.trim() || "piece";
+  return `${count} ${count === 1 ? piece : plural(piece)}`;
+}
+
+/** A short English plural for a piece's name: link → links, box → boxes, patty → patties. */
+function plural(word: string): string {
+  if (/[^aeiou]y$/i.test(word)) return `${word.slice(0, -1)}ies`;
+  if (/(s|x|z|ch|sh)$/i.test(word)) return `${word}es`;
+  return `${word}s`;
 }
 
 /** Drop trailing zeros from a decimal string for display; never for storage. */

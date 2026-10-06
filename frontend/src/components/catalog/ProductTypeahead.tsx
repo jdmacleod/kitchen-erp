@@ -119,7 +119,7 @@ export function ProductTypeahead({
 }
 
 export function HitRow({ hit }: { hit: SearchHit }) {
-  const pack = formatPack(hit.pack_qty, hit.pack_unit);
+  const pack = formatPack(hit.pack_qty, hit.pack_unit, hit.pack_count, hit.piece_name);
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
       <span className="min-w-0">

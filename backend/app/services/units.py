@@ -59,7 +59,7 @@ async def build_context(
     product_ctx = None
     if product is not None:
         product_ctx = ProductContext(
-            pack=Pack(product.pack_qty, product.pack_unit)
+            pack=Pack(product.pack_qty, product.pack_unit, product.pack_count)
             if product.pack_qty is not None
             else None,
             density_g_per_ml=product.density_override,

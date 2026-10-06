@@ -21,6 +21,9 @@ export interface ProductFormValues {
   name: string;
   pack_qty: string;
   pack_unit: string;
+  /** Pieces in a weighed or measured pack (19 oz holding 5 links), and what one is called. */
+  pack_count: string;
+  piece_name: string;
   barcode: string;
   quality_rating: number | null;
   notes: string;
@@ -35,6 +38,8 @@ export function emptyProductValues(ingredient: IngredientChoice | null = null): 
     name: "",
     pack_qty: "",
     pack_unit: "",
+    pack_count: "",
+    piece_name: "",
     barcode: "",
     quality_rating: null,
     notes: "",
@@ -50,6 +55,8 @@ export function productValues(p: Product): ProductFormValues {
     name: p.name,
     pack_qty: p.pack_qty ?? "",
     pack_unit: p.pack_unit ?? "",
+    pack_count: p.pack_count ? String(p.pack_count) : "",
+    piece_name: p.piece_name ?? "",
     barcode: p.barcode ?? "",
     quality_rating: p.quality_rating,
     notes: p.notes ?? "",
@@ -66,6 +73,10 @@ export function validateProductValues(v: ProductFormValues): string | null {
   const hasUnit = v.pack_unit !== "";
   if (hasQty !== hasUnit) return "Give both a pack quantity and a pack unit, or neither.";
   if (hasQty && !isPositiveDecimal(v.pack_qty)) return "Pack quantity must be a positive number.";
+  if (v.pack_count.trim()) {
+    if (!hasQty) return "Pieces go with a pack quantity and unit.";
+    if (!/^[1-9]\d{0,4}$/.test(v.pack_count.trim())) return "Pieces must be a whole number, like 5.";
+  } else if (v.piece_name.trim()) return "Say how many pieces before naming one.";
   if (v.barcode.trim() && v.barcode.trim().length < 4) return "A barcode needs at least 4 characters.";
   if (v.density_override.trim() && !isPositiveDecimal(v.density_override)) {
     return "Density override must be a positive number of grams per millilitre.";
@@ -124,6 +135,12 @@ export function densityReason(
   if (!from || !to || from === to || from === "count" || to === "count") return null;
   const name = choiceName(ingredient);
   return `${packUnit} is a ${from} unit and ${name} is measured in ${canonical}, so this product's prices can't be compared until there is a density. You can add one here or later; saving without one is fine.`;
+}
+
+/** Pieces go with a mass or volume pack; a count pack already says how many. */
+export function piecesFit(packUnit: string, units: Unit[]): boolean {
+  const dimension = units.find((u) => u.code === packUnit)?.dimension;
+  return dimension === "mass" || dimension === "volume";
 }
 
 /** The product fields, shared by the create and edit pages. State lives in the page. */
@@ -236,6 +253,28 @@ export function ProductForm({
           emptyLabel="No pack"
         />
       </div>
+
+      {piecesFit(values.pack_unit, units.data ?? []) ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            id={`${idPrefix}-pack-count`}
+            label="Pieces in the pack (optional)"
+            inputMode="numeric"
+            autoComplete="off"
+            value={values.pack_count}
+            onChange={(e) => set("pack_count", e.target.value)}
+            hint="For a pack sold by weight or volume that also says how many, like 5 links."
+          />
+          <Field
+            id={`${idPrefix}-piece-name`}
+            label="Piece name (optional)"
+            autoComplete="off"
+            value={values.piece_name}
+            onChange={(e) => set("piece_name", e.target.value)}
+            hint="One piece, like link or roll."
+          />
+        </div>
+      ) : null}
 
       <Field
         id={`${idPrefix}-barcode`}

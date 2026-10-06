@@ -12,7 +12,7 @@ from app.schemas.catalog import Categorized, IngredientCreate, IngredientMatch, 
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import", "listing"]
 NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
-BridgeKind = Literal["none", "density", "density_override", "measure", "pack"]
+BridgeKind = Literal["none", "density", "density_override", "measure", "pack", "pack_count"]
 
 
 class IngredientRef(Categorized):
@@ -27,6 +27,8 @@ class ProductRef(ApiModel):
     brand: str | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
+    pack_count: int | None = None
+    piece_name: str | None = None
     ingredient: IngredientRef
 
 

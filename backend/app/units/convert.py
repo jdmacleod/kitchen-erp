@@ -5,7 +5,9 @@ Resolution order is fixed and documented in the Phase 1 specification:
 1. `from_unit` is a named measure label for the ingredient: multiply by its
    canonical quantity.
 2. `from_unit` is a count unit and a product with a pack is supplied: convert
-   the pack quantity recursively and multiply.
+   the pack quantity recursively and multiply. When the canonical unit is a
+   count and the pack states its pieces (19 oz, 5 pieces), one pack is that
+   many pieces.
 3. `from_unit` shares a dimension with the canonical unit: apply unit factors.
 4. It crosses mass and volume: product density override, else ingredient
    density, else `no_density`.
@@ -29,7 +31,7 @@ CONVERT_VERSION = "1"
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 
 FailureCode = Literal["no_density", "unknown_measure", "no_pack", "no_qty"]
-BridgeKind = Literal["none", "density", "density_override", "measure", "pack"]
+BridgeKind = Literal["none", "density", "density_override", "measure", "pack", "pack_count"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +46,7 @@ class Measure:
 class Pack:
     qty: Decimal
     unit: str
+    count: int | None = None  # pieces in the pack, when it states them beside its size
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,6 +167,19 @@ def convert(
     if unit.dimension == "count" and (pack_applies or canonical_dim != "count"):
         if pack_applies:
             each = _mul(qty, unit.to_base_factor)
+            pack_dim = units[product.pack.unit].dimension if product.pack.unit in units else None
+            if canonical_dim == "count" and product.pack.count and pack_dim != "count":
+                # The pack's stated pieces; its size never becomes a count (no piece weight).
+                return CanonicalQty(
+                    _mul(each, Decimal(product.pack.count)),
+                    canonical,
+                    Provenance(
+                        "pack_count",
+                        None,
+                        True,
+                        f"{product.pack.qty} {product.pack.unit}, {product.pack.count} pieces",
+                    ),
+                )
             inner_context = ConversionContext(
                 canonical_unit=canonical,
                 density_g_per_ml=context.density_g_per_ml,
