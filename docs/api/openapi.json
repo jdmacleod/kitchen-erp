@@ -3902,6 +3902,7 @@
                   "alias",
                   "fuzzy",
                   "llm",
+                  "similar",
                   "code"
                 ],
                 "type": "string"
