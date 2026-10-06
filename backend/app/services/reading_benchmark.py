@@ -130,15 +130,23 @@ def default_configs(
     ocr_model: str,
     vision_models: Iterable[str],
     arms: Iterable[str] = ARMS,
+    think: str = "",
 ) -> list[Config]:
-    """The grid: arm (a) and arm (b) once per text model, arm (c) once per vision model."""
+    """The grid: arm (a) and arm (b) once per text model, arm (c) once per vision model.
+
+    ``think`` is LLM_THINK. It changes what the text model is asked, so it is part
+    of arm (a) and arm (b)'s prompt version, and rows with another setting are not
+    the same configuration.
+    """
     wanted, texts = set(arms), list(text_models)
+    suffix = f"+think={think}" if think else ""
     configs = []
     if "a" in wanted:
-        configs += [Config("a", t, TEXT_PROMPT_VERSION, text_model=t) for t in texts]
+        configs += [Config("a", t, TEXT_PROMPT_VERSION + suffix, text_model=t) for t in texts]
     if "b" in wanted:
         configs += [
-            Config("b", ocr_model, OCR_PROMPT_VERSION, LONG_SIDE, text_model=t) for t in texts
+            Config("b", ocr_model, OCR_PROMPT_VERSION + suffix, LONG_SIDE, text_model=t)
+            for t in texts
         ]
     if "c" in wanted:
         configs += [Config("c", m, VISION_PROMPT_VERSION, LONG_SIDE) for m in vision_models]
@@ -146,9 +154,12 @@ def default_configs(
 
 
 def label(row: dict[str, Any]) -> str:
-    """A configuration's name in the summary: arm (b) names the text model it ends in."""
+    """A configuration's name in the summary: arm (b) names the text model it ends in,
+    and a text arm names its LLM_THINK setting."""
     text_model = row.get("text_model")
-    return f"{row['model']}→{text_model}" if row["arm"] == "b" and text_model else row["model"]
+    name = f"{row['model']}→{text_model}" if row["arm"] == "b" and text_model else row["model"]
+    think = (row.get("prompt_version") or "").partition("+think=")[2]
+    return f"{name} think={think}" if think else name
 
 
 # --- which receipts, and the truth -------------------------------------------------
@@ -1055,7 +1066,7 @@ def _fmt(value: Any, pct: bool = True) -> str:
 
 
 SUMMARY_HEADER = (
-    "arm model                  reconcile [80% CI]    runaway total  items±  alias  "
+    "arm model                            reconcile [80% CI]    runaway total  items±  alias  "
     + "amounts witness/tol/false  boxes  s p50/max  tok p50"
 )
 
@@ -1066,7 +1077,7 @@ def _summary_row(row: dict[str, Any]) -> str:
         _fmt(row[k]) for k in ("ocr_support", "ocr_support_tolerant", "false_support")
     )
     return (
-        f"({row['arm']}) {label(row)[:22]:<22} "
+        f"({row['arm']}) {label(row)[:32]:<32} "
         f"{_fmt(row['reconcile_share']):>5} [{_fmt(row['ci80_low'])}–{_fmt(row['ci80_high'])}]"
         f"  {_fmt(row['runaway_share']):>7} {_fmt(row['header_total_exact']):>6}  {mad:>5}"
         f"  {_fmt(row['alias_hit_rate']):>5}  {_fmt(row['line_amount_exact_share']):>7}"

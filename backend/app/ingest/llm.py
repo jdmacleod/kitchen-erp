@@ -122,6 +122,10 @@ REPEAT_LIMIT = "repeat_limit"
 # The done reasons of a reply cut short: out of room, or aborted for repeating.
 UNFINISHED = {"length", REPEAT_LIMIT}
 
+# Whether each (server, model) can think, from /api/show, for LLM_THINK.
+_THINKS: dict[tuple[str, str], bool] = {}
+SHOW_TIMEOUT_SECONDS = 10.0
+
 # Tests set this to a transport that replays recorded responses; production leaves
 # it None (real sockets to OLLAMA_BASE_URL).
 http_transport: httpx.AsyncBaseTransport | None = None
@@ -353,6 +357,7 @@ class LlmClient:
         )
         self.max_retries = max_retries if max_retries is not None else settings.llm_max_retries
         self.connect_timeout_seconds = settings.llm_connect_timeout_seconds
+        self.think_setting = settings.llm_think
         self.last_done_reason: str | None = None
         self.last_usage: Usage | None = None
         self._call_started = 0.0
@@ -426,7 +431,7 @@ class LlmClient:
         *,
         images: list[bytes] | None = None,
         retry: RetryPolicy | None = None,
-        think: bool | None = None,
+        think: bool | str | None = None,
         system: str | None = None,
     ) -> tuple[T, int]:
         """Extract ``model_cls`` from the receipt. Returns (value, attempts).
@@ -436,8 +441,9 @@ class LlmClient:
         default ``max_retries`` extra times at the same temperature, then raises
         :class:`InvalidModelOutput`. An unreachable server raises
         :class:`ModelUnavailable` immediately (the job backs off instead).
-        ``think`` is sent only when given; vision calls send False, because a
-        reasoning reply can fill the output cap before the answer starts (#60).
+        ``think`` is sent when given, else as LLM_THINK says (:meth:`default_think`);
+        vision calls send False, because a reasoning reply can fill the output cap
+        before the answer starts (#60).
         ``system`` replaces the receipt system prompt for other documents, such
         as product photos and labels (2L); it must keep the same guard.
         """
@@ -456,6 +462,8 @@ class LlmClient:
             "format": model_cls.model_json_schema(),
             "stream": False,
         }
+        if think is None:
+            think = await self.default_think()
         if think is not None:
             payload["think"] = think
         # A deadline bounds every attempt together, not each one: retries after
@@ -507,6 +515,49 @@ class LlmClient:
         error = InvalidModelOutput()
         error.attempts = attempts
         raise error
+
+    async def default_think(self) -> bool | str | None:
+        """What LLM_THINK sends with a call that does not say: None sends nothing.
+
+        Every model accepts false (gpt-oss ignores it and reasons anyway). True
+        and the levels go only to a model whose capabilities include thinking:
+        Ollama answers 400 "does not support thinking" for the others.
+        """
+        setting = self.think_setting
+        if not setting:
+            return None
+        if setting == "false":
+            return False
+        if not await self.supports_thinking():
+            return None
+        return True if setting == "true" else setting
+
+    async def supports_thinking(self) -> bool:
+        """Whether the model lists "thinking" among its capabilities (/api/show).
+
+        Asked once per server and model. A server that does not answer gives
+        False for this call, and is asked again next time.
+        """
+        key = (self.base_url, self.model)
+        if key not in _THINKS:
+            timeout = httpx.Timeout(
+                SHOW_TIMEOUT_SECONDS,
+                connect=min(self.connect_timeout_seconds, SHOW_TIMEOUT_SECONDS),
+            )
+            try:
+                async with httpx.AsyncClient(transport=self.transport, timeout=timeout) as client:
+                    response = await client.post(
+                        f"{self.base_url}/api/show", json={"model": self.model}
+                    )
+                if response.status_code != 200:
+                    raise ValueError(response.status_code)
+                body = response.json()
+            except (httpx.HTTPError, ValueError):
+                log.info("model capabilities unavailable", extra={"model": self.model})
+                return False
+            capabilities = body.get("capabilities") if isinstance(body, dict) else None
+            _THINKS[key] = isinstance(capabilities, list) and "thinking" in capabilities
+        return _THINKS[key]
 
     async def transcribe(
         self,

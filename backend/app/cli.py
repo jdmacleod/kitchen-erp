@@ -895,6 +895,7 @@ def reading_benchmark(
             ocr_model=ocr_model,
             vision_models=_split(models) if models else bench.DEFAULT_VISION_MODELS,
             arms=wanted,
+            think=settings.llm_think,
         )
         options = bench.RunOptions(
             out_dir=out or Path(settings.receipts_path).parent / "benchmarks",
