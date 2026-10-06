@@ -403,11 +403,18 @@ class NamingAsked(ApiModel):
 
 
 class NameProductRow(ApiModel):
-    """A row a person confirmed: its product, and the group it identifies."""
+    """A row a person confirmed: its product, and the group it identifies.
+
+    ``product_id`` uses a product that already exists instead of creating one
+    (#179). Without it, a new product whose name and ingredient match an active
+    product is refused with ``product_exists`` unless ``allow_duplicate`` is set.
+    """
 
     vendor_id: uuid.UUID
     raw_text_norm: str = Field(min_length=1)
     name: str = Field(min_length=1, max_length=200)
+    product_id: uuid.UUID | None = None
+    allow_duplicate: bool = False
     ingredient_id: uuid.UUID | None = None
     ingredient: IngredientCreate | None = None
     pack_qty: Decimal | None = Field(default=None, gt=0)
@@ -415,6 +422,8 @@ class NameProductRow(ApiModel):
 
     @model_validator(mode="after")
     def _fields(self):
+        if self.product_id is not None:
+            return self
         if (self.ingredient_id is None) == (self.ingredient is None):
             raise ValueError("give exactly one of ingredient_id or ingredient")
         if (self.pack_qty is None) != (self.pack_unit is None):
@@ -429,6 +438,8 @@ class NameProductsIn(ApiModel):
 class RowError(ApiModel):
     code: str
     message: str
+    # product_exists: the product with the same name and ingredient (#179).
+    product: ProductRef | None = None
 
 
 class NamedProduct(ApiModel):

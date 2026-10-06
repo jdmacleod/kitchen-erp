@@ -160,4 +160,62 @@ describe("naming new products in bulk", () => {
     await user.click(screen.getByRole("button", { name: "One at a time" }));
     expect(await screen.findByRole("list", { name: "Lines to identify" })).toBeInTheDocument();
   });
+
+  it("offers the existing product with the same name and ingredient instead of a second one (issue 179)", async () => {
+    const existing = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e07", name: "Riverbend bread flour", brand: null };
+    const calls = mockApi(
+      routes(three, (call) => {
+        const [sent] = (call.body as { rows: { raw_text_norm: string; product_id?: string; allow_duplicate?: boolean }[] }).rows;
+        if (sent.product_id || sent.allow_duplicate) {
+          return jsonResponse(200, { results: [{ vendor_id: vendor.id, raw_text_norm: sent.raw_text_norm, product_id: sent.product_id ?? "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e08", applied: 2, error: null }] });
+        }
+        return jsonResponse(200, {
+          results: [{ vendor_id: vendor.id, raw_text_norm: sent.raw_text_norm, product_id: null, applied: 0, error: { code: "product_exists", message: "Riverbend bread flour already exists with this ingredient.", product: existing } }],
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const list = await screen.findByRole("list", { name: "New products to name" });
+    const flourRow = within(list).getByRole("group", { name: `${vendor.name}: RVRBND BREAD FLR 2KG` });
+    await user.click(within(flourRow).getByRole("checkbox", { name: "Include RVRBND BREAD FLR 2KG" }));
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+
+    expect(await within(flourRow).findByRole("alert")).toHaveTextContent("Riverbend bread flour already exists with this ingredient.");
+    await user.click(within(flourRow).getByRole("button", { name: "Use Riverbend bread flour" }));
+    expect(within(flourRow).getByTestId("name-0-use")).toHaveTextContent("Uses the existing product Riverbend bread flour.");
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.filter((c) => c.method === "POST")).toHaveLength(2));
+    const second = calls.filter((c) => c.method === "POST")[1].body as { rows: Record<string, unknown>[] };
+    expect(second.rows[0]).toEqual({ vendor_id: vendor.id, raw_text_norm: "RVRBND BREAD FLR 2KG", name: "Riverbend bread flour", product_id: existing.id });
+    expect(await screen.findByText("Used 1 existing product and identified 2 lines.")).toBeInTheDocument();
+  });
+
+  it("can still create another product of the same name", async () => {
+    const existing = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e07", name: "Riverbend bread flour", brand: null };
+    const calls = mockApi(
+      routes(three, (call) => {
+        const [sent] = (call.body as { rows: { raw_text_norm: string; allow_duplicate?: boolean }[] }).rows;
+        return jsonResponse(200, {
+          results: [
+            sent.allow_duplicate
+              ? { vendor_id: vendor.id, raw_text_norm: sent.raw_text_norm, product_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e08", applied: 2, error: null }
+              : { vendor_id: vendor.id, raw_text_norm: sent.raw_text_norm, product_id: null, applied: 0, error: { code: "product_exists", message: "Riverbend bread flour already exists with this ingredient.", product: existing } },
+          ],
+        });
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const list = await screen.findByRole("list", { name: "New products to name" });
+    const flourRow = within(list).getByRole("group", { name: `${vendor.name}: RVRBND BREAD FLR 2KG` });
+    await user.click(within(flourRow).getByRole("checkbox", { name: "Include RVRBND BREAD FLR 2KG" }));
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await user.click(await within(flourRow).findByRole("button", { name: "Create another" }));
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.filter((c) => c.method === "POST")).toHaveLength(2));
+    const second = calls.filter((c) => c.method === "POST")[1].body as { rows: Record<string, unknown>[] };
+    expect(second.rows[0].allow_duplicate).toBe(true);
+    expect(await screen.findByText("Created 1 product and identified 2 lines.")).toBeInTheDocument();
+  });
 });

@@ -636,14 +636,17 @@ export type NameProductRow = {
   name: string;
   pack_qty?: string;
   pack_unit?: string;
-} & ({ ingredient_id: string } | { ingredient: IngredientCreateInput });
+  /** Create it even though a product of the same name and ingredient exists (issue 179). */
+  allow_duplicate?: boolean;
+} & ({ ingredient_id: string } | { ingredient: IngredientCreateInput } | { product_id: string });
 
 export interface NamedProduct {
   vendor_id: string;
   raw_text_norm: string;
   product_id: string | null;
   applied: number;
-  error: { code: string; message: string } | null;
+  /** `product_exists` carries the product with the same name and ingredient (issue 179). */
+  error: { code: string; message: string; product?: { id: string; name: string; brand: string | null } | null } | null;
 }
 
 export function useNamingRows(enabled: boolean) {
