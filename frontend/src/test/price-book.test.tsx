@@ -184,6 +184,67 @@ describe("needs a bridge", () => {
     expect(rows[0]).toHaveTextContent("no density");
     expect(within(rows[0]).getByRole("link", { name: "Add a density" })).toHaveAttribute("href", `/catalog/ingredients/${flourId}#density-heading`);
     expect(rows[1]).toHaveTextContent("no pack size");
-    expect(within(rows[1]).getByRole("link", { name: "Set the pack" })).toHaveAttribute("href", `/catalog/products/${hits[1].id}`);
+    expect(within(rows[1]).getByRole("button", { name: "Set the pack" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("2 products · 1 needs a pack size")).toBeInTheDocument();
+  });
+
+  it("sets a pack in place, then opens the next product waiting on one", async () => {
+    const user = userEvent.setup();
+    const ryeId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d09";
+    const pack = (id: string, name: string): NeedsBridgeItem => ({
+      ingredient: { id: hits[1].ingredient.id, name: hits[1].ingredient.name, canonical_unit: "g" },
+      product: { id, name, brand: null, pack_qty: null, pack_unit: null },
+      status: "no_pack",
+      observation_count: 1,
+      latest_observed_at: "2026-09-10T15:00:00Z",
+    });
+    let items = [pack(hits[1].id, "Bread Flour"), pack(ryeId, "Larkspur Rye Meal")];
+    const calls = mockApi({
+      ...baseRoutes(),
+      "GET /price-book/needs-bridge": () => jsonResponse(200, { items }),
+      [`PATCH /products/${hits[1].id}`]: () => {
+        items = items.slice(1);
+        return jsonResponse(200, { ...flourProduct, id: hits[1].id, name: "Bread Flour", pack_qty: "500", pack_unit: "g", pack_count: 4 });
+      },
+    });
+    renderApp("/catalog/bridges");
+
+    const table = await screen.findByRole("table", { name: "Needs a bridge" });
+    const [first] = within(table).getAllByTestId("needs-bridge");
+    await user.click(within(first).getByRole("button", { name: "Set the pack" }));
+    const form = screen.getByRole("form", { name: "Pack for Bread Flour" });
+    expect(within(form).getByLabelText("Pack quantity")).toHaveFocus();
+    await user.type(within(form).getByLabelText("Pack quantity"), "500");
+    await user.selectOptions(within(form).getByLabelText("Pack unit"), "g");
+    await user.type(within(form).getByLabelText("Pieces (optional)"), "4");
+    await user.click(within(form).getByRole("button", { name: "Save pack" }));
+
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ pack_qty: "500", pack_unit: "g", pack_count: 4 }));
+    expect(await screen.findByText("Saved the pack for Bread Flour.")).toBeInTheDocument();
+    const next = await screen.findByRole("form", { name: "Pack for Larkspur Rye Meal" });
+    expect(within(next).getByLabelText("Pack quantity")).toHaveFocus();
+    await waitFor(() => expect(within(table).getAllByTestId("needs-bridge")).toHaveLength(1));
+    expect(screen.getByText("1 product · 1 needs a pack size")).toBeInTheDocument();
+  });
+
+  it("checks the pack before saving and closes on Escape", async () => {
+    const user = userEvent.setup();
+    const items: NeedsBridgeItem[] = [
+      { ingredient: { id: hits[1].ingredient.id, name: hits[1].ingredient.name, canonical_unit: "g" }, product: { id: hits[1].id, name: "Bread Flour", brand: null, pack_qty: null, pack_unit: null }, status: "no_pack", observation_count: 1, latest_observed_at: "2026-09-10T15:00:00Z" },
+    ];
+    const calls = mockApi({ ...baseRoutes(), "GET /price-book/needs-bridge": () => jsonResponse(200, { items }) });
+    renderApp("/catalog/bridges");
+
+    await user.click(await screen.findByRole("button", { name: "Set the pack" }));
+    const form = screen.getByRole("form", { name: "Pack for Bread Flour" });
+    await user.click(within(form).getByRole("button", { name: "Save pack" }));
+    expect(within(form).getByText("Pack quantity must be a positive number, like 500.")).toBeInTheDocument();
+    await user.type(within(form).getByLabelText("Pack quantity"), "2");
+    await user.click(within(form).getByRole("button", { name: "Save pack" }));
+    expect(within(form).getByText("Choose a pack unit.")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("form", { name: "Pack for Bread Flour" })).not.toBeInTheDocument();
   });
 });
