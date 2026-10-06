@@ -195,7 +195,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 
 - **Header:** "Add product" is the primary action.
 - **Search:** a 48px field matching name, brand, ingredient or barcode. It searches on the server (`GET /api/v1/products?q=`, D12).
-- **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and a "Show inactive" checkbox at the right.
+- **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and, at the right, a "Needs a photo" checkbox (products with no main photo, `no_photo=true`, #184) and a "Show inactive" checkbox.
 - **Table card:**
   - Columns: Product (a 40px photo or placeholder, then name over brand; PD5), Ingredient (name and category chip), Pack, Quality, and Last paid (price over vendor and date).
   - Quality shows walnut stars with an accessible label (T13b), or "—" when unrated.

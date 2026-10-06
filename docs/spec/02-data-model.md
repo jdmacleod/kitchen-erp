@@ -395,10 +395,10 @@ product_proposal(
 )
 
 lookup_request(
-  id, kind CHECK IN (gtin, page, cutout),
+  id, kind CHECK IN (gtin, page, cutout, image, name),
   proposal_id FK product_proposal?, product_id FK?, product_image_id FK?,   -- exactly one, matching kind (cutout: product_image_id)
   listing_id FK vendor_listing?,              -- a scheduled refresh of this listing (page only)
-  value?,                                     -- the GTIN or page address; null for cutout
+  value?,                                     -- the GTIN, page or image address, or (name) the product's brand, name and pack as JSON; null for cutout
   requested_by FK app_user?,                  -- null when queued automatically (auto-queue setting, cutouts)
   status CHECK IN (open, answered, closed), created_at, answered_at?
 )
