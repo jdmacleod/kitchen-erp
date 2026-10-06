@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./client";
+import type { Trust } from "./purchases";
 
 /** The unified inbox (docs/spec/09, Unified inbox). */
 
@@ -14,6 +15,9 @@ export interface InboxItem {
   created_at: string;
   /** A failed read's ingest error code, for the sentence in lib/ingestErrors.ts. */
   error_code?: string | null;
+  /** A receipt row's reading, for its badge, and how far off with check_lines (issue 122). */
+  trust?: Trust | null;
+  gap?: string | null;
 }
 
 export interface InboxReading {
@@ -28,6 +32,11 @@ export interface InboxReading {
   oldest_at: string | null;
   /** The oldest read has waited longer than INGEST_STALL_MINUTES (D21). */
   stalled: boolean;
+  /** Receipts in the batches being read, and how many are done (issue 122). */
+  batch_done?: number | null;
+  batch_of?: number | null;
+  /** Whole minutes at the recent pace, at least 1; null until any read has finished. */
+  minutes_left?: number | null;
 }
 
 export interface Inbox {
@@ -60,13 +69,26 @@ function counted(n: number, one: string, many: string): string | null {
   return n > 0 ? `${n} ${n === 1 ? one : many}` : null;
 }
 
-/** "Reading 2 receipts and 1 product page…" (09, PD7): one sentence for everything. */
+/** "Reading 4 of 12 receipts", while a batch of several is being read (issue 122). */
+function receiptsPart(reading: InboxReading): string | null {
+  const of = reading.batch_of ?? 0;
+  if (reading.count > 0 && of > 1) return `${Math.min((reading.batch_done ?? 0) + 1, of)} of ${of} receipts`;
+  return counted(reading.count, "receipt", "receipts");
+}
+
+/**
+ * "Reading 2 receipts and 1 product page…" (09, PD7): one sentence for everything,
+ * with an estimate once recent reads give one: "Reading 4 of 12 receipts · about
+ * 8 minutes left" (issue 122).
+ */
 export function readingSentence(reading: InboxReading): string {
   const parts = [
-    counted(reading.count, "receipt", "receipts"),
+    receiptsPart(reading),
     counted(reading.photos ?? 0, "product photo", "product photos"),
     counted(reading.pages ?? 0, "product page", "product pages"),
   ].filter((p): p is string => p !== null);
   const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  const minutes = reading.count > 0 ? reading.minutes_left : null;
+  if (minutes) return `Reading ${list} · about ${minutes} ${minutes === 1 ? "minute" : "minutes"} left`;
   return `Reading ${list}…`;
 }

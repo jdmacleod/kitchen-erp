@@ -6,7 +6,7 @@ import type { Purchase, Removal } from "../api/purchases";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
-import { aliasLine, ingestJobId, manualPurchase, purchaseId, receiptDocumentId, receiptPurchase, receiptPurchaseId, unmatchedLine } from "./purchase-fixtures";
+import { aliasLine, batchRoutes, ingestJobId, manualPurchase, purchaseId, receiptDocumentId, receiptPurchase, receiptPurchaseId, unmatchedLine } from "./purchase-fixtures";
 
 // Removing lines and purchases (#72, #74; spec 10, "Removing lines and purchases").
 
@@ -21,6 +21,7 @@ function baseRoutes() {
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
     "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
+    ...batchRoutes(() => []),
     "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   };
@@ -294,6 +295,7 @@ describe("receipts", () => {
     const calls = mockApi({
       ...baseRoutes(),
       "GET /ingest-jobs": () => jsonResponse(200, { items: jobs }),
+      ...batchRoutes(() => jobs),
       [`POST /ingest-jobs/${ingestJobId}/remove`]: () => {
         jobs = [];
         return jsonResponse(200, { photo_deleted: true });
@@ -322,7 +324,7 @@ describe("receipts", () => {
   });
 
   it("offers no Remove on a failed read that already has a draft", async () => {
-    mockApi({ ...baseRoutes(), "GET /ingest-jobs": () => jsonResponse(200, { items: [{ ...failedJob, purchase_id: receiptPurchaseId }] }) });
+    mockApi({ ...baseRoutes(), ...batchRoutes(() => [{ ...failedJob, purchase_id: receiptPurchaseId }]) });
     renderApp("/shop/receipts");
     const row = await screen.findByTestId("ingest-job");
     expect(within(row).queryByRole("button", { name: "Remove" })).not.toBeInTheDocument();
