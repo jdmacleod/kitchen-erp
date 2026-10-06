@@ -317,6 +317,29 @@ class LineAdd(ApiModel):
     after_seq: int | None = None
 
 
+class LineRow(ApiModel):
+    """One row of "Correct the lines" (#182): a line as it should now read.
+
+    ``id`` names the saved line the row edits; a row without one is a new line.
+    ``attach_to`` is the position, in the same list, of the item a discount or
+    deposit belongs to.
+    """
+
+    id: uuid.UUID | None = None
+    raw_text: str | None = Field(default=None, max_length=500)
+    line_kind: Literal["item", "discount", "tax", "deposit", "fee"] = "item"
+    qty: Decimal | None = Field(default=None, gt=0)
+    unit: str | None = Field(default=None, max_length=16)
+    line_total: Decimal
+    attach_to: int | None = Field(default=None, ge=0)
+
+
+class LinesReplace(ApiModel):
+    """Every line of a draft, in order: a saved line left out is removed (#182)."""
+
+    lines: list[LineRow] = Field(max_length=400)
+
+
 class PurchaseHeaderEdit(ApiModel):
     vendor_location_id: uuid.UUID | None = None
     purchased_at: datetime | None = None
