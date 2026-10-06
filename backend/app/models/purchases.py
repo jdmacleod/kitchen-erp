@@ -42,6 +42,7 @@ RESOLUTIONS = (
     "alias",
     "fuzzy",
     "llm",
+    "similar",
     "manual",
     "unmatched",
     "ignored",

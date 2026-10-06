@@ -1,5 +1,6 @@
 """The resolution ladder (Phase 2D): barcode, confirmed alias, fuzzy alias
-suggestion, model suggestion, human. Only the first two resolve without a person.
+suggestion, model suggestion, similar names, human. Only the first two resolve
+without a person.
 
 Also: alias learning on every human confirmation, the price sanity check, commit
 and reopen of receipt purchases, and the to-identify queue.
@@ -44,7 +45,10 @@ from app.units import CanonicalQty, convert
 
 log = get_logger(__name__)
 
-RESOLVE_VERSION = "1"
+RESOLVE_VERSION = "2"
+
+# Shortlist hits offered as similar names when the model gives nothing (04, 2D).
+SIMILAR_LIMIT = 3
 
 # A model ranker: given the normalized line text and a shortlist of candidate
 # dicts ({"id", "name", "brand", "ingredient"}), return {"product_id": str|None,
@@ -70,7 +74,7 @@ def install_default_ranker() -> bool:
     try:
         from app.ingest.llm import rank_products
     except ImportError:
-        log.info("no model ranker available; resolution stops at fuzzy suggestions")
+        log.info("no model ranker available; resolution offers similar names instead")
         set_ranker(None)
         return False
     set_ranker(rank_products)
@@ -459,10 +463,12 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
         suggestions.extend(await fuzzy_aliases(db, vendor_id, norm))
 
     # 4. Model suggestion: rank a shortlist; never resolves on its own.
-    if not suggestions and norm and _ranker is not None:
+    # 5. With no model, or no usable answer, the shortlist's best hits are offered
+    #    as similar names, never resolved on their own.
+    if not suggestions and norm:
         shortlist = await _shortlist(db, line, norm)
         record["shortlist"] = [c["id"] for c in shortlist]
-        if shortlist:
+        if shortlist and _ranker is not None:
             try:
                 answer = await _ranker(norm, shortlist)
             except Exception as exc:  # the model is optional; never block review
@@ -482,6 +488,18 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
                 )
             elif pid is not None:
                 record["llm_rejected"] = "outside_shortlist"
+        if not suggestions:
+            suggestions.extend(
+                {
+                    "kind": "similar",
+                    "product_id": c["id"],
+                    "ignore": False,
+                    "label": c["name"],
+                    "score": c["score"],
+                }
+                for c in shortlist[:SIMILAR_LIMIT]
+            )
+            record["similar"] = len(suggestions)
 
     line.suggestions = suggestions
     if line.resolution in ("barcode", "identifier", "alias"):
@@ -552,7 +570,7 @@ async def decide_line(
         await pricebook.void(db, live[line.id], "line re-pointed in review", user)
     line.product_id = product_id
     line.resolution = "ignored" if ignore else (accepted_kind or "manual")
-    if line.resolution not in ("alias", "fuzzy", "llm", "manual", "ignored", "barcode"):
+    if line.resolution not in ("alias", "fuzzy", "llm", "similar", "manual", "ignored", "barcode"):
         line.resolution = "manual"
     line.resolved_by = user.id
     line.resolution_confidence = None

@@ -132,7 +132,10 @@ async def test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rej
     )
     line = (await resolve(admin_client, p3, db_session))["lines"][0]
     assert calls and all(c["id"] != pep["id"] for c in calls[0])
-    assert line["resolution"] == "unmatched" and line["suggestions"] == []
+    # The rejected answer leaves only the shortlist's similar names, never resolved.
+    assert line["resolution"] == "unmatched" and line["product"] is None
+    assert [s["kind"] for s in line["suggestions"]] == ["similar"]
+    assert line["suggestions"][0]["product_id"] == rig["id"]
 
     async def honest(norm, shortlist):
         return {"product_id": shortlist[0]["id"], "confidence": 0.8}
@@ -143,10 +146,9 @@ async def test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rej
     )
     line = (await resolve(admin_client, p4, db_session))["lines"][0]
     assert line["resolution"] == "unmatched" and line["product"] is None
-    assert (
-        line["suggestions"][0]["kind"] == "llm"
-        and line["suggestions"][0]["product_id"] == rig["id"]
-    )
+    # A model answer is the only suggestion: no similar names beside it.
+    assert [s["kind"] for s in line["suggestions"]] == ["llm"]
+    assert line["suggestions"][0]["product_id"] == rig["id"]
     # Accepting records the rung and the person.
     r = await admin_client.post(
         f"/api/v1/purchases/{p4}/lines/{line['id']}/resolve",
@@ -160,6 +162,67 @@ async def test_fuzzy_alias_and_llm_only_suggest_and_llm_outside_shortlist_is_rej
     listed = (await admin_client.get("/api/v1/purchases")).json()["items"]
     mine = next(p for p in listed if p["id"] == str(p4))
     assert mine["lines"][0]["resolved_by_name"] == admin.display_name
+
+
+async def test_without_a_model_a_close_catalog_name_is_offered_as_similar(
+    admin_client, admin, db_session
+):
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    oats = await make_product(admin_client, "Rolled oats", "Larkfield Original Rolled Oats")
+    await make_product(admin_client, "Rigatoni", "Rigatoni box")
+    p1 = await make_receipt_purchase(
+        admin.id, loc["id"], [{"raw_text": "LARKFIELD ORIG OATS 4.19", "line_total": "4.19"}]
+    )
+    line = (await resolve(admin_client, p1, db_session))["lines"][0]
+    assert line["resolution"] == "unmatched" and line["product"] is None
+    assert line["suggestions"][0] == {
+        "kind": "similar",
+        "product_id": oats["id"],
+        "ignore": False,
+        "label": "Larkfield Original Rolled Oats",
+        "score": line["suggestions"][0]["score"],
+    }
+    assert all(s["kind"] == "similar" for s in line["suggestions"])
+    assert len(line["suggestions"]) <= resolution.SIMILAR_LIMIT
+
+    # Accepting one records the rung and learns the alias, as a fuzzy hint does.
+    r = await admin_client.post(
+        f"/api/v1/purchases/{p1}/lines/{line['id']}/resolve",
+        json={"product_id": oats["id"], "accepted_kind": "similar"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["lines"][0]["resolution"] == "similar"
+    p2 = await make_receipt_purchase(
+        admin.id, loc["id"], [{"raw_text": "LARKFIELD ORIG OATS 4.29", "line_total": "4.29"}]
+    )
+    line = (await resolve(admin_client, p2, db_session))["lines"][0]
+    assert line["resolution"] == "alias" and line["product"]["id"] == oats["id"]
+
+
+async def test_a_model_that_declines_leaves_similar_names(admin_client, admin, db_session):
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    oats = await make_product(admin_client, "Rolled oats", "Larkfield Original Rolled Oats")
+
+    async def declines(norm, shortlist):
+        return {"product_id": None, "confidence": None}
+
+    set_ranker(declines)
+    p = await make_receipt_purchase(
+        admin.id, loc["id"], [{"raw_text": "LARKFIELD ORIG OATS 4.19", "line_total": "4.19"}]
+    )
+    line = (await resolve(admin_client, p, db_session))["lines"][0]
+    assert line["resolution"] == "unmatched" and line["product"] is None
+    assert [(s["kind"], s["product_id"]) for s in line["suggestions"]] == [("similar", oats["id"])]
+
+
+async def test_a_line_matching_nothing_gets_no_similar_names(admin_client, admin, db_session):
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    await make_product(admin_client, "Rolled oats", "Larkfield Original Rolled Oats")
+    p = await make_receipt_purchase(
+        admin.id, loc["id"], [{"raw_text": "QZXV WUMP 1.00", "line_total": "1.00"}]
+    )
+    line = (await resolve(admin_client, p, db_session))["lines"][0]
+    assert line["resolution"] == "unmatched" and line["suggestions"] == []
 
 
 async def test_barcode_rung_resolves_without_a_person(admin_client, admin, db_session):

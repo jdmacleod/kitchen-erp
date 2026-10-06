@@ -275,7 +275,7 @@ class LineDecision(ApiModel):
     product_id: uuid.UUID | None = None
     ignore: bool = False
     product: ProductCreate | None = None  # create inline, then choose it
-    accepted_kind: Literal["alias", "fuzzy", "llm", "code"] | None = None
+    accepted_kind: Literal["alias", "fuzzy", "llm", "similar", "code"] | None = None
 
     @model_validator(mode="after")
     def _one(self):
