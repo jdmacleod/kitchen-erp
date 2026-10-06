@@ -289,11 +289,14 @@ async def _expected_receipts(
 
 
 async def worker_running(db: AsyncSession) -> bool:
-    """Whether a worker is connected. It would swap models under the benchmark."""
+    """Whether this deployment's worker is connected. It would swap models under the
+    benchmark. Only this database's: another deployment on the same server (a test
+    database beside a household one) has its own worker."""
     row = await db.execute(
         text(
             "SELECT count(*) FROM pg_stat_activity "
-            "WHERE application_name = :name AND pid <> pg_backend_pid()"
+            "WHERE application_name = :name AND pid <> pg_backend_pid() "
+            "AND datname = current_database()"
         ),
         {"name": WORKER_APPLICATION_NAME},
     )
