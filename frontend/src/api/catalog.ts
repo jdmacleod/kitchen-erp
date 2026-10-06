@@ -102,6 +102,8 @@ export interface Product {
   density_override_confirmed: boolean;
   active: boolean;
   notes: string | null;
+  /** The product this one was merged into (issue 179); its page links there. */
+  merged_into?: string | null;
   /** The main photo (1I); null shows the category placeholder. */
   photo?: PhotoSummary | null;
   created_at: string;
@@ -299,6 +301,11 @@ const conflictMessages: Record<string, string> = {
   ingredient_name_taken: "An ingredient with that name already exists.",
   barcode_taken: "Another product already has that barcode.",
   measure_label_taken: "This ingredient already has a measure with that label.",
+  merge_self: "Choose another product to keep.",
+  merge_target_merged: "That product was merged into another; choose the one it became.",
+  merge_target_inactive: "Choose an active product to keep.",
+  already_merged: "This product was already merged.",
+  product_merged: "This product was merged into another and can't be reactivated.",
 };
 
 /** A message for a catalog mutation error, with conflict codes spelled out. */
@@ -624,6 +631,48 @@ export function useSetProductActive(id: string) {
       client.setQueryData(catalogKeys.product(id), updated);
       invalidateProduct(client, id);
     },
+  });
+}
+
+/** What merging a product into another does, or would do (issue 179). */
+export interface ProductMerge {
+  survivor_id: string;
+  loser_id: string;
+  survivor_name: string;
+  loser_name: string;
+  prices: number;
+  listings: number;
+  codes: number;
+  photos: number;
+  aliases: number;
+  lines: number;
+  survivor_pack_unit: string | null;
+  loser_pack_unit: string | null;
+  compare_unit: string;
+  other_dimension_prices: number;
+  other_dimension_units: string[];
+  prices_needing_bridge: number;
+}
+
+/** A trial merge the server rolls back; nothing is written. */
+export function useProductMergePreview(loserId: string, survivorId: string | null) {
+  return useQuery({
+    queryKey: [...catalogKeys.products, "merge-preview", loserId, survivorId ?? ""],
+    queryFn: () =>
+      api<ProductMerge>(`/products/${enc(loserId)}/merge/preview`, { method: "POST", body: { survivor_id: survivorId } }),
+    enabled: Boolean(survivorId),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useMergeProduct(loserId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (survivorId: string) =>
+      api<ProductMerge>(`/products/${enc(loserId)}/merge`, { method: "POST", body: { survivor_id: survivorId } }),
+    // Prices, codes, photos, listings and receipt lines all move: refetch everything.
+    onSuccess: () => void client.invalidateQueries(),
   });
 }
 

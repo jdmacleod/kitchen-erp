@@ -47,6 +47,8 @@ Creating an ingredient asks for a name, a category, and a canonical unit, with t
 
 Creating a product asks for the ingredient it fulfils, with inline creation of a new ingredient from the same form, and then brand, name, pack, barcode, quality rating, and exclusive vendor, all optional except name. The product list is searchable by name, brand, ingredient, and barcode using trigram matching, and this search is exposed as a typeahead endpoint that Phase 2's review and manual-entry screens will reuse. It must return useful results within a keystroke or two for a catalog of a few thousand products.
 
+Duplicate products are merged rather than deleted (#179). "Merge into…" on a product page chooses the product to keep and previews the merge before it is confirmed: what moves (prices, codes, store pages, photos and receipt wordings), whether the two packs are in different units (the kept product's pack stays), and how many of the duplicate's prices are in another dimension and wait on a density. Price observations are facts and are not moved; the duplicate becomes inactive with `merged_into` set, and the price views report its prices under the kept product (02). Everything else that names the duplicate and may change moves in the same transaction. The duplicate's page then says "Merged into {product}" with a link, so old links still resolve. A merge can't be undone from the UI.
+
 A bridge editor on the ingredient page shows the density and every named measure with its source and confirmation state, lets the user add a measured value (for instance after weighing a cup of flour), and offers a small test bench: enter a quantity and unit, see the canonical result and the provenance, or see the typed failure. This bench is how a person builds trust in the conversion library.
 
 ### Acceptance criteria
@@ -59,6 +61,9 @@ A bridge editor on the ingredient page shows the density and every named measure
 18. Accepted suggestions are stored with their source and as unconfirmed, and confirming one is a distinct, recorded action.
 19. The bridge test bench returns the same result as a direct call to `convert` for the same inputs, including failures.
 20. Deactivated ingredients and products disappear from typeahead but remain resolvable by identifier.
+103. (#179) Merging A into B leaves B with A's prices (through the views, normalized against B's pack and density), store pages, codes, photos and receipt aliases, while every `price_observation` row still names A. A becomes inactive with `merged_into = B` and its page says "Merged into B"; a later receipt line matching A's alias resolves to B; recommitting a purchase whose line moved to B voids nothing.
+104. (#179) A merge is one transaction: a failure partway leaves both products and everything that names them unchanged. A preview writes nothing. Merging a product into itself, into a merged or inactive product, or merging one already merged is refused with a specific code, and a merged product can't be reactivated. Merges stay one level deep.
+105. (#179) The preview reports both packs' units and counts the duplicate's prices in a mass or volume unit of another dimension than the ingredient's canonical unit that won't compare without a density; a count price ("1 each") is priced through the kept product's pack and is not counted.
 
 ## 1D — Vendors, locations, and home bases
 

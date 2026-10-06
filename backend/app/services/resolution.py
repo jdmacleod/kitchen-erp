@@ -652,12 +652,20 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
             .scalars()
         )
         live_rows = {o.purchase_line_id: o for o in rows}
+    # A line re-pointed by a product merge still matches its observation (#179).
+    merged = await db.execute(
+        select(Product.id, Product.merged_into).where(
+            Product.id.in_({o.product_id for o in live_rows.values()}),
+            Product.merged_into.is_not(None),
+        )
+    )
+    survivor_of = dict(merged.all())
     for line in purchase.lines:
         current = live_rows.get(line.id)
         if _resolved_item(line):
             price, promo = observation_price(purchase, line)
             if current is not None and (
-                current.product_id == line.product_id
+                survivor_of.get(current.product_id, current.product_id) == line.product_id
                 and current.price == price
                 and current.qty == (line.qty if line.qty is not None else Decimal("1"))
                 and current.unit == (line.unit or "each")

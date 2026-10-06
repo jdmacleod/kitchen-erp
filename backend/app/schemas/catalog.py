@@ -246,10 +246,37 @@ class ProductOut(ApiModel):
     density_override_confirmed: bool
     active: bool
     notes: str | None
+    # The product this one was merged into (#179); its page links there.
+    merged_into: uuid.UUID | None = None
     # The main photo (1I); None shows the category placeholder.
     photo: PhotoSummary | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class ProductMergeIn(ApiModel):
+    """Merge the product in the path into ``survivor_id``, which is kept."""
+
+    survivor_id: uuid.UUID
+
+
+class ProductMergeOut(ApiModel):
+    survivor_id: uuid.UUID
+    loser_id: uuid.UUID
+    survivor_name: str
+    loser_name: str
+    prices: int
+    listings: int
+    codes: int
+    photos: int
+    aliases: int
+    lines: int
+    survivor_pack_unit: str | None
+    loser_pack_unit: str | None
+    compare_unit: str
+    other_dimension_prices: int
+    other_dimension_units: list[str]
+    prices_needing_bridge: int
 
 
 class LastPaid(ApiModel):
