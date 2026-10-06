@@ -16,7 +16,8 @@ to the plain key.
 
 Replies carry the usage fields Ollama reports, derived from the request and the
 answer so they are the same on every run: about four characters to a token, a
-second per reply and no load time.
+second per reply and no load time. A streamed request (``"stream": true``, as a
+transcription sends) gets the same reply as a single newline-delimited chunk.
 """
 
 from __future__ import annotations
@@ -65,16 +66,17 @@ class RecordedTransport(httpx.AsyncBaseTransport):
         item = queue.pop(0) if len(queue) > 1 else queue[0]
         content = item if isinstance(item, str) else json.dumps(item)
         prompt = json.dumps(body.get("messages"), ensure_ascii=False)
-        return httpx.Response(
-            200,
-            json={
-                "model": model,
-                "message": {"role": "assistant", "content": content},
-                "done": True,
-                "done_reason": "stop",
-                "prompt_eval_count": len(prompt) // 4,
-                "eval_count": len(content) // 4,
-                "total_duration": 1_000_000_000,
-                "load_duration": 0,
-            },
-        )
+        reply = {
+            "model": model,
+            "message": {"role": "assistant", "content": content},
+            "done": True,
+            "done_reason": "stop",
+            "prompt_eval_count": len(prompt) // 4,
+            "eval_count": len(content) // 4,
+            "total_duration": 1_000_000_000,
+            "load_duration": 0,
+        }
+        if body.get("stream"):
+            # A streamed request gets the reply as one chunk of newline-delimited JSON.
+            return httpx.Response(200, content=(json.dumps(reply) + "\n").encode())
+        return httpx.Response(200, json=reply)

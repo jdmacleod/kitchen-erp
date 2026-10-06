@@ -20,6 +20,7 @@ Tests inject :data:`http_transport` (an ``httpx`` transport such as
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import re
@@ -111,6 +112,15 @@ TRANSCRIBE_SYSTEM_PROMPT = (
 # alone: a proxy in front of Ollama can answer a bare 404 of its own.
 _MODEL_NOT_FOUND = re.compile(r"\bmodel\b.*\bnot found\b", re.IGNORECASE)
 _NOT_MULTIMODAL = re.compile(r"does not support multimodal", re.IGNORECASE)
+# Ollama (0.34) stops a reply that repeats one token too long and answers 500
+# "prediction aborted, token repeat limit reached", or sends that error inside a
+# stream. The model ran away; the server is fine. It is a reply that did not
+# finish, like done_reason "length", so it never stops the job or the benchmark
+# as an unavailable server would (glm-ocr hit it on the household's receipts).
+_REPEAT_LIMIT = re.compile(r"repeat limit", re.IGNORECASE)
+REPEAT_LIMIT = "repeat_limit"
+# The done reasons of a reply cut short: out of room, or aborted for repeating.
+UNFINISHED = {"length", REPEAT_LIMIT}
 
 # Tests set this to a transport that replays recorded responses; production leaves
 # it None (real sockets to OLLAMA_BASE_URL).
@@ -307,6 +317,21 @@ def _error_text(response: httpx.Response) -> str:
     return error if isinstance(error, str) else ""
 
 
+def _raise_for_status(response: httpx.Response) -> None:
+    """Raise for a non-200 answer (other than a repeat-limit abort, handled first).
+
+    404 is Ollama's "no such model"; 5xx is a server in trouble. Both are
+    conditions a person fixes; the job waits rather than fails.
+    """
+    detail = f"http_{response.status_code}"
+    error = _error_text(response)
+    if response.status_code == 404 and _MODEL_NOT_FOUND.search(error):
+        raise ModelMissing("not_found", detail=detail)
+    if response.status_code == 400 and _NOT_MULTIMODAL.search(error):
+        raise ModelMissing("not_multimodal", detail=detail)
+    raise ModelUnavailable(detail=detail)
+
+
 class LlmClient:
     def __init__(
         self,
@@ -348,6 +373,7 @@ class LlmClient:
         shorter bound, so a server that is not there says so in seconds (#34).
         """
         self.last_usage = None
+        self.last_done_reason = None
         url = f"{self.base_url}/api/chat"
         budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
         timeout = httpx.Timeout(budget, connect=min(self.connect_timeout_seconds, budget))
@@ -373,15 +399,10 @@ class LlmClient:
         except httpx.HTTPError as exc:
             raise ModelUnavailable(detail=type(exc).__name__) from None
         if response.status_code != 200:
-            # 404 is Ollama's "no such model"; 5xx is a server in trouble. Both are
-            # conditions a person fixes; the job waits rather than fails.
-            detail = f"http_{response.status_code}"
-            error = _error_text(response)
-            if response.status_code == 404 and _MODEL_NOT_FOUND.search(error):
-                raise ModelMissing("not_found", detail=detail)
-            if response.status_code == 400 and _NOT_MULTIMODAL.search(error):
-                raise ModelMissing("not_multimodal", detail=detail)
-            raise ModelUnavailable(detail=detail)
+            if response.status_code == 500 and _REPEAT_LIMIT.search(_error_text(response)):
+                self.last_done_reason = REPEAT_LIMIT
+                return ""
+            _raise_for_status(response)
         try:
             body = response.json()
         except ValueError:
@@ -469,7 +490,7 @@ class LlmClient:
                     "done_reason": self.last_done_reason,
                 },
             )
-            out_of_room = self.last_done_reason == "length"
+            out_of_room = self.last_done_reason in UNFINISHED
             self._record("out_of_room" if out_of_room else "invalid")
             next_temperature = temperatures[attempts] if attempts < len(temperatures) else None
             if out_of_room and next_temperature in (None, this_temperature):
@@ -499,11 +520,14 @@ class LlmClient:
 
         The text is untrusted like any OCR output. It is used only as receipt
         text inside the delimited block of a later extraction.
+
+        Streamed, so a reply the server aborts for repeating still gives what
+        came before: the rows up to the one it was writing, which is dropped.
         """
         payload: dict[str, Any] = {
             "model": self.model,
             "messages": build_image_messages(task, images, TRANSCRIBE_SYSTEM_PROMPT),
-            "stream": False,
+            "stream": True,
             "options": {
                 "temperature": 0,
                 "num_ctx": VISION_NUM_CTX,
@@ -511,14 +535,77 @@ class LlmClient:
             },
         }
         budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
-        content = await self._recorded_chat(payload, budget)
-        self._record("out_of_room" if self.last_done_reason == "length" else "ok")
+        content = await self._recorded_chat(payload, budget, stream=True)
+        if self.last_done_reason == REPEAT_LIMIT:
+            content = content.rsplit("\n", 1)[0] if "\n" in content else ""
+        self._record("out_of_room" if self.last_done_reason in UNFINISHED else "ok")
         return content
 
-    async def _recorded_chat(self, payload: dict[str, Any], timeout_seconds: float) -> str:
-        """chat(), timed; a call that raises is recorded in the ledger here."""
+    async def chat_stream(
+        self, payload: dict[str, Any], timeout_seconds: float | None = None
+    ) -> str:
+        """POST one streamed chat request; return the content it streamed.
+
+        The same errors as :meth:`chat`. The budget bounds the whole reply, not
+        each chunk. An error inside the stream is a server in trouble, except
+        the repeat-limit abort: that keeps what came before, with
+        ``last_done_reason`` set to ``repeat_limit``.
+        """
+        self.last_usage = None
+        self.last_done_reason = None
+        url = f"{self.base_url}/api/chat"
+        budget = timeout_seconds if timeout_seconds is not None else self.timeout_seconds
+        timeout = httpx.Timeout(budget, connect=min(self.connect_timeout_seconds, budget))
+        parts: list[str] = []
+        try:
+            async with (
+                asyncio.timeout(budget),
+                httpx.AsyncClient(transport=self.transport, timeout=timeout) as client,
+                client.stream("POST", url, json=payload) as response,
+            ):
+                if response.status_code != 200:
+                    await response.aread()
+                    if response.status_code == 500 and _REPEAT_LIMIT.search(_error_text(response)):
+                        self.last_done_reason = REPEAT_LIMIT
+                        return ""
+                    _raise_for_status(response)
+                async for row in response.aiter_lines():
+                    if not row.strip():
+                        continue
+                    try:
+                        chunk = json.loads(row)
+                    except ValueError:
+                        raise ModelUnavailable(detail="malformed_response") from None
+                    if not isinstance(chunk, dict):
+                        raise ModelUnavailable(detail="malformed_response")
+                    error = chunk.get("error")
+                    if isinstance(error, str):
+                        if _REPEAT_LIMIT.search(error):
+                            self.last_done_reason = REPEAT_LIMIT
+                            break
+                        raise ModelUnavailable(detail="stream_error")
+                    message = chunk.get("message")
+                    content = message.get("content") if isinstance(message, dict) else None
+                    if isinstance(content, str):
+                        parts.append(content)
+                    if chunk.get("done"):
+                        self.last_done_reason = chunk.get("done_reason")
+                        self.last_usage = _usage(chunk)
+        except (TimeoutError, httpx.ReadTimeout) as exc:
+            # As in chat(): connected, and the reply did not finish in time.
+            raise ModelTimeout(detail=f"{type(exc).__name__} after {budget:g}s") from None
+        except httpx.HTTPError as exc:
+            raise ModelUnavailable(detail=type(exc).__name__) from None
+        return "".join(parts)
+
+    async def _recorded_chat(
+        self, payload: dict[str, Any], timeout_seconds: float, *, stream: bool = False
+    ) -> str:
+        """chat() or chat_stream(), timed; a call that raises is recorded in the ledger here."""
         self._call_started = time.monotonic()
         try:
+            if stream:
+                return await self.chat_stream(payload, timeout_seconds)
             return await self.chat(payload, timeout_seconds)
         except ModelMissing:
             self._record("missing")

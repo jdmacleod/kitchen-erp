@@ -91,6 +91,8 @@ VISION_PROMPT_VERSION = "vision-box-1"
 # the output cap (measured on the household's model server: 22 distinct lines
 # in 112); repeat and presence penalties did not stop it and cost accuracy. So
 # the cap is what a 100-line receipt needs, and the loop is cut off afterwards.
+# A loop on one token is stopped sooner by Ollama's repeat limit; transcribe()
+# then keeps the rows read before it, and the call counts as a runaway.
 OCR_TASK = "Text Recognition:"
 OCR_NUM_PREDICT = 4096
 REPEATED_RUN = 3
