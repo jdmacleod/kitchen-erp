@@ -34,8 +34,8 @@ const muted = "text-neutral-600 dark:text-neutral-400";
 
 /**
  * Products (docs/spec/10): search and the catalog first, creation in a drawer.
- * Search, the category and "Show inactive" live in the URL, so Back and a shared
- * link keep them, and they filter on the server (D12).
+ * Search, the category, "Needs a photo" and "Show inactive" live in the URL, so Back
+ * and a shared link keep them, and they filter on the server (D12).
  */
 export function ProductsPage() {
   usePageTitle("Products");
@@ -44,6 +44,7 @@ export function ProductsPage() {
   const rawCategory = params.get("category");
   const category: CategoryKey | "none" | null = rawCategory === "none" ? "none" : isCategory(rawCategory) ? rawCategory : null;
   const includeInactive = params.get("inactive") === "1";
+  const noPhoto = params.get("no_photo") === "1";
   const presetId = params.get("ingredient_id") ?? undefined;
 
   const setParam = (key: string, value: string | null) =>
@@ -73,7 +74,7 @@ export function ProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced]);
 
-  const products = useProducts({ q, category, includeInactive });
+  const products = useProducts({ q, category, includeInactive, noPhoto });
   const items = products.data?.pages.flatMap((p) => p.items) ?? [];
 
   // Arriving from an ingredient's page opens the drawer with that ingredient.
@@ -109,7 +110,7 @@ export function ProductsPage() {
     });
   };
 
-  const filtered = q !== "" || category !== null;
+  const filtered = q !== "" || category !== null || noPhoto;
   const clearFilters = () => {
     setText("");
     setParams(
@@ -117,6 +118,7 @@ export function ProductsPage() {
         const next = new URLSearchParams(prev);
         next.delete("q");
         next.delete("category");
+        next.delete("no_photo");
         return next;
       },
       { replace: true },
@@ -187,15 +189,27 @@ export function ProductsPage() {
               No category
             </button>
           </div>
-          <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-            <input
-              type="checkbox"
-              checked={includeInactive}
-              onChange={(e) => setParam("inactive", e.target.checked ? "1" : null)}
-              className={`size-4 ${focusRing}`}
-            />
-            Show inactive
-          </label>
+          <div className="flex flex-wrap items-center gap-x-4">
+            {/* Products with no main photo yet: the ones still to photograph. */}
+            <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
+              <input
+                type="checkbox"
+                checked={noPhoto}
+                onChange={(e) => setParam("no_photo", e.target.checked ? "1" : null)}
+                className={`size-4 ${focusRing}`}
+              />
+              Needs a photo
+            </label>
+            <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
+              <input
+                type="checkbox"
+                checked={includeInactive}
+                onChange={(e) => setParam("inactive", e.target.checked ? "1" : null)}
+                className={`size-4 ${focusRing}`}
+              />
+              Show inactive
+            </label>
+          </div>
         </div>
       </div>
 
@@ -208,7 +222,7 @@ export function ProductsPage() {
       ) : items.length === 0 ? (
         filtered ? (
           <EmptyState
-            title={`No products match${q ? ` ‘${q}’` : ""}${category === "none" ? " without a category" : category ? ` in ${categoryLabel(category)}` : ""}`}
+            title={`No products match${q ? ` ‘${q}’` : ""}${category === "none" ? " without a category" : category ? ` in ${categoryLabel(category)}` : ""}${noPhoto ? " that need a photo" : ""}`}
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
