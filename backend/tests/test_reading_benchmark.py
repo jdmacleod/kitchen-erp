@@ -122,10 +122,56 @@ def test_an_ocr_models_loop_is_cut_off():
 
 
 def test_the_estimate_uses_stored_speeds_where_there_are_any():
-    configs = bench.default_configs(text_model="t", ocr_model="o", vision_models=["v", "w"])
+    configs = bench.default_configs(text_models=["t"], ocr_model="o", vision_models=["v", "w"])
     history = [{"arm": "c", "model": "v", "seconds_p50": "40"}]
     # a 120 + b 130 + v 40 (stored) + w 150 (default), per receipt.
     assert bench.estimate_seconds(configs, 10, history) == 10 * (120 + 130 + 40 + 150)
+
+
+def test_arm_b_runs_once_per_text_model_under_its_own_key():
+    configs = bench.default_configs(
+        text_models=["t1", "t2"], ocr_model="o", vision_models=["v"], arms=["b"]
+    )
+    assert [(c.arm, c.model, c.text_model) for c in configs] == [("b", "o", "t1"), ("b", "o", "t2")]
+    # Two text models are two configurations: their checkpoints must not mix.
+    assert len({c.key for c in configs}) == 2
+    everything = bench.default_configs(text_models=["t"], ocr_model="o", vision_models=["v"])
+    assert [c.arm for c in everything] == ["a", "b", "c"]
+
+
+def _stored(arm: str, model: str, share: str, text_model: str | None = None) -> dict[str, str]:
+    row = {"arm": arm, "model": model, "prompt_version": "p", "receipt_set_hash": "h"}
+    row |= {"reconcile_share": share, "alias_hit_rate": "", "seconds_p50": "60"}
+    return row if text_model is None else row | {"text_model": text_model}
+
+
+def test_a_new_text_model_is_compared_with_the_stored_arm_b_row_not_hidden_by_it():
+    # The stored (b) row was written before the text_model column existed.
+    history = [_stored("a", "t", "0.2"), _stored("b", "o", "0.5"), _stored("c", "v", "0.4")]
+    current = [{"arm": "b", "model": "o", "prompt_version": "p", "text_model": "t2"}]
+    kept = bench._stored_rows(history, "h", current)
+    assert sorted((r["arm"], r["model"]) for r in kept) == [("a", "t"), ("b", "o"), ("c", "v")]
+    # A configuration run again replaces its stored row.
+    history.append(_stored("b", "o", "0.6", text_model="t2"))
+    kept = bench._stored_rows(history, "h", current)
+    assert ("b", "t2") not in {(r["arm"], r.get("text_model")) for r in kept}
+    # The summary names the text model an arm (b) row ends in.
+    assert bench.label({"arm": "b", "model": "o", "text_model": "t2"}) == "o→t2"
+    assert bench.label({"arm": "a", "model": "t", "text_model": "t"}) == "t"
+
+
+def test_a_stored_csv_from_before_a_new_column_is_rewritten_under_the_new_header(
+    tmp_path: Path,
+):
+    path = tmp_path / "reading.csv"
+    old_columns = [c for c in bench.CSV_COLUMNS if c != "text_model"]
+    path.write_text(",".join(old_columns) + "\n" + ",".join("1" for _ in old_columns) + "\n")
+    row = dict.fromkeys(bench.CSV_COLUMNS, "2") | {"text_model": "t2"}
+    bench._append_csv(path, [row])
+    rows = bench.read_history(path)
+    assert list(rows[0]) == bench.CSV_COLUMNS
+    assert (rows[0]["run_id"], rows[0]["text_model"]) == ("1", "")
+    assert (rows[1]["run_id"], rows[1]["text_model"]) == ("2", "t2")
 
 
 # --- receipts and their truth --------------------------------------------------------
@@ -275,7 +321,7 @@ async def _counts() -> dict[str, int]:
 
 def _configs(*vision: str) -> list[bench.Config]:
     return bench.default_configs(
-        text_model=TEXT_MODEL, ocr_model=OCR_MODEL, vision_models=vision or (VISION,)
+        text_models=[TEXT_MODEL], ocr_model=OCR_MODEL, vision_models=vision or (VISION,)
     )
 
 
@@ -463,7 +509,7 @@ class _FakeSession:
         return None
 
 
-def _cli(monkeypatch: pytest.MonkeyPatch, selection: bench.Selection, worker: bool):
+def _cli(monkeypatch: pytest.MonkeyPatch, selection: bench.Selection, worker: bool, *args: str):
     from typer.testing import CliRunner
 
     from app import cli as cli_module
@@ -482,7 +528,7 @@ def _cli(monkeypatch: pytest.MonkeyPatch, selection: bench.Selection, worker: bo
     monkeypatch.setattr(bench, "worker_running", running)
     monkeypatch.setattr(db_module, "get_sessionmaker", lambda: _FakeSession)
     monkeypatch.setattr(db_module, "dispose_engine", dispose)
-    return CliRunner().invoke(cli_module.cli, ["reading-benchmark"])
+    return CliRunner().invoke(cli_module.cli, ["reading-benchmark", *args])
 
 
 def _one_receipt() -> bench.Selection:
@@ -501,3 +547,27 @@ def test_the_command_says_why_there_is_nothing_to_read(monkeypatch: pytest.Monke
     result = _cli(monkeypatch, empty, worker=False)
     assert result.exit_code == 1
     assert "no eligible receipts" in result.output and "--expected" in result.output
+
+
+def test_the_command_runs_only_the_arms_asked_for(monkeypatch: pytest.MonkeyPatch):
+    seen: dict[str, bench.RunOptions] = {}
+
+    async def run(selection, options, echo=print):
+        seen["options"] = options
+        return bench.RunResult("r", Path("."), [], bench.decide([], 1), {}, "summary")
+
+    monkeypatch.setattr(bench, "run", run)
+    result = _cli(monkeypatch, _one_receipt(), False, "--arms", "b", "--text-model", "t1, t2")
+    assert result.exit_code == 0, result.output
+    options = seen["options"]
+    assert [(c.arm, c.text_model) for c in options.configs] == [("b", "t1"), ("b", "t2")]
+    assert options.compare_with_stored  # (a) and (c) come from the stored rows
+
+    # --models alone still means arm (c) only.
+    result = _cli(monkeypatch, _one_receipt(), False, "--models", "v")
+    assert result.exit_code == 0, result.output
+    assert [(c.arm, c.model) for c in seen["options"].configs] == [("c", "v")]
+
+    result = _cli(monkeypatch, _one_receipt(), False, "--arms", "b,x")
+    assert result.exit_code == 2
+    assert "unknown arm(s) x" in result.output

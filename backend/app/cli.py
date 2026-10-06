@@ -758,7 +758,14 @@ def import_purchases(
 BENCH_MODELS = typer.Option(
     None,
     "--models",
-    help="Comma-separated vision models: run only arm (c) for these, against the stored rows.",
+    help="Comma-separated vision models for arm (c). Alone, it runs only arm (c), "
+    "against the stored rows.",
+)
+BENCH_ARMS = typer.Option(
+    None,
+    "--arms",
+    help="Comma-separated arms to run (a, b, c; default all, or c with --models), "
+    "against the stored rows for the others.",
 )
 BENCH_RESUME = typer.Option(None, "--resume", help="Continue a stopped run by its RUN_ID.")
 BENCH_EXPECTED = typer.Option(
@@ -775,13 +782,16 @@ BENCH_OUT = typer.Option(
 )
 BENCH_OCR_MODEL = typer.Option("glm-ocr", "--ocr-model", help="Arm (b)'s transcription model.")
 BENCH_TEXT_MODEL = typer.Option(
-    None, "--text-model", help="Arms (a) and (b)'s text model (default: LLM_MODEL)."
+    None,
+    "--text-model",
+    help="Arms (a) and (b)'s text model, or several, comma-separated (default: LLM_MODEL).",
 )
 
 
 @cli.command("reading-benchmark")
 def reading_benchmark(
     models: str | None = BENCH_MODELS,
+    arms: str | None = BENCH_ARMS,
     resume: str | None = BENCH_RESUME,
     expected: Path | None = BENCH_EXPECTED,
     force: bool = BENCH_FORCE,
@@ -800,6 +810,14 @@ def reading_benchmark(
 
     settings = get_settings()
     configure_logging(settings.log_level)
+
+    def _split(value: str) -> list[str]:
+        return [part.strip() for part in value.split(",") if part.strip()]
+
+    wanted = _split(arms) if arms else (["c"] if models else list(bench.ARMS))
+    if unknown := sorted(set(wanted) - set(bench.ARMS)):
+        typer.echo(f"error: unknown arm(s) {', '.join(unknown)}; use a, b and c.", err=True)
+        raise typer.Exit(code=2)
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
@@ -823,22 +841,18 @@ def reading_benchmark(
                 err=True,
             )
             raise typer.Exit(code=1)
-        text = text_model or settings.llm_model
-        if models:
-            vision = [m.strip() for m in models.split(",") if m.strip()]
-            configs = [
-                bench.Config("c", m, bench.VISION_PROMPT_VERSION, bench.LONG_SIDE) for m in vision
-            ]
-        else:
-            configs = bench.default_configs(
-                text_model=text, ocr_model=ocr_model, vision_models=bench.DEFAULT_VISION_MODELS
-            )
+        configs = bench.default_configs(
+            text_models=_split(text_model) if text_model else [settings.llm_model],
+            ocr_model=ocr_model,
+            vision_models=_split(models) if models else bench.DEFAULT_VISION_MODELS,
+            arms=wanted,
+        )
         options = bench.RunOptions(
             out_dir=out or Path(settings.receipts_path).parent / "benchmarks",
             configs=configs,
             expected_csv=expected,
             resume=resume,
-            compare_with_stored=bool(models),
+            compare_with_stored=bool(models) or set(wanted) != set(bench.ARMS),
         )
         result = await bench.run(selection, options, echo=typer.echo)
         typer.echo("")
