@@ -13,8 +13,8 @@ merged into A, so the views need only one join.
 The downgrade restores 0020's views verbatim and refuses to run while any
 product is merged: dropping the column would lose which product each one became.
 
-Revision ID: 0028
-Revises: 0027
+Revision ID: 0029
+Revises: 0028
 Create Date: 2026-10-06
 """
 
@@ -25,8 +25,8 @@ from sqlalchemy.dialects.postgresql import UUID
 
 from alembic import op
 
-revision = "0028"
-down_revision = "0027"
+revision = "0029"
+down_revision = "0028"
 branch_labels = None
 depends_on = None
 

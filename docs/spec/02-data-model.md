@@ -105,7 +105,7 @@ product(
   exclusive_vendor_id FK vendor?,            -- single-source items and vendor-specific produce
   density_override NUMERIC(10,5)?, density_override_source?, density_override_confirmed BOOLEAN DEFAULT false,
   active BOOLEAN DEFAULT true, notes?,
-  merged_into FK product?,                   -- set on the duplicate of a product merge (#179, 0028)
+  merged_into FK product?,                   -- set on the duplicate of a product merge (#179, 0029)
   CHECK ((pack_qty IS NULL) = (pack_unit IS NULL)),
   CHECK ((density_override IS NULL) = (density_override_source IS NULL)),
   CHECK (merged_into IS NULL OR (NOT active AND merged_into <> id))
