@@ -17,9 +17,9 @@ from app.schemas.purchases import LineAdd, LineEdit, LineMerge, PurchaseHeaderEd
 from app.services.normalize import normalize_receipt_text
 from app.services.purchases import (
     TOTAL_TOLERANCE,
-    computed_total,
     ensure_not_voided,
     get_purchase,
+    lines_total,
     next_seq,
     remove_line,
 )
@@ -50,7 +50,11 @@ async def edit_header(db: AsyncSession, purchase_id: uuid.UUID, payload: Purchas
     # missing; the flag would otherwise follow the purchase past commit.
     answered = {
         flag
-        for field, flag in (("purchased_at", "purchased_at_missing"), ("total", "total_missing"))
+        for field, flag in (
+            ("purchased_at", "purchased_at_missing"),
+            ("total", "total_missing"),
+            ("total", "total_not_in_scan"),
+        )
         if data.get(field) is not None
     }
     if answered:
@@ -78,10 +82,7 @@ def _rechecked_total(purchase) -> list[str]:
         for f in purchase.flags
         if f not in ("reconcile_mismatch", "total_mismatch", "decimals_restore_total")
     ]
-    header_tax = purchase.tax is not None and not any(
-        line.line_kind == "tax" for line in purchase.lines
-    )
-    expected = computed_total(purchase) + (purchase.tax if header_tax else 0)
+    expected = lines_total(purchase)
     if abs(expected - purchase.total) > TOTAL_TOLERANCE:
         flags.append("total_mismatch")
         # The hint that restoring the lost decimal points reconciles is only as

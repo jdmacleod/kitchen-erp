@@ -72,9 +72,9 @@ export interface PurchaseLineProduct {
   category_key: CategoryKey | null;
 }
 
-export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "manual" | "unmatched" | "ignored";
-export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "code";
-export type AcceptedKind = "alias" | "fuzzy" | "llm" | "code";
+export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "similar" | "manual" | "unmatched" | "ignored";
+export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "similar" | "code";
+export type AcceptedKind = "alias" | "fuzzy" | "llm" | "similar" | "code";
 
 export interface Suggestion {
   kind: SuggestionKind;
@@ -144,6 +144,12 @@ export interface Purchase {
   tax: string | null;
   total: string | null;
   computed_total: string | null;
+  /** What the lines come to beside the printed total: computed_total plus the header's tax when no line carries tax. */
+  lines_total?: string | null;
+  /** How far a receipt's reading can be trusted, from its lines as they are now; null when entered by hand (issue 121). */
+  trust?: "adds_up" | "check_lines" | "couldnt_read" | null;
+  /** A draft far off its printed total: "Needs a careful look". Never a block on commit. */
+  held?: boolean;
   status: PurchaseStatus;
   source: ObservationSource;
   flags: string[];
@@ -726,6 +732,7 @@ export const resolutionLabel: Record<Resolution, string> = {
   alias: "alias",
   fuzzy: "fuzzy alias",
   llm: "model",
+  similar: "similar name",
   manual: "chosen",
   unmatched: "unmatched",
   ignored: "ignored",

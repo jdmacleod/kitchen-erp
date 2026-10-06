@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -248,28 +249,39 @@ async def test_one_unmatched_line_reads_singular(admin_client, admin):
     assert item["title"] == "1 receipt line to identify"
 
 
-async def test_a_product_needing_a_bridge_is_one_item(admin_client):
+async def test_products_needing_a_bridge_are_one_aggregate_item(admin_client):
     loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
     flour = await make_product(admin_client, "Flour", "Bulk flour")
+    meal = await make_product(admin_client, "Cornmeal", "Coarse cornmeal")
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "0.95", qty="2", unit="cup")
+    await shelf(admin_client, meal["id"], loc["id"], "0.70", qty="1", unit="cup")
+    # Cornmeal is on the standard list, so it also waits to be linked (issue 189).
+    [item] = [i for i in (await get_inbox(admin_client))["items"] if i["kind"] == "bridge"]
+    assert item["title"] == "2 products need a density before their prices compare"
+    assert item["detail"] == "Each is added once, on its ingredient."
+    assert item["action_label"] == "Add densities"
+    assert item["action_route"] == "/catalog/bridges"
+
+
+async def test_one_product_needing_a_pack_reads_singular(admin_client):
+    loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
+    flour = await make_product(admin_client, "Flour", "Bulk flour")
+    await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
     [item] = (await get_inbox(admin_client))["items"]
-    assert item["kind"] == "bridge"
-    assert item["title"] == "Bulk flour"
-    assert item["detail"] == "Its prices can't be compared until it has a density."
-    assert item["action_label"] == "Add density"
-    ingredient_id = flour["ingredient"]["id"]
-    assert item["action_route"] == f"/catalog/ingredients/{ingredient_id}#density-heading"
+    assert item["title"] == "1 product needs a pack size before its prices compare"
+    assert item["action_label"] == "Set packs"
 
 
-async def test_a_product_failing_two_ways_is_merged(admin_client):
+async def test_a_product_failing_two_ways_counts_once(admin_client):
     loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
     flour = await make_product(admin_client, "Flour", "Bulk flour")
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
-    items = (await get_inbox(admin_client))["items"]
-    assert [i["kind"] for i in items] == ["bridge"]
-    assert "a density and" in items[0]["detail"]
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["title"] == "1 product needs a bridge before its prices compare"
+    assert item["detail"] == "1 needs a pack size and 1 a density."
+    assert item["action_label"] == "Review"
 
 
 async def test_items_are_oldest_first_across_kinds(admin_client, admin):
@@ -294,3 +306,51 @@ async def test_a_failing_kind_fails_the_request_rather_than_hiding(
         # ASGITransport re-raises unhandled errors; in production this is a 500.
         await admin_client.get("/api/v1/inbox")
     assert any(r.message == "inbox.kind_failed" and r.kind == "bridge" for r in caplog.records)
+
+
+# --- held receipts (issue 121, ruling R2) ------------------------------------
+
+
+async def test_a_draft_far_off_its_total_is_held_for_a_careful_look(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="1.20")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt_held"
+    assert item["title"].endswith("receipt needs a careful look")
+    assert item["detail"] == (
+        "Its lines add up to 3.59, but the receipt says 1.20. The flagged lines are shown first."
+    )
+    assert item["action_route"] == f"/shop/purchases/{pid}"
+
+
+async def test_a_small_gap_stays_an_ordinary_receipt_row(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    await make_receipt_purchase(admin.id, loc["id"], LINES, total="3.30")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+
+
+async def test_an_unprinted_amount_holds_a_draft_with_a_small_gap(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    lines = [{**LINES[0], "flags": ["not_in_scan"]}, LINES[1]]
+    await make_receipt_purchase(admin.id, loc["id"], lines, total="3.30")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt_held"
+
+
+async def test_a_reopened_purchase_is_never_held(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="1.20")
+    await set_purchase(pid, status="reviewed")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+
+
+async def test_header_tax_counts_toward_the_lines_when_no_line_carries_it(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="3.89")
+    await set_purchase(pid, tax=Decimal("0.30"))
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+    body = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()
+    assert (body["trust"], body["held"], body["lines_total"]) == ("adds_up", False, "3.8900")

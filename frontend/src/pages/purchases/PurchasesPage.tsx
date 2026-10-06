@@ -217,7 +217,7 @@ export function PurchasesPage() {
                         <Total purchase={p} />
                       </td>
                       <td className="py-2">
-                        <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
+                        <StatusBadge purchase={p} />
                       </td>
                     </tr>
                   ))}
@@ -260,7 +260,7 @@ export function PurchasesPage() {
                         <span className="text-sm font-semibold tabular-nums">
                           <Total purchase={p} />
                         </span>
-                        <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
+                        <StatusBadge purchase={p} />
                       </span>
                     </Link>
                   </li>
@@ -336,4 +336,13 @@ function ReadingRow({ job }: { job: IngestJob }) {
       </td>
     </tr>
   );
+}
+
+/**
+ * A purchase's status; a draft far off its printed total says so before it is
+ * opened (issue 121, ruling R2).
+ */
+function StatusBadge({ purchase }: { purchase: Purchase }) {
+  if (purchase.held) return <Badge tone="warn">Careful look</Badge>;
+  return <Badge tone={purchaseStatusTone[purchase.status]}>{purchaseStatusLabel[purchase.status]}</Badge>;
 }

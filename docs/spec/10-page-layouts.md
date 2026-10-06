@@ -19,7 +19,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 - **Layout:** two columns, roughly 1.65 : 1.
 - **Left, Needs you:** one card of inbox rows, oldest first.
   - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button.
-  - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5).
+  - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).
   - A footer line explains what the inbox is.
 - **Right column:** Recent purchases. The Shopping list panel is dormant until Phase 4.
@@ -59,6 +59,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - The keyboard shortcuts are listed under the table.
   - A line that fails to save shows its error inline and keeps the input.
 - **After commit (G9):** the page stays and turns Committed, with the Notice "Committed. n prices added to the price book." If other drafts remain, "Next draft" becomes the primary action.
+- **Held for a careful look (#121):** a squash alert above everything: "This receipt needs a careful look", then "Lines add up to $41.20; the receipt says $12.85." and how many flagged lines are shown first. It replaces the ordinary mismatch line. Lines with a price flag (`not_in_scan` among them) or footer text come first at every width, and the first of them is current. Commit works as on any draft. On Purchases the status badge reads "Careful look" in squash in place of Draft.
 - **Phone (G18):**
   - One line per card: receipt text, what it was read as, and suggestion buttons at 44px.
   - "Needs you" lines come first.
@@ -172,6 +173,15 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - A race shows "scallion now has a density of 0.52 g/ml (unconfirmed). Keep it · Replace", with Keep it first (DV19).
 - After accepting (DV20): the Notice "Saved 3 values for scallion as unconfirmed. Confirm them on its page after checking a label · Open scallion". The ingredient's bridges show a neutral "Unconfirmed" badge.
 - With no USDA data loaded, the section says "USDA data isn't loaded yet. Whoever runs this Kitchen ERP can load it with kerp import usda." and no inbox row appears (DV6).
+
+**Setting packs on Needs a bridge (#186).**
+- Above the table, a count line: "71 products · 64 need a pack size". It drops as packs are set.
+- A row missing a pack offers "Set the pack" (secondary). It opens an editor in a full-width row under the line, with Pack quantity, Pack unit and, for a mass or volume unit, "Pieces (optional)". Save pack is primary; Cancel and Escape close it.
+- Saving uses the ordinary product update, which re-prices the product. The Notice says "Saved the pack for Bread Flour.", and the editor for the next product waiting on a pack opens with focus on its quantity, so a batch can be worked through from the keyboard.
+- A product whose prices now compare leaves the list. One that now needs something else, such as a density, stays with its new reason.
+- Rows missing a density or a measure keep their link to the ingredient page.
+- Checks run before saving: "Pack quantity must be a positive number, like 500.", "Choose a pack unit.", and "Pieces must be a whole number, like 5."
+- Phone, below 1024px: the editor stays in view while the table scrolls sideways, its fields stack, and its buttons are 44px.
 
 **Inbox rows (DV1, DV7).**
 - Badge "Link", title "13 ingredients to link to the standard list", action "Review", while any ingredient is To review.

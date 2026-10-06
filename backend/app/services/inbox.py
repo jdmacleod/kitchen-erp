@@ -7,9 +7,12 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     ---------------  ---------------------------------------------  -----------------
     receipt          draft or reviewed purchases, excluding those   purchase
                      whose ingest job is still reading or failed
+    receipt_held     a receipt draft far off its printed total      purchase
+                     (purchases.assess, #121); in place of its
+                     receipt row
     receipt_failed   failed ingest jobs                             job
     identify         resolution.to_identify (committed, unmatched)  one aggregate row
-    bridge           pricebook.needs_bridge (failed normalization)  product
+    bridge           pricebook.needs_bridge (failed normalization)  one aggregate row
     vendor_suggest.. vendor_suggestion awaiting a decision (1F)     one aggregate row
     link             ingredients still unreviewed against the       one aggregate row
                      standard list (1G)
@@ -46,6 +49,7 @@ from app.services import (
     lookups,
     pricebook,
     proposals,
+    purchases,
     resolution,
     usda_review,
     vendor_suggestions,
@@ -60,7 +64,12 @@ _RECEIPTS_SQL = text(
     """
     SELECT p.id, p.status, p.source, p.purchased_at, p.created_at,
            p.vendor_location_id IS NULL AS needs_location,
-           count(pl.id) FILTER (WHERE pl.line_kind = 'item') AS item_lines
+           count(pl.id) FILTER (WHERE pl.line_kind = 'item') AS item_lines,
+           p.total, p.tax, p.flags,
+           coalesce(sum(CASE WHEN pl.line_kind = 'discount' THEN -abs(pl.line_total)
+                             ELSE pl.line_total END), 0) AS lines_sum,
+           bool_or(pl.line_kind = 'tax') AS has_tax_line,
+           count(pl.id) FILTER (WHERE 'not_in_scan' = ANY(pl.flags)) AS unscanned
     FROM purchase p
     LEFT JOIN purchase_line pl ON pl.purchase_id = p.id AND pl.removed_at IS NULL
     WHERE p.status IN ('draft', 'reviewed')
@@ -122,10 +131,44 @@ def _lines(n: int) -> str:
     return f"{n} line" if n == 1 else f"{n} lines"
 
 
+def _check(r) -> purchases.ReadingCheck:
+    """The purchase API's reading check, from this query's sums (one rule, two feeds)."""
+    lines_sum = r["lines_sum"]
+    if r["tax"] is not None and not r["has_tax_line"]:
+        lines_sum += r["tax"]
+    return purchases.assess(
+        source=r["source"],
+        status=r["status"],
+        flags=r["flags"] or [],
+        lines_sum=lines_sum,
+        total=r["total"],
+        item_lines=r["item_lines"],
+        unscanned=r["unscanned"],
+    )
+
+
 async def _receipts(db: AsyncSession) -> list[InboxItem]:
     items = []
     for r in (await db.execute(_RECEIPTS_SQL)).mappings():
         noun = "receipt" if r["source"] == "receipt" else "purchase"
+        check = _check(r)
+        if check.held:
+            # Ruling R2 (#121): far off its printed total, so it says so before it
+            # is opened, and the review opens on the gap and the flagged lines.
+            items.append(
+                InboxItem(
+                    kind="receipt_held",
+                    title=f"The {_day(r['purchased_at'])} receipt needs a careful look",
+                    detail=(
+                        f"Its lines add up to {check.lines_total:.2f}, but the receipt says "
+                        f"{r['total']:.2f}. The flagged lines are shown first."
+                    ),
+                    action_label="Review",
+                    action_route=f"/shop/purchases/{r['id']}",
+                    created_at=r["created_at"],
+                )
+            )
+            continue
         if r["item_lines"] == 0 and r["status"] != "reviewed":
             # Choosing a location is not the job when nothing was read: the lines
             # are, from the receipt image beside them.
@@ -190,52 +233,58 @@ async def _identify(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
-# What each normalization failure needs, and where it is fixed. Mirrors
-# bridgeFixLink in frontend/src/api/pricebook.ts.
+# What each normalization failure needs, the action that fixes every product
+# missing only that, and the detail line when it is the only reason.
 _BRIDGE_FIX = {
-    "no_density": ("a density", "Add density", "ingredient", "#density-heading"),
-    "unknown_measure": ("a measure", "Add measure", "ingredient", "#measures-heading"),
-    "no_pack": ("a pack size", "Set pack", "product", ""),
-    "no_qty": ("a quantity", "Check product", "product", ""),
+    "no_pack": (
+        "a pack size",
+        "Set packs",
+        "Set each pack on Needs a bridge; the count drops as you go.",
+    ),
+    "no_density": ("a density", "Add densities", "Each is added once, on its ingredient."),
+    "unknown_measure": ("a measure", "Add measures", "Each is added once, on its ingredient."),
+    "no_qty": ("a quantity", "Check products", "A price was recorded without a quantity."),
 }
 
 
 async def _bridges(db: AsyncSession) -> list[InboxItem]:
-    # needs_bridge groups by product *and* failure reason; the inbox wants one row
-    # per product, so a product failing two ways is merged here.
-    by_product: dict[uuid.UUID, dict] = {}
-    for row in await pricebook.needs_bridge(db):
-        entry = by_product.setdefault(
-            row["product_id"], {"row": row, "statuses": [], "first": row["first_observed_at"]}
+    # One aggregate row, like every other queue (#186): a naming batch of 70
+    # products would otherwise bury Home under one row each. needs_bridge groups
+    # by product and failure reason, so a product failing two ways counts once
+    # in the title and under each reason in the detail.
+    rows = await pricebook.needs_bridge(db)
+    if not rows:
+        return []
+    products: set[uuid.UUID] = set()
+    by_reason: dict[str, set[uuid.UUID]] = {}
+    for row in rows:
+        products.add(row["product_id"])
+        by_reason.setdefault(row["status"], set()).add(row["product_id"])
+    count = len(products)
+    noun, verb, their = ("product", "needs", "its") if count == 1 else ("products", "need", "their")
+    order = list(_BRIDGE_FIX)
+    reasons = sorted(by_reason, key=lambda s: order.index(s) if s in order else len(order))
+    if len(reasons) == 1:
+        need, label, detail = _BRIDGE_FIX.get(reasons[0], _BRIDGE_FIX["no_qty"])
+    else:
+        need, label = "a bridge", "Review"
+        # "12 need a pack size, 3 a density and 1 a measure."
+        parts = []
+        for i, reason in enumerate(reasons):
+            n = len(by_reason[reason])
+            what = _BRIDGE_FIX.get(reason, _BRIDGE_FIX["no_qty"])[0]
+            parts.append(f"{n} {('needs ' if n == 1 else 'need ') if i == 0 else ''}{what}")
+        detail = f"{', '.join(parts[:-1])} and {parts[-1]}."
+    return [
+        InboxItem(
+            kind="bridge",
+            title=f"{count} {noun} {verb} {need} before {their} prices compare",
+            detail=detail,
+            action_label=label,
+            action_route="/catalog/bridges",
+            created_at=min(row["first_observed_at"] for row in rows),
         )
-        entry["statuses"].append(row["status"])
-        entry["first"] = min(entry["first"], row["first_observed_at"])
-    items = []
-    for entry in by_product.values():
-        row = entry["row"]
-        order = list(_BRIDGE_FIX)
-        statuses = sorted(
-            entry["statuses"], key=lambda s: order.index(s) if s in order else len(order)
-        )
-        needs = [_BRIDGE_FIX[s][0] for s in statuses if s in _BRIDGE_FIX]
-        _, label, target, anchor = _BRIDGE_FIX.get(statuses[0], _BRIDGE_FIX["no_qty"])
-        route = (
-            f"/catalog/ingredients/{row['ingredient_id']}{anchor}"
-            if target == "ingredient"
-            else f"/catalog/products/{row['product_id']}"
-        )
-        title = f"{row['brand']} {row['name']}" if row["brand"] else row["name"]
-        items.append(
-            InboxItem(
-                kind="bridge",
-                title=title,
-                detail=f"Its prices can't be compared until it has {' and '.join(needs)}.",
-                action_label=label,
-                action_route=route,
-                created_at=entry["first"],
-            )
-        )
-    return items
+    ]
 
 
 async def _suggestions(db: AsyncSession) -> list[InboxItem]:

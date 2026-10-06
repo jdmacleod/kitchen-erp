@@ -44,7 +44,7 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
 
-const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm", code: "code" };
+const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = { alias_unconfirmed: "alias", fuzzy: "fuzzy", llm: "llm", similar: "similar", code: "code" };
 
 const ATTACHABLE = new Set(["discount", "deposit"]);
 
@@ -89,7 +89,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
   const lines = useMemo(() => [...purchase.lines].sort((a, b) => a.seq - b.seq), [purchase.lines]);
   const itemLines = lines.filter((l) => l.line_kind === "item");
-  const [currentId, setCurrentId] = useState<string | null>(() => (lines.find((l) => !isQuietLine(l)) ?? lines[0])?.id ?? null);
+  // Far off its printed total (issue 121, ruling R2): the review opens on the gap
+  // and the lines most likely to explain it.
+  const carefulLook = purchase.held === true;
+  const [currentId, setCurrentId] = useState<string | null>(
+    () => ((carefulLook ? lines.find(suspectLine) : undefined) ?? lines.find((l) => !isQuietLine(l)) ?? lines[0])?.id ?? null,
+  );
   const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -106,10 +111,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const [filter, setFilter] = useState<"needs" | "all">("all");
   const needing = lines.filter(needsYou);
   // What is on screen, in order: on a phone the lines that need you come first.
+  // A receipt held for a careful look puts its suspect lines first at every width.
   const shown = useMemo(() => {
     const visible = filter === "needs" ? lines.filter(needsYou) : lines;
-    return wide ? visible : [...visible.filter(needsYou), ...visible.filter((l) => !needsYou(l))];
-  }, [lines, filter, wide]);
+    const ordered = wide ? visible : [...visible.filter(needsYou), ...visible.filter((l) => !needsYou(l))];
+    return carefulLook ? [...ordered.filter(suspectLine), ...ordered.filter((l) => !suspectLine(l))] : ordered;
+  }, [lines, filter, wide, carefulLook]);
 
   // The page stays and turns Committed, with how many prices the commit added and,
   // when drafts remain, a way to the next one (G9).
@@ -304,6 +311,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   // Neither does it emit a price: what commits is the item lines less both.
   const emitting = itemLines.filter((l) => l.resolution !== "ignored").length - unresolved;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
+  const suspectCount = lines.filter(suspectLine).length;
   // What the reader could not find is filled with a stand-in, and a stand-in
   // looks like an answer in the header fields. Saving the header clears these.
   const dateMissing = purchase.flags.includes("purchased_at_missing");
@@ -339,7 +347,16 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       </dl>
 
       {error ? <Alert tone="error">{purchaseErrorMessage(error)}</Alert> : null}
-      {mismatch ? (
+      {carefulLook ? (
+        <Alert tone="warn">
+          <span className="block font-medium">This receipt needs a careful look</span>
+          <span className="block">
+            Lines add up to {formatMoney(purchase.lines_total ?? purchase.computed_total)}; the receipt says {formatMoney(purchase.total)}.
+            {purchase.flags.includes("total_not_in_scan") ? " That total is not on the scan either, so check it against the photo." : ""}
+            {suspectCount > 0 ? ` The ${suspectCount === 1 ? "line most likely to explain it is" : `${suspectCount} lines most likely to explain it are`} shown first.` : " Compare the lines with the receipt image."}
+          </span>
+        </Alert>
+      ) : mismatch ? (
         <Alert tone="info">
           The receipt says {purchase.total !== null ? formatMoney(purchase.total) : "—"} but the lines add up to{" "}
           {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}. Check the lines or the header.
@@ -689,7 +706,12 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan"];
+
+/** A line whose amount, or whether it is a line at all, is in doubt: shown first on a receipt held for a careful look. */
+function suspectLine(line: PurchaseLine): boolean {
+  return line.flags.some((f) => PRICE_FLAGS.includes(f) || f === "footer_text");
+}
 
 /** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
 function editableMoney(stored: string | null | undefined): string {
@@ -727,6 +749,8 @@ const FLAG_LABELS: Record<string, string> = {
   regular_price_from_text: "regular price restored",
   footer_text: "footer text?",
   tax_from_rate: "tax from its rate",
+  // Issue 121: the amount is printed nowhere in the scan's text.
+  not_in_scan: "not on the scan",
 };
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */
@@ -890,7 +914,8 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
     );
   }
 
-  const kindLabel = (s: Suggestion) => (s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : s.kind === "code" ? "item code" : "fuzzy");
+  const kindLabel = (s: Suggestion) =>
+    s.kind === "alias_unconfirmed" ? "alias" : s.kind === "llm" ? "model" : s.kind === "code" ? "item code" : s.kind === "similar" ? "similar name" : "fuzzy";
 
   return (
     <>

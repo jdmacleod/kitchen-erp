@@ -266,6 +266,7 @@ async def purchase_out(
             outcome=found.outcome, prices=found.prices, photo=found.photo, blocked=found.blocked
         )
     location = purchase.vendor_location
+    check = purchases.reading_check(purchase)
     return PurchaseOut(
         id=purchase.id,
         vendor_location=(
@@ -288,6 +289,9 @@ async def purchase_out(
         tax=purchase.tax,
         total=purchase.total,
         computed_total=purchases.computed_total(purchase),
+        lines_total=check.lines_total,
+        trust=check.trust,
+        held=check.held,
         status=purchase.status,
         source=purchase.source,
         flags=purchase.flags,

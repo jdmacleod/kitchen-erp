@@ -207,6 +207,15 @@ class PurchaseOut(ApiModel):
     tax: DecimalStr | None
     total: DecimalStr
     computed_total: DecimalStr
+    # What the lines come to beside the printed total: computed_total plus the
+    # header's tax when no line carries tax, as reconciliation counts it.
+    lines_total: DecimalStr
+    # How far a receipt's reading can be trusted, from its lines as they are now;
+    # null for a purchase entered by hand (#121).
+    trust: Literal["adds_up", "check_lines", "couldnt_read"] | None = None
+    # A draft whose lines miss its printed total by a wide margin: "Needs a careful
+    # look". Derived, never stored, and never a block on commit.
+    held: bool = False
     status: str
     source: str
     flags: list[str]
@@ -266,7 +275,7 @@ class LineDecision(ApiModel):
     product_id: uuid.UUID | None = None
     ignore: bool = False
     product: ProductCreate | None = None  # create inline, then choose it
-    accepted_kind: Literal["alias", "fuzzy", "llm", "code"] | None = None
+    accepted_kind: Literal["alias", "fuzzy", "llm", "similar", "code"] | None = None
 
     @model_validator(mode="after")
     def _one(self):
