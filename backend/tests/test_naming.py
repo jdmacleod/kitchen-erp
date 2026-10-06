@@ -161,3 +161,70 @@ async def test_a_row_needs_exactly_one_ingredient(admin_client):
         json={"rows": [{"vendor_id": str(uuid.uuid4()), "raw_text_norm": "X", "name": "X"}]},
     )
     assert r.status_code == 422
+
+
+async def test_a_row_naming_an_existing_product_offers_it_instead(admin_client, admin, db_session):
+    loc = await _queue(admin_client, admin, db_session)
+    vendor = loc["vendor"]["id"]
+    flour = (await make_ingredient(admin_client, "bread flour"))["id"]
+    existing = await admin_client.post(
+        "/api/v1/products", json={"ingredient_id": flour, "name": "Riverbend Bread  Flour"}
+    )
+    assert existing.status_code == 201, existing.text
+    row = {"vendor_id": vendor, "raw_text_norm": "RVRBND BREAD FLR 2KG",
+           "name": "riverbend bread flour", "ingredient_id": flour}  # fmt: skip
+    r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": [row]})
+    [result] = r.json()["results"]
+    assert result["product_id"] is None and result["error"]["code"] == "product_exists"
+    assert result["error"]["product"]["id"] == existing.json()["id"]
+
+    # "Use Riverbend Bread Flour": the lines go to the existing product, and none is created.
+    r = await admin_client.post(
+        "/api/v1/to-identify/name-products",
+        json={"rows": [{**row, "product_id": existing.json()["id"]}]},
+    )
+    [result] = r.json()["results"]
+    assert (result["product_id"], result["applied"], result["error"]) == (
+        existing.json()["id"], 1, None
+    )  # fmt: skip
+    products = (await admin_client.get("/api/v1/products", params={"ingredient_id": flour})).json()
+    assert len(products["items"]) == 1
+
+
+async def test_two_rows_naming_the_same_new_product_create_it_once(admin_client, admin, db_session):
+    loc = await _queue(admin_client, admin, db_session)
+    vendor = loc["vendor"]["id"]
+    flour = (await make_ingredient(admin_client, "bread flour"))["id"]
+    rows = [
+        {"vendor_id": vendor, "raw_text_norm": "RVRBND BREAD FLR 2KG", "name": "Bread flour",
+         "ingredient_id": flour},
+        {"vendor_id": vendor, "raw_text_norm": "BNLS CHKN BRST", "name": "Bread Flour",
+         "ingredient_id": flour},
+    ]  # fmt: skip
+    r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": rows})
+    first, second = r.json()["results"]
+    assert first["error"] is None
+    assert second["error"]["code"] == "product_exists"
+    assert second["error"]["product"]["id"] == first["product_id"]
+
+    # Creating another anyway is still possible.
+    r = await admin_client.post(
+        "/api/v1/to-identify/name-products",
+        json={"rows": [{**rows[1], "allow_duplicate": True}]},
+    )
+    [again] = r.json()["results"]
+    assert again["error"] is None and again["product_id"] != first["product_id"]
+
+
+async def test_an_inactive_product_cannot_be_used(admin_client, admin, db_session):
+    loc = await _queue(admin_client, admin, db_session)
+    flour = (await make_ingredient(admin_client, "bread flour"))["id"]
+    gone = (
+        await admin_client.post("/api/v1/products", json={"ingredient_id": flour, "name": "Old"})
+    ).json()
+    await admin_client.post(f"/api/v1/products/{gone['id']}/deactivate")
+    row = {"vendor_id": loc["vendor"]["id"], "raw_text_norm": "BNLS CHKN BRST", "name": "Old",
+           "product_id": gone["id"]}  # fmt: skip
+    r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": [row]})
+    [result] = r.json()["results"]
+    assert result["error"]["code"] == "product_unavailable"

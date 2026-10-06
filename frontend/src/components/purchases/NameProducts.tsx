@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { errorMessage } from "../../api/client";
-import { isPositiveDecimal } from "../../api/catalog";
+import { isPositiveDecimal, productTitle } from "../../api/catalog";
 import { purchaseErrorMessage, useNameProducts, useNamingRows, useSuggestNames, type NameProductRow, type NamingRow } from "../../api/purchases";
 import { stripZeros } from "../../lib/decimal";
 import { choiceFromMatch, choiceInput, IngredientPicker, type IngredientChoice } from "../catalog/IngredientPicker";
@@ -10,6 +10,13 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
 
+/** A product that already has the row's name and ingredient (issue 179). */
+interface ExistingProduct {
+  id: string;
+  name: string;
+  brand: string | null;
+}
+
 /** What a person has changed on a row; anything absent is still the suggestion. */
 interface RowEdit {
   name?: string;
@@ -17,6 +24,10 @@ interface RowEdit {
   packQty?: string;
   packUnit?: string;
   ticked?: boolean;
+  /** Identify the lines as this existing product instead of creating one. */
+  use?: ExistingProduct | null;
+  /** Create a new product even though one has the same name and ingredient. */
+  duplicate?: boolean;
 }
 
 interface RowValue {
@@ -25,6 +36,8 @@ interface RowValue {
   packQty: string;
   packUnit: string;
   ticked: boolean;
+  use: ExistingProduct | null;
+  duplicate: boolean;
   /** Which of the fields shown came from the model. */
   fromModel: { name: boolean; ingredient: boolean };
 }
@@ -49,12 +62,15 @@ function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
     packQty: edit?.packQty ?? (row.pack_qty ? stripZeros(row.pack_qty, 0) : ""),
     packUnit: edit?.packUnit ?? row.pack_unit ?? "",
     ticked: edit?.ticked ?? false,
+    use: edit?.use ?? null,
+    duplicate: edit?.duplicate ?? false,
     fromModel: { name: modelName, ingredient: modelIngredient },
   };
 }
 
 /** Why a ticked row can't be sent yet, or null. */
 function problemWith(v: RowValue): string | null {
+  if (v.use) return null;
   if (!v.name.trim()) return "Give the product a name.";
   if (!v.ingredient) return "Choose an ingredient, or create one by name.";
   const hasQty = v.packQty.trim() !== "";
@@ -76,12 +92,19 @@ export function NameProducts() {
   const notice = useNotice();
   const [edits, setEdits] = useState<Record<string, RowEdit>>({});
   const [problems, setProblems] = useState<Record<string, string>>({});
+  // Rows refused because a product with the same name and ingredient exists.
+  const [existing, setExisting] = useState<Record<string, ExistingProduct>>({});
   const rows = naming.data ?? [];
 
   // Editing a row says it has been looked at, so it is ticked (N5).
   const change = (key: string, patch: RowEdit) => {
     setEdits((all) => ({ ...all, [key]: { ...all[key], ticked: true, ...patch } }));
     setProblems((all) => {
+      const rest = { ...all };
+      delete rest[key];
+      return rest;
+    });
+    setExisting((all) => {
       const rest = { ...all };
       delete rest[key];
       return rest;
@@ -99,31 +122,47 @@ export function NameProducts() {
     }
     setProblems(found);
     if (Object.keys(found).length > 0) return;
-    const payload: NameProductRow[] = ticked.map(({ row, v }) => ({
-      vendor_id: row.vendor.id,
-      raw_text_norm: row.raw_text_norm ?? "",
-      name: v.name.trim(),
-      ...(v.packQty.trim() ? { pack_qty: v.packQty.trim(), pack_unit: v.packUnit } : {}),
-      ...choiceInput(v.ingredient!),
-    }));
+    const payload: NameProductRow[] = ticked.map(({ row, v }) =>
+      v.use
+        ? { vendor_id: row.vendor.id, raw_text_norm: row.raw_text_norm ?? "", name: v.use.name, product_id: v.use.id }
+        : {
+            vendor_id: row.vendor.id,
+            raw_text_norm: row.raw_text_norm ?? "",
+            name: v.name.trim(),
+            ...(v.packQty.trim() ? { pack_qty: v.packQty.trim(), pack_unit: v.packUnit } : {}),
+            ...(v.duplicate ? { allow_duplicate: true } : {}),
+            ...choiceInput(v.ingredient!),
+          },
+    );
+    const using = new Set(ticked.filter((x) => x.v.use).map((x) => x.key));
     create.mutate(payload, {
       onSuccess: ({ results }) => {
         const failed: Record<string, string> = {};
+        const offered: Record<string, ExistingProduct> = {};
         let products = 0;
+        let used = 0;
         let lines = 0;
         for (const r of results) {
           const key = `${r.vendor_id}:${r.raw_text_norm}`;
-          if (r.error) failed[key] = r.error.message;
-          else {
-            products += 1;
+          if (r.error) {
+            failed[key] = r.error.message;
+            if (r.error.code === "product_exists" && r.error.product) offered[key] = r.error.product;
+          } else {
+            if (using.has(key)) used += 1;
+            else products += 1;
             lines += r.applied;
           }
         }
         setProblems(failed);
+        setExisting(offered);
         // A created row leaves the list; a failed one keeps what was typed.
         setEdits((all) => Object.fromEntries(Object.entries(all).filter(([key]) => key in failed || !results.some((r) => `${r.vendor_id}:${r.raw_text_norm}` === key))));
-        if (products > 0) {
-          notice.show({ tone: "success", message: `Created ${products} ${products === 1 ? "product" : "products"} and identified ${lines} ${lines === 1 ? "line" : "lines"}.` });
+        if (products + used > 0) {
+          const made = [
+            products > 0 ? `Created ${products} ${products === 1 ? "product" : "products"}` : "",
+            used > 0 ? `${products > 0 ? "used" : "Used"} ${used} existing ${used === 1 ? "product" : "products"}` : "",
+          ].filter(Boolean);
+          notice.show({ tone: "success", message: `${made.join(", ")} and identified ${lines} ${lines === 1 ? "line" : "lines"}.` });
         }
       },
     });
@@ -175,7 +214,7 @@ export function NameProducts() {
       ) : null}
       <ul aria-label="New products to name" className="flex flex-col divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
         {values.map(({ row, key, v }, i) => (
-          <NamingRowItem key={key} id={`name-${i}`} row={row} value={v} problem={problems[key]} busy={create.isPending} onChange={(patch) => change(key, patch)} />
+          <NamingRowItem key={key} id={`name-${i}`} row={row} value={v} problem={problems[key]} existing={existing[key]} busy={create.isPending} onChange={(patch) => change(key, patch)} />
         ))}
       </ul>
       <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
@@ -190,7 +229,23 @@ export function NameProducts() {
   );
 }
 
-function NamingRowItem({ id, row, value, problem, busy, onChange }: { id: string; row: NamingRow; value: RowValue; problem?: string; busy: boolean; onChange: (patch: RowEdit) => void }) {
+function NamingRowItem({
+  id,
+  row,
+  value,
+  problem,
+  existing,
+  busy,
+  onChange,
+}: {
+  id: string;
+  row: NamingRow;
+  value: RowValue;
+  problem?: string;
+  existing?: ExistingProduct;
+  busy: boolean;
+  onChange: (patch: RowEdit) => void;
+}) {
   const lineLabel = row.raw_text_norm ?? "(no text)";
   return (
     <li className="p-3" role="group" aria-label={`${row.vendor.name}: ${lineLabel}`}>
@@ -245,7 +300,26 @@ function NamingRowItem({ id, row, value, problem, busy, onChange }: { id: string
           <UnitSelect id={`${id}-pack-unit`} label="Unit" value={value.packUnit} onChange={(unit) => onChange({ packUnit: unit })} emptyLabel="No pack" disabled={busy} />
         </div>
       </div>
-      {problem ? (
+      {value.use ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm" data-testid={`${id}-use`}>
+          <span>
+            Uses the existing product <span className="font-medium">{productTitle(value.use)}</span>.
+          </span>
+          <Button variant="ghost" className="px-2" disabled={busy} onClick={() => onChange({ use: null })}>
+            Create a new product instead
+          </Button>
+        </div>
+      ) : existing ? (
+        <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <span>{productTitle(existing)} already exists with this ingredient.</span>
+          <Button variant="secondary" disabled={busy} onClick={() => onChange({ use: existing, duplicate: false })}>
+            Use {productTitle(existing)}
+          </Button>
+          <Button variant="ghost" className="px-2" disabled={busy} onClick={() => onChange({ duplicate: true })}>
+            Create another
+          </Button>
+        </div>
+      ) : problem ? (
         <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">
           {problem}
         </p>

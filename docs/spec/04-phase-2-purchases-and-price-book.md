@@ -236,6 +236,8 @@ Brand is not in the row; it is edited on the product later. `GET /to-identify/na
 
 A row that fails keeps its fields and shows its error; the others are unaffected. The response lists each row's outcome. Nothing is created from a row a person didn't tick (non-negotiable 8).
 
+**An existing product of the same name (#179).** A row whose name matches an active product of the same existing ingredient (ignoring case and spacing), including one an earlier row in the same request just created, is refused with `product_exists` and that product. The row then offers "Use {product}", which sends the row again with the product's id so its lines are identified as that product and nothing is created, and "Create another", which sends it with `allow_duplicate` for a product that really is different.
+
 ### Acceptance criteria
 
 60. With three or more groups waiting, the to-identify page offers the naming mode; with fewer it does not.
@@ -244,6 +246,7 @@ A row that fails keeps its fields and shows its error; the others are unaffected
 63. A failing row (an unknown ingredient, an unknown pack unit, a group identified meanwhile) reports its error and creates nothing; the other rows in the same request succeed.
 64. The UI sends only ticked rows. Rows start unticked; editing a row ticks it.
 65. A model suggestion that fails validation, or names an ingredient that is neither in the catalog nor on the standard list, is dropped. A suggestion never replaces a field a person edited.
+94. (#179) A row naming an active product's name and ingredient, ignoring case and spacing, creates nothing and returns `product_exists` with that product; two rows naming the same new product in one request create it once. Sent again with that `product_id`, the row identifies its lines as the existing product; sent with `allow_duplicate`, it creates a second product. An inactive product can't be used.
 
 ## Fixture corpus
 
