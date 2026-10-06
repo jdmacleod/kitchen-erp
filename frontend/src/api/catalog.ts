@@ -640,8 +640,13 @@ export function useConfirmDensityOverride(id: string) {
 /** "12 oz", "19 oz · 5 links", or "" when the product has no pack. */
 export function formatPack(pack_qty: string | null, pack_unit: string | null, pack_count?: number | null, piece_name?: string | null): string {
   if (pack_qty === null || pack_unit === null) return "";
-  const size = `${trimDecimal(pack_qty)} ${pack_unit}`;
+  const size = `${trimDecimal(pack_qty)} ${unitLabel(pack_unit)}`;
   return pack_count ? `${size} · ${formatPieces(pack_count, piece_name)}` : size;
+}
+
+/** A unit code as people write it: "fl_oz" is "fl oz". */
+export function unitLabel(code: string): string {
+  return code.replace(/_/g, " ");
 }
 
 /** "5 links", "1 link", "6 pieces" when the piece has no name. */
@@ -664,8 +669,13 @@ export function trimDecimal(value: string): string {
 }
 
 /** "Brand Name" or just "Name". */
+/** Brand and name, once: a name that already starts with its brand isn't given it twice. */
 export function productTitle(p: { brand: string | null; name: string }): string {
-  return p.brand ? `${p.brand} ${p.name}` : p.name;
+  const brand = p.brand?.trim();
+  if (!brand) return p.name;
+  const fold = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const name = fold(p.name);
+  return name === fold(brand) || name.startsWith(`${fold(brand)} `) ? p.name : `${brand} ${p.name}`;
 }
 
 /** True for a positive decimal such as "0.5", "12", or "1.". */

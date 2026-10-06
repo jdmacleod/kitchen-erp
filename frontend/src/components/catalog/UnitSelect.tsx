@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useUnits, type Unit } from "../../api/catalog";
+import { unitLabel, useUnits, type Unit } from "../../api/catalog";
 import { SelectField } from "./fields";
 
 interface UnitSelectProps {
@@ -68,7 +68,7 @@ export function UnitSelect({
         <optgroup key={dimension} label={dimension}>
           {list.map((u) => (
             <option key={u.code} value={u.code}>
-              {u.code}
+              {unitLabel(u.code)}
             </option>
           ))}
         </optgroup>

@@ -59,6 +59,28 @@ describe("receipts", () => {
     expect(within(list).getByText("waiting to be read")).toBeInTheDocument();
   });
 
+  // Regression: a batch of receipts all uploaded before said "Uploaded 0 receipts.
+  // They'll appear…", and one removed before counted as uploaded. Found by
+  // /devex-review on 2026-10-05.
+  it("says which receipts are read again and which aren't", async () => {
+    let n = 0;
+    mockApi({
+      ...baseRoutes(() => []),
+      "POST /receipts": () => {
+        n += 1;
+        const job = { ...reviewJob, id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b0${n}`, stage: "captured", status: "pending", purchase_id: null };
+        return jsonResponse(200, { document: { id: receiptDocumentId }, job, created: false, revived: n === 1 });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts");
+    await screen.findByText("No receipts yet");
+    const files = ["a.png", "b.png", "c.png"].map((name) => new File([new Uint8Array([1, 2, 3])], name, { type: "image/png" }));
+    await user.upload(screen.getByLabelText("Receipt photos or PDFs"), files);
+    await user.click(screen.getByRole("button", { name: "Upload" }));
+    expect(await screen.findByTestId("notice")).toHaveTextContent("1 removed before is being read again. It'll appear in Needs you once read. 2 were uploaded before and aren't read again.");
+  });
+
   it("uploads several receipts in turn and says what happened to all of them", async () => {
     // One already uploaded, two new: one notice, not three.
     let n = 0;
