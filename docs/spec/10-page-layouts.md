@@ -173,6 +173,15 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - After accepting (DV20): the Notice "Saved 3 values for scallion as unconfirmed. Confirm them on its page after checking a label · Open scallion". The ingredient's bridges show a neutral "Unconfirmed" badge.
 - With no USDA data loaded, the section says "USDA data isn't loaded yet. Whoever runs this Kitchen ERP can load it with kerp import usda." and no inbox row appears (DV6).
 
+**Setting packs on Needs a bridge (#186).**
+- Above the table, a count line: "71 products · 64 need a pack size". It drops as packs are set.
+- A row missing a pack offers "Set the pack" (secondary). It opens an editor in a full-width row under the line, with Pack quantity, Pack unit and, for a mass or volume unit, "Pieces (optional)". Save pack is primary; Cancel and Escape close it.
+- Saving uses the ordinary product update, which re-prices the product. The Notice says "Saved the pack for Bread Flour.", and the editor for the next product waiting on a pack opens with focus on its quantity, so a batch can be worked through from the keyboard.
+- A product whose prices now compare leaves the list. One that now needs something else, such as a density, stays with its new reason.
+- Rows missing a density or a measure keep their link to the ingredient page.
+- Checks run before saving: "Pack quantity must be a positive number, like 500.", "Choose a pack unit.", and "Pieces must be a whole number, like 5."
+- Phone, below 1024px: the editor stays in view while the table scrolls sideways, its fields stack, and its buttons are 44px.
+
 **Inbox rows (DV1, DV7).**
 - Badge "Link", title "13 ingredients to link to the standard list", action "Review", while any ingredient is To review.
 - Badge "USDA", title "9 ingredients have USDA densities to review", linking to the section above. It appears once no ingredient is To review, or when a linked ingredient has suggestions. The link page's finish Notice points to it.

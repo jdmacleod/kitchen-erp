@@ -125,7 +125,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Receipt | Draft or reviewed purchase awaiting a location or commit | "Finish the Sep 24 receipt" | Choose location / Review |
 | Couldn't read | Failed ingest job (D4); drafts belonging to a failed job are not listed twice | "A receipt couldn't be read" | Open receipt (Retry and Enter by hand sit together on that page, G5) |
 | Identify | Unmatched lines on committed purchases, as one aggregate row (T6) | "23 receipt lines to identify" | Review lines → `/shop/receipts/identify` |
-| Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one row per product (T7) | "Oat milk, 1 L carton" | Add density or measure |
+| Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one aggregate row (T7, #186); a product failing two ways counts once. The detail names the reason, or breaks the count down by reason when they differ | "71 products need a pack size before their prices compare" | Set packs / Add densities / Add measures / Review → `/catalog/bridges` |
 | Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
 | Link | Ingredients still To review against the standard list, one aggregate row (03, 1G) | "13 ingredients to link to the standard list" | Review → `/catalog/ingredients/link` |
 | USDA | Linked ingredients with unreviewed USDA densities or measures, one aggregate row, only when USDA data is loaded (03, 1G) | "9 ingredients have USDA densities to review" | Review → `/catalog/bridges#usda` |
