@@ -511,6 +511,25 @@ export function usePatchLine(purchaseId: string) {
   );
 }
 
+/** One row of "Correct the lines" (issue 182): a saved line by id, or a new one. */
+export interface LineRowInput {
+  id?: string;
+  raw_text?: string;
+  line_kind: string;
+  qty?: string;
+  unit?: string;
+  line_total: string;
+  /** Position, in the same list, of the item a discount or deposit belongs to. */
+  attach_to?: number;
+}
+
+/** Save every line of a draft at once; a saved line left out is removed. */
+export function useReplaceLines(purchaseId: string) {
+  return usePurchaseMutation(purchaseId, (lines: LineRowInput[]) =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/lines`, { method: "PUT", body: { lines } }),
+  );
+}
+
 export function useAddLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, (input: LineAddInput) =>
     api<Purchase>(`/purchases/${enc(purchaseId)}/lines`, { method: "POST", body: input }),
