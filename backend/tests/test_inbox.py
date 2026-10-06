@@ -76,6 +76,9 @@ async def test_empty_inbox_is_empty_not_an_error(admin_client: httpx.AsyncClient
             "stalled": False,
             "lookups_overdue": 0,
             "lookups_since": None,
+            "batch_done": None,
+            "batch_of": None,
+            "minutes_left": None,
         },
     }
 

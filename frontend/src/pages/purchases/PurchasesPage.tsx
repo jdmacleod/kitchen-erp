@@ -7,6 +7,7 @@ import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourc
 import { Badge } from "../../components/catalog/fields";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
+import { TrustBadge } from "../../components/purchases/TrustBadge";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
@@ -311,7 +312,8 @@ function JobsFailed({ onRetry }: { onRetry: () => void }) {
 
 /** When it was uploaded: a receipt being read has no purchase date yet. */
 function uploaded(job: IngestJob): string {
-  return job.created_at ? `Uploaded ${formatDate(job.created_at)}` : "Uploaded just now";
+  const when = job.uploaded_at ?? job.created_at;
+  return when ? `Uploaded ${formatDate(when)}` : "Uploaded just now";
 }
 
 /**
@@ -343,6 +345,15 @@ function ReadingRow({ job }: { job: IngestJob }) {
  * opened (issue 121, ruling R2).
  */
 function StatusBadge({ purchase }: { purchase: Purchase }) {
-  if (purchase.held) return <Badge tone="warn">Careful look</Badge>;
-  return <Badge tone={purchaseStatusTone[purchase.status]}>{purchaseStatusLabel[purchase.status]}</Badge>;
+  if (purchase.held) return <TrustBadge trust={purchase.trust} gap={purchase.gap} held />;
+  const status = <Badge tone={purchaseStatusTone[purchase.status]}>{purchaseStatusLabel[purchase.status]}</Badge>;
+  // A receipt's reading beside its status, so the drafts that need care stand
+  // out before they are opened (issue 122); nothing for one entered by hand.
+  if (!purchase.trust || purchase.status === "voided") return status;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {status}
+      <TrustBadge trust={purchase.trust} gap={purchase.gap} />
+    </span>
+  );
 }

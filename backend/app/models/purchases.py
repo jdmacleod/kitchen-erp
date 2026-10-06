@@ -50,6 +50,8 @@ RESOLUTIONS = (
 OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
 NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack", "pack_count")
+# What became of one file in an upload batch (issue 122).
+UPLOAD_OUTCOMES = ("new", "revived", "already_seen")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -100,6 +102,50 @@ class IngestJob(UUIDPrimaryKey, Timestamped, Base):
     next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     purchase_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("purchase.id", use_alter=True, name="fk_ingest_job_purchase")
+    )
+    # When the receipt was last sent to be read: a revived receipt's job keeps
+    # its created_at (the first upload) and takes a new uploaded_at.
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class UploadBatch(UUIDPrimaryKey, Base):
+    """One upload: a receipt, or several chosen or dropped at once (issue 122)."""
+
+    __tablename__ = "upload_batch"
+    __table_args__ = (CheckConstraint("file_count > 0", name="ck_upload_batch_file_count"),)
+
+    created_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id")
+    )
+    # How many files the person chose; a file the server refused has no entry.
+    file_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False, index=True
+    )
+
+
+class UploadBatchReceipt(Base):
+    """What became of one file in a batch. A receipt uploaded again belongs to both."""
+
+    __tablename__ = "upload_batch_receipt"
+    __table_args__ = (
+        CheckConstraint(_in("outcome", UPLOAD_OUTCOMES), name="ck_upload_batch_receipt_outcome"),
+    )
+
+    batch_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("upload_batch.id", ondelete="CASCADE"), primary_key=True
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("ingest_job.id", ondelete="CASCADE"),
+        primary_key=True,
+        index=True,
+    )
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
 

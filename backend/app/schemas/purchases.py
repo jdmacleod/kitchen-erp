@@ -213,6 +213,8 @@ class PurchaseOut(ApiModel):
     # How far a receipt's reading can be trusted, from its lines as they are now;
     # null for a purchase entered by hand (#121).
     trust: Literal["adds_up", "check_lines", "couldnt_read"] | None = None
+    # With check_lines: how far lines_total is from the printed total (issue 122).
+    gap: DecimalStr | None = None
     # A draft whose lines miss its printed total by a wide margin: "Needs a careful
     # look". Derived, never stored, and never a block on commit.
     held: bool = False

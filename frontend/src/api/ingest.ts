@@ -5,7 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { qs } from "./catalog";
 import { API_BASE, ApiError, api, newIdempotencyKey } from "./client";
-import { invalidatePurchases } from "./purchases";
+import { invalidatePurchases, type Trust } from "./purchases";
 import type { ErrorEnvelope } from "./types";
 
 // The backend's statuses; anything else is shown verbatim.
@@ -46,6 +46,8 @@ export interface IngestJob {
   results?: StageResult[];
   created_at?: string;
   updated_at?: string;
+  /** When it was last sent to be read: a receipt uploaded again shows that day (issue 122). */
+  uploaded_at?: string;
 }
 
 export interface ReceiptDocument {
@@ -60,10 +62,42 @@ export interface ReceiptUploadResult {
   revived?: boolean;
   /** False when the same file was already here and nothing new is read. */
   created?: boolean;
+  /** The upload batch it was counted in (issue 122). */
+  batch_id?: string;
+}
+
+/** One file in an upload batch, and what its reading came to once read. */
+export interface BatchReceipt {
+  job: IngestJob;
+  outcome: "new" | "revived" | "already_seen";
+  store: string | null;
+  total: string | null;
+  item_lines: number | null;
+  lines_total: string | null;
+  trust: Trust | null;
+  gap: string | null;
+  held: boolean;
+}
+
+/** One upload, with counts by outcome and by trust (issue 122). */
+export interface UploadBatch {
+  id: string;
+  file_count: number;
+  created_at: string;
+  uploaded: number;
+  new: number;
+  revived: number;
+  already_seen: number;
+  reading: number;
+  adds_up: number;
+  check_lines: number;
+  couldnt_read: number;
+  receipts: BatchReceipt[];
 }
 
 export const ingestKeys = {
   jobs: ["ingest-jobs"] as const,
+  batches: ["ingest-jobs", "batches"] as const,
   jobList: (status: string) => ["ingest-jobs", "list", status] as const,
   job: (id: string) => ["ingest-jobs", "detail", id] as const,
 };
@@ -79,6 +113,25 @@ export function useIngestJobs(status = "", enabled = true) {
     // Poll while anything is still in flight.
     refetchInterval: (query) => (query.state.data?.items.some(jobInFlight) ? 3_000 : false),
   });
+}
+
+/**
+ * Recent uploads, newest first. Under the ingest-jobs key, so everything that
+ * refreshes the jobs (a retry, a removal, an upload) refreshes these too.
+ */
+export function useUploadBatches(enabled = true) {
+  return useQuery({
+    queryKey: ingestKeys.batches,
+    queryFn: () => api<{ items: UploadBatch[] }>("/upload-batches"),
+    select: (data) => data.items,
+    enabled,
+    refetchInterval: (query) => (query.state.data?.items.some((b) => b.reading > 0) ? 3_000 : false),
+  });
+}
+
+/** Open a batch before sending its files, so they are counted together. */
+export function createUploadBatch(fileCount: number): Promise<{ id: string }> {
+  return api<{ id: string }>("/upload-batches", { method: "POST", body: { file_count: fileCount } });
 }
 
 export function useIngestJob(id: string | undefined, includeOutput = true) {
@@ -172,6 +225,8 @@ export interface ReceiptUploadInput {
   image: File;
   ocr_text?: string;
   captured_at?: string;
+  /** The batch it belongs to; without one the server makes a batch of one. */
+  batch_id?: string;
 }
 
 /**
@@ -183,6 +238,7 @@ export async function uploadReceipt(input: ReceiptUploadInput): Promise<ReceiptU
   form.append("image", input.image, input.image.name);
   if (input.ocr_text) form.append("ocr_text", input.ocr_text);
   if (input.captured_at) form.append("captured_at", input.captured_at);
+  if (input.batch_id) form.append("batch_id", input.batch_id);
   const response = await fetch(`${API_BASE}/receipts`, {
     method: "POST",
     credentials: "include",
