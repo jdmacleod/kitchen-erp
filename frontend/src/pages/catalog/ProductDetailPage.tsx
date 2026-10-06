@@ -14,6 +14,7 @@ import {
   type ProductUpdateInput,
 } from "../../api/catalog";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
+import { ProductCategoryCard } from "../../components/catalog/ProductCategoryCard";
 import { ProductLookUpCard } from "../../components/catalog/ProductLookUpCard";
 import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
@@ -123,6 +124,7 @@ function ProductDetail({ product }: { product: Product }) {
           </Card>
         ) : null}
 
+        <ProductCategoryCard product={product} />
         <ProductPrices product={product} />
         <PriceRecords productId={product.id} />
 

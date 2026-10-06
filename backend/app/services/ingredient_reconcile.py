@@ -78,8 +78,39 @@ def suggest_entry(name: str) -> standard.StandardEntry | None:
     index = _entry_index()
     if norm in index:
         return index[norm]
+    # USDA writes the noun first ("butter, unsalted", "salmon, smoked"); the
+    # standard list writes it last.
+    head, comma, tail = name.partition(",")
+    if comma and tail.strip() and (turned := normalize_name(f"{tail} {head}")) in index:
+        return index[turned]
     close = difflib.get_close_matches(norm, list(index), n=1, cutoff=_CLOSE_MATCH)
     return index[close[0]] if close else None
+
+
+async def recheck(db: AsyncSession) -> list[str]:
+    """Offer the standard list again to ingredients it was never offered to.
+
+    An ingredient typed in (not chosen from the list) used to start
+    ``not_applicable``, so the link page never showed it even when the list
+    had its name ("butter, unsalted"). Each one a standard entry now matches
+    goes back to ``unreviewed``: offered on the link page, never linked here.
+    Returns their names."""
+    rows = (
+        await db.execute(
+            select(Ingredient).where(
+                Ingredient.active,
+                Ingredient.merged_into.is_(None),
+                Ingredient.reconcile_state == "not_applicable",
+            )
+        )
+    ).scalars()
+    offered = []
+    for ingredient in rows:
+        if suggest_entry(ingredient.name) is not None:
+            ingredient.reconcile_state = "unreviewed"
+            offered.append(ingredient.name)
+    await db.commit()
+    return sorted(offered)
 
 
 @dataclass

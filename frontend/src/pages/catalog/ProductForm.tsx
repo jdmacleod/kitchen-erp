@@ -11,6 +11,7 @@ import {
 } from "../../api/catalog";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { choiceName, choiceUnit, IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { CategoryField } from "../../components/catalog/CategoryField";
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { Alert, Button, Field } from "../../components/ui";
@@ -215,6 +216,16 @@ export function ProductForm({
             : undefined
         }
       />
+      {values.ingredient?.kind === "new" ? (
+        <CategoryField
+          id={`${idPrefix}-new-ingredient-category`}
+          value={values.ingredient.category ?? ""}
+          onChange={(category) => {
+            if (values.ingredient?.kind === "new") set("ingredient", { ...values.ingredient, category });
+          }}
+          hint={`For the new ingredient ${values.ingredient.name}: its label on every product of it.`}
+        />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

@@ -21,7 +21,7 @@ import { Combobox } from "./Combobox";
  */
 export type IngredientChoice =
   | { kind: "existing"; ingredient: IngredientSummary; matchedSpelling?: string | null }
-  | { kind: "new"; name: string }
+  | { kind: "new"; name: string; category?: string }
   | {
       kind: "standard";
       key: string;
@@ -54,7 +54,8 @@ export function choiceInput(
 ): { ingredient_id: string } | { ingredient: IngredientCreateInput } {
   if (choice.kind === "existing") return { ingredient_id: choice.ingredient.id };
   if (choice.kind === "standard") return { ingredient: { name: choice.name, standard_key: choice.key } };
-  return { ingredient: { name: choice.name } };
+  const category = choice.category?.trim();
+  return { ingredient: category ? { name: choice.name, category } : { name: choice.name } };
 }
 
 /** A search or suggestion row as the choice picking it makes. */

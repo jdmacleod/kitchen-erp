@@ -23,7 +23,8 @@ import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/Us
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { CATEGORY_KEYS, CategoryChip } from "../../components/CategoryChip";
+import { CategoryChip } from "../../components/CategoryChip";
+import { CategoryField } from "../../components/catalog/CategoryField";
 import { Drawer } from "../../components/Drawer";
 import { useNotice, type NoticeData } from "../../components/Notice";
 
@@ -304,21 +305,7 @@ function AddIngredientDrawer({
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
           />
-          <Field
-            id="new-ingredient-category"
-            label="Category"
-            autoComplete="off"
-            placeholder="produce, dairy, pantry…"
-            list="ingredient-categories"
-            value={form.category}
-            onChange={(e) => set("category", e.target.value)}
-          />
-          {/* The nine categories the chips colour (UI-3.6); free text still works. */}
-          <datalist id="ingredient-categories">
-            {CATEGORY_KEYS.map((key) => (
-              <option key={key} value={key} />
-            ))}
-          </datalist>
+          <CategoryField id="new-ingredient-category" value={form.category} onChange={(value) => set("category", value)} />
         </div>
         <RadioGroup
           name="new-ingredient-unit"

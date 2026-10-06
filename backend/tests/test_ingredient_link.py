@@ -306,3 +306,30 @@ async def test_a_former_name_another_ingredient_has_is_logged_not_kept(
     assert r.status_code == 200, r.text
     assert "skipped a former name another ingredient has" in caplog.text
     assert "green onion" not in await _spellings(db_session, uuid.UUID(ing["id"]))
+
+
+# Found by /devex-review on 2026-10-06: typed-in ingredients named the USDA way
+# ("butter, unsalted") never matched their standard name, and nothing offered the
+# standard list to ingredients typed in after 1G.
+@pytest.mark.parametrize(
+    ("name", "key"), [("butter, unsalted", "unsalted-butter"), ("Salmon, smoked", "smoked-salmon")]
+)
+def test_a_noun_first_name_finds_its_standard_entry(name, key):
+    from app.services.ingredient_reconcile import suggest_entry
+
+    entry = suggest_entry(name)
+    assert entry is not None and entry.key == key
+
+
+async def test_recheck_offers_typed_in_ingredients_the_list_now_matches(admin_client, db_session):
+    from app.services.ingredient_reconcile import recheck
+
+    butter = await make_ingredient(admin_client, "butter, unsalted")
+    quince = await make_ingredient(admin_client, "Quince paste")
+    assert (await _get(db_session, butter["id"])).reconcile_state == "not_applicable"
+    assert await recheck(db_session) == ["butter, unsalted"]
+    assert (await _get(db_session, butter["id"])).reconcile_state == "unreviewed"
+    assert (await _get(db_session, quince["id"])).reconcile_state == "not_applicable"
+    page = (await admin_client.get("/api/v1/ingredients/link")).json()
+    [row] = page["to_review"]
+    assert row["name"] == "butter, unsalted" and row["suggestion"]["key"] == "unsalted-butter"

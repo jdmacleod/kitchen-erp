@@ -20,6 +20,7 @@ import {
   type Perishability,
 } from "../../api/catalog";
 import { BridgeEditor } from "../../components/catalog/BridgeEditor";
+import { CategoryField } from "../../components/catalog/CategoryField";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { TestBench } from "../../components/catalog/TestBench";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
@@ -221,13 +222,7 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
         {update.isError ? <Alert tone="error">{catalogErrorMessage(update.error)}</Alert> : null}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="edit-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
-          <Field
-            id="edit-category"
-            label="Category"
-            autoComplete="off"
-            value={form.category}
-            onChange={(e) => set("category", e.target.value)}
-          />
+          <CategoryField id="edit-category" value={form.category} onChange={(value) => set("category", value)} />
         </div>
         <RadioGroup
           name="edit-unit"

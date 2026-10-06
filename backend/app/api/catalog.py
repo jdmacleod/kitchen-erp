@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
@@ -174,7 +175,8 @@ async def list_products(
         max_length=200,
         description="name, brand, ingredient or barcode; ranks like /products/search, one page",
     ),
-    category: CategoryKey | None = None,
+    # A category key, or "none" for products whose ingredient has no category.
+    category: CategoryKey | Literal["none"] | None = None,
     barcode: str | None = Query(default=None, description="exact barcode match"),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,

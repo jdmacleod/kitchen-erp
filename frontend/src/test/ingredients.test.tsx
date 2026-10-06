@@ -155,15 +155,17 @@ describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
     expect(await screen.findByRole("region", { name: "Add your first ingredient" })).toBeInTheDocument();
   });
 
-  it("suggests the nine known categories in the drawer", async () => {
+  it("offers the nine known categories as a choice, and Other for free text", async () => {
     mockApi(baseRoutes(() => []));
     const user = userEvent.setup();
     renderApp("/catalog/ingredients");
     await openAddDrawer(user);
     const field = screen.getByLabelText("Category");
-    const list = document.getElementById(field.getAttribute("list") ?? "");
-    expect([...(list?.querySelectorAll("option") ?? [])].map((o) => o.value)).toEqual([
-      "produce", "dairy", "meat", "seafood", "bakery", "pantry", "spices", "beverages", "frozen",
+    expect([...field.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
+      "No category", "Produce", "Dairy", "Meat", "Seafood", "Bakery", "Pantry", "Spices", "Beverages", "Frozen", "Other…",
     ]);
+    expect(screen.queryByLabelText("Other category")).not.toBeInTheDocument();
+    await user.selectOptions(field, "Other…");
+    expect(screen.getByLabelText("Other category")).toBeInTheDocument();
   });
 });

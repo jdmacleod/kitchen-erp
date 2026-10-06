@@ -433,6 +433,23 @@ def ingredients_check() -> None:
     asyncio.run(_run())
 
 
+@ingredients_cli.command("recheck")
+def ingredients_recheck() -> None:
+    """Offer the standard list again to typed-in ingredients it now matches (link page)."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.ingredient_reconcile import recheck
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            names = await recheck(db)
+        await dispose_engine()
+        typer.echo(f"Offered on the link page again: {len(names)}")
+        for name in names:
+            typer.echo(f"  {name}")
+
+    asyncio.run(_run())
+
+
 @ingredients_cli.command("usda-candidates")
 def ingredients_usda_candidates(
     query: str = typer.Argument(..., help="An FDC id (lists its raw or dry siblings) or text."),

@@ -236,7 +236,7 @@ Ingredients stay flat in 1G. A hierarchy (cheese → parmesan) is deferred (TODO
 
 **Creating from the standard list.** Choosing a standard name in the picker creates nothing until the form saves. On save, `IngredientCreate.standard_key` creates the ingredient, its spellings, its USDA reference and its measures in the form's own transaction, with the standard key as its slug and `reconcile_state = linked`. A taken name returns `409 ingredient_name_taken`; an unknown key returns `422 unknown_standard_entry`. Measures from the list are stored as `source = usda` or `manual` and unconfirmed.
 
-**Linking existing ingredients.** Ingredients created before 1G start `unreviewed`. A link page (`/catalog/ingredients/link`, reached from an inbox row, with no nav item) pairs each with its likely standard name and USDA food. Per row, a person can:
+**Linking existing ingredients.** Ingredients created before 1G start `unreviewed`. A name written the USDA way, noun first ("butter, unsalted"), is matched with its words turned round. `kerp ingredients recheck` puts typed-in `not_applicable` ingredients that a standard entry now matches back to `unreviewed`, so the link page offers them; nothing is linked by it. A link page (`/catalog/ingredients/link`, reached from an inbox row, with no nav item) pairs each with its likely standard name and USDA food. Per row, a person can:
 - **Link**: take the standard name, slug, spellings and USDA reference. A name that changes is kept as a `legacy` spelling.
 - **Rename**: give the ingredient a new name. The old name is kept as a `legacy` spelling.
 - **Skip**: leave it as it is. Skipped rows can be reopened.
