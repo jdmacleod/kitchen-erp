@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { formatPack, productTitle } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
@@ -21,6 +21,14 @@ export function NeedsBridgePage() {
   const [editing, setEditing] = useState<string | null>(null);
   const products = new Set(items.map((i) => i.product.id)).size;
   const packIds = items.filter((i) => i.status === "no_pack").map((i) => i.product.id);
+
+  // On a phone the table scrolls sideways, and "Set the pack" sits at its far
+  // right; bring it back to the start so the editor and the product name show.
+  useEffect(() => {
+    if (!editing) return;
+    const scroller = document.getElementById(`pack-row-${editing}`)?.closest(".overflow-x-auto");
+    if (scroller) scroller.scrollLeft = 0;
+  }, [editing]);
 
   // After a save, the next product waiting on a pack opens, so a batch can be
   // worked through from the keyboard without leaving the page.
@@ -100,6 +108,7 @@ export function NeedsBridgePage() {
                           {quickPack ? (
                             <Button
                               variant="secondary"
+                              className="whitespace-nowrap"
                               aria-expanded={open}
                               aria-controls={open ? `pack-row-${item.product.id}` : undefined}
                               onClick={() => setEditing(open ? null : item.product.id)}
@@ -117,7 +126,7 @@ export function NeedsBridgePage() {
                         <tr id={`pack-row-${item.product.id}`}>
                           <td colSpan={6} className="pb-3">
                             {/* Sticky so the editor stays in view when the table scrolls sideways on a phone. */}
-                            <div className="sticky left-0 max-w-[calc(100vw-4rem)] lg:max-w-none">
+                            <div className="sticky left-0 max-w-[calc(100vw-4rem)] px-0.5 lg:max-w-none">
                               <QuickPackEditor
                                 key={item.product.id}
                                 productId={item.product.id}

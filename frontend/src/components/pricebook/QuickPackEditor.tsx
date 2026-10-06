@@ -70,6 +70,7 @@ export function QuickPackEditor({ productId, title, onSaved, onCancel }: QuickPa
       className="flex flex-col gap-3 py-2"
       noValidate
     >
+      <p className="text-sm font-medium">Pack for {title}</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field
           id={`${prefix}-qty`}
