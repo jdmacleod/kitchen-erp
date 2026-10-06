@@ -116,17 +116,39 @@ class Config:
 
     @property
     def key(self) -> str:
-        return f"{self.arm}|{self.model}|{self.prompt_version}|{self.long_side}|{self.variant}"
+        key = f"{self.arm}|{self.model}|{self.prompt_version}|{self.long_side}|{self.variant}"
+        # Arm (b)'s reading also depends on the text model it ends in.
+        return f"{key}|{self.text_model}" if self.arm == "b" and self.text_model else key
+
+
+ARMS = ("a", "b", "c")
 
 
 def default_configs(
-    *, text_model: str, ocr_model: str, vision_models: Iterable[str]
+    *,
+    text_models: Iterable[str],
+    ocr_model: str,
+    vision_models: Iterable[str],
+    arms: Iterable[str] = ARMS,
 ) -> list[Config]:
-    return [
-        Config("a", text_model, TEXT_PROMPT_VERSION, text_model=text_model),
-        Config("b", ocr_model, OCR_PROMPT_VERSION, LONG_SIDE, text_model=text_model),
-        *(Config("c", model, VISION_PROMPT_VERSION, LONG_SIDE) for model in vision_models),
-    ]
+    """The grid: arm (a) and arm (b) once per text model, arm (c) once per vision model."""
+    wanted, texts = set(arms), list(text_models)
+    configs = []
+    if "a" in wanted:
+        configs += [Config("a", t, TEXT_PROMPT_VERSION, text_model=t) for t in texts]
+    if "b" in wanted:
+        configs += [
+            Config("b", ocr_model, OCR_PROMPT_VERSION, LONG_SIDE, text_model=t) for t in texts
+        ]
+    if "c" in wanted:
+        configs += [Config("c", m, VISION_PROMPT_VERSION, LONG_SIDE) for m in vision_models]
+    return configs
+
+
+def label(row: dict[str, Any]) -> str:
+    """A configuration's name in the summary: arm (b) names the text model it ends in."""
+    text_model = row.get("text_model")
+    return f"{row['model']}→{text_model}" if row["arm"] == "b" and text_model else row["model"]
 
 
 # --- which receipts, and the truth -------------------------------------------------
@@ -618,6 +640,7 @@ CSV_COLUMNS = [
     "wrong_preselection_count",
     "ci80_low",
     "ci80_high",
+    "text_model",
 ]
 
 # z for a two-sided 80% interval.
@@ -666,6 +689,7 @@ def aggregate(
         model=config.model,
         model_digest=digest,
         model_tag=config.model,
+        text_model=config.text_model,
         prompt_version=config.prompt_version,
         long_side=config.long_side,
         variant=config.variant,
@@ -754,9 +778,9 @@ def decide(rows: list[dict[str, Any]], n: int) -> Decision:
         if a_alias is not None and alias is not None and alias < a_alias - ALIAS_SLACK:
             failures.append(f"alias hit rate {alias:.2f} more than 5 points under (a)'s")
         if failures:
-            notes.append(f"({arm}) {row['model']} dropped: " + "; ".join(failures))
+            notes.append(f"({arm}) {label(row)} dropped: " + "; ".join(failures))
         else:
-            passed[arm] = [row["model"]]
+            passed[arm] = [label(row)]
     if not passed:
         reader = "neither"
     elif len(passed) == 1:
@@ -970,13 +994,19 @@ async def run(
 def _stored_rows(
     history: list[dict[str, str]], set_hash: str, current: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
-    """The latest stored row per configuration on the same receipts, for --models."""
-    have = {(r["arm"], r["model"], r["prompt_version"]) for r in current}
-    latest: dict[tuple[str, str, str], dict[str, Any]] = {}
+    """The latest stored row per configuration on the same receipts, for --models and --arms."""
+
+    def config_of(row: dict[str, Any]) -> tuple[str, str, str, str]:
+        # Rows written before the text_model column have none; for arm (a) it is the model.
+        text_model = (row.get("text_model") or "") if row["arm"] == "b" else ""
+        return (row["arm"], row["model"], row["prompt_version"], text_model)
+
+    have = {config_of(r) for r in current}
+    latest: dict[tuple[str, str, str, str], dict[str, Any]] = {}
     for row in history:
         if row.get("receipt_set_hash") != set_hash:
             continue
-        key = (row["arm"], row["model"], row["prompt_version"])
+        key = config_of(row)
         if key in have:
             continue
 
@@ -993,6 +1023,20 @@ def _stored_rows(
 
 
 def _append_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    if path.is_file():
+        with path.open(newline="") as handle:
+            header = next(csv.reader(handle), None)
+        if header != CSV_COLUMNS:
+            # Written before a column was added: rewrite it under today's header, the
+            # old rows with the new columns empty. Beside it first, so a run stopped
+            # halfway never loses the stored history.
+            old = read_history(path)
+            rewritten = path.with_name(path.name + ".tmp")
+            with rewritten.open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+                writer.writeheader()
+                writer.writerows({k: row.get(k) or "" for k in CSV_COLUMNS} for row in old)
+            rewritten.replace(path)
     new = not path.is_file()
     with path.open("a", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=CSV_COLUMNS)
@@ -1022,7 +1066,7 @@ def _summary_row(row: dict[str, Any]) -> str:
         _fmt(row[k]) for k in ("ocr_support", "ocr_support_tolerant", "false_support")
     )
     return (
-        f"({row['arm']}) {row['model'][:22]:<22} "
+        f"({row['arm']}) {label(row)[:22]:<22} "
         f"{_fmt(row['reconcile_share']):>5} [{_fmt(row['ci80_low'])}–{_fmt(row['ci80_high'])}]"
         f"  {_fmt(row['runaway_share']):>7} {_fmt(row['header_total_exact']):>6}  {mad:>5}"
         f"  {_fmt(row['alias_hit_rate']):>5}  {_fmt(row['line_amount_exact_share']):>7}"
@@ -1060,7 +1104,7 @@ def render_summary(
         out.append("")
         out.append("compared with stored rows on the same receipts:")
         for row in stored:
-            out.append(f"({row['arm']}) {row['model']}: reconcile {_fmt(row['reconcile_share'])}")
+            out.append(f"({row['arm']}) {label(row)}: reconcile {_fmt(row['reconcile_share'])}")
     previous = [
         float(r["reconcile_share"])
         for r in history
