@@ -27,16 +27,22 @@ async def _spellings(db_session, ingredient_id: str) -> dict[str, tuple[str, str
     return {a.name_norm: (a.kind, a.source) for a in rows.scalars()}
 
 
-async def test_new_ingredient_gets_a_local_slug_and_no_review(admin_client, db_session):
+async def test_new_ingredient_gets_a_local_slug_and_review_only_when_the_list_has_it(
+    admin_client, db_session
+):
     await seed_units_via_service(db_session)
     first = await make_ingredient(admin_client, "Green onion")
     second = await make_ingredient(admin_client, "Green-onion")
+    await make_ingredient(admin_client, "Sorrel")
     rows = {i.name: i for i in (await db_session.execute(select(Ingredient))).scalars()}
     assert rows["Green onion"].slug == "local.green-onion"
     assert rows["Green-onion"].slug == "local.green-onion-2"
     for row in rows.values():
         assert not STANDARD_KEY_RE.fullmatch(row.slug)
-        assert row.reconcile_state == "not_applicable"
+    # A typed-in name the standard list knows is offered its entry (#189);
+    # one it doesn't know is never asked about.
+    assert rows["Green onion"].reconcile_state == "unreviewed"
+    assert rows["Sorrel"].reconcile_state == "not_applicable"
     assert first["id"] != second["id"]
 
 

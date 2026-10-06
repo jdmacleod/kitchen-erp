@@ -80,16 +80,22 @@ def apply_printed_total(header: ReceiptHeader, text: str) -> tuple[ReceiptHeader
     The model's total is untrusted like the rest of its output. A line labelled
     TOTAL (or AMOUNT/BALANCE DUE) wins over a different model total, which may
     be an item price that is printed too; a bare BALANCE line only fills in a
-    total the model missed or invented.
+    total the model missed or invented. A model total that is a savings
+    summary's total is dropped, flagged ``savings_total_rejected``.
     """
+    flags: list[str] = []
+    if header.total is not None and header.total in header_stage.savings_block_totals(text):
+        # What a savings summary says was saved, never what was paid (#121).
+        header = header.model_copy(update={"total": None})
+        flags.append("savings_total_rejected")
     printed = header_stage.printed_total_line(text)
     if printed is None:
-        return header, []
+        return header, flags
     amount, strong = printed
     missing = header.total is None or not header_stage.amount_in_text(header.total, text)
     if amount != header.total and (strong or missing):
-        return header.model_copy(update={"total": amount}), ["total_from_text"]
-    return header, []
+        return header.model_copy(update={"total": amount}), [*flags, "total_from_text"]
+    return header, flags
 
 
 async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesReading:

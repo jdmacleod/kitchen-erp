@@ -82,7 +82,7 @@ ingredient_ref(
 )                                     -- one preferred per (ingredient_id, system), a partial unique index
 ```
 
-Existing rows migrate to `unreviewed` with a generated slug; rows created later default to `not_applicable`, or `linked` when created from the standard list. `name_norm` comes from one versioned pure normalizer in `app/catalog/names.py`: NFKC, lowercase, accents stripped in the key only, punctuation removed except hyphens inside words, quantity fragments removed, and no stemming. Plurals are explicit `inflection` rows made by a small generator, so "grass" never becomes "gras". The unique index on `lower(name)` still covers inactive rows, so a merge first renames its loser to "<name> (merged into <survivor>)".
+Existing rows migrate to `unreviewed` with a generated slug; rows created later start `linked` when created from the standard list, `unreviewed` when typed in with a name a standard entry matches, and `not_applicable` otherwise (#189). `name_norm` comes from one versioned pure normalizer in `app/catalog/names.py`: NFKC, lowercase, accents stripped in the key only, punctuation removed except hyphens inside words, quantity fragments removed, and no stemming. Plurals are explicit `inflection` rows made by a small generator, so "grass" never becomes "gras". The unique index on `lower(name)` still covers inactive rows, so a merge first renames its loser to "<name> (merged into <survivor>)".
 
 `ingredient_alias` is the same table Phase 3 uses for recipe names (`07`); 1G creates it.
 

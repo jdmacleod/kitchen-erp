@@ -22,6 +22,14 @@ async def _unreviewed(owner_conn: asyncpg.Connection, *ids: str) -> None:
     )
 
 
+async def _not_applicable(owner_conn: asyncpg.Connection, *ids: str) -> None:
+    """As an ingredient typed in before #189, or one a person has decided, would be."""
+    await owner_conn.execute(
+        "UPDATE ingredient SET reconcile_state = 'not_applicable' WHERE id = ANY($1::uuid[])",
+        [uuid.UUID(i) for i in ids],
+    )
+
+
 async def _spellings(db_session, ingredient_id) -> dict[str, tuple[str, str]]:
     rows = await db_session.execute(
         select(IngredientAlias).where(IngredientAlias.ingredient_id == ingredient_id)
@@ -39,6 +47,7 @@ async def test_link_page_suggests_and_puts_likely_duplicates_first(admin_client,
     b = await make_ingredient(admin_client, "green onions", canonical_unit="each")
     c = await make_ingredient(admin_client, "Scallion")
     await _unreviewed(owner_conn, a["id"], b["id"])
+    await _not_applicable(owner_conn, c["id"])
     page = (await admin_client.get("/api/v1/ingredients/link")).json()
     names = [r["name"] for r in page["to_review"]]
     assert names == ["green onions", "Sorrel"]  # the duplicate first; c isn't unreviewed
@@ -321,11 +330,14 @@ def test_a_noun_first_name_finds_its_standard_entry(name, key):
     assert entry is not None and entry.key == key
 
 
-async def test_recheck_offers_typed_in_ingredients_the_list_now_matches(admin_client, db_session):
+async def test_recheck_offers_typed_in_ingredients_the_list_now_matches(
+    admin_client, db_session, owner_conn
+):
     from app.services.ingredient_reconcile import recheck
 
     butter = await make_ingredient(admin_client, "butter, unsalted")
     quince = await make_ingredient(admin_client, "Quince paste")
+    await _not_applicable(owner_conn, butter["id"])  # typed in before #189
     assert (await _get(db_session, butter["id"])).reconcile_state == "not_applicable"
     assert await recheck(db_session) == ["butter, unsalted"]
     assert (await _get(db_session, butter["id"])).reconcile_state == "unreviewed"
@@ -333,3 +345,23 @@ async def test_recheck_offers_typed_in_ingredients_the_list_now_matches(admin_cl
     page = (await admin_client.get("/api/v1/ingredients/link")).json()
     [row] = page["to_review"]
     assert row["name"] == "butter, unsalted" and row["suggestion"]["key"] == "unsalted-butter"
+
+
+# #189: an ingredient typed in after 1G was never offered its standard name.
+async def test_a_typed_in_ingredient_the_list_knows_is_offered_at_once(admin_client, db_session):
+    onions = await make_ingredient(admin_client, "Onions, red")
+    quince = await make_ingredient(admin_client, "Quince paste")
+    r = await admin_client.post(
+        "/api/v1/products",
+        json={"ingredient": {"name": "large eggs", "canonical_unit": "each"}, "name": "Hen eggs"},
+    )
+    assert r.status_code == 201, r.text
+    eggs = r.json()["ingredient"]
+    assert (await _get(db_session, onions["id"])).reconcile_state == "unreviewed"
+    assert (await _get(db_session, eggs["id"])).reconcile_state == "unreviewed"
+    assert (await _get(db_session, quince["id"])).reconcile_state == "not_applicable"
+    page = (await admin_client.get("/api/v1/ingredients/link")).json()
+    offered = {row["name"]: row["suggestion"]["key"] for row in page["to_review"]}
+    assert offered == {"Onions, red": "red-onion", "large eggs": "egg"}
+    # Offered, never linked: the names are still the ones typed.
+    assert (await _get(db_session, onions["id"])).slug.startswith("local.")
