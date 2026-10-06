@@ -165,6 +165,87 @@ async def test_any_other_refusal_still_waits(status, body):
     assert unavailable.value.detail == f"http_{status}"
 
 
+# Ollama 0.34.4's answer when a reply repeats one token too long.
+REPEAT_ABORT = {"error": "prediction aborted, token repeat limit reached"}
+
+
+async def test_a_repeat_abort_is_out_of_room_not_a_server_in_trouble():
+    # The model ran away; the server is fine. Not retried at the same temperature,
+    # and never a ModelUnavailable that would stop a job or the benchmark.
+    transport = Scripted((500, REPEAT_ABORT))
+    client = LlmClient(transport=transport, max_retries=2)
+    with pytest.raises(InvalidModelOutput) as out_of_room:
+        await client.extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert out_of_room.value.code == "model_out_of_room"
+    assert len(transport.bodies) == 1
+    assert [c.outcome for c in client.ledger.calls] == ["out_of_room"]
+
+    # At another temperature it is asked again, as for any reply cut short.
+    transport = Scripted((500, REPEAT_ABORT), _answer(VALID_HEADER))
+    _, attempts = await LlmClient(transport=transport).extract(
+        ReceiptHeader, HEADER_TASK, "", images=[b"img"], retry=VISION_RETRY
+    )
+    assert attempts == 2
+
+
+def _stream(*chunks: dict) -> tuple[int, str]:
+    return 200, "".join(json.dumps(chunk) + "\n" for chunk in chunks)
+
+
+async def test_a_transcription_streams_and_reports_usage():
+    transport = Scripted(
+        _stream(
+            {"message": {"content": "LANTERN GROCERY\n"}, "done": False},
+            {"message": {"content": "TOTAL 8.15"}, "done": False},
+            {"message": {"content": ""}, "done": True, "done_reason": "stop", "eval_count": 9},
+        )
+    )
+    client = LlmClient(transport=transport)
+    text = await client.transcribe([b"img"], "Text Recognition:")
+    assert text == "LANTERN GROCERY\nTOTAL 8.15"
+    assert transport.bodies[0]["stream"] is True
+    assert client.last_usage.completion_tokens == 9
+    assert [c.outcome for c in client.ledger.calls] == ["ok"]
+
+
+async def test_a_transcription_aborted_for_repeating_keeps_its_finished_rows():
+    # glm-ocr loops at the end of a receipt; the server aborts it mid-stream. The
+    # rows before are the transcription; the row it was writing is dropped.
+    transport = Scripted(
+        _stream(
+            {"message": {"content": "LANTERN GROCERY\nTOTAL 8.15\n"}, "done": False},
+            {"message": {"content": "- - - - - - -"}, "done": False},
+            REPEAT_ABORT,
+        )
+    )
+    client = LlmClient(transport=transport)
+    text = await client.transcribe([b"img"], "Text Recognition:")
+    assert text == "LANTERN GROCERY\nTOTAL 8.15"
+    assert client.last_done_reason == "repeat_limit"
+    assert [c.outcome for c in client.ledger.calls] == ["out_of_room"]
+
+    # Aborted before any streaming: nothing to keep, still not a server down.
+    client = LlmClient(transport=Scripted((500, REPEAT_ABORT)))
+    assert await client.transcribe([b"img"], "Text Recognition:") == ""
+    assert [c.outcome for c in client.ledger.calls] == ["out_of_room"]
+
+
+@pytest.mark.parametrize(
+    ("reply", "detail"),
+    [
+        ((503, {"error": "busy"}), "http_503"),
+        (_stream({"error": "llama runner process has terminated"}), "stream_error"),
+        ((200, "not json\n"), "malformed_response"),
+    ],
+)
+async def test_a_transcription_from_a_server_in_trouble_still_waits(reply, detail):
+    client = LlmClient(transport=Scripted(reply))
+    with pytest.raises(ModelUnavailable) as unavailable:
+        await client.transcribe([b"img"], "Text Recognition:")
+    assert unavailable.value.detail == detail
+    assert [c.outcome for c in client.ledger.calls] == ["unavailable"]
+
+
 async def test_usage_is_read_from_the_reply_in_seconds():
     reply = _answer(
         VALID_HEADER,
