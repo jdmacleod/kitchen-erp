@@ -21,6 +21,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -213,6 +214,15 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
             "kind IN ('branded', 'private_label', 'random_weight', 'loose', 'unbranded_vendor')",
             name="ck_product_kind",
         ),
+        CheckConstraint(
+            "merged_into IS NULL OR (NOT active AND merged_into <> id)",
+            name="ck_product_merged_inactive",
+        ),
+        Index(
+            "ix_product_merged_into",
+            "merged_into",
+            postgresql_where=text("merged_into IS NOT NULL"),
+        ),
     )
 
     ingredient_id: Mapped[uuid.UUID] = mapped_column(
@@ -242,6 +252,11 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     density_override_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
+    # The product this one was merged into (#179). Its prices are reported under
+    # that product by the price views; merges are kept one level deep.
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", name="fk_product_merged_into")
+    )
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="products")
     # The main photo, loaded with the product so a list can show it.

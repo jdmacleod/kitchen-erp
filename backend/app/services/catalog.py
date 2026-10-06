@@ -1135,6 +1135,10 @@ async def update_product(
 
 async def set_product_active(db: AsyncSession, product_id: uuid.UUID, active: bool) -> Product:
     product = await get_product(db, product_id)
+    if active and product.merged_into is not None:
+        raise ApiError(
+            409, "product_merged", "This product was merged into another and can't be reactivated."
+        )
     product.active = active
     await db.commit()
     return await get_product(db, product_id)

@@ -8096,6 +8096,18 @@
               }
             ]
           },
+          "merged_into": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -8205,6 +8217,130 @@
         "title": "ProductListItem",
         "type": "object"
       },
+      "ProductMergeIn": {
+        "additionalProperties": false,
+        "description": "Merge the product in the path into ``survivor_id``, which is kept.",
+        "properties": {
+          "survivor_id": {
+            "format": "uuid",
+            "title": "Survivor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "survivor_id"
+        ],
+        "title": "ProductMergeIn",
+        "type": "object"
+      },
+      "ProductMergeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "aliases": {
+            "title": "Aliases",
+            "type": "integer"
+          },
+          "codes": {
+            "title": "Codes",
+            "type": "integer"
+          },
+          "compare_unit": {
+            "title": "Compare Unit",
+            "type": "string"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          },
+          "listings": {
+            "title": "Listings",
+            "type": "integer"
+          },
+          "loser_id": {
+            "format": "uuid",
+            "title": "Loser Id",
+            "type": "string"
+          },
+          "loser_name": {
+            "title": "Loser Name",
+            "type": "string"
+          },
+          "loser_pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loser Pack Unit"
+          },
+          "other_dimension_prices": {
+            "title": "Other Dimension Prices",
+            "type": "integer"
+          },
+          "other_dimension_units": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Other Dimension Units",
+            "type": "array"
+          },
+          "photos": {
+            "title": "Photos",
+            "type": "integer"
+          },
+          "prices": {
+            "title": "Prices",
+            "type": "integer"
+          },
+          "prices_needing_bridge": {
+            "title": "Prices Needing Bridge",
+            "type": "integer"
+          },
+          "survivor_id": {
+            "format": "uuid",
+            "title": "Survivor Id",
+            "type": "string"
+          },
+          "survivor_name": {
+            "title": "Survivor Name",
+            "type": "string"
+          },
+          "survivor_pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Survivor Pack Unit"
+          }
+        },
+        "required": [
+          "survivor_id",
+          "loser_id",
+          "survivor_name",
+          "loser_name",
+          "prices",
+          "listings",
+          "codes",
+          "photos",
+          "aliases",
+          "lines",
+          "survivor_pack_unit",
+          "loser_pack_unit",
+          "compare_unit",
+          "other_dimension_prices",
+          "other_dimension_units",
+          "prices_needing_bridge"
+        ],
+        "title": "ProductMergeOut",
+        "type": "object"
+      },
       "ProductOut": {
         "additionalProperties": false,
         "properties": {
@@ -8307,6 +8443,18 @@
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "merged_into": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into"
           },
           "name": {
             "title": "Name",
@@ -17740,6 +17888,114 @@
         "summary": "Look Up Product Page",
         "tags": [
           "products helper"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/merge": {
+      "post": {
+        "description": "Merge this product into ``survivor_id``: it becomes inactive, and its prices,\ncodes, listings, photos and receipt wordings belong to the survivor (#179).",
+        "operationId": "merge_product_api_v1_products__product_id__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMergeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Product",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/merge/preview": {
+      "post": {
+        "description": "What merging this product into another would do; nothing is written (#179).",
+        "operationId": "merge_product_preview_api_v1_products__product_id__merge_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductMergeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Product Preview",
+        "tags": [
+          "catalog"
         ]
       }
     },

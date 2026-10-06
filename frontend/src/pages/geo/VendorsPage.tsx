@@ -26,6 +26,7 @@ import {
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
+import { MoreActionsDialog } from "../../components/MoreActionsDialog";
 import { Drawer } from "../../components/Drawer";
 import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
 import { VendorImportDrawer } from "../../components/geo/VendorImportDrawer";
@@ -130,7 +131,7 @@ export function VendorsPage() {
       {importing ? <VendorImportDrawer onClose={() => setImporting(false)} /> : null}
       {reviewing ? <SuggestionReviewDrawer onClose={() => setParam("suggestions", null)} /> : null}
       {more ? (
-        <MoreDialog
+        <MoreActionsDialog
           actions={secondary.map((a) => ({
             ...a,
             open: () => {
@@ -377,27 +378,6 @@ function SuggestionsLine({ onReview }: { onReview: () => void }) {
         Review
       </Button>
     </div>
-  );
-}
-
-function MoreDialog({ actions, onClose }: { actions: { label: string; open: () => void }[]; onClose: () => void }) {
-  const titleId = useId();
-  return (
-    <Dialog open onClose={onClose} labelledBy={titleId} placement="sheet" className="p-5">
-      <h2 id={titleId} className="mb-3 font-display text-xl">
-        More actions
-      </h2>
-      <div className="flex flex-col gap-2">
-        {actions.map((a) => (
-          <Button key={a.label} variant="secondary" onClick={a.open}>
-            {a.label}
-          </Button>
-        ))}
-        <Button variant="ghost" onClick={onClose}>
-          Close
-        </Button>
-      </div>
-    </Dialog>
   );
 }
 
