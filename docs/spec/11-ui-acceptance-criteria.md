@@ -20,7 +20,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
   - idempotence.
 - **UI-1.8** No all-caps labels remain; section and group labels are sentence case.
 - **UI-1.9** The build line and status dot stay in the sidebar footer. "Log out everywhere" moves to Settings → System (T10).
-- **UI-1.10** Status badges always include a text label: Draft is squash, Reviewed neutral, Committed olive, Couldn't read tomato (T14, G5).
+- **UI-1.10** Status badges always include a text label: Draft is squash, Careful look squash, Reviewed neutral, Committed olive, Couldn't read tomato (T14, G5, #121).
 - **UI-1.11** The map basemap uses the cream and espresso styles in 08. Pins are walnut with their kind shapes, and the selected pin is herb (T13).
 - **UI-1.12** Automated contrast checks (axe in Playwright) pass at 4.5:1 for text in both themes on Home, Products, Ingredients, Vendors and Purchases.
 - **UI-1.13** The chart series palette's six hues are recorded in 08, and each series also has its own line style (T13b).
@@ -36,7 +36,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-2.10** Capture offers the modes in 09 (four since 2L, PD12): a bottom sheet on phone and tablet, a dialog on desktop (G14).
   - With geolocation granted, it pre-fills the nearest adopted vendor location, labelled "Near".
   - Without geolocation, it pre-fills the last-used location, labelled "Last used · change" (G2).
-- **UI-2.11** `GET /api/v1/inbox` returns receipt, couldn't-read, identify and bridge items, oldest first, with the fields listed in 09 plus `reading: {count, oldest_at}`.
+- **UI-2.11** `GET /api/v1/inbox` returns receipt, careful-look, couldn't-read, identify and bridge items, oldest first, with the fields listed in 09 plus `reading: {count, oldest_at}`. A held draft is one careful-look row, not also a receipt row (#121).
   - Bridge is one aggregate row however many products need a bridge (#186): "N products need a pack size before their prices compare", or "a bridge" with a breakdown by reason when they differ.
   - A draft that belongs to a failed job is not listed twice (D4).
   - A failure in any kind returns an error, never a partial list (D6).
@@ -68,7 +68,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
   - The 90-day sparkline comes from `GET /api/v1/ingredients/{id}/price-history`, and hides with fewer than two points (D22).
 - **UI-3.10** Prices by vendor are sorted by normalized unit price, and describe each vendor's pricing scope as "Same price at every location" or "Price set per location" (T15). Prices that can't be compared sort last with the pack price and a link to add a density, and are excluded from Best recent price (G8).
 - **UI-3.11** Every list page has an empty state with one sentence and the relevant action. Filtered-empty and truly-empty states differ (G11).
-- **UI-3.12** Receipt review keeps Commit disabled, with its reason, until a location is set. After commit, it shows the committed notice and offers "Next draft" when drafts remain (G9).
+- **UI-3.12** Receipt review keeps Commit disabled, with its reason, until a location is set. After commit, it shows the committed notice and offers "Next draft" when drafts remain (G9). A held draft opens on the squash "needs a careful look" alert with the gap, its flagged lines first, and Commit enabled as on any draft (#121).
 - **UI-3.13** After a drawer save, the new row takes focus if it is visible; otherwise the Notice links to it and that link takes focus (G10).
 - **UI-3.14** Vendor import shows the dry-run report before anything is written, and nothing is written if the drawer is cancelled (1F).
 - **UI-3.15** A vendor suggestion is never applied without a click. Its source link and its current and proposed values are visible before that click, and evidence text is shown as plain text, never as markup (1F).

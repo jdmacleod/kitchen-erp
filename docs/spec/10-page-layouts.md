@@ -19,7 +19,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 - **Layout:** two columns, roughly 1.65 : 1.
 - **Left, Needs you:** one card of inbox rows, oldest first.
   - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button.
-  - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5).
+  - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).
   - A footer line explains what the inbox is.
 - **Right column:** Recent purchases. The Shopping list panel is dormant until Phase 4.
@@ -59,6 +59,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - The keyboard shortcuts are listed under the table.
   - A line that fails to save shows its error inline and keeps the input.
 - **After commit (G9):** the page stays and turns Committed, with the Notice "Committed. n prices added to the price book." If other drafts remain, "Next draft" becomes the primary action.
+- **Held for a careful look (#121):** a squash alert above everything: "This receipt needs a careful look", then "Lines add up to $41.20; the receipt says $12.85." and how many flagged lines are shown first. It replaces the ordinary mismatch line. Lines with a price flag (`not_in_scan` among them) or footer text come first at every width, and the first of them is current. Commit works as on any draft. On Purchases the status badge reads "Careful look" in squash in place of Draft.
 - **Phone (G18):**
   - One line per card: receipt text, what it was read as, and suggestion buttons at 44px.
   - "Needs you" lines come first.

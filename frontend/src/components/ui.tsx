@@ -76,7 +76,7 @@ export function Field({ id, label, hint, className = "", ...rest }: FieldProps) 
 }
 
 type AlertProps = {
-  tone: "error" | "success" | "info";
+  tone: "error" | "success" | "info" | "warn";
   children: ReactNode;
   className?: string;
 };
@@ -87,6 +87,8 @@ export const alertTones = {
     "border-green-300 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200",
   // Blue means "you can act on this" (spec 08), so information is neutral.
   info: "border-neutral-300 bg-neutral-100 text-neutral-800 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-200",
+  // Squash: something a person should look at before trusting it (spec 08).
+  warn: "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
 } as const;
 
 export function Alert({ tone, children, className = "" }: AlertProps) {

@@ -150,3 +150,29 @@ async def test_lines_that_match_the_total_answer_the_missing_lines_warning(
     )
     assert r.status_code in (200, 201), r.text
     assert r.json()["flags"] == []
+
+
+async def test_typing_the_total_answers_a_total_the_scan_never_printed(
+    admin_client, admin, owner_conn
+):
+    # Issue 121: the reader's total appears nowhere in the OCR text; a person who
+    # types it from the photo has vouched for it.
+    p = await _flagged_draft(admin_client, admin, owner_conn)
+    await owner_conn.execute(
+        "UPDATE purchase SET flags = $1 WHERE id = $2::uuid", ["total_not_in_scan"], p
+    )
+    r = await admin_client.patch(f"/api/v1/purchases/{p}", json={"total": "3.49"})
+    assert r.status_code == 200, r.text
+    assert r.json()["flags"] == []
+
+
+async def test_typing_a_line_price_answers_its_not_in_scan_flag(admin_client, admin):
+    loc = await make_location(admin_client, "Quayside Grocer", "Quayside Grocer North")
+    p = await make_receipt_purchase(admin.id, loc["id"], [{**LINE, "flags": ["not_in_scan"]}])
+    line_id = (await admin_client.get(f"/api/v1/purchases/{p}")).json()["lines"][0]["id"]
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{p}/lines/{line_id}", json={"line_total": "3.49"}
+    )
+    assert r.status_code == 200, r.text
+    [line] = r.json()["lines"]
+    assert line["flags"] == []

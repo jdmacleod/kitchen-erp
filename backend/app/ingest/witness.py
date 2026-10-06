@@ -78,3 +78,38 @@ def witness_amounts(amounts: list[Decimal], ocr_text: str, *, digit_runs: bool) 
 def any_support(amount: Decimal, ocr_text: str, *, digit_runs: bool) -> bool:
     """Whether any token supports ``amount`` alone, ignoring other lines."""
     return witness_amounts([amount], ocr_text, digit_runs=digit_runs)[0]
+
+
+def _bare_digits(token: str) -> str:
+    return token.replace(".", "").replace(",", "").lstrip("0")
+
+
+# Letters OCR prints for digits inside a number: "1.OO" is 1.00 and "9.4l" is
+# 9.41. Read as digits only within a run that holds a real digit, so words stay
+# words.
+_LOOSE_TOKEN = re.compile(r"[\dOoIl|][\dOoIl|.,]*")
+_AS_DIGITS = str.maketrans({"O": "0", "o": "0", "I": "1", "l": "1", "|": "1"})
+
+
+def _loose_tokens(text: str) -> list[str]:
+    runs = [run for run in _LOOSE_TOKEN.findall(text) if any(c.isdigit() for c in run)]
+    return [token for run in runs for token in numeric_tokens(run.translate(_AS_DIGITS))]
+
+
+def appears_in(amount: Decimal, ocr_text: str) -> bool:
+    """Whether the OCR text prints ``amount`` anywhere, on its digits alone (#121).
+
+    The opposite question to support, so it leans the other way: any token whose
+    digits are the amount's counts, however short, so 7.25, 7,25 and 725 are all
+    7.25, and so does one OCR spelled with a letter for a digit. A chance match
+    only costs a flag; a missed one would flag a price the receipt does print.
+    Zero is never looked for: it prints as nothing at all.
+    """
+    # In cents ("349.00" -> 34900) and as written, trailing zeros dropped (349 ->
+    # 349): an amount read without its decimal point is printed as just that.
+    written = format(abs(amount).normalize(), "f")
+    forms = {_digits(amount).lstrip("0"), _bare_digits(written)} - {""}
+    if not forms:
+        return True
+    tokens = numeric_tokens(ocr_text) + _loose_tokens(ocr_text)
+    return any(_bare_digits(token) in forms for token in tokens)

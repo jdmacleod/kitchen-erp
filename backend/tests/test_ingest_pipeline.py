@@ -822,3 +822,49 @@ async def test_a_total_the_model_missed_or_invented_comes_from_the_printed_line(
     header = (await stage_outputs(admin_client, job["id"]))["header"]
     assert header["total"] == "24.41"
     assert ("total_from_text" in header["flags"]) is flagged
+
+
+@pytest.mark.parametrize(
+    ("honey", "held"),
+    # 8.15 is printed nowhere: the lines miss the total by under a quarter, and the
+    # unprinted amount holds the draft. 90.00 misses it by far more on its own.
+    [("8.15", True), ("90.00", True)],
+)
+async def test_an_amount_the_scan_never_prints_is_flagged_and_holds_the_draft(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+    honey: str,
+    held: bool,
+):
+    """Issue 121, rulings R2 and R3: OCR drops prices and the reader fills the gap."""
+    fixture = load_fixture("independent_minimal")
+    lines = [dict(line) for line in fixture.llm_responses["lines"]["lines"]]
+    lines[1]["line_total"] = honey
+    recorded({"header": fixture.llm_responses["header"], "lines": {"lines": lines}})
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    out = (await stage_outputs(admin_client, job["id"]))["lines"]
+    flagged = [line["seq"] for line in out["lines"] if "not_in_scan" in line["flags"]]
+    assert flagged == [2]
+    assert out["lines"][1]["line_total"] == honey  # flagged, never changed
+    r = await admin_client.get(f"/api/v1/purchases/{out['purchase_id']}")
+    body = r.json()
+    assert (body["trust"], body["held"]) == ("check_lines", held)
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    assert [i["kind"] for i in items] == ["receipt_held"]
+    assert "receipt says 24.41" in items[0]["detail"]
+
+
+async def test_a_receipt_that_adds_up_carries_no_scan_flags_and_is_trusted(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, recorded
+):
+    fixture = load_fixture("independent_minimal")
+    recorded(fixture)
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    out = (await stage_outputs(admin_client, job["id"]))["lines"]
+    assert not any("not_in_scan" in line["flags"] for line in out["lines"])
+    assert "total_not_in_scan" not in out["purchase_flags"]
+    body = (await admin_client.get(f"/api/v1/purchases/{out['purchase_id']}")).json()
+    assert (body["trust"], body["held"], body["lines_total"]) == ("adds_up", False, "24.4100")
