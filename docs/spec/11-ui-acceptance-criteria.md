@@ -56,6 +56,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.2** No create form sits above a list. Products, Ingredients and Vendors create in a right-side drawer, with Cancel and the primary action in a sticky footer.
 - **UI-3.3** Drawers keep focus inside, close on Escape and on Cancel, and return focus to the button that opened them. With typed input, Escape, a backdrop click and Cancel show the Keep editing / Discard bar instead of closing, and focus goes to Keep editing (D5).
 - **UI-3.4** Products shows search, category filter chips, "Show inactive", and the five-column table in 10. Search and the category filter run on the server and find matches beyond the first page, and rows are ordered by name (D12, T16).
+- **UI-3.5a** A product's form offers "Pieces in the pack" and "Piece name" when the pack unit is a weight or volume, and hides them for a pack counted in pieces; packs show as "14 oz · 4 links".
 - **UI-3.5** The add product drawer expands the density section with an explanation when the pack unit can't convert to the ingredient's canonical unit. Saving without a density is allowed. A Bridge inbox item appears when the first price for that product is observed (T7).
 - **UI-3.6** Ingredients follows the Products pattern, and the category field suggests the nine known categories.
 - **UI-3.7** Vendors shows search, the kind segmented control, the list/map toggle in the URL, and the card grid in 10. The map view keeps pin-drop creation (T9).

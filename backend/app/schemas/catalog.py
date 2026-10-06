@@ -157,11 +157,16 @@ class IngredientList(ApiModel):
 class _PackPair(ApiModel):
     pack_qty: Decimal | None = Field(default=None, gt=0)
     pack_unit: str | None = Field(default=None, max_length=16)
+    # The pieces a mass or volume pack holds (19 oz, 5 links), and what one is called.
+    pack_count: int | None = Field(default=None, gt=0, le=100000)
+    piece_name: str | None = Field(default=None, min_length=1, max_length=32)
 
     @model_validator(mode="after")
     def _pair(self):
         if (self.pack_qty is None) != (self.pack_unit is None):
             raise ValueError("pack_qty and pack_unit must be given together, or neither")
+        if self.piece_name is not None and self.pack_count is None:
+            raise ValueError("piece_name needs pack_count")
         return self
 
 
@@ -196,6 +201,10 @@ class ProductUpdate(ApiModel):
     pack_qty: Decimal | None = Field(default=None, gt=0)
     pack_unit: str | None = Field(default=None, max_length=16)
     clear_pack: bool = False
+    pack_count: int | None = Field(default=None, gt=0, le=100000)
+    piece_name: str | None = Field(default=None, min_length=1, max_length=32)
+    # Clears the pieces (clear_pack clears them too).
+    clear_pieces: bool = False
     barcode: str | None = Field(default=None, min_length=4, max_length=32)
     barcode_symbology: BarcodeSymbology | None = None
     clear_barcode: bool = False
@@ -225,6 +234,8 @@ class ProductOut(ApiModel):
     name: str
     pack_qty: DecimalStr | None
     pack_unit: str | None
+    pack_count: int | None = None
+    piece_name: str | None = None
     barcode: str | None
     kind: ProductKind
     attributes: dict[str, Any]
@@ -270,6 +281,8 @@ class SearchHit(ApiModel):
     barcode: str | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
+    pack_count: int | None = None
+    piece_name: str | None = None
     quality_rating: int | None
     ingredient: IngredientSummary
     match: Literal["barcode", "name", "brand", "ingredient"]

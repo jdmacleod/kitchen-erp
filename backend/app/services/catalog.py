@@ -49,7 +49,7 @@ from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
 from app.services.spellings import add_generated_spellings, add_spelling
-from app.services.units import build_context
+from app.services.units import build_context, load_units
 from app.units import (
     CanonicalQty,
     Provenance,
@@ -857,6 +857,8 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             name=payload.name.strip(),
             pack_qty=payload.pack_qty,
             pack_unit=payload.pack_unit,
+            pack_count=payload.pack_count,
+            piece_name=_piece_name(payload.piece_name),
             kind=payload.kind
             or _kind_from_evidence(payload.brand, payload.barcode, payload.exclusive_vendor_id),
             attributes=_attributes(ingredient, payload.attributes),
@@ -868,6 +870,7 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             notes=payload.notes,
         )
         product.identifiers = []
+        await _check_pieces(db, product)
         db.add(product)
         await _set_barcode(db, product, payload.barcode, payload.barcode_symbology)
         await db.commit()
@@ -880,6 +883,27 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
     return await get_product(db, product.id)
 
 
+def _piece_name(name: str | None) -> str | None:
+    """A piece's name as typed, trimmed and lower-cased ("Link" -> "link"); blank is none."""
+    return (name.strip().lower() or None) if name else None
+
+
+async def _check_pieces(db: AsyncSession, product: Product) -> None:
+    """Pieces belong to a mass or volume pack: a count pack already says how many."""
+    if product.pack_count is None:
+        return
+    with db.no_autoflush:  # the change is checked before it is written
+        units = await load_units(db)
+    unit = units.get(product.pack_unit or "")
+    if product.pack_qty is None or unit is None or unit.dimension == "count":
+        raise ApiError(
+            422,
+            "pieces_need_size",
+            "Pieces go with a pack's weight or volume; "
+            "a pack counted in pieces already says how many.",
+        )
+
+
 async def update_product(
     db: AsyncSession, product_id: uuid.UUID, payload: ProductUpdate
 ) -> Product:
@@ -888,11 +912,31 @@ async def update_product(
     if data.pop("clear_pack", False):
         product.pack_qty = None
         product.pack_unit = None
+        product.pack_count = None
+        product.piece_name = None
     if data.get("pack_qty") is not None:
         product.pack_qty = data.pop("pack_qty")
         product.pack_unit = data.pop("pack_unit")
     data.pop("pack_qty", None)
     data.pop("pack_unit", None)
+    if data.pop("clear_pieces", False):
+        product.pack_count = None
+        product.piece_name = None
+    if data.get("pack_count") is not None:
+        product.pack_count = data.pop("pack_count")
+        product.piece_name = _piece_name(data.pop("piece_name", None))
+    elif data.get("piece_name") is not None:
+        if product.pack_count is None:
+            await db.rollback()
+            raise ApiError(422, "pieces_need_count", "Say how many pieces before naming one.")
+        product.piece_name = _piece_name(data.pop("piece_name"))
+    data.pop("pack_count", None)
+    data.pop("piece_name", None)
+    try:
+        await _check_pieces(db, product)
+    except ApiError:
+        await db.rollback()
+        raise
     symbology = data.pop("barcode_symbology", None)
     if data.pop("clear_barcode", False):
         await _set_barcode(db, product, None, None)
@@ -935,6 +979,8 @@ async def update_product(
             "pack_qty",
             "pack_unit",
             "clear_pack",
+            "pack_count",
+            "clear_pieces",
             "density_override",
             "density_override_source",
             "clear_density_override",
@@ -972,7 +1018,7 @@ async def confirm_density_override(db: AsyncSession, product_id: uuid.UUID) -> P
 
 _SEARCH_SQL = """
     SELECT p.id, p.name, p.brand, bc.scheme AS barcode_scheme, bc.value AS barcode_value,
-           p.pack_qty, p.pack_unit, p.quality_rating,
+           p.pack_qty, p.pack_unit, p.pack_count, p.piece_name, p.quality_rating,
            i.id AS ingredient_id, i.name AS ingredient_name, i.canonical_unit,
            i.active AS ingredient_active, i.category,
            EXISTS (
@@ -1063,6 +1109,8 @@ async def search_products(
                 else None,
                 pack_qty=r["pack_qty"],
                 pack_unit=r["pack_unit"],
+                pack_count=r["pack_count"],
+                piece_name=r["piece_name"],
                 quality_rating=r["quality_rating"],
                 ingredient={
                     "id": r["ingredient_id"],

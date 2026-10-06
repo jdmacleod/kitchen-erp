@@ -8,6 +8,7 @@ import {
   useConfirmDensityOverride,
   useProduct,
   useSetProductActive,
+  useUnits,
   useUpdateProduct,
   type Product,
   type ProductUpdateInput,
@@ -19,7 +20,7 @@ import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
+import { piecesFit, ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 import { CategoryChip } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 
@@ -133,6 +134,7 @@ function ProductDetail({ product }: { product: Product }) {
 
 function EditProductForm({ product }: { product: Product }) {
   const update = useUpdateProduct(product.id);
+  const units = useUnits();
   const [values, setValues] = useState<ProductFormValues>(() => productValues(product));
   const [invalid, setInvalid] = useState<string | null>(null);
   const notice = useNotice();
@@ -154,6 +156,15 @@ function EditProductForm({ product }: { product: Product }) {
     else if (qty !== "" && (qty !== product.pack_qty || values.pack_unit !== product.pack_unit)) {
       input.pack_qty = qty;
       input.pack_unit = values.pack_unit;
+    }
+
+    // Pieces go with a weighed or measured pack; a hidden field sends nothing.
+    const count = piecesFit(values.pack_unit, units.data ?? []) ? values.pack_count.trim() : "";
+    const pieceName = values.piece_name.trim().toLowerCase();
+    if (count === "" && (product.pack_count ?? null) !== null && !input.clear_pack) input.clear_pieces = true;
+    else if (count !== "" && (Number(count) !== product.pack_count || pieceName !== (product.piece_name ?? ""))) {
+      input.pack_count = Number(count);
+      if (pieceName) input.piece_name = pieceName;
     }
 
     const barcode = values.barcode.trim();

@@ -21,7 +21,7 @@ Shelf-price entry is the simplest producer of observations and is built here to 
 ### Acceptance criteria
 
 1. As `kerp_app`, `UPDATE` and `DELETE` on `price_observation`, `price_observation_void`, and `ingest_stage_result` fail on privilege; as `kerp_owner` they fail on the trigger.
-2. Inserting an observation for a packaged product as one `each` yields a `price_norm` row whose unit price equals the price divided by the pack's canonical quantity under the stated rounding rule, in decimal arithmetic.
+2. Inserting an observation for a packaged product as one `each` yields a `price_norm` row whose unit price equals the price divided by the pack's canonical quantity under the stated rounding rule, in decimal arithmetic. For an ingredient measured in pieces, a pack that states its pieces (14 oz, 4 links) gives the price divided by its pieces, and stating them re-prices what was already recorded.
 3. Inserting an observation that cannot be normalized yields a `price_norm` row with the correct failure status and null figures, and the observation itself is stored intact.
 4. Changing an ingredient's density recomputes `price_norm` for exactly the observations whose normalization depended on it, turning `no_density` rows into `ok` rows where applicable.
 5. Truncating `price_norm` and running `kerp recompute-norms` reproduces the previous contents exactly in every column except `computed_at`.

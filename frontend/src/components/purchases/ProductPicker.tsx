@@ -23,6 +23,8 @@ export interface ProductRef {
   brand: string | null;
   pack_qty: string | null;
   pack_unit: string | null;
+  pack_count?: number | null;
+  piece_name?: string | null;
   ingredient?: { id: string; name: string; canonical_unit: CanonicalUnit };
 }
 
@@ -33,6 +35,8 @@ export function productRefFromHit(hit: SearchHit): ProductRef {
     brand: hit.brand,
     pack_qty: hit.pack_qty,
     pack_unit: hit.pack_unit,
+    pack_count: hit.pack_count,
+    piece_name: hit.piece_name,
     ingredient: { id: hit.ingredient.id, name: hit.ingredient.name, canonical_unit: hit.ingredient.canonical_unit },
   };
 }
@@ -44,6 +48,8 @@ export function productRefFromProduct(p: Product): ProductRef {
     brand: p.brand,
     pack_qty: p.pack_qty,
     pack_unit: p.pack_unit,
+    pack_count: p.pack_count,
+    piece_name: p.piece_name,
     ingredient: { id: p.ingredient.id, name: p.ingredient.name, canonical_unit: p.ingredient.canonical_unit },
   };
 }

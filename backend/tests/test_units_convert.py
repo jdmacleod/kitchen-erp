@@ -190,3 +190,31 @@ def test_each_with_pack_in_count_canonical_means_one_pack():
     # A dozen of a count-canonical ingredient is plain arithmetic, pack or not.
     assert ok(convert(D("1"), "dozen", ctx)).qty == D("12")
     assert ok(convert(D("1"), "dozen", ctx)).provenance.bridge_kind == "none"
+
+
+# Pieces in a pack (2026-10-05): a 14 oz pack of 4 links is 4 links for an ingredient
+# measured in pieces, and stays 14 oz for one measured by weight.
+def test_a_pack_with_pieces_is_its_pieces_in_a_count_canonical():
+    ctx = ConversionContext("each", product=ProductContext(pack=Pack(D("14"), "oz", 4)))
+    r = ok(convert(D("2"), "each", ctx))
+    assert r.qty == D("8") and r.unit == "each"
+    assert r.provenance.bridge_kind == "pack_count"
+    assert r.provenance.detail == "14 oz, 4 pieces"
+
+
+def test_pieces_leave_a_mass_canonical_alone():
+    ctx = ConversionContext("g", product=ProductContext(pack=Pack(D("14"), "oz", 4)))
+    r = ok(convert(D("1"), "each", ctx))
+    assert r.qty == D("14") * D("28.349523125")
+    assert r.provenance.bridge_kind == "pack"
+
+
+def test_without_pieces_a_weighed_pack_still_has_no_count():
+    ctx = ConversionContext("each", product=ProductContext(pack=Pack(D("14"), "oz")))
+    fail(convert(D("1"), "each", ctx), "unknown_measure")
+
+
+def test_pieces_never_turn_a_weight_into_a_count():
+    """No piece weight: 100 g of a 14 oz, 4-piece pack is not a number of pieces."""
+    ctx = ConversionContext("each", product=ProductContext(pack=Pack(D("14"), "oz", 4)))
+    fail(convert(D("100"), "g", ctx), "unknown_measure")

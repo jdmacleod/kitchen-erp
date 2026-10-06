@@ -191,6 +191,13 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint("(pack_qty IS NULL) = (pack_unit IS NULL)", name="ck_product_pack_pair"),
         CheckConstraint("pack_qty IS NULL OR pack_qty > 0", name="ck_product_pack_positive"),
         CheckConstraint(
+            "pack_count IS NULL OR (pack_count > 0 AND pack_qty IS NOT NULL)",
+            name="ck_product_pack_count",
+        ),
+        CheckConstraint(
+            "piece_name IS NULL OR pack_count IS NOT NULL", name="ck_product_piece_name"
+        ),
+        CheckConstraint(
             "quality_rating IS NULL OR (quality_rating BETWEEN 1 AND 5)", name="ck_product_quality"
         ),
         CheckConstraint(
@@ -215,6 +222,9 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     pack_qty: Mapped[Decimal | None] = mapped_column(Numeric)
     pack_unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
+    # The pieces a mass or volume pack holds (19 oz, 5 links); the size stays the total.
+    pack_count: Mapped[int | None] = mapped_column(Integer)
+    piece_name: Mapped[str | None] = mapped_column(String(32))
     kind: Mapped[str] = mapped_column(String(24), nullable=False)
     # Validated per kind and category by app.catalog.attributes.
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)

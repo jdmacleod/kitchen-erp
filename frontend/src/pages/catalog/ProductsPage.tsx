@@ -8,6 +8,7 @@ import {
   useCreateProduct,
   useIngredient,
   useProducts,
+  useUnits,
   type IngredientSummary,
   type Product,
   type ProductCreateInput,
@@ -25,7 +26,7 @@ import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { ProductForm, emptyProductValues, validateProductValues, type ProductFormValues } from "./ProductForm";
+import { piecesFit, ProductForm, emptyProductValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 
 const categoryLabel = (key: CategoryKey) => key[0].toUpperCase() + key.slice(1);
 const isCategory = (value: string | null): value is CategoryKey => CATEGORY_KEYS.includes(value as CategoryKey);
@@ -262,7 +263,7 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
               <span className="block">{p.ingredient.name}</span>
               <CategoryChip category={p.ingredient.category} categoryKey={p.ingredient.category_key} />
             </td>
-            <td className="px-4 py-2 align-top tabular-nums">{formatPack(p.pack_qty, p.pack_unit) || "—"}</td>
+            <td className="px-4 py-2 align-top tabular-nums">{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) || "—"}</td>
             <td className="px-4 py-2 align-top">
               <QualityStars rating={p.quality_rating} />
             </td>
@@ -325,6 +326,7 @@ function AddProductForm({
   onCreated: (product: Product, pageNote?: string) => void;
 }) {
   const create = useCreateProduct();
+  const units = useUnits();
   const helper = useProductsHelper();
   const [initial] = useState(() => emptyProductValues(initialIngredient));
   const [values, setValues] = useState<ProductFormValues>(initial);
@@ -360,6 +362,10 @@ function AddProductForm({
     if (values.pack_qty.trim()) {
       input.pack_qty = values.pack_qty.trim();
       input.pack_unit = values.pack_unit;
+      if (values.pack_count.trim() && piecesFit(values.pack_unit, units.data ?? [])) {
+        input.pack_count = Number(values.pack_count.trim());
+        if (values.piece_name.trim()) input.piece_name = values.piece_name.trim();
+      }
     }
     if (values.barcode.trim()) input.barcode = values.barcode.trim();
     if (values.quality_rating !== null) input.quality_rating = values.quality_rating;

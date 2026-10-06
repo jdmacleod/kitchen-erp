@@ -305,7 +305,7 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
                 className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm text-neutral-900 hover:bg-neutral-100 lg:min-h-9 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
               >
                 {productTitle(p)}
-                {formatPack(p.pack_qty, p.pack_unit) ? <span className={`text-xs ${muted}`}>{formatPack(p.pack_qty, p.pack_unit)}</span> : null}
+                {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) ? <span className={`text-xs ${muted}`}>{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}</span> : null}
                 {p.active ? null : <Badge tone="warn">inactive</Badge>}
               </Link>
             </li>
