@@ -35,7 +35,7 @@ Mode: Builder
 
 **Where the code is.**
 - `backend/app/services/reading_benchmark.py`: the command's logic.
-- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model`.
+- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
 - `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
 - Tests:
   - `test_reading_benchmark.py`, `test_ingest_witness.py`, `test_ingest_readers.py`, `test_raster_render.py`;
@@ -217,8 +217,8 @@ A lasting `kerp` subcommand in `backend/app/cli.py`, with its logic in `backend/
 
 ```
 docker compose stop worker
-docker compose run -d --name kerp-bench api kerp reading-benchmark [--models m1,m2] [--resume RUN_ID]
-docker compose logs -f kerp-bench    # or follow /data/benchmarks/reading-runs/<RUN_ID>/log.txt
+docker compose run -d --name kerp-bench api kerp reading-benchmark [--models m1,m2] [--arms b --text-model t1,t2] [--resume RUN_ID]
+docker logs -f kerp-bench            # a container, not a service; or follow /data/benchmarks/reading-runs/<RUN_ID>/log.txt
 docker compose start worker          # afterwards
 ```
 
