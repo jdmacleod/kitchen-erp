@@ -6152,8 +6152,13 @@
       },
       "NameProductRow": {
         "additionalProperties": false,
-        "description": "A row a person confirmed: its product, and the group it identifies.",
+        "description": "A row a person confirmed: its product, and the group it identifies.\n\n``product_id`` uses a product that already exists instead of creating one\n(#179). Without it, a new product whose name and ingredient match an active\nproduct is refused with ``product_exists`` unless ``allow_duplicate`` is set.",
         "properties": {
+          "allow_duplicate": {
+            "default": false,
+            "title": "Allow Duplicate",
+            "type": "boolean"
+          },
           "ingredient": {
             "anyOf": [
               {
@@ -6209,6 +6214,18 @@
               }
             ],
             "title": "Pack Unit"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
           },
           "raw_text_norm": {
             "minLength": 1,
@@ -10687,6 +10704,16 @@
           "message": {
             "title": "Message",
             "type": "string"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

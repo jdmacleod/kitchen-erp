@@ -23,7 +23,7 @@ from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.ingest.errors import IngestError
 from app.ingest.llm import LlmClient, suggest_name
-from app.models import AppUser, NamingSuggestion
+from app.models import AppUser, NamingSuggestion, Product
 from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
@@ -294,28 +294,58 @@ async def _existing_ingredient(db: AsyncSession, spec: IngredientCreate) -> uuid
     )
 
 
+def _folded(name: str) -> str:
+    return " ".join(name.split()).casefold()
+
+
+async def _same_product(db: AsyncSession, name: str, ingredient_id: uuid.UUID) -> Product | None:
+    """An active product of the ingredient with the same name, ignoring case and spacing."""
+    rows = await db.execute(
+        select(Product)
+        .where(Product.ingredient_id == ingredient_id, Product.active)
+        .order_by(Product.created_at, Product.id)
+    )
+    folded = _folded(name)
+    return next((p for p in rows.scalars() if _folded(p.name) == folded), None)
+
+
 async def name_product(
     db: AsyncSession, user: AppUser, row: NameProductRow
 ) -> tuple[uuid.UUID, int]:
-    """Create one row's product and apply it to every waiting line of its group."""
+    """Create one row's product, or use the existing one it names, and apply it to
+    every waiting line of its group."""
     if not await resolution.queued_line_ids(db, row.vendor_id, row.raw_text_norm):
         raise ApiError(409, "already_identified", "These lines have been identified already.")
-    ingredient_id = row.ingredient_id
-    ingredient = row.ingredient
-    if ingredient is not None:
-        ingredient_id = await _existing_ingredient(db, ingredient)
-        if ingredient_id is not None:
-            ingredient = None
-    product = await catalog.create_product(
-        db,
-        ProductCreate(
-            name=row.name,
-            ingredient_id=ingredient_id,
-            ingredient=ingredient,
-            pack_qty=row.pack_qty,
-            pack_unit=row.pack_unit,
-        ),
-    )
+    if row.product_id is not None:
+        product = await db.get(Product, row.product_id)
+        if product is None or not product.active:
+            raise ApiError(409, "product_unavailable", "That product is no longer active.")
+    else:
+        ingredient_id = row.ingredient_id
+        ingredient = row.ingredient
+        if ingredient is not None:
+            ingredient_id = await _existing_ingredient(db, ingredient)
+            if ingredient_id is not None:
+                ingredient = None
+        if ingredient_id is not None and not row.allow_duplicate:
+            same = await _same_product(db, row.name, ingredient_id)
+            if same is not None:
+                raise ApiError(
+                    409,
+                    "product_exists",
+                    f"{same.name} already exists with this ingredient.",
+                    {"product_id": str(same.id)},
+                )
+        product = await catalog.create_product(
+            db,
+            ProductCreate(
+                name=row.name,
+                ingredient_id=ingredient_id,
+                ingredient=ingredient,
+                pack_qty=row.pack_qty,
+                pack_unit=row.pack_unit,
+            ),
+        )
     applied = await resolution.apply_to_identify(
         db,
         user,
@@ -340,14 +370,12 @@ async def name_products(db: AsyncSession, user: AppUser, rows: list[NameProductR
             # The rollback expired everything loaded, the signed-in user included,
             # and the next row writes that user's id on the lines it identifies.
             await db.refresh(user)
-            results.append(
-                {
-                    **base,
-                    "product_id": None,
-                    "applied": 0,
-                    "error": {"code": exc.code, "message": exc.message},
-                }
-            )
+            error: dict = {"code": exc.code, "message": exc.message}
+            if exc.code == "product_exists" and exc.details:
+                error["product"] = await catalog.get_product(
+                    db, uuid.UUID(exc.details["product_id"])
+                )
+            results.append({**base, "product_id": None, "applied": 0, "error": error})
             continue
         results.append({**base, "product_id": product_id, "applied": applied, "error": None})
     return results
