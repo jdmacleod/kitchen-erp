@@ -203,8 +203,11 @@ async def upload(
     headers: dict[str, str] | None = None,
     filename: str = "receipt.png",
     content_type: str = "image/png",
+    batch_id: str | None = None,
 ) -> httpx.Response:
     form: dict[str, str] = {}
+    if batch_id is not None:
+        form["batch_id"] = batch_id
     if ocr_text is not None:
         form["ocr_text"] = ocr_text
     if captured_at is not None:

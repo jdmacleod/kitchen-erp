@@ -275,7 +275,19 @@ ingest_job(
   stage CHECK IN (captured, ocr, header, lines, resolve, review, committed),
   status CHECK IN (pending, running, needs_review, done, failed, discarded),   -- discarded: the receipt was removed (#74)
   attempts INT, last_error?, locked_at?, locked_by?,
-  purchase_id FK?
+  purchase_id FK?,
+  uploaded_at TIMESTAMPTZ                    -- when last sent to be read; a revived receipt takes a new one
+)
+
+upload_batch(                                 -- one upload: one receipt, or several at once (issue 122)
+  id, created_by FK app_user?, file_count INT CHECK > 0, created_at
+)
+
+upload_batch_receipt(                         -- what became of each file in a batch
+  batch_id FK upload_batch, job_id FK ingest_job,
+  outcome CHECK IN (new, revived, already_seen),
+  created_at,
+  PRIMARY KEY (batch_id, job_id)
 )
 
 ingest_stage_result(                          -- append-only
@@ -284,7 +296,7 @@ ingest_stage_result(                          -- append-only
 )
 ```
 
-`receipt_document` is immutable after insert. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one.
+`receipt_document` is immutable after insert. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one. A receipt uploaded again in a later batch keeps its one job and gains a second `upload_batch_receipt` row, so each batch can say what became of its files.
 
 ### Purchases
 

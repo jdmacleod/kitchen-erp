@@ -1,6 +1,8 @@
 // Synthetic Phase 2 records for tests: an invented store, invented products,
 // fixed v7-shaped ids, and prices that exercise the decimal arithmetic.
+import type { IngestJob, UploadBatch } from "../api/ingest";
 import type { Observation, Purchase, PurchaseLine, PurchaseLineProduct } from "../api/purchases";
+import { jsonResponse } from "./helpers";
 import { flourId, flourProductId, hits } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
 
@@ -207,3 +209,30 @@ export const receiptPurchase: Purchase = {
   created_at: "2026-09-20T18:06:00Z",
   updated_at: "2026-09-20T18:06:00Z",
 };
+
+/** An upload batch holding these jobs, as the Receipts history reads it (issue 122). */
+export function batchOf(jobs: IngestJob[], extra: Partial<UploadBatch> = {}): UploadBatch {
+  return {
+    id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fb001",
+    file_count: Math.max(jobs.length, 1),
+    created_at: "2026-09-20T18:05:00Z",
+    uploaded: jobs.length,
+    new: jobs.length,
+    revived: 0,
+    already_seen: 0,
+    reading: jobs.filter((j) => j.status === "pending" || j.status === "running").length,
+    adds_up: 0,
+    check_lines: 0,
+    couldnt_read: jobs.filter((j) => j.status === "failed").length,
+    receipts: jobs.map((job) => ({ job, outcome: "new", store: null, total: null, item_lines: null, lines_total: null, trust: job.status === "failed" ? "couldnt_read" : null, gap: null, held: false })),
+    ...extra,
+  };
+}
+
+/** Mock routes for the batch endpoints: one batch of whatever jobs there are now. */
+export function batchRoutes(jobs: () => IngestJob[]) {
+  return {
+    "GET /upload-batches": () => jsonResponse(200, { items: jobs().length > 0 ? [batchOf(jobs())] : [] }),
+    "POST /upload-batches": () => jsonResponse(201, { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fb001", file_count: 1, created_at: "2026-09-20T18:05:00Z" }),
+  };
+}

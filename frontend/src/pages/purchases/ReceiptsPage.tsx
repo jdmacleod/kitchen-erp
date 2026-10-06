@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { useIngestJob, useIngestJobs, useJobToManual, useRemoveJob, useRetryJob, useUploadReceipt, type IngestJob, type ReceiptUploadResult } from "../../api/ingest";
+import { createUploadBatch, useIngestJob, useJobToManual, useRemoveJob, useRetryJob, useUploadBatches, useUploadReceipt, type BatchReceipt, type IngestJob, type ReceiptUploadResult, type UploadBatch } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
+import { TrustBadge } from "../../components/purchases/TrustBadge";
+import { formatMoney } from "../../lib/decimal";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
@@ -15,13 +17,13 @@ export function ReceiptsPage() {
   usePageTitle("Receipts");
   const upload = useUploadReceipt();
   const notice = useNotice();
-  const jobs = useIngestJobs();
+  const batches = useUploadBatches();
   // An inbox item names its job (?job=), which may be older than the newest jobs listed.
   const [params, setParams] = useSearchParams();
   const pinnedId = params.get("job") ?? undefined;
   const pinned = useIngestJob(pinnedId, false);
-  // Listed once: the list drops the job only while the pinned card is showing it.
-  const listed = (jobs.data ?? []).filter((j) => !(pinned.data && j.id === pinned.data.id));
+  // Listed once: the history drops the job only while the pinned card is showing it.
+  const hidden = pinned.data?.id;
   const fileRef = useRef<HTMLInputElement>(null);
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -36,9 +38,19 @@ export function ReceiptsPage() {
     const results: ReceiptUploadResult[] = [];
     const failed: string[] = [];
     setProgress({ done: 0, of: files.length });
+    // One batch for everything chosen, so the history can say what it came to
+    // (issue 122). If it can't be opened, nothing is sent: a half-counted batch
+    // would say less than nothing.
+    let batchId: string;
+    try {
+      batchId = (await createUploadBatch(files.length)).id;
+    } catch (error) {
+      setProgress(null);
+      return setInvalid(`Not uploaded: ${errorMessage(error)}`);
+    }
     for (const file of files) {
       try {
-        results.push(await upload.mutateAsync({ image: file }));
+        results.push(await upload.mutateAsync({ image: file, batch_id: batchId }));
       } catch (error) {
         failed.push(`${file.name}: ${errorMessage(error)}`);
       }
@@ -143,28 +155,88 @@ export function ReceiptsPage() {
         ) : null}
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Jobs</h2>
-          {jobs.isPending ? (
+          <h2 className="mb-3 text-lg font-medium">Upload history</h2>
+          {batches.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…
             </p>
-          ) : jobs.isError ? (
-            <Alert tone="error">{errorMessage(jobs.error)}</Alert>
-          ) : listed.length === 0 && !pinnedId ? (
+          ) : batches.isError ? (
+            <Alert tone="error">{errorMessage(batches.error)}</Alert>
+          ) : batches.data.length === 0 && !pinnedId ? (
             <EmptyState title="No receipts yet">Upload a photo and its lines will be parsed for review.</EmptyState>
           ) : (
-            <ul aria-label="Ingest jobs" className="divide-y divide-neutral-200 dark:divide-neutral-800">
-              {listed.map((j) => (
-                <li key={j.id} className="py-2">
-                  <JobRow job={j} />
+            <ol aria-label="Uploads" className="flex flex-col gap-6">
+              {batches.data.map((b) => (
+                <li key={b.id}>
+                  <BatchSection batch={b} hidden={hidden} />
                 </li>
               ))}
-            </ul>
+            </ol>
           )}
         </Card>
       </div>
     </>
   );
+}
+
+/** A count, or a dash for none: a zero is not something to look at (issue 122). */
+function tally(n: number): string {
+  return n > 0 ? String(n) : "—";
+}
+
+/**
+ * One upload: when, what it came to, and each receipt in it. The counts read
+ * the same way as each receipt's badge, so a batch can be judged without
+ * opening its drafts.
+ */
+function BatchSection({ batch, hidden }: { batch: UploadBatch; hidden?: string }) {
+  const unsent = batch.file_count - batch.uploaded;
+  const arrived = [`${batch.uploaded} ${batch.uploaded === 1 ? "receipt" : "receipts"}`];
+  if (batch.already_seen > 0) arrived.push(`${batch.already_seen} uploaded before`);
+  if (batch.revived > 0) arrived.push(`${batch.revived} read again`);
+  if (unsent > 0) arrived.push(`${unsent} not uploaded`);
+  if (batch.reading > 0) arrived.push(`${batch.reading} being read`);
+  const rows = batch.receipts.filter((r) => r.job.id !== hidden);
+  return (
+    <section aria-label={`Uploaded ${formatDateTime(batch.created_at)}`} data-testid="upload-batch">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-neutral-200 pb-2 dark:border-neutral-800">
+        <h3 className="font-medium">
+          <time dateTime={batch.created_at}>{formatDateTime(batch.created_at)}</time>
+        </h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{arrived.join(" · ")}</p>
+        <dl className="flex w-full flex-wrap gap-x-4 text-sm" aria-label="What the readings came to">
+          <div className="flex gap-1">
+            <dt>Add up</dt>
+            <dd className="font-medium tabular-nums">{tally(batch.adds_up)}</dd>
+          </div>
+          <div className="flex gap-1">
+            <dt>To check</dt>
+            <dd className="font-medium tabular-nums">{tally(batch.check_lines)}</dd>
+          </div>
+          <div className="flex gap-1">
+            <dt>Couldn&apos;t read</dt>
+            <dd className="font-medium tabular-nums">{tally(batch.couldnt_read)}</dd>
+          </div>
+        </dl>
+      </div>
+      <ul aria-label="Receipts in this upload" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+        {rows.map((r) => (
+          <li key={r.job.id} className="py-2">
+            <JobRow job={r.job} receipt={r} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** "Gullwing Grocer · 9.80 · 3 lines", from what is known once it is read. */
+function receiptFacts(receipt: BatchReceipt): string | null {
+  const facts: string[] = [];
+  if (receipt.store) facts.push(receipt.store);
+  if (receipt.total) facts.push(formatMoney(receipt.total));
+  if (receipt.item_lines !== null) facts.push(`${receipt.item_lines} ${receipt.item_lines === 1 ? "line" : "lines"}`);
+  return facts.length > 0 ? facts.join(" · ") : null;
 }
 
 const statusText: Record<string, string> = {
@@ -194,7 +266,7 @@ function jobStatusText(job: IngestJob): string {
   return statusText[job.status] ?? job.status;
 }
 
-function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) {
+function JobRow({ job, receipt, onRemoved }: { job: IngestJob; receipt?: BatchReceipt; onRemoved?: () => void }) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
   const remove = useRemoveJob();
@@ -209,6 +281,9 @@ function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) 
   }, [confirming]);
   const tone = job.status === "done" ? "good" : job.status === "failed" ? "danger" : job.last_error ? "warn" : "neutral";
   const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
+  // When it was last sent to be read: a receipt uploaded again shows that day.
+  const when = job.uploaded_at ?? job.created_at;
+  const facts = receipt ? receiptFacts(receipt) : null;
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>
       {/* Which receipt this is (#28): two failed jobs otherwise read the same. */}
@@ -217,14 +292,17 @@ function JobRow({ job, onRemoved }: { job: IngestJob; onRemoved?: () => void }) 
           documentId={job.receipt_document_id}
           width={96}
           alt=""
-          link={{ label: `Open the receipt uploaded ${job.created_at ? formatDateTime(job.created_at) : ""}`.trim() }}
+          link={{ label: `Open the receipt uploaded ${when ? formatDateTime(when) : ""}`.trim() }}
           className="h-16 w-12 rounded border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
         />
       ) : null}
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <Badge tone={tone}>{jobStatusText(job)}</Badge>
+        {job.status !== "failed" ? <TrustBadge trust={receipt?.trust} gap={receipt?.gap} held={receipt?.held} /> : null}
+        {receipt?.outcome === "already_seen" ? <span className="text-neutral-600 dark:text-neutral-400">uploaded before</span> : null}
         {job.status === "running" && job.stage && stageText[job.stage] ? <span className="text-neutral-600 dark:text-neutral-400">{stageText[job.stage]}</span> : null}
-        {job.created_at ? <time dateTime={job.created_at}>{formatDateTime(job.created_at)}</time> : null}
+        {when ? <time dateTime={when}>{formatDateTime(when)}</time> : null}
+        {facts ? <span className="text-neutral-600 dark:text-neutral-400">{facts}</span> : null}
         {error ? (
           <span className="text-red-700 dark:text-red-300">
             {error.message}{" "}

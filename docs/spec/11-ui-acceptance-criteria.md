@@ -45,7 +45,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
   - A response that arrives after a resolving mutation does not bring the item back.
 - **UI-2.13** The Home nav item shows the count of inbox rows (G6); a batch of products needing a bridge adds one, not one per product (#186). The count is hidden until the first response arrives (G16), and a failed request shows "!" (D6). The separate "Needs a bridge" and "To identify" nav items are gone.
 - **UI-2.14** "New purchase" is not a nav item; it is reachable from Capture and as the primary action on Shop pages.
-- **UI-2.15** Receipts being read show as "Reading n receipts…" on Home, not counted in the badge (G1). When the oldest one is older than `INGEST_STALL_MINUTES` (default 10), the line reads "Reading is taking longer than usual · Check System" (D21).
+- **UI-2.15** Receipts being read show as "Reading n receipts…" on Home, not counted in the badge (G1). While a batch of several is read, the line reads "Reading 4 of 12 receipts · about 8 minutes left", with no estimate until a read has finished (issue 122). When the oldest one is older than `INGEST_STALL_MINUTES` (default 10), the line reads "Reading is taking longer than usual · Check System" (D21).
 - **UI-2.16** The Notice carries confirmations across a navigation (D18).
   - Back and reload do not show it again, and only one shows at a time.
   - An action in it can be reached by keyboard.
@@ -72,7 +72,8 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.13** After a drawer save, the new row takes focus if it is visible; otherwise the Notice links to it and that link takes focus (G10).
 - **UI-3.14** Vendor import shows the dry-run report before anything is written, and nothing is written if the drawer is cancelled (1F).
 - **UI-3.15** A vendor suggestion is never applied without a click. Its source link and its current and proposed values are visible before that click, and evidence text is shown as plain text, never as markup (1F).
-- **UI-3.16** A product merge is confirmed in the page, never by a browser dialog: the panel names both products, says what goes to the kept one, shows any unit warnings before Merge is pressed, and puts focus on Cancel. A merged product's page names and links the product it was merged into, and offers neither merge nor reactivation (#179).
+- **UI-3.16** Receipts lists uploads by batch, newest first, with the counts Add up, To check and Couldn't read (a zero is a dash) and each receipt's trust badge, store, total and line count. The trust badge pairs a mark with words on Receipts, Purchases and Needs you receipt rows; it is never colour alone (issue 122).
+- **UI-3.17** A product merge is confirmed in the page, never by a browser dialog: the panel names both products, says what goes to the kept one, shows any unit warnings before Merge is pressed, and puts focus on Cancel. A merged product's page names and links the product it was merged into, and offers neither merge nor reactivation (#179).
 
 ## UI-4 — Phone and tablet
 

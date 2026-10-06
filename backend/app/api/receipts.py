@@ -16,6 +16,7 @@ from app.core.errors import ApiError
 from app.core.idempotency import HEADER, IdempotencyGuard
 from app.ingest.paths import document_path
 from app.schemas.receipts import (
+    BatchReceiptOut,
     ConvertToManualOut,
     IngestJobDetail,
     IngestJobList,
@@ -24,8 +25,12 @@ from app.schemas.receipts import (
     ReceiptRemovedOut,
     ReceiptUploadOut,
     StageResultOut,
+    UploadBatchCreate,
+    UploadBatchList,
+    UploadBatchOut,
+    UploadBatchSummaryOut,
 )
-from app.services import ingest, receipt_images, removal
+from app.services import ingest, receipt_images, removal, upload_batches
 
 router = APIRouter(tags=["receipts"])
 
@@ -66,13 +71,20 @@ async def upload_receipt(
     captured_at: Annotated[datetime | None, Form()] = None,
     lat: Annotated[str | None, Form()] = None,
     lon: Annotated[str | None, Form()] = None,
+    batch_id: Annotated[uuid.UUID | None, Form()] = None,
 ) -> JSONResponse:
     from app.core.config import get_settings
 
     data = await _read_upload(image, get_settings().receipt_max_bytes)
     # The generic Idempotency dependency hashes request.body(), which the multipart
     # parser has already consumed; hash the parsed parts instead (same semantics).
-    parts = (ocr_text or "", captured_at.isoformat() if captured_at else "", lat or "", lon or "")
+    parts = (
+        ocr_text or "",
+        captured_at.isoformat() if captured_at else "",
+        lat or "",
+        lon or "",
+        str(batch_id or ""),
+    )
     request_hash = hashlib.sha256(
         b"POST\n/receipts\n" + hashlib.sha256(data).digest() + "\n".join(parts).encode()
     ).hexdigest()
@@ -88,13 +100,75 @@ async def upload_receipt(
         captured_at=captured_at,
         lat=_decimal_or_none(lat, "lat"),
         lon=_decimal_or_none(lon, "lon"),
+        batch_id=batch_id,
     )
     body = ReceiptUploadOut(
         document=ReceiptDocumentOut.from_model(result.document),
         job=IngestJobOut.model_validate(result.job),
         revived=result.revived,
+        batch_id=result.batch_id,
     ).model_dump(mode="json")
     return await guard.commit(201 if result.created else 200, body)
+
+
+@router.post("/upload-batches", response_model=UploadBatchOut, status_code=status.HTTP_201_CREATED)
+async def create_upload_batch(
+    payload: UploadBatchCreate, user: CurrentUser, db: DbSession
+) -> UploadBatchOut:
+    """Open a batch before sending its files, each with this batch's id (issue 122)."""
+    batch = await upload_batches.create_batch(db, user=user, file_count=payload.file_count)
+    return UploadBatchOut.model_validate(batch)
+
+
+@router.get("/upload-batches", response_model=UploadBatchList)
+async def list_upload_batches(
+    _: CurrentUser,
+    db: DbSession,
+    cursor: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> UploadBatchList:
+    """Recent uploads, newest first, each with what its receipts came to."""
+    cursor_id = None
+    if cursor:
+        try:
+            cursor_id = uuid.UUID(cursor)
+        except ValueError:
+            raise ApiError(422, "validation_error", "Invalid cursor.") from None
+    batches, next_cursor = await upload_batches.list_batches(db, cursor=cursor_id, limit=limit)
+    return UploadBatchList(
+        items=[_summary(b) for b in batches],
+        next_cursor=None if next_cursor is None else str(next_cursor),
+    )
+
+
+def _summary(summary: upload_batches.BatchSummary) -> UploadBatchSummaryOut:
+    return UploadBatchSummaryOut(
+        id=summary.batch.id,
+        file_count=summary.batch.file_count,
+        created_at=summary.batch.created_at,
+        uploaded=len(summary.receipts),
+        new=summary.count(outcome="new"),
+        revived=summary.count(outcome="revived"),
+        already_seen=summary.count(outcome="already_seen"),
+        reading=summary.reading,
+        adds_up=summary.count(trust="adds_up"),
+        check_lines=summary.count(trust="check_lines"),
+        couldnt_read=summary.count(trust="couldnt_read"),
+        receipts=[
+            BatchReceiptOut(
+                job=IngestJobOut.model_validate(r.job),
+                outcome=r.outcome,
+                store=r.store,
+                total=r.total,
+                item_lines=r.item_lines,
+                lines_total=r.lines_total,
+                trust=r.trust,
+                gap=r.gap,
+                held=r.held,
+            )
+            for r in summary.receipts
+        ],
+    )
 
 
 @router.get("/receipts/{document_id}", response_model=ReceiptDocumentOut)

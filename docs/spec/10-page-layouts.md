@@ -42,6 +42,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 - **Table:** Date, Where, From (Receipt / By hand), Lines, Total and Status.
   - A draft without a location reads "Location needed" in squash.
   - Receipts being read appear as rows with a Reading pill (G1).
+  - A receipt purchase's Status cell carries its trust badge beside the status; a held draft shows "Careful look" in place of the status (issue 122).
 - **Empty:** "No purchases yet" with Scan a receipt and New purchase.
 
 ## Shop: receipt review (Shop: receipt review)
@@ -96,6 +97,9 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 - A muted caption, "{n} line(s) removed", sits under the lines table on the committed, voided and review views.
 
 **Receipts.**
+- **Upload history** replaces the flat Jobs list (issue 122). Uploads are listed newest first, each headed by its date and time and a line such as "12 receipts · 2 uploaded before · 4 being read". Under that are three counts: Add up, To check, Couldn't read. A zero shows as a dash, in neutral, never a warning colour.
+- Each receipt row shows its thumbnail, status, trust badge, upload date (the last upload, so a receipt read again shows that day), and once read its store, total and line count ("Gullwing Grocer · $9.80 · 3 lines"). A file seen before reads "uploaded before".
+- **Trust badge** (also on Purchases and Needs you): a mark and words, never colour alone. "Adds up" is olive with a tick. "Check the lines · off by $0.30" is squash. A held draft reads "Careful look · off by $5.60", also squash. "Couldn't read" is tomato with a cross. A purchase entered by hand has none.
 - A failed read with no purchase shows a tomato secondary "Remove" on its row. It confirms inline: "Remove this receipt? Its photo is deleted.", with Remove and Keep it.
 - Removed receipts don't appear. Uploading one again shows the Notice "This receipt was removed before; it's being read again."
 

@@ -134,6 +134,9 @@ export interface PurchaseLocation {
   vendor: { id: string; name: string; kind: VendorKind };
 }
 
+/** How far a receipt's reading can be trusted (issue 121); the badge is TrustBadge. */
+export type Trust = "adds_up" | "check_lines" | "couldnt_read";
+
 export interface Purchase {
   id: string;
   /** Null while a receipt's location is still unknown; commit needs one. */
@@ -147,7 +150,9 @@ export interface Purchase {
   /** What the lines come to beside the printed total: computed_total plus the header's tax when no line carries tax. */
   lines_total?: string | null;
   /** How far a receipt's reading can be trusted, from its lines as they are now; null when entered by hand (issue 121). */
-  trust?: "adds_up" | "check_lines" | "couldnt_read" | null;
+  trust?: Trust | null;
+  /** With check_lines: how far lines_total is from the printed total (issue 122). */
+  gap?: string | null;
   /** A draft far off its printed total: "Needs a careful look". Never a block on commit. */
   held?: boolean;
   status: PurchaseStatus;

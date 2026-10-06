@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from app.schemas.base import ApiModel
+from app.schemas.base import ApiModel, DecimalStr
 
 InboxKind = Literal[
     "receipt",
@@ -30,6 +30,10 @@ class InboxItem(ApiModel):
     # A failed read's ingest error code, so the client can show the sentence it
     # already keeps for that code (frontend lib/ingestErrors.ts) instead of a copy.
     error_code: str | None = None
+    # A receipt row's reading, for its badge: adds_up / check_lines, and with
+    # check_lines how far its lines are from the printed total (issue 122).
+    trust: Literal["adds_up", "check_lines", "couldnt_read"] | None = None
+    gap: DecimalStr | None = None
 
 
 class InboxReading(ApiModel):
@@ -49,6 +53,13 @@ class InboxReading(ApiModel):
     # True once the oldest has been in flight longer than INGEST_STALL_MINUTES, so a
     # stopped worker is not mistaken for a busy one (D21).
     stalled: bool = False
+    # Receipts in the batches being read, and how many of them are done: "Reading
+    # 4 of 12" (issue 122). Null when nothing is being read.
+    batch_done: int | None = None
+    batch_of: int | None = None
+    # Whole minutes at the recent median pace, at least 1; null until any read has
+    # finished to go by.
+    minutes_left: int | None = None
 
 
 class InboxOut(ApiModel):
