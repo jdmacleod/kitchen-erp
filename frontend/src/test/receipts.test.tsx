@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { IngestJob } from "../api/ingest";
 import { units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { ingestJobId, receiptDocumentId, receiptPurchaseId } from "./purchase-fixtures";
+import { batchRoutes, ingestJobId, receiptDocumentId, receiptPurchaseId } from "./purchase-fixtures";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -19,6 +19,7 @@ function baseRoutes(jobs: () => IngestJob[]) {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /ingest-jobs": () => jsonResponse(200, { items: jobs() }),
+    ...batchRoutes(jobs),
   };
 }
 
@@ -54,7 +55,7 @@ describe("receipts", () => {
     expect(post?.headers.get("Content-Type")).toBeNull();
     expect(post?.body).toBeUndefined();
     expect(await screen.findByTestId("notice")).toHaveTextContent("Receipt uploaded. It'll appear in Needs you once it's read.");
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     expect(within(list).getByTestId("ingest-job")).toHaveAttribute("data-status", "pending");
     expect(within(list).getByText("waiting to be read")).toBeInTheDocument();
   });
@@ -100,12 +101,17 @@ describe("receipts", () => {
     await user.click(screen.getByRole("button", { name: "Upload" }));
     expect(await screen.findByTestId("notice")).toHaveTextContent("Uploaded 2 receipts. They'll appear in Needs you once read. 1 was uploaded before and isn't read again.");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/receipts")).toHaveLength(3);
+    // One batch for all three, opened before any is sent (issue 122).
+    const opened = calls.filter((c) => c.method === "POST" && c.path === "/upload-batches");
+    expect(opened).toHaveLength(1);
+    expect(opened[0].body).toEqual({ file_count: 3 });
+    expect(calls.findIndex((c) => c.path === "/upload-batches" && c.method === "POST")).toBeLessThan(calls.findIndex((c) => c.path === "/receipts" && c.method === "POST"));
   });
 
   it("offers to view, not review, the purchase of a finished job", async () => {
     mockApi(baseRoutes(() => [{ ...reviewJob, status: "done", stage: "committed" }]));
     renderApp("/shop/receipts");
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const [row] = within(list).getAllByTestId("ingest-job");
     expect(row).toHaveTextContent("done");
     expect(within(row).getByRole("link", { name: "View purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
@@ -123,7 +129,7 @@ describe("receipts", () => {
     const user = userEvent.setup();
     renderApp("/shop/receipts");
 
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("ready to review");
@@ -135,7 +141,7 @@ describe("receipts", () => {
 
     await user.click(within(rows[1]).getByRole("button", { name: "Retry" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/ingest-jobs/${failedJob.id}/retry`)).toBe(true));
-    await waitFor(() => expect(within(screen.getByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
+    await waitFor(() => expect(within(screen.getByRole("list", { name: "Receipts in this upload" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
   });
 
   it("pins the job an inbox item names, even when it is not among the newest listed", async () => {
@@ -151,7 +157,7 @@ describe("receipts", () => {
     expect(row).toHaveAttribute("data-status", "failed");
     expect(within(row).getByRole("button", { name: "Retry" })).toBeInTheDocument();
     expect(within(row).getByRole("button", { name: "Enter by hand" })).toBeInTheDocument();
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     expect(within(list).getAllByTestId("ingest-job")).toHaveLength(1);
   });
 
@@ -162,7 +168,7 @@ describe("receipts", () => {
     });
     renderApp(`/shop/receipts?job=${failedJob.id}`);
     await screen.findByRole("heading", { name: "From your inbox" });
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows).toHaveLength(1);
     expect(rows[0]).toHaveAttribute("data-status", "needs_review");
@@ -176,7 +182,7 @@ describe("receipts", () => {
     renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
     expect(await within(pinned.parentElement as HTMLElement).findByRole("alert")).toBeInTheDocument();
-    const list = await screen.findByRole("list", { name: "Ingest jobs" });
+    const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows.map((r) => r.getAttribute("data-status"))).toEqual(["needs_review", "failed"]);
     expect(within(rows[1]).getByRole("button", { name: "Retry" })).toBeInTheDocument();
@@ -214,7 +220,7 @@ describe("receipts", () => {
     mockApi(baseRoutes(() => [timedOut]));
     renderApp("/shop/receipts");
 
-    const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
+    const row = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getByTestId("ingest-job");
     expect(row).toHaveTextContent("The model server answered too slowly");
     expect(row).toHaveTextContent("LLM_TIMEOUT_SECONDS");
     expect(row).toHaveTextContent("(model_timeout: ReadTimeout after 120s)");
@@ -227,7 +233,7 @@ describe("receipts", () => {
     mockApi(baseRoutes(() => [retrying, { ...failedJob, status: "pending", attempts: 0, last_error: null }]));
     renderApp("/shop/receipts");
 
-    const rows = within(await screen.findByRole("list", { name: "Ingest jobs" })).getAllByTestId("ingest-job");
+    const rows = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getAllByTestId("ingest-job");
     expect(rows[0]).toHaveTextContent("retrying");
     expect(rows[0]).toHaveTextContent("The model server could not be reached");
     expect(rows[1]).toHaveTextContent("waiting to be read");
@@ -239,7 +245,7 @@ describe("receipts", () => {
     mockApi(baseRoutes(() => [{ ...failedJob, last_error: "a_code_from_the_future" }]));
     renderApp("/shop/receipts");
 
-    const row = within(await screen.findByRole("list", { name: "Ingest jobs" })).getByTestId("ingest-job");
+    const row = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getByTestId("ingest-job");
     expect(row).toHaveTextContent("a_code_from_the_future");
   });
 

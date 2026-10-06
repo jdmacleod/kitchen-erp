@@ -524,6 +524,106 @@
         "title": "BarcodeLookupOut",
         "type": "object"
       },
+      "BatchReceiptOut": {
+        "additionalProperties": false,
+        "description": "One file in a batch, with what its reading came to once read.",
+        "properties": {
+          "gap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
+          "held": {
+            "default": false,
+            "title": "Held",
+            "type": "boolean"
+          },
+          "item_lines": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Lines"
+          },
+          "job": {
+            "$ref": "#/components/schemas/IngestJobOut"
+          },
+          "lines_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Total"
+          },
+          "outcome": {
+            "enum": [
+              "new",
+              "revived",
+              "already_seen"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "store": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "trust": {
+            "anyOf": [
+              {
+                "enum": [
+                  "adds_up",
+                  "check_lines",
+                  "couldnt_read"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust"
+          }
+        },
+        "required": [
+          "job",
+          "outcome"
+        ],
+        "title": "BatchReceiptOut",
+        "type": "object"
+      },
       "Body_add_mask_api_v1_product_photos__image_id__mask_post": {
         "properties": {
           "mask": {
@@ -697,6 +797,18 @@
       },
       "Body_upload_receipt_api_v1_receipts_post": {
         "properties": {
+          "batch_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Id"
+          },
           "captured_at": {
             "anyOf": [
               {
@@ -2351,6 +2463,17 @@
             ],
             "title": "Error Code"
           },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
           "kind": {
             "enum": [
               "receipt",
@@ -2371,6 +2494,22 @@
           "title": {
             "title": "Title",
             "type": "string"
+          },
+          "trust": {
+            "anyOf": [
+              {
+                "enum": [
+                  "adds_up",
+                  "check_lines",
+                  "couldnt_read"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust"
           }
         },
         "required": [
@@ -2409,6 +2548,28 @@
         "additionalProperties": false,
         "description": "What is still being read: shown as a line above the inbox, not as items.\n\n``count`` is receipts; ``photos`` and ``pages`` are product captures being\nidentified (2L). ``oldest_at`` and ``stalled`` cover all of them.",
         "properties": {
+          "batch_done": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Done"
+          },
+          "batch_of": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Of"
+          },
           "count": {
             "title": "Count",
             "type": "integer"
@@ -2429,6 +2590,17 @@
               }
             ],
             "title": "Lookups Since"
+          },
+          "minutes_left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes Left"
           },
           "oldest_at": {
             "anyOf": [
@@ -2563,6 +2735,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
           }
         },
         "required": [
@@ -2576,7 +2753,8 @@
           "locked_at",
           "purchase_id",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "uploaded_at"
         ],
         "title": "IngestJobDetail",
         "type": "object"
@@ -2701,6 +2879,11 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "uploaded_at": {
+            "format": "date-time",
+            "title": "Uploaded At",
+            "type": "string"
           }
         },
         "required": [
@@ -2714,7 +2897,8 @@
           "locked_at",
           "purchase_id",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "uploaded_at"
         ],
         "title": "IngestJobOut",
         "type": "object"
@@ -9468,6 +9652,17 @@
             "title": "Flags",
             "type": "array"
           },
+          "gap": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gap"
+          },
           "held": {
             "default": false,
             "title": "Held",
@@ -9940,6 +10135,11 @@
       "ReceiptUploadOut": {
         "additionalProperties": false,
         "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
           "document": {
             "$ref": "#/components/schemas/ReceiptDocumentOut"
           },
@@ -9954,7 +10154,8 @@
         },
         "required": [
           "document",
-          "job"
+          "job",
+          "batch_id"
         ],
         "title": "ReceiptUploadOut",
         "type": "object"
@@ -11084,6 +11285,151 @@
           "code"
         ],
         "title": "UnitParseOut",
+        "type": "object"
+      },
+      "UploadBatchCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "file_count": {
+            "maximum": 500.0,
+            "minimum": 1.0,
+            "title": "File Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file_count"
+        ],
+        "title": "UploadBatchCreate",
+        "type": "object"
+      },
+      "UploadBatchList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UploadBatchSummaryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UploadBatchList",
+        "type": "object"
+      },
+      "UploadBatchOut": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_count": {
+            "title": "File Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "file_count",
+          "created_at"
+        ],
+        "title": "UploadBatchOut",
+        "type": "object"
+      },
+      "UploadBatchSummaryOut": {
+        "additionalProperties": false,
+        "description": "A batch with its counts: what was uploaded, and what the readings came to.",
+        "properties": {
+          "adds_up": {
+            "title": "Adds Up",
+            "type": "integer"
+          },
+          "already_seen": {
+            "title": "Already Seen",
+            "type": "integer"
+          },
+          "check_lines": {
+            "title": "Check Lines",
+            "type": "integer"
+          },
+          "couldnt_read": {
+            "title": "Couldnt Read",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_count": {
+            "title": "File Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "reading": {
+            "title": "Reading",
+            "type": "integer"
+          },
+          "receipts": {
+            "items": {
+              "$ref": "#/components/schemas/BatchReceiptOut"
+            },
+            "title": "Receipts",
+            "type": "array"
+          },
+          "revived": {
+            "title": "Revived",
+            "type": "integer"
+          },
+          "uploaded": {
+            "title": "Uploaded",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "file_count",
+          "created_at",
+          "uploaded",
+          "new",
+          "revived",
+          "already_seen",
+          "reading",
+          "adds_up",
+          "check_lines",
+          "couldnt_read",
+          "receipts"
+        ],
+        "title": "UploadBatchSummaryOut",
         "type": "object"
       },
       "UsdaDecisionIn": {
@@ -18843,6 +19189,108 @@
         "summary": "Parse",
         "tags": [
           "units"
+        ]
+      }
+    },
+    "/api/v1/upload-batches": {
+      "get": {
+        "description": "Recent uploads, newest first, each with what its receipts came to.",
+        "operationId": "list_upload_batches_api_v1_upload_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadBatchList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Upload Batches",
+        "tags": [
+          "receipts"
+        ]
+      },
+      "post": {
+        "description": "Open a batch before sending its files, each with this batch's id (issue 122).",
+        "operationId": "create_upload_batch_api_v1_upload_batches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadBatchOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Upload Batch",
+        "tags": [
+          "receipts"
         ]
       }
     },

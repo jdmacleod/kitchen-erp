@@ -6,6 +6,7 @@ import { readingSentence, readingTotal, useInbox } from "../../api/inbox";
 import { formatTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
+import { TrustBadge } from "../purchases/TrustBadge";
 import { useChrome } from "../chrome";
 import { Alert, Button, Card, focusRing, secondaryLinkClass, tapTarget } from "../ui";
 
@@ -42,7 +43,11 @@ function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
         <Badge tone={kind.tone}>{kind.label}</Badge>
       </span>
       <span className="min-w-0">
-        <span className="block font-medium">{item.title}</span>
+        <span className="flex flex-wrap items-center gap-x-2 font-medium">
+          {item.title}
+          {/* A receipt's reading, before it is opened (issue 122). */}
+          {item.kind === "receipt" ? <TrustBadge trust={item.trust} gap={item.gap} /> : null}
+        </span>
         <span className="block text-sm text-neutral-600 dark:text-neutral-400">
           {error ? `${error} ` : null}
           {item.detail}

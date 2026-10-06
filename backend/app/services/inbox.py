@@ -51,6 +51,7 @@ from app.services import (
     proposals,
     purchases,
     resolution,
+    upload_batches,
     usda_review,
     vendor_suggestions,
 )
@@ -191,6 +192,9 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
                 action_label=action,
                 action_route=f"/shop/purchases/{r['id']}",
                 created_at=r["created_at"],
+                # "Adds up" or "Check the lines" beside it, before it is opened.
+                trust=check.trust if check.trust != "couldnt_read" else None,
+                gap=purchases.reading_gap(check, r["total"]),
             )
         )
     return items
@@ -440,7 +444,11 @@ async def _reading(db: AsyncSession) -> InboxReading:
     # Stalled means nothing is moving, not that something has waited: a batch of
     # receipts on a slow model keeps its last one waiting well past the limit
     # while the worker finishes a stage every minute or two.
+    progress_of = await upload_batches.reading_progress(db, row["n"])
     return InboxReading(
+        batch_done=progress_of.done if progress_of else None,
+        batch_of=progress_of.of if progress_of else None,
+        minutes_left=progress_of.minutes_left if progress_of else None,
         count=row["n"],
         photos=products["photos"],
         pages=products["pages"],

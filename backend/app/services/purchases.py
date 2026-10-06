@@ -121,6 +121,13 @@ def assess(
     return ReadingCheck(trust="check_lines", held=held, lines_total=lines_sum)
 
 
+def reading_gap(check: ReadingCheck, total: Decimal | None) -> Decimal | None:
+    """How far the lines are from the printed total, when that is why they need checking."""
+    if check.trust != "check_lines" or total is None:
+        return None
+    return abs(check.lines_total - total)
+
+
 def reading_check(purchase: Purchase) -> ReadingCheck:
     return assess(
         source=purchase.source,

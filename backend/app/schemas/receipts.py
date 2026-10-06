@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
-from app.schemas.base import ApiModel
+from app.schemas.base import ApiModel, DecimalStr
 
 
 class ReceiptDocumentOut(ApiModel):
@@ -50,6 +50,9 @@ class IngestJobOut(ApiModel):
     purchase_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
+    # When it was last sent to be read: a receipt removed and uploaded again
+    # shows that day, not its first upload (issue 122).
+    uploaded_at: datetime
 
 
 class StageResultOut(ApiModel):
@@ -76,6 +79,54 @@ class ReceiptUploadOut(ApiModel):
     job: IngestJobOut
     # This receipt was removed before and is being read again (#74).
     revived: bool = False
+    # The upload batch it was counted in (issue 122).
+    batch_id: uuid.UUID
+
+
+class UploadBatchCreate(ApiModel):
+    # How many files the person chose, before any is sent.
+    file_count: int = Field(ge=1, le=500)
+
+
+class UploadBatchOut(ApiModel):
+    id: uuid.UUID
+    file_count: int
+    created_at: datetime
+
+
+class BatchReceiptOut(ApiModel):
+    """One file in a batch, with what its reading came to once read."""
+
+    job: IngestJobOut
+    outcome: Literal["new", "revived", "already_seen"]
+    store: str | None = None
+    total: DecimalStr | None = None
+    item_lines: int | None = None
+    lines_total: DecimalStr | None = None
+    # Null while it is being read, or when it was entered by hand instead.
+    trust: Literal["adds_up", "check_lines", "couldnt_read"] | None = None
+    # With check_lines: how far the lines are from the printed total.
+    gap: DecimalStr | None = None
+    held: bool = False
+
+
+class UploadBatchSummaryOut(UploadBatchOut):
+    """A batch with its counts: what was uploaded, and what the readings came to."""
+
+    uploaded: int
+    new: int
+    revived: int
+    already_seen: int
+    reading: int
+    adds_up: int
+    check_lines: int
+    couldnt_read: int
+    receipts: list[BatchReceiptOut]
+
+
+class UploadBatchList(ApiModel):
+    items: list[UploadBatchSummaryOut]
+    next_cursor: str | None = None
 
 
 class ReceiptRemovedOut(ApiModel):
