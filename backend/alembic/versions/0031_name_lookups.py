@@ -7,8 +7,8 @@ is the product's public facts (brand, name and size) as JSON.
 Downgrade keeps every answer (lookup_answer is append-only and refers to its
 request): name requests become closed page requests, as 0025's image requests do.
 
-Revision ID: 0030
-Revises: 0029
+Revision ID: 0031
+Revises: 0030
 Create Date: 2026-10-06
 """
 
@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "0030"
-down_revision = "0029"
+revision = "0031"
+down_revision = "0030"
 branch_labels = None
 depends_on = None
 
