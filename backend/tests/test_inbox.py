@@ -255,8 +255,8 @@ async def test_products_needing_a_bridge_are_one_aggregate_item(admin_client):
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "0.95", qty="2", unit="cup")
     await shelf(admin_client, meal["id"], loc["id"], "0.70", qty="1", unit="cup")
-    [item] = (await get_inbox(admin_client))["items"]
-    assert item["kind"] == "bridge"
+    # Cornmeal is on the standard list, so it also waits to be linked (issue 189).
+    [item] = [i for i in (await get_inbox(admin_client))["items"] if i["kind"] == "bridge"]
     assert item["title"] == "2 products need a density before their prices compare"
     assert item["detail"] == "Each is added once, on its ingredient."
     assert item["action_label"] == "Add densities"
