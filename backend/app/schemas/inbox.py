@@ -7,6 +7,7 @@ from app.schemas.base import ApiModel
 
 InboxKind = Literal[
     "receipt",
+    "receipt_held",
     "receipt_failed",
     "identify",
     "bridge",

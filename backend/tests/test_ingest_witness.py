@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.ingest.witness import any_support, numeric_tokens, witness_amounts
+from app.ingest.witness import any_support, appears_in, numeric_tokens, witness_amounts
 
 D = Decimal
 
@@ -50,3 +50,36 @@ def test_exact_matches_are_assigned_before_digit_runs():
 def test_any_support_checks_one_amount_alone():
     assert any_support(D("12.80"), "SUBTOTAL 12.80", digit_runs=False)
     assert not any_support(D("12.81"), "SUBTOTAL 12.80", digit_runs=True)
+
+
+# --- appears_in: the not_in_scan check (#121, ruling R3) ---------------------
+
+
+def test_an_amount_appears_with_its_point_its_comma_or_neither():
+    for text in ("FIG PRESERVE 7.25", "FIG PRESERVE 7,25", "FIG PRESERVE 725"):
+        assert appears_in(D("7.25"), text), text
+
+
+def test_an_amount_printed_nowhere_does_not_appear():
+    assert not appears_in(D("8.15"), "FIG PRESERVE 7.25\nTOTAL 7.25")
+
+
+def test_an_amount_read_without_its_point_appears_as_printed():
+    # The reader kept the bare "612" a till printed for 6.12.
+    assert appears_in(D("612"), "PEAR CIDER     612")
+
+
+def test_letters_ocr_prints_for_digits_count_inside_a_number():
+    assert appears_in(D("1.00"), "CARD SAVINGS 1.OO-")
+    assert appears_in(D("9.41"), "SMOKED TROUT 9.4l F")
+    # Outside a number they are letters: "lOO" alone is not 100.
+    assert not appears_in(D("100"), "lOOSE LEAF TEA")
+
+
+def test_short_amounts_still_count_when_printed():
+    # Support needs three digits to rule out chance; appearing does not.
+    assert appears_in(D("0.45"), "LEMON .45")
+
+
+def test_zero_needs_no_print():
+    assert appears_in(D("0"), "LOYALTY NOTE")

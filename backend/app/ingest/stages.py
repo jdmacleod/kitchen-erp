@@ -40,6 +40,7 @@ from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
 from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptLines
+from app.ingest.witness import appears_in
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
 from app.services import resolution
 
@@ -239,6 +240,9 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         # lines are missing rather than let the receipt look complete (#60).
         purchase_flags.append("lines_partial")
     lines_stage.check_prices(parsed, printed_total)
+    lines_stage.flag_amounts_not_in_scan(parsed, text)
+    if printed_total is not None and not appears_in(printed_total, text):
+        purchase_flags.append("total_not_in_scan")
     reconciliation = lines_stage.reconcile(parsed, printed_total, header_tax)
     if reconciliation["mismatch"]:
         purchase_flags.append("reconcile_mismatch")

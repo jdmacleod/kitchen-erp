@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Context, Decimal
+from typing import Literal
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +52,85 @@ def computed_total(purchase: Purchase) -> Decimal:
         else:
             total += line.line_total
     return total.quantize(_FOUR, rounding=ROUND_HALF_EVEN)
+
+
+def lines_total(purchase: Purchase) -> Decimal:
+    """What the lines say the receipt came to, to set beside its printed total.
+
+    The header's tax counts only when no line carries tax, as at ingest.
+    """
+    header_tax = purchase.tax is not None and not any(
+        line.line_kind == "tax" for line in purchase.lines
+    )
+    return computed_total(purchase) + (purchase.tax if header_tax and purchase.tax else 0)
+
+
+# A draft whose lines miss its printed total by more than this share of it is held
+# for a careful look (#121, ruling R2): at that size the gap is misread lines, not
+# a missed coupon.
+HOLD_GAP_SHARE = Decimal("0.25")
+
+Trust = Literal["adds_up", "check_lines", "couldnt_read"]
+
+
+@dataclass(frozen=True)
+class ReadingCheck:
+    """How far a receipt's reading can be trusted, derived from what is stored now.
+
+    ``trust`` is None for a purchase entered by hand: there was no reading.
+    ``held`` marks a draft that needs a careful look before it is committed. It
+    never blocks a commit (non-negotiable 8 is about not committing *without* a
+    person, and opening the review is that person).
+    """
+
+    trust: Trust | None
+    held: bool
+    lines_total: Decimal
+
+
+def assess(
+    *,
+    source: str,
+    status: str,
+    flags: Iterable[str],
+    lines_sum: Decimal,
+    total: Decimal | None,
+    item_lines: int,
+    unscanned: int,
+) -> ReadingCheck:
+    """The rule behind :func:`reading_check`, on plain values so SQL can feed it too.
+
+    ``unscanned`` counts lines flagged ``not_in_scan``. On its own it holds
+    nothing: OCR drops prices often enough that a receipt which adds up would be
+    held for a scan's fault. Beside a mismatch it does, because then the lines
+    the scan cannot vouch for are the likely reason.
+    """
+    flags = set(flags)
+    if source != "receipt":
+        return ReadingCheck(trust=None, held=False, lines_total=lines_sum)
+    if item_lines == 0:
+        return ReadingCheck(trust="couldnt_read", held=False, lines_total=lines_sum)
+    printed = None if "total_missing" in flags else total
+    if printed is not None and abs(lines_sum - printed) <= TOTAL_TOLERANCE:
+        return ReadingCheck(trust="adds_up", held=False, lines_total=lines_sum)
+    held = False
+    if status == "draft" and printed is not None:
+        unscanned += "total_not_in_scan" in flags
+        gap = abs(lines_sum - printed)
+        held = printed <= 0 or gap > printed * HOLD_GAP_SHARE or unscanned > 0
+    return ReadingCheck(trust="check_lines", held=held, lines_total=lines_sum)
+
+
+def reading_check(purchase: Purchase) -> ReadingCheck:
+    return assess(
+        source=purchase.source,
+        status=purchase.status,
+        flags=purchase.flags,
+        lines_sum=lines_total(purchase),
+        total=purchase.total,
+        item_lines=sum(line.line_kind == "item" for line in purchase.lines),
+        unscanned=sum("not_in_scan" in line.flags for line in purchase.lines),
+    )
 
 
 def _purchase_query():
