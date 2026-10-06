@@ -304,7 +304,7 @@ purchase_line(
   line_kind CHECK IN (item, discount, tax, deposit, fee),
   product_id FK?, parent_line_id FK purchase_line?,   -- discounts and deposits attach to an item
   qty NUMERIC?, unit FK unit?, unit_price NUMERIC?, line_total NUMERIC,
-  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, manual, unmatched, ignored),   -- the rung whose answer was used; 2K writes identifier
+  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, similar, manual, unmatched, ignored),   -- the rung whose answer was used; 2K writes identifier
   resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode, identifier and alias
   resolution_confidence NUMERIC?, flags TEXT[],
   removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
