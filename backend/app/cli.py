@@ -831,7 +831,8 @@ BENCH_EXPECTED = typer.Option(
     exists=True,
     dir_okay=False,
     resolve_path=True,
-    help="CSV of document_id,total,item_line_count for receipts never committed.",
+    help="CSV of document_id,total,item_line_count for receipts never committed "
+    "(item_line_count may be blank when it is not known).",
 )
 BENCH_FORCE = typer.Option(False, "--force", help="Run even though a worker is connected.")
 BENCH_OUT = typer.Option(
