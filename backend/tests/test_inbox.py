@@ -248,28 +248,39 @@ async def test_one_unmatched_line_reads_singular(admin_client, admin):
     assert item["title"] == "1 receipt line to identify"
 
 
-async def test_a_product_needing_a_bridge_is_one_item(admin_client):
+async def test_products_needing_a_bridge_are_one_aggregate_item(admin_client):
     loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
     flour = await make_product(admin_client, "Flour", "Bulk flour")
+    meal = await make_product(admin_client, "Cornmeal", "Coarse cornmeal")
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "0.95", qty="2", unit="cup")
+    await shelf(admin_client, meal["id"], loc["id"], "0.70", qty="1", unit="cup")
+    # Cornmeal is on the standard list, so it also waits to be linked (issue 189).
+    [item] = [i for i in (await get_inbox(admin_client))["items"] if i["kind"] == "bridge"]
+    assert item["title"] == "2 products need a density before their prices compare"
+    assert item["detail"] == "Each is added once, on its ingredient."
+    assert item["action_label"] == "Add densities"
+    assert item["action_route"] == "/catalog/bridges"
+
+
+async def test_one_product_needing_a_pack_reads_singular(admin_client):
+    loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
+    flour = await make_product(admin_client, "Flour", "Bulk flour")
+    await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
     [item] = (await get_inbox(admin_client))["items"]
-    assert item["kind"] == "bridge"
-    assert item["title"] == "Bulk flour"
-    assert item["detail"] == "Its prices can't be compared until it has a density."
-    assert item["action_label"] == "Add density"
-    ingredient_id = flour["ingredient"]["id"]
-    assert item["action_route"] == f"/catalog/ingredients/{ingredient_id}#density-heading"
+    assert item["title"] == "1 product needs a pack size before its prices compare"
+    assert item["action_label"] == "Set packs"
 
 
-async def test_a_product_failing_two_ways_is_merged(admin_client):
+async def test_a_product_failing_two_ways_counts_once(admin_client):
     loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
     flour = await make_product(admin_client, "Flour", "Bulk flour")
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
-    items = (await get_inbox(admin_client))["items"]
-    assert [i["kind"] for i in items] == ["bridge"]
-    assert "a density and" in items[0]["detail"]
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["title"] == "1 product needs a bridge before its prices compare"
+    assert item["detail"] == "1 needs a pack size and 1 a density."
+    assert item["action_label"] == "Review"
 
 
 async def test_items_are_oldest_first_across_kinds(admin_client, admin):

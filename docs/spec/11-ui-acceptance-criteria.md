@@ -37,12 +37,13 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
   - With geolocation granted, it pre-fills the nearest adopted vendor location, labelled "Near".
   - Without geolocation, it pre-fills the last-used location, labelled "Last used · change" (G2).
 - **UI-2.11** `GET /api/v1/inbox` returns receipt, couldn't-read, identify and bridge items, oldest first, with the fields listed in 09 plus `reading: {count, oldest_at}`.
+  - Bridge is one aggregate row however many products need a bridge (#186): "N products need a pack size before their prices compare", or "a bridge" with a breakdown by reason when they differ.
   - A draft that belongs to a failed job is not listed twice (D4).
   - A failure in any kind returns an error, never a partial list (D6).
 - **UI-2.12** Home renders the inbox as specified in 10.
   - Each row's action opens the page that resolves it, and resolving an item removes it without a manual refresh.
   - A response that arrives after a resolving mutation does not bring the item back.
-- **UI-2.13** The Home nav item shows the count of inbox rows (G6). The count is hidden until the first response arrives (G16), and a failed request shows "!" (D6). The separate "Needs a bridge" and "To identify" nav items are gone.
+- **UI-2.13** The Home nav item shows the count of inbox rows (G6); a batch of products needing a bridge adds one, not one per product (#186). The count is hidden until the first response arrives (G16), and a failed request shows "!" (D6). The separate "Needs a bridge" and "To identify" nav items are gone.
 - **UI-2.14** "New purchase" is not a nav item; it is reachable from Capture and as the primary action on Shop pages.
 - **UI-2.15** Receipts being read show as "Reading n receipts…" on Home, not counted in the badge (G1). When the oldest one is older than `INGEST_STALL_MINUTES` (default 10), the line reads "Reading is taking longer than usual · Check System" (D21).
 - **UI-2.16** The Notice carries confirmations across a navigation (D18).
