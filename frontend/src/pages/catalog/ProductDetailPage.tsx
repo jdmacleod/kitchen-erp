@@ -25,6 +25,9 @@ import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit, ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 import { CategoryChip } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
+import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
+import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -64,19 +67,70 @@ export function ProductDetailPage() {
 function ProductDetail({ product }: { product: Product }) {
   const setActive = useSetProductActive(product.id);
   const confirmDensity = useConfirmDensityOverride(product.id);
+  const notice = useNotice();
+  const [merging, setMerging] = useState(false);
+  const [more, setMore] = useState(false);
+  // Below 1024px the secondary actions share one "More actions" sheet (design D15).
+  const wide = useMediaQuery(LG_QUERY);
+  const merged = Boolean(product.merged_into);
+  const actions: MoreAction[] = merged
+    ? []
+    : [
+        { label: "Merge into…", open: () => setMerging(true), disabled: merging },
+        {
+          label: setActive.isPending ? "Saving…" : product.active ? "Deactivate" : "Activate",
+          open: () => setActive.mutate(!product.active),
+          variant: product.active ? ("danger" as const) : ("secondary" as const),
+          disabled: setActive.isPending,
+        },
+      ];
 
   return (
     <>
       <PageHeader title={productTitle(product)}>
-        <Button
-          variant={product.active ? "danger" : "secondary"}
-          disabled={setActive.isPending}
-          onClick={() => setActive.mutate(!product.active)}
-        >
-          {setActive.isPending ? "Saving…" : product.active ? "Deactivate" : "Activate"}
-        </Button>
+        {actions.length === 0 ? null : wide ? (
+          <div className="flex flex-wrap gap-2">
+            {actions.map((a) => (
+              <Button key={a.label} variant={a.variant ?? "secondary"} disabled={a.disabled} onClick={a.open}>
+                {a.label}
+              </Button>
+            ))}
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={() => setMore(true)} aria-haspopup="dialog">
+            More actions
+          </Button>
+        )}
       </PageHeader>
+      {more ? (
+        <MoreActionsDialog
+          actions={actions.map((a) => ({
+            ...a,
+            open: () => {
+              setMore(false);
+              a.open();
+            },
+          }))}
+          onClose={() => setMore(false)}
+        />
+      ) : null}
       <div className="flex flex-col gap-6">
+        {product.merged_into ? <MergedInto survivorId={product.merged_into} /> : null}
+        {merging ? (
+          <ProductMergePanel
+            product={product}
+            onCancel={() => setMerging(false)}
+            onMerged={(done) => {
+              setMerging(false);
+              notice.show({
+                tone: "success",
+                message: `Merged into ${done.survivor_name}.`,
+                action: { label: `Open ${done.survivor_name}`, to: `/catalog/products/${done.survivor_id}` },
+                focusAction: true,
+              });
+            }}
+          />
+        ) : null}
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
           <Link to="/catalog/products" className={`rounded underline ${focusRing}`}>
             All products
@@ -133,6 +187,21 @@ function ProductDetail({ product }: { product: Product }) {
         </Card>
       </div>
     </>
+  );
+}
+
+/** A merged product's page says where it went; its old links still land here (issue 179). */
+function MergedInto({ survivorId }: { survivorId: string }) {
+  const survivor = useProduct(survivorId);
+  const name = survivor.data ? productTitle(survivor.data) : "another product";
+  return (
+    <Alert tone="info">
+      Merged into{" "}
+      <Link to={`/catalog/products/${survivorId}`} className={`rounded font-medium underline ${focusRing}`}>
+        {name}
+      </Link>
+      . Its prices, codes, photos and receipt wordings are there now.
+    </Alert>
   );
 }
 
