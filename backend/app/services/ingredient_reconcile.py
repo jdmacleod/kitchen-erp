@@ -23,7 +23,6 @@ would need a bridge is counted, not estimated.
 
 from __future__ import annotations
 
-import difflib
 import uuid
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -33,7 +32,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import standard
-from app.catalog.names import GENERATED_SLUG_PREFIX, STANDARD_KEY_RE, normalize_name, plural
+from app.catalog.names import GENERATED_SLUG_PREFIX, STANDARD_KEY_RE, normalize_name
+from app.catalog.standard_match import match_entry
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.models.catalog import (
@@ -51,48 +51,27 @@ from app.services.spellings import add_generated_spellings, add_spelling
 
 log = get_logger(__name__)
 
-_CLOSE_MATCH = 0.8
-
-
 # --- suggestions -------------------------------------------------------------
-
-
-def _entry_index() -> dict[str, standard.StandardEntry]:
-    index: dict[str, standard.StandardEntry] = {}
-    for e in standard.standard_list().ingredients:
-        forms = [e.name, *e.spellings]
-        if (p := plural(e.name)) is not None:
-            forms.append(p)
-        for form in forms:
-            index.setdefault(normalize_name(form), e)
-    return index
 
 
 def suggest_entry(name: str) -> standard.StandardEntry | None:
     """The standard entry an ingredient name most likely means, or None.
 
-    An exact name, spelling or plural wins; otherwise the closest name above a
-    similarity bar. A suggestion is only ever offered, never applied.
+    The head-noun matcher in ``app.catalog.standard_match``: an exact name,
+    spelling or plural, or the same head noun with the same qualifiers. It
+    never guesses by similarity (#188). A suggestion is only ever offered,
+    never applied.
     """
-    norm = normalize_name(name)
-    index = _entry_index()
-    if norm in index:
-        return index[norm]
-    # USDA writes the noun first ("butter, unsalted", "salmon, smoked"); the
-    # standard list writes it last.
-    head, comma, tail = name.partition(",")
-    if comma and tail.strip() and (turned := normalize_name(f"{tail} {head}")) in index:
-        return index[turned]
-    close = difflib.get_close_matches(norm, list(index), n=1, cutoff=_CLOSE_MATCH)
-    return index[close[0]] if close else None
+    return match_entry(name)
 
 
 async def recheck(db: AsyncSession) -> list[str]:
     """Offer the standard list again to ingredients it was never offered to.
 
-    An ingredient typed in (not chosen from the list) used to start
-    ``not_applicable``, so the link page never showed it even when the list
-    had its name ("butter, unsalted"). Each one a standard entry now matches
+    An ingredient typed in (not chosen from the list) starts
+    ``not_applicable`` unless a standard entry matched its name when it was
+    created; the list grows, and the matcher improves. Each one a standard
+    entry now matches
     goes back to ``unreviewed``: offered on the link page, never linked here.
     Returns their names."""
     rows = (
