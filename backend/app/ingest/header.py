@@ -50,7 +50,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -124,6 +124,83 @@ def parse_local_datetime(text: str | None, timezone: str, order: str = "MDY") ->
             continue
         return local.replace(tzinfo=zone).astimezone(UTC)
     return None
+
+
+_PRINTED_DATE = re.compile(r"(?<![\d/.-])(\d{1,4})([/.-])(\d{1,2})\2(\d{2,4})(?![\d/.-])")
+_PRINTED_TIME = re.compile(
+    r"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*([AaPp])\.?\s*[Mm]\b\.?"
+    r"|(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?(?![\d:])"
+)
+_HAS_TIME = re.compile(r"\d{1,2}:\d{2}")
+
+
+def _printed_time(row: str) -> time | None:
+    m = _PRINTED_TIME.search(row)
+    if m is None:
+        return None
+    if m.group(1) is not None:
+        hour, minute, second = int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)
+        if not 1 <= hour <= 12:
+            return None
+        hour = hour % 12 + (12 if m.group(4).lower() == "p" else 0)
+    else:
+        hour, minute, second = int(m.group(5)), int(m.group(6)), int(m.group(7) or 0)
+    return time(hour, minute, second)
+
+
+def printed_dates(text: str, order: str = "MDY") -> list[tuple[date, time | None]]:
+    """Every date printed in the text, read in ``order``, with a time on its row."""
+    found: list[tuple[date, time | None]] = []
+    for row in text.splitlines():
+        for m in _PRINTED_DATE.finditer(row):
+            token = m.group(0)
+            for fmt in _DATE_ORDERS[order]:
+                try:
+                    day = datetime.strptime(token, fmt.format(s=m.group(2))).date()
+                except ValueError:
+                    continue
+                rest = row[: m.start()] + " " + row[m.end() :]
+                found.append((day, _printed_time(rest)))
+                break
+    return found
+
+
+def datetime_from_text(
+    model_value: str | None,
+    model_at: datetime | None,
+    text: str,
+    timezone: str,
+    order: str = "MDY",
+) -> tuple[datetime | None, list[str]]:
+    """The purchase time, with what the receipt prints winning over the model.
+
+    Only when the receipt prints exactly one date: the model's date gives way to
+    it (``date_from_text``), and a time printed on its row fills a time the
+    model left out (``time_from_text``). Several dates (a return-by date, an
+    expiry) are left to the model.
+    """
+    dates: dict[date, time | None] = {}
+    for day, printed in printed_dates(text, order):
+        if dates.get(day) is None:
+            dates[day] = printed
+    if len(dates) != 1:
+        return model_at, []
+    ((day, printed_at),) = dates.items()
+    zone = ZoneInfo(timezone)
+    flags: list[str] = []
+    local = None if model_at is None else model_at.astimezone(zone)
+    at = None
+    if local is not None and model_value and _HAS_TIME.search(model_value):
+        at = local.time()
+    elif printed_at is not None:
+        at = printed_at
+        flags.append("time_from_text")
+    if local is None or local.date() != day:
+        flags.append("date_from_text")
+    if not flags:
+        return model_at, []
+    moment = datetime.combine(day, at or time(0, 0)).replace(tzinfo=zone)
+    return moment.astimezone(UTC), flags
 
 
 @dataclass
@@ -341,20 +418,57 @@ def _money(text: str) -> Decimal:
     return Decimal(re.sub(r"[.,]", "", whole) + "." + cents)
 
 
+# A savings summary printed after the sale ("YOUR SAVINGS" over its rows and its own
+# "Total", #121): its heading names savings and prints no amount. Its total is what
+# was saved, never what was paid.
+_SAVINGS_HEADING = re.compile(r"sav(?:ed|ings?)|discounts?|coupons?", re.IGNORECASE)
+_ENDS_A_BLOCK = re.compile(
+    r"sub\s*-?\s*total|\btax\b|\btotal\b|\bbalance\b|amount\s+due", re.IGNORECASE
+)
+_SAVINGS_BLOCK_ROWS = 6
+
+
+def _in_savings_block(rows: list[str], index: int) -> bool:
+    """Whether the total on ``rows[index]`` closes a savings summary.
+
+    Walking up from it through rows that print amounts, a heading that names
+    savings and prints none comes before any subtotal, tax or other total.
+    """
+    for row in reversed(rows[max(index - _SAVINGS_BLOCK_ROWS, 0) : index]):
+        if not re.search(_AMOUNT, row):
+            return bool(_SAVINGS_HEADING.search(row))
+        if _ENDS_A_BLOCK.search(row):
+            return False
+    return False
+
+
+def savings_block_totals(text: str) -> set[Decimal]:
+    """The amounts of total rows that close a savings summary."""
+    rows = [row for row in text.splitlines() if row.strip()]
+    found: set[Decimal] = set()
+    for i, row in enumerate(rows):
+        m = _TOTAL_LINE.search(row.strip())
+        if m and _in_savings_block(rows, i):
+            found.add(_money(m.group(2)))
+    return found
+
+
 def printed_total_line(text: str) -> tuple[Decimal, bool] | None:
     """The receipt's labelled total and whether its label is a strong one.
 
     TOTAL, AMOUNT DUE and BALANCE DUE are strong; a bare BALANCE is weak, used
     only when nothing stronger is printed, because some tills print an account
     balance under that word after the sale. Among equals the last line wins: a
-    total comes after the lines it sums.
+    total comes after the lines it sums. The total of a savings summary is never
+    the receipt's (#121).
     """
+    rows = [row for row in text.splitlines() if row.strip()]
     best: tuple[Decimal, bool] | None = None
-    for line in text.splitlines():
+    for i, line in enumerate(rows):
         if _NOT_TOTAL.search(line):
             continue
         m = _TOTAL_LINE.search(line.strip())
-        if not m:
+        if not m or _in_savings_block(rows, i):
             continue
         strong = m.group("label").lower() != "balance"
         if best is None or strong or not best[1]:

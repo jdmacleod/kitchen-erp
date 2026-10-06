@@ -80,7 +80,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "7",
+    "parser_version": "8",
     "purchase_flags": [
       "reconcile_mismatch",
       "decimals_restore_total"

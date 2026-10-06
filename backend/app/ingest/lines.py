@@ -89,7 +89,10 @@ GENERIC_PARSER = "llm-generic"
 # 6: a weight or count printed on a row of its own joins the item it belongs to (#87).
 # 7: OCR's "Ib", "1b" and "|b" read as pounds and ".65" as a rate; an amount whose tax
 #    letter OCR read as a third decimal digit is cut back to its cents.
-GENERIC_PARSER_VERSION = "7"
+# 8: line-structure passes (app.ingest.structure, #181): a "2 QTY" prefix, an unjoined
+#    weight row at zero, a product read as a discount, a regular price the model left
+#    out, footer sentences, and a tax line read at its base.
+GENERIC_PARSER_VERSION = "8"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -121,9 +124,11 @@ LOOSE_WEIGHT_PATTERN = re.compile(
 #   row of its own, above or below the item, and the rows were joined (#87).
 # quantity_line: a row that is only a weight or count and could not be joined
 #   to an item with certainty; review offers to merge it.
+# qty_from_prefix: the count was printed before the name ("3 QTY ...", #181).
 QTY_FLAGS = frozenset(
     {
         "qty_inferred",
+        "qty_from_prefix",
         "qty_corrected",
         "qty_assumed",
         "qty_from_line_above",
@@ -365,7 +370,18 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 # exceeds_total: one line costs more than the whole printed receipt.
 # tax_code_as_digit: the amount read as "6.378" was the printed 6.37 and its tax
 #   letter; it was cut back to the cents (see _tax_code_read_as_digit).
-PRICE_FLAGS = frozenset({"decimal_missing", "exceeds_total", "tax_code_as_digit"})
+# no_amount_printed, regular_price_from_text, tax_from_rate: a line-structure pass
+#   set the amount from the printed arithmetic (app.ingest.structure, #181).
+PRICE_FLAGS = frozenset(
+    {
+        "decimal_missing",
+        "exceeds_total",
+        "tax_code_as_digit",
+        "no_amount_printed",
+        "regular_price_from_text",
+        "tax_from_rate",
+    }
+)
 
 # The last amount on a line, and whatever tax or flag letters follow it.
 _TRAILING_AMOUNT = re.compile(r"(\d[\d.,]*)\s*(?:[A-Za-z*]{1,2}\s*)?$")

@@ -34,7 +34,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger, job_id_var
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
-from app.ingest import parsers, readers
+from app.ingest import parsers, readers, structure
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
@@ -150,6 +150,14 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
         purchased_at = header_stage.parse_local_datetime(
             header.purchased_at_local, settings.household_timezone, settings.receipt_date_order
         )
+        purchased_at, when_flags = header_stage.datetime_from_text(
+            header.purchased_at_local,
+            purchased_at,
+            text,
+            settings.household_timezone,
+            settings.receipt_date_order,
+        )
+        flags.extend(when_flags)
         if header.purchased_at_local and purchased_at is None:
             flags.append("purchased_at_unparsed")
         header, total_flags = readers.apply_printed_total(header, text)
@@ -212,9 +220,14 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         reading = await readers.read_lines(ctx.llm, text, deadline_at=readers.stage_deadline_at())
         result, attempts, reason = reading.lines, reading.attempts, reading.reason
         unread_parts, part_count = reading.unread_parts, reading.part_count
-    parsed = [] if result is None else lines_stage.parse_model_lines(result)
-    parsed, merged_rows = lines_stage.merge_quantity_lines(parsed)
-    parsed, informational = lines_stage.fold_regular_prices(parsed)
+    printed_total = _decimal(header.get("total"))
+    header_tax = _decimal(header.get("tax"))
+    passes = (
+        structure.PostPasses([])
+        if result is None
+        else structure.post_passes(result, text, printed_total, header_tax)
+    )
+    parsed, merged_rows, informational = passes.lines, passes.merged_rows, passes.dropped_rows
 
     purchase_flags: list[str] = []
     if not header.get("parsed", False):
@@ -225,8 +238,6 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         # Some parts answered and some did not: keep what was read, and say that
         # lines are missing rather than let the receipt look complete (#60).
         purchase_flags.append("lines_partial")
-    printed_total = _decimal(header.get("total"))
-    header_tax = _decimal(header.get("tax"))
     lines_stage.check_prices(parsed, printed_total)
     reconciliation = lines_stage.reconcile(parsed, printed_total, header_tax)
     if reconciliation["mismatch"]:

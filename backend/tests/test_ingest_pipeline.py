@@ -706,7 +706,9 @@ async def test_a_parent_index_points_within_its_own_part(
     fixture = load_fixture("long_till_receipt")
     first, middle, last = fixture.llm_responses["lines"]
     item, saving = dict(middle["lines"][0]), dict(middle["lines"][1])
-    saving.update(line_kind="discount", parent_index=0)
+    # Worded as a saving: a "discount" that names a product with its size is
+    # read back as an item when the receipt adds up better that way (#181).
+    saving.update(raw_text="MEMBER SAVINGS 0.40-", line_kind="discount", parent_index=0)
     edited = {"lines": [item, saving, *middle["lines"][2:]]}
     recorded({"header": fixture.llm_responses["header"], "lines": [first, edited, last]})
     _, job = await upload_fixture(admin_client, fixture)
