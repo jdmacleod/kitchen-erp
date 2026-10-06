@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import ROUND_HALF_EVEN, Decimal
+from typing import Literal
 
 from sqlalchemy import func, literal, or_, select, text, tuple_
 from sqlalchemy.exc import IntegrityError
@@ -603,7 +604,7 @@ async def list_products(
     ingredient_id: uuid.UUID | None = None,
     include_inactive: bool = False,
     q: str | None = None,
-    category: CategoryKey | None = None,
+    category: CategoryKey | Literal["none"] | None = None,
     barcode: str | None = None,
     limit: int = 50,
     cursor: str | None = None,
@@ -612,13 +613,16 @@ async def list_products(
 
     Both filter on the server, so a search or a category finds products beyond the
     first page (D12). A ranked search has no next page, like the typeahead. A
-    ``barcode`` is an exact match and ignores the other filters.
+    ``barcode`` is an exact match and ignores the other filters. ``category="none"``
+    is the products whose ingredient has no category key: none at all, or free
+    text the synonym map doesn't know (they show no chip).
     """
+    uncategorized = category == "none"
     category_values = await _category_values(db, category) if category else None
     if barcode:
         rows = await _products_by_barcode(db, barcode, limit)
         next_cursor = None
-    elif category_values == []:
+    elif category_values == [] and not uncategorized:
         return [], None
     elif q:
         hits = await search_products(
@@ -628,6 +632,7 @@ async def list_products(
             include_inactive=include_inactive,
             ingredient_id=ingredient_id,
             category_values=category_values,
+            uncategorized=uncategorized,
         )
         rows, next_cursor = await _products_by_id(db, [h.id for h in hits]), None
     else:
@@ -636,6 +641,7 @@ async def list_products(
             ingredient_id=ingredient_id,
             include_inactive=include_inactive,
             category_values=category_values,
+            uncategorized=uncategorized,
             limit=limit,
             cursor=cursor,
         )
@@ -655,6 +661,7 @@ async def _product_page(
     category_values: list[str] | None,
     limit: int,
     cursor: str | None,
+    uncategorized: bool = False,
 ) -> tuple[list[Product], str | None]:
     # Keyset on (lower(name), id), with lower(name) as Postgres computes it, so
     # the cursor compares exactly the way the ORDER BY sorts.
@@ -664,7 +671,11 @@ async def _product_page(
         stmt = stmt.where(Product.active.is_(True))
     if ingredient_id is not None:
         stmt = stmt.where(Product.ingredient_id == ingredient_id)
-    if category_values is not None:
+    if uncategorized:
+        stmt = stmt.join(Product.ingredient).where(
+            Ingredient.category.is_(None) | Ingredient.category.in_(category_values or [])
+        )
+    elif category_values is not None:
         stmt = stmt.join(Product.ingredient).where(Ingredient.category.in_(category_values))
     after = decode_keyset(cursor)
     if after is not None:
@@ -718,8 +729,8 @@ async def _products_by_barcode(db: AsyncSession, code: str, limit: int) -> list[
     return await _products_by_id(db, list(dict.fromkeys(ids)))
 
 
-async def _category_values(db: AsyncSession, key: CategoryKey) -> list[str]:
-    """The stored free-text categories that map to ``key``.
+async def _category_values(db: AsyncSession, key: CategoryKey | Literal["none"]) -> list[str]:
+    """The stored free-text categories that map to ``key`` ("none": to no key).
 
     Filtering on these exact values keeps the synonym map in one place,
     ``app/catalog/categories.py``, instead of a second copy in SQL.
@@ -727,7 +738,8 @@ async def _category_values(db: AsyncSession, key: CategoryKey) -> list[str]:
     stored = await db.execute(
         select(Ingredient.category).where(Ingredient.category.is_not(None)).distinct()
     )
-    return [c for c in stored.scalars() if categories.key(c) == key]
+    want = None if key == "none" else key
+    return [c for c in stored.scalars() if categories.key(c) == want]
 
 
 _LAST_PAID_SQL = text(
@@ -1066,6 +1078,7 @@ async def search_products(
     include_inactive: bool = False,
     ingredient_id: uuid.UUID | None = None,
     category_values: list[str] | None = None,
+    uncategorized: bool = False,
 ) -> list[SearchHit]:
     ql = q.strip().lower()
     if not ql:
@@ -1082,7 +1095,10 @@ async def search_products(
     if ingredient_id is not None:
         filters.append("p.ingredient_id = :ingredient_id")
         params["ingredient_id"] = ingredient_id
-    if category_values is not None:
+    if uncategorized:
+        filters.append("(i.category IS NULL OR i.category = ANY(CAST(:category_values AS text[])))")
+        params["category_values"] = category_values or []
+    elif category_values is not None:
         filters.append("i.category = ANY(CAST(:category_values AS text[]))")
         params["category_values"] = category_values
     sql = text(_SEARCH_SQL.format(filters=" AND ".join(filters) or "TRUE"))

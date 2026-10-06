@@ -16822,6 +16822,10 @@
                   "type": "string"
                 },
                 {
+                  "const": "none",
+                  "type": "string"
+                },
+                {
                   "type": "null"
                 }
               ],

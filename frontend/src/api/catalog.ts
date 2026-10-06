@@ -444,6 +444,8 @@ export function useUpdateIngredient(id: string) {
     onSuccess: (updated) => {
       client.setQueryData(catalogKeys.ingredient(id), updated);
       invalidateIngredient(client, id);
+      // Products show their ingredient's name and category chip.
+      void client.invalidateQueries({ queryKey: catalogKeys.products });
     },
   });
 }
@@ -544,7 +546,8 @@ export function useProducts(
     ingredientId?: string;
     includeInactive?: boolean;
     q?: string;
-    category?: CategoryKey | null;
+    /** A category key, or "none" for products whose ingredient has no category. */
+    category?: CategoryKey | "none" | null;
     limit?: number;
     enabled?: boolean;
   } = {},

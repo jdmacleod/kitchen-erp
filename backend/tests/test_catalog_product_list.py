@@ -142,3 +142,21 @@ async def test_percent_and_underscore_match_literally(admin_client, db_session):
     assert [i["name"] for i in listed] == ["Rice_flour"]
     found = (await admin_client.get("/api/v1/search", params={"q": "_"})).json()
     assert [i["label"] for i in found["ingredients"]] == ["Rice_flour"]
+
+
+async def test_no_category_finds_products_whose_ingredient_has_no_key(admin_client, db_session):
+    """category=none: no category at all, or free text the synonym map doesn't know.
+    Found by /devex-review on 2026-10-06."""
+    await seed_units_via_service(db_session)
+    greens = await make_ingredient(admin_client, "Snap peas", category="vegetables")
+    bare = await make_ingredient(admin_client, "Quince paste")
+    odd = await make_ingredient(admin_client, "Spruce tips", category="foraged")
+    await make_product(admin_client, greens["id"], "Sugar snap peas")
+    await make_product(admin_client, bare["id"], "Quince paste block")
+    await make_product(admin_client, odd["id"], "Spruce tip jar")
+    names, _ = await _names(admin_client, category="none")
+    assert names == ["Quince paste block", "Spruce tip jar"]
+    names, _ = await _names(admin_client, category="none", q="quince")
+    assert names == ["Quince paste block"]
+    produce, _ = await _names(admin_client, category="produce")
+    assert produce == ["Sugar snap peas"]

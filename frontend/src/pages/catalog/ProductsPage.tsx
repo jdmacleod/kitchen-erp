@@ -41,7 +41,8 @@ export function ProductsPage() {
   usePageTitle("Products");
   const [params, setParams] = useSearchParams();
   const q = params.get("q") ?? "";
-  const category = isCategory(params.get("category")) ? (params.get("category") as CategoryKey) : null;
+  const rawCategory = params.get("category");
+  const category: CategoryKey | "none" | null = rawCategory === "none" ? "none" : isCategory(rawCategory) ? rawCategory : null;
   const includeInactive = params.get("inactive") === "1";
   const presetId = params.get("ingredient_id") ?? undefined;
 
@@ -172,6 +173,19 @@ export function ProductsPage() {
                 </span>
               </button>
             ))}
+            {/* Products whose ingredient has no category yet: the ones to label. */}
+            <button
+              type="button"
+              aria-pressed={category === "none"}
+              onClick={() => setParam("category", category === "none" ? null : "none")}
+              className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm lg:min-h-9 ${focusRing} ${
+                category === "none"
+                  ? "bg-neutral-800 font-medium text-white dark:bg-neutral-200 dark:text-neutral-900"
+                  : "border border-dashed border-neutral-400 text-neutral-700 hover:bg-neutral-200 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800"
+              }`}
+            >
+              No category
+            </button>
           </div>
           <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
             <input
@@ -194,7 +208,7 @@ export function ProductsPage() {
       ) : items.length === 0 ? (
         filtered ? (
           <EmptyState
-            title={`No products match${q ? ` ‘${q}’` : ""}${category ? ` in ${categoryLabel(category)}` : ""}`}
+            title={`No products match${q ? ` ‘${q}’` : ""}${category === "none" ? " without a category" : category ? ` in ${categoryLabel(category)}` : ""}`}
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
