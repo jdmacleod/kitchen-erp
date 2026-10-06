@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -305,3 +306,51 @@ async def test_a_failing_kind_fails_the_request_rather_than_hiding(
         # ASGITransport re-raises unhandled errors; in production this is a 500.
         await admin_client.get("/api/v1/inbox")
     assert any(r.message == "inbox.kind_failed" and r.kind == "bridge" for r in caplog.records)
+
+
+# --- held receipts (issue 121, ruling R2) ------------------------------------
+
+
+async def test_a_draft_far_off_its_total_is_held_for_a_careful_look(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="1.20")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt_held"
+    assert item["title"].endswith("receipt needs a careful look")
+    assert item["detail"] == (
+        "Its lines add up to 3.59, but the receipt says 1.20. The flagged lines are shown first."
+    )
+    assert item["action_route"] == f"/shop/purchases/{pid}"
+
+
+async def test_a_small_gap_stays_an_ordinary_receipt_row(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    await make_receipt_purchase(admin.id, loc["id"], LINES, total="3.30")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+
+
+async def test_an_unprinted_amount_holds_a_draft_with_a_small_gap(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    lines = [{**LINES[0], "flags": ["not_in_scan"]}, LINES[1]]
+    await make_receipt_purchase(admin.id, loc["id"], lines, total="3.30")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt_held"
+
+
+async def test_a_reopened_purchase_is_never_held(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="1.20")
+    await set_purchase(pid, status="reviewed")
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+
+
+async def test_header_tax_counts_toward_the_lines_when_no_line_carries_it(admin_client, admin):
+    loc = await make_location(admin_client, "Tideline Market", "Tideline Market")
+    pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="3.89")
+    await set_purchase(pid, tax=Decimal("0.30"))
+    [item] = (await get_inbox(admin_client))["items"]
+    assert item["kind"] == "receipt"
+    body = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()
+    assert (body["trust"], body["held"], body["lines_total"]) == ("adds_up", False, "3.8900")

@@ -7,6 +7,9 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     ---------------  ---------------------------------------------  -----------------
     receipt          draft or reviewed purchases, excluding those   purchase
                      whose ingest job is still reading or failed
+    receipt_held     a receipt draft far off its printed total      purchase
+                     (purchases.assess, #121); in place of its
+                     receipt row
     receipt_failed   failed ingest jobs                             job
     identify         resolution.to_identify (committed, unmatched)  one aggregate row
     bridge           pricebook.needs_bridge (failed normalization)  one aggregate row
@@ -46,6 +49,7 @@ from app.services import (
     lookups,
     pricebook,
     proposals,
+    purchases,
     resolution,
     usda_review,
     vendor_suggestions,
@@ -60,7 +64,12 @@ _RECEIPTS_SQL = text(
     """
     SELECT p.id, p.status, p.source, p.purchased_at, p.created_at,
            p.vendor_location_id IS NULL AS needs_location,
-           count(pl.id) FILTER (WHERE pl.line_kind = 'item') AS item_lines
+           count(pl.id) FILTER (WHERE pl.line_kind = 'item') AS item_lines,
+           p.total, p.tax, p.flags,
+           coalesce(sum(CASE WHEN pl.line_kind = 'discount' THEN -abs(pl.line_total)
+                             ELSE pl.line_total END), 0) AS lines_sum,
+           bool_or(pl.line_kind = 'tax') AS has_tax_line,
+           count(pl.id) FILTER (WHERE 'not_in_scan' = ANY(pl.flags)) AS unscanned
     FROM purchase p
     LEFT JOIN purchase_line pl ON pl.purchase_id = p.id AND pl.removed_at IS NULL
     WHERE p.status IN ('draft', 'reviewed')
@@ -122,10 +131,44 @@ def _lines(n: int) -> str:
     return f"{n} line" if n == 1 else f"{n} lines"
 
 
+def _check(r) -> purchases.ReadingCheck:
+    """The purchase API's reading check, from this query's sums (one rule, two feeds)."""
+    lines_sum = r["lines_sum"]
+    if r["tax"] is not None and not r["has_tax_line"]:
+        lines_sum += r["tax"]
+    return purchases.assess(
+        source=r["source"],
+        status=r["status"],
+        flags=r["flags"] or [],
+        lines_sum=lines_sum,
+        total=r["total"],
+        item_lines=r["item_lines"],
+        unscanned=r["unscanned"],
+    )
+
+
 async def _receipts(db: AsyncSession) -> list[InboxItem]:
     items = []
     for r in (await db.execute(_RECEIPTS_SQL)).mappings():
         noun = "receipt" if r["source"] == "receipt" else "purchase"
+        check = _check(r)
+        if check.held:
+            # Ruling R2 (#121): far off its printed total, so it says so before it
+            # is opened, and the review opens on the gap and the flagged lines.
+            items.append(
+                InboxItem(
+                    kind="receipt_held",
+                    title=f"The {_day(r['purchased_at'])} receipt needs a careful look",
+                    detail=(
+                        f"Its lines add up to {check.lines_total:.2f}, but the receipt says "
+                        f"{r['total']:.2f}. The flagged lines are shown first."
+                    ),
+                    action_label="Review",
+                    action_route=f"/shop/purchases/{r['id']}",
+                    created_at=r["created_at"],
+                )
+            )
+            continue
         if r["item_lines"] == 0 and r["status"] != "reviewed":
             # Choosing a location is not the job when nothing was read: the lines
             # are, from the receipt image beside them.

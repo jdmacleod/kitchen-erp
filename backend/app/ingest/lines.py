@@ -50,6 +50,7 @@ from app.core.config import get_settings
 from app.core.ids import new_id
 from app.ingest.errors import StageFailure
 from app.ingest.schemas import ReceiptLine, ReceiptLines
+from app.ingest.witness import appears_in
 from app.models import IngestJob, Purchase, PurchaseLine, ReceiptDocument
 from app.services.normalize import normalize_receipt_text
 from app.units import UnitParseFailure, parse_unit
@@ -372,6 +373,8 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 #   letter; it was cut back to the cents (see _tax_code_read_as_digit).
 # no_amount_printed, regular_price_from_text, tax_from_rate: a line-structure pass
 #   set the amount from the printed arithmetic (app.ingest.structure, #181).
+# not_in_scan: the amount is printed nowhere in the OCR text (#121). OCR drops
+#   prices, and the reader fills the gap with a number from elsewhere.
 PRICE_FLAGS = frozenset(
     {
         "decimal_missing",
@@ -380,6 +383,7 @@ PRICE_FLAGS = frozenset(
         "no_amount_printed",
         "regular_price_from_text",
         "tax_from_rate",
+        "not_in_scan",
     }
 )
 
@@ -413,6 +417,21 @@ def check_prices(lines: list[ParsedLine], printed_total: Decimal | None) -> None
         paid = line.line_total - discounts.get(line.seq, Decimal("0"))
         if printed_total is not None and paid > printed_total + RECONCILE_TOLERANCE:
             line.flags.append("exceeds_total")
+
+
+def flag_amounts_not_in_scan(lines: list[ParsedLine], ocr_text: str) -> None:
+    """Flag every line whose amount the OCR text never prints (#121, ruling R3).
+
+    Matched on digits alone (``witness.appears_in``), so a lost decimal point or a
+    decimal comma is not a miss. The amount is never changed: the flag says where
+    to look. With no OCR text there is nothing to compare against, so nothing is
+    flagged rather than everything.
+    """
+    if not ocr_text.strip():
+        return
+    for line in lines:
+        if not appears_in(line.line_total, ocr_text) and "not_in_scan" not in line.flags:
+            line.flags.append("not_in_scan")
 
 
 def restoring_decimals_reconciles(

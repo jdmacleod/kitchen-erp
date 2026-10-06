@@ -30,6 +30,32 @@ async function openReview() {
 }
 
 describe("receipt review", () => {
+  it("labels a shortlist hit as a similar name and records that rung when accepted", async () => {
+    // Issue 180: with no model answer, close catalog names are offered, never resolved.
+    const similarLine = { ...unmatchedLine, suggestions: [{ kind: "similar" as const, product_id: hits[1].id, ignore: false, label: "Riverbend Bread Flour", score: "0.520" }] };
+    const purchase = { ...receiptPurchase, lines: receiptPurchase.lines.map((l) => (l.id === unmatchedLine.id ? similarLine : l)) };
+    const calls = mockApi({
+      ...baseRoutes(() => purchase),
+      [`POST ${base}/lines/${unmatchedLine.id}/resolve`]: () => jsonResponse(200, purchase),
+    });
+    const user = userEvent.setup();
+    renderApp(base);
+    const rows = await openReview();
+    expect(rows[1]).toHaveAttribute("aria-selected", "true");
+    expect(within(rows[1]).getByText("similar name")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("unidentified")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+
+    rows[1].focus();
+    await user.keyboard("{Enter}");
+    const accept = await waitFor(() => {
+      const found = calls.find((c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`);
+      expect(found).toBeDefined();
+      return found;
+    });
+    expect(accept?.body).toEqual({ product_id: hits[1].id, accepted_kind: "similar" });
+  });
+
   it("says when the date and total are stand-ins for what the reader could not find", async () => {
     // The upload time and the line sum fill the header fields and look like
     // answers; nothing on the screen said they were not read from the receipt.
