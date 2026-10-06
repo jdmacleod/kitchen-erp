@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -34,6 +34,7 @@ from app.models import (
     ReceiptDocument,
 )
 from app.models.geo import point_expr
+from app.services import upload_batches
 
 log = get_logger(__name__)
 
@@ -73,6 +74,8 @@ class UploadResult:
     created: bool
     # The same file was removed before and is now being read again (#74).
     revived: bool = False
+    # The upload batch this file was counted in (issue 122).
+    batch_id: uuid.UUID | None = None
 
 
 async def _purchase_was_removed(db: AsyncSession, job: IngestJob) -> bool:
@@ -92,7 +95,13 @@ async def upload_receipt(
     captured_at: datetime | None,
     lat: Decimal | None,
     lon: Decimal | None,
+    batch_id: uuid.UUID | None = None,
 ) -> UploadResult:
+    """Store and queue one receipt, counting it in its upload batch.
+
+    Without ``batch_id`` the file is a batch of one. With one, the batch must
+    exist; it was opened by the browser with the number of files chosen.
+    """
     settings = get_settings()
     if len(data) > settings.receipt_max_bytes:
         raise ApiError(413, "payload_too_large", "The receipt image exceeds the size limit.")
@@ -110,6 +119,11 @@ async def upload_receipt(
     if lat is not None and lon is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
         raise ApiError(422, "validation_error", "lat/lon are outside the valid range.")
 
+    if batch_id is not None:
+        batch_id = (await upload_batches.get_batch(db, batch_id)).id
+    else:
+        batch_id = (await upload_batches.create_batch(db, user=user, file_count=1)).id
+
     digest = hashlib.sha256(data).hexdigest()
     existing = (
         await db.execute(select(ReceiptDocument).where(ReceiptDocument.sha256 == digest))
@@ -125,7 +139,10 @@ async def upload_receipt(
         ).scalar_one()
         removed = job.status == "discarded" or await _purchase_was_removed(db, job)
         if not removed:
-            return UploadResult(existing, job, created=False)
+            await upload_batches.record(db, batch_id, job, "already_seen")
+            await db.commit()
+            await db.refresh(job)
+            return UploadResult(existing, job, created=False, batch_id=batch_id)
         # Removed before: a discarded read's photo was deleted with it, and a
         # removed purchase is voided and read-only. Uploading it again is the way
         # back, so it is stored again and read from the start into a new draft;
@@ -141,10 +158,13 @@ async def upload_receipt(
         job.next_attempt_at = None
         job.locked_at = None
         job.locked_by = None
+        # Lists show when it was sent to be read this time, not its first upload.
+        job.uploaded_at = func.now()
+        await upload_batches.record(db, batch_id, job, "revived")
         await db.commit()
         await db.refresh(job)
         log.info("removed receipt uploaded again", extra={"job_id": str(job.id)})
-        return UploadResult(existing, job, created=False, revived=True)
+        return UploadResult(existing, job, created=False, revived=True, batch_id=batch_id)
 
     rel = relative_path(digest, mime)
     _store(Path(settings.receipts_path) / rel, data)
@@ -170,11 +190,13 @@ async def upload_receipt(
     db.add(document)
     await db.flush()  # the job's FK needs the document row first
     db.add(job)
+    await db.flush()
+    await upload_batches.record(db, batch_id, job, "new")
     await db.commit()
     await db.refresh(document)
     await db.refresh(job)
     log.info("receipt uploaded", extra={"document_id": str(document.id), "job_id": str(job.id)})
-    return UploadResult(document, job, created=True)
+    return UploadResult(document, job, created=True, batch_id=batch_id)
 
 
 def _store(target: Path, data: bytes) -> None:

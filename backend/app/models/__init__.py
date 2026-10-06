@@ -27,6 +27,8 @@ from app.models.purchases import (
     PurchaseLine,
     ReceiptAlias,
     ReceiptDocument,
+    UploadBatch,
+    UploadBatchReceipt,
 )
 from app.models.units import UnitRow
 
@@ -51,6 +53,8 @@ __all__ = [
     "IngredientAlias",
     "IngredientRef",
     "IngestJob",
+    "UploadBatch",
+    "UploadBatchReceipt",
     "IngestStageResult",
     "NamingSuggestion",
     "IngredientMeasure",
