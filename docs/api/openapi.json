@@ -4640,6 +4640,124 @@
         "title": "LineProductRef",
         "type": "object"
       },
+      "LineRow": {
+        "additionalProperties": false,
+        "description": "One row of \"Correct the lines\" (#182): a line as it should now read.\n\n``id`` names the saved line the row edits; a row without one is a new line.\n``attach_to`` is the position, in the same list, of the item a discount or\ndeposit belongs to.",
+        "properties": {
+          "attach_to": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attach To"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "line_kind": {
+            "default": "item",
+            "enum": [
+              "item",
+              "discount",
+              "tax",
+              "deposit",
+              "fee"
+            ],
+            "title": "Line Kind",
+            "type": "string"
+          },
+          "line_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Line Total"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "raw_text": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Text"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "line_total"
+        ],
+        "title": "LineRow",
+        "type": "object"
+      },
+      "LinesReplace": {
+        "additionalProperties": false,
+        "description": "Every line of a draft, in order: a saved line left out is removed (#182).",
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineRow"
+            },
+            "maxItems": 400,
+            "title": "Lines",
+            "type": "array"
+          }
+        },
+        "required": [
+          "lines"
+        ],
+        "title": "LinesReplace",
+        "type": "object"
+      },
       "LinkCandidateList": {
         "additionalProperties": false,
         "properties": {
@@ -18501,6 +18619,58 @@
           }
         },
         "summary": "Add Line",
+        "tags": [
+          "purchases"
+        ]
+      },
+      "put": {
+        "description": "Save every line of a draft at once (\"Correct the lines\", #182).",
+        "operationId": "replace_lines_api_v1_purchases__purchase_id__lines_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinesReplace"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Replace Lines",
         "tags": [
           "purchases"
         ]

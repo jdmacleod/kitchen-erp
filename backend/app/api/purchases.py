@@ -24,6 +24,7 @@ from app.schemas.purchases import (
     LineEdit,
     LineMerge,
     LineOut,
+    LinesReplace,
     ManualPurchaseIn,
     NameProductsIn,
     NameProductsOut,
@@ -416,6 +417,14 @@ async def add_line(
     purchase_id: uuid.UUID, payload: LineAdd, _: CurrentUser, db: DbSession
 ) -> PurchaseOut:
     return await purchase_out(db, await review.add_line(db, purchase_id, payload))
+
+
+@router.put("/purchases/{purchase_id}/lines", response_model=PurchaseOut)
+async def replace_lines(
+    purchase_id: uuid.UUID, payload: LinesReplace, user: CurrentUser, db: DbSession
+) -> PurchaseOut:
+    """Save every line of a draft at once ("Correct the lines", #182)."""
+    return await purchase_out(db, await review.replace_lines(db, user, purchase_id, payload))
 
 
 @router.patch("/purchases/{purchase_id}/lines/{line_id}", response_model=PurchaseOut)

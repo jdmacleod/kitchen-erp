@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router";
+import { CorrectLines } from "./CorrectLines";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { errorMessage } from "../../api/client";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
@@ -98,6 +99,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // "Correct the lines" (issue 182): the whole draft in one table, saved at once.
+  const [correcting, setCorrecting] = useState(false);
   const notice = useNotice();
   // Cards below lg, the table at lg and wider (G18). One or the other is in the
   // document, so each line's ids stay unique.
@@ -195,6 +198,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    // The table has keys of its own; a stray "c" there must not open Commit.
+    if (correcting) return;
     const target = event.target as HTMLElement;
     if (event.key === "Escape") {
       if (picking || editing || confirming) {
@@ -412,62 +417,85 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           <Card>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-medium">Lines</h2>
-              <span className={hintClass}>
-                {itemLines.length} items · {unresolved} to identify
+              <span className="flex flex-wrap items-center gap-2">
+                <span className={hintClass}>
+                  {itemLines.length} items · {unresolved} to identify
+                </span>
+                {correcting ? null : (
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => {
+                      setCorrecting(true);
+                      setPicking(null);
+                      setEditing(null);
+                    }}
+                  >
+                    Correct the lines
+                  </Button>
+                )}
               </span>
             </div>
-            <div className="mb-3">
-              <SegmentedControl
-                label="Show lines"
-                options={[
-                  { value: "needs", label: `Needs you ${needing.length}` },
-                  { value: "all", label: `All ${lines.length}` },
-                ]}
-                value={filter}
-                onChange={setFilter}
-              />
-            </div>
-            {shown.length === 0 ? (
-              <p className={`py-4 ${hintClass}`}>Nothing here needs you. Every line is matched or ignored.</p>
-            ) : wide ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm" aria-label="Receipt lines">
-                  <thead>
-                    <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
-                      <th className="py-2 pr-2">#</th>
-                      <th className="py-2 pr-2">Receipt says</th>
-                      <th className="py-2 pr-2">Parsed</th>
-                      <th className="py-2 pr-2">Product</th>
-                      <th className="py-2">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                    {shown.map((line) => (
-                      <ReviewLine key={line.id} {...lineProps(line)} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {correcting ? (
+              <CorrectLines purchase={purchase} onDone={() => setCorrecting(false)} />
             ) : (
-              <ul aria-label="Receipt lines" className="flex flex-col gap-2">
-                {shown.map((line) => (
-                  <ReviewCard key={line.id} {...lineProps(line)} />
-                ))}
-              </ul>
+              <>
+                <div className="mb-3">
+                  <SegmentedControl
+                    label="Show lines"
+                    options={[
+                      { value: "needs", label: `Needs you ${needing.length}` },
+                      { value: "all", label: `All ${lines.length}` },
+                    ]}
+                    value={filter}
+                    onChange={setFilter}
+                  />
+                </div>
+                {shown.length === 0 ? (
+                  <p className={`py-4 ${hintClass}`}>Nothing here needs you. Every line is matched or ignored.</p>
+                ) : wide ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" aria-label="Receipt lines">
+                      <thead>
+                        <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
+                          <th className="py-2 pr-2">#</th>
+                          <th className="py-2 pr-2">Receipt says</th>
+                          <th className="py-2 pr-2">Parsed</th>
+                          <th className="py-2 pr-2">Product</th>
+                          <th className="py-2">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                        {shown.map((line) => (
+                          <ReviewLine key={line.id} {...lineProps(line)} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <ul aria-label="Receipt lines" className="flex flex-col gap-2">
+                    {shown.map((line) => (
+                      <ReviewCard key={line.id} {...lineProps(line)} />
+                    ))}
+                  </ul>
+                )}
+                <RemovedLinesCaption purchase={purchase} />
+                <Disclosure summary="Add a line" className="mt-3">
+                  <AddLineForm itemLines={itemLines} busy={busy} onAdd={(input) => addLine.mutate(input)} />
+                </Disclosure>
+              </>
             )}
-            <RemovedLinesCaption purchase={purchase} />
-            <Disclosure summary="Add a line" className="mt-3">
-              <AddLineForm itemLines={itemLines} busy={busy} onAdd={(input) => addLine.mutate(input)} />
-            </Disclosure>
           </Card>
 
           {/* Below lg, Commit sits in the thumb zone just above the tab bar (G18). */}
           <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
-            <Button onClick={() => setConfirming(true)} disabled={busy} className="min-h-12 flex-1 text-base lg:min-h-10 lg:flex-none lg:text-sm">
+            <Button onClick={() => setConfirming(true)} disabled={busy || correcting} className="min-h-12 flex-1 text-base lg:min-h-10 lg:flex-none lg:text-sm">
               Commit purchase
             </Button>
             <span className={hintClass}>
-              {unresolved > 0 ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.` : "Every item line has a product."}
+              {correcting
+                ? "Save or cancel your corrections before committing."
+                : unresolved > 0 ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.` : "Every item line has a product."}
             </span>
           </div>
         </div>
