@@ -2354,6 +2354,7 @@
           "kind": {
             "enum": [
               "receipt",
+              "receipt_held",
               "receipt_failed",
               "identify",
               "bridge",
@@ -9467,6 +9468,11 @@
             "title": "Flags",
             "type": "array"
           },
+          "held": {
+            "default": false,
+            "title": "Held",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -9489,6 +9495,10 @@
             },
             "title": "Lines",
             "type": "array"
+          },
+          "lines_total": {
+            "title": "Lines Total",
+            "type": "string"
           },
           "purchased_at": {
             "format": "date-time",
@@ -9562,6 +9572,22 @@
             "title": "Total",
             "type": "string"
           },
+          "trust": {
+            "anyOf": [
+              {
+                "enum": [
+                  "adds_up",
+                  "check_lines",
+                  "couldnt_read"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trust"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -9621,6 +9647,7 @@
           "tax",
           "total",
           "computed_total",
+          "lines_total",
           "status",
           "source",
           "flags",
