@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Literal
 
@@ -26,6 +27,7 @@ from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.models.catalog import (
     Ingredient,
+    IngredientAlias,
     IngredientMeasure,
     IngredientRef,
     Product,
@@ -224,8 +226,117 @@ async def search_ingredients(
 _LINE_PHRASE_WORDS = 3
 
 
+@dataclass
+class IngredientIndex:
+    """Every exact name and spelling, loaded once so a line is read by lookups (#183).
+
+    Answers what ``search_ingredients(..., include_standard=True)`` answers for
+    its exact matches, without a query per phrase: the naming list reads
+    a hundred lines at once, a dozen phrases each.
+    """
+
+    by_name: dict[str, list[Ingredient]] = field(default_factory=dict)
+    by_norm: dict[str, list[Ingredient]] = field(default_factory=dict)
+    by_spelling: dict[str, list[Ingredient]] = field(default_factory=dict)
+    standard_by_norm: dict[str, list[tuple[standard.StandardEntry, str | None]]] = field(
+        default_factory=dict
+    )
+    taken_keys: set[str] = field(default_factory=set)
+    taken_names: set[str] = field(default_factory=set)
+    by_id: dict[uuid.UUID, Ingredient] = field(default_factory=dict)
+    by_slug: dict[str, Ingredient] = field(default_factory=dict)
+
+
+async def ingredient_index(db: AsyncSession) -> IngredientIndex:
+    index = IngredientIndex()
+    for ing in (await db.execute(select(Ingredient))).scalars():
+        # A standard name is taken by any ingredient, active or not, as in
+        # _standard_matches; only active ones are offered.
+        index.taken_keys.add(ing.slug)
+        index.taken_names.add(ing.name.lower())
+        index.by_id[ing.id] = ing
+        index.by_slug[ing.slug] = ing
+        if ing.active:
+            index.by_name.setdefault(ing.name.lower(), []).append(ing)
+            index.by_norm.setdefault(normalize_name(ing.name), []).append(ing)
+    spellings = await db.execute(
+        select(IngredientAlias.name_norm, Ingredient)
+        .join(Ingredient, Ingredient.id == IngredientAlias.ingredient_id)
+        .where(Ingredient.active.is_(True))
+    )
+    for name_norm, ing in spellings:
+        index.by_spelling.setdefault(name_norm, []).append(ing)
+    for e in standard.standard_list().ingredients:
+        norms: dict[str, str | None] = {normalize_name(e.name): None}
+        for spelling in e.spellings:
+            norms.setdefault(normalize_name(spelling), spelling)
+        for norm, spelling in norms.items():
+            index.standard_by_norm.setdefault(norm, []).append((e, spelling))
+    return index
+
+
+def _exact_in_index(index: IngredientIndex, q: str, *, try_singular: bool = True):
+    """The exact matches ``search_ingredients`` would give for ``q``, in its order."""
+    ql = " ".join(q.casefold().split())
+    if not ql:
+        return []
+    norm = normalize_name(q) or ql
+    # Ingredients: a literal name or a spelling first (similarity 1), then a
+    # name equal only once normalized; by name within each.
+    hits: dict[uuid.UUID, tuple[int, Ingredient, str | None]] = {}
+    for ing in index.by_name.get(ql, []):
+        hits[ing.id] = (0, ing, None)
+    for ing in index.by_spelling.get(norm, []):
+        hits.setdefault(ing.id, (0, ing, norm))
+    for ing in index.by_norm.get(norm, []):
+        hits.setdefault(ing.id, (1, ing, None))
+    ordered = sorted(hits.values(), key=lambda t: (t[0], t[1].name.casefold()))
+    out = [
+        IngredientMatch(
+            kind="ingredient",
+            id=ing.id,
+            name=ing.name,
+            category=ing.category,
+            canonical_unit=ing.canonical_unit,
+            matched_spelling=spelling,
+            exact=True,
+        )
+        for _, ing, spelling in ordered
+    ]
+    entries = sorted(
+        (
+            (e, spelling)
+            for e, spelling in index.standard_by_norm.get(norm, [])
+            if e.key not in index.taken_keys and e.name.lower() not in index.taken_names
+        ),
+        key=lambda t: t[0].name.casefold(),
+    )
+    out += [
+        IngredientMatch(
+            kind="standard",
+            key=e.key,
+            name=e.name,
+            category=e.category,
+            canonical_unit=e.unit,
+            matched_spelling=spelling,
+            exact=True,
+        )
+        for e, spelling in entries[:STANDARD_LIMIT]
+    ]
+    if try_singular and not out:
+        for single in singulars(ql):
+            found = _exact_in_index(index, single, try_singular=False)
+            if found:
+                return found
+    return out
+
+
 async def ingredients_in_text(
-    db: AsyncSession, receipt_text: str, *, limit: int = 3
+    db: AsyncSession,
+    receipt_text: str,
+    *,
+    limit: int = 3,
+    index: IngredientIndex | None = None,
 ) -> list[IngredientMatch]:
     """Ingredients whose name or spelling is spelled out in a receipt line (#88).
 
@@ -235,9 +346,14 @@ async def ingredients_in_text(
     words is tried in both orders ("SQUASH BUTTERNUT" offers butternut squash). The longest
     phrase comes first ("garlic powder" before "garlic"); at the same length a
     catalog ingredient comes before a standard name the catalog doesn't have
-    yet. A suggestion is only ever offered.
+    yet. A suggestion is only ever offered. Pass ``index`` to read many lines
+    against one load of the names.
     """
     words = [w for w in normalize_receipt_text(receipt_text).casefold().split() if w.isalpha()]
+    if not words:
+        return []
+    if index is None:
+        index = await ingredient_index(db)
     phrases: list[str] = []
     for n in range(min(_LINE_PHRASE_WORDS, len(words)), 0, -1):
         for i in range(len(words) - n + 1):
@@ -254,9 +370,9 @@ async def ingredients_in_text(
     found: list[tuple[int, int, int, IngredientMatch]] = []
     seen: set[str] = set()
     for order, phrase in enumerate(phrases):
-        for match in await search_ingredients(db, phrase, include_standard=True, limit=5):
+        for match in _exact_in_index(index, phrase):
             ident = f"i:{match.id}" if match.kind == "ingredient" else f"s:{match.key}"
-            if not match.exact or ident in seen:
+            if ident in seen:
                 continue
             seen.add(ident)
             kind = 0 if match.kind == "ingredient" else 1

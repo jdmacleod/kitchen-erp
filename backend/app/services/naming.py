@@ -79,12 +79,14 @@ def name_from_words(words: list[str]) -> str:
 async def naming_rows(db: AsyncSession) -> list[dict]:
     """One row per waiting group, with a suggested name, ingredient and pack, and
     the model's suggestion when one was asked for."""
-    asked = await _model_suggestions(db)
+    # One load of every name and spelling serves all the groups (#183).
+    index = await catalog.ingredient_index(db)
+    asked = await _model_suggestions(db, index)
     rows: list[dict] = []
     for group in await resolution.to_identify(db):
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
-        found = await catalog.ingredients_in_text(db, norm, limit=1) if norm else []
+        found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []
         rows.append(
             {
                 "vendor": {"id": group["vendor_id"], "name": group["vendor_name"]},
@@ -104,11 +106,11 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
 # --- the model's suggestions (N2, N3) ------------------------------------------------
 
 
-async def _suggested_ingredient(
-    db: AsyncSession, suggestion: NamingSuggestion
+def _suggested_ingredient(
+    index: catalog.IngredientIndex, suggestion: NamingSuggestion
 ) -> IngredientMatch | None:
     if suggestion.ingredient_id is not None:
-        ingredient = await db.get(Ingredient, suggestion.ingredient_id)
+        ingredient = index.by_id.get(suggestion.ingredient_id)
         if ingredient is None or not ingredient.active:
             return None
         return _match(ingredient)
@@ -117,7 +119,7 @@ async def _suggested_ingredient(
         if entry is None:
             return None
         # Created since it was suggested: offer the catalog ingredient instead.
-        taken = await db.scalar(select(Ingredient).where(Ingredient.slug == entry.key))
+        taken = index.by_slug.get(entry.key)
         if taken is not None:
             return _match(taken)
         return IngredientMatch(
@@ -143,13 +145,15 @@ def _match(ingredient: Ingredient) -> IngredientMatch:
     )
 
 
-async def _model_suggestions(db: AsyncSession) -> dict[tuple[uuid.UUID, str], dict]:
+async def _model_suggestions(
+    db: AsyncSession, index: catalog.IngredientIndex
+) -> dict[tuple[uuid.UUID, str], dict]:
     out: dict[tuple[uuid.UUID, str], dict] = {}
     for s in (await db.execute(select(NamingSuggestion))).scalars():
         out[(s.vendor_id, s.raw_text_norm)] = {
             "status": "asking" if s.status in ("pending", "running") else s.status,
             "name": s.name,
-            "ingredient": await _suggested_ingredient(db, s) if s.status == "done" else None,
+            "ingredient": _suggested_ingredient(index, s) if s.status == "done" else None,
         }
     return out
 
