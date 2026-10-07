@@ -23,14 +23,14 @@ const FIELD: Record<string, string> = {
   publishable: "shared",
   stop_overhead_min: "stop overhead",
   receipt_identifiers: "store codes",
-  home_base: "home base",
+  home_base: "kitchen",
 };
 const label = (field: string) => FIELD[field] ?? field.replace(/_/g, " ");
 const show = (value: string | null) => (value === null || value === "" ? "empty" : value);
 
 /**
  * "{c} to create · {u} to update · {n} need you · {k} unchanged" (design D4).
- * An unknown home base is a row under Needs you, so it counts there too.
+ * An unknown kitchen is a row under Needs you, so it counts there too.
  */
 export function countStrip(r: Pick<ImportReport, "counts" | "unresolved_home_bases">): string {
   const c = r.counts;
@@ -91,8 +91,8 @@ function Report({ report, fileName }: { report: ImportReport; fileName: string }
             ))}
             {report.unresolved_home_bases.map((name) => (
               <li key={`home-${name}`} className="py-2 text-sm">
-                <p className="font-medium">No home base called {name}</p>
-                <p className={`text-xs ${muted}`}>None is created; those locations use the nearest home base.</p>
+                <p className="font-medium">No kitchen called {name}</p>
+                <p className={`text-xs ${muted}`}>None is created; those locations use the nearest kitchen.</p>
               </li>
             ))}
           </ul>

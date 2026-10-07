@@ -105,7 +105,7 @@
   background: var(--pin-fill);
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
-/* home base: house glyph (an inline SVG) */
+/* kitchen: house glyph (an inline SVG) */
 .kerp-pin--home .kerp-pin__shape {
   width: 26px;
   height: 26px;

@@ -110,7 +110,7 @@ describe("api tokens", () => {
     expect(within(list).getByText(/Full access/)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Full access/ })).toBeChecked();
     const suggest = screen.getByRole("radio", { name: /Read and suggest vendor facts/ });
-    expect(suggest).toHaveAccessibleDescription(/Cannot see notes, home bases, purchases or receipts/);
+    expect(suggest).toHaveAccessibleDescription(/Cannot see notes, kitchens, purchases or receipts/);
     await user.type(screen.getByLabelText("Name"), "enricher");
     await user.click(suggest);
     await user.click(screen.getByRole("button", { name: "Create token" }));

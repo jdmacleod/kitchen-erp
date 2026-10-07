@@ -1,4 +1,4 @@
-// Phase 1D/1E wire types and hooks: home bases, vendors, vendor locations,
+// Phase 1D/1E wire types and hooks: kitchens, vendors, vendor locations,
 // opening hours validation, and the optional OpenStreetMap adoption.
 // Coordinates are decimal strings on the wire; they become numbers only at the
 // map edge, where MapLibre needs them.
@@ -186,7 +186,7 @@ export interface LocationCreateInput {
   phone?: string;
   parent_location_id?: string;
   opening_hours?: string;
-  /** Omit for the nearest home base; explicit null for none. */
+  /** Omit for the nearest kitchen; explicit null for none. */
   home_base_id?: string | null;
   stop_overhead_min?: number;
   receipt_identifiers?: string[];
@@ -250,8 +250,8 @@ export function geoErrorMessage(e: unknown): string {
       const locations = (e.details as { locations?: unknown } | undefined)?.locations;
       const count = Array.isArray(locations) ? locations.length : null;
       return count
-        ? `This home base is the default for ${count} ${count === 1 ? "location" : "locations"}. Reassign them first.`
-        : "This home base is in use by locations. Reassign them first.";
+        ? `This kitchen is the default for ${count} ${count === 1 ? "location" : "locations"}. Reassign them first.`
+        : "This kitchen is in use by locations. Reassign them first.";
     }
     return knownMessages[e.code] ?? e.message;
   }
@@ -286,7 +286,7 @@ function invalidateLocations(client: QueryClient) {
   void client.invalidateQueries({ queryKey: geoKeys.exportSummary });
 }
 
-// --- home bases -------------------------------------------------------------
+// --- kitchens -------------------------------------------------------------
 
 export function useHomeBases() {
   return useQuery({

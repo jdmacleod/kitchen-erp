@@ -179,7 +179,7 @@ describe("map", () => {
 
     expect(await screen.findByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeInTheDocument();
     const map = await mapReady();
-    await waitFor(() => expect(within(map.container).getAllByRole("button", { name: /\(Chain\)|\(Market\)|\(home base\)/ })).toHaveLength(3));
+    await waitFor(() => expect(within(map.container).getAllByRole("button", { name: /\(Chain\)|\(Market\)|\(kitchen\)/ })).toHaveLength(3));
     // Stalls share their market's pin.
     expect(within(map.container).queryByRole("button", { name: /Sandy/ })).not.toBeInTheDocument();
     const chain = within(map.container).getByRole("button", { name: "Millstone Harbour (Chain)" });
@@ -187,7 +187,7 @@ describe("map", () => {
     expect(chain.dataset.lat).toBe("33.45");
     expect(chain.dataset.lng).toBe("-120.55");
     expect(within(map.container).getByRole("button", { name: "Pier Farmers Market (Market)" })).toHaveClass("kerp-pin--market");
-    expect(within(map.container).getByRole("button", { name: "Harbour flat (home base)" })).toHaveClass("kerp-pin--home");
+    expect(within(map.container).getByRole("button", { name: "Harbour flat (kitchen)" })).toHaveClass("kerp-pin--home");
     expect(screen.getByTestId("map-attribution")).toHaveTextContent("© OpenStreetMap contributors © Protomaps");
   });
 
@@ -421,7 +421,7 @@ describe("map", () => {
     expect(screen.getByTestId("draft-point")).toHaveTextContent("33.500000, -120.500000");
   });
 
-  it("adds a home base where the map was clicked", async () => {
+  it("adds a kitchen where the map was clicked", async () => {
     const calls = mockApi({
       ...baseRoutes(() => []),
       "POST /home-bases": (call) => jsonResponse(201, { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e09", ...(call.body as object) }),
@@ -429,11 +429,11 @@ describe("map", () => {
     const user = userEvent.setup();
     renderApp("/catalog/vendors?view=map");
     const map = await mapReady();
-    await user.click(screen.getByRole("button", { name: "Add home base here" }));
+    await user.click(screen.getByRole("button", { name: "Add kitchen here" }));
     act(() => map.fire("click", { lngLat: { lat: 33.25, lng: -120.75 } }));
-    const form = screen.getByRole("form", { name: "Add home base here" });
+    const form = screen.getByRole("form", { name: "Add kitchen here" });
     await user.type(within(form).getByLabelText("Name"), "The cabin");
-    await user.click(within(form).getByRole("button", { name: "Create home base" }));
+    await user.click(within(form).getByRole("button", { name: "Create kitchen" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/home-bases")?.body).toEqual({ name: "The cabin", lat: "33.250000", lon: "-120.750000" }));
   });
 });

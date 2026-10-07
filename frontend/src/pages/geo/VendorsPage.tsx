@@ -417,7 +417,7 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
         </h3>
         {summary.isError ? <Alert tone="error">{errorMessage(summary.error)}</Alert> : null}
         <p className={`text-sm ${muted}`}>
-          Names, pins, addresses, hours and phones of locations you share or have linked to OpenStreetMap. Never notes, home bases, store codes, stands or anything about your purchases. Read it before you contribute it.
+          Names, pins, addresses, hours and phones of locations you share or have linked to OpenStreetMap. Never notes, kitchens, store codes, stands or anything about your purchases. Read it before you contribute it.
         </p>
         {summary.data && summary.data.public < summary.data.locations ? (
           <p className={`text-sm ${muted}`}>Link stores to OpenStreetMap or tick Share on a location to include more.</p>
@@ -428,7 +428,7 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
         <h3 id={`${titleId}-household`} className="font-medium">
           Household
         </h3>
-        <p className={`text-sm ${muted}`}>Everything, including store codes, notes and home bases. Keep it private.</p>
+        <p className={`text-sm ${muted}`}>Everything, including store codes, notes and kitchens. Keep it private.</p>
         {links("household", "the household file")}
       </section>
     </Dialog>
@@ -459,7 +459,7 @@ const RADII = [500, 1000, 2000, 5000, 10000, 20000];
 export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
   const homeBases = useHomeBases();
   const [chosen, setChosen] = useState("");
-  // Pre-set to the only home base when there is exactly one (UI-3.8).
+  // Pre-set to the only kitchen when there is exactly one (UI-3.8).
   const only = homeBases.data?.length === 1 ? homeBases.data[0].id : "";
   const homeBaseId = chosen || only;
   const setHomeBaseId = setChosen;
@@ -485,7 +485,7 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
     <Wrapper>
       {bare ? null : <h2 className="mb-1 text-lg font-medium">Adopt from OpenStreetMap</h2>}
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-        Lists food shops and marketplaces near a home base so you can adopt the ones you use. Optional; needs
+        Lists food shops and marketplaces near a kitchen so you can adopt the ones you use. Optional; needs
         the Overpass integration switched on. © OpenStreetMap contributors.
       </p>
       <form
@@ -496,7 +496,7 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
           if (homeBaseId) setSearched({ homeBaseId, radius });
         }}
       >
-        <SelectField id="osm-home-base" label="Home base" value={homeBaseId} onChange={(e) => setHomeBaseId(e.target.value)} required>
+        <SelectField id="osm-home-base" label="Kitchen" value={homeBaseId} onChange={(e) => setHomeBaseId(e.target.value)} required>
           <option value="">{homeBases.isPending ? "Loading…" : "Choose"}</option>
           {(homeBases.data ?? []).map((h) => (
             <option key={h.id} value={h.id}>
