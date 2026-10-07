@@ -789,6 +789,8 @@ const FLAG_LABELS: Record<string, string> = {
   continuation_row: "part of the item above",
   // Issue 121: the amount is printed nowhere in the scan's text.
   not_in_scan: "not on the scan",
+  // An imported line whose quantity the export never gave: no price is recorded.
+  no_price: "quantity unknown, no price",
 };
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */

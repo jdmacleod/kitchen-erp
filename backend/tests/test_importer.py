@@ -1,3 +1,4 @@
+import json
 from decimal import Decimal
 from pathlib import Path
 
@@ -90,6 +91,74 @@ async def test_unlocated_transactions_are_reported_not_guessed(admin_client, adm
     async with get_sessionmaker()() as db:
         result = await import_export(db, admin, export)
     assert result == {"created": 0, "skipped": 0, "unlocated": 2}
+
+
+def _unobserved_export(tmp_path: Path) -> Path:
+    """One trip with two lines whose quantity the export never gave."""
+    doc = {
+        "format": "kitchen-erp-purchase-export/1",
+        "retailer": "Invented Mart",
+        "transactions": [
+            {
+                "ref": "T-0100",
+                "store_code": "0417",
+                "occurred_at": "2026-03-18T10:00:00",
+                "total": "7.48",
+                "lines": [
+                    {
+                        "description": "RIGATONI 16OZ",
+                        "upc": UPC,
+                        "amount": "2.49",
+                        "observe": False,
+                    },
+                    {"description": "DELI TURKEY", "upc": None, "amount": "4.99", "observe": False},
+                ],
+            }
+        ],
+    }
+    path = tmp_path / "unobserved.json"
+    path.write_text(json.dumps(doc))
+    return path
+
+
+async def test_unobserved_lines_resolve_but_record_no_price(admin_client, admin, tmp_path):
+    await _mart(admin_client)
+    rig = await make_product(
+        admin_client, "Rigatoni", "Rigatoni 16 oz", barcode=UPC, pack_qty="16", pack_unit="oz"
+    )
+    turkey = await make_product(admin_client, "Turkey", "Deli turkey")
+    async with get_sessionmaker()() as db:
+        await import_export(db, admin, load_export(_unobserved_export(tmp_path)))
+    [purchase] = (await admin_client.get("/api/v1/purchases")).json()["items"]
+    by_text = {ln["raw_text"]: ln for ln in purchase["lines"]}
+    rig_line = by_text[f"{UPC} RIGATONI 16OZ"]
+    assert rig_line["resolution"] == "identifier" and rig_line["product"]["id"] == rig["id"]
+    assert rig_line["flags"] == ["no_price"] and rig_line["observation_id"] is None
+
+    # Identified later, the line still records no price.
+    deli = by_text["DELI TURKEY"]
+    r = await admin_client.post(
+        f"/api/v1/purchases/{purchase['id']}/lines/{deli['id']}/resolve",
+        json={"product_id": turkey["id"]},
+    )
+    assert r.status_code == 200, r.text
+    deli = next(ln for ln in r.json()["lines"] if ln["id"] == deli["id"])
+    assert deli["product"]["id"] == turkey["id"] and deli["observation_id"] is None
+    observed = (await admin_client.get("/api/v1/price-observations")).json()["items"]
+    assert observed == []
+
+    # Once a person gives the quantity, the line is priced on recommit.
+    pid = purchase["id"]
+    assert (await admin_client.post(f"/api/v1/purchases/{pid}/reopen")).status_code == 200
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{pid}/lines/{deli['id']}", json={"qty": "0.62", "unit": "lb"}
+    )
+    assert r.status_code == 200, r.text
+    recommitted = (await admin_client.post(f"/api/v1/purchases/{pid}/commit")).json()
+    deli = next(ln for ln in recommitted["lines"] if ln["id"] == deli["id"])
+    assert deli["flags"] == [] and deli["observation_id"]
+    rig_line = next(ln for ln in recommitted["lines"] if ln["id"] == rig_line["id"])
+    assert rig_line["observation_id"] is None
 
 
 @pytest.mark.realdata

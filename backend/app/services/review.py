@@ -31,7 +31,7 @@ from app.services.purchases import (
     next_seq,
     remove_line,
 )
-from app.services.resolution import resolve_line, upsert_alias
+from app.services.resolution import NO_PRICE, resolve_line, upsert_alias
 
 _FOUR = Decimal("0.0001")
 
@@ -193,6 +193,9 @@ async def edit_line(
     # the quantity, so it leaves the warning in place.
     if {"qty", "unit", "clear_qty"} & data.keys():
         line.flags = [f for f in line.flags if f not in QTY_FLAGS]
+    # With a quantity at last, an imported line without one can be priced.
+    if data.get("qty") is not None:
+        line.flags = [f for f in line.flags if f != NO_PRICE]
     # A person has now given the price: it is no longer a suspected misreading (#59).
     if data.get("line_total") is not None:
         line.flags = [f for f in line.flags if f not in PRICE_FLAGS]
