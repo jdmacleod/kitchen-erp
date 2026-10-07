@@ -765,6 +765,8 @@ const FLAG_LABELS: Record<string, string> = {
   qty_from_line_above: "quantity from above",
   qty_from_line_below: "quantity from below",
   quantity_line: "only a quantity",
+  // A weight row whose "lb" OCR garbled, joined by its arithmetic.
+  unit_misread: "pounds, unit misread",
   // #59: a price printed with no decimal point, or a line over the whole receipt.
   decimal_missing: "decimal point missing?",
   exceeds_total: "more than the receipt total",
