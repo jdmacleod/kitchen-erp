@@ -14,6 +14,12 @@ Format: `kitchen-erp-purchase-export/1`, a JSON document with decimal strings:
 
 Amounts are read from the strings, never from floats. Lines resolve through the
 same ladder as receipts (barcode first, then alias); the rest join the queue.
+
+A line may carry ``"observe": false`` when the export does not say how much was
+bought, as for a weighed item listed only by its amount. It is imported and can
+be identified like any other line, but it never becomes a price observation:
+recording the whole amount as one item would make up a unit price. The line is
+flagged ``no_price`` until a person gives its quantity.
 """
 
 from __future__ import annotations
@@ -35,7 +41,7 @@ from app.core.errors import ApiError
 from app.models import AppUser, Purchase, PurchaseLine
 from app.models.geo import Vendor, VendorLocation
 from app.services.normalize import normalize_receipt_text
-from app.services.resolution import commit_purchase, resolve_purchase
+from app.services.resolution import NO_PRICE, commit_purchase, resolve_purchase
 
 FORMAT = "kitchen-erp-purchase-export/1"
 
@@ -60,6 +66,7 @@ class ExportLine(_Strict):
     unit: str | None = None
     amount: Decimal
     loyalty_amount: Decimal | None = None
+    observe: bool = True
 
     @field_validator("qty", "amount", "loyalty_amount", mode="before")
     @classmethod
@@ -146,7 +153,9 @@ async def _location(
     return locations[0] if len(locations) == 1 else None
 
 
-def _line(seq: int, raw: str, kind: str, total: Decimal, **extra: Any) -> PurchaseLine:
+def _line(
+    seq: int, raw: str, kind: str, total: Decimal, flags: list[str] | None = None, **extra: Any
+) -> PurchaseLine:
     return PurchaseLine(
         seq=seq,
         raw_text=raw,
@@ -154,7 +163,7 @@ def _line(seq: int, raw: str, kind: str, total: Decimal, **extra: Any) -> Purcha
         line_kind=kind,
         line_total=total,
         resolution="unmatched",
-        flags=[],
+        flags=flags or [],
         suggestions=[],
         **extra,
     )
@@ -199,7 +208,8 @@ async def import_export(
         for line in txn.lines:
             seq += 1
             raw = f"{line.upc} {line.description}".strip() if line.upc else line.description
-            item = _line(seq, raw, "item", line.amount, qty=line.qty, unit=line.unit)
+            flags = [] if line.observe else [NO_PRICE]
+            item = _line(seq, raw, "item", line.amount, flags, qty=line.qty, unit=line.unit)
             purchase.lines.append(item)
             running += line.amount
             if line.loyalty_amount:
