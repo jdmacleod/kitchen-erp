@@ -19,11 +19,13 @@ from app.core.config import get_settings
 from app.services import plugins
 from tests import geo_helpers as gh
 from tests import ingest_helpers as ih
+from tests import test_products_helper as tph
 from tests.pricebook_helpers import make_location
 from tests.test_captures import work
 
 no_network = gh.no_network
 recorded = ih.recorded
+helper = tph.helper  # the stub helper: products:read and products:suggest tokens
 
 SHOP = "https://www.juniper-market.example.test"
 PAGE = f"{SHOP}/shop/store/12/p/rolled-oats-500g-77123"
@@ -281,6 +283,79 @@ async def test_an_installed_adapter_adds_its_fields_and_a_bad_one_is_skipped(
     health = (await admin_client.get("/api/v1/health")).json()
     statuses = health["checks"]["product_adapters"]["detail"]["adapters"]
     assert sorted(statuses.values()) == ["loaded", "loaded", "missing"]
+
+
+IMAGE_ADAPTER = f"""
+def read(page):
+    return [
+        {{"field": "price", "value": "2.99"}},
+        {{"field": "image", "value": "{SHOP}/media/oats-front.jpg"}},
+        {{"field": "image", "value": "{SHOP}/media/oats-front.jpg"}},
+        {{"field": "image", "value": "http://{SHOP[8:]}/media/oats-plain.jpg"}},
+        {{"field": "image", "value": "/media/oats-relative.jpg"}},
+        {{"field": "image", "value": "javascript:alert(1)"}},
+        {{"field": "image", "value": 7}},
+    ] + [
+        {{"field": "image", "value": "{SHOP}/media/oats-%d.jpg" % n}} for n in range(5)
+    ]
+"""
+
+
+@pytest.fixture
+def image_plugin(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    name = f"kerp_test_images_{uuid.uuid4().hex[:8]}"
+    (folder / f"{name}.py").write_text(IMAGE_ADAPTER)
+    monkeypatch.setattr(get_settings(), "plugins_path", str(folder))
+    monkeypatch.setattr(get_settings(), "product_adapters", [f"{name}:read"])
+    plugins._cache.clear()
+    yield folder
+    plugins._cache.clear()
+
+
+def test_an_adapter_image_is_an_https_address_and_never_a_candidate(image_plugin):
+    adapted = plugins.run(page())
+    assert [c.field for c in adapted.candidates] == ["price"]
+    assert adapted.images == [
+        f"{SHOP}/media/oats-front.jpg",
+        f"{SHOP}/media/oats-0.jpg",
+        f"{SHOP}/media/oats-1.jpg",
+        f"{SHOP}/media/oats-2.jpg",
+    ]
+    [record] = adapted.records
+    assert record["fields"] == ["price"] and record["images"] == 7
+
+
+async def test_adapter_images_go_to_the_helper_to_fetch(
+    admin_client, store, image_plugin, recorded, no_network, helper
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    await admin_client.post("/api/v1/product-captures", json=page())
+    await work()
+    queue = (await helper.get("/api/v1/lookup-requests", headers=helper.read_headers)).json()
+    images = [r["value"] for r in queue["items"] if r["kind"] == "image"]
+    assert images == [
+        f"{SHOP}/media/oats-front.jpg",
+        f"{SHOP}/media/oats-0.jpg",
+        f"{SHOP}/media/oats-1.jpg",
+        f"{SHOP}/media/oats-2.jpg",
+    ]
+    assert {r["kind"] for r in queue["items"]} == {"image"}
+
+
+async def test_adapter_images_are_kept_back_without_a_helper(
+    admin_client, store, image_plugin, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    proposal = (await admin_client.post("/api/v1/product-captures", json=page())).json()
+    await work()
+    body = (await admin_client.get(f"/api/v1/product-proposals/{proposal['id']}")).json()
+    assert body["fields"]["price"]["value"] == "2.99"
+    queued = await owner_conn.fetchval(
+        "SELECT count(*) FROM lookup_request WHERE proposal_id = $1", uuid.UUID(proposal["id"])
+    )
+    assert queued == 0
 
 
 def test_reading_a_pack_size_stays_fast_on_hostile_text():

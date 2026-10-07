@@ -1,4 +1,5 @@
-"""Removing a purchase, or a receipt that could not be read (#74; spec 04, 2H).
+"""Removing a purchase, or a receipt that could not be read (#74; spec 04, 2H),
+and restoring a removed one (#210).
 
 One rule decides what removal does, and the preview shown before it and the
 action itself both ask it, so the two cannot disagree:
@@ -9,6 +10,9 @@ action itself both ask it, so the two cannot disagree:
   it is kept, read-only, with its photo;
 - while its receipt is still being read, it cannot be removed, because the
   reader would write the draft back.
+
+A voided purchase can be restored to reviewed. Its voided prices stay voided
+(observations are append-only); committing it again records new ones.
 """
 
 from __future__ import annotations
@@ -191,6 +195,45 @@ async def remove_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
     await _delete(db, purchase, plan.job)
     await db.commit()
     return Removed("delete", await delete_photo(db, plan.document))
+
+
+async def restore_blocked(
+    db: AsyncSession, purchase: Purchase, *, lock: bool = False
+) -> Literal["read_again"] | None:
+    """Why a voided purchase can't be restored, or None.
+
+    Uploading a removed receipt again reads it into a new draft and takes its job
+    away from the voided purchase (``ingest.upload_receipt``). Restoring the old
+    one as well would put the same receipt in the price book twice.
+    """
+    if purchase.receipt_document_id is None:
+        return None
+    stmt = select(IngestJob).where(IngestJob.receipt_document_id == purchase.receipt_document_id)
+    if lock:
+        stmt = stmt.with_for_update()
+    job = (await db.execute(stmt.execution_options(populate_existing=True))).scalar_one_or_none()
+    if job is not None and job.purchase_id != purchase.id:
+        return "read_again"
+    return None
+
+
+async def restore_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
+    """Bring a voided purchase back to reviewed, ready to commit again (#210)."""
+    # The purchase before its job, the order every other change takes them in.
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    if purchase.status != "voided":
+        raise ApiError(409, "not_voided", "Only a removed purchase can be restored.")
+    if await restore_blocked(db, purchase, lock=True) == "read_again":
+        raise ApiError(
+            409,
+            "read_again",
+            "Its receipt was uploaded again, so it already has a newer purchase.",
+        )
+    purchase.status = "reviewed"
+    purchase.voided_at = None
+    purchase.voided_by = None
+    await db.commit()
+    return await get_purchase(db, purchase_id)
 
 
 async def remove_failed_job(db: AsyncSession, job_id: uuid.UUID) -> bool:

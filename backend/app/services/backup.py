@@ -3,7 +3,9 @@
 `kerp backup --out DIR` writes `db.dump` (pg_dump custom format, owner role),
 copies every receipt image under `receipts/` and every product photo original
 and mask under `media/` (derivatives are rebuildable, so they are left out),
-and writes `manifest.json` with hashes and counts. `kerp restore --from DIR`
+and writes `manifest.json` with hashes and counts. It refuses a directory that
+already holds a backup unless forced, so a failed second run can't destroy the
+last good one. `kerp restore --from DIR`
 refuses a non-empty database unless forced, restores the dump, copies the files
 back, and verifies hashes: a receipt that does not match stops the restore, and
 photo files that do not match are reported.
@@ -93,7 +95,16 @@ async def database_revision(db: AsyncSession) -> str | None:
     return (await db.execute(text("SELECT version_num FROM alembic_version"))).scalar_one_or_none()
 
 
-async def backup(db: AsyncSession, out: Path) -> dict[str, Any]:
+async def backup(db: AsyncSession, out: Path, *, force: bool = False) -> dict[str, Any]:
+    # Checked before anything is written: a second backup that failed partway
+    # would otherwise leave neither the old backup nor a new one.
+    if not force and (out / "manifest.json").exists():
+        raise ApiError(
+            409,
+            "backup_exists",
+            f"{out} already holds a backup. "
+            "Choose another directory, or pass --force to replace it.",
+        )
     settings = get_settings()
     out.mkdir(parents=True, exist_ok=True)
     dump = out / "db.dump"

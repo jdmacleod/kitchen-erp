@@ -166,6 +166,8 @@ export interface Purchase {
   voided_by_name?: string | null;
   /** The prices the removal voided, on a single voided purchase. */
   voided_prices?: number | null;
+  /** Why a voided purchase can't be restored (issue 210): its receipt was read again. */
+  restore_blocked?: "read_again" | null;
   /** On a single purchase only; null in lists and on a voided purchase. */
   removal?: Removal | null;
   removed_line_count?: number | null;
@@ -293,6 +295,8 @@ const knownMessages: Record<string, string> = {
   not_committed: "Only a committed purchase can be reopened.",
   still_reading: "You can remove it once it's been read.",
   voided: "This purchase was removed, so it can't be changed.",
+  not_voided: "This purchase isn't removed, so there's nothing to restore. Reload to see it.",
+  read_again: "Its receipt was uploaded again, so it already has a newer purchase.",
   line_ids_required: "Reload the purchase and try again.",
   unknown_line: "A line changed while you were editing. Reload the purchase and try again.",
 };
@@ -598,6 +602,11 @@ export async function fetchNextDraft(excludeId: string): Promise<Purchase | null
  * book and voids it otherwise. A 404 means an earlier try already removed it,
  * so it counts as done (spec 10, D11).
  */
+/** A removed (voided) purchase back to review; committing records its prices anew (issue 210). */
+export function useRestorePurchase(purchaseId: string) {
+  return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/restore`, { method: "POST" }));
+}
+
 export function useRemovePurchase(purchaseId: string) {
   const client = useQueryClient();
   return useMutation({

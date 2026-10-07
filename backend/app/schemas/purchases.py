@@ -230,6 +230,8 @@ class PurchaseOut(ApiModel):
     voided_by_name: str | None = None
     # The prices the removal voided, on a single voided purchase; null otherwise.
     voided_prices: int | None = None
+    # Why a single voided purchase can't be restored (#210); null otherwise.
+    restore_blocked: Literal["read_again"] | None = None
     # On a single purchase only (GET by id and every change that returns one);
     # null in lists, which never show them. Null on a voided purchase.
     removal: RemovalOut | None = None

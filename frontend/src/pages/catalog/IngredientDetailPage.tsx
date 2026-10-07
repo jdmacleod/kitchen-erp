@@ -29,6 +29,9 @@ import { useIngredientOffers, useIngredientPriceHistory, type PriceFilters as Pr
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
+import { IngredientPageActions, MergedInto, type IngredientPageMode } from "../../components/catalog/IngredientPageActions";
+import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 
 export function IngredientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -100,6 +103,27 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
     </span>
   );
 
+  // Merge and link (issue 211) sit with Deactivate; below 1024px they share one
+  // "More actions" sheet, as on the product page (design D15).
+  const [mode, setMode] = useState<IngredientPageMode>("idle");
+  const [more, setMore] = useState(false);
+  const wide = useMediaQuery(LG_QUERY);
+  const merged = ingredient.merged_into !== null;
+  const actions: MoreAction[] = merged
+    ? []
+    : [
+        ...(ingredient.active ? [{ label: "Merge into…", open: () => setMode("merge"), disabled: mode === "merge" }] : []),
+        ...(ingredient.active && ingredient.reconcile_state !== "linked"
+          ? [{ label: "Link to standard name", open: () => setMode("link"), disabled: mode === "link" }]
+          : []),
+        {
+          label: setActive.isPending ? "Saving…" : ingredient.active ? "Deactivate" : "Activate",
+          open: () => setActive.mutate(!ingredient.active),
+          variant: ingredient.active ? ("danger" as const) : ("secondary" as const),
+          disabled: setActive.isPending,
+        },
+      ];
+
   return (
     <>
       <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
@@ -113,20 +137,39 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           <Button variant="secondary" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
             {editing ? "Close editor" : "Edit details"}
           </Button>
-          <Button
-            variant={ingredient.active ? "danger" : "secondary"}
-            disabled={setActive.isPending}
-            onClick={() => setActive.mutate(!ingredient.active)}
-          >
-            {setActive.isPending ? "Saving…" : ingredient.active ? "Deactivate" : "Activate"}
-          </Button>
+          {actions.length === 0 ? null : wide ? (
+            actions.map((a) => (
+              <Button key={a.label} variant={a.variant ?? "secondary"} disabled={a.disabled} onClick={a.open}>
+                {a.label}
+              </Button>
+            ))
+          ) : (
+            <Button variant="secondary" onClick={() => setMore(true)} aria-haspopup="dialog">
+              More actions
+            </Button>
+          )}
           <Link to="/shop/shelf-prices" state={{ from: `/catalog/ingredients/${ingredient.id}` }} className={primaryLinkClass}>
             Log shelf price
           </Link>
         </div>
       </PageHeader>
 
+      {more ? (
+        <MoreActionsDialog
+          actions={actions.map((a) => ({
+            ...a,
+            open: () => {
+              setMore(false);
+              a.open();
+            },
+          }))}
+          onClose={() => setMore(false)}
+        />
+      ) : null}
+
       <div className="flex flex-col gap-6">
+        {ingredient.merged_into ? <MergedInto survivorId={ingredient.merged_into} /> : null}
+        <IngredientPageActions ingredient={ingredient} mode={merged ? "idle" : mode} onClose={() => setMode("idle")} />
         {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
         {ingredient.notes ? <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p> : null}
         {editing ? <EditDetailsForm ingredient={ingredient} onDone={() => setEditing(false)} /> : null}
