@@ -13,7 +13,7 @@ from app.schemas.base import ApiModel, DecimalStr
 
 class LookupRequestOut(ApiModel):
     id: uuid.UUID
-    kind: Literal["gtin", "page", "cutout", "image"]
+    kind: Literal["gtin", "page", "cutout", "image", "name"]
     value: str | None
     # Set on a scheduled listing refresh: report changed prices against it.
     listing_id: uuid.UUID | None = None
@@ -25,6 +25,8 @@ class LookupRequestOut(ApiModel):
 class ProductPageLookUp(ApiModel):
     # Without a page, the product's barcode is looked up (its photo, name and size).
     page_url: str | None = Field(default=None, min_length=8, max_length=2048)
+    # A branded product with no barcode: search by its brand, name and size (#184).
+    by_name: bool = False
 
 
 class LookupQueue(ApiModel):

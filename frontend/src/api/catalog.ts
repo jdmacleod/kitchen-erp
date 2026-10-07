@@ -555,18 +555,22 @@ export function useProducts(
     q?: string;
     /** A category key, or "none" for products whose ingredient has no category. */
     category?: CategoryKey | "none" | null;
+    /** Only products with no main photo: the ones still to photograph (issue 184). */
+    noPhoto?: boolean;
     limit?: number;
     enabled?: boolean;
   } = {},
 ) {
-  const { ingredientId, includeInactive = false, limit = 50, enabled = true } = options;
+  const { ingredientId, includeInactive = false, noPhoto = false, limit = 50, enabled = true } = options;
   const q = options.q?.trim().slice(0, 200) || undefined;
   const category = options.category ?? undefined;
+  // qs() drops false, so the flag goes as the string "true" or not at all.
+  const noPhotoParam = noPhoto ? "true" : undefined;
   return useInfiniteQuery({
-    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? ""],
+    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? "", noPhoto],
     queryFn: ({ pageParam }) =>
       api<Page<ProductListItem>>(
-        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, limit, cursor: pageParam })}`,
+        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, no_photo: noPhotoParam, limit, cursor: pageParam })}`,
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
