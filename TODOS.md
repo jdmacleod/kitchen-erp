@@ -225,18 +225,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Phase 3 approval
 
-### Merge from an ingredient's own page
-
-**What:** A "Merge into…" action (and "Link to standard name") on the ingredient detail page, reusing the link page's merge: survivor choice, retired name, moved products, copied measures, full recompute.
-
-**Why:** Duplicates keep appearing after the one-time link list is cleared, and merging is the lasting capability.
-
-**Context:** Proposed by the outside-voice review of sub-phase 1G on 2026-09-30 (card O12); the user kept the dedicated link page (DV1) and deferred this. Build on `app/services/ingredient_reconcile.py` once 1G ships.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G
-
 ### Ingredient vocabulary export and import
 
 **What:** `kerp export ingredients` and `kerp import ingredients [--dry-run]` reading and writing a versioned `kitchen-erp-ingredients/1` file, with the vendor file loader's rules and the 1F edit-wins merge, lifted into one module shared with vendors.

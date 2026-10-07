@@ -128,6 +128,11 @@ The most important detail page; search results and inbox items land here most of
   - A link to Compare prices.
 - **Right column:** Products as pill links. "Used in" recipes are dormant until Phase 3.
 - **Empty:** "No prices yet" with Log shelf price.
+- **Merge and link (#211):** the header's secondary actions are "Merge into…", "Link to standard name" (only while the ingredient isn't linked) and Deactivate or Activate; below 1024px they share one "More actions" sheet, as on the product page. Edit details and Log shelf price stay in the header.
+  - "Merge into…" opens a card under the header with an ingredient picker labelled "Merge into", catalog only. Choosing the ingredient itself says "Choose another ingredient. This is the one you're on." Choosing another opens the link page's merge panel, with the other ingredient kept by default under its own name.
+  - "Link to standard name" opens the link page's standard-list search; choosing a name links it, with the Notice "Linked {name} to {standard name}.", or opens the merge panel when another ingredient already has that name.
+  - After a merge that kept the other ingredient, the Notice reads "Merged into {name}." with "Open {name}", which takes focus. After one that kept this ingredient: "Merged {other} into {name}."
+  - A merged ingredient's page starts with an info alert, "Merged into {name}. Its products and spellings are there now.", linking the survivor, and offers no merge, link or reactivation.
 
 ## Ingredient vocabulary (1G)
 
