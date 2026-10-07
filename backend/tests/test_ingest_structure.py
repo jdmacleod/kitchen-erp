@@ -248,6 +248,19 @@ def test_the_receipt_text_shows_the_minus_when_the_line_omits_its_amount():
     ]
 
 
+def test_a_saving_proven_by_the_print_is_not_turned_back_into_an_item():
+    # Named like a product with a size, and the total would favour an item, but the
+    # scan prints it negative.
+    text = "SLATE COCOA 400G   6.00\nSLATE COCOA 400G OFFER   2.00-"
+    lines = _passes(
+        ("SLATE COCOA 400G", "item", "6.00"),
+        ("SLATE COCOA 400G OFFER", "item", "2.00"),
+        text=text,
+        total="8.00",
+    )
+    assert lines[1].line_kind == "discount" and "kind_from_wording" not in lines[1].flags
+
+
 @pytest.mark.parametrize(
     ("rows", "text"),
     [

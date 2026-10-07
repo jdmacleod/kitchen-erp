@@ -203,6 +203,8 @@ def items_read_as_discounts(
     for line in lines:
         if line.line_kind != "discount" or line.line_total <= 0:
             continue
+        if "negative_from_text" in line.flags:
+            continue  # the print showed it negative: a saving, whatever the total says
         text = line.raw_text
         if _SAVING_WORDS.search(text) or _NEGATIVE.search(text) or not _PACK_SIZE.search(text):
             continue
