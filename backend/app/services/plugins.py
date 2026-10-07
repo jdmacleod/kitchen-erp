@@ -10,7 +10,9 @@ repository. The interface is one function::
 ``page`` holds the captured page: ``page_url``, ``canonical_url``, ``title``,
 ``meta``, ``structured_data`` (raw text) and ``dom_text``. An adapter does no
 I/O; its answer is untrusted like any other evidence and becomes candidates
-with source ``adapter`` only for fields the merge knows.
+with source ``adapter`` only for fields the merge knows. An item
+``{"field": "image", "value": "https://…"}`` names a photo the page shows: it is
+kept as an address, never fetched here, and only an absolute https address counts.
 
 A missing or failing adapter is logged and skipped, and health lists which
 loaded. An adapter that raises during a capture is recorded on the stage
@@ -26,6 +28,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from app.catalog import proposals as merging
 from app.core.config import get_settings
@@ -35,6 +38,8 @@ log = get_logger(__name__)
 
 Adapter = Callable[[dict[str, Any]], list[dict[str, Any]]]
 MAX_CANDIDATES = 50
+MAX_IMAGES = 4
+MAX_URL = 2048
 
 
 @dataclass(frozen=True)
@@ -104,9 +109,28 @@ def _candidate(item: Any) -> merging.Candidate | None:
     return candidate
 
 
-def run(page: dict[str, Any]) -> tuple[list[merging.Candidate], list[dict[str, Any]]]:
-    """Every loaded adapter's candidates, and a record of each run for the stage result."""
+def _image(item: Any) -> str | None:
+    """An adapter's ``image`` item as an absolute https address, or None."""
+    if not isinstance(item, dict) or item.get("field") != "image":
+        return None
+    url = item.get("value")
+    if not isinstance(url, str) or len(url) > MAX_URL:
+        return None
+    parts = urlsplit(url.strip())
+    return parts.geturl() if parts.scheme == "https" and parts.hostname else None
+
+
+@dataclass
+class Run:
+    candidates: list[merging.Candidate]
+    images: list[str]  # photo addresses the adapters read off the page, at most MAX_IMAGES
+    records: list[dict[str, Any]]  # one per adapter, for the stage result
+
+
+def run(page: dict[str, Any]) -> Run:
+    """Every loaded adapter's candidates and photo addresses, with a record of each run."""
     candidates: list[merging.Candidate] = []
+    images: list[str] = []
     records: list[dict[str, Any]] = []
     for loaded in adapters():
         if loaded.adapter is None:
@@ -118,7 +142,14 @@ def run(page: dict[str, Any]) -> tuple[list[merging.Candidate], list[dict[str, A
             log.warning("product adapter raised", extra={"adapter": loaded.name})
             records.append({"adapter": loaded.name, "error": type(exc).__name__})
             continue
-        found = [c for item in (answer or [])[:MAX_CANDIDATES] if (c := _candidate(item))]
+        items = (answer if isinstance(answer, list) else [])[:MAX_CANDIDATES]
+        found = [c for item in items if (c := _candidate(item))]
         candidates.extend(found)
-        records.append({"adapter": loaded.name, "fields": sorted({c.field for c in found})})
-    return candidates, records
+        fields = sorted({c.field for c in found})
+        record: dict[str, Any] = {"adapter": loaded.name, "fields": fields}
+        shown = [url for item in items if (url := _image(item))]
+        if shown:
+            record["images"] = len(shown)
+            images.extend(url for url in shown if url not in images)
+        records.append(record)
+    return Run(candidates, images[:MAX_IMAGES], records)

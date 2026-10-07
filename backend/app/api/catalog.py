@@ -181,12 +181,14 @@ async def list_products(
     # A category key, or "none" for products whose ingredient has no category.
     category: CategoryKey | Literal["none"] | None = None,
     barcode: str | None = Query(default=None, description="exact barcode match"),
+    no_photo: bool = Query(default=False, description="only products with no main photo"),
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
 ) -> ProductList:
     rows, next_cursor = await catalog.list_products(
         db,
         barcode=barcode,
+        no_photo=no_photo,
         ingredient_id=ingredient_id,
         include_inactive=include_inactive,
         q=q,

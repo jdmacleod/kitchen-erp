@@ -10,7 +10,7 @@ Every page follows the same hierarchy:
 2. **The thing you came for**: search plus the list, table or detail content, taking most of the space.
 3. **Creation moves out of the page flow** into a right-side drawer opened by the primary action. Forms never sit above the list they add to.
 
-Main content is left-aligned beside the sidebar with 44–56px padding. List pages may run full width; reading-heavy pages cap around 920px. Confirmations use the shared Notice at the top of the main content (D18).
+Main content is left-aligned beside the sidebar with 44–56px padding. List pages may run full width; reading-heavy pages cap around 920px. Confirmations use the shared Notice at the top of the main content (D18). Above it, and only after a redeploy, sits the new-version notice from 09 (#209).
 
 ## Home (Home: unified inbox · Home: first run · Home: inbox loading, empty, error)
 
@@ -75,7 +75,7 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 **Remove purchase, at the foot of the purchase page.**
 - A quiet section after the lines, headed "Remove this purchase". The header keeps Edit and Reopen on committed purchases, and review keeps Commit in its sticky bar.
 - The line under the heading depends on `removal.outcome`:
-  - void: "It's in the price book, so its {n} price(s) will be voided. This can't be undone yet."
+  - void: "It's in the price book, so its {n} price(s) will be voided. You can restore it afterwards."
   - delete: "Nothing from it reached the price book, so it will be deleted, along with its receipt photo." Without a photo, the sentence ends at "deleted."
 - The trigger is a tomato-text secondary button, "Remove purchase".
 - **Confirm:** an inline tomato-tinted panel.
@@ -88,9 +88,13 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 - **After a void:** the page stays and becomes the voided view, and focus moves to its Notice.
 
 **Voided purchase.**
-- Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove.
+- Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove; Restore is the one action.
 - The first element is an info Notice (`role="status"`): "Removed {date} by {name}. Its {n} prices no longer count in the price book."
 - The lines table is read-only, and its Observation column reads "voided".
+- **Restore (#210):** a quiet section at the foot, headed "Restore this purchase", with the line "Restoring brings it back to review. Its prices count again once you commit it." and a secondary "Restore purchase" button.
+  - Confirm is an inline neutral panel, a `role="group"` labelled "Restore the {vendor or location} purchase from {date}?", or "Restore this {date} receipt?". Its buttons are "Restore purchase" (primary) and "Cancel"; focus goes to Cancel, and Cancel returns it to the trigger. An error shows an Alert in the panel, which takes focus.
+  - After restoring, the page becomes review and the Notice reads "Restored. Commit it to put its prices back in the price book."
+  - When `restore_blocked` is `read_again`, the line reads "Its receipt was uploaded again, so it already has a newer purchase. This one stays removed." and there is no button.
 
 **Removed lines.**
 - **Review:** Delete stays one click for a line that was never recorded. A recorded line asks inline in its row, "Delete line {n}? Its price is voided.", with Delete (tomato) and Keep it. Focus goes to Keep it, and back to the row on cancel. No keyboard shortcut deletes.
@@ -128,6 +132,11 @@ The most important detail page; search results and inbox items land here most of
   - A link to Compare prices.
 - **Right column:** Products as pill links. "Used in" recipes are dormant until Phase 3.
 - **Empty:** "No prices yet" with Log shelf price.
+- **Merge and link (#211):** the header's secondary actions are "Merge into…", "Link to standard name" (only while the ingredient isn't linked) and Deactivate or Activate; below 1024px they share one "More actions" sheet, as on the product page. Edit details and Log shelf price stay in the header.
+  - "Merge into…" opens a card under the header with an ingredient picker labelled "Merge into", catalog only. Choosing the ingredient itself says "Choose another ingredient. This is the one you're on." Choosing another opens the link page's merge panel, with the other ingredient kept by default under its own name.
+  - "Link to standard name" opens the link page's standard-list search; choosing a name links it, with the Notice "Linked {name} to {standard name}.", or opens the merge panel when another ingredient already has that name.
+  - After a merge that kept the other ingredient, the Notice reads "Merged into {name}." with "Open {name}", which takes focus. After one that kept this ingredient: "Merged {other} into {name}."
+  - A merged ingredient's page starts with an info alert, "Merged into {name}. Its products and spellings are there now.", linking the survivor, and offers no merge, link or reactivation.
 
 ## Ingredient vocabulary (1G)
 
@@ -196,7 +205,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 
 - **Header:** "Add product" is the primary action.
 - **Search:** a 48px field matching name, brand, ingredient or barcode. It searches on the server (`GET /api/v1/products?q=`, D12).
-- **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and a "Show inactive" checkbox at the right.
+- **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and, at the right, a "Needs a photo" checkbox (products with no main photo, `no_photo=true`, #184) and a "Show inactive" checkbox.
 - **Table card:**
   - Columns: Product (a 40px photo or placeholder, then name over brand; PD5), Ingredient (name and category chip), Pack, Quality, and Last paid (price over vendor and date).
   - Quality shows walnut stars with an accessible label (T13b), or "—" when unrated.

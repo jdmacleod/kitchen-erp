@@ -664,15 +664,23 @@ FROM_OPTION = typer.Option(..., "--from", exists=True, file_okay=False, resolve_
 FORCE_OPTION = typer.Option(False, "--force", help="overwrite a non-empty database")
 
 
+BACKUP_FORCE = typer.Option(False, "--force", help="replace a backup already in the directory")
+
+
 @cli.command()
-def backup(out: Path = OUT_OPTION) -> None:
+def backup(out: Path = OUT_OPTION, force: bool = BACKUP_FORCE) -> None:
     """Write a database dump, the receipt images, and a manifest to a directory."""
     from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
     from app.services.backup import backup as _backup
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
-            manifest = await _backup(db, out)
+            try:
+                manifest = await _backup(db, out, force=force)
+            except ApiError as exc:
+                typer.echo(f"error: {exc.message}", err=True)
+                raise typer.Exit(code=1) from exc
         await dispose_engine()
         typer.echo(
             f"backup written to {out}: {manifest['counts']}, "

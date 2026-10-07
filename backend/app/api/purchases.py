@@ -309,6 +309,11 @@ async def purchase_out(
             if detail and purchase.status == "voided"
             else None
         ),
+        restore_blocked=(
+            await removal.restore_blocked(db, purchase)
+            if detail and purchase.status == "voided"
+            else None
+        ),
         removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
     )
 
@@ -369,6 +374,12 @@ async def remove_purchase(purchase_id: uuid.UUID, user: CurrentUser, db: DbSessi
         photo_deleted=done.photo_deleted,
         purchase=await purchase_out(db, done.purchase) if done.purchase is not None else None,
     )
+
+
+@router.post("/purchases/{purchase_id}/restore", response_model=PurchaseOut)
+async def restore_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> PurchaseOut:
+    """Bring a removed (voided) purchase back to review; committing records its prices anew."""
+    return await purchase_out(db, await removal.restore_purchase(db, purchase_id))
 
 
 def _offer_out(offer: store_codes.StoreCodeOffer) -> StoreCodeOfferOut:

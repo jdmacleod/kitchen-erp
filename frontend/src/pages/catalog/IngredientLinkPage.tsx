@@ -1,23 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import {
-  useLinkAction,
-  useLinkPage,
-  useMerge,
-  useMergePreview,
-  useStandardEntries,
-  type LinkRow,
-  type MergeNeeded,
-  type MergeTarget,
-  type StandardEntry,
-} from "../../api/ingredientLink";
+import { useLinkAction, useLinkPage, type LinkRow, type MergeNeeded, type MergeTarget, type StandardEntry } from "../../api/ingredientLink";
 import { useUsdaReview } from "../../api/usdaReview";
 import { CategoryChip } from "../../components/CategoryChip";
-import { Combobox } from "../../components/catalog/Combobox";
+import { ChooseStandard, IngredientMergePanel } from "../../components/catalog/IngredientMergePanel";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, alertTones, focusRing, secondaryLinkClass } from "../../components/ui";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
+import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 type Tally = { linked: number; renamed: number; merged: number; skipped: number };
@@ -214,12 +203,14 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
           onCancel={() => setMode({ kind: "idle" })}
         />
       ) : mode.kind === "merge" ? (
-        <MergePanel
-          row={row}
-          target={mode.target}
-          needed={mode.needed}
+        <IngredientMergePanel
+          first={{ id: row.id, name: row.name, products: row.products }}
+          second={{ id: mode.needed.other.id, name: mode.needed.other.name, products: mode.needed.other.products }}
+          // The one with more products survives by default; a tie keeps the other.
+          defaultSurvivor={row.products > mode.needed.other.products ? row.id : mode.needed.other.id}
+          targetFor={() => ({ target: mode.target, name: mode.needed.target_name })}
           onCancel={() => setMode({ kind: "idle" })}
-          onMerged={(into) => onDecided(row, "merged", `Merged ${row.name} into ${into}.`)}
+          onMerged={({ targetName }) => onDecided(row, "merged", `Merged ${row.name} into ${targetName}.`)}
         />
       ) : (
         <div className="grid grid-cols-3 gap-2 lg:flex lg:flex-wrap lg:items-center">
@@ -240,147 +231,6 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
         </div>
       )}
     </li>
-  );
-}
-
-/** A search of the standard list only, for a wrong or missing suggestion (DV4). */
-function ChooseStandard({ id, onChosen, onCancel }: { id: string; onChosen: (e: StandardEntry) => void; onCancel: () => void }) {
-  const [text, setText] = useState("");
-  const debounced = useDebouncedValue(text, 200);
-  const found = useStandardEntries(debounced);
-  const items = text.trim() ? (found.data ?? []) : [];
-  return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
-      <div className="lg:w-80">
-        <Combobox<StandardEntry>
-          id={id}
-          label="Standard name"
-          placeholder="Search the standard list"
-          listLabel="Standard names"
-          inputValue={text}
-          onInputChange={setText}
-          items={items}
-          autoFocus
-          getKey={(e) => e.key}
-          status={text.trim() && !found.isFetching && items.length === 0 ? "No standard name matches." : undefined}
-          onSelect={onChosen}
-          renderItem={(e) => (
-            <span className="flex items-center gap-2">
-              <span className="font-medium">{e.name}</span>
-              <CategoryChip category={e.category} categoryKey={e.category_key} />
-            </span>
-          )}
-        />
-      </div>
-      <Button variant="secondary" onClick={onCancel}>
-        Cancel
-      </Button>
-    </div>
-  );
-}
-
-/**
- * The inline tomato panel (DV10, DV15): what moves, the unit change and how many
- * prices will need a bridge, the survivor (defaulting to more products), the
- * measures to copy, and focus starting on Cancel.
- */
-function MergePanel({
-  row,
-  target,
-  needed,
-  onCancel,
-  onMerged,
-}: {
-  row: LinkRow;
-  target: MergeTarget;
-  needed: MergeNeeded;
-  onCancel: () => void;
-  onMerged: (into: string) => void;
-}) {
-  const other = needed.other;
-  const [survivorId, setSurvivorId] = useState(other.products > row.products ? other.id : row.products > other.products ? row.id : other.id);
-  const loserId = survivorId === row.id ? other.id : row.id;
-  const preview = useMergePreview(survivorId, loserId, target);
-  const merge = useMerge();
-  const [unticked, setUnticked] = useState<Set<string>>(new Set());
-  const cancel = useRef<HTMLButtonElement>(null);
-  useEffect(() => cancel.current?.focus(), []);
-  const headingId = `merge-${row.id}-heading`;
-  const loserName = survivorId === row.id ? other.name : row.name;
-  const movingProducts = survivorId === row.id ? other.products : row.products;
-  const p = preview.data;
-  const copyable = p ? p.measures.filter((m) => m.copyable) : [];
-  const stuck = p ? p.measures.filter((m) => !m.copyable) : [];
-
-  return (
-    <div role="group" aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
-      <h3 id={headingId} className="text-sm font-medium">
-        Merge {loserName} into {needed.target_name}?
-      </h3>
-      <p className="text-sm">
-        {plural(movingProducts, "product")} {movingProducts === 1 ? "moves" : "move"}. {loserName} becomes another spelling.
-        {p && p.unit_from !== p.unit_to ? ` Units differ (${p.unit_from} → ${p.unit_to})${p.prices_needing_bridge > 0 ? ":" : "."}` : ""}
-        {p && p.prices_needing_bridge > 0 ? ` ${plural(p.prices_needing_bridge, "price")} will need a bridge.` : ""}
-      </p>
-      <fieldset className="flex flex-col gap-1 text-sm">
-        <legend className="mb-1">Keep:</legend>
-        {[
-          { id: other.id, name: other.name, products: other.products },
-          { id: row.id, name: row.name, products: row.products },
-        ].map((o) => (
-          <label key={o.id} className="flex min-h-11 items-center gap-2 lg:min-h-0">
-            <input type="radio" name={`${headingId}-keep`} checked={survivorId === o.id} onChange={() => setSurvivorId(o.id)} className={focusRing} />
-            {o.name}, {plural(o.products, "product")}
-          </label>
-        ))}
-      </fieldset>
-      {copyable.length > 0 ? (
-        <fieldset className="flex flex-col gap-1 text-sm">
-          <legend className="mb-1">Copy measures:</legend>
-          {copyable.map((m) => (
-            <label key={m.label} className="flex min-h-11 items-center gap-2 lg:min-h-0">
-              <input
-                type="checkbox"
-                checked={!unticked.has(m.label)}
-                onChange={(e) => {
-                  const next = new Set(unticked);
-                  if (e.target.checked) next.delete(m.label);
-                  else next.add(m.label);
-                  setUnticked(next);
-                }}
-                className={focusRing}
-              />
-              1 {m.label} = {m.canonical_qty} {p?.unit_from}
-            </label>
-          ))}
-        </fieldset>
-      ) : null}
-      {stuck.length > 0 ? <p className="text-xs">{stuck.map((m) => m.label).join(", ")} can't carry over: the units differ.</p> : null}
-      {preview.isError ? <Alert tone="error">{errorMessage(preview.error)}</Alert> : null}
-      {merge.isError ? (
-        <div role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error}`}>
-          {errorMessage(merge.error)}
-        </div>
-      ) : null}
-      <p className="text-sm">This can't be undone here.</p>
-      <div className="grid grid-cols-2 gap-2 lg:flex">
-        <Button
-          variant="danger"
-          disabled={merge.isPending || !p}
-          onClick={() =>
-            merge.mutate(
-              { survivor_id: survivorId, loser_id: loserId, target, copy_measures: copyable.filter((m) => !unticked.has(m.label)).map((m) => m.label) },
-              { onSuccess: (done) => onMerged(done.target_name) },
-            )
-          }
-        >
-          {merge.isPending ? "Merging…" : "Merge"}
-        </Button>
-        <Button ref={cancel} variant="secondary" onClick={onCancel} disabled={merge.isPending}>
-          Cancel
-        </Button>
-      </div>
-    </div>
   );
 }
 

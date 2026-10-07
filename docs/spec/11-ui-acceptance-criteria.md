@@ -47,6 +47,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-2.14** "New purchase" is not a nav item; it is reachable from Capture and as the primary action on Shop pages.
 - **UI-2.15** Receipts being read show as "Reading n receipts…" on Home, not counted in the badge (G1). While a batch of several is read, the line reads "Reading 4 of 12 receipts · about 8 minutes left", with no estimate until a read has finished (issue 122). When the oldest one is older than `INGEST_STALL_MINUTES` (default 10), the line reads "Reading is taking longer than usual · Check System" (D21).
 - **UI-2.16** The Notice carries confirmations across a navigation (D18).
+- **UI-2.17** When `/health` reports a different commit from the one it reported when the tab loaded, the page shows "A new version is ready." with Reload and "Not now". It never reloads by itself, stays across navigation, and shows nothing while either commit is missing or "unknown" (#209).
   - Back and reload do not show it again, and only one shows at a time.
   - An action in it can be reached by keyboard.
   - The shelf-price "Saved" notice clears after 3 seconds.
@@ -61,6 +62,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.5** The add product drawer expands the density section with an explanation when the pack unit can't convert to the ingredient's canonical unit. Saving without a density is allowed. A Bridge inbox item appears when the first price for that product is observed (T7).
 - **UI-3.6** Ingredients follows the Products pattern, and the category field suggests the nine known categories.
 - **UI-3.6a** A category is chosen, not typed: the ingredient forms, the Add product drawer (for an ingredient created there) and a Category card on the product page offer "No category", the nine categories and "Other…" for free text. The product page's card sets the ingredient's category, for every product of it. The products list has a "No category" filter: products whose ingredient has no category key (`GET /products?category=none`).
+- **UI-3.6b** The products list has a "Needs a photo" filter, kept in the URL: active products with no main photo (`GET /products?no_photo=true`, also with a search or a category). With a products helper, the page of a branded product with no barcode offers "Search by name" in its "Look this up online" card; a product without a brand does not (#184).
 - **UI-3.7** Vendors shows search, the kind segmented control, the list/map toggle in the URL, and the card grid in 10. The map view keeps pin-drop creation (T9).
 - **UI-3.8** "Find nearby" opens the OpenStreetMap adoption flow in a dialog. It is pre-set to the only home base when there is one; with no home base, it directs the user to add a kitchen first.
 - **UI-3.9** The ingredient hub shows the header, summary strip, prices by vendor and right column in 10.
@@ -75,6 +77,8 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.16** Receipts lists uploads by batch, newest first, with the counts Add up, To check and Couldn't read (a zero is a dash) and each receipt's trust badge, store, total and line count. The trust badge pairs a mark with words on Receipts, Purchases and Needs you receipt rows; it is never colour alone (issue 122).
 - **UI-3.17** A product merge is confirmed in the page, never by a browser dialog: the panel names both products, says what goes to the kept one, shows any unit warnings before Merge is pressed, and puts focus on Cancel. A merged product's page names and links the product it was merged into, and offers neither merge nor reactivation (#179).
 - **UI-3.18** Receipt review's "Correct the lines" edits every line of a draft in one table and saves them in one request: Enter adds a row below, the lines' sum against the printed total updates as you type, Commit waits while the table is open, and typed changes are never dropped without asking (#182).
+- **UI-3.19** A voided purchase offers "Restore purchase" at its foot, confirmed in the page with focus on Cancel. Restoring turns the page into review with the Notice "Restored. Commit it to put its prices back in the price book.", and a purchase whose receipt was read again says so with no button (#210).
+- **UI-3.20** An ingredient's page offers "Merge into…" and, until it is linked, "Link to standard name", both through the link page's merge panel (preview first, focus on Cancel). A merged ingredient's page names and links the ingredient it was merged into, and offers neither merge, link nor reactivation (#211).
 
 ## UI-4 — Phone and tablet
 

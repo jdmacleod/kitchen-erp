@@ -92,6 +92,9 @@ class IngredientUpdate(ApiModel):
         return self
 
 
+ReconcileState = Literal["unreviewed", "linked", "skipped", "not_applicable"]
+
+
 class Categorized(ApiModel):
     """An ingredient shape that carries its category and the display key for it (D12)."""
 
@@ -123,6 +126,10 @@ class IngredientOut(Categorized):
     active: bool
     notes: str | None
     measures: list[MeasureOut] = []
+    # Where it stands against the standard list (1G); "linked" has its standard name.
+    reconcile_state: ReconcileState = "not_applicable"
+    # The ingredient this one was merged into; its page links there (#211).
+    merged_into: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
 

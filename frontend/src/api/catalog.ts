@@ -75,6 +75,10 @@ export interface Ingredient {
   active: boolean;
   notes: string | null;
   measures: Measure[];
+  /** Where it stands against the standard list (1G); "linked" has its standard name. */
+  reconcile_state: "unreviewed" | "linked" | "skipped" | "not_applicable";
+  /** The ingredient this one was merged into (issue 211); its page links there. */
+  merged_into: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -306,6 +310,7 @@ const conflictMessages: Record<string, string> = {
   merge_target_inactive: "Choose an active product to keep.",
   already_merged: "This product was already merged.",
   product_merged: "This product was merged into another and can't be reactivated.",
+  ingredient_merged: "This ingredient was merged into another and can't be reactivated.",
 };
 
 /** A message for a catalog mutation error, with conflict codes spelled out. */
@@ -555,18 +560,22 @@ export function useProducts(
     q?: string;
     /** A category key, or "none" for products whose ingredient has no category. */
     category?: CategoryKey | "none" | null;
+    /** Only products with no main photo: the ones still to photograph (issue 184). */
+    noPhoto?: boolean;
     limit?: number;
     enabled?: boolean;
   } = {},
 ) {
-  const { ingredientId, includeInactive = false, limit = 50, enabled = true } = options;
+  const { ingredientId, includeInactive = false, noPhoto = false, limit = 50, enabled = true } = options;
   const q = options.q?.trim().slice(0, 200) || undefined;
   const category = options.category ?? undefined;
+  // qs() drops false, so the flag goes as the string "true" or not at all.
+  const noPhotoParam = noPhoto ? "true" : undefined;
   return useInfiniteQuery({
-    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? ""],
+    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? "", noPhoto],
     queryFn: ({ pageParam }) =>
       api<Page<ProductListItem>>(
-        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, limit, cursor: pageParam })}`,
+        `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, no_photo: noPhotoParam, limit, cursor: pageParam })}`,
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,

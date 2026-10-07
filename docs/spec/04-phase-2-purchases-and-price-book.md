@@ -165,7 +165,7 @@ Real exports are personal data and live only under `data/imports/`, which is git
 
 ## Backup and restore
 
-Phase 2 is the first phase that holds data someone would be sorry to lose. Provide `kerp backup --out <dir>`, which writes a consistent database dump together with a manifest of the receipt images under `data/receipts/`, and `kerp restore --from <dir>`, and document the procedure.
+Phase 2 is the first phase that holds data someone would be sorry to lose. Provide `kerp backup --out <dir>`, which writes a consistent database dump together with a manifest of the receipt images under `data/receipts/`, and `kerp restore --from <dir>`, and document the procedure. Backup refuses a directory that already holds a manifest unless given `--force`, and checks this before writing anything, so a failed second run cannot destroy the last good backup.
 
 ### Acceptance criteria
 
@@ -186,9 +186,15 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 - It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.
 - A purchase that no longer exists is `404`, which the client treats as already removed.
 - **Delete:** when none of the purchase's lines ever produced an observation, the purchase and its lines are deleted. Its ingest job, if any, gets `purchase_id = NULL` and `status = discarded`, and its receipt image file is deleted. The `receipt_document` row and stage results stay (append-only).
-- **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only and its receipt image is kept.
+- **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only, apart from restoring it, and its receipt image is kept.
 - **Blocked:** while the purchase's ingest job is `pending` or `running`, removal is refused with `409 still_reading`, because the worker would otherwise recreate the draft.
 - The database changes happen in one transaction; void and observe flush, and the caller commits. The image file is deleted only after the commit succeeds, because a rollback cannot restore a file. If that deletion fails, the removal still stands and the failure is logged. The leftover file is served by nothing, and re-uploading the receipt overwrites it.
+
+**Restoring a removed purchase (#210).** `POST /purchases/{id}/restore` takes a voided purchase back to `reviewed`.
+- It locks the purchase, then its receipt's ingest job, the order removal takes them in.
+- `voided_at` and `voided_by` are cleared. The voided observations stay voided, since observations are append-only, and nothing is recorded by the restore itself. Committing it afterwards records a new observation for each resolved item line, as any commit does, and it can be removed again.
+- A purchase that isn't voided is `409 not_voided`.
+- When its receipt was uploaded again and its job now belongs to a newer purchase, the restore is `409 read_again`, because the same receipt would otherwise reach the price book twice. A single voided purchase's response carries `restore_blocked: null | read_again` so the page can say so before anyone asks.
 
 **Removing a failed read.** `POST /ingest-jobs/{id}/remove` accepts only a `failed` job.
 - It discards the job and, after the commit, deletes its image, as above. It answers `200` with `{photo_deleted}`.
@@ -221,6 +227,7 @@ In list responses these are null, so a list page costs no extra queries.
 57. For every case above, `removal` on the purchase predicts the outcome and price count that removing then produces, including a reopened purchase whose prices are all already voided (void, 0). In list responses it is null.
 58. `POST /ingest-jobs/{id}/remove` discards a failed job, and its draft if one exists, and deletes the image. It refuses other statuses as specified. `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`.
 59. A discarded job is absent from `GET /ingest-jobs` and is `404 receipt_removed` by id. Re-uploading the same file revives it with `revived: true` and reads it again.
+59a. Restoring a voided purchase sets it to `reviewed` with `voided_at`/`voided_by` cleared and records nothing; its voided observations stay voided. Committing it then records one new observation per resolved item line. Restoring anything not voided is `409 not_voided`, two restores at once restore it once, and a voided purchase whose receipt was uploaded again is `409 read_again` and stays voided (#210).
 
 ## 2I — Naming new products in bulk
 
@@ -393,7 +400,7 @@ If the person is signed out, they sign in inside the window and the exchange rep
 
 **Vendors.** The window matches the page to a vendor by its address. A page from a store the household hasn't added offers a vendor picker, or "Save without a store", which keeps the product details but no listing or price.
 
-**Extraction.** Generic extraction runs on every capture: structured data, meta tags, the address and the model. Retailer-specific adapters are pure functions loaded from a read-only plugin folder (`data/plugins/`, mounted at `/plugins`) named by `PRODUCT_ADAPTERS` (module and function). A missing or failing adapter is logged and skipped, and health detail lists which loaded. An adapter that raises during a capture is recorded on the stage result, and generic extraction carries on. The public repository holds the interface, and tests it on an invented retailer. Structured data's offer price is read with its basis. When the offer's own price is a schema.org `UnitPriceSpecification`, its `referenceQuantity` unit code (UN/CEFACT: `LBR`, `KGM`, `GRM`, `ONZ`, `LTR`, `MLT`, `OZA`, `H87`/`EA`/`C62`) gives the basis. A unit price beside a different offer price is a comparison figure and is not taken. An unknown unit code gives no price, never a guess. An adapter returns a price as a string amount, or as `{"amount", "qty", "unit"}` strings.
+**Extraction.** Generic extraction runs on every capture: structured data, meta tags, the address and the model. Retailer-specific adapters are pure functions loaded from a read-only plugin folder (`data/plugins/`, mounted at `/plugins`) named by `PRODUCT_ADAPTERS` (module and function). A missing or failing adapter is logged and skipped, and health detail lists which loaded. An adapter that raises during a capture is recorded on the stage result, and generic extraction carries on. The public repository holds the interface, and tests it on an invented retailer. Structured data's offer price is read with its basis. When the offer's own price is a schema.org `UnitPriceSpecification`, its `referenceQuantity` unit code (UN/CEFACT: `LBR`, `KGM`, `GRM`, `ONZ`, `LTR`, `MLT`, `OZA`, `H87`/`EA`/`C62`) gives the basis. A unit price beside a different offer price is a comparison figure and is not taken. An unknown unit code gives no price, never a guess. An adapter returns a price as a string amount, or as `{"amount", "qty", "unit"}` strings. An adapter may also return `{"field": "image", "value": "https://…"}` for a photo the page shows. It is never a field candidate: only an absolute https address counts, at most four are kept, and they are never fetched by the application. When the proposal has no photo yet and a products helper is set up, they go to the helper as image lookups, as a clip's own image addresses do; without a helper they are dropped.
 
 **Paste an address.** The Add product drawer takes an optional web address first (10). Name and item number from the address are prefilled. With the lookup helper set up, saving queues the page for it; without one, the drawer says the page can't be read from here.
 
@@ -411,6 +418,7 @@ If the person is signed out, they sign in inside the window and the exchange rep
 Outbound work for products (Open Food Facts and USDA lookups, fetching pages, downloading listing photos, refreshing listings, retailer-specific scraping, background removal) lives outside this application, in a separate private repository, `kitchen-erp-products`. This application makes none of those calls. It exposes only:
 - **A lookup queue (`lookup_request`).** It holds:
   - the barcodes and pages a person asked about with "Look this up online" (for a proposal, or on a product's own page: its barcode, or a store page pasted there) or by pasting an address in Add product (for the product it created);
+  - `name` requests: "Search by name" on the page of a branded product that has no GTIN. The value is the product's public facts only, `{"brand", "name", "pack_qty"?, "pack_unit"?}` as JSON. The helper answers with the one match it is sure of (its barcode, name, size and photos), which waits as a Product update like any late answer; accepting it sets the GTIN-14 identifier and photo, and a barcode another product holds is refused as `identifier_taken` (PR6). A product without a brand, or with a GTIN, is refused with `nothing_to_look_up` or `has_barcode`. (Added 2026-10-06, #184.)
   - every unknown scanned barcode, but only if the household turns that setting on (off by default);
   - `cutout` requests for the household's photos that have no mask. These are queued automatically, because the photo never leaves the machine; the helper may read that one photo's original.
   - `image` requests for a clipped page whose images the browser could not read (another host refused it): up to four of the page's own image addresses, queued automatically when a helper exists. The helper fetches each one and answers with the photo. (Added 2026-10-05, clip quality.)
