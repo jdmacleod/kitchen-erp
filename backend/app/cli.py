@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import typer
 from alembic.config import Config
@@ -835,6 +837,13 @@ BENCH_EXPECTED = typer.Option(
     "(item_line_count may be blank when it is not known).",
 )
 BENCH_FORCE = typer.Option(False, "--force", help="Run even though a worker is connected.")
+BENCH_UPLOADED_SINCE = typer.Option(
+    None,
+    "--uploaded-since",
+    formats=["%Y-%m-%d"],
+    help="Score only receipts uploaded on or after this day (YYYY-MM-DD, household time): "
+    "a hold-out batch (04, 2O).",
+)
 BENCH_OUT = typer.Option(
     None, "--out", file_okay=False, help="Where runs go (default: beside the receipts store)."
 )
@@ -856,6 +865,7 @@ def reading_benchmark(
     out: Path | None = BENCH_OUT,
     ocr_model: str = BENCH_OCR_MODEL,
     text_model: str | None = BENCH_TEXT_MODEL,
+    uploaded_since: datetime | None = BENCH_UPLOADED_SINCE,
 ) -> None:
     """Measure receipt readers on committed receipts (spec 04, 2J). Writes no app data.
 
@@ -868,6 +878,14 @@ def reading_benchmark(
 
     settings = get_settings()
     configure_logging(settings.log_level)
+    # The day starts at midnight where the household is, as a receipt's date does.
+    since = (
+        None
+        if uploaded_since is None
+        else datetime.combine(
+            uploaded_since.date(), datetime.min.time(), ZoneInfo(settings.household_timezone)
+        )
+    )
 
     def _split(value: str) -> list[str]:
         return [part.strip() for part in value.split(",") if part.strip()]
@@ -880,7 +898,7 @@ def reading_benchmark(
     async def _run() -> None:
         async with get_sessionmaker()() as db:
             try:
-                selection = await bench.select_receipts(db, expected)
+                selection = await bench.select_receipts(db, expected, since)
                 running = await bench.worker_running(db)
             finally:
                 await db.rollback()

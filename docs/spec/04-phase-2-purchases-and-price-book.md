@@ -474,12 +474,12 @@ This sub-phase is built just before the helper itself.
 
 **The text model.** The measured configuration read the transcript with `qwen2.5:14b`; `gpt-oss:20b` reconciled 58% on the same transcripts, and it ran away on long receipts. `LLM_MODEL` names the one text model the application uses: receipts, naming (2I), the product ranker and product reading (2L). Its documented default becomes `qwen2.5:14b`. Before a deployment switches, the opt-in `llm` suite runs naming, ranking and product reading against it as well as receipts.
 
-**The benchmark.** `kerp reading-benchmark` gains `--committed-since DATE`, which scores only receipts committed on or after that date, so a hold-out batch can be measured on its own.
+**The benchmark.** `kerp reading-benchmark` gains `--uploaded-since DATE`, which scores only receipts uploaded on or after that day (midnight in `HOUSEHOLD_TIMEZONE`), so a hold-out batch the configuration was not chosen on can be measured on its own. Receipts are counted by upload because a purchase does not record when it was committed. The rest are reported as `uploaded_before`.
 
 **Rollout.**
 
 1. Build this with the defaults unchanged; the suite stays offline.
-2. Collect receipts. When at least 10 have been committed since 2026-10-07, run the benchmark on them alone (`--committed-since 2026-10-07 --arms b --text-model qwen2.5:14b`). The configuration holds if it reconciles within one receipt of 83% on them.
+2. Collect receipts. When at least 10 receipts uploaded since 2026-10-07 have been committed, run the benchmark on them alone (`--uploaded-since 2026-10-07 --arms b --text-model qwen2.5:14b`). The configuration holds if it reconciles within one receipt of 83% on them.
 3. If it holds, the household sets `OCR_ADAPTERS=["client","vision","tesseract"]` and `LLM_MODEL=qwen2.5:14b` and restarts the worker. If it does not, the benchmark stays for the next model and nothing switches.
 4. Rollback: take `vision` out of `OCR_ADAPTERS` and restart the worker.
 
@@ -491,7 +491,7 @@ This sub-phase is built just before the helper itself.
 96. A transcript whose last rows repeat is cut after their first appearance, and a reply aborted for repeating keeps the rows before the abort and is recorded as out of room.
 97. A fixture image that prints an instruction yields a transcript treated as receipt text: nothing in the stage follows it, and the header and lines replies are validated as usual.
 98. With the default `OCR_ADAPTERS`, every fixture's stage outputs are identical to those before this amendment.
-99. `kerp reading-benchmark --committed-since` scores only receipts committed on or after the date, and says how many it left out for it.
+99. `kerp reading-benchmark --uploaded-since` scores only receipts uploaded on or after that day in the household's time zone, and reports how many it left out as `uploaded_before`.
 
 ## Out of scope for Phase 2
 
