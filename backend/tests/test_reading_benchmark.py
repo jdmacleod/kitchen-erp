@@ -10,6 +10,7 @@ from __future__ import annotations
 import csv
 import json
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -235,10 +236,12 @@ async def _committed_receipt(
     return body["document"]["id"], str(job.purchase_id)
 
 
-async def _select(expected: Path | None = None) -> bench.Selection:
+async def _select(
+    expected: Path | None = None, uploaded_since: datetime | None = None
+) -> bench.Selection:
     async with get_sessionmaker()() as db:
         try:
-            return await bench.select_receipts(db, expected)
+            return await bench.select_receipts(db, expected, uploaded_since)
         finally:
             await db.rollback()
 
@@ -273,6 +276,30 @@ async def test_committed_receipts_are_scored_and_the_exclusions_counted(
     items = [line for line in fixture.expected_lines if line["line_kind"] == "item"]
     assert receipt.expected_items == len(items)
     assert sorted(receipt.item_amounts) == sorted(Decimal(line["line_total"]) for line in items)
+
+
+async def test_uploaded_since_scores_only_the_receipts_uploaded_since(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, recorded, owner_conn
+):
+    # A hold-out batch (04, 2O): receipts the configuration was not chosen on.
+    fixture = load_fixture("supermarket_produce_crv")
+    recorded(fixture)
+    old, _ = await _committed_receipt(admin_client, fixture, "before")
+    new, _ = await _committed_receipt(admin_client, fixture, "after")
+    await owner_conn.execute(
+        "UPDATE receipt_document SET created_at = now() - interval '40 days' WHERE id = $1",
+        uuid.UUID(old),
+    )
+    since = datetime.now(UTC) - timedelta(days=1)
+
+    selection = await _select(uploaded_since=since)
+
+    assert [str(r.document_id) for r in selection.receipts] == [new]
+    assert selection.excluded["uploaded_before"] == 1
+    # Without it, both are scored and nothing is counted as before.
+    everything = await _select()
+    assert {str(r.document_id) for r in everything.receipts} == {old, new}
+    assert "uploaded_before" not in everything.excluded
 
 
 async def test_receipts_never_committed_come_from_expected_csv(
@@ -545,7 +572,8 @@ def _cli(monkeypatch: pytest.MonkeyPatch, selection: bench.Selection, worker: bo
     from app import cli as cli_module
     from app.core import db as db_module
 
-    async def select(db, expected=None):
+    async def select(db, expected=None, uploaded_since=None):
+        _cli.seen_since = uploaded_since
         return selection
 
     async def running(db):
@@ -601,3 +629,21 @@ def test_the_command_runs_only_the_arms_asked_for(monkeypatch: pytest.MonkeyPatc
     result = _cli(monkeypatch, _one_receipt(), False, "--arms", "b,x")
     assert result.exit_code == 2
     assert "unknown arm(s) x" in result.output
+
+
+def test_uploaded_since_is_midnight_where_the_household_is(monkeypatch: pytest.MonkeyPatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "household_timezone", "America/Los_Angeles")
+
+    async def run(selection, options, echo=print):
+        return bench.RunResult("r", Path("."), [], bench.decide([], 1), {}, "summary")
+
+    monkeypatch.setattr(bench, "run", run)
+    result = _cli(monkeypatch, _one_receipt(), False, "--uploaded-since", "2026-10-07")
+    assert result.exit_code == 0, result.output
+    since = _cli.seen_since
+    assert since.isoformat() == "2026-10-07T00:00:00-07:00"
+
+    result = _cli(monkeypatch, _one_receipt(), False, "--uploaded-since", "October 7")
+    assert result.exit_code == 2  # not a date

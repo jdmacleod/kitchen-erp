@@ -671,10 +671,16 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
                 and current.unit == (line.unit or "each")
                 and current.is_promo == promo
                 and current.vendor_location_id == purchase.vendor_location_id
+                and current.observed_at == purchase.purchased_at
             ):
                 continue
             if current is not None:
-                await pricebook.void(db, current.id, "line changed on recommit", user)
+                reason = (
+                    "purchase date changed on recommit"
+                    if current.observed_at != purchase.purchased_at
+                    else "line changed on recommit"
+                )
+                await pricebook.void(db, current.id, reason, user)
             await _emit_for_line(db, user, purchase, line)
         elif current is not None:
             await pricebook.void(db, current.id, "line no longer resolved on recommit", user)

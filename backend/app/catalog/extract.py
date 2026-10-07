@@ -342,7 +342,13 @@ def from_address(url: str) -> PageEvidence:
     else:
         for segment in reversed(segments):
             if found := _DIGITS.search(segment):
-                out.candidates.append(Candidate("item_number", found.group(1), "address"))
+                digits = found.group(1)
+                # A 12- to 14-digit run with a good check digit is the product's barcode,
+                # not the store's number. GTIN-8 is left out: too many store numbers pass.
+                if len(digits) >= 12 and (gtin := _gtin(digits)):
+                    out.candidates.append(Candidate("gtin", gtin, "address"))
+                else:
+                    out.candidates.append(Candidate("item_number", digits, "address"))
                 break
     slug = next(
         (
@@ -391,6 +397,13 @@ def clean_title(title: str, names: set[str]) -> str:
     return title
 
 
+def placeholder_title(title: str, names: set[str]) -> bool:
+    """True when a title names the page's kind or the site, not a product:
+    "Product Detail", "Item", "Juniper Market", "Details | Juniper Market"."""
+    cleaned = clean_title(title, names)
+    return _generic(cleaned) or _squash(cleaned) in names or _squash(title) in names
+
+
 def extract(
     page_url: str,
     *,
@@ -416,8 +429,9 @@ def extract(
     cleaned = []
     for c in out.candidates:
         if c.field == "title" and isinstance(c.value, str):
-            title = clean_title(c.value, names)
-            cleaned.append(Candidate(c.field, title, c.source, c.confidence, c.via))
+            if not placeholder_title(c.value, names):
+                title = clean_title(c.value, names)
+                cleaned.append(Candidate(c.field, title, c.source, c.confidence, c.via))
         elif not (c.field == "brand" and isinstance(c.value, str) and _squash(c.value) in titles):
             cleaned.append(c)
     out.candidates = cleaned

@@ -38,7 +38,7 @@ Mode: Builder
 
 **Where the code is.**
 - `backend/app/services/reading_benchmark.py`: the command's logic.
-- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
+- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--uploaded-since` (a hold-out batch, 2O), `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
 - `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
 - Tests:
   - `test_reading_benchmark.py`, `test_ingest_witness.py`, `test_ingest_readers.py`, `test_raster_render.py`;

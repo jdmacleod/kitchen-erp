@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import typer
 from alembic.config import Config
@@ -21,6 +23,8 @@ import_cli = typer.Typer(
     help="Import reference data or a retailer's purchase export.", no_args_is_help=True
 )
 cli.add_typer(import_cli, name="import")
+receipts_cli = typer.Typer(help="Stored receipt files.", no_args_is_help=True)
+cli.add_typer(receipts_cli, name="receipts")
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -835,6 +839,13 @@ BENCH_EXPECTED = typer.Option(
     "(item_line_count may be blank when it is not known).",
 )
 BENCH_FORCE = typer.Option(False, "--force", help="Run even though a worker is connected.")
+BENCH_UPLOADED_SINCE = typer.Option(
+    None,
+    "--uploaded-since",
+    formats=["%Y-%m-%d"],
+    help="Score only receipts uploaded on or after this day (YYYY-MM-DD, household time): "
+    "a hold-out batch (04, 2O).",
+)
 BENCH_OUT = typer.Option(
     None, "--out", file_okay=False, help="Where runs go (default: beside the receipts store)."
 )
@@ -856,6 +867,7 @@ def reading_benchmark(
     out: Path | None = BENCH_OUT,
     ocr_model: str = BENCH_OCR_MODEL,
     text_model: str | None = BENCH_TEXT_MODEL,
+    uploaded_since: datetime | None = BENCH_UPLOADED_SINCE,
 ) -> None:
     """Measure receipt readers on committed receipts (spec 04, 2J). Writes no app data.
 
@@ -868,6 +880,14 @@ def reading_benchmark(
 
     settings = get_settings()
     configure_logging(settings.log_level)
+    # The day starts at midnight where the household is, as a receipt's date does.
+    since = (
+        None
+        if uploaded_since is None
+        else datetime.combine(
+            uploaded_since.date(), datetime.min.time(), ZoneInfo(settings.household_timezone)
+        )
+    )
 
     def _split(value: str) -> list[str]:
         return [part.strip() for part in value.split(",") if part.strip()]
@@ -880,7 +900,7 @@ def reading_benchmark(
     async def _run() -> None:
         async with get_sessionmaker()() as db:
             try:
-                selection = await bench.select_receipts(db, expected)
+                selection = await bench.select_receipts(db, expected, since)
                 running = await bench.worker_running(db)
             finally:
                 await db.rollback()
@@ -943,6 +963,52 @@ def export_openapi(out: Path = OPENAPI_OUT) -> None:
     helper = out.parent / "kitchen-erp-products-1.schema.json"
     helper.write_text(json.dumps(contract_schema(), indent=2, sort_keys=True) + "\n")
     typer.echo(f"wrote {helper}")
+
+
+@receipts_cli.command("strip-metadata")
+def strip_receipt_metadata(
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Count what would change; change nothing."
+    ),
+) -> None:
+    """Remove GPS and other metadata from receipt photos stored before upgrading (#221)."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import receipt_strip
+
+    async def _run() -> receipt_strip.Report:
+        try:
+            async with get_sessionmaker()() as db:
+                return await receipt_strip.run(db, dry_run=dry_run)
+        finally:
+            await dispose_engine()
+
+    report = asyncio.run(_run())
+    if report.missing:
+        typer.echo(
+            f"error: {len(report.missing)} receipt files are missing, so nothing was changed. "
+            "Restore them from a backup first. Receipt ids:",
+            err=True,
+        )
+        for doc_id in report.missing:
+            typer.echo(f"  {doc_id}", err=True)
+        raise typer.Exit(code=1)
+    labels = {
+        "stripped": "would be stripped" if dry_run else "stripped",
+        "reencoded": "would be re-encoded as JPEG" if dry_run else "re-encoded as JPEG",
+        "unchanged": "had no metadata",
+        "pdf": "are PDFs, left as they are",
+        "removed": "were removed, with no file to strip",
+        "in_use": "are being read; run this again when the worker is idle",
+        "collision": "would duplicate another receipt's file; left as they are",
+        "unreadable": "can't be read and still carry metadata; left as they are",
+    }
+    for outcome, label in labels.items():
+        if report.counts[outcome]:
+            typer.echo(f"  {report.counts[outcome]:>5}  {label}")
+    if not any(report.counts.values()):
+        typer.echo("No receipts are stored.")
+    if dry_run:
+        typer.echo("Nothing was changed. Run without --dry-run to apply.")
 
 
 def main() -> None:
