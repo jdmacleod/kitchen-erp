@@ -43,7 +43,7 @@ Saving a manual purchase commits it immediately, since there is nothing to resol
 11. On a phone-width viewport, each line can be entered without the on-screen keyboard obscuring the field being edited.
 12. Entering a unit price computes the line total and vice versa, in decimal arithmetic, with the computed field clearly marked as such.
 13. Committing emits exactly one observation per item line, linked by `purchase_line_id`, with correct quantity, unit, and price.
-14. Reopening and changing a line's price voids the old observation with a system-generated reason and emits a new one on recommit; untouched lines keep their observations.
+14. Reopening and changing a line's price voids the old observation with a system-generated reason and emits a new one on recommit; untouched lines keep their observations. Correcting the purchase's date counts as a change to every line: recommit voids each observation ("purchase date changed on recommit") and emits it again at the new date.
 15. A product and its ingredient can be created inline from a line without losing the lines already entered.
 
 ## 2C — Receipt ingest pipeline
