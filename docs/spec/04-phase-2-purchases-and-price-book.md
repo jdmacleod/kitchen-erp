@@ -487,7 +487,9 @@ This sub-phase is built just before the helper itself.
 1. Build this with the defaults unchanged; the suite stays offline.
 2. Collect receipts. When at least 10 receipts uploaded since 2026-10-07 have been committed, run the benchmark on them alone (`--uploaded-since 2026-10-07 --arms b --text-model qwen2.5:14b`). The configuration holds if it reconciles within one receipt of 83% on them.
 3. If it holds, the household sets `OCR_ADAPTERS=["client","vision","tesseract"]` and `LLM_MODEL=qwen2.5:14b` and restarts the worker. If it does not, the benchmark stays for the next model and nothing switches.
-4. Rollback: take `vision` out of `OCR_ADAPTERS` and restart the worker.
+4. Rollback: take `vision` out of `OCR_ADAPTERS`, set `LLM_MODEL` back to the earlier model, and restart the worker.
+
+**The household switched early (2026-10-07).** On the strength of the measured gap (83% against 17%, the interval's low end at 66%), the household turned the reader on before the hold-out, at step 3, without waiting for step 2; every receipt is still reviewed before it commits. Step 2 still runs after about 30 days, as a confirmation: if the configuration does not hold, the household rolls back (step 4). Until then the hold-out's truth comes from drafts this reader wrote, so a person checks each receipt's total against its photo before committing; a total accepted unchecked from the reader would flatter it.
 
 ### Acceptance criteria
 
