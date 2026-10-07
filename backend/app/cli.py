@@ -581,7 +581,7 @@ def export_vendors(
     """Write the vendor list as a kitchen-erp-vendors file (/1, or /2 when it holds product facts).
 
     Public mode holds only what may be contributed; household mode holds
-    everything, including store codes and home bases: keep it private.
+    everything, including store codes and kitchens: keep it private.
     """
     from app.core.db import dispose_engine, get_sessionmaker
     from app.services import vendor_exchange
@@ -639,7 +639,7 @@ def import_vendors(
             )
             typer.echo(f"  needs you: {item.key}: {what}")
     for name in report.unresolved_home_bases:
-        typer.echo(f"  no home base called {name!r}: those locations use the nearest one")
+        typer.echo(f"  no kitchen called {name!r}: those locations use the nearest one")
     c = report.counts
     verb = "would change" if dry_run else "changed"
     typer.echo(
