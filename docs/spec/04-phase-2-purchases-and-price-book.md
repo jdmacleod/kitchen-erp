@@ -165,7 +165,7 @@ Real exports are personal data and live only under `data/imports/`, which is git
 
 ## Backup and restore
 
-Phase 2 is the first phase that holds data someone would be sorry to lose. Provide `kerp backup --out <dir>`, which writes a consistent database dump together with a manifest of the receipt images under `data/receipts/`, and `kerp restore --from <dir>`, and document the procedure.
+Phase 2 is the first phase that holds data someone would be sorry to lose. Provide `kerp backup --out <dir>`, which writes a consistent database dump together with a manifest of the receipt images under `data/receipts/`, and `kerp restore --from <dir>`, and document the procedure. Backup refuses a directory that already holds a manifest unless given `--force`, and checks this before writing anything, so a failed second run cannot destroy the last good backup.
 
 ### Acceptance criteria
 
