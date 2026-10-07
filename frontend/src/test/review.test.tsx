@@ -159,6 +159,20 @@ describe("receipt review", () => {
     expect(screen.getByText(/Part of this receipt could not be read, so some of its lines are missing/)).toBeInTheDocument();
   });
 
+  it("says quietly when the receipt was read from the text scan", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["ocr_fallback"] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.getByText("Read from the text scan: the image reader wasn't available.")).toBeInTheDocument();
+  });
+
+  it("says nothing about the text scan when the image reader read it", async () => {
+    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
+    renderApp(base);
+    await openReview();
+    expect(screen.queryByText(/Read from the text scan/)).not.toBeInTheDocument();
+  });
+
   it("says nothing about the date or total when both were read", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: [] })));
     renderApp(base);

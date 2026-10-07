@@ -31,7 +31,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://kerp_app:${DB_APP_PASSWORD}@db:5432/kerp
       MIGRATION_DATABASE_URL: postgresql+asyncpg://kerp_owner:${DB_OWNER_PASSWORD}@db:5432/kerp
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      LLM_MODEL: ${LLM_MODEL:-gpt-oss:20b}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:14b}
       LLM_THINK: ${LLM_THINK:-}
       VISION_MODEL: ${VISION_MODEL:-}
       OCR_VISION_MODEL: ${OCR_VISION_MODEL:-glm-ocr}
