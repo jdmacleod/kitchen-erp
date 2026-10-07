@@ -50,7 +50,7 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -165,29 +165,73 @@ def printed_dates(text: str, order: str = "MDY") -> list[tuple[date, time | None
     return found
 
 
+# How far before its upload a receipt's date may plausibly fall.
+_PLAUSIBLE_AGE = timedelta(days=400)
+
+
+def _year_from_reference(
+    dates: dict[date, time | None], reference: date
+) -> tuple[date, time | None] | None:
+    """One date from several that differ only in a year OCR misread.
+
+    The dates must share month and day, and any times printed with them must
+    agree. When exactly one year is plausible against the reference (on or before
+    it, and not over about thirteen months older) that one is taken; when none
+    is, the month and day on or before the reference. Otherwise None.
+    """
+    days = {(day.month, day.day) for day in dates}
+    times = {at for at in dates.values() if at is not None}
+    if len(days) != 1 or len(times) > 1:
+        return None
+    at = next(iter(times), None)
+    plausible = [day for day in dates if reference - _PLAUSIBLE_AGE <= day <= reference]
+    if len(plausible) == 1:
+        return plausible[0], at
+    if plausible:
+        return None
+    ((month, day_of_month),) = days
+    for year in (reference.year, reference.year - 1):
+        try:
+            candidate = date(year, month, day_of_month)
+        except ValueError:  # 29 February in a year without one
+            continue
+        if candidate <= reference:
+            return candidate, at
+    return None
+
+
 def datetime_from_text(
     model_value: str | None,
     model_at: datetime | None,
     text: str,
     timezone: str,
     order: str = "MDY",
+    reference: datetime | None = None,
 ) -> tuple[datetime | None, list[str]]:
     """The purchase time, with what the receipt prints winning over the model.
 
     Only when the receipt prints exactly one date: the model's date gives way to
     it (``date_from_text``), and a time printed on its row fills a time the
     model left out (``time_from_text``). Several dates (a return-by date, an
-    expiry) are left to the model.
+    expiry) are left to the model, except one date printed twice with years OCR
+    misread differently: with a ``reference`` (when the receipt was captured or
+    first uploaded), the year is the one the reference makes plausible
+    (``year_from_upload``).
     """
     dates: dict[date, time | None] = {}
     for day, printed in printed_dates(text, order):
         if dates.get(day) is None:
             dates[day] = printed
+    zone = ZoneInfo(timezone)
+    flags: list[str] = []
+    if len(dates) > 1 and reference is not None:
+        picked = _year_from_reference(dates, reference.astimezone(zone).date())
+        if picked is not None:
+            dates = {picked[0]: picked[1]}
+            flags.append("year_from_upload")
     if len(dates) != 1:
         return model_at, []
     ((day, printed_at),) = dates.items()
-    zone = ZoneInfo(timezone)
-    flags: list[str] = []
     local = None if model_at is None else model_at.astimezone(zone)
     at = None
     if local is not None and model_value and _HAS_TIME.search(model_value):
@@ -488,10 +532,35 @@ def printed_total_from_text(text: str) -> Decimal | None:
     return None if found is None else found[0]
 
 
+def _amount_pattern(amount: Decimal) -> re.Pattern[str]:
+    whole, _, cents = f"{amount.quantize(Decimal('0.01'))}".partition(".")
+    return re.compile(rf"(?<![\d.,]){re.escape(whole)}[.,]{cents}(?!\d)")
+
+
 def amount_in_text(amount: Decimal, text: str) -> bool:
     """Whether an amount is printed anywhere in the text, with either decimal mark."""
-    whole, _, cents = f"{amount.quantize(Decimal('0.01'))}".partition(".")
-    return re.search(rf"(?<![\d.,]){re.escape(whole)}[.,]{cents}(?!\d)", text) is not None
+    return _amount_pattern(amount).search(text) is not None
+
+
+def rows_printing(amount: Decimal, text: str) -> list[str]:
+    """The text's rows that print ``amount``."""
+    pattern = _amount_pattern(amount)
+    return [row for row in text.splitlines() if pattern.search(row)]
+
+
+# The card or cash slip printed under the sale: what was tendered, not what the sale
+# came to, though it repeats that amount. "TOTAL AMOUNT" there is the slip's own label.
+_PAYMENT_ROW = re.compile(
+    r"amount|visa|master\s*card|amex|discover|debit|credit|cash|tender|change|"
+    r"approv|auth|account|card",
+    re.IGNORECASE,
+)
+
+
+def only_on_payment_rows(amount: Decimal, text: str) -> bool:
+    """Whether ``amount`` is printed, and only on rows of the payment slip."""
+    rows = rows_printing(amount, text)
+    return bool(rows) and all(_PAYMENT_ROW.search(row) for row in rows)
 
 
 def header_output(

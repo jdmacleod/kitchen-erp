@@ -82,6 +82,11 @@ def apply_printed_total(header: ReceiptHeader, text: str) -> tuple[ReceiptHeader
     be an item price that is printed too; a bare BALANCE line only fills in a
     total the model missed or invented. A model total that is a savings
     summary's total is dropped, flagged ``savings_total_rejected``.
+
+    A bare BALANCE also wins when the model's total is printed only on the
+    payment slip below the sale (a "TOTAL AMOUNT" OCR misread there) and the
+    balance is printed on another row too, as the tender line repeats it:
+    flagged ``total_from_balance``.
     """
     flags: list[str] = []
     if header.total is not None and header.total in header_stage.savings_block_totals(text):
@@ -95,6 +100,13 @@ def apply_printed_total(header: ReceiptHeader, text: str) -> tuple[ReceiptHeader
     missing = header.total is None or not header_stage.amount_in_text(header.total, text)
     if amount != header.total and (strong or missing):
         return header.model_copy(update={"total": amount}), [*flags, "total_from_text"]
+    if (
+        amount != header.total
+        and header.total is not None
+        and header_stage.only_on_payment_rows(header.total, text)
+        and len(header_stage.rows_printing(amount, text)) >= 2
+    ):
+        return header.model_copy(update={"total": amount}), [*flags, "total_from_balance"]
     return header, flags
 
 
