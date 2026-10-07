@@ -386,6 +386,7 @@ PRICE_FLAGS = frozenset(
         "not_in_scan",
         "points_not_money",
         "payment_row",
+        "continuation_row",
     }
 )
 
