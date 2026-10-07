@@ -365,10 +365,10 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 
 - **Container:** a centred dialog, 640px wide, over a scrim.
 - **Input:** the search field with an Esc hint.
-- **Results:** grouped (Ingredients, Products, Vendors), with the selected result in a neutral tint; herb is kept for actions.
+- **Results:** grouped (Ingredients, Products, Vendors, then Actions), with the selected result in a neutral tint; herb is kept for actions. An action row shows its section (Shop, Catalog, Settings, Home) on the right.
 - **Footer:** keyboard hints.
 - **States:**
-  - Before typing: device recents or the hint (G15).
+  - Before typing: device recents or the hint (G15), then four common actions.
   - No results: "No matches for '…'" with Add product.
   - Error: "Search isn't working right now" with Try again.
 

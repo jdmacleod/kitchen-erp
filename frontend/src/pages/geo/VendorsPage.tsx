@@ -73,6 +73,15 @@ export function VendorsPage() {
     );
 
   const [adding, setAdding] = useState(false);
+
+  // The search palette's "Add …" action links here with ?new=1 (UI-2.9): the
+  // drawer opens, and the parameter is consumed so Back does not reopen it.
+  const askedToAdd = params.get("new") === "1";
+  if (askedToAdd && !adding) setAdding(true);
+  useEffect(() => {
+    if (askedToAdd) setParam("new", null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askedToAdd]);
   const [finding, setFinding] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);

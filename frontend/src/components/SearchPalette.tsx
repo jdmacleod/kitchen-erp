@@ -1,6 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "react-router";
+import { useHealth } from "../api/queries";
 import { SEARCH_MAX, useSearch, type SearchResult, type SearchResults } from "../api/search";
+import { useCurrentUser } from "../auth/context";
+import { availableActions, commonActions, matchActions, type PaletteAction } from "../lib/paletteActions";
 import { readRecents, rememberRecent } from "../lib/searchRecents";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { CategoryChip } from "./CategoryChip";
@@ -15,10 +18,21 @@ const GROUPS: { key: keyof SearchResults; label: string }[] = [
 
 const muted = "text-sm text-neutral-600 dark:text-neutral-400";
 
+type PaletteItem = SearchResult | PaletteAction;
+
+/** Where an action or page lives, shown beside it. */
+function section(route: string): string {
+  if (route.startsWith("/shop")) return "Shop";
+  if (route.startsWith("/catalog")) return "Catalog";
+  if (route.startsWith("/settings")) return "Settings";
+  return "Home";
+}
+
 /**
  * The search palette (docs/spec/09, Search; 10, Search palette). Opened by the
  * Search button or ⌘K / Ctrl+K. Mounted only while open, so each opening starts
- * from an empty field.
+ * from an empty field. Actions and pages (UI-2.9) are matched here, after the
+ * search endpoint's groups, and only those whose section is built.
  */
 export function SearchPalette({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate();
@@ -37,16 +51,27 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   // Before typing, the last five results opened on this device (G15).
   const [recents] = useState(readRecents);
 
+  // Actions for the sections that are built, as the navigation shows them.
+  const admin = useCurrentUser().role === "admin";
+  const features = useHealth().data?.features;
+  const available = useMemo(() => availableActions(features, admin), [features, admin]);
+  const actions = useMemo(() => (typed ? matchActions(q, available) : commonActions(available)), [typed, q, available]);
+
   // Groups in their fixed order, empty ones hidden; one flat list for the keys.
+  // Search results are shown only when they answer the text in the field, so an
+  // earlier search's results are never offered; actions answer at once.
   const groups = useMemo(() => {
-    const shown: { key: string; label: string; items: SearchResult[] }[] = typed
-      ? GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter((g) => g.items.length > 0)
+    const entities: { key: string; label: string; items: PaletteItem[] }[] = typed
+      ? current
+        ? GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter((g) => g.items.length > 0)
+        : []
       : recents.length > 0
         ? [{ key: "recent", label: "Recent", items: recents }]
         : [];
+    const shown = actions.length > 0 ? [...entities, { key: "actions", label: "Actions", items: actions }] : entities;
     // Each group's offset into the flat list the arrow keys walk.
     return shown.map((g, i) => ({ ...g, start: shown.slice(0, i).reduce((n, prev) => n + prev.items.length, 0) }));
-  }, [search.data, typed, recents]);
+  }, [search.data, typed, current, recents, actions]);
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const [active, setActive] = useState(0);
   const [shownFor, setShownFor] = useState(flat);
@@ -61,18 +86,16 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     document.getElementById(optionId(active))?.scrollIntoView?.({ block: "nearest" });
   });
 
-  const open = (result: SearchResult) => {
-    rememberRecent(result);
+  const open = (result: PaletteItem) => {
+    // Recents are things, not actions (G15).
+    if (result.kind !== "action") rememberRecent(result);
     returnFocus.current = false;
     onClose();
     navigate(result.route);
   };
 
-  // The list on screen can be walked: results for the text, or the recents.
-  const listing = typed ? current : true;
-
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (!listing || flat.length === 0) return;
+    if (flat.length === 0) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       setActive((i) => (i + 1) % flat.length);
@@ -85,7 +108,8 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const showResults = listing && flat.length > 0;
+  const showResults = flat.length > 0;
+  const nothingFound = typed && current && !search.isError && flat.length === 0;
 
   return (
     <Dialog open onClose={onClose} labelledBy={`${ids}-title`} placement="screen" initialFocus={input} returnFocus={returnFocus}>
@@ -101,7 +125,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           enterKeyHint="search"
           autoComplete="off"
           role="combobox"
-          aria-label="Search ingredients, products and vendors"
+          aria-label="Search ingredients, products, vendors and actions"
           aria-expanded={showResults}
           aria-controls={`${ids}-listbox`}
           aria-autocomplete="list"
@@ -136,14 +160,15 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           <p role="status" className={`px-2 py-3 ${muted}`}>
             Searching…
           </p>
-        ) : typed && flat.length === 0 ? (
+        ) : nothingFound ? (
           <p role="status" className={`flex flex-wrap items-center gap-2 px-2 py-3 ${muted}`}>
             <span>No matches for &lsquo;{q.trim()}&rsquo;.</span>
             <Link to="/catalog/products" onClick={onClose} className={`rounded font-medium underline ${focusRing}`}>
               Add product
             </Link>
           </p>
-        ) : (
+        ) : null}
+        {showResults ? (
           <div id={`${ids}-listbox`} role="listbox" aria-label="Search results">
             {groups.map((g) => (
               <div key={g.key} role="group" aria-labelledby={`${ids}-${g.key}`} className="py-1">
@@ -166,7 +191,9 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
                       }`}
                     >
                       <span className="min-w-0 truncate font-medium">{r.label}</span>
-                      {r.kind === "ingredient" ? (
+                      {r.kind === "action" ? (
+                        <span className={`shrink-0 ${muted}`}>{section(r.route)}</span>
+                      ) : r.kind === "ingredient" ? (
                         <CategoryChip category={r.detail} categoryKey={r.category_key} />
                       ) : r.detail ? (
                         <span className={`min-w-0 truncate ${muted}`}>{r.detail}</span>
@@ -177,7 +204,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
               </div>
             ))}
           </div>
-        )}
+        ) : null}
       </div>
 
       <p className={`hidden border-t border-neutral-200 px-4 py-2 text-xs lg:block dark:border-neutral-800 ${muted}`}>
