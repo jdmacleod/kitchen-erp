@@ -171,7 +171,8 @@ class Receipt:
 
     ``item_amounts`` and ``vendor_id`` are empty for a receipt known only from
     ``expected.csv``; it then scores reconcile and item count, not line amounts
-    or aliases.
+    or aliases. ``expected_items`` is None when that file leaves the count blank
+    (a corpus that lists only some of each receipt's items): no item count then.
     """
 
     document_id: uuid.UUID
@@ -179,7 +180,7 @@ class Receipt:
     mime: str
     client_ocr_text: str | None
     expected_total: Decimal
-    expected_items: int
+    expected_items: int | None
     item_amounts: tuple[Decimal, ...] = ()
     vendor_id: uuid.UUID | None = None
     purchase_created_at: datetime | None = None
@@ -234,8 +235,11 @@ _ALIASES = text(
 )
 
 
-def read_expected_csv(path: Path) -> list[tuple[uuid.UUID, Decimal, int]]:
-    """``document_id,total,item_line_count`` rows for receipts never committed."""
+def read_expected_csv(path: Path) -> list[tuple[uuid.UUID, Decimal, int | None]]:
+    """``document_id,total,item_line_count`` rows for receipts never committed.
+
+    A blank item_line_count means the count is not known.
+    """
     rows = []
     with path.open(newline="") as handle:
         for row in csv.DictReader(handle):
@@ -243,7 +247,7 @@ def read_expected_csv(path: Path) -> list[tuple[uuid.UUID, Decimal, int]]:
                 (
                     uuid.UUID(row["document_id"].strip()),
                     Decimal(row["total"].strip()),
-                    int(row["item_line_count"].strip()),
+                    int(count) if (count := (row["item_line_count"] or "").strip()) else None,
                 )
             )
     return rows
@@ -574,7 +578,9 @@ def score(
         "reconciled": reconciled,
         "header_total_exact": header_total is not None and header_total == receipt.expected_total,
         "item_count": len(items),
-        "item_count_diff": abs(len(items) - receipt.expected_items),
+        "item_count_diff": (
+            None if receipt.expected_items is None else abs(len(items) - receipt.expected_items)
+        ),
         "runaway": any(_runaway(call) for call in calls),
         "seconds": round(sum(call.seconds for call in calls), 3),
         "completion_tokens": sum(call.completion_tokens or 0 for call in calls),
@@ -673,6 +679,12 @@ def _share(numerator: int, denominator: int) -> float | None:
     return None if denominator == 0 else numerator / denominator
 
 
+def _mean(values: Iterable[float | None]) -> float | None:
+    """The mean of the values that are known, or None when none is."""
+    known = [v for v in values if v is not None]
+    return statistics.fmean(known) if known else None
+
+
 def _sum(rows: list[dict[str, Any]], key: str) -> int:
     return sum(row.get(key, 0) for row in rows)
 
@@ -708,7 +720,7 @@ def aggregate(
         reconcile_share=_share(reconciled, n),
         runaway_share=_share(sum(1 for row in rows if row["runaway"]), n),
         header_total_exact=_share(sum(1 for row in rows if row["header_total_exact"]), n),
-        item_count_mad=None if n == 0 else statistics.fmean(row["item_count_diff"] for row in rows),
+        item_count_mad=_mean(row["item_count_diff"] for row in rows),
         alias_hit_rate=_share(_sum(rows, "alias_hits"), _sum(rows, "alias_lines")),
         line_amount_exact_share=_share(_sum(rows, "amounts_exact"), _sum(rows, "amounts_expected")),
         ocr_support=_share(_sum(rows, "witness_exact"), _sum(rows, "witness_lines")),

@@ -154,6 +154,18 @@ def test_llm_think_is_part_of_the_text_arms_prompt_version():
     assert bench.label(row) == "o→t think=false"
 
 
+def test_an_unknown_item_count_is_left_out_of_the_mean():
+    config = bench.Config("b", "o", "p", text_model="t")
+    base = {"reconciled": True, "runaway": False, "header_total_exact": True, "seconds": 1.0}
+    base |= {"completion_tokens": 1, "load_seconds": 0.0}
+    rows = [base | {"item_count_diff": 2}, base | {"item_count_diff": None}]
+    kw = {"run_id": "r", "started_at": "s", "set_hash": "h", "digest": ""}
+    assert bench.aggregate(config, rows, **kw)["item_count_mad"] == 2
+    unknown = bench.aggregate(config, [base | {"item_count_diff": None}], **kw)
+    assert unknown["item_count_mad"] is None
+    assert unknown["reconcile_share"] == 1  # reconcile does not need the count
+
+
 def _stored(arm: str, model: str, share: str, text_model: str | None = None) -> dict[str, str]:
     row = {"arm": arm, "model": model, "prompt_version": "p", "receipt_set_hash": "h"}
     row |= {"reconcile_share": share, "alias_hit_rate": "", "seconds_p50": "60"}
@@ -269,21 +281,24 @@ async def test_receipts_never_committed_come_from_expected_csv(
     fixture = load_fixture("independent_minimal")
     recorded(fixture)
     document, _ = await _committed_receipt(admin_client, fixture, "uploaded", status="draft")
+    blank, _ = await _committed_receipt(admin_client, fixture, "uncounted", status="draft")
     expected = tmp_path / "expected.csv"
     expected.write_text(
         "document_id,total,item_line_count\n"
         f"{document},24.41,6\n"
         f"{uuid.uuid4()},1.00,1\n"  # not a document here
+        f"{blank},9.99,\n"  # a count nobody knows
     )
 
     selection = await _select(expected)
 
-    (receipt,) = selection.receipts
+    receipt, uncounted = selection.receipts
     assert (str(receipt.document_id), receipt.expected_total, receipt.expected_items) == (
         document,
         Decimal("24.41"),
         6,
     )
+    assert (str(uncounted.document_id), uncounted.expected_items) == (blank, None)
     assert receipt.item_amounts == () and receipt.vendor_id is None
     assert selection.excluded["expected_csv_unknown_document"] == 1
 
