@@ -132,3 +132,59 @@ async def test_the_manifest_names_the_databases_own_revision(owner_conn):
     actual = await owner_conn.fetchval("SELECT version_num FROM alembic_version")
     async with get_sessionmaker()() as db:
         assert await backup_service.database_revision(db) == actual
+
+
+async def test_backup_refuses_a_directory_that_already_holds_one(tmp_path, monkeypatch):
+    """A second backup into the same directory fails before writing anything."""
+    from app.core.errors import ApiError
+    from app.services import backup as backup_service
+
+    def no_dump(*args, **kwargs):  # pragma: no cover - must not be reached
+        raise AssertionError("pg_dump ran despite an existing backup")
+
+    monkeypatch.setattr(backup_service.subprocess, "run", no_dump)
+    (tmp_path / "manifest.json").write_text('{"format": "kitchen-erp-backup/1"}')
+    (tmp_path / "db.dump").write_bytes(b"first backup")
+    async with get_sessionmaker()() as db:
+        with pytest.raises(ApiError) as caught:
+            await backup(db, tmp_path)
+    assert caught.value.status_code == 409
+    assert caught.value.code == "backup_exists"
+    assert "--force" in caught.value.message and str(tmp_path) in caught.value.message
+    assert (tmp_path / "db.dump").read_bytes() == b"first backup"
+
+
+async def test_force_replaces_an_existing_backup(tmp_path, monkeypatch):
+    from app.services import backup as backup_service
+
+    def fake_dump(args, **kwargs):
+        Path(args[args.index("--file") + 1]).write_bytes(b"second backup")
+
+    monkeypatch.setattr(backup_service.subprocess, "run", fake_dump)
+    # Never copy the deployment's own receipts or photos into a test directory.
+    monkeypatch.setattr(backup_service, "receipt_files", lambda root: [])
+    monkeypatch.setattr(backup_service, "media_files", lambda root: [])
+    (tmp_path / "manifest.json").write_text('{"format": "kitchen-erp-backup/1"}')
+    async with get_sessionmaker()() as db:
+        manifest = await backup(db, tmp_path, force=True)
+    assert (tmp_path / "db.dump").read_bytes() == b"second backup"
+    assert manifest["format"] == "kitchen-erp-backup/1"
+    assert '"code_head"' in (tmp_path / "manifest.json").read_text()
+
+
+async def test_a_directory_without_a_manifest_is_used_as_is(tmp_path, monkeypatch):
+    """An empty or unrelated directory is not a backup, so nothing is refused."""
+    from app.services import backup as backup_service
+
+    def fake_dump(args, **kwargs):
+        Path(args[args.index("--file") + 1]).write_bytes(b"dump")
+
+    monkeypatch.setattr(backup_service.subprocess, "run", fake_dump)
+    monkeypatch.setattr(backup_service, "receipt_files", lambda root: [])
+    monkeypatch.setattr(backup_service, "media_files", lambda root: [])
+    (tmp_path / "notes.txt").write_text("kept")
+    async with get_sessionmaker()() as db:
+        await backup(db, tmp_path / "new")
+        await backup(db, tmp_path)
+    assert (tmp_path / "new" / "manifest.json").exists()
+    assert (tmp_path / "notes.txt").read_text() == "kept"

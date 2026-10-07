@@ -263,18 +263,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 ## Operations
 
-### Backup refuses to overwrite an existing backup
-
-**What:** `kerp backup --out DIR` should refuse a directory that already holds a `manifest.json`, unless given `--force`.
-
-**Why:** A second backup to the same directory silently replaces the first one's dump and manifest. If the second backup fails partway, the last good backup is gone. The README's `$(date +%F)` example does this on any day with two runs.
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27. It was left as a policy call, because scripts that write to a fixed "latest" directory would break.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** None
-
 ### A fresh clone creates an empty ../cooklang-recipes
 
 **What:** Stop Compose's default `RECIPES_PATH=../cooklang-recipes` bind mount from creating a directory beside a fresh clone.
