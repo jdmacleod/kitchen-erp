@@ -55,6 +55,9 @@ from app.ingest.schemas import ReceiptLines
 #   for nothing (pattern 9).
 # payment_row: a payment ("GIFT CARD 18.10", "BAL 78.20") read as an item counts
 #   for nothing, and the receipt adds up more closely without it (pattern 10).
+# continuation_row: a row printed under an item that is part of it (its multi-buy
+#   rate, its name in another script, its code) was read as a second item at the
+#   same amount; it counts for nothing (pattern 11).
 STRUCTURE_FLAGS = frozenset(
     {
         "qty_from_prefix",
@@ -66,6 +69,7 @@ STRUCTURE_FLAGS = frozenset(
         "negative_from_text",
         "points_not_money",
         "payment_row",
+        "continuation_row",
     }
 )
 
@@ -90,6 +94,7 @@ def post_passes(
     parsed, merged = merge_quantity_lines(parsed)
     parsed, dropped = fold_regular_prices(parsed)
     quantity_prefix(parsed)
+    continuation_rows(parsed, printed_total, header_tax)
     regular_price_from_text(parsed, receipt_text)
     savings_printed_negative(parsed, receipt_text)
     points_not_money(parsed)
@@ -483,10 +488,108 @@ def payment_rows(
     _detach_from(lines, "payment_row")
 
 
+# --- 11. A row of an item read as another item -------------------------------
+
+# "2 @ 1/ $8.99", "690245 2 @2/$4.47", "2 @ $3.49ea.": a count, an optional "for
+# how many", and a price. The line comes to count x price / for-how-many.
+_MULTI_BUY = re.compile(
+    r"(?<![\d.])(?P<count>\d{1,3})\s*@\s*(?:(?P<per>\d{1,2})\s*/\s*)?\$?\s*"
+    r"(?P<price>\d+[.,]\d{2})"
+)
+# Letters of a script other than Latin: Cyrillic, Hebrew, Arabic, Thai, kana, CJK,
+# Hangul. A till that prints a name twice prints it in two scripts.
+_NON_LATIN = re.compile(
+    "[\u0400-\u04ff\u0590-\u06ff\u0e00-\u0e7f\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]"
+)
+_NAME_WORD = re.compile(r"[A-Za-z]{3,}")
+
+
+def _multi_buy(raw_text: str, amount: Decimal) -> tuple[Decimal, Decimal | None] | None:
+    """(count, unit price) when the row is a rate, naming nothing, that comes to
+    ``amount``. A row that names a product beside its rate is a purchase."""
+    m = _MULTI_BUY.search(raw_text)
+    if m is None:
+        return None
+    rest = raw_text[: m.start()] + " " + raw_text[m.end() :]
+    if _NAME_WORD.search(re.sub(r"\b(?:each|for|ea)\b", " ", rest, flags=re.IGNORECASE)):
+        return None
+    count = Decimal(m["count"])
+    per = Decimal(m["per"] or "1")
+    price = Decimal(m["price"].replace(",", "."))
+    if count < 1 or per < 1 or abs(count * price / per - amount) > CENTS:
+        return None
+    each = price / per
+    return count, each if each == each.quantize(CENTS) else None
+
+
+def _part_of(row: ParsedLine, head: ParsedLine) -> bool:
+    """Whether ``row`` reads as part of ``head`` rather than a purchase of its own:
+    its name in another script, or a code or size with no name in it."""
+    raw = row.raw_text
+    if _NON_LATIN.search(raw):
+        return not _NON_LATIN.search(head.raw_text)
+    return not _NAME_WORD.search(raw)
+
+
+def continuation_rows(
+    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
+) -> None:
+    """Rows printed under an item that belong to it count for nothing.
+
+    A till can print one purchase over several rows: the name, then its
+    multi-buy rate ("2 @ 1/ $8.99"), its name again in another script, its code
+    or size. Read row by row, each row became an item carrying the purchase's
+    amount, and the receipt counted it two to five times. A row is part of the
+    item above when it carries the same amount and:
+
+    * prints a rate that comes to that amount (the arithmetic is the proof; the
+      item takes the count and the unit price), or
+    * is the name in another script, or a code or size with no name in it, and
+      the receipt then adds up more closely to its printed total (without one,
+      nothing changes).
+
+    Two rows that both name a product are two purchases, even at one price. The
+    row is kept for review as an item at zero; a saving attached to it moves to
+    the item.
+    """
+    head: ParsedLine | None = None
+    for line in lines:
+        # Savings, taxes and rows at zero (a weight row) sit between an item and
+        # its rows; only an item with an amount can be a head or a row of one.
+        if line.line_kind != "item" or line.line_total <= 0:
+            continue
+        if head is None or line.line_total != head.line_total:
+            head = line
+            continue
+        rate = _multi_buy(line.raw_text, line.line_total)
+        if rate is None:
+            if not _part_of(line, head) or printed_total is None:
+                head = line  # a second purchase at the same price, or no way to tell
+                continue
+            before = _difference(lines, printed_total, header_tax)
+            amount, line.line_total = line.line_total, Decimal("0")
+            if _difference(lines, printed_total, header_tax) >= before:
+                line.line_total = amount
+                head = line
+                continue
+        else:
+            line.line_total = Decimal("0")
+            if head.qty in (None, Decimal("1")) or "qty_assumed" in head.flags:
+                head.qty, head.unit, head.unit_price = rate[0], "each", rate[1]
+                head.flags = [f for f in head.flags if f not in QTY_FLAGS]
+                head.flags.append("qty_from_line_below")
+        line.unit_price = None
+        line.flags = [f for f in line.flags if f not in QTY_FLAGS] + ["continuation_row"]
+        for other in lines:
+            if other.parent_seq == line.seq:
+                other.parent_seq = head.seq
+
+
 __all__ = [
     "STRUCTURE_FLAGS",
     "PostPasses",
     "flag_footer_rows",
+    "continuation_rows",
     "items_read_as_discounts",
     "payment_rows",
     "points_not_money",

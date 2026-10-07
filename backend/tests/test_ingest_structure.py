@@ -349,3 +349,84 @@ def test_a_bought_gift_card_and_a_payment_word_that_is_bought_stay_items():
 def test_without_a_printed_total_payment_rows_are_left_as_read():
     (line,) = _passes(("GIFT CARD 15.00", "item", "15.00"))
     assert line.line_total == Decimal("15.00") and "payment_row" not in line.flags
+
+
+# --- 11. A row of an item read as another item -------------------------------
+
+
+def test_a_multi_buy_rate_row_is_part_of_the_item_above():
+    # No printed total needed: 2 x 8.99 is the proof.
+    lines = _passes(
+        ("Dune Tomatoes Diced", "item", "17.98"),
+        ("2 @ 1/ $8.99", "item", "17.98"),
+        ("YOU SAVED $2.00", "discount", "2.00"),
+    )
+    tomatoes, rate, saving = lines
+    assert (rate.line_total, "continuation_row" in rate.flags) == (Decimal("0"), True)
+    assert (tomatoes.qty, tomatoes.unit_price, tomatoes.line_total) == (
+        Decimal("2"),
+        Decimal("8.99"),
+        Decimal("17.98"),
+    )
+    assert "qty_from_line_below" in tomatoes.flags
+    assert saving.parent_seq == tomatoes.seq  # the saving follows the item, not the rate row
+
+
+def test_a_for_how_many_rate_comes_to_the_amount():
+    lines = _passes(
+        ("(SALE) HOLLOW SOY DRINK", "item", "4.47"), ("690245 2 @2/$4.47", "item", "4.47")
+    )
+    assert lines[1].line_total == Decimal("0") and lines[0].qty == Decimal("2")
+
+
+def test_a_name_in_another_script_and_a_code_row_fold_when_the_total_agrees():
+    lines = _passes(
+        ("WILLOW POMELO", "item", "2.68"),
+        ("柚子", "item", "2.68"),
+        ("FIR SPARKLING WINE", "item", "19.95"),
+        ("00004762", "item", "19.95"),
+        ("01500ML", "item", "19.95"),
+        total="22.63",
+    )
+    assert [line.line_total for line in lines] == [
+        Decimal("2.68"),
+        Decimal("0"),
+        Decimal("19.95"),
+        Decimal("0"),
+        Decimal("0"),
+    ]
+    assert [("continuation_row" in line.flags) for line in lines] == [
+        False,
+        True,
+        False,
+        True,
+        True,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("rows", "total"),
+    [
+        # Two rows that name a product are two purchases, even at one price.
+        ((("1986 TRAIL PACK", "item", "9.97"), ("1986 TRAIL PACK", "item", "9.97")), "19.94"),
+        # A rate row that names its product is a purchase of its own.
+        ((("COLA 2 @ $1.00", "item", "2.00"), ("COLA 2 @ $1.00", "item", "2.00")), "4.00"),
+        # A code row the total needs stays: two produce codes bought twice.
+        ((("4011", "item", "1.29"), ("4011", "item", "1.29")), "2.58"),
+    ],
+)
+def test_rows_that_are_purchases_of_their_own_stay(rows, total):
+    lines = _passes(*rows, total=total)
+    assert all(line.line_total > 0 for line in lines)
+    assert not any("continuation_row" in line.flags for line in lines)
+
+
+def test_without_a_printed_total_only_a_proven_rate_folds():
+    lines = _passes(("WILLOW POMELO", "item", "2.68"), ("柚子", "item", "2.68"))
+    assert [line.line_total for line in lines] == [Decimal("2.68"), Decimal("2.68")]
+
+
+def test_a_rate_that_does_not_come_to_the_amount_is_not_a_row_of_it():
+    # 2 x 2.50 is not 6.00. (A bare quantity row is the quantity passes' to judge.)
+    lines = _passes(("RYE LOAF", "item", "6.00"), ("2 @ $2.50", "item", "6.00"))
+    assert not any("continuation_row" in line.flags for line in lines)
