@@ -234,6 +234,29 @@ async def queue_page_images(
     return queued
 
 
+async def queue_page_for_price(db: AsyncSession, proposal: ProductProposal) -> bool:
+    """A clipped page that gave a listing but no price: the helper reads the public page.
+
+    Some stores keep the product record in an inline script, which the clip window never
+    sends, so an adapter run on the clip sees only the address. The helper fetches the
+    page itself, without the person's cookies, and its answer joins this proposal. Asked
+    once per proposal, never for a page saved without a store. Not committed here."""
+    url = (proposal.listing or {}).get("canonical_url")
+    if proposal.status != "pending" or not url or proposal.price is not None:
+        return False
+    if not await helper_configured(db):
+        return False
+    asked = await db.scalar(
+        select(func.count()).where(
+            LookupRequest.proposal_id == proposal.id, LookupRequest.kind == "page"
+        )
+    )
+    if asked:
+        return False
+    db.add(LookupRequest(id=new_id(), kind="page", proposal_id=proposal.id, value=url))
+    return True
+
+
 async def queue_unknown_scan(db: AsyncSession, proposal: ProductProposal, gtin: str) -> None:
     """An unknown scanned barcode, only when the household turned that on (off by default)."""
     if not get_settings().products_autoqueue_gtins:
@@ -496,8 +519,19 @@ async def answer(
     if proposal is not None and proposal.status == "pending":
         locked = await proposals.get_proposal(db, proposal.id, lock=True)
         fields = merging.merge([*merging.candidates_of(locked.fields), *candidates])
-        match = await proposals.match_catalog(db, fields, locked.listing)
-        await proposals.write_proposal(db, locked, fields=fields, match=match)
+        changes: dict[str, Any] = {
+            "fields": fields,
+            "match": await proposals.match_catalog(db, fields, locked.listing),
+        }
+        if locked.listing:
+            # A page answer may bring the price the clip lacked; the listing follows the
+            # merged fields, as after the extract job, so a person's edit still wins.
+            from app.services.page_captures import listing_from_fields
+
+            changes["listing"] = listing_from_fields(locked.listing, fields)
+            if (price := vendor_pages.posted_price(fields)) is not None:
+                changes["price"] = price
+        await proposals.write_proposal(db, locked, **changes)
         await _store_photos(db, locked, photos)
         await _record(db, request.id, token_id, body, "merged")
         return "merged", locked.id

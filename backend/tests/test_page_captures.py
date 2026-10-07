@@ -479,3 +479,75 @@ async def test_the_listing_follows_the_adapters_name_and_number_after_the_job(
         uuid.UUID(r.json()["result"]["listing_id"]),
     )
     assert (row["title"], row["vendor_sku"]) == ("Rolled oats, large", "40112")
+
+
+# --- a page whose price the clip never saw: the helper reads the public page -------------
+
+
+async def page_requests(helper) -> list[dict]:
+    r = await helper.get("/api/v1/lookup-requests", headers=helper.read_headers)
+    return [i for i in r.json()["items"] if i["kind"] == "page"]
+
+
+async def test_a_clip_without_a_price_asks_the_helper_for_its_public_page_once(
+    admin_client, store, helper, recorded, no_network
+):
+    """The store keeps its price in page data the clip never sends: after the extract job
+    the helper is asked for the canonical page, once, and its price joins the proposal."""
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    proposal = (await admin_client.post("/api/v1/product-captures", json=placeholder_page())).json()
+    await work()
+    asked = await page_requests(helper)
+    assert [a["value"] for a in asked] == [proposal["listing"]["canonical_url"]]
+    assert (await admin_client.get(f"/api/v1/product-proposals/{proposal['id']}")).json()[
+        "price"
+    ] is None
+
+    body = json.dumps(
+        {
+            "format": tph.FORMAT,
+            "request_id": asked[0]["id"],
+            "candidates": [
+                {"field": "title", "value": "Lantern Bay Rolled Oats", "source": "adapter"},
+                {"field": "item_number", "value": "40112", "source": "adapter"},
+                {"field": "price", "value": "4.29", "source": "adapter"},
+            ],
+        }
+    )
+    r = await tph.post_answer(helper, body)
+    assert r.status_code == 200 and r.json()["outcome"] == "merged", r.text
+    shown = (await admin_client.get(f"/api/v1/product-proposals/{proposal['id']}")).json()
+    assert shown["price"]["amount"] == "4.29"
+    assert shown["fields"]["price"]["via"] == "helper"
+    assert shown["listing"]["vendor_sku"] == "40112"
+    assert shown["status"] == "pending"  # a person still decides (non-negotiable 8)
+    # Answered: never asked again for this proposal.
+    await work()
+    assert await page_requests(helper) == []
+
+
+async def test_a_clip_without_a_price_asks_nothing_without_a_helper(
+    admin_client, store, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    await admin_client.post("/api/v1/product-captures", json=placeholder_page())
+    await work()
+    assert await owner_conn.fetchval("SELECT count(*) FROM lookup_request") == 0
+
+
+async def test_a_clip_whose_page_gave_a_price_asks_for_no_page(
+    admin_client, store, helper, page_data_adapter, recorded, no_network
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    await admin_client.post("/api/v1/product-captures", json=placeholder_page())
+    await work()
+    assert await page_requests(helper) == []
+
+
+async def test_a_page_saved_without_a_store_is_never_sent_to_the_helper(
+    admin_client, store, helper, recorded, no_network
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    await admin_client.post("/api/v1/product-captures", json=placeholder_page(without_store=True))
+    await work()
+    assert await page_requests(helper) == []
