@@ -713,8 +713,9 @@ async def _upsert_listing(
         )
         db.add(row)
     row.product_id = product.id
-    row.title = str(listing.get("title") or product.name)
-    row.vendor_sku = listing.get("vendor_sku")
+    # The merged fields hold the reviewer's edits; the listing was written at capture.
+    row.title = str(merging.value(proposal.fields, "title") or product.name)
+    row.vendor_sku = merging.value(proposal.fields, "item_number") or listing.get("vendor_sku")
     row.store_ref = listing.get("store_ref")
     row.last_captured_at = now
     row.status = "active"

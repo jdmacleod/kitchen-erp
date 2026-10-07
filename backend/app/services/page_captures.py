@@ -118,6 +118,16 @@ async def preview(db: AsyncSession, page_url: str) -> AddressPreview:
 _price = vendor_pages.posted_price
 
 
+def listing_from_fields(listing: dict[str, Any], fields: dict[str, Any]) -> dict[str, Any]:
+    """The listing's title and store number follow the merged fields, which already rank a
+    person's edit first; the address is the last resort for a title."""
+    return {
+        **listing,
+        "title": merging.value(fields, "title") or listing["canonical_url"],
+        "vendor_sku": merging.value(fields, "item_number"),
+    }
+
+
 async def capture_page(
     db: AsyncSession, user: AppUser, data: PageCapture
 ) -> proposals.CaptureResult:
@@ -149,8 +159,10 @@ async def capture_page(
         structured_data=data.structured_data,
         vendor_name=vendor.name if vendor else None,
     )
-    if data.title:
-        names = ladder.site_names(data.page_url, data.meta, vendor.name if vendor else None)
+    names = ladder.site_names(data.page_url, data.meta, vendor.name if vendor else None)
+    # A tab title like "Product Detail" names the page, not the product: it is no title,
+    # so the adapter's or the model's name can win later.
+    if data.title and not ladder.placeholder_title(data.title[:200], names):
         title = ladder.clean_title(data.title[:200], names)
         evidence.candidates.append(merging.Candidate("title", title, "page_meta"))
     fields = merging.merge(evidence.candidates)
@@ -159,7 +171,7 @@ async def capture_page(
         listing = {
             "vendor_id": str(vendor.id),
             "canonical_url": canonical,
-            "title": merging.value(fields, "title") or data.title or canonical,
+            "title": merging.value(fields, "title") or canonical,
             "vendor_sku": merging.value(fields, "item_number"),
             "store_ref": store_ref,
         }
@@ -278,6 +290,7 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
             }
             if proposal.listing:
                 changes["price"] = _price(fields)
+                changes["listing"] = listing_from_fields(proposal.listing, fields)
             await proposals.write_proposal(db, proposal, **changes)
         output["fields"] = sorted({c.field for c in found})
     await product_photos.record(db, job, started, output)
