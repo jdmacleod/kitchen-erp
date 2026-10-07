@@ -206,6 +206,7 @@ _COMMITTED = text(
     )
     SELECT p.id AS purchase_id, p.total, p.flags, p.created_at,
            vl.vendor_id, d.id AS document_id, d.image_path, d.mime, d.client_ocr_text,
+           d.created_at AS uploaded_at,
            (h.output -> 'flags' ? 'total_from_text'
               AND (h.output ->> 'total')::numeric = p.total) AS unedited_text_total
     FROM purchase p
@@ -224,7 +225,8 @@ _ITEM_AMOUNTS = text(
     """
 )
 _DOCUMENTS = text(
-    "SELECT id, image_path, mime, client_ocr_text FROM receipt_document WHERE id = ANY(:ids)"
+    "SELECT id, image_path, mime, client_ocr_text, created_at AS uploaded_at"
+    " FROM receipt_document WHERE id = ANY(:ids)"
 )
 _ALIASES = text(
     "SELECT vendor_id, raw_text_norm, created_at FROM receipt_alias WHERE vendor_id = ANY(:ids)"
@@ -249,19 +251,28 @@ def read_expected_csv(path: Path) -> list[tuple[uuid.UUID, Decimal, int | None]]
     return rows
 
 
-async def select_receipts(db: AsyncSession, expected_csv: Path | None = None) -> Selection:
+async def select_receipts(
+    db: AsyncSession, expected_csv: Path | None = None, uploaded_since: datetime | None = None
+) -> Selection:
     """The receipts to score, the exclusions by reason, and the vendors' aliases.
 
     SELECT only, in a read-only transaction the caller rolls back. Scored: every
     committed purchase with a receipt, except those whose total is not a
     person's (VX1, OV5): ``total_missing`` (computed, not printed), still
-    ``reconcile_mismatch``, or a ``total_from_text`` total nobody edited.
+    ``reconcile_mismatch``, or a ``total_from_text`` total nobody edited. With
+    ``uploaded_since``, only receipts uploaded at or after it: a hold-out batch
+    the configuration was not chosen on (04, 2O); the rest count as
+    ``uploaded_before``.
     """
     await db.execute(text("SET TRANSACTION READ ONLY"))
     excluded = Counter({"total_missing": 0, "reconcile_mismatch": 0, "unedited_text_total": 0})
+    if uploaded_since is not None:
+        excluded["uploaded_before"] = 0
     kept = []
     for row in (await db.execute(_COMMITTED)).mappings():
-        if "total_missing" in row["flags"]:
+        if uploaded_since is not None and row["uploaded_at"] < uploaded_since:
+            excluded["uploaded_before"] += 1
+        elif "total_missing" in row["flags"]:
             excluded["total_missing"] += 1
         elif "reconcile_mismatch" in row["flags"]:
             excluded["reconcile_mismatch"] += 1
@@ -288,7 +299,9 @@ async def select_receipts(db: AsyncSession, expected_csv: Path | None = None) ->
         for row in kept
     ]
     if expected_csv is not None:
-        receipts.extend(await _expected_receipts(db, expected_csv, receipts, excluded))
+        receipts.extend(
+            await _expected_receipts(db, expected_csv, receipts, excluded, uploaded_since)
+        )
     vendor_ids = sorted({r.vendor_id for r in receipts if r.vendor_id is not None})
     aliases: dict[uuid.UUID, list[tuple[str, datetime]]] = {v: [] for v in vendor_ids}
     if vendor_ids:
@@ -298,7 +311,11 @@ async def select_receipts(db: AsyncSession, expected_csv: Path | None = None) ->
 
 
 async def _expected_receipts(
-    db: AsyncSession, path: Path, committed: list[Receipt], excluded: Counter[str]
+    db: AsyncSession,
+    path: Path,
+    committed: list[Receipt],
+    excluded: Counter[str],
+    uploaded_since: datetime | None = None,
 ) -> list[Receipt]:
     rows = read_expected_csv(path)
     already = {r.document_id for r in committed}
@@ -309,6 +326,10 @@ async def _expected_receipts(
         for row in (await db.execute(_DOCUMENTS, {"ids": [row[0] for row in wanted]})).mappings()
     }
     excluded["expected_csv_unknown_document"] = sum(1 for row in wanted if row[0] not in found)
+    if uploaded_since is not None:
+        before = {d for d, row in found.items() if row["uploaded_at"] < uploaded_since}
+        excluded["uploaded_before"] += len(before)
+        found = {d: row for d, row in found.items() if d not in before}
     return [
         Receipt(
             document_id=doc_id,
