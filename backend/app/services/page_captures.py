@@ -20,7 +20,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import extract as ladder
@@ -30,7 +30,7 @@ from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
 from app.ingest.errors import IngestError, ModelUnavailable
-from app.models import AppUser, ProductCapture, ProductJob, ProductProposal
+from app.models import AppUser, ProductCapture, ProductImage, ProductJob, ProductProposal
 from app.models.geo import Vendor
 from app.services import lookups, plugins, product_photos, proposals, vendor_pages
 from app.services.product_photos import PhotoUpload
@@ -200,6 +200,18 @@ async def capture_page(
 # --- the extract job ---------------------------------------------------------------
 
 
+async def _queue_adapter_images(
+    db: AsyncSession, proposal: ProductProposal, image_urls: list[str]
+) -> int:
+    """Photos an adapter read off the page go to the helper to fetch, as a clip's own
+    image addresses do, unless the proposal already has a photo. Nothing is fetched here."""
+    photos = select(func.count()).where(ProductImage.proposal_id == proposal.id)
+    has_photo = await db.scalar(photos)
+    if has_photo:
+        return 0
+    return await lookups.queue_page_images(db, proposal, image_urls)
+
+
 async def run_job(db: AsyncSession, job: ProductJob) -> None:
     """Retailer adapters, then the model over the page text; each only adds candidates."""
     from app.services import identify
@@ -221,8 +233,11 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     page = {k: capture.payload.get(k) for k in ("page_url", "canonical_url", "title", "meta")}
     page["structured_data"] = capture.payload.get("structured_data") or []
     page["dom_text"] = capture.payload.get("dom_text") or ""
-    found, records = plugins.run(page)
-    output["adapters"] = records
+    adapted = plugins.run(page)
+    found = adapted.candidates
+    output["adapters"] = adapted.records
+    if adapted.images:
+        output["images_queued"] = await _queue_adapter_images(db, proposal, adapted.images)
     text = page["dom_text"].strip()
     await db.commit()  # before any model call (F11-2)
     if text:

@@ -159,20 +159,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Vision reading Phase 1
 
-## Purchases
-
-### Restore a voided purchase
-
-**What:** A "Restore" action on a voided purchase: voided → reviewed, then a normal commit re-emits its prices.
-
-**Why:** Removing the wrong purchase otherwise means entering it again by hand.
-
-**Context:** Recorded by the eng review of #72/#74 on 2026-09-28 (D13). With D4, a purchase that ever reached the price book is voided rather than deleted, and keeps its lines. `reopen_purchase` (`services/resolution.py`) accepts only `committed` today and would need to accept `voided`. The recommit path already re-emits observations for resolved item lines.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** #74
-
 ## Vendors
 
 ### Public vendor dataset and reference enrichment tool
@@ -225,18 +211,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Phase 3 approval
 
-### Merge from an ingredient's own page
-
-**What:** A "Merge into…" action (and "Link to standard name") on the ingredient detail page, reusing the link page's merge: survivor choice, retired name, moved products, copied measures, full recompute.
-
-**Why:** Duplicates keep appearing after the one-time link list is cleared, and merging is the lasting capability.
-
-**Context:** Proposed by the outside-voice review of sub-phase 1G on 2026-09-30 (card O12); the user kept the dedicated link page (DV1) and deferred this. Build on `app/services/ingredient_reconcile.py` once 1G ships.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G
-
 ### Ingredient vocabulary export and import
 
 **What:** `kerp export ingredients` and `kerp import ingredients [--dry-run]` reading and writing a versioned `kitchen-erp-ingredients/1` file, with the vendor file loader's rules and the 1F edit-wins merge, lifted into one module shared with vendors.
@@ -263,18 +237,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 ## Operations
 
-### Backup refuses to overwrite an existing backup
-
-**What:** `kerp backup --out DIR` should refuse a directory that already holds a `manifest.json`, unless given `--force`.
-
-**Why:** A second backup to the same directory silently replaces the first one's dump and manifest. If the second backup fails partway, the last good backup is gone. The README's `$(date +%F)` example does this on any day with two runs.
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27. It was left as a policy call, because scripts that write to a fixed "latest" directory would break.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** None
-
 ### A fresh clone creates an empty ../cooklang-recipes
 
 **What:** Stop Compose's default `RECIPES_PATH=../cooklang-recipes` bind mount from creating a directory beside a fresh clone.
@@ -286,18 +248,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Effort:** S (human) / S (CC)
 **Priority:** P3
 **Depends on:** Phase 3 approval, or a decision on the default
-
-### Notice when a tab is running an old build
-
-**What:** Compare the build the page was loaded with against the one `/api/v1/health` reports, and offer "Reload to get the new version" when they differ.
-
-**Why:** After an update, an open tab keeps running the previous build. On 2026-09-30, a tab from before 1G followed Home's new "Link" inbox row to a route it didn't know. It rendered the new API's answer as the wrong page and went blank. #109 added a page-level error boundary, so a crash now shows "This page couldn't be shown" with Reload instead of a white screen. The tab still doesn't know it's out of date until something breaks.
-
-**Context:** `/health` already carries `version` and `commit` (the sidebar's build line). The web bundle would need its own build id baked in at build time. Deploys happen by `make up` on the household stack.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** None
 
 ## Completed
 
