@@ -384,6 +384,8 @@ PRICE_FLAGS = frozenset(
         "regular_price_from_text",
         "tax_from_rate",
         "not_in_scan",
+        "points_not_money",
+        "payment_row",
     }
 )
 
