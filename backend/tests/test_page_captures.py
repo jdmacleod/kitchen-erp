@@ -13,7 +13,7 @@ from pathlib import Path
 import asyncpg
 import pytest
 
-from app.catalog.extract import extract, from_address
+from app.catalog.extract import extract, from_address, placeholder_title, site_names
 from app.catalog.proposals import merge, value
 from app.core.config import get_settings
 from app.services import plugins
@@ -370,3 +370,112 @@ def test_reading_a_pack_size_stays_fast_on_hostile_text():
     assert time.monotonic() - started < 1
     assert pack_from_text("Oats 500 g") == {"qty": "500", "unit": "g"}
     assert pack_from_text("Rolled oats 1.5kg") == {"qty": "1.5", "unit": "kg"}
+
+
+# --- placeholder titles, a barcode in the address, the listing after the job (#219) -----
+
+
+def _gtin13(body: str) -> str:
+    """A GTIN-13 with its check digit, from an invented 12-digit body (spaces allowed)."""
+    digits = body.replace(" ", "")
+    total = sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(digits))
+    return digits + str((10 - total % 10) % 10)
+
+
+CODE = _gtin13("2 415803 30718")  # invented
+ROUTED = f"{SHOP}/product-details/40112/12/{CODE}"
+
+
+def placeholder_page(**extra) -> dict:
+    """A storefront built from page data: no JSON-LD, and a tab title naming the page's kind."""
+    return {
+        "page_url": ROUTED,
+        "title": "Product Detail",
+        "meta": {"og:title": "Product Detail", "og:site_name": "JuniperMarket"},
+        "structured_data": [],
+        "dom_text": "Lantern Bay Rolled Oats 500 g $4.29 Barcode " + CODE,
+        **extra,
+    }
+
+
+@pytest.mark.parametrize("title", ["Product Detail", "Item details", "Juniper Market"])
+def test_a_tab_title_naming_the_page_or_the_site_is_no_title(title):
+    names = site_names(ROUTED, {}, "Juniper Market")
+    assert placeholder_title(title, names)
+    assert not placeholder_title("Rolled Oats | Juniper Market", names)
+
+
+def test_a_barcode_in_the_address_is_a_gtin_not_the_stores_number():
+    fields = merge(from_address(ROUTED).candidates)
+    assert value(fields, "gtin") == "0" + CODE and fields["gtin"]["source"] == "address"
+    assert "item_number" not in fields
+
+
+def test_a_number_that_fails_its_check_digit_stays_the_stores_number():
+    bad = CODE[:-1] + str((int(CODE[-1]) + 1) % 10)
+    fields = merge(from_address(f"{SHOP}/product-details/{bad}").candidates)
+    assert value(fields, "item_number") == bad and "gtin" not in fields
+
+
+async def test_a_clip_titled_only_product_detail_has_no_title_and_a_gtin(admin_client, store):
+    r = await admin_client.post("/api/v1/product-captures", json=placeholder_page())
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert "title" not in body["fields"]
+    assert body["fields"]["gtin"]["value"] == "0" + CODE
+    assert "item_number" not in body["fields"]
+    assert body["listing"]["title"] == body["listing"]["canonical_url"]
+    assert body["listing"]["vendor_sku"] is None
+
+
+NEXT_DATA_ADAPTER = """
+def read(page):
+    return [
+        {"field": "title", "value": "Lantern Bay Rolled Oats"},
+        {"field": "item_number", "value": "40112"},
+        {"field": "price", "value": "4.29"},
+    ]
+"""
+
+
+@pytest.fixture
+def page_data_adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    name = f"kerp_test_pagedata_{uuid.uuid4().hex[:8]}"
+    (folder / f"{name}.py").write_text(NEXT_DATA_ADAPTER)
+    monkeypatch.setattr(get_settings(), "plugins_path", str(folder))
+    monkeypatch.setattr(get_settings(), "product_adapters", [f"{name}:read"])
+    plugins._cache.clear()
+    yield folder
+    plugins._cache.clear()
+
+
+async def test_the_listing_follows_the_adapters_name_and_number_after_the_job(
+    admin_client, store, page_data_adapter, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    proposal = (await admin_client.post("/api/v1/product-captures", json=placeholder_page())).json()
+    await work()
+    body = (await admin_client.get(f"/api/v1/product-proposals/{proposal['id']}")).json()
+    assert body["fields"]["title"]["value"] == "Lantern Bay Rolled Oats"
+    assert body["listing"]["title"] == "Lantern Bay Rolled Oats"
+    assert body["listing"]["vendor_sku"] == "40112"
+    assert body["price"]["amount"] == "4.29"
+
+    # A reviewer's name wins on the stored listing too, not the one read at capture.
+    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{proposal['id']}/accept",
+        json={
+            "action": "new",
+            "ingredient_id": ing["id"],
+            "edits": {"title": "Rolled oats, large"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    row = await owner_conn.fetchrow(
+        "SELECT title, vendor_sku FROM vendor_listing WHERE id = $1",
+        uuid.UUID(r.json()["result"]["listing_id"]),
+    )
+    assert (row["title"], row["vendor_sku"]) == ("Rolled oats, large", "40112")
