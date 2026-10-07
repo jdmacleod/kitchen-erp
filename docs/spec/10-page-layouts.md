@@ -10,7 +10,7 @@ Every page follows the same hierarchy:
 2. **The thing you came for**: search plus the list, table or detail content, taking most of the space.
 3. **Creation moves out of the page flow** into a right-side drawer opened by the primary action. Forms never sit above the list they add to.
 
-Main content is left-aligned beside the sidebar with 44–56px padding. List pages may run full width; reading-heavy pages cap around 920px. Confirmations use the shared Notice at the top of the main content (D18).
+Main content is left-aligned beside the sidebar with 44–56px padding. List pages may run full width; reading-heavy pages cap around 920px. Confirmations use the shared Notice at the top of the main content (D18). Above it, and only after a redeploy, sits the new-version notice from 09 (#209).
 
 ## Home (Home: unified inbox · Home: first run · Home: inbox loading, empty, error)
 

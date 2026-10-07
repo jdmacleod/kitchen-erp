@@ -47,6 +47,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-2.14** "New purchase" is not a nav item; it is reachable from Capture and as the primary action on Shop pages.
 - **UI-2.15** Receipts being read show as "Reading n receipts…" on Home, not counted in the badge (G1). While a batch of several is read, the line reads "Reading 4 of 12 receipts · about 8 minutes left", with no estimate until a read has finished (issue 122). When the oldest one is older than `INGEST_STALL_MINUTES` (default 10), the line reads "Reading is taking longer than usual · Check System" (D21).
 - **UI-2.16** The Notice carries confirmations across a navigation (D18).
+- **UI-2.17** When `/health` reports a different commit from the one it reported when the tab loaded, the page shows "A new version is ready." with Reload and "Not now". It never reloads by itself, stays across navigation, and shows nothing while either commit is missing or "unknown" (#209).
   - Back and reload do not show it again, and only one shows at a time.
   - An action in it can be reached by keyboard.
   - The shelf-price "Saved" notice clears after 3 seconds.

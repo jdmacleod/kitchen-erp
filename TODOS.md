@@ -249,18 +249,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Phase 3 approval, or a decision on the default
 
-### Notice when a tab is running an old build
-
-**What:** Compare the build the page was loaded with against the one `/api/v1/health` reports, and offer "Reload to get the new version" when they differ.
-
-**Why:** After an update, an open tab keeps running the previous build. On 2026-09-30, a tab from before 1G followed Home's new "Link" inbox row to a route it didn't know. It rendered the new API's answer as the wrong page and went blank. #109 added a page-level error boundary, so a crash now shows "This page couldn't be shown" with Reload instead of a white screen. The tab still doesn't know it's out of date until something breaks.
-
-**Context:** `/health` already carries `version` and `commit` (the sidebar's build line). The web bundle would need its own build id baked in at build time. Deploys happen by `make up` on the household stack.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** None
-
 ## Completed
 
 - **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).
