@@ -56,6 +56,12 @@ class Settings(BaseSettings):
 
     ollama_base_url: str = "http://host.docker.internal:11434"
     llm_model: str = "gpt-oss:20b"
+    # Whether the text model reasons before it answers. Empty sends nothing and
+    # leaves it to the model; "false" stops a model that would otherwise reason
+    # past the timeout (gemma4 on receipt text). "true" and the levels go only to
+    # models that say they can think: Ollama refuses them for any other model.
+    # Vision calls always send false.
+    llm_think: Literal["", "false", "true", "low", "medium", "high"] = ""
     # A local vision model that reads product photos (04, 2L), the setting vision
     # receipt reading will use (2J). Empty: photos are read by Tesseract and the
     # text model instead.

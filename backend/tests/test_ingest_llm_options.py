@@ -25,6 +25,8 @@ from typing import Any
 import httpx
 import pytest
 
+from app.core.config import get_settings
+from app.ingest import llm
 from app.ingest.errors import InvalidModelOutput, ModelMissing, ModelUnavailable
 from app.ingest.header import HEADER_TASK
 from app.ingest.lines import LINES_TASK
@@ -391,3 +393,74 @@ async def test_recorded_answers_can_be_scripted_per_model():
     )
     assert second.last_usage.prompt_tokens > 0
     assert second.ledger.calls[-1].completion_tokens == second.last_usage.completion_tokens
+
+
+# --- LLM_THINK -----------------------------------------------------------------------
+
+SHOW_THINKING = (200, {"capabilities": ["completion", "thinking"]})
+SHOW_PLAIN = (200, {"capabilities": ["completion", "tools"]})
+
+
+@pytest.fixture
+def think(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(llm, "_THINKS", {})
+
+    def _set(value: str) -> None:
+        monkeypatch.setattr(get_settings(), "llm_think", value)
+
+    return _set
+
+
+async def test_unset_sends_no_think_and_asks_nothing(think):
+    think("")
+    transport = Scripted(_answer(VALID_HEADER))
+    await LlmClient(transport=transport).extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert len(transport.bodies) == 1
+    assert "think" not in transport.bodies[0]
+
+
+async def test_false_goes_to_every_model_without_asking(think):
+    # Every model accepts false: a model that cannot think just ignores it.
+    think("false")
+    transport = Scripted(_answer(VALID_HEADER))
+    await LlmClient(transport=transport).extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert [b.get("think") for b in transport.bodies] == [False]
+
+
+@pytest.mark.parametrize(("setting", "sent"), [("true", True), ("low", "low")])
+async def test_true_and_levels_go_only_to_a_model_that_can_think(think, setting, sent):
+    think(setting)
+    transport = Scripted(SHOW_THINKING, _answer(VALID_HEADER))
+    client = LlmClient(model="thinker", transport=transport)
+    await client.extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert transport.bodies[0] == {"model": "thinker"}  # the /api/show question
+    assert transport.bodies[1]["think"] == sent
+    # Asked once per model: the next call goes straight to the chat.
+    transport.replies = [_answer(VALID_HEADER)]
+    await client.extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert len(transport.bodies) == 3
+
+    # Ollama refuses think for a model that cannot: nothing is sent.
+    transport = Scripted(SHOW_PLAIN, _answer(VALID_HEADER))
+    await LlmClient(model="plain", transport=transport).extract(
+        ReceiptHeader, HEADER_TASK, "TOTAL 8.15"
+    )
+    assert "think" not in transport.bodies[1]
+
+
+async def test_a_server_that_cannot_say_gets_no_think_and_is_asked_again(think):
+    think("true")
+    transport = Scripted((500, {"error": "busy"}), _answer(VALID_HEADER))
+    client = LlmClient(model="thinker", transport=transport)
+    await client.extract(ReceiptHeader, HEADER_TASK, "TOTAL 8.15")
+    assert "think" not in transport.bodies[1]
+    assert not llm._THINKS
+
+
+async def test_a_call_that_says_wins_over_the_setting(think):
+    think("true")
+    transport = Scripted(_answer(VALID_HEADER))
+    await LlmClient(transport=transport).extract(
+        ReceiptHeader, HEADER_TASK, "", images=[b"img"], think=False
+    )
+    assert [b.get("think") for b in transport.bodies] == [False]

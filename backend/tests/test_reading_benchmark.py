@@ -139,6 +139,21 @@ def test_arm_b_runs_once_per_text_model_under_its_own_key():
     assert [c.arm for c in everything] == ["a", "b", "c"]
 
 
+def test_llm_think_is_part_of_the_text_arms_prompt_version():
+    plain = bench.default_configs(text_models=["t"], ocr_model="o", vision_models=["v"])
+    off = bench.default_configs(
+        text_models=["t"], ocr_model="o", vision_models=["v"], think="false"
+    )
+    assert [c.prompt_version for c in off][:2] == [
+        bench.TEXT_PROMPT_VERSION + "+think=false",
+        bench.OCR_PROMPT_VERSION + "+think=false",
+    ]
+    assert off[2] == plain[2]  # vision calls always send false; arm (c) is unchanged
+    assert {c.key for c in plain[:2]}.isdisjoint(c.key for c in off[:2])
+    row = {"arm": "b", "model": "o", "text_model": "t", "prompt_version": off[1].prompt_version}
+    assert bench.label(row) == "o→t think=false"
+
+
 def _stored(arm: str, model: str, share: str, text_model: str | None = None) -> dict[str, str]:
     row = {"arm": arm, "model": model, "prompt_version": "p", "receipt_set_hash": "h"}
     row |= {"reconcile_share": share, "alias_hit_rate": "", "seconds_p50": "60"}
