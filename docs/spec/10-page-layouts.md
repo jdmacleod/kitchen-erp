@@ -75,7 +75,7 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 **Remove purchase, at the foot of the purchase page.**
 - A quiet section after the lines, headed "Remove this purchase". The header keeps Edit and Reopen on committed purchases, and review keeps Commit in its sticky bar.
 - The line under the heading depends on `removal.outcome`:
-  - void: "It's in the price book, so its {n} price(s) will be voided. This can't be undone yet."
+  - void: "It's in the price book, so its {n} price(s) will be voided. You can restore it afterwards."
   - delete: "Nothing from it reached the price book, so it will be deleted, along with its receipt photo." Without a photo, the sentence ends at "deleted."
 - The trigger is a tomato-text secondary button, "Remove purchase".
 - **Confirm:** an inline tomato-tinted panel.
@@ -88,9 +88,13 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 - **After a void:** the page stays and becomes the voided view, and focus moves to its Notice.
 
 **Voided purchase.**
-- Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove.
+- Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove; Restore is the one action.
 - The first element is an info Notice (`role="status"`): "Removed {date} by {name}. Its {n} prices no longer count in the price book."
 - The lines table is read-only, and its Observation column reads "voided".
+- **Restore (#210):** a quiet section at the foot, headed "Restore this purchase", with the line "Restoring brings it back to review. Its prices count again once you commit it." and a secondary "Restore purchase" button.
+  - Confirm is an inline neutral panel, a `role="group"` labelled "Restore the {vendor or location} purchase from {date}?", or "Restore this {date} receipt?". Its buttons are "Restore purchase" (primary) and "Cancel"; focus goes to Cancel, and Cancel returns it to the trigger. An error shows an Alert in the panel, which takes focus.
+  - After restoring, the page becomes review and the Notice reads "Restored. Commit it to put its prices back in the price book."
+  - When `restore_blocked` is `read_again`, the line reads "Its receipt was uploaded again, so it already has a newer purchase. This one stays removed." and there is no button.
 
 **Removed lines.**
 - **Review:** Delete stays one click for a line that was never recorded. A recorded line asks inline in its row, "Delete line {n}? Its price is voided.", with Delete (tomato) and Keep it. Focus goes to Keep it, and back to the row on cancel. No keyboard shortcut deletes.

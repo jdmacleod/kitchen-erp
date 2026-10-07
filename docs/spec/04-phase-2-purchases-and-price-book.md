@@ -186,9 +186,15 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 - It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.
 - A purchase that no longer exists is `404`, which the client treats as already removed.
 - **Delete:** when none of the purchase's lines ever produced an observation, the purchase and its lines are deleted. Its ingest job, if any, gets `purchase_id = NULL` and `status = discarded`, and its receipt image file is deleted. The `receipt_document` row and stage results stay (append-only).
-- **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only and its receipt image is kept.
+- **Void:** otherwise, even when every price was already voided by an earlier reopen, every live observation is voided with the reason "purchase removed". The purchase gets `status = voided`, `voided_at` and `voided_by`, and keeps its lines. A voided purchase is read-only, apart from restoring it, and its receipt image is kept.
 - **Blocked:** while the purchase's ingest job is `pending` or `running`, removal is refused with `409 still_reading`, because the worker would otherwise recreate the draft.
 - The database changes happen in one transaction; void and observe flush, and the caller commits. The image file is deleted only after the commit succeeds, because a rollback cannot restore a file. If that deletion fails, the removal still stands and the failure is logged. The leftover file is served by nothing, and re-uploading the receipt overwrites it.
+
+**Restoring a removed purchase (#210).** `POST /purchases/{id}/restore` takes a voided purchase back to `reviewed`.
+- It locks the purchase, then its receipt's ingest job, the order removal takes them in.
+- `voided_at` and `voided_by` are cleared. The voided observations stay voided, since observations are append-only, and nothing is recorded by the restore itself. Committing it afterwards records a new observation for each resolved item line, as any commit does, and it can be removed again.
+- A purchase that isn't voided is `409 not_voided`.
+- When its receipt was uploaded again and its job now belongs to a newer purchase, the restore is `409 read_again`, because the same receipt would otherwise reach the price book twice. A single voided purchase's response carries `restore_blocked: null | read_again` so the page can say so before anyone asks.
 
 **Removing a failed read.** `POST /ingest-jobs/{id}/remove` accepts only a `failed` job.
 - It discards the job and, after the commit, deletes its image, as above. It answers `200` with `{photo_deleted}`.
@@ -221,6 +227,7 @@ In list responses these are null, so a list page costs no extra queries.
 57. For every case above, `removal` on the purchase predicts the outcome and price count that removing then produces, including a reopened purchase whose prices are all already voided (void, 0). In list responses it is null.
 58. `POST /ingest-jobs/{id}/remove` discards a failed job, and its draft if one exists, and deletes the image. It refuses other statuses as specified. `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`.
 59. A discarded job is absent from `GET /ingest-jobs` and is `404 receipt_removed` by id. Re-uploading the same file revives it with `revived: true` and reads it again.
+59a. Restoring a voided purchase sets it to `reviewed` with `voided_at`/`voided_by` cleared and records nothing; its voided observations stay voided. Committing it then records one new observation per resolved item line. Restoring anything not voided is `409 not_voided`, two restores at once restore it once, and a voided purchase whose receipt was uploaded again is `409 read_again` and stays voided (#210).
 
 ## 2I — Naming new products in bulk
 
