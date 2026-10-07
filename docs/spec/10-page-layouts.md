@@ -299,8 +299,10 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 - **States:**
   - "Waiting for the page…" until the page answers.
   - Signed out: a sign-in form inside the window, then the exchange repeats.
-  - "This site blocks clipping. Paste the address in Add product instead."
+  - No page behind the window (the site cut the link): "This window isn't connected to a store page. Open the product's page and click Save to Kitchen ERP there, or paste its address in Add product."
+  - The page never answers within 10 seconds: "The store page didn't answer. Reload it and click Save to Kitchen ERP again, or paste its address in Add product."
   - "This page is too large to save."
+  - A failed save says what happened to the page and what to do next, ending "Try again, or paste the address in Add product." It never repeats a photo upload's wording: a page image that can't be used is skipped by the server, and an older server's refusal reads "Couldn't save this page: one of its images isn't a photo Kitchen ERP can use." A server failure reads "Couldn't save this page: something went wrong in Kitchen ERP."
   - "Already saved · Open it".
   - Success: "Saved · Review it in Needs you". The window stays open until closed.
 
