@@ -60,8 +60,9 @@ class PageCapture:
     without_store: bool = False
 
 
-def check_sizes(data: PageCapture) -> list[bytes]:
-    """Refuse a page that is too large, naming the field (criterion 84); decode its images."""
+def check_sizes(data: PageCapture) -> list[tuple[str, bytes]]:
+    """Refuse a page that is too large, naming the field (criterion 84); decode its images,
+    each with its address."""
     if len(data.dom_text.encode()) > MAX_PAGE_TEXT:
         raise ApiError(
             413, "payload_too_large", "This page is too large to save.", {"field": "dom_text"}
@@ -74,14 +75,14 @@ def check_sizes(data: PageCapture) -> list[bytes]:
             {"field": "structured_data"},
         )
     decoded = []
-    for _, encoded in data.images[:MAX_IMAGES]:
+    for address, encoded in data.images[:MAX_IMAGES]:
         try:
             raw = base64.b64decode(encoded, validate=True)
         except (binascii.Error, ValueError):
             raise ApiError(422, "validation_error", "An image is not base64.") from None
         if len(raw) > MAX_IMAGE_BYTES:
             raise ApiError(413, "payload_too_large", "An image is over 5 MB.", {"field": "images"})
-        decoded.append(raw)
+        decoded.append((address, raw))
     return decoded
 
 
@@ -120,7 +121,17 @@ _price = vendor_pages.posted_price
 async def capture_page(
     db: AsyncSession, user: AppUser, data: PageCapture
 ) -> proposals.CaptureResult:
-    images = check_sizes(data)
+    # The page's images are evidence the browser happened to read, not uploads: one it
+    # read but can't be stored (a logo in SVG, say) is skipped and noted, never a
+    # reason to lose the page.
+    images: list[bytes] = []
+    skipped: list[dict[str, str]] = []
+    for address, raw in check_sizes(data):
+        reason = product_photos.unusable(raw)
+        if reason is None:
+            images.append(raw)
+        else:
+            skipped.append({"url": address, "reason": reason})
     try:
         canonical, store_ref = canonical_url(data.page_url, data.canonical_url)
     except ValueError:
@@ -162,6 +173,9 @@ async def capture_page(
         "dom_text": data.dom_text,
         "vendor_id": str(vendor.id) if vendor else None,
     }
+    if skipped:
+        payload["images_skipped"] = skipped
+        log.info("clip images skipped", extra={"count": len(skipped)})
     result = await proposals.create_capture(
         db,
         user=user,
@@ -190,7 +204,8 @@ async def capture_page(
         if data.dom_text.strip() or plugins.adapters():
             db.add(ProductJob(id=new_id(), kind="extract", product_capture_id=result.capture.id))
         if not images and data.image_urls:
-            # The browser could read none of the page's images: the helper may fetch them.
+            # The browser could read none of the page's images, or none that can be
+            # stored: the helper may fetch them.
             await lookups.queue_page_images(db, result.proposal, data.image_urls)
     await db.commit()
     await db.refresh(result.proposal)

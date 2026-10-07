@@ -160,6 +160,20 @@ def _probe(data: bytes) -> tuple[str, tuple[int, int]]:
         raise _refuse(exc) from None
 
 
+def unusable(data: bytes) -> str | None:
+    """Why a photo can't be stored, as a short code, or None when it can.
+
+    For images that come along with something else, such as a clipped page: those
+    are skipped, not refused, so one bad image never loses the rest."""
+    if not data:
+        return "empty"
+    try:
+        _probe(data)
+    except ApiError as exc:
+        return exc.code
+    return None
+
+
 def check_uploads(uploads: list[PhotoUpload]) -> list[str]:
     """Each photo's MIME type, or the refusal; every file is checked before any is stored."""
     if not 1 <= len(uploads) <= MAX_PHOTOS_PER_UPLOAD:
