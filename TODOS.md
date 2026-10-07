@@ -17,18 +17,6 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 6 approval, or a decision to do it in the web app first
 
-### Searchable actions in the ⌘K palette
-
-**What:** Make actions ("new purchase", "log shelf price") findable in the search palette alongside ingredients, products and vendors (the addendum's UI-2.9).
-
-**Why:** Keyboard users reach any action without the sidebar.
-
-**Context:** Deferred by the UI addendum review on 2026-09-25 (ruling S2). Entity search ships first. "Switch to <kitchen>" also depends on the kitchen switcher below.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** Search palette shipped
-
 ### Kitchen switcher and per-user current kitchen
 
 **What:** A current-kitchen switcher persisted per user on the server, kitchen tags on kitchen-scoped panels, and an explicit `home_base_id` on scoped endpoints (the addendum's UI-2.4 to 2.7).

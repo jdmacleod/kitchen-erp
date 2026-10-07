@@ -32,7 +32,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-2.3** Every route in 09's route table exists. Every old path redirects to its new route with its parameters, including `/map`, `/compare`, `/to-identify` and `/price-book/needs-bridge`.
 - **UI-2.4 to UI-2.7** *Deferred* (S3): the kitchen switcher, the per-user current kitchen, kitchen tags, and kitchen-scoped endpoint rules. They return with Phase 4.
 - **UI-2.8** ⌘K / Ctrl+K opens search from any page. Results are grouped by type with ingredients first, fully keyboard-navigable, and barcodes match exactly. `q` is 1–200 characters. Before typing, the palette shows device recents or the hint (G15).
-- **UI-2.9** *Deferred* (S2): searchable actions.
+- **UI-2.9** The palette also finds actions and pages, as an Actions group after the search groups, matched by name and synonyms and keyboard-selectable like any result. Only actions for built sections appear, admin pages only to admins, and an "Add …" action opens its page with the create drawer open. Before typing, four common actions are listed.
 - **UI-2.10** Capture offers the modes in 09 (four since 2L, PD12): a bottom sheet on phone and tablet, a dialog on desktop (G14).
   - With geolocation granted, it pre-fills the nearest adopted vendor location, labelled "Near".
   - Without geolocation, it pre-fills the last-used location, labelled "Last used · change" (G2).

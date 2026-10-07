@@ -99,7 +99,7 @@ A command palette opened by the Search button or ⌘K, and the Search tab on pho
 - It searches ingredients, products (including exact barcode) and vendors through one endpoint, `GET /api/v1/search?q=`. `q` is 1–200 characters, and the endpoint returns typed results with a display label and route. It reuses the existing trigram ranking.
 - Results are grouped by type, ingredients first, keyboard-navigable, and open the item's page. A group with no hits is hidden.
 - Before typing, it shows the last five opened results remembered on this device in localStorage (G15), or the hint "Type a product, ingredient, vendor or barcode." Storage failures degrade quietly to the hint.
-- Searchable actions ("new purchase", "log shelf price") are deferred (S2; see TODOS.md). Recipes join search in Phase 3.
+- Actions and pages are searchable too (UI-2.9): things to do ("New purchase", "Log a shelf price", "Add product") and pages to go to ("Compare prices", "Needs a bridge", Settings pages), matched in the app by name and synonyms and shown as an Actions group after the search groups. Only actions whose section is built appear, from the same `features` list the navigation uses, and admin pages appear only to admins. An "Add …" action opens its page with `?new=1`, which opens the create drawer and is then removed from the address. Actions are never remembered as recents. Before typing, four common actions follow the recents or the hint. "Switch to <kitchen>" waits for the kitchen switcher (Phase 4). Recipes join search in Phase 3.
 
 ## Capture
 
