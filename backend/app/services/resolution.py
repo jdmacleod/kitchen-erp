@@ -47,6 +47,9 @@ log = get_logger(__name__)
 
 RESOLVE_VERSION = "2"
 
+# A line whose quantity the source never gave: it resolves, but emits no price.
+NO_PRICE = "no_price"
+
 # Shortlist hits offered as similar names when the model gives nothing (04, 2D).
 SIMILAR_LIMIT = 3
 
@@ -582,7 +585,7 @@ async def decide_line(
         if norm:
             await upsert_alias(db, purchase.vendor_location.vendor_id, norm, product_id)
     await db.flush()
-    if purchase.status == "committed" and not ignore:
+    if purchase.status == "committed" and _resolved_item(line):
         await _emit_for_line(db, user, purchase, line)
     await db.commit()
     return await get_purchase(db, purchase_id)
@@ -629,6 +632,7 @@ def _resolved_item(line: PurchaseLine) -> bool:
         line.line_kind == "item"
         and line.product_id is not None
         and line.resolution not in ("unmatched", "ignored")
+        and NO_PRICE not in line.flags
     )
 
 
