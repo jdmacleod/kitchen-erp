@@ -6,6 +6,7 @@ from __future__ import annotations
 import base64
 import io
 import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from PIL import Image
 
 from app.core.config import get_settings
 from app.schemas.products_interchange import FORMAT
+from app.services import product_photos
 from tests import test_page_captures as tpc
 from tests import test_products_helper as tph
 
@@ -86,3 +88,44 @@ async def test_the_helpers_photo_joins_the_proposal(admin_client, store, helper)
     ]
     assert [p["source_url"] for p in photos] == [first["value"]]
     assert first["id"] not in [i["id"] for i in await queue(helper)]
+
+
+# A page whose photos sit on another host often lets the browser read only its own
+# images, such as the store's logo. An SVG logo can't be a product photo; it is
+# skipped and noted, and the page is saved all the same.
+LOGO = "https://www.juniper-market.example.test/static/logo.svg"
+SVG = base64.b64encode(
+    b'<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80">'
+    b'<rect width="300" height="80" fill="#2a6"/></svg>'
+).decode()
+
+
+async def test_a_clip_whose_only_readable_image_is_an_svg_logo_is_still_saved(
+    admin_client, store, helper, owner_conn
+):
+    r = await admin_client.post(
+        "/api/v1/product-captures", json=clip([{"url": LOGO, "data_base64": SVG}])
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["photos"] == []
+    # Nothing it could store came along, so the helper is asked for the page's images.
+    assert [i["value"] for i in await queue(helper)] == IMAGES[:4]
+    payload = await owner_conn.fetchval(
+        "SELECT payload FROM product_capture WHERE id = $1", uuid.UUID(body["capture"]["id"])
+    )
+    assert json.loads(payload)["images_skipped"] == [{"url": LOGO, "reason": "unsupported_image"}]
+
+
+async def test_a_usable_photo_is_kept_beside_a_skipped_logo(admin_client, store, helper):
+    sent = [{"url": LOGO, "data_base64": SVG}, {"url": IMAGES[0], "data_base64": jpeg()}]
+    r = await admin_client.post("/api/v1/product-captures", json=clip(sent))
+    assert r.status_code == 201, r.text
+    assert len(r.json()["photos"]) == 1
+    assert await queue(helper) == []
+
+
+def test_an_unusable_page_image_is_named_by_its_refusal():
+    assert product_photos.unusable(base64.b64decode(SVG)) == "unsupported_image"
+    assert product_photos.unusable(b"") == "empty"
+    assert product_photos.unusable(base64.b64decode(jpeg())) is None

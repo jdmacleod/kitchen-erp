@@ -78,16 +78,16 @@ test.describe("the clip window", () => {
     );
     await expect(popup.getByText("Forged")).toHaveCount(0);
     // The opener never answers: after the wait, the window says so.
-    await expect(popup.getByText("This site blocks clipping. Paste the address in Add product instead.")).toBeVisible({ timeout: 15_000 });
+    await expect(popup.getByText(/The store page didn't answer\. Reload it and click Save to Kitchen ERP again/)).toBeVisible({ timeout: 15_000 });
   });
 
-  test("says the site blocks clipping when the page cuts its opener", async ({ page, baseURL }) => {
+  test("says the window isn't connected when the page cuts its opener", async ({ page, baseURL }) => {
     const tag = nextTag();
     await serve(page, storefront(tag), { "Cross-Origin-Opener-Policy": "same-origin" });
     await page.goto(`${SHOP}/p/coop-${tag}`);
     const opened = page.waitForEvent("popup");
     await page.evaluate(bookmarkletCode(new URL(baseURL!).origin));
     const popup = await opened;
-    await expect(popup.getByText("This site blocks clipping. Paste the address in Add product instead.")).toBeVisible();
+    await expect(popup.getByText(/This window isn't connected to a store page/)).toBeVisible();
   });
 });

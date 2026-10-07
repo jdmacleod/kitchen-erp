@@ -13,15 +13,18 @@
 //    images it could read itself, 5 MB each (best effort). Images are ranked:
 //    the structured data's, then og:image, then page images whose alt text or
 //    file name share words with the title; the same image at another size
-//    (same host and path) counts once.
+//    (same host and path) counts once. Only photos count: an address ending in
+//    .svg, .ico or .gif is left out, and an image read is kept only when it is
+//    JPEG, PNG, WebP or HEIC, so a page's own logo never travels as a photo.
 // 4. Says which version of this code it is, so the window can ask for a
 //    reinstall when the bookmark is older than CLIP_VERSION.
 //
 // It never reads cookies, storage or form values, and it answers each "ready"
 // (the window repeats it after a sign-in).
 
-/** Raise when the bookmarklet changes in a way an old bookmark misses. */
-export const CLIP_VERSION = 2;
+/** Raise when the bookmarklet changes in a way an old bookmark misses.
+ *  3: photos only (no SVG, icon or GIF images). */
+export const CLIP_VERSION = 3;
 
 const SOURCE = `(() => {
   const APP = __APP__;
@@ -52,6 +55,7 @@ const SOURCE = `(() => {
   const add = (u) => {
     const a = abs(u); if (!a || images.length >= 12) return;
     const x = new URL(a); const key = x.host + x.pathname;
+    if (/\\.(svg|ico|gif)$/i.test(x.pathname)) return;
     if (seen.has(key)) return; seen.add(key); images.push(a);
   };
   const walk = (o, d) => {
@@ -74,7 +78,7 @@ const SOURCE = `(() => {
     try {
       const r = await fetch(u, { credentials: "omit" });
       const b = await r.blob();
-      if (!r.ok || b.size > 5 * 1024 * 1024 || !/^image\\//.test(b.type)) return null;
+      if (!r.ok || b.size > 5 * 1024 * 1024 || !/^image\\/(jpeg|png|webp|heic|heif)$/.test(b.type)) return null;
       const d = await new Promise((ok, no) => { const f = new FileReader(); f.onload = () => ok(f.result); f.onerror = no; f.readAsDataURL(b); });
       return { url: u, data_base64: String(d).split(",")[1] };
     } catch (e) { return null; }
