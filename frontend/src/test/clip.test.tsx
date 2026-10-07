@@ -86,11 +86,50 @@ describe("the clip window", () => {
     expect(screen.getByText("Waiting for the page…")).toBeInTheDocument();
   });
 
-  it("says the site blocks clipping when the opener was cut off", async () => {
+  it("says it isn't connected to a store page when the opener was cut off", async () => {
     setOpener(null);
     mockApi(routes());
     renderApp("/capture/clip");
-    expect(await screen.findByText("This site blocks clipping. Paste the address in Add product instead.")).toBeInTheDocument();
+    expect(await screen.findByText(/This window isn't connected to a store page\. Open the product's page and click Save to Kitchen ERP there/)).toBeInTheDocument();
+    expect(screen.queryByText(/blocks clipping/)).not.toBeInTheDocument();
+  });
+
+  it("says the store page didn't answer when nothing arrives", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      mockApi(routes());
+      renderApp("/capture/clip");
+      await screen.findByText("Waiting for the page…");
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(await screen.findByText(/The store page didn't answer\. Reload it and click Save to Kitchen ERP again/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("explains a failed save in the clip's own words, never as a photo upload", async () => {
+    mockApi(routes({ "POST /product-captures": () => errorResponse(415, "unsupported_image", "Photos must be JPEG, PNG, WebP or HEIC.") }));
+    const user = userEvent.setup();
+    renderApp("/capture/clip");
+    await screen.findByText("Waiting for the page…");
+    deliver({ type: "kerp-clip", payload: clip }, opener);
+    await screen.findByText("From Juniper Market");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/Couldn't save this page: one of its images isn't a photo Kitchen ERP can use\. Try again, or paste the address in Add product\./)).toBeInTheDocument();
+    expect(screen.queryByText(/Photos must be/)).not.toBeInTheDocument();
+  });
+
+  it("says when the server failed", async () => {
+    mockApi(routes({ "POST /product-captures": () => errorResponse(500, "internal_error", "Internal server error.") }));
+    const user = userEvent.setup();
+    renderApp("/capture/clip");
+    await screen.findByText("Waiting for the page…");
+    deliver({ type: "kerp-clip", payload: clip }, opener);
+    await screen.findByText("From Juniper Market");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Couldn't save this page: something went wrong in Kitchen ERP. Try again, or paste the address in Add product.")).toBeInTheDocument();
   });
 
   it("signs in inside the window and then repeats the handshake", async () => {
