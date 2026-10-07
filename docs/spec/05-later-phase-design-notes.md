@@ -26,7 +26,7 @@ Deferred within Phase 3: prepared states such as cooked rice, derived ingredient
 
 ## Phase 4 — Shopping lists and the trip planner
 
-A shopping list belongs to a home base. Each item references either an ingredient, optionally with a minimum quality, or an exact product, never both; the planner may fill an ingredient item with any qualifying product and a product item only with that product. Items can be marked deferrable. Lists are shared among household members, who can claim and check off items from their own phones.
+A shopping list belongs to a kitchen. Each item references either an ingredient, optionally with a minimum quality, or an exact product, never both; the planner may fill an ingredient item with any qualifying product and a product item only with that product. Items can be marked deferrable. Lists are shared among household members, who can claim and check off items from their own phones.
 
 Drive times are computed once per pair of places by a self-hosted routing engine, Valhalla or OSRM over a Southern California extract, and stored in `travel_leg`. Because locations are static, the routing container runs behind a Compose profile and is needed only when places are added. Free-flow times understate Los Angeles traffic; a time-of-day multiplier is the first mitigation and calibration from observed trips is a later one. Navigation itself is handed off to the phone's maps application.
 
@@ -36,7 +36,7 @@ The planner returns three plans, fastest, cheapest, and balanced, with the margi
 
 ## Phase 5 — Tiered inventory
 
-Stock locations such as pantry, refrigerator, and freezer belong to a home base. Each stock item declares how it is tracked. Perpetual tracking keeps a quantity and is meant for expensive items and staples. Par tracking keeps only a state of have, low, or out and suits most things. Untracked items are treated as consumed on purchase, which suits perishables in a kitchen with fast turnover. Committed purchases can increment perpetual items and reset par items; cooking a recipe can decrement perpetual items. Lots with expiry dates and first-in-first-out costing are a possible later addition for perpetual items only. Low and out states feed shopping lists.
+Stock locations such as pantry, refrigerator, and freezer belong to a kitchen. Each stock item declares how it is tracked. Perpetual tracking keeps a quantity and is meant for expensive items and staples. Par tracking keeps only a state of have, low, or out and suits most things. Untracked items are treated as consumed on purchase, which suits perishables in a kitchen with fast turnover. Committed purchases can increment perpetual items and reset par items; cooking a recipe can decrement perpetual items. Lots with expiry dates and first-in-first-out costing are a possible later addition for perpetual items only. Low and out states feed shopping lists.
 
 ## Phase 6 — iOS capture app
 

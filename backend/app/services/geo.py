@@ -1,8 +1,8 @@
-"""Home bases, vendors, vendor locations, and OSM adoption. Routers stay thin; rules live here.
+"""Kitchens, vendors, vendor locations, and OSM adoption. Routers stay thin; rules live here.
 
 Conventions: vendors and locations are deactivated, never deleted, because a
-purchase may reference them. Home bases may be deleted while nothing points at
-them. A new location's home base is the nearest one by geodesic distance unless
+purchase may reference them. Kitchens may be deleted while nothing points at
+them. A new location's kitchen is the nearest one by geodesic distance unless
 the caller names one or explicitly clears it. A stall (a location with a parent)
 inherits its parent's opening hours while its own are null; a parent must itself
 be a top-level location, so stalls do not nest.
@@ -35,7 +35,7 @@ _INTEGRITY_CODES = {
     "uq_home_base_name": (
         409,
         "home_base_name_taken",
-        "A home base with that name already exists.",
+        "A kitchen with that name already exists.",
     ),
     "uq_location_osm": (409, "already_adopted", "That OpenStreetMap object is already adopted."),
     "fk_product_exclusive_vendor": (409, "vendor_in_use", "A product references this vendor."),
@@ -205,7 +205,7 @@ def _move_place(place: Place, lat: Decimal | None, lon: Decimal | None) -> None:
     place.geom = point_expr(new_lat, new_lon)
 
 
-# --- home bases --------------------------------------------------------------
+# --- kitchens --------------------------------------------------------------
 
 
 async def _load_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> HomeBase:
@@ -216,7 +216,7 @@ async def _load_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> HomeBase
     )
     home_base = result.unique().scalar_one_or_none()
     if home_base is None:
-        raise ApiError(404, "not_found", "No such home base.")
+        raise ApiError(404, "not_found", "No such kitchen.")
     return home_base
 
 
@@ -264,7 +264,7 @@ async def delete_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> None:
         raise ApiError(
             409,
             "home_base_in_use",
-            "Vendor locations still point at this home base; reassign or clear them first.",
+            "Vendor locations still point at this kitchen; reassign or clear them first.",
             {"locations": int(referenced)},
         )
     place = home_base.place
@@ -758,7 +758,7 @@ async def adopt_osm(
         raise ApiError(
             404,
             "osm_candidate_not_found",
-            "That object is not among the candidates for this home base and radius.",
+            "That object is not among the candidates for this kitchen and radius.",
         )
     if candidate.name is None:
         raise ApiError(

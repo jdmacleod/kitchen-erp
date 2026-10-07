@@ -130,7 +130,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
       });
     }
     for (const h of homeBases.data ?? []) {
-      out.push({ id: `${HOME_PREFIX}${h.id}`, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (home base)` });
+      out.push({ id: `${HOME_PREFIX}${h.id}`, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (kitchen)` });
     }
     return out;
   }, [items, homeBases.data, priceByLocation]);
@@ -230,7 +230,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
         Add location here
       </Button>
       <Button variant={mode === "home" ? "primary" : "secondary"} aria-pressed={mode === "home"} onClick={() => (mode === "home" ? stopPlacing() : startPlacing("home"))}>
-        Add home base here
+        Add kitchen here
       </Button>
     </div>
   );
@@ -287,7 +287,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
       {locations.isError ? <Alert tone="error">{errorMessage(locations.error)}</Alert> : null}
       {mode !== "browse" && !draft ? (
         <p role="status" className="text-sm text-neutral-700 dark:text-neutral-300">
-          Click or tap the map where the {mode === "home" ? "home base" : "location"} is, or give its
+          Click or tap the map where the {mode === "home" ? "kitchen" : "location"} is, or give its
           coordinates on the right. You can drag the pin afterwards.
         </p>
       ) : null}
@@ -300,7 +300,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
 
       <div className="relative h-[70dvh] min-h-[360px] overflow-hidden rounded-lg border border-neutral-200 md:flex dark:border-neutral-800">
         <MapView
-          label="Vendor locations and home bases"
+          label="Vendor locations and kitchens"
           className="h-full min-w-0 flex-1"
           pins={pins}
           selectedId={selectedPinId}
@@ -383,8 +383,8 @@ function Filters({ kind, onKind, homeBaseId, onHomeBase, homeBases, openAtOn, on
           </option>
         ))}
       </SelectField>
-      <SelectField id="filter-home-base" label="Home base" value={homeBaseId} onChange={(e) => onHomeBase(e.target.value)}>
-        <option value="">Any home base</option>
+      <SelectField id="filter-home-base" label="Kitchen" value={homeBaseId} onChange={(e) => onHomeBase(e.target.value)}>
+        <option value="">Any kitchen</option>
         {homeBases.map((h) => (
           <option key={h.id} value={h.id}>
             {h.name}
@@ -718,7 +718,7 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
   return (
     <div data-testid="home-base-panel">
       <PanelHeader title={home.name} onClose={onClose}>
-        <p className="text-neutral-600 dark:text-neutral-400">Home base{home.label ? ` · ${home.label}` : ""}</p>
+        <p className="text-neutral-600 dark:text-neutral-400">Kitchen{home.label ? ` · ${home.label}` : ""}</p>
       </PanelHeader>
       <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
         <dt className="text-neutral-600 dark:text-neutral-400">Position</dt>
@@ -727,7 +727,7 @@ function HomeBasePanel({ id, homeBases, locations, onClose }: { id: string; home
         <dd>{count} shown default to this base</dd>
       </dl>
       <Link to="/settings/kitchens" className={`mt-3 inline-block rounded underline ${focusRing}`}>
-        Manage home bases
+        Manage kitchens
       </Link>
     </div>
   );
@@ -820,9 +820,9 @@ function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Poi
   };
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Add home base here" noValidate>
+    <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Add kitchen here" noValidate>
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-base font-medium">New home base</h2>
+        <h2 className="text-base font-medium">New kitchen</h2>
         <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" onClick={onCancel}>
           Cancel
         </Button>
@@ -833,7 +833,7 @@ function HomeBaseDraftForm({ draft, onPoint, onCancel, onCreated }: { draft: Poi
       <Field id="new-home-name" label="Name" autoComplete="off" required value={name} onChange={(e) => setName(e.target.value)} hint="e.g. “Home” or “The cabin”." />
       <div>
         <Button type="submit" disabled={create.isPending || !draft}>
-          {create.isPending ? "Creating…" : "Create home base"}
+          {create.isPending ? "Creating…" : "Create kitchen"}
         </Button>
       </div>
     </form>

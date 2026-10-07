@@ -58,7 +58,7 @@ describe("import vendors", () => {
     const needs = within(drawer).getByRole("region", { name: "Needs you" });
     expect(needs).toHaveTextContent("Your edit is kept: phone (555-0142). The file says +1 555 0107.");
     expect(needs).toHaveTextContent("Matches 2 locations within 150 m");
-    expect(needs).toHaveTextContent("No home base called Cliff cottage");
+    expect(needs).toHaveTextContent("No kitchen called Cliff cottage");
     const change = within(drawer).getByRole("region", { name: "Will change" });
     expect(change).toHaveTextContent("Invented Mart · Harbor Rd");
     expect(change).toHaveTextContent("phone: empty → +1 555 0100");

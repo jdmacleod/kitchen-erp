@@ -47,15 +47,15 @@ test("with no tiles: notice, pins, no external requests, create by pin drop, rea
   await expect(page.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeVisible();
   await expect(page.getByTestId("map-attribution")).toHaveText("© OpenStreetMap contributors © Protomaps");
 
-  // A home base by pin drop plus a name.
+  // A kitchen by pin drop plus a name.
   const homeName = `E2E cabin ${stamp}`;
-  await page.getByRole("button", { name: "Add home base here" }).click();
+  await page.getByRole("button", { name: "Add kitchen here" }).click();
   await clickMap(page, 0.45, 0.3);
   await expect(page.getByTestId("draft-point")).toHaveText(/^33\.\d+, -120\.\d+$/);
-  await page.getByRole("form", { name: "Add home base here" }).getByLabel("Name").fill(homeName);
-  await page.getByRole("button", { name: "Create home base" }).click();
+  await page.getByRole("form", { name: "Add kitchen here" }).getByLabel("Name").fill(homeName);
+  await page.getByRole("button", { name: "Create kitchen" }).click();
   await expect(page.getByTestId("home-base-panel")).toContainText(homeName);
-  await expect(page.getByRole("button", { name: `${homeName} (home base)` })).toBeVisible();
+  await expect(page.getByRole("button", { name: `${homeName} (kitchen)` })).toBeVisible();
 
   // A location by pin drop, an inline new vendor, and a name.
   const vendorName = `E2E coast stand ${stamp}`;

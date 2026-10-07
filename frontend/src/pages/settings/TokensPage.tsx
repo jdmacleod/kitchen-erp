@@ -17,7 +17,7 @@ export const TOKEN_ACCESS = [
     value: "suggest",
     scopes: ["vendors:read", "vendors:suggest"],
     label: "Read and suggest vendor facts",
-    hint: "For an enrichment tool. Suggestions wait for your review. Cannot see notes, home bases, purchases or receipts.",
+    hint: "For an enrichment tool. Suggestions wait for your review. Cannot see notes, kitchens, purchases or receipts.",
   },
   {
     value: "products",

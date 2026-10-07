@@ -293,6 +293,10 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
                 changes["listing"] = listing_from_fields(proposal.listing, fields)
             await proposals.write_proposal(db, proposal, **changes)
         output["fields"] = sorted({c.field for c in found})
+    # Still no price: the store may keep it in a script the clip never sends (helper reads it).
+    proposal = await proposals.get_proposal(db, proposal.id, lock=True)
+    if await lookups.queue_page_for_price(db, proposal):
+        output["page_lookup"] = True
     await product_photos.record(db, job, started, output)
     job.status = "done"
     job.last_error = output.get("error")

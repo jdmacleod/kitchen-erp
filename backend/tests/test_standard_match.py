@@ -39,7 +39,7 @@ def test_a_name_finds_its_entry(name, key):
     "name",
     [
         "wine vinegar",  # was offered a distilled vinegar
-        "pita chips",  # was offered pistachios: a different head noun
+        "lentil chips",  # a kind of chips the list lacks: no other chips are offered
         "milk",  # was offered a 2% milk: the entry is more specific than the name
         "smoked onion",  # the name has a qualifier the entry lacks
         "sweet paprika",

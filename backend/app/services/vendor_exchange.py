@@ -7,7 +7,7 @@ household field removed (SECURITY.md), so there are two modes:
   moving between deployments or feeding a tool the household controls.
 - ``public`` carries only what may be contributed: active vendors and their
   active locations that are marked publishable or linked to OpenStreetMap, never
-  a stand (its pin may be someone's home), and none of notes, home bases, stop
+  a stand (its pin may be someone's home), and none of notes, kitchens, stop
   overheads, active flags, ids, store codes or anything from purchases.
 
 A person reads a public file before contributing it; the application never

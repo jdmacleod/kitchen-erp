@@ -24,7 +24,7 @@ Reference data (ingredients, products, vendors) is the foundation under the loop
 | Shop | 2 (exists) | Purchases, Receipts, Shelf prices, Compare prices | Compare lives here until Phase 4 moves it to Plan (D7). |
 | Stock | 5 | Pantry, Par levels | Dormant until Phase 5 is approved. |
 | Catalog | 1 (exists) | Ingredients, Products, Vendors | Footer entry. The ingredient detail page is the hub. Vendors has a list/map toggle (T9). |
-| Settings | exists | Kitchens (home bases), Users, API tokens, Capture, System | System holds health detail and "log out everywhere" (T10). |
+| Settings | exists | Kitchens, Users, API tokens, Capture, System | System holds health detail and "log out everywhere" (T10). |
 
 **Phase gating.** The sidebar shows only sections whose phase is built. Today those are Home, Shop and Catalog, plus Settings.
 - **Source:** the authenticated `GET /api/v1/health` response carries a `features` list derived from the migration head (S4). It carries that list even when the response status is 503.
@@ -82,9 +82,9 @@ The sidebar, top to bottom:
 
 ## Kitchen scoping (deferred)
 
-The kitchen switcher and the per-user current-kitchen preference are deferred to Phase 4 (S3; see TODOS.md). In Phases 1 and 2, the only kitchen-scoped features take an explicit home base chosen in context:
-- Find nearby, which is OpenStreetMap adoption. It is pre-set to the only home base when there is one.
-- Choosing the nearest home base when creating a location.
+The kitchen switcher and the per-user current-kitchen preference are deferred to Phase 4 (S3; see TODOS.md). In Phases 1 and 2, the only kitchen-scoped features take an explicit kitchen chosen in context:
+- Find nearby, which is OpenStreetMap adoption. It is pre-set to the only kitchen when there is one.
+- Choosing the nearest kitchen when creating a location.
 
 Kitchen scoping is designed when the switcher returns. Two rules stand now:
 - Scoped endpoints take an explicit `home_base_id`; the server never infers scope from a hidden session value.
@@ -99,7 +99,7 @@ A command palette opened by the Search button or ⌘K, and the Search tab on pho
 - It searches ingredients, products (including exact barcode) and vendors through one endpoint, `GET /api/v1/search?q=`. `q` is 1–200 characters, and the endpoint returns typed results with a display label and route. It reuses the existing trigram ranking.
 - Results are grouped by type, ingredients first, keyboard-navigable, and open the item's page. A group with no hits is hidden.
 - Before typing, it shows the last five opened results remembered on this device in localStorage (G15), or the hint "Type a product, ingredient, vendor or barcode." Storage failures degrade quietly to the hint.
-- Searchable actions ("new purchase", "log shelf price") are deferred (S2; see TODOS.md). Recipes join search in Phase 3.
+- Actions and pages are searchable too (UI-2.9): things to do ("New purchase", "Log a shelf price", "Add product") and pages to go to ("Compare prices", "Needs a bridge", Settings pages), matched in the app by name and synonyms and shown as an Actions group after the search groups. Only actions whose section is built appear, from the same `features` list the navigation uses, and admin pages appear only to admins. An "Add …" action opens its page with `?new=1`, which opens the create drawer and is then removed from the address. Actions are never remembered as recents. Before typing, four common actions follow the recents or the hint. "Switch to <kitchen>" waits for the kitchen switcher (Phase 4). Recipes join search in Phase 3.
 
 ## Capture
 
