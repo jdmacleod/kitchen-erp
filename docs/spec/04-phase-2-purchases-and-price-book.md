@@ -430,8 +430,9 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
   - every unknown scanned barcode, but only if the household turns that setting on (off by default);
   - `cutout` requests for the household's photos that have no mask. These are queued automatically, because the photo never leaves the machine; the helper may read that one photo's original.
   - `image` requests for a clipped page whose images the browser could not read (another host refused it): up to four of the page's own image addresses, queued automatically when a helper exists. The helper fetches each one and answers with the photo. (Added 2026-10-05, clip quality.)
+  - a `page` request for a clip that still has a listing but no price after its extract job, queued automatically when a helper exists: some stores keep the price in a page script the clip window never sends. The helper fetches the public page without cookies, and its answer joins the pending proposal (price, and the listing follows the merged fields); a person still accepts it. Once per proposal, never for a page saved without a store. (Added 2026-10-07.)
 
-  Page captures with an installed adapter never use the queue.
+  Otherwise, page captures with an installed adapter don't use the queue.
 - **Two token scopes.**
   - `products:read` reads the queue and nothing else.
   - `products:suggest` posts answers.
