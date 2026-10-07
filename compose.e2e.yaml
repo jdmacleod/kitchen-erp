@@ -24,7 +24,7 @@ x-e2e-env: &e2e-env
   # No model server, as in CI: a test must never read a receipt with a live
   # model, and the household's OLLAMA_BASE_URL may point at one.
   OLLAMA_BASE_URL: http://127.0.0.1:9
-  LLM_MODEL: gpt-oss:20b
+  LLM_MODEL: qwen2.5:14b
   VISION_MODEL: ""
   OCR_VISION_MODEL: glm-ocr
   OCR_VISION_TIMEOUT_SECONDS: "300"

@@ -55,7 +55,10 @@ class Settings(BaseSettings):
     build_commit: str = UNKNOWN_COMMIT
 
     ollama_base_url: str = "http://host.docker.internal:11434"
-    llm_model: str = "gpt-oss:20b"
+    # The one text model: receipts, naming, the product ranker, product reading.
+    # qwen2.5:14b read receipt transcripts best in the reading benchmark (04, 2O);
+    # before a deployment switches, the opt-in llm suite runs every use against it.
+    llm_model: str = "qwen2.5:14b"
     # Whether the text model reasons before it answers. Empty sends nothing and
     # leaves it to the model; "false" stops a model that would otherwise reason
     # past the timeout (gemma4 on receipt text). "true" and the levels go only to
