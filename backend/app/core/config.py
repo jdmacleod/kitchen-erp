@@ -66,6 +66,12 @@ class Settings(BaseSettings):
     # receipt reading will use (2J). Empty: photos are read by Tesseract and the
     # text model instead.
     vision_model: str = ""
+    # The transcriber the "vision" OCR adapter asks to read a receipt image as text
+    # (04, 2O). A transcriber, not a structured reader: asked for JSON it returns
+    # nothing usable, so it is not VISION_MODEL. Used only when OCR_ADAPTERS names
+    # "vision".
+    ocr_vision_model: str = "glm-ocr"
+    ocr_vision_timeout_seconds: float = 300.0
     # Ingest (Phase 2C). OCR adapters are tried in order; `client` uses text sent
     # with the upload, `tesseract` runs the binary in the worker image. As an
     # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.
