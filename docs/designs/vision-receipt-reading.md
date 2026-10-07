@@ -8,6 +8,8 @@ Mode: Builder
 
 ## Start here (implementation handoff, updated 2026-10-02)
 
+**Status (2026-10-07).** Phase 0 is done and its decision rule picked arm (b), vision as OCR. Spec 04 section 2O (T6) specifies Phase 1-A. The household collects receipts for about 30 days; the hold-out run (2O, Rollout step 2) decides whether the household switches it on. Phase 1-B (the vision reader, consensus, crops) is not built.
+
 **Status (2026-10-02).** Phase 0's code is complete; the household run (T5) is next.
 
 | Step | State | PR |
@@ -20,7 +22,8 @@ Mode: Builder
 | ET6 colour render and shared orientation in `raster.py` | merged | #132 |
 | ET4 settings forwarded by compose | nothing to do: no new settings, and `tools/check_compose_env` enforces it in CI | — |
 | ET5/T4 `kerp reading-benchmark` and `ingest/witness.py` | merged | #160 |
-| T5 household run | **next** | — |
+| T5 household run | done: (b) glm-ocr → qwen2.5:14b reconciled 10/12 (83%); the rule says ship (b) | run `20261007T194503Z` |
+| T6 spec 04 amendment (2O, Phase 1-A) | **drafted, awaiting approval**; then the hold-out run on 10+ new receipts | this PR |
 
 **Next steps, in order:**
 1. **Rebuild the stack** (`make up`), so the worker runs the code that names its connections `kerp-worker`; the benchmark's worker guard relies on it.
