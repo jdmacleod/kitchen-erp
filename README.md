@@ -183,6 +183,19 @@ links reach outside the deployment, and only when switched on.
      as unconfirmed: confirm each on its ingredient page after checking a
      label or weighing it.
 
+- **Receipt photos without their metadata (#221).** New uploads are stored
+  without GPS, EXIF or XMP. Photos stored before keep theirs until this runs
+  once, after `kerp migrate`, while no receipt is being read:
+
+  ```bash
+  docker compose exec api kerp receipts strip-metadata --dry-run   # counts only
+  docker compose exec api kerp receipts strip-metadata
+  ```
+
+  Take a backup first: the old files are replaced. It refuses to start while a
+  stored file is missing, and it leaves a receipt that is being read; run it
+  again later for those.
+
   `kerp ingredients check` lists plurals another ingredient already has,
   ingredients with no USDA reference, and references missing from the loaded
   release. `kerp ingredients usda-candidates <fdc id | text>` lists raw or dry

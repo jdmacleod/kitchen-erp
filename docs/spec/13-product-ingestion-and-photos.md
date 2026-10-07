@@ -414,7 +414,7 @@ Label images (`label_front`, `label_nutrition`, `label_ingredients`, `shelf_tag`
 
 1. **Download (remote sources).** Same polite-fetch rules as §5.4, except that image hosts named by a captured page are fetched once, at capture time, regardless of the vendor's `fetch_policy`. This is equivalent to the user's browser loading the image. Limit: 15 MB. Content types: JPEG, PNG, WebP, HEIC/HEIF, AVIF.
 2. **Decode and normalize.** Apply the EXIF orientation, convert to sRGB, and decode HEIC with `pillow-heif`.
-3. **Strip all metadata** from stored files, including GPS. If the client sent a location, it goes in `product_capture.capture_geo`, never in image files.
+3. **Strip all metadata** from stored files, including GPS. If the client sent a location, it goes in `product_capture.capture_geo`, never in image files. Receipt photos are stripped too, by taking the file apart rather than re-encoding it (04 §2C, #221).
 4. **Content-address.** Compute `sha256` over the normalized original's encoded bytes. Store it at `media/originals/<sha[0:2]>/<sha>.<ext>`. If the same sha256 already exists, reuse the file.
 5. **Perceptual hash.** Compute a 64-bit dHash. If an image's pHash is within Hamming distance 6 of an image already attached to three or more *different* products from the same vendor, mark it `is_stock_suspect`. This catches generic stock photos used for many meat cuts.
 6. **Quality checks.** Flag images under 400 px on the short edge. Flag blur with Laplacian variance below a configurable threshold. Flags show on the candidate in review. They never block.
