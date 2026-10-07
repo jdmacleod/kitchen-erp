@@ -268,6 +268,47 @@ A merge across canonical units is allowed. The confirmation names the unit chang
 
 **Undo.** Merges are not undone in the app. The runbook in the README says to run `kerp backup` before `kerp import usda`, before linking, and before any downgrade.
 
+### The file: `kitchen-erp-ingredients/1`
+
+The household's vocabulary as a plain file, for moving it between deployments or sharing a list (#241). The database stays the source (ruling VC1); the file is its interchange. `kerp export ingredients --out PATH [--format json|yaml]` writes every ingredient, inactive and merged ones too. `kerp import ingredients --from PATH [--dry-run]` reads one. There is no API route.
+
+The file follows the vendor file's reading rules (§1F), through the same module (`services.interchange`). It may be JSON or YAML, read safely with aliases refused, and no larger than 5 MB. Every number that is not an integer is a string, and a float anywhere is rejected. An unknown `format`, a repeated key or an unknown field is refused with `422 bad_export`, and nothing is written.
+
+```json
+{
+  "format": "kitchen-erp-ingredients/1",
+  "source": {"name": "kitchen-erp", "exported_at": "2026-10-07T12:00:00Z"},
+  "ingredients": [
+    {
+      "key": "local.lantern-oats",
+      "name": "lantern oats",
+      "category": "pantry",
+      "unit": "g",
+      "density": {"g_per_ml": "0.41", "source": "usda", "confirmed": true},
+      "yield_pct": "0.95",
+      "perishability": "shelf_stable",
+      "spellings": ["lantern rolled oats"],
+      "fdc": [900001, 900002],
+      "measures": [{"label": "1 cup", "qty": "41", "source": "usda", "confirmed": false}],
+      "active": true
+    }
+  ]
+}
+```
+
+- **Keys and spellings.** `key` is the slug: a standard-list key or `local.<name>`. `fdc` lists USDA FoodData Central ids, preferred first. `spellings` holds curated spellings and old names. Plurals are generated again on import.
+- **What the file leaves out.** Nothing from purchases, prices, products, vendors or people.
+- **Merged ingredients.** These carry `merged_into`, the key of the ingredient kept.
+
+**Import.** Each entry is matched by key, then by name, then by a spelling. An entry that is merged in the file, or that matches an ingredient merged here, is skipped: merging is a person's act. Fields are written by the 1F edit-wins rule, kept per field in `ingredient.field_source` (migration 0033):
+- **Written:** a field that is empty, or that still holds what a file last wrote there. A field never set by a file counts as the household's.
+- **Kept and reported:** any other field that differs, as a conflict.
+- **Created by the import:** such an ingredient counts as the file's own until a person edits it.
+- **Additive only:** spellings, USDA ids and measures are added and never removed. A spelling another ingredient holds, a different preferred USDA id, or a measure of the same label with another quantity is reported as a conflict.
+- **Never changed by an import:** names, active state and links to the standard list.
+- **Prices:** a changed density or unit re-normalizes that ingredient's prices after the commit.
+- **Dry run:** `--dry-run` rolls everything back and reports created, updated, unchanged, conflict and skipped entries.
+
 ### Acceptance criteria
 
 74. The 1G migration applies and reverses cleanly. Existing ingredients get a unique generated slug and `reconcile_state = unreviewed`; a new ingredient typed in starts `unreviewed` when a standard entry matches its name and `not_applicable` otherwise (#189), and no generated slug equals a standard key.
@@ -284,6 +325,7 @@ A merge across canonical units is allowed. The confirmation names the unit chang
 84. The USDA review list never offers a density to an ingredient that has one or is counted in `each`, nor a measure whose label it has. Accepting stores `source = usda`, unconfirmed, recomputes affected prices, and removes the ingredient from the list; a density set since the list was read returns `409` with the current value.
 85. The Link inbox row appears while any ingredient is unreviewed and leaves when none is. The USDA row follows the rule above and is absent when no USDA data is loaded.
 86. `kerp ingredients check` reports skipped plurals, ingredients with no USDA reference, and references absent from the loaded release, and exits zero; it makes no change.
+86a. An export imported into an empty catalog exports again unchanged, and importing the same file twice changes nothing the second time. A density a person edited after an import is kept and reported when a newer file differs, while an unedited field updates. A dry run writes nothing. A file with an unknown format, a float, a repeated key, an unknown field or a YAML anchor is refused with `422 bad_export` before any write. Merged entries are skipped, and vendor import behaves as before (#241).
 
 ## 1H — Product identity, kinds and listings
 

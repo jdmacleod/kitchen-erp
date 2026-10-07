@@ -648,6 +648,80 @@ def import_vendors(
     )
 
 
+@export_cli.command("ingredients")
+def export_ingredients(
+    fmt: str = typer.Option("json", "--format", help="json or yaml"),
+    out: Path = EXPORT_OUT,
+) -> None:
+    """Write the ingredient vocabulary as a kitchen-erp-ingredients/1 file.
+
+    It holds names, keys, categories, units, densities, spellings, USDA references
+    and measures; nothing from purchases, prices, products or vendors.
+    """
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import ingredient_exchange
+
+    if fmt not in ("yaml", "json"):
+        typer.echo("--format is json or yaml.", err=True)
+        raise typer.Exit(2)
+
+    async def _run() -> int:
+        async with get_sessionmaker()() as db:
+            file = await ingredient_exchange.build(db)
+        await dispose_engine()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(ingredient_exchange.render(file, fmt))
+        return len(file.ingredients)
+
+    count = asyncio.run(_run())
+    typer.echo(f"wrote {out}: {count} ingredient(s)")
+
+
+INGREDIENT_FILE = typer.Option(..., "--from", exists=True, dir_okay=False, resolve_path=True)
+
+
+@import_cli.command("ingredients")
+def import_ingredients(
+    src: Path = INGREDIENT_FILE,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change; write nothing."
+    ),
+) -> None:
+    """Import a kitchen-erp-ingredients/1 file (JSON or YAML). A field someone edited is kept."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.services import ingredient_exchange
+
+    fmt = "json" if src.suffix.lower() == ".json" else "yaml"
+
+    async def _run():
+        async with get_sessionmaker()() as db:
+            report = await ingredient_exchange.run(
+                db, src.read_bytes(), fmt=fmt, dry_run=dry_run, filename=src.name
+            )
+        await dispose_engine()
+        return report
+
+    try:
+        report = asyncio.run(_run())
+    except ApiError as exc:
+        typer.echo(f"{exc.message}", err=True)
+        raise typer.Exit(2) from exc
+    for item in report.items:
+        if item.outcome == "skipped":
+            typer.echo(f"  skipped: {item.key}: {item.reason}")
+        for c in item.conflicts:
+            typer.echo(
+                f"  needs you: {item.key}: your {c.field} is kept (the file says {c.file!r})"
+            )
+    c = report.counts
+    verb = "would change" if dry_run else "changed"
+    typer.echo(
+        f"{verb}: {c.created} created, {c.updated} updated, {c.unchanged} unchanged, "
+        f"{c.conflicts} with conflicts, {c.skipped} skipped"
+    )
+
+
 @cli.command("recompute-norms")
 def recompute_norms() -> None:
     """Truncate and rebuild price_norm from observations and current bridges."""
