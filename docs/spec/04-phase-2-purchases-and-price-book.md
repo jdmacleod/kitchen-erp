@@ -387,16 +387,18 @@ The reading line also counts product pages and photos being read, and says when 
 - the title and meta tags;
 - each structured-data block as its raw text;
 - the visible text of the product region (`<main>` or its equivalent, never navigation or headers), up to 200 KB;
-- up to 12 image addresses.
+- up to 12 image addresses, photos only: an address ending in `.svg`, `.ico` or `.gif` is left out.
 
-It also tries to read up to four of those images itself (5 MB each). This is best effort: many sites forbid it, the addresses are always kept, and nothing depends on it. It never collects cookies, storage or form values.
+It also tries to read up to four of those images itself (5 MB each), keeping one only when it is JPEG, PNG, WebP or HEIC. This is best effort: many sites forbid it, the addresses are always kept, and nothing depends on it. It never collects cookies, storage or form values.
+
+The images that come with a capture are evidence, not uploads. One the server can't store as a photo (an SVG logo, an unreadable file, one over the pixel limit, an empty one) is skipped and recorded on the capture as `images_skipped`, each with its address and the refusal's code; the page is saved all the same. When none of them can be stored, the page's image addresses go to the helper exactly as when the browser could read none. A photo a person uploads is still refused when it can't be stored. (Added 2026-10-07: a page whose only readable image was its SVG logo was refused whole.)
 
 **The clip window.** The bookmarklet opens `/capture/clip`:
 1. The window says it is ready, and only then does the page send its message.
 2. The window accepts one message, only from the window that opened it, and validates it.
 3. It shows what will be saved and saves only on the person's click.
 
-If the person is signed out, they sign in inside the window and the exchange repeats. A site that cuts the link between page and window gets "This site blocks clipping. Paste the address in Add product instead." Its states and words are in 10.
+If the person is signed out, they sign in inside the window and the exchange repeats. A window with no page behind it (the site cut the link) says so, and so does one whose page never answers; both point to reloading the page and clicking the bookmark again, or to Add product. A failed save is explained in the clip's own words, never with a photo upload's. Its states and words are in 10.
 
 **Vendors.** The window matches the page to a vendor by its address. A page from a store the household hasn't added offers a vendor picker, or "Save without a store", which keeps the product details but no listing or price.
 

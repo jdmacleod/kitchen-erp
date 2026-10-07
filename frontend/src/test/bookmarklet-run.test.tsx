@@ -58,4 +58,40 @@ describe("the bookmarklet's payload", () => {
     ]);
     expect(sent.clip_version).toBe(CLIP_VERSION);
   });
+
+  it("sends photos only: a logo in SVG, an icon or a GIF never goes along", async () => {
+    document.head.innerHTML = "<title>Product Detail</title>";
+    document.body.innerHTML = `
+      <img alt="Juniper Market" src="https://www.juniper-market.example.test/images/logo.svg">
+      <img alt="" src="https://www.juniper-market.example.test/favicon.ico">
+      <img alt="" src="https://www.juniper-market.example.test/spinner.gif">
+      <img alt="" src="https://www.juniper-market.example.test/img/oats.webp">
+      <img alt="" src="https://www.juniper-market.example.test/img/oats-back.jpg">`;
+    document.querySelectorAll("img").forEach((img) => Object.defineProperty(img, "naturalWidth", { value: 400 }));
+    const win = { postMessage: vi.fn() };
+    vi.stubGlobal("open", vi.fn(() => win));
+    // The store serves its "photo" as an SVG under a .jpg name: kept out by its type.
+    const types: Record<string, string> = {
+      "https://www.juniper-market.example.test/img/oats.webp": "image/webp",
+      "https://www.juniper-market.example.test/img/oats-back.jpg": "image/svg+xml",
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => ({ ok: true, blob: async () => new Blob(["x"], { type: types[url] ?? "image/png" }) })),
+    );
+    let listener: ((e: MessageEvent) => unknown) | undefined;
+    vi.spyOn(window, "addEventListener").mockImplementation((type: string, fn: unknown) => {
+      if (type === "message") listener = fn as (e: MessageEvent) => unknown;
+    });
+
+    new Function(bookmarkletCode(APP))();
+    await listener?.({ origin: APP, source: win, data: { type: "kerp-clip-ready" } } as unknown as MessageEvent);
+
+    const sent = win.postMessage.mock.calls[0][0].payload;
+    expect(sent.image_urls).toEqual([
+      "https://www.juniper-market.example.test/img/oats.webp",
+      "https://www.juniper-market.example.test/img/oats-back.jpg",
+    ]);
+    expect(sent.images.map((i: { url: string }) => i.url)).toEqual(["https://www.juniper-market.example.test/img/oats.webp"]);
+  });
 });

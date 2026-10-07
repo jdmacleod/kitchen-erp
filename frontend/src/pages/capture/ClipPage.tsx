@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api, errorMessage, isApiError, newIdempotencyKey } from "../../api/client";
+import { ApiError, api, errorMessage, isApiError, newIdempotencyKey } from "../../api/client";
 import { useVendors } from "../../api/geo";
 import { useLogin, useMe } from "../../api/queries";
 import type { Proposal } from "../../api/proposals";
@@ -61,13 +61,14 @@ interface AddressPreview {
 }
 
 type State =
-  | { kind: "blocked" }
+  | { kind: "no_opener" }
+  | { kind: "no_answer" }
   | { kind: "waiting" }
   | { kind: "ready"; clip: ClipPayload }
   | { kind: "saved"; proposal: Proposal; already: boolean }
   | { kind: "too_large" };
 
-/** How long the window waits for the page before saying the site blocks clipping. */
+/** How long the window waits for the page before saying it didn't answer. */
 const WAIT_MS = 10_000;
 
 /**
@@ -79,7 +80,7 @@ export function ClipPage() {
   usePageTitle("Save this product");
   const me = useMe();
   const signedIn = Boolean(me.data);
-  const [state, setState] = useState<State>(() => (window.opener ? { kind: "waiting" } : { kind: "blocked" }));
+  const [state, setState] = useState<State>(() => (window.opener ? { kind: "waiting" } : { kind: "no_opener" }));
   const accepted = useRef(false);
 
   // Ready handshake (F9): say so once signed in (again after a sign-in), then take
@@ -97,7 +98,7 @@ export function ClipPage() {
     // The opener is another site: "ready" carries nothing, so any origin may hear it.
     window.opener.postMessage({ type: "kerp-clip-ready" }, "*");
     const timer = window.setTimeout(() => {
-      if (!accepted.current) setState({ kind: "blocked" });
+      if (!accepted.current) setState({ kind: "no_answer" });
     }, WAIT_MS);
     return () => {
       window.removeEventListener("message", onMessage);
@@ -108,9 +109,15 @@ export function ClipPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 p-4">
       <h1 className="text-2xl">Save this product</h1>
-      {state.kind === "blocked" ? (
+      {state.kind === "no_opener" ? (
         // Said even when signed out: signing in could not reconnect a cut-off page.
-        <Alert tone="info">This site blocks clipping. Paste the address in Add product instead.</Alert>
+        <Alert tone="info">
+          This window isn't connected to a store page. Open the product's page and click Save to Kitchen ERP there, or paste its address in Add product.
+        </Alert>
+      ) : state.kind === "no_answer" ? (
+        <Alert tone="info">
+          The store page didn't answer. Reload it and click Save to Kitchen ERP again, or paste its address in Add product.
+        </Alert>
       ) : me.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -196,7 +203,10 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
         return;
       }
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload?.error?.message ?? `Saving failed with status ${response.status}.`);
+      if (!response.ok) {
+        const err = payload?.error ?? {};
+        throw new ApiError(response.status, err.code ?? "http_error", err.message ?? "", err.details);
+      }
       onSaved(payload as Proposal, response.status === 200);
     } catch (e) {
       setError(e);
@@ -252,7 +262,7 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
           </label>
         </div>
       ) : null}
-      {error ? <Alert tone="error">{isApiError(error) || error instanceof Error ? errorMessage(error) : "Saving failed."}</Alert> : null}
+      {error ? <Alert tone="error">{clipErrorMessage(error)}</Alert> : null}
       <div className="flex gap-2">
         <Button disabled={busy || preview === null || needsChoice} onClick={() => void save()}>
           {busy ? "Saving…" : "Save"}
@@ -263,6 +273,35 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
       </div>
     </div>
   );
+}
+
+const NEXT = "Try again, or paste the address in Add product.";
+
+/**
+ * What a failed clip says. The server's own messages are written for someone
+ * uploading a file or filling a form, so a clip says what happened to the page and
+ * what to do next instead.
+ */
+export function clipErrorMessage(e: unknown): string {
+  if (e instanceof TypeError) return "Couldn't reach Kitchen ERP. Check the connection and save again.";
+  if (!isApiError(e)) return `Couldn't save this page. ${NEXT}`;
+  switch (e.code) {
+    case "unauthenticated":
+      return "You were signed out. Sign in here, then save again.";
+    case "payload_too_large":
+      return "This page is too large to save. Paste the address in Add product instead.";
+    case "unsupported_image":
+    case "image_too_large":
+      return `Couldn't save this page: one of its images isn't a photo Kitchen ERP can use. ${NEXT}`;
+    case "invalid_url":
+      return "Couldn't save this page: its address isn't one Kitchen ERP can save.";
+    case "not_found":
+      return "That vendor is no longer in Kitchen ERP. Choose another and save again.";
+    case "validation_error":
+      return "Couldn't save this page: it sent something Kitchen ERP can't read. Reload the store page and click Save to Kitchen ERP again, or paste the address in Add product.";
+    default:
+      return e.status >= 500 ? `Couldn't save this page: something went wrong in Kitchen ERP. ${NEXT}` : `Couldn't save this page. ${NEXT}`;
+  }
 }
 
 function Saved({ proposal, already }: { proposal: Proposal; already: boolean }) {

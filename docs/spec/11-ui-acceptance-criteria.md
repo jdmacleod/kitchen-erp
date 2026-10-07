@@ -123,5 +123,5 @@ Added 2026-10-01 with sub-phases 1H, 1I and 2K–2N (`03`, `04`); layouts and co
 - **UI-6.11** Capture offers four modes; "Photograph a product" sends up to four photos as one proposal and confirms with the Notice (PD11, PD12).
 - **UI-6.12** The reading line counts product work in one sentence and turns squash when stalled; an overdue lookup gets its own line; neither counts in the badge (PD7).
 - **UI-6.13** "Look this up online" is absent without a products helper, and shows its waiting, overdue and answered states with one (PD8).
-- **UI-6.14** The clip window shows every state in 10, including signing in inside the window and the blocked-site message, and stays open after saving (PD9, PD21).
+- **UI-6.14** The clip window shows every state in 10, including signing in inside the window, the no-page and no-answer messages, and a failed save explained in the clip's own words (never a photo upload's), and stays open after saving (PD9, PD21).
 - **UI-6.15** Settings → Capture offers the draggable link, the address it is tied to and a copy-code fallback; the Add product drawer's address field prefills with the "From the address" hint and counts as typed input (PD19, PD20).
