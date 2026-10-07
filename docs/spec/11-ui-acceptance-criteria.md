@@ -76,6 +76,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.16** Receipts lists uploads by batch, newest first, with the counts Add up, To check and Couldn't read (a zero is a dash) and each receipt's trust badge, store, total and line count. The trust badge pairs a mark with words on Receipts, Purchases and Needs you receipt rows; it is never colour alone (issue 122).
 - **UI-3.17** A product merge is confirmed in the page, never by a browser dialog: the panel names both products, says what goes to the kept one, shows any unit warnings before Merge is pressed, and puts focus on Cancel. A merged product's page names and links the product it was merged into, and offers neither merge nor reactivation (#179).
 - **UI-3.18** Receipt review's "Correct the lines" edits every line of a draft in one table and saves them in one request: Enter adds a row below, the lines' sum against the printed total updates as you type, Commit waits while the table is open, and typed changes are never dropped without asking (#182).
+- **UI-3.19** A voided purchase offers "Restore purchase" at its foot, confirmed in the page with focus on Cancel. Restoring turns the page into review with the Notice "Restored. Commit it to put its prices back in the price book.", and a purchase whose receipt was read again says so with no button (#210).
 
 ## UI-4 — Phone and tablet
 

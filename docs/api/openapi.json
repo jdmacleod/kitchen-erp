@@ -10022,6 +10022,18 @@
             ],
             "title": "Removed Line Count"
           },
+          "restore_blocked": {
+            "anyOf": [
+              {
+                "const": "read_again",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restore Blocked"
+          },
           "source": {
             "title": "Source",
             "type": "string"
@@ -19159,6 +19171,50 @@
           }
         },
         "summary": "Reopen Purchase",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/restore": {
+      "post": {
+        "description": "Bring a removed (voided) purchase back to review; committing records its prices anew.",
+        "operationId": "restore_purchase_api_v1_purchases__purchase_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Purchase",
         "tags": [
           "purchases"
         ]

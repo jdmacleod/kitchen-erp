@@ -42,7 +42,7 @@ describe("removing a purchase", () => {
     renderApp(`/shop/purchases/${purchaseId}`);
 
     const section = await screen.findByRole("region", { name: "Remove this purchase" });
-    expect(section).toHaveTextContent("It's in the price book, so its 2 prices will be voided. This can't be undone yet.");
+    expect(section).toHaveTextContent("It's in the price book, so its 2 prices will be voided. You can restore it afterwards.");
     await user.click(within(section).getByRole("button", { name: "Remove purchase" }));
     const confirm = within(section).getByRole("group", { name: /Remove the Pier Farmers Market purchase from/ });
     expect(within(confirm).getByRole("button", { name: "Keep it" })).toHaveFocus();
@@ -56,6 +56,62 @@ describe("removing a purchase", () => {
     expect(screen.getAllByText("Voided").length).toBeGreaterThan(0);
     const rows = within(screen.getByRole("table", { name: "Lines" })).getAllByRole("row").slice(1);
     expect(rows[0]).toHaveTextContent("voided");
+  });
+
+  it("restores a voided purchase to review after asking, and says how its prices come back", async () => {
+    let purchase: Purchase = { ...recorded(manualPurchase), status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", voided_prices: 2, removal: null, restore_blocked: null };
+    const calls = mockApi({
+      ...baseRoutes(),
+      "GET /products/search": () => jsonResponse(200, { items: [] }),
+      [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, purchase),
+      [`POST /purchases/${purchaseId}/restore`]: () => {
+        purchase = { ...purchase, status: "reviewed", voided_at: null, voided_by_name: null, voided_prices: null, removal: voidPlan, restore_blocked: null };
+        return jsonResponse(200, purchase);
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/shop/purchases/${purchaseId}`);
+
+    const section = await screen.findByRole("region", { name: "Restore this purchase" });
+    expect(section).toHaveTextContent("Restoring brings it back to review. Its prices count again once you commit it.");
+    await user.click(within(section).getByRole("button", { name: "Restore purchase" }));
+    const confirm = within(section).getByRole("group", { name: /Restore the Pier Farmers Market purchase from/ });
+    expect(within(confirm).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+
+    await user.click(within(confirm).getByRole("button", { name: "Restore purchase" }));
+    expect(await screen.findByTestId("notice")).toHaveTextContent("Restored. Commit it to put its prices back in the price book.");
+    expect(calls.filter((c) => c.method === "POST").map((c) => c.path)).toEqual([`/purchases/${purchaseId}/restore`]);
+    expect(screen.queryByRole("region", { name: "Restore this purchase" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Remove this purchase" })).toBeInTheDocument();
+  });
+
+  it("says why a voided purchase whose receipt was read again can't be restored", async () => {
+    const voided: Purchase = { ...recorded(manualPurchase), status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", voided_prices: 1, removal: null, restore_blocked: "read_again" };
+    mockApi({ ...baseRoutes(), [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, voided) });
+    renderApp(`/shop/purchases/${purchaseId}`);
+
+    const section = await screen.findByRole("region", { name: "Restore this purchase" });
+    expect(section).toHaveTextContent("Its receipt was uploaded again, so it already has a newer purchase. This one stays removed.");
+    expect(within(section).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("keeps the restore confirm open with the error", async () => {
+    const voided: Purchase = { ...recorded(manualPurchase), status: "voided", voided_at: "2026-09-28T12:00:00Z", voided_by_name: "Admin Example", voided_prices: 1, removal: null, restore_blocked: null };
+    mockApi({
+      ...baseRoutes(),
+      [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, voided),
+      [`POST /purchases/${purchaseId}/restore`]: () => errorResponse(409, "read_again", "Its receipt was uploaded again."),
+    });
+    const user = userEvent.setup();
+    renderApp(`/shop/purchases/${purchaseId}`);
+
+    const section = await screen.findByRole("region", { name: "Restore this purchase" });
+    await user.click(within(section).getByRole("button", { name: "Restore purchase" }));
+    await user.click(within(within(section).getByRole("group")).getByRole("button", { name: "Restore purchase" }));
+    const alert = await within(section).findByRole("alert");
+    expect(alert).toHaveTextContent("Its receipt was uploaded again, so it already has a newer purchase.");
+    await waitFor(() => expect(alert).toHaveFocus());
   });
 
   it("deletes a never-recorded receipt and says its photo went too", async () => {

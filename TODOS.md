@@ -159,20 +159,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Vision reading Phase 1
 
-## Purchases
-
-### Restore a voided purchase
-
-**What:** A "Restore" action on a voided purchase: voided → reviewed, then a normal commit re-emits its prices.
-
-**Why:** Removing the wrong purchase otherwise means entering it again by hand.
-
-**Context:** Recorded by the eng review of #72/#74 on 2026-09-28 (D13). With D4, a purchase that ever reached the price book is voided rather than deleted, and keeps its lines. `reopen_purchase` (`services/resolution.py`) accepts only `committed` today and would need to accept `voided`. The recommit path already re-emits observations for resolved item lines.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** #74
-
 ## Vendors
 
 ### Public vendor dataset and reference enrichment tool
