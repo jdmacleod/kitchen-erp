@@ -33,6 +33,8 @@ Reference data (ingredients, products, vendors) is the foundation under the loop
 
 **Build line.** The build line and status dot stay in the sidebar footer (T10; issue #12).
 
+**A newer build (#209).** A tab remembers the `commit` that `/health` reported when it first answered. When a later poll (every 60 s, and on refocus) reports a different one, the stack was redeployed under it, and a neutral inline notice above the page's own Notice says "A new version is ready." with Reload (the one action, so the only blue) and "Not now". It never reloads on its own, since a form may hold typed input. It survives navigation, "Not now" hides it until the commit changes again, and nothing shows while either commit is missing or "unknown" (a dev build or an older API).
+
 ## Routes
 
 Keep the old paths as client-side redirects for at least one release, preserving route parameters.

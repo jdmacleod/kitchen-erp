@@ -4,6 +4,7 @@ import { useCurrentUser } from "../auth/context";
 import { CaptureSheet } from "./CaptureSheet";
 import { ChromeContext, type Chrome } from "./chrome";
 import { Nav } from "./Nav";
+import { NewVersionNotice } from "./NewVersionNotice";
 import { NoticeProvider } from "./Notice";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import { SearchPalette } from "./SearchPalette";
@@ -135,6 +136,7 @@ export function AppShell() {
           task ? "pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6" : "pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
         }`}
       >
+        <NewVersionNotice />
         <ChromeContext.Provider value={chrome}>
           <NoticeProvider>
             <PageErrorBoundary key={location.pathname}>
