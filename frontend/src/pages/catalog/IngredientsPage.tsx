@@ -63,6 +63,15 @@ export function IngredientsPage() {
   const list = useIngredients(q, includeInactive);
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   const [adding, setAdding] = useState(false);
+
+  // The search palette's "Add …" action links here with ?new=1 (UI-2.9): the
+  // drawer opens, and the parameter is consumed so Back does not reopen it.
+  const askedToAdd = params.get("new") === "1";
+  if (askedToAdd && !adding) setAdding(true);
+  useEffect(() => {
+    if (askedToAdd) setParam("new", null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askedToAdd]);
   // DV14: skipped ingredients stay reachable from the list.
   const linkSummary = useLinkSummary();
 

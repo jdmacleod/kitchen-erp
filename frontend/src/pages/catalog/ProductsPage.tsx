@@ -79,6 +79,15 @@ export function ProductsPage() {
 
   // Arriving from an ingredient's page opens the drawer with that ingredient.
   const [adding, setAdding] = useState(presetId !== undefined);
+
+  // The search palette's "Add …" action links here with ?new=1 (UI-2.9): the
+  // drawer opens, and the parameter is consumed so Back does not reopen it.
+  const askedToAdd = params.get("new") === "1";
+  if (askedToAdd && !adding) setAdding(true);
+  useEffect(() => {
+    if (askedToAdd) setParam("new", null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askedToAdd]);
   const closeDrawer = () => {
     setAdding(false);
     if (presetId) setParam("ingredient_id", null);
