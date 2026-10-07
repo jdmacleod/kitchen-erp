@@ -622,6 +622,13 @@ async def set_ingredient_active(
     db: AsyncSession, ingredient_id: uuid.UUID, active: bool
 ) -> Ingredient:
     ingredient = await get_ingredient(db, ingredient_id)
+    if active and ingredient.merged_into is not None:
+        # Its products and spellings belong to the survivor now (1G, #211).
+        raise ApiError(
+            409,
+            "ingredient_merged",
+            "This ingredient was merged into another and can't be reactivated.",
+        )
     ingredient.active = active
     await db.commit()
     return await get_ingredient(db, ingredient_id)
