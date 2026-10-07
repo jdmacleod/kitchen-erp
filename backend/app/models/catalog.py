@@ -84,6 +84,11 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
     merged_into: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("ingredient.id")
     )
+    # {field: {source, ref, checked_at, imported}}, as on vendor (1F): what an
+    # ingredient file last wrote there (#241; services.interchange).
+    field_source: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
+    )
 
     measures: Mapped[list[IngredientMeasure]] = relationship(
         back_populates="ingredient",
@@ -117,7 +122,7 @@ class IngredientMeasure(UUIDPrimaryKey, Timestamped, Base):
 
 
 ALIAS_KINDS = ("synonym", "inflection", "legacy")
-ALIAS_SOURCES = ("standard", "generated", "rename", "merge", "manual")
+ALIAS_SOURCES = ("standard", "generated", "rename", "merge", "manual", "import")
 
 
 class IngredientAlias(UUIDPrimaryKey, Timestamped, Base):
@@ -129,7 +134,7 @@ class IngredientAlias(UUIDPrimaryKey, Timestamped, Base):
             "kind IN ('synonym', 'inflection', 'legacy')", name="ck_ingredient_alias_kind"
         ),
         CheckConstraint(
-            "source IN ('standard', 'generated', 'rename', 'merge', 'manual')",
+            "source IN ('standard', 'generated', 'rename', 'merge', 'manual', 'import')",
             name="ck_ingredient_alias_source",
         ),
         UniqueConstraint("name_norm", name="uq_ingredient_alias_name_norm"),
