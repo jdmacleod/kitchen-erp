@@ -445,6 +445,45 @@ async def test_reopen_and_repoint_one_line_voids_and_reemits_only_that_line(
     assert resolved["lines"][0]["product"]["id"] == c["id"]
 
 
+async def test_a_corrected_purchase_date_redates_every_price_on_recommit(
+    admin_client, admin, db_session
+):
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    a = await make_product(admin_client, "Rigatoni", "Rigatoni box")
+    b = await make_product(admin_client, "Penne", "Penne box")
+    p = await make_receipt_purchase(
+        admin.id,
+        loc["id"],
+        [
+            {"raw_text": "PASTA A 2.49", "line_total": "2.49", "qty": "1", "unit": "each"},
+            {"raw_text": "PASTA B 2.59", "line_total": "2.59", "qty": "1", "unit": "each"},
+        ],
+    )
+    body = await resolve(admin_client, p, db_session)
+    for line, product in zip(body["lines"], (a, b), strict=True):
+        await admin_client.post(
+            f"/api/v1/purchases/{p}/lines/{line['id']}/resolve", json={"product_id": product["id"]}
+        )
+    committed = (await admin_client.post(f"/api/v1/purchases/{p}/commit")).json()
+    obs_before = [ln["observation_id"] for ln in committed["lines"]]
+    assert (await admin_client.post(f"/api/v1/purchases/{p}/reopen")).status_code == 200
+    # The read date was wrong; the person sets the date the receipt prints.
+    r = await admin_client.patch(
+        f"/api/v1/purchases/{p}", json={"purchased_at": "2026-03-14T17:20:00Z"}
+    )
+    assert r.status_code == 200
+    recommitted = (await admin_client.post(f"/api/v1/purchases/{p}/commit")).json()
+    obs_after = [ln["observation_id"] for ln in recommitted["lines"]]
+    for before, after in zip(obs_before, obs_after, strict=True):
+        assert after != before
+        old = (await admin_client.get(f"/api/v1/price-observations/{before}")).json()
+        assert old["voided"] is True
+        assert old["void_reason"] == "purchase date changed on recommit"
+        new = (await admin_client.get(f"/api/v1/price-observations/{after}")).json()
+        assert new["voided"] is False
+        assert new["observed_at"].startswith("2026-03-14T17:20:00")
+
+
 async def test_review_edits_lines_and_header(admin_client, admin, db_session):
     loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
     loc2 = await make_location(
