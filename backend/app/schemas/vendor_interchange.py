@@ -68,7 +68,7 @@ class LocationEntry(_Strict):
 
 class HouseholdLocation(_Strict):
     id: str
-    home_base: str | None = None  # a home base's name; never created by import
+    home_base: str | None = None  # a kitchen's name; never created by import
     stop_overhead_min: Annotated[int, Field(ge=0, le=32767)] | None = None
     active: bool
     publishable: bool
@@ -204,5 +204,5 @@ class ImportReport(BaseModel):
     mode: Mode
     counts: ImportCounts
     items: list[ImportItem]
-    # Home base names the file uses that this deployment has none of; none is created.
+    # Kitchen names the file uses that this deployment has none of; none is created.
     unresolved_home_bases: list[str] = Field(default_factory=list)

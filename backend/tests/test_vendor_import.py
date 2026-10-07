@@ -198,7 +198,7 @@ async def test_two_nearby_candidates_are_reported_not_guessed(
 
 
 async def test_household_fields_only_from_a_household_file(admin_client: httpx.AsyncClient):
-    """Criterion 73: an unknown home base is reported and none is created."""
+    """Criterion 73: an unknown kitchen is reported and none is created."""
     await make_home_base(admin_client, "Harbour flat", HOME_A)
     household = json.loads(json.dumps(MART))
     household["household"] = {

@@ -14,7 +14,7 @@ file ─▶ ≤ 5 MB ─▶ loader (no anchors or aliases, no floats) ─▶ Ven
 Rules for each field: a field is written only while it is empty or still
 holds what a source last wrote there (``services.geo.write_unless_edited``);
 otherwise it is a conflict, left alone and reported. Household fields are read
-only from a household-mode file. Nothing is deleted, and no home base is ever
+only from a household-mode file. Nothing is deleted, and no kitchen is ever
 created: a name this deployment lacks is reported and the location keeps its
 nearest-base default. Importing the same file twice changes nothing the
 second time.
