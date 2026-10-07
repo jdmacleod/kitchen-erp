@@ -14,12 +14,12 @@ the project by name.
 ## A. Repository posture (before 1A)
 
 **A1. Household location in the spec — decided.** The glossary originally named
-the household's two home bases by city, and the tile extract and the daylight-
+the household's two kitchens by city, and the tile extract and the daylight-
 saving test are pinned to Southern California and `America/Los_Angeles`. In a
 public repository those city names disclosed where the household lives at a
 resolution nothing in the design needed. The region itself is hard to hide: the
 tile extract and the timezone are real configuration.
-*Resolution:* the glossary example reads "two home bases about an hour apart",
+*Resolution:* the glossary example reads "two kitchens about an hour apart",
 the region and timezone stay as documented defaults, and real home coordinates
 are never committed (the scanner's denylist holds their prefixes). Accepted on
 2026-09-22 that the repository reveals "a household in Southern California" and

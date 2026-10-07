@@ -65,32 +65,32 @@ A bridge editor on the ingredient page shows the density and every named measure
 104. (#179) A merge is one transaction: a failure partway leaves both products and everything that names them unchanged. A preview writes nothing. Merging a product into itself, into a merged or inactive product, or merging one already merged is refused with a specific code, and a merged product can't be reactivated. Merges stay one level deep.
 105. (#179) The preview reports both packs' units and counts the duplicate's prices in a mass or volume unit of another dimension than the ingredient's canonical unit that won't compare without a density; a count price ("1 each") is priced through the kept product's pack and is not counted.
 
-## 1D — Vendors, locations, and home bases
+## 1D — Vendors, locations, and kitchens
 
-Provide management of home bases, vendors, and vendor locations. A home base is created by placing a pin. A vendor has a kind and a price scope. A location belongs to a vendor, sits at a place, and may have a parent location, which is how a stall belongs to a market; a stall with no hours of its own inherits the market's.
+Provide management of kitchens, vendors, and vendor locations. A kitchen is created by placing a pin. A vendor has a kind and a price scope. A location belongs to a vendor, sits at a place, and may have a parent location, which is how a stall belongs to a market; a stall with no hours of its own inherits the market's.
 
-Locations can be created in three ways. The first is by dropping a pin on the map and typing a name, which is the path for roadside stands and anything OpenStreetMap does not know. The second is by coordinates supplied by a client, which is how the future capture app will create a stand from where the phone is standing. The third, available when `ENABLE_OVERPASS` is true, is adoption from OpenStreetMap: for a chosen home base and radius, the server queries Overpass for food-related shops and marketplaces, presents them as candidates, and lets the user adopt the ones they actually use. Adoption creates the vendor if needed, creates the place and location, and stores the OSM identifier, name, address, and opening hours. A later refresh action updates hours from OSM for adopted locations without overwriting fields the user has edited. The candidate query covers supermarkets, greengrocers, butchers, seafood shops, bakeries, delicatessens, cheese shops, farm shops, and marketplaces, and its results are cached so that browsing candidates does not repeat the query.
+Locations can be created in three ways. The first is by dropping a pin on the map and typing a name, which is the path for roadside stands and anything OpenStreetMap does not know. The second is by coordinates supplied by a client, which is how the future capture app will create a stand from where the phone is standing. The third, available when `ENABLE_OVERPASS` is true, is adoption from OpenStreetMap: for a chosen kitchen and radius, the server queries Overpass for food-related shops and marketplaces, presents them as candidates, and lets the user adopt the ones they actually use. Adoption creates the vendor if needed, creates the place and location, and stores the OSM identifier, name, address, and opening hours. A later refresh action updates hours from OSM for adopted locations without overwriting fields the user has edited. The candidate query covers supermarkets, greengrocers, butchers, seafood shops, bakeries, delicatessens, cheese shops, farm shops, and marketplaces, and its results are cached so that browsing candidates does not repeat the query.
 
 Opening hours are stored in OpenStreetMap `opening_hours` syntax, which expresses weekly schedules, exceptions, and seasonal ranges in a single string. The server validates the string on save using an established parser library and exposes an `is_open_at(location, instant)` service function and an API filter built on it. The location form offers a simple builder for the common cases (daily hours, a weekly market, a seasonal stand) that writes the syntax for the user, with the raw string available for anything unusual.
 
-Each location defaults its home base to the nearest one by geodesic distance, which the user may override or clear.
+Each location defaults its kitchen to the nearest one by geodesic distance, which the user may override or clear.
 
 ### Acceptance criteria
 
-21. A home base, a vendor, and a location can be created entirely by map interaction and a name, without typing an address or coordinates.
+21. A kitchen, a vendor, and a location can be created entirely by map interaction and a name, without typing an address or coordinates.
 22. A stall created under a market reports the market's opening hours when it has none of its own, and its own when it does.
 23. Invalid `opening_hours` strings are rejected on save with a message that identifies the problem; the strings `Mo-Fr 08:00-21:00; Sa,Su 09:00-20:00` and `Apr-Oct Sa 08:00-13:00` are accepted and evaluate correctly for instants inside and outside their ranges, including across a daylight-saving boundary in the `America/Los_Angeles` zone.
-24. With Overpass enabled, candidates within a radius of a home base are listed, adopting one creates vendor, place, and location in one transaction, and adopting the same OSM object twice is refused.
+24. With Overpass enabled, candidates within a radius of a kitchen are listed, adopting one creates vendor, place, and location in one transaction, and adopting the same OSM object twice is refused.
 25. With Overpass disabled, which is the default, no outbound request is made by any code path, verified by a test that fails on any network access.
 26. Refreshing an adopted location updates its hours from OSM but preserves a name the user has changed.
-27. A new location's home base defaults to the nearest base and can be cleared.
+27. A new location's kitchen defaults to the nearest base and can be cleared.
 28. Setting a vendor's price scope to `chain` is reflected in the vendor's API representation and is covered by a test that Phase 2's `offer_latest` view will rely on.
 
 ## 1E — The map
 
-Render vendor locations and home bases on a MapLibre map backed by a PMTiles extract of Southern California served from `data/tiles/` by the `web` container. Document in the repository how to obtain or cut the extract; the file itself is not committed. If no tiles file is present the map falls back to a plain background with pins still placed correctly, and the UI says that tiles are missing, so that a missing download never blocks the rest of the system.
+Render vendor locations and kitchens on a MapLibre map backed by a PMTiles extract of Southern California served from `data/tiles/` by the `web` container. Document in the repository how to obtain or cut the extract; the file itself is not committed. If no tiles file is present the map falls back to a plain background with pins still placed correctly, and the UI says that tiles are missing, so that a missing download never blocks the rest of the system.
 
-Pins are distinguished by vendor kind using both colour and shape. A filter narrows by kind, by home base, and by "open at", which defaults to now and accepts any date and time; it removes locations known to be closed at that instant and keeps locations whose hours are unknown, marked as such. Selecting a pin shows the location's name, vendor, hours in readable form, and whether it is open at the chosen time; in Phase 2 this panel gains price information. Stalls are reachable by selecting their market. The map is usable on a phone: pins are large enough to tap and the detail panel does not cover the whole map.
+Pins are distinguished by vendor kind using both colour and shape. A filter narrows by kind, by kitchen, and by "open at", which defaults to now and accepts any date and time; it removes locations known to be closed at that instant and keeps locations whose hours are unknown, marked as such. Selecting a pin shows the location's name, vendor, hours in readable form, and whether it is open at the chosen time; in Phase 2 this panel gains price information. Stalls are reachable by selecting their market. The map is usable on a phone: pins are large enough to tap and the detail panel does not cover the whole map.
 
 ### Acceptance criteria
 
@@ -109,7 +109,7 @@ Added 2026-09-29 after a /devex-review found the household's vendor list held li
 **Privacy comes first.** A household's list of the stores it visits is personal data even with every household field removed (SECURITY.md). So:
 
 - **Two export modes.** `household` exports everything the household holds about its vendors, for moving between deployments or as input to a tool the household controls. `public` exports only what is safe to contribute:
-  - It leaves out notes, home bases, stop overheads, the `active` flag, internal ids, and anything derived from purchases, receipts or visits: last visits, and `receipt_identifiers`, which are learned from the household's own receipts.
+  - It leaves out notes, kitchens, stop overheads, the `active` flag, internal ids, and anything derived from purchases, receipts or visits: last visits, and `receipt_identifiers`, which are learned from the household's own receipts.
   - It includes only locations marked `publishable` or linked to an OpenStreetMap object, and never stands, whose pin may be someone's home.
 - **The file is a contribution candidate.** A person reads the public export and opens the pull request to the public repository themselves.
 
@@ -178,14 +178,14 @@ vendors:
 - **Writing fields.**
   - A field is written only when it is empty or still equals `field_source.imported`. Otherwise it is a conflict: left alone and listed.
   - Household fields are written only from a household-mode file.
-  - A home base is matched by its name. A name with no matching home base is reported as unresolved and the location keeps its nearest-base default; import never creates a home base, because a home base is where someone lives.
+  - A kitchen is matched by its name. A name with no matching kitchen is reported as unresolved and the location keeps its nearest-base default; import never creates a kitchen, because a kitchen is where someone lives.
   - Nothing is deleted.
 - **Report.** Import returns `{created, updated, unchanged, conflicts, unmatched}` with each field's old and new value. A dry run is the same code rolled back. A malformed file is `422 bad_export`.
 
 ### Suggestions from an outside tool
 
 - **Scoped tokens.** An API token may be limited to scopes. A session, or a token with the scope `*` (every existing token), keeps full rights.
-  - `vendors:read` may read the **public** export and nothing else. The household export and every other vendor and location route are `403` to it, because those return notes, home bases, visits and store codes. A tool addresses suggestions by the keys in the public export.
+  - `vendors:read` may read the **public** export and nothing else. The household export and every other vendor and location route are `403` to it, because those return notes, kitchens, visits and store codes. A tool addresses suggestions by the keys in the public export.
   - `vendors:suggest` may only post suggestions.
 - **Posting suggestions.** `POST /api/v1/vendor-suggestions` accepts a batch of proposed field values, each with a target (vendor or location, by id or key), a field, the value it expects to replace, the proposed value, a required `source_url`, optional evidence (plain text, at most 1,000 characters), the tool's name and version, and a confidence (a decimal string).
   - Fields are a closed set: `website`, `brand`, `wikidata`, `phone`, `address`, `opening_hours`, `osm`, `name`, `price_scope`.
@@ -194,7 +194,7 @@ vendors:
   - Posting never changes a vendor or location.
 - **Suggestions are append-only.** A suggestion's proposal cannot be changed: the runtime role may update only its decision columns, and a trigger refuses anything else. Its status is pending, accepted, rejected or stale.
 - **Review.** Pending suggestions become one inbox row, and a person accepts or rejects them per field or all at once. Accepting checks that the field still holds the value the suggestion expected; if it changed, the suggestion is stale and is applied only on an explicit override. An accepted value is written with its provenance (`enriched:<tool>`) in one transaction.
-- **What a tool may send outside.** The reference enrichment tool lives in the public repository, not here. It works from the public export and sends a model only public facts: vendor and branch names, city or region, OSM ids, public coordinates and current public values, one vendor at a time. It never sends home bases, notes, purchases or receipt text, and it drops values from sources whose terms are incompatible with the ODbL.
+- **What a tool may send outside.** The reference enrichment tool lives in the public repository, not here. It works from the public export and sends a model only public facts: vendor and branch names, city or region, OSM ids, public coordinates and current public values, one vendor at a time. It never sends kitchens, notes, purchases or receipt text, and it drops values from sources whose terms are incompatible with the ODbL.
 
 ### Receipt matching uses the new facts
 
@@ -211,7 +211,7 @@ The header stage already reads the printed phone and address. `match_location` s
 66. Import matches by key before OSM id before name and proximity, and reports an ambiguous match instead of choosing.
 67. A file with a float coordinate, a YAML alias, an unknown format, or over the size limit is refused with `422 bad_export`, and a dry run changes nothing.
 68. A `vendors:read` token gets the public export and `403` from the household export and from every other vendor and location route; a `vendors:suggest` token can post suggestions and cannot read or change a vendor.
-73. Importing a household file on a deployment without its home bases reports each unmatched home-base name, and creates none.
+73. Importing a household file on a deployment without its kitchens reports each unmatched kitchen name, and creates none.
 69. A malformed suggestion batch is `422`; posting a valid batch changes no vendor; an attempt to update a suggestion's proposal is refused by the database.
 70. Accepting a suggestion writes the value and its provenance; accepting one whose field changed since it was proposed marks it stale.
 71. Pending suggestions appear as one inbox row and leave the inbox once decided.
