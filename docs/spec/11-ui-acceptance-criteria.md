@@ -79,6 +79,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.18** Receipt review's "Correct the lines" edits every line of a draft in one table and saves them in one request: Enter adds a row below, the lines' sum against the printed total updates as you type, Commit waits while the table is open, and typed changes are never dropped without asking (#182).
 - **UI-3.19** A voided purchase offers "Restore purchase" at its foot, confirmed in the page with focus on Cancel. Restoring turns the page into review with the Notice "Restored. Commit it to put its prices back in the price book.", and a purchase whose receipt was read again says so with no button (#210).
 - **UI-3.20** An ingredient's page offers "Merge into…" and, until it is linked, "Link to standard name", both through the link page's merge panel (preview first, focus on Cancel). A merged ingredient's page names and links the ingredient it was merged into, and offers neither merge, link nor reactivation (#211).
+- **UI-3.21** A draft whose receipt the image transcriber could not read (`ocr_fallback`, 04 2O) says "Read from the text scan: the image reader wasn't available." in a quiet neutral line under the header, and nothing else about review changes.
 
 ## UI-4 — Phone and tablet
 
