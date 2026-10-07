@@ -41,7 +41,7 @@ the paper or standard it implements and work from that.
 | `zxing-cpp` (reads retail barcodes in product photos, 2L; tests also draw barcodes with it) | Apache-2.0 | Notice preserved. Permissive. It runs locally in the worker; nothing is sent anywhere. |
 | Ollama and default text model `qwen2.5:14b` | MIT (Ollama), Apache-2.0 (Qwen2.5-14B, per the licence the Ollama registry carries) | Notices preserved. Model weights are downloaded locally, never committed. |
 | `gpt-oss:20b` (the earlier default text model, still usable) | Apache-2.0 | Same as above. |
-| `glm-ocr` (the vision transcriber, optional, off by default; 04, 2O) | **Not stated:** the Ollama registry carries no licence text for it. Check the upstream model card before relying on it | Weights are downloaded by the operator onto their own model server, never committed or shipped with this project. |
+| `glm-ocr` (the vision transcriber, optional, off by default; 04, 2O) | MIT (model weights), Apache-2.0 (code), per the upstream repository `zai-org/GLM-OCR`; the Ollama registry carries no licence text for it | Notices preserved. Weights are downloaded by the operator onto their own model server, never committed or shipped with this project. Only the model is used, through Ollama: not the upstream pipeline, which adds PP-DocLayoutV3 (Apache-2.0). |
 | Cooklang specification and `cooklang` parser crate / bindings | MIT | Notice preserved if vendored; prefer a dependency. |
 | `opening-hours-py` (OSM opening_hours parser) | MIT or Apache-2.0 | Notice preserved. Avoid `pyopening-hours`, which wraps `opening_hours.js` and is GPL-3.0. |
 
