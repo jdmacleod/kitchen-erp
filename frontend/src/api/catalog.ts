@@ -75,6 +75,10 @@ export interface Ingredient {
   active: boolean;
   notes: string | null;
   measures: Measure[];
+  /** Where it stands against the standard list (1G); "linked" has its standard name. */
+  reconcile_state: "unreviewed" | "linked" | "skipped" | "not_applicable";
+  /** The ingredient this one was merged into (issue 211); its page links there. */
+  merged_into: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -306,6 +310,7 @@ const conflictMessages: Record<string, string> = {
   merge_target_inactive: "Choose an active product to keep.",
   already_merged: "This product was already merged.",
   product_merged: "This product was merged into another and can't be reactivated.",
+  ingredient_merged: "This ingredient was merged into another and can't be reactivated.",
 };
 
 /** A message for a catalog mutation error, with conflict codes spelled out. */

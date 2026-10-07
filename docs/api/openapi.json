@@ -3266,6 +3266,18 @@
             "title": "Measures",
             "type": "array"
           },
+          "merged_into": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merged Into"
+          },
           "name": {
             "title": "Name",
             "type": "string"
@@ -3288,6 +3300,17 @@
               "fresh"
             ],
             "title": "Perishability",
+            "type": "string"
+          },
+          "reconcile_state": {
+            "default": "not_applicable",
+            "enum": [
+              "unreviewed",
+              "linked",
+              "skipped",
+              "not_applicable"
+            ],
+            "title": "Reconcile State",
             "type": "string"
           },
           "slug": {
