@@ -55,7 +55,12 @@ from app.ingest.errors import (
 )
 from app.ingest.formats import BY_MIME
 from app.ingest.llm import VISION_RETRY, CallLedger, LlmClient, RetryPolicy
-from app.ingest.ocr import run_ocr
+from app.ingest.ocr import (  # the transcription the vision adapter ships (2O)
+    OCR_NUM_PREDICT,
+    OCR_TASK,
+    drop_repeated_tail,
+    run_ocr,
+)
 from app.ingest.schemas import ReceiptHeader, VisionReceiptLines, valid_box
 from app.ingest.witness import any_support, witness_amounts
 from app.models import ReceiptDocument
@@ -87,15 +92,6 @@ TEXT_PROMPT_VERSION = f"text-{lines_stage.GENERIC_PARSER_VERSION}"
 OCR_PROMPT_VERSION = "ocr-1"
 VISION_PROMPT_VERSION = "vision-box-1"
 
-# glm-ocr's own prompt. It transcribes the receipt and then repeats lines until
-# the output cap (measured on the household's model server: 22 distinct lines
-# in 112); repeat and presence penalties did not stop it and cost accuracy. So
-# the cap is what a 100-line receipt needs, and the loop is cut off afterwards.
-# A loop on one token is stopped sooner by Ollama's repeat limit; transcribe()
-# then keeps the rows read before it, and the call counts as a runaway.
-OCR_TASK = "Text Recognition:"
-OCR_NUM_PREDICT = 4096
-REPEATED_RUN = 3
 VISION_LINES_TASK = (
     f"{lines_stage.LINES_TASK} For each line also give its box: where it is printed on "
     "the page, as [x0, y0, x1, y1] whole numbers from 0 to 1000 (left, top, right and "
@@ -387,24 +383,6 @@ async def ocr_text(receipt: Receipt) -> str | None:
     except StageFailure:
         return None
     return found
-
-
-def drop_repeated_tail(transcript: str, run: int = REPEATED_RUN) -> str:
-    """The transcript up to the first run of ``run`` lines it has already printed.
-
-    A receipt can print one line twice (two of the same item), but not the same
-    three lines in the same order twice; that is the OCR model looping.
-    """
-    lines = transcript.splitlines()
-    seen: set[tuple[str, ...]] = set()
-    for i in range(len(lines) - run + 1):
-        key = tuple(line.strip() for line in lines[i : i + run])
-        if not all(key):
-            continue
-        if key in seen:
-            return "\n".join(lines[:i])
-        seen.add(key)
-    return transcript
 
 
 def _post_passes(
