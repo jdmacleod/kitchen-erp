@@ -21,7 +21,7 @@ export function HomeBasesPage() {
   // keeps its own text when the pin is cleared, to spare a half-typed pair.
   const [formRound, setFormRound] = useState(0);
 
-  const pins: MapPin[] = (homeBases.data ?? []).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (home base)` }));
+  const pins: MapPin[] = (homeBases.data ?? []).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (kitchen)` }));
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -54,14 +54,14 @@ export function HomeBasesPage() {
         <Card>
           <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-home-heading" noValidate>
             <h2 id="create-home-heading" className="text-lg font-medium">
-              Add a home base
+              Add a kitchen
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
               Click the map where the base is, or give its coordinates, then name it. New vendor locations default to the nearest base.
             </p>
             {tilesPresent === false ? <Alert tone="info">Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates.</Alert> : null}
             {mapError ? <Alert tone="error">{mapError}</Alert> : null}
-            <MapView label="Home bases" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
+            <MapView label="Kitchens" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
             <DraftPointControl key={formRound} draft={draft} onPoint={setDraft} disabled={create.isPending} />
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
@@ -71,14 +71,14 @@ export function HomeBasesPage() {
             </div>
             <div>
               <Button type="submit" disabled={create.isPending || !draft}>
-                {create.isPending ? "Creating…" : "Create home base"}
+                {create.isPending ? "Creating…" : "Create kitchen"}
               </Button>
             </div>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Your home bases</h2>
+          <h2 className="mb-3 text-lg font-medium">Your kitchens</h2>
           {homeBases.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…
@@ -86,9 +86,9 @@ export function HomeBasesPage() {
           ) : homeBases.isError ? (
             <Alert tone="error">{errorMessage(homeBases.error)}</Alert>
           ) : homeBases.data.length === 0 ? (
-            <EmptyState title="No home bases yet" />
+            <EmptyState title="No kitchens yet" />
           ) : (
-            <ul aria-label="Home bases" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            <ul aria-label="Kitchens" className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {homeBases.data.map((h) => (
                 <HomeBaseRow key={h.id} home={h} />
               ))}
@@ -153,7 +153,7 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
         </Alert>
       ) : null}
       {editing ? (
-        <form onSubmit={save} className="mt-3 flex flex-col gap-3" aria-label={`Edit home base ${home.name}`}>
+        <form onSubmit={save} className="mt-3 flex flex-col gap-3" aria-label={`Edit kitchen ${home.name}`}>
           {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field id={`home-${home.id}-name`} label="Name" autoComplete="off" required value={name} onChange={(e) => setName(e.target.value)} />

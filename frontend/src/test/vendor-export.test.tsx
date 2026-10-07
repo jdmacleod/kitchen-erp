@@ -55,7 +55,7 @@ describe("share in public export", () => {
     await user.click(await screen.findByRole("button", { name: `Edit ${chainLocation.name}` }));
     const box = screen.getByRole("checkbox", { name: "Share in public export" });
     expect(box).not.toBeChecked();
-    expect(box).toHaveAccessibleDescription(/Notes and home base never do/);
+    expect(box).toHaveAccessibleDescription(/Notes and kitchen never do/);
     await user.click(box);
     await user.click(screen.getByRole("button", { name: "Save location" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ publishable: true }));

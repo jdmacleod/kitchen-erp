@@ -349,7 +349,7 @@ function AddLocationForm({ vendor, markets, onDone }: { vendor: Vendor; markets:
       <Disclosure summary="Opening hours (optional)">
         <OpeningHoursInput idPrefix="add-location" value={form.opening_hours} onChange={(v) => set("opening_hours", v)} onValidated={setHoursValid} disabled={create.isPending} />
       </Disclosure>
-      {/* Home base and stop overhead are left to the editor on the row this
+      {/* Kitchen and stop overhead are left to the editor on the row this
           creates: neither has to be right before the location can be used, and
           the create form is the one a new deployment meets first. */}
       <div className="flex flex-wrap gap-2">
@@ -470,7 +470,7 @@ function LocationCard({ location, homeBases, markets }: { location: VendorLocati
   );
 }
 
-const SHARE_HINT = "Name, pin, address, hours and phone go in the public file. Notes and home base never do.";
+const SHARE_HINT = "Name, pin, address, hours and phone go in the public file. Notes and kitchen never do.";
 
 /**
  * "Share in public export" (1F, design D11). It always shows what an export
@@ -587,7 +587,7 @@ function EditLocationForm({ location, homeBases, markets, onDone }: { location: 
         <Field id={`${prefix}-name`} label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} hint={sourceHint("name")} />
         <Field id={`${prefix}-address`} label="Address" autoComplete="off" value={form.address} onChange={(e) => set("address", e.target.value)} hint={sourceHint("address")} />
         <Field id={`${prefix}-phone`} label="Phone" type="tel" inputMode="tel" autoComplete="off" value={form.phone} onChange={(e) => set("phone", e.target.value)} hint={phoneError(form.phone) ?? sourceHint("phone")} />
-        <SelectField id={`${prefix}-home`} label="Home base" value={form.home_base_id} onChange={(e) => set("home_base_id", e.target.value)} hint="Cleared means no default base.">
+        <SelectField id={`${prefix}-home`} label="Kitchen" value={form.home_base_id} onChange={(e) => set("home_base_id", e.target.value)} hint="Cleared means no default base.">
           <option value="">None</option>
           {homeBases.map((h) => (
             <option key={h.id} value={h.id}>

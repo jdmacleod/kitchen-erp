@@ -218,7 +218,7 @@ links reach outside the deployment, and only when switched on.
   ```
 
   `public` holds only locations you ticked "Share in public export" on or linked
-  to OpenStreetMap, and none of your notes, home bases, store codes or stands:
+  to OpenStreetMap, and none of your notes, kitchens, store codes or stands:
   read it before contributing it anywhere. `household` holds everything and is
   for moving between your own deployments; keep it private. See spec 03 §1F.
 
@@ -230,7 +230,7 @@ links reach outside the deployment, and only when switched on.
 
   A dry run (the page always starts with one) says what would be created,
   updated or left alone, and what needs you. Import never overwrites a field
-  you edited, never deletes anything, and never creates a home base.
+  you edited, never deletes anything, and never creates a kitchen.
 
 - **Suggestions from an enrichment tool.** A tool that fills in missing store
   facts works through the API with a token made under Settings → API tokens as

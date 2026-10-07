@@ -15,7 +15,7 @@ commit message, not in a screenshot, not in a branch that will be deleted.
 - Retailer exports: the right-to-know responses that `unbagged` parses, and
   anything derived from them. That data lives in the sibling `unbagged` repository's
   own gitignored `data/` directory and is never copied into this tree.
-- Home base names and coordinates, and the coordinates of habitually visited
+- Kitchen names and coordinates, and the coordinates of habitually visited
   vendor locations. Coordinates identify a household as surely as an address.
 - Loyalty card numbers, masked tender lines, order numbers, email addresses,
   phone numbers, street addresses.
@@ -75,7 +75,7 @@ publishes it for you.
 
 An enrichment tool given a `vendors:read` token can read only the public export.
 Whatever it sends to a model provider has left the house; the reference tool sends
-public facts one vendor at a time, never home bases, notes, purchases or receipt
+public facts one vendor at a time, never kitchens, notes, purchases or receipt
 text.
 
 ## The safeguards, and what each one covers

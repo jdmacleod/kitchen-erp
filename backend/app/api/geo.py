@@ -1,4 +1,4 @@
-"""Home bases, vendors, vendor locations, and OSM adoption (Phase 1D)."""
+"""Kitchens, vendors, vendor locations, and OSM adoption (Phase 1D)."""
 
 from __future__ import annotations
 
@@ -63,7 +63,7 @@ async def _detail(db: DbSession, location_id: uuid.UUID) -> VendorLocationDetail
     return VendorLocationDetail.from_model_with_stalls(location, stalls)
 
 
-# --- home bases --------------------------------------------------------------
+# --- kitchens --------------------------------------------------------------
 
 
 @home_bases.get("", response_model=HomeBaseList)
@@ -127,7 +127,7 @@ async def export_vendors(
     """The vendor list as a file. Public mode holds public facts only (1F).
 
     A ``vendors:read`` token may read the public file and nothing else: the
-    household file carries notes, home bases and store codes.
+    household file carries notes, kitchens and store codes.
     """
     scopes = token_scopes(request)
     if mode == "household" and scopes is not None and FULL_SCOPE not in scopes:
