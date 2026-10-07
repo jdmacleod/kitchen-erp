@@ -19,7 +19,7 @@ import {
 } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
-import { RemovedLinesCaption, RemovePurchase } from "../../components/purchases/RemovePurchase";
+import { RemovedLinesCaption, RemovePurchase, RestorePurchase } from "../../components/purchases/RemovePurchase";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
@@ -32,7 +32,8 @@ import { useNavigateWithNotice, useNotice } from "../../components/Notice";
  * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);
  * committed ones show their lines and observations, with Reopen to go back
  * to review and, for manual purchases, the entry form to edit them outright.
- * Both end with "Remove this purchase" (#74); a voided one is read-only.
+ * Both end with "Remove this purchase" (#74); a voided one is read-only and
+ * ends with "Restore this purchase" (issue 210), which takes it back to review.
  */
 export function PurchaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -93,7 +94,17 @@ export function PurchaseDetailPage() {
   }
 
   if (p.status === "voided") {
-    return <CommittedPurchase purchase={p} title={title} focusNotice={justVoided} />;
+    return (
+      <CommittedPurchase
+        purchase={p}
+        title={title}
+        focusNotice={justVoided}
+        onRestored={() => {
+          setJustVoided(false);
+          notice.show({ tone: "success", message: "Restored. Commit it to put its prices back in the price book." });
+        }}
+      />
+    );
   }
 
   if (p.status !== "committed") {
@@ -150,13 +161,14 @@ function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boole
 }
 
 
-/** A committed purchase, or, without the actions, a voided one (D4). */
+/** A committed purchase, or, without the actions but Restore, a voided one (D4). */
 function CommittedPurchase({
   purchase: p,
   title,
   onReopened,
   onEdit,
   onRemoved,
+  onRestored,
   focusNotice = false,
 }: {
   purchase: Purchase;
@@ -164,6 +176,7 @@ function CommittedPurchase({
   onReopened?: () => void;
   onEdit?: () => void;
   onRemoved?: (removed: RemovedPurchase) => void;
+  onRestored?: () => void;
   focusNotice?: boolean;
 }) {
   const reopen = useReopenPurchase(p.id);
@@ -260,6 +273,7 @@ function CommittedPurchase({
           ) : null}
         </Card>
         {onRemoved ? <RemovePurchase purchase={p} onRemoved={onRemoved} /> : null}
+        {voided && onRestored ? <RestorePurchase purchase={p} onRestored={onRestored} /> : null}
       </div>
     </>
   );

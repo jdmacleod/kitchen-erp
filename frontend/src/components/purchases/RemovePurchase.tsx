@@ -1,6 +1,13 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { purchaseErrorMessage, purchaseKeys, useRemovePurchase, type Purchase, type RemovedPurchase } from "../../api/purchases";
+import {
+  purchaseErrorMessage,
+  purchaseKeys,
+  useRemovePurchase,
+  useRestorePurchase,
+  type Purchase,
+  type RemovedPurchase,
+} from "../../api/purchases";
 import { isApiError } from "../../api/client";
 import { formatDate } from "../../lib/format";
 import { alertTones, Button, focusRing } from "../ui";
@@ -116,6 +123,89 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
   );
 }
 
+/**
+ * "Restore this purchase", at the foot of a removed (voided) purchase (issue 210;
+ * spec 10, Removing lines and purchases). Restoring puts it back in review; its
+ * voided prices stay voided, and committing it records them again.
+ */
+export function RestorePurchase({ purchase, onRestored }: { purchase: Purchase; onRestored: (restored: Purchase) => void }) {
+  const restore = useRestorePurchase(purchase.id);
+  const [confirming, setConfirming] = useState(false);
+  const headingId = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+  const alert = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (confirming) keep.current?.focus();
+  }, [confirming]);
+  useEffect(() => {
+    if (restore.isError) alert.current?.focus();
+  }, [restore.isError, restore.failureCount]);
+
+  if (purchase.status !== "voided") return null;
+  const blocked = purchase.restore_blocked === "read_again";
+  const cancel = () => {
+    setConfirming(false);
+    restore.reset();
+    requestAnimationFrame(() => trigger.current?.focus());
+  };
+
+  return (
+    <section aria-labelledby={`${headingId}-section`} className="mt-2 border-t border-neutral-200 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 dark:border-neutral-800">
+      <h2 id={`${headingId}-section`} className="text-lg font-medium">
+        Restore this purchase
+      </h2>
+      <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+        {blocked
+          ? "Its receipt was uploaded again, so it already has a newer purchase. This one stays removed."
+          : "Restoring brings it back to review. Its prices count again once you commit it."}
+      </p>
+      {blocked ? null : confirming ? (
+        <div role="group" aria-labelledby={headingId} className="mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+          <h3 id={headingId} className="text-sm font-medium">
+            {restoreHeading(purchase)}
+          </h3>
+          {restore.isError ? (
+            <div ref={alert} tabIndex={-1} role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}>
+              {purchaseErrorMessage(restore.error)}
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2 lg:flex-row">
+            <Button className="w-full lg:w-auto" disabled={restore.isPending} onClick={() => restore.mutate(undefined, { onSuccess: onRestored })}>
+              {restore.isPending ? "Restoring…" : "Restore purchase"}
+            </Button>
+            <Button ref={keep} variant="secondary" className="w-full lg:w-auto" disabled={restore.isPending} onClick={cancel}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <Button
+            ref={trigger}
+            variant="secondary"
+            className="w-full lg:w-auto"
+            onClick={() => {
+              restore.reset();
+              setConfirming(true);
+            }}
+          >
+            Restore purchase
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** "Restore the {vendor} purchase from {date}?", or the receipt form. */
+function restoreHeading(purchase: Purchase): string {
+  const date = formatDate(purchase.purchased_at);
+  const where = purchase.vendor_location?.vendor.name ?? purchase.vendor_location?.name;
+  return where ? `Restore the ${where} purchase from ${date}?` : `Restore this ${date} receipt?`;
+}
+
 /** What removing will do, in the words spec 10 gives (D15). */
 export function outcomeSentence(purchase: Purchase): string {
   const removal = purchase.removal;
@@ -123,8 +213,8 @@ export function outcomeSentence(purchase: Purchase): string {
   if (removal.outcome === "void") {
     const n = removal.prices;
     // Every price it had was voided already, by a reopen or a removed line.
-    if (n === 0) return "It's been in the price book, so it will be kept as voided. This can't be undone yet.";
-    return `It's in the price book, so its ${n} ${n === 1 ? "price" : "prices"} will be voided. This can't be undone yet.`;
+    if (n === 0) return "It's been in the price book, so it will be kept as voided. You can restore it afterwards.";
+    return `It's in the price book, so its ${n} ${n === 1 ? "price" : "prices"} will be voided. You can restore it afterwards.`;
   }
   return removal.photo
     ? "Nothing from it reached the price book, so it will be deleted, along with its receipt photo."
