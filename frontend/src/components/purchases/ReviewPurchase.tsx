@@ -734,7 +734,7 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row", "continuation_row"];
 
 /** A line whose amount, or whether it is a line at all, is in doubt: shown first on a receipt held for a careful look. */
 function suspectLine(line: PurchaseLine): boolean {
@@ -781,6 +781,8 @@ const FLAG_LABELS: Record<string, string> = {
   negative_from_text: "printed as a saving",
   points_not_money: "points, not money",
   payment_row: "a payment, not a purchase",
+  // A row of the item above (its rate, its name in another script, its code).
+  continuation_row: "part of the item above",
   // Issue 121: the amount is printed nowhere in the scan's text.
   not_in_scan: "not on the scan",
 };
