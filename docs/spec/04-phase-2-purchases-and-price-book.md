@@ -512,13 +512,13 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 **The sameness rules.** A pure module (`app/catalog/sameness.py`, no I/O, property-tested like `app/units/`) compares two products, or a proposal and a product, by their facts: name, brand, pack, piece count, GTIN and ingredient.
 - **The name key.** A name is lowercased and Unicode-normalized; trademark signs and punctuation are dropped. A printed size ("10 oz", "8 ct", a size in inches) is taken out of the name and kept apart. A leading brand equal to the product's brand and a short list of filler words ("made with", "fresh", "original") are dropped. What remains is a set of words.
 - **The verdict**, one of four, with its reasons:
-  - *the same product*: the word sets agree, or differ only by filler; the packs agree within 5%, or one is unknown; the brands agree, or one is empty;
+  - *the same product*: the word sets agree, or differ only by filler or by a word of the other product's brand; the packs agree within 5%, or one is unknown; the brands agree, or one is empty. Two entries of one product filed under different ingredients are still the same product, with the difference reported, since a merge settles it;
   - *a different size*: the words agree and the packs disagree, by the rule that already flags an identity conflict (2L);
   - *a different variant*: the words differ only by a word from a closed list of distinguishing words (colours, heat, salted or unsalted, whole or skim, sliced, shredded or block, smoked or uncured, and the like), or both carry different GTINs;
   - *similar*: anything else.
 - Two different GTINs are never *the same product*.
 
-**On the review page.** Each fuzzy candidate carries its verdict, its pack and its main photo. Candidates are ordered *the same product*, then *similar*, then *a different size*, then *a different variant*, by similarity within each group. The note beside a candidate says "Likely the same product", "Different size (8 oz)", "Different variant (red, not white)" or "Similar name". A verdict never preselects anything: criterion 74 stands, and "Create new product" stays the default when only fuzzy candidates exist. A title that says nothing about the product ("Product details", "Product") counts as no title, so the reviewer has to type one.
+**On the review page.** Each fuzzy candidate carries its verdict, its pack and its main photo. Candidates are ordered *the same product*, then *similar*, then *a different size*, then *a different variant*, by similarity within each group. The note beside a candidate says "Likely the same product", "Different size (8 oz)", "Different variant (red, not white)" or "Similar name". A verdict never preselects anything: criterion 74 stands, and "Create new product" stays the default when only fuzzy candidates exist. A title that says nothing about the product ("Product details", "Product") already counts as no title (#176).
 
 **Matches are kept current.** A proposal's matches are computed when it is captured, so a product created afterwards was invisible to it. Creating a product (by accepting a proposal as new, or from the Add product form) and merging one recompute the matches of pending proposals whose titles resemble that product's name. A recomputed strong match preselects "Update", exactly as at capture. Pending proposals that the rules call *the same product* as one another are listed on each other's review pages ("Also waiting: 2 likely the same"), so a reviewer accepts one as new and the others as updates.
 
@@ -531,7 +531,7 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 102. A proposal whose candidate is *the same product* shows "Likely the same product" first and still preselects nothing; "Create new product" stays chosen.
 103. A proposal captured before a matching product was created gains that product as a candidate when it is created, and gains a strong match and "Update" preselected when the new product shares its GTIN or listing. A merge does the same for the survivor.
 104. Two pending proposals that are *the same product* each list the other.
-105. The address check names the existing product for a known listing, item number or barcode, and names none for an unknown page; a title from the generic list is stored as no title.
+105. The address check names the existing product for a known listing, item number or barcode, and names none for an unknown page.
 
 ## Out of scope for Phase 2
 
