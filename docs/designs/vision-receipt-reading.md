@@ -6,11 +6,14 @@ Repo: jdmacleod/kitchen-erp
 Status: APPROVED (office hours); amended with the CEO review's scope and design decisions
 Mode: Builder
 
-## Start here (implementation handoff, updated 2026-10-02)
+## Start here (implementation handoff, updated 2026-10-08)
 
-**Status (2026-10-07).** Phase 0 is done and its decision rule picked arm (b), vision as OCR. Spec 04 section 2O (T6) specifies Phase 1-A. The household collects receipts for about 30 days; the hold-out run (2O, Rollout step 2) decides whether the household switches it on. Phase 1-B (the vision reader, consensus, crops) is not built.
+**Status (2026-10-08).** Done through Phase 1-A, and the household runs it.
 
-**Status (2026-10-02).** Phase 0's code is complete; the household run (T5) is next.
+- **The decision.** Phase 0's decision rule picked arm (b), vision as OCR. glm-ocr transcribes the receipt image and `qwen2.5:14b` reads the transcript. It reconciled 10 of 12 committed household receipts (83%, 80% interval 66–93%) against 2 of 12 (17%) for Tesseract → `gpt-oss:20b`. Run `20261007T194503Z`.
+- **The spec.** Spec 04 §2O (#224) specifies it, plus #239's note that the household switched early.
+- **The household.** It switched on 2026-10-07: `OCR_ADAPTERS=["client","vision","tesseract"]`, `LLM_MODEL=qwen2.5:14b`, `OCR_VISION_MODEL=glm-ocr`, `OCR_VISION_TIMEOUT_SECONDS=300`, deployed with `make up`.
+- **Not built:** Phase 1-B (the vision reader, consensus, crops).
 
 | Step | State | PR |
 |---|---|---|
@@ -28,15 +31,32 @@ Mode: Builder
 | Household switch | **switched early on 2026-10-07**; hold-out confirmation run due about 2026-11-06 | 2O rollout |
 
 **Next steps, in order:**
-1. **Rebuild the stack** (`make up`), so the worker runs the code that names its connections `kerp-worker`; the benchmark's worker guard relies on it.
-2. **Get enough receipts.** On 2026-10-02 only **1** receipt was eligible: of 14 receipt purchases, 11 were drafts, 2 voided and 1 committed. The household reviews and commits the drafts, or writes `expected.csv` rows (`document_id,total,item_line_count`) for uploaded receipts. With fewer than about 10, the 3-receipt margin can't be cleared. The command prints the eligible count and the exclusions when it starts. It exits with a message, before any model is called, if there are none.
-3. **Keep the Ollama host awake.** It's a laptop: run `caffeinate -dis` on it for the whole run. A sleeping host shows up as a timeout followed by `ConnectTimeout`. The run then stops with a `--resume RUN_ID` line, and nothing already read is lost.
-4. **Run T5 per the EV5 runbook** ("Phase 0", Runbook): `docker compose stop worker`, then `docker compose run -d --name kerp-bench api kerp reading-benchmark`, follow `log.txt`, and `docker compose start worker` afterwards. Expect about 12–13 minutes per receipt for the full grid: about 3.2 h for 15 receipts, 4.3 h for 20.
-5. **Read only the aggregate** `summary.txt` (and `reading.csv`) under `data/benchmarks/`. Never open per-receipt files, and never anything else under `data/`.
-6. **Apply the decision rule**: the summary prints it. Then:
-   - T6: the spec 04 amendment for the winner, including specs 10 and 11 per DT3. It needs the user's approval.
-   - If (c) wins and leaves more than 1 in 5 receipts unreconciled: step 2 (consensus, arm (d)).
-   - Phase 1: ET7, T7–T11, DT1–DT3.
+1. **Collect receipts until about 2026-11-06.** Check each receipt's total against its photo before committing. The hold-out's truth comes from drafts this reader wrote, and a total accepted unchecked would flatter it.
+2. **Run the hold-out** once 10 or more receipts uploaded since 2026-10-07 are committed. Keep the Ollama laptop awake (`caffeinate -dis`), then:
+   ```
+   docker compose stop worker
+   docker compose run -d --name kerp-bench api kerp reading-benchmark --uploaded-since 2026-10-07 --arms b --text-model qwen2.5:14b
+   docker logs -f kerp-bench
+   docker compose start worker
+   ```
+   Read only `summary.txt` and `reading.csv` under `data/benchmarks/`. About a minute per receipt.
+3. **Decide.** It holds if it reconciles within one receipt of 83% on those receipts: keep it. If not, roll back: take `vision` out of `OCR_ADAPTERS`, set `LLM_MODEL=gpt-oss:20b`, restart the worker, and keep the benchmark for the next model (2O, Rollout).
+4. **Afterwards, if wanted:** the line-pass follow-ups seen in readings:
+   - recap rows below the total ("Your Total Savings") read as discounts;
+   - a unit price taken as the line's amount when the row prints the extended amount.
+
+   The deferred plan items (re-ask, per-number provenance, long-receipt slices) are in TODOS.md.
+
+**Facts worth knowing before touching it** (details under "Build notes" and "Model survey"):
+- **The two models don't share the GPU:** `qwen2.5:14b` takes 12.2 GB at 8k context and evicts glm-ocr, so each receipt swaps twice (a few seconds).
+- **Ollama 0.34's repeat-limit abort** is a 500 ("token repeat limit reached"), or an error inside a stream. The client treats it as out of room, and `transcribe()` streams so it keeps the rows before the abort (#193).
+- **glm-ocr loops at the end** of most receipts until its 4,096-token cap; `drop_repeated_tail` cuts the loop. The calls are recorded as `out_of_room`, which is expected.
+- **Line passes in `ingest/structure.py`:** #207 added the savings-printed-negative, points and payment-row passes; #217 added continuation rows (one item over several rows). Spec 04 §2C lists them.
+- **Outside check:** 20 public, MIT-licensed photographed receipts (`Endle/beanbeaver-core`) scored much lower (30% at best). Their layouts are Canadian. They were loaded only into the throwaway e2e stack, never committed, and are no basis for decisions.
+- **`LLM_THINK`** controls whether the text model reasons (#198). `qwen2.5:14b` doesn't reason; `gemma4:12b` needs `false`.
+- **Benchmark options:** `--arms`, several `--text-model`s, blank `--expected` item counts, and `--uploaded-since` (#196, #200, #229).
+
+**Earlier status (2026-10-02).** Phase 0's code was complete and the household run (T5) was next; the steps above replace that list.
 
 **Where the code is.**
 - `backend/app/services/reading_benchmark.py`: the command's logic.
