@@ -31,6 +31,9 @@ export const chainVendor: Vendor = {
   active: true,
   created_at: "2026-03-01T00:00:00Z",
   sources: {},
+  fetch_policy: "capture_only",
+  refresh_paused_until: null,
+  refresh_unreachable_since: null,
 };
 
 export const marketVendor: Vendor = {
@@ -46,6 +49,9 @@ export const marketVendor: Vendor = {
   active: true,
   created_at: "2026-03-01T00:00:00Z",
   sources: {},
+  fetch_policy: "capture_only",
+  refresh_paused_until: null,
+  refresh_unreachable_since: null,
 };
 
 const base = {
