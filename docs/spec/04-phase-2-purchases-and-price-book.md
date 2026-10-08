@@ -450,6 +450,7 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
     - an answer may give `reason: "unreachable"` when the page never loaded (network failures, or a store that refuses the helper). It is recorded as `no_change` with that detail. Three in a row for one vendor pause its refreshes for 7 days, doubling each time a pause ends in another failure, up to 56 days. A refresh that read the page clears the pause. An answer that found nothing without that reason never counts, so a page with nothing new never pauses a store;
     - "Check now" on the vendor page (`POST /vendors/{id}/check-prices`) ends a pause and queues that vendor's listings at once, without doubling open requests;
     - migration 0034 turned `server_fetch` on for the vendors whose pages the helper had already read, recorded in `field_source` so a person's later choice wins;
+    - a refresh already queued is never sent to the helper while its vendor's pages may not be fetched or its refreshes are paused, and it is closed when the vendor stops being `server_fetch` or a pause starts; migration 0035 closed the ones queued before 0034;
     - `products:read` still reads the queue and nothing else.
 
 The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
