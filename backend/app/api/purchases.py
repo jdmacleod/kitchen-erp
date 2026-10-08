@@ -652,7 +652,7 @@ async def ingredient_offers(
         exclude_promo=exclude_promo,
         include_posted=include_posted,
     )
-    return OfferList(items=items, stale_thresholds=pricebook_views.stale_thresholds())
+    return OfferList(items=items, stale_after_days=pricebook_views.stale_after_days())
 
 
 @router.post("/price-book/compare", response_model=CompareOut)
@@ -665,7 +665,7 @@ async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareO
         exclude_promo=payload.exclude_promo,
         include_posted=payload.include_posted,
     )
-    return CompareOut(**result, stale_thresholds=pricebook_views.stale_thresholds())
+    return CompareOut(**result, stale_after_days=pricebook_views.stale_after_days())
 
 
 @router.get("/vendor-locations/{location_id}/price-panel", response_model=LocationPanel)

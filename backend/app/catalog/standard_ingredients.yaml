@@ -70,13 +70,13 @@ ingredients:
   - key: almond-butter
     name: "almond butter"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168588
   - key: almond-flour
     name: "almond flour"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 2261420
     spellings: ["almond meal"]
@@ -96,7 +96,7 @@ ingredients:
   - key: almonds
     name: "almonds"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170567
   - key: anaheim-pepper
@@ -183,7 +183,7 @@ ingredients:
   - key: avocado-oil
     name: "avocado oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 173573
   - key: baba-ghanoush
@@ -215,7 +215,7 @@ ingredients:
   - key: bagel-chips
     name: "bagel chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 173150
   - key: bagels
@@ -480,14 +480,14 @@ ingredients:
   - key: breadcrumbs
     name: "breadcrumbs"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174928
     spellings: ["bread crumbs", "dry breadcrumbs"]
   - key: breadsticks
     name: "breadsticks"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174929
     spellings: ["grissini"]
@@ -519,13 +519,13 @@ ingredients:
   - key: brown-rice
     name: "brown rice"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 169703
   - key: brown-sugar
     name: "brown sugar"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168833
   - key: brussels-sprouts
@@ -538,7 +538,7 @@ ingredients:
   - key: buckwheat-flour
     name: "buckwheat flour"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170687
   - key: bulgur
@@ -557,7 +557,7 @@ ingredients:
   - key: butter-crackers
     name: "butter crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174982
     spellings: ["round crackers"]
@@ -674,7 +674,7 @@ ingredients:
   - key: canola-oil
     name: "canola oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 172336
   - key: cantaloupe
@@ -720,7 +720,7 @@ ingredients:
   - key: cashews
     name: "cashews"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170571
     note: "Cashews are sold dry-roasted; the reference is that record."
@@ -778,7 +778,7 @@ ingredients:
   - key: cheese-crackers
     name: "cheese crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174975
   - key: cherries
@@ -864,7 +864,7 @@ ingredients:
   - key: chili-oil
     name: "chili oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     spellings: ["la you", "hot chili oil"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -963,7 +963,7 @@ ingredients:
   - key: coffee
     name: "coffee"
     category: beverages
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     spellings: ["coffee beans", "ground coffee"]
     note: "USDA records only brewed coffee; the list means the beans or grounds you buy."
@@ -984,7 +984,7 @@ ingredients:
   - key: corn-chips
     name: "corn chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167537
   - key: corn-kernels
@@ -997,7 +997,7 @@ ingredients:
   - key: corn-oil
     name: "corn oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171029
   - key: corn-on-the-cob
@@ -1031,7 +1031,7 @@ ingredients:
   - key: cornmeal
     name: "cornmeal"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168929
   - key: cornstarch
@@ -1107,7 +1107,7 @@ ingredients:
   - key: crispbread
     name: "crispbread"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 172739
     spellings: ["rye crispbread", "knäckebröd"]
@@ -1165,7 +1165,7 @@ ingredients:
   - key: dates
     name: "dates"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168191
     spellings: ["medjool dates"]
@@ -1228,7 +1228,7 @@ ingredients:
   - key: dried-apricots
     name: "dried apricots"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 173941
   - key: dried-basil
@@ -1261,7 +1261,7 @@ ingredients:
   - key: dried-cranberries
     name: "dried cranberries"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 2758976
     spellings: ["craisins"]
@@ -1275,7 +1275,7 @@ ingredients:
   - key: dried-figs
     name: "dried figs"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 746768
   - key: dried-kidney-beans
@@ -1320,7 +1320,7 @@ ingredients:
   - key: dried-shiitake-mushrooms
     name: "dried shiitake mushrooms"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168436
     spellings: ["dried shiitake"]
@@ -1443,7 +1443,7 @@ ingredients:
   - key: extra-virgin-olive-oil
     name: "extra virgin olive oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 748608
     spellings: ["evoo"]
@@ -1532,7 +1532,7 @@ ingredients:
   - key: flaxseed
     name: "flaxseed"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 169414
     spellings: ["flax seeds", "ground flaxseed"]
@@ -1745,19 +1745,19 @@ ingredients:
   - key: graham-crackers
     name: "graham crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174957
   - key: granola
     name: "granola"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 171646
   - key: granola-bars
     name: "granola bars"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: each
     fdc: 167542
   - key: granulated-sugar
@@ -2036,7 +2036,7 @@ ingredients:
   - key: hazelnuts
     name: "hazelnuts"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170581
     spellings: ["filberts"]
@@ -2372,7 +2372,7 @@ ingredients:
   - key: macadamia-nuts
     name: "macadamia nuts"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170178
   - key: mackerel
@@ -2422,13 +2422,13 @@ ingredients:
   - key: marshmallows
     name: "marshmallows"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167995
   - key: masa-harina
     name: "masa harina"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 169694
     spellings: ["masa flour"]
@@ -2628,7 +2628,7 @@ ingredients:
   - key: olive-oil
     name: "olive oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171413
   - key: onion
@@ -2666,7 +2666,7 @@ ingredients:
   - key: oyster-crackers
     name: "oyster crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oyster-mushrooms
@@ -2709,7 +2709,7 @@ ingredients:
   - key: panko
     name: "panko"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     spellings: ["panko breadcrumbs"]
     note: "USDA has no panko record; plain breadcrumbs (174928) is the nearest."
@@ -2781,19 +2781,19 @@ ingredients:
   - key: peanut-butter
     name: "peanut butter"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174266
   - key: peanut-oil
     name: "peanut oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171410
   - key: peanuts
     name: "peanuts"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 172430
   - key: pear
@@ -2818,7 +2818,7 @@ ingredients:
   - key: pecans
     name: "pecans"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170182
   - key: pecorino-romano
@@ -2864,7 +2864,7 @@ ingredients:
   - key: pine-nuts
     name: "pine nuts"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170591
     spellings: ["pignoli"]
@@ -2877,7 +2877,7 @@ ingredients:
   - key: pistachios
     name: "pistachios"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170184
   - key: pita
@@ -2890,7 +2890,7 @@ ingredients:
   - key: pita-chips
     name: "pita chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 173147
   - key: plain-yogurt
@@ -2909,7 +2909,7 @@ ingredients:
   - key: plantain-chips
     name: "plantain chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 173142
     spellings: ["platanitos"]
@@ -2990,7 +2990,7 @@ ingredients:
   - key: pork-rinds
     name: "pork rinds"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167961
     spellings: ["chicharrones", "pork cracklings"]
@@ -3036,7 +3036,7 @@ ingredients:
   - key: potato-chips
     name: "potato chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 169677
     spellings: ["crisps"]
@@ -3057,7 +3057,7 @@ ingredients:
   - key: pretzels
     name: "pretzels"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167555
     spellings: ["pretzel twists", "pretzel sticks"]
@@ -3084,7 +3084,7 @@ ingredients:
   - key: puffed-rice-cakes
     name: "puffed rice cakes"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170250
   - key: pumpkin
@@ -3096,7 +3096,7 @@ ingredients:
   - key: pumpkin-seeds
     name: "pumpkin seeds"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170556
     spellings: ["pepitas"]
@@ -3154,7 +3154,7 @@ ingredients:
   - key: raisins
     name: "raisins"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168165
   - key: ramen-noodles
@@ -3263,7 +3263,7 @@ ingredients:
   - key: rice-crackers
     name: "rice crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 173161
     spellings: ["senbei"]
@@ -3363,7 +3363,7 @@ ingredients:
   - key: safflower-oil
     name: "safflower oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171027
   - key: saffron
@@ -3427,7 +3427,7 @@ ingredients:
   - key: saltines
     name: "saltines"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 172746
     spellings: ["saltine crackers", "soda crackers"]
@@ -3485,7 +3485,7 @@ ingredients:
   - key: seaweed-snacks
     name: "seaweed snacks"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     spellings: ["roasted seaweed snacks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3520,7 +3520,7 @@ ingredients:
   - key: sesame-oil
     name: "sesame oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171016
   - key: sesame-seeds
@@ -3573,7 +3573,7 @@ ingredients:
   - key: shredded-coconut
     name: "shredded coconut"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170577
     spellings: ["flaked coconut", "sweetened coconut"]
@@ -3710,7 +3710,7 @@ ingredients:
   - key: spelt-flour
     name: "spelt flour"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     note: "USDA has spelt grain but no spelt flour record."
   - key: spinach
@@ -3810,13 +3810,13 @@ ingredients:
   - key: sunflower-oil
     name: "sunflower oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 1750349
   - key: sunflower-seeds
     name: "sunflower seeds"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170562
   - key: sweet-and-sour-sauce
@@ -3878,7 +3878,7 @@ ingredients:
   - key: tahini
     name: "tahini"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168604
     spellings: ["sesame paste"]
@@ -3969,7 +3969,7 @@ ingredients:
   - key: toasted-sesame-oil
     name: "toasted sesame oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     spellings: ["dark sesame oil"]
     note: "USDA has no separate record for toasted sesame oil."
@@ -4015,7 +4015,7 @@ ingredients:
   - key: tortilla-chips
     name: "tortilla chips"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167558
   - key: toum
@@ -4028,7 +4028,7 @@ ingredients:
   - key: trail-mix
     name: "trail mix"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 167561
   - key: tri-tip
@@ -4141,7 +4141,7 @@ ingredients:
   - key: vegetable-oil
     name: "vegetable oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     note: "USDA has no record for generic vegetable oil (FNDDS \"Vegetable oil, NFS\" is code-only)."
   - key: vodka
@@ -4159,19 +4159,19 @@ ingredients:
   - key: walnut-oil
     name: "walnut oil"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: ml
     fdc: 171030
   - key: walnuts
     name: "walnuts"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 170187
   - key: water-crackers
     name: "water crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 171856
     spellings: ["table water crackers"]
@@ -4190,7 +4190,7 @@ ingredients:
   - key: wheat-crackers
     name: "wheat crackers"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 174985
     spellings: ["whole wheat crackers"]
@@ -4251,7 +4251,7 @@ ingredients:
   - key: whole-wheat-flour
     name: "whole wheat flour"
     category: pantry
-    perishability: shelf_stable
+    perishability: shelf_months
     unit: g
     fdc: 168893
   - key: whole-wheat-pasta

@@ -62,8 +62,6 @@ export interface ProductPrices {
 }
 
 /** Days before a price counts as stale, keyed by perishability. */
-export type StaleThresholds = Record<string, number>;
-
 export interface Offer {
   product_id: string;
   product_name: string;
@@ -95,7 +93,7 @@ export interface Offer {
 
 export interface OfferList {
   items: Offer[];
-  stale_thresholds: StaleThresholds;
+  stale_after_days: number;
 }
 
 export interface CompareCell {
@@ -129,7 +127,7 @@ export interface CompareRow {
 export interface CompareResult {
   vendors: { id: string; name: string }[];
   rows: CompareRow[];
-  stale_thresholds: StaleThresholds;
+  stale_after_days: number;
 }
 
 export interface PricePanel {

@@ -42,7 +42,7 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
         ),
         CheckConstraint("yield_pct > 0 AND yield_pct <= 1", name="ck_ingredient_yield_pct"),
         CheckConstraint(
-            "perishability IN ('shelf_stable', 'refrigerated', 'fresh', 'frozen')",
+            "perishability IN ('shelf_stable', 'shelf_months', 'refrigerated', 'fresh', 'frozen')",
             name="ck_ingredient_perishability",
         ),
         CheckConstraint(

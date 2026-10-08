@@ -71,7 +71,7 @@ function mount({ offers, history }: { offers: Offer[]; history: RouteHandler }) 
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
-    [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: offers, stale_thresholds: { fresh: 14, refrigerated: 45, shelf_stable: 120 } }),
+    [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: offers, stale_after_days: 90 }),
     [`GET /ingredients/${flourId}/price-history`]: history,
     "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
   });
@@ -112,7 +112,7 @@ describe("the ingredient hub (UI-3.9, UI-3.10)", () => {
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
       [`GET /ingredients/${flourId}/offers`]: (call) =>
-        jsonResponse(200, { items: call.query.get("min_quality") ? [] : [recent], stale_thresholds: { fresh: 14, refrigerated: 45, shelf_stable: 120 } }),
+        jsonResponse(200, { items: call.query.get("min_quality") ? [] : [recent], stale_after_days: 90 }),
       [`GET /ingredients/${flourId}/price-history`]: () => jsonResponse(200, { days: 90, points: [point(3, "0.002200")], low: "0.002200", high: "0.002200", display_low: perPound("0.002200"), display_high: perPound("0.002200"), display_unit: "lb" }),
       "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
     });
