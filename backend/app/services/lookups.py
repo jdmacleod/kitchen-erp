@@ -28,8 +28,9 @@ from typing import Any
 
 import anyio
 from pydantic import ValidationError
-from sqlalchemy import and_, func, or_, select, text, update
+from sqlalchemy import String, and_, cast, func, not_, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.catalog import proposals as merging
 from app.catalog.identifiers import classify_barcode
@@ -234,15 +235,47 @@ async def queue_page_images(
     return queued
 
 
+def _proposal_vendor_id(proposal: ProductProposal) -> uuid.UUID | None:
+    raw = (proposal.listing or {}).get("vendor_id")
+    try:
+        return uuid.UUID(str(raw)) if raw else None
+    except ValueError:
+        return None
+
+
+async def page_lookup_blocked(db: AsyncSession, proposal: ProductProposal) -> str | None:
+    """Why the helper may not read a clipped page for its price, or None if it may.
+
+    ``capture_only``: the store's pages are read only through the person's browser.
+    ``paused``: the store's pages keep failing and its fetches are paused (#264).
+    ``no_vendor``: the page was saved without a store.
+    """
+    vendor_id = _proposal_vendor_id(proposal)
+    if vendor_id is None:
+        return "no_vendor"
+    vendor = await db.get(Vendor, vendor_id)
+    if vendor is None:
+        return "no_vendor"
+    if vendor.fetch_policy != "server_fetch":
+        return "capture_only"
+    if vendor.refresh_paused_until is not None and vendor.refresh_paused_until > datetime.now(UTC):
+        return "paused"
+    return None
+
+
 async def queue_page_for_price(db: AsyncSession, proposal: ProductProposal) -> bool:
     """A clipped page that gave a listing but no price: the helper reads the public page.
 
     Some stores keep the product record in an inline script, which the clip window never
     sends, so an adapter run on the clip sees only the address. The helper fetches the
     page itself, without the person's cookies, and its answer joins this proposal. Asked
-    once per proposal, never for a page saved without a store. Not committed here."""
+    once per proposal, never for a page saved without a store, and only when the store
+    lets the helper fetch its pages (``server_fetch``, 03) and isn't paused: a clip from
+    a store that blocks automated fetches stays without a price. Not committed here."""
     url = (proposal.listing or {}).get("canonical_url")
     if proposal.status != "pending" or not url or proposal.price is not None:
+        return False
+    if await page_lookup_blocked(db, proposal) is not None:
         return False
     if not await helper_configured(db):
         return False
@@ -411,17 +444,21 @@ async def close_vendor_refreshes(db: AsyncSession, vendor_id: uuid.UUID) -> int:
     """Close a vendor's open listing refreshes; the caller commits.
 
     Once a vendor's pages may not be fetched (its ``fetch_policy`` isn't
-    ``server_fetch``) or its refreshes pause, a refresh already queued would
-    only send the helper to a store it shouldn't, or can't, reach. Page
-    requests for proposals (a clip without a price) are left alone.
+    ``server_fetch``) or its refreshes pause, a page request already queued
+    would only send the helper to a store it shouldn't, or can't, reach. That
+    covers listing refreshes and a clip's request for its price (a proposal
+    whose listing names the vendor). Other kinds are left alone.
     """
     listings = select(VendorListing.id).where(VendorListing.vendor_id == vendor_id)
+    clipped = select(ProductProposal.id).where(
+        ProductProposal.listing["vendor_id"].astext == str(vendor_id)
+    )
     result = await db.execute(
         update(LookupRequest)
         .where(
             LookupRequest.status == "open",
             LookupRequest.kind == "page",
-            LookupRequest.listing_id.in_(listings),
+            or_(LookupRequest.listing_id.in_(listings), LookupRequest.proposal_id.in_(clipped)),
         )
         .values(status="closed")
         .execution_options(synchronize_session=False)
@@ -432,23 +469,40 @@ async def close_vendor_refreshes(db: AsyncSession, vendor_id: uuid.UUID) -> int:
 async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
     """What the helper is asked to answer, oldest first.
 
-    A listing refresh is held back while its vendor's pages may not be fetched
-    or its refreshes are paused, even if it was queued before that changed.
+    A page request is held back while its vendor's pages may not be fetched or
+    its refreshes are paused, even if it was queued before that changed: a
+    listing refresh (vendor of the listing) and a clip's request for its price
+    (vendor named by the proposal's listing).
     """
     now = datetime.now(UTC)
-    fetchable = and_(
-        Vendor.fetch_policy == "server_fetch",
-        or_(Vendor.refresh_paused_until.is_(None), Vendor.refresh_paused_until <= now),
-    )
+    clip_vendor = aliased(Vendor)
+
+    def fetchable(v: Any) -> Any:
+        return and_(
+            v.fetch_policy == "server_fetch",
+            or_(v.refresh_paused_until.is_(None), v.refresh_paused_until <= now),
+        )
+
+    clip_page = and_(LookupRequest.kind == "page", LookupRequest.proposal_id.is_not(None))
     return list(
         (
             await db.execute(
                 select(LookupRequest)
                 .outerjoin(VendorListing, VendorListing.id == LookupRequest.listing_id)
                 .outerjoin(Vendor, Vendor.id == VendorListing.vendor_id)
+                .outerjoin(ProductProposal, ProductProposal.id == LookupRequest.proposal_id)
+                .outerjoin(
+                    clip_vendor,
+                    cast(clip_vendor.id, String) == ProductProposal.listing["vendor_id"].astext,
+                )
                 .where(
                     LookupRequest.status == "open",
-                    or_(LookupRequest.listing_id.is_(None), fetchable),
+                    or_(LookupRequest.listing_id.is_(None), fetchable(Vendor)),
+                    or_(
+                        not_(clip_page),
+                        clip_vendor.id.is_(None),
+                        fetchable(clip_vendor),
+                    ),
                 )
                 .order_by(LookupRequest.created_at, LookupRequest.id)
                 .limit(limit)
