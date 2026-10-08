@@ -151,6 +151,21 @@ def test_the_one_plausible_year_is_taken():
     assert at == datetime(2025, 3, 22, 11, 5, tzinfo=UTC) and "year_from_upload" in flags
 
 
+def test_a_garbled_am_pm_on_one_copy_still_matches_the_other():
+    # OCR reads "pm" as "pn" or "prn" on one copy, or loses it altogether.
+    for second in ("03/22/71 7:15pn", "03/22/71 7:15prn", "03/22/71 7:15"):
+        text = f"03/22/19 7:15pm 2 9\nFENWICK OATS 2.00\n{second}"
+        at, flags = header_stage.datetime_from_text(None, None, text, "UTC", reference=_UPLOADED)
+        assert at == datetime(2025, 3, 22, 19, 15, tzinfo=UTC), second
+        assert "year_from_upload" in flags
+
+
+def test_a_garbled_meridiem_alone_reads_as_the_meridiem():
+    text = "03/22/25 7:15pn"
+    at, flags = header_stage.datetime_from_text(None, None, text, "UTC")
+    assert at == datetime(2025, 3, 22, 19, 15, tzinfo=UTC) and "time_from_text" in flags
+
+
 def test_dates_that_differ_in_more_than_the_year_stay_with_the_model():
     for text in ("03/22/19 11:05am\n03/23/71 11:05am", "03/22/19 11:05am\n03/22/71 4:30pm"):
         assert header_stage.datetime_from_text(None, None, text, "UTC", reference=_UPLOADED) == (
