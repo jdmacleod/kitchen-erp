@@ -125,7 +125,7 @@ The most important detail page; search results and inbox items land here most of
 - **Breadcrumb:** Catalog / Ingredients.
 - **Header:** the ingredient name with its category chip, and a meta line of canonical unit and perishability. "Inventory tier" is omitted until Phase 5 (T16). "Log shelf price" is the primary action; "Add to list" is dormant until Phase 4.
 - **Summary strip:**
-  - **Best recent price:** the lowest normalized unit price in the last 90 days, with product, vendor and date, on an olive-tinted card, because olive marks the cheapest price. Prices that can't be compared are excluded (G8).
+  - **Best recent price:** the lowest normalized unit price in the last 90 days, shown per lb, oz or fl oz as 08 describes, with product, vendor and date, on an olive-tinted card, because olive marks the cheapest price. Prices that can't be compared are excluded (G8).
   - **Last 90 days:** a sparkline and the min–max range across vendors, from `GET /api/v1/ingredients/{id}/price-history?days=90` (D22). The sparkline hides with fewer than two points.
   - **Stock:** dormant until Phase 5. It is omitted, not shown empty.
 - **Prices by vendor** (left, wider):

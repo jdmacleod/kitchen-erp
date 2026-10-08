@@ -69,6 +69,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
   - Cards for unbuilt phases (stock, recipes, add to list) are omitted, not shown empty.
   - The 90-day sparkline comes from `GET /api/v1/ingredients/{id}/price-history`, and hides with fewer than two points (D22).
 - **UI-3.10** Prices by vendor are sorted by normalized unit price, and describe each vendor's pricing scope as "Same price at every location" or "Price set per location" (T15). Prices that can't be compared sort last with the pack price and a link to add a density, and are excluded from Best recent price (G8).
+- **UI-3.10a** Every unit price a page shows (Compare, the ingredient hub, a product's prices, the map's pins and panel, a new shelf price) reads per lb, oz or fl oz, or each, as the server sends it, with 2 decimal places or 3 under $1, and never per g or ml; one ingredient's prices share one unit (issue 245).
 - **UI-3.11** Every list page has an empty state with one sentence and the relevant action. Filtered-empty and truly-empty states differ (G11).
 - **UI-3.12** Receipt review keeps Commit disabled, with its reason, until a location is set. After commit, it shows the committed notice and offers "Next draft" when drafts remain (G9). A held draft opens on the squash "needs a careful look" alert with the gap, its flagged lines first, and Commit enabled as on any draft (#121).
 - **UI-3.13** After a drawer save, the new row takes focus if it is visible; otherwise the Notice links to it and that link takes focus (G10).

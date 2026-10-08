@@ -127,6 +127,7 @@ Scale and rules:
 - Section heading: Fraunces 19–21px, weight 600, via `font-display`.
 - Body: 14–15px. Secondary text: 13px in `neutral-600` (dark: `neutral-400`). Captions: 12px, never lighter than those.
 - Tables, prices, quantities and numeric inputs use tabular figures (set in `theme.css`).
+- Unit prices read per lb, oz or fl oz by default (per kg or L with `UNIT_DISPLAY=metric`), never per gram or millilitre, with 2 decimal places, or 3 under $1: "$4.49/lb", "$0.269/fl oz", "$1.29 each". The server sends the figure and its unit; the page prints them as sent (04, 2E; issue 245).
 - Sentence case everywhere. No all-caps labels or eyebrows; the current `uppercase tracking-wide` labels are removed. Group labels in navigation are 12px, weight 600, sentence case.
 - Small section labels such as "Needs you" are headings, not uppercase eyebrows.
 
