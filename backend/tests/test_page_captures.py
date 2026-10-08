@@ -514,8 +514,18 @@ async def page_requests(helper) -> list[dict]:
     return [i for i in r.json()["items"] if i["kind"] == "page"]
 
 
+@pytest.fixture
+async def fetchable_store(admin_client, store) -> dict:
+    """A store whose pages the helper may fetch (``server_fetch``, 03)."""
+    r = await admin_client.patch(
+        f"/api/v1/vendors/{store['vendor']['id']}", json={"fetch_policy": "server_fetch"}
+    )
+    assert r.status_code == 200, r.text
+    return store
+
+
 async def test_a_clip_without_a_price_asks_the_helper_for_its_public_page_once(
-    admin_client, store, helper, recorded, no_network
+    admin_client, fetchable_store, helper, recorded, no_network
 ):
     """The store keeps its price in page data the clip never sends: after the extract job
     the helper is asked for the canonical page, once, and its price joins the proposal."""
@@ -575,4 +585,81 @@ async def test_a_page_saved_without_a_store_is_never_sent_to_the_helper(
     recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
     await admin_client.post("/api/v1/product-captures", json=placeholder_page(without_store=True))
     await work()
+    assert await page_requests(helper) == []
+
+
+# --- only stores the helper may fetch (#264) -------------------------------------------
+
+
+async def test_a_clip_from_a_capture_only_store_asks_the_helper_nothing(
+    admin_client, store, helper, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    """A store whose pages are read only through the person's browser is never fetched by
+    the helper: the clip stays without a price, and the job says why."""
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    proposal = (await admin_client.post("/api/v1/product-captures", json=placeholder_page())).json()
+    await work()
+    assert await page_requests(helper) == []
+    assert (
+        await owner_conn.fetchval(
+            "SELECT count(*) FROM lookup_request WHERE proposal_id = $1 AND kind = 'page'",
+            uuid.UUID(proposal["id"]),
+        )
+        == 0
+    )
+    output = await owner_conn.fetchval(
+        "SELECT r.output FROM product_stage_result r "
+        "JOIN product_job j ON j.id = r.job_id "
+        "JOIN product_capture c ON c.id = j.product_capture_id "
+        "JOIN product_proposal p ON p.capture_id = c.id "
+        "WHERE p.id = $1 AND j.kind = 'extract' ORDER BY r.created_at DESC LIMIT 1",
+        uuid.UUID(proposal["id"]),
+    )
+    assert json.loads(output)["page_lookup_skipped"] == "capture_only"
+
+
+async def test_a_clip_lookup_is_held_back_and_closed_when_fetching_is_turned_off(
+    admin_client, fetchable_store, helper, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    """A clip's page request queued while the store was fetchable is held back from the
+    helper, and closed, once the store's fetching is turned off."""
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    proposal = (await admin_client.post("/api/v1/product-captures", json=placeholder_page())).json()
+    await work()
+    assert len(await page_requests(helper)) == 1
+
+    # Turned off behind the app's back: the queue alone keeps it from the helper.
+    vendor_id = uuid.UUID(fetchable_store["vendor"]["id"])
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'capture_only' WHERE id = $1", vendor_id
+    )
+    assert await page_requests(helper) == []
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'server_fetch' WHERE id = $1", vendor_id
+    )
+    assert len(await page_requests(helper)) == 1
+
+    # Turned off through the app: the request is closed for good.
+    r = await admin_client.patch(
+        f"/api/v1/vendors/{vendor_id}", json={"fetch_policy": "capture_only"}
+    )
+    assert r.status_code == 200, r.text
+    status = await owner_conn.fetchval(
+        "SELECT status FROM lookup_request WHERE proposal_id = $1 AND kind = 'page'",
+        uuid.UUID(proposal["id"]),
+    )
+    assert status == "closed"
+
+
+async def test_a_clip_lookup_is_held_back_while_its_store_is_paused(
+    admin_client, fetchable_store, helper, recorded, no_network, owner_conn: asyncpg.Connection
+):
+    recorded({"ProductReading": {"name": "Rolled oats", "confidence": 0.3}})
+    await admin_client.post("/api/v1/product-captures", json=placeholder_page())
+    await work()
+    assert len(await page_requests(helper)) == 1
+    await owner_conn.execute(
+        "UPDATE vendor SET refresh_paused_until = now() + interval '7 days' WHERE id = $1",
+        uuid.UUID(fetchable_store["vendor"]["id"]),
+    )
     assert await page_requests(helper) == []
