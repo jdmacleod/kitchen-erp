@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.services import unit_display
 
 
 def stale_thresholds() -> dict[str, int]:
@@ -54,6 +55,8 @@ _CELL_KEYS = (
     "is_promo",
     "norm_unit_price",
     "norm_unit",
+    "display_unit_price",
+    "display_unit",
     "stale",
 )
 
@@ -116,9 +119,10 @@ async def product_history(
         ),
         _params(pid=product_id),
     )
+    mass = await _mass_for_product(db, product_id)
     return {
-        "points": [_row(r) for r in points.mappings()],
-        "latest": [_row(r) for r in latest.mappings()],
+        "points": [unit_display.decorate(_row(r), mass) for r in points.mappings()],
+        "latest": [unit_display.decorate(_row(r), mass) for r in latest.mappings()],
     }
 
 
@@ -174,12 +178,22 @@ async def ingredient_history(
             )
         ).mappings()
     )
-    points = [{k: v for k, v in r.items() if k not in _RANGE_KEYS} for r in rows]
+    mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
+    points = [
+        unit_display.decorate({k: v for k, v in r.items() if k not in _RANGE_KEYS}, mass)
+        for r in rows
+    ]
+    unit = rows[0]["norm_unit"] if rows else None
+    low = unit_display.shown(rows[0]["low"], unit, mass) if rows else None
+    high = unit_display.shown(rows[0]["high"], unit, mass) if rows else None
     return {
         "days": days,
         "points": points,
         "low": rows[0]["low"] if rows else None,
         "high": rows[0]["high"] if rows else None,
+        "display_low": low.price if low else None,
+        "display_high": high.price if high else None,
+        "display_unit": low.unit if low else None,
     }
 
 
@@ -219,7 +233,8 @@ async def ingredient_offers(
         ),
         _params(iid=ingredient_id, min_quality=min_quality),
     )
-    out = [_row(r) for r in rows.mappings()]
+    mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
+    out = [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
     if exclude_stale:
         out = [r for r in out if not r["stale"]]
     return out
@@ -269,7 +284,10 @@ async def compare(
         ),
         _params(ids=list(ingredient_ids), min_quality=min_quality, exclude_stale=exclude_stale),
     )
-    cells = [_row(r) for r in rows.mappings()]
+    masses = await unit_display.mass_units(db, ingredient_ids)
+    cells = [
+        unit_display.decorate(_row(r), masses.get(r["ingredient_id"])) for r in rows.mappings()
+    ]
     vendors: dict[uuid.UUID, str] = {}
     for c in cells:
         vendors.setdefault(c["vendor_id"], c["vendor_name"])
@@ -345,7 +363,7 @@ async def location_panel(
         "spend": Decimal(str(summary["spend"])),
         "visits": int(summary["visits"]),
         "period_days": days,
-        "recent": [_row(r) for r in recent.mappings()],
+        "recent": await unit_display.decorate_by_product(db, [_row(r) for r in recent.mappings()]),
     }
 
 
@@ -389,4 +407,12 @@ async def cheapest_by_location(
         ),
         _params(iid=ingredient_id, min_quality=min_quality, exclude_stale=exclude_stale),
     )
-    return [_row(r) for r in rows.mappings()]
+    mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
+    return [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
+
+
+async def _mass_for_product(db: AsyncSession, product_id: uuid.UUID) -> str | None:
+    """The weight unit a product's prices read in: its ingredient's (issue 245)."""
+    ingredient_of = await unit_display.ingredient_of_products(db, [product_id])
+    masses = await unit_display.mass_units(db, ingredient_of.values())
+    return masses.get(ingredient_of.get(product_id))

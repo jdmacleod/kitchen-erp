@@ -121,6 +121,9 @@ class Settings(BaseSettings):
     # date like 07/04/26 is never guessed receipt by receipt.
     receipt_date_order: Literal["MDY", "DMY", "YMD"] = "MDY"
     currency: str = "USD"
+    # Unit prices are shown per lb, oz or fl oz ("us") or per kg or L ("metric");
+    # they are stored and compared per g and ml either way (issue 245).
+    unit_display: Literal["us", "metric"] = "us"
     ingest_lock_timeout_seconds: int = 600
     # After this long with receipts waiting and no stage finished, Home says reading
     # has stalled rather than implying progress: a stopped worker must not look
