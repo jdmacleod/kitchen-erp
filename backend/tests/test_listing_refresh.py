@@ -309,3 +309,86 @@ async def test_turning_fetching_off_clears_the_pause(admin_client, store_pages, 
     shown = await allow_fetch(admin_client, store_pages, "capture_only")
     assert shown["fetch_policy"] == "capture_only"
     assert (shown["refresh_paused_until"], shown["refresh_unreachable_since"]) == (None, None)
+
+
+# --- refreshes already queued when fetching stops (#264) -------------------------------
+
+
+async def _statuses(owner_conn: asyncpg.Connection) -> dict[str, int]:
+    rows = await owner_conn.fetch(
+        "SELECT status, count(*) AS n FROM lookup_request "
+        "WHERE kind = 'page' AND listing_id IS NOT NULL GROUP BY status"
+    )
+    return {r["status"]: r["n"] for r in rows}
+
+
+async def _product_page_request(owner_conn: asyncpg.Connection, product_id: str) -> uuid.UUID:
+    """A page request for a product, not a listing refresh: never closed by these rules."""
+    request_id = uuid.uuid4()
+    await owner_conn.execute(
+        "INSERT INTO lookup_request (id, kind, product_id, value) "
+        "VALUES ($1, 'page', $2, 'https://larkspur.example.test/p/other')",
+        request_id,
+        uuid.UUID(product_id),
+    )
+    return request_id
+
+
+async def test_queued_refreshes_are_held_back_once_fetching_stops(
+    admin_client,
+    store_pages,
+    owner_conn,
+    helper,  # noqa: F811
+):
+    assert await queue() == 4
+    assert len(await open_page_requests(helper)) == 4
+    # Changed behind the app's back: the helper still isn't sent there.
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'capture_only' WHERE id = $1", uuid.UUID(store_pages)
+    )
+    assert await open_page_requests(helper) == []
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'server_fetch', "
+        "refresh_paused_until = now() + interval '7 days' WHERE id = $1",
+        uuid.UUID(store_pages),
+    )
+    assert await open_page_requests(helper) == []
+    await owner_conn.execute(
+        "UPDATE vendor SET refresh_paused_until = now() - interval '1 hour' WHERE id = $1",
+        uuid.UUID(store_pages),
+    )
+    assert len(await open_page_requests(helper)) == 4
+
+
+async def test_turning_fetching_off_closes_queued_refreshes(
+    admin_client,
+    store_pages,
+    owner_conn,
+    helper,  # noqa: F811
+):
+    assert await queue() == 4
+    product_id = await owner_conn.fetchval(
+        "SELECT product_id FROM vendor_listing WHERE vendor_id = $1 LIMIT 1",
+        uuid.UUID(store_pages),
+    )
+    other = await _product_page_request(owner_conn, str(product_id))
+    await allow_fetch(admin_client, store_pages, "capture_only")
+    assert await _statuses(owner_conn) == {"closed": 4}
+    status = await owner_conn.fetchval("SELECT status FROM lookup_request WHERE id = $1", other)
+    assert status == "open"
+    assert [r["id"] for r in await open_page_requests(helper)] == [str(other)]
+
+
+async def test_a_pause_closes_the_rest_of_the_queued_refreshes(
+    admin_client,
+    store_pages,
+    owner_conn,
+    helper,  # noqa: F811
+):
+    assert await queue() == 4
+    requests = await open_page_requests(helper)
+    for r in requests[:3]:
+        await post_answer(helper, nothing_found(r["id"], reason="unreachable"))
+    assert (await vendor(admin_client, store_pages))["refresh_paused_until"] is not None
+    assert await _statuses(owner_conn) == {"answered": 3, "closed": 1}
+    assert await open_page_requests(helper) == []
