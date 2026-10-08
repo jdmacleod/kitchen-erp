@@ -18,7 +18,7 @@ const PAD = 6;
  */
 export function Sparkline({ points, label }: { points: IngredientPricePoint[]; label: string }) {
   const xs = points.map((p) => new Date(p.observed_at).getTime());
-  const ys = points.map((p) => Number(p.norm_unit_price));
+  const ys = points.map((p) => Number(p.display_unit_price));
   const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
   const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
   const sx = (x: number) => PAD + ((x - x0) / (x1 - x0 || 1)) * (W - 2 * PAD);
@@ -42,7 +42,7 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
         {points.map((p, i) => (
           <rect key={p.observation_id} data-testid="sparkline-target" x={edges[i][0]} y="0" width={edges[i][1] - edges[i][0]} height={H} fill="transparent">
             <title>
-              {formatDate(p.observed_at)}: {formatUnitPrice(p.norm_unit_price, p.norm_unit)} at {p.vendor_name}
+              {formatDate(p.observed_at)}: {formatUnitPrice(p.display_unit_price, p.display_unit)} at {p.vendor_name}
             </title>
           </rect>
         ))}
@@ -60,7 +60,7 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
           {points.map((p) => (
             <tr key={p.observation_id}>
               <td>{formatDate(p.observed_at)}</td>
-              <td>{formatUnitPrice(p.norm_unit_price, p.norm_unit)}</td>
+              <td>{formatUnitPrice(p.display_unit_price, p.display_unit)}</td>
               <td>{p.vendor_name}</td>
             </tr>
           ))}

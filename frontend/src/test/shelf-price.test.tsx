@@ -269,7 +269,7 @@ describe("shelf price: entry and saving (G3, G4)", () => {
       unit: "each",
       is_promo: false,
       source,
-      norm_unit_price: "0.002",
+      norm_unit_price: "0.002", display_unit_price: "0.907", display_unit: "lb",
       norm_unit: "g",
       norm_status: "ok" as const,
       location_id: locationId,
@@ -293,6 +293,8 @@ describe("shelf price: entry and saving (G3, G4)", () => {
       is_promo: false,
       norm_unit_price: norm,
       norm_unit: norm ? "g" : null,
+      display_unit_price: norm,
+      display_unit: norm ? "lb" : null,
       norm_status: norm ? ("ok" as const) : ("no_density" as const),
       age_days: "5",
       stale: false,
@@ -481,8 +483,8 @@ describe("shelf price: review findings", () => {
   it("says how many Last paid here and Best known were for", async () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     const base = { is_promo: false, norm_unit: "g", norm_status: "ok" as const };
-    const paid = { ...base, observation_id: "p", observed_at: "2026-09-18T10:00:00Z", price: "10.9800", qty: "2.0000", unit: "each", source: "receipt" as const, norm_unit_price: "0.0022", location_id: chainLocationId, location_name: "x", vendor_id: "v", vendor_name: "x", price_scope: "chain" as const, series: "s" };
-    const best = { ...base, location_id: "l", location_name: "Pier", vendor_id: "Pier", vendor_name: "Pier Farmers Market", price_scope: "location" as const, observation_id: "b", observed_at: "2026-09-20T10:00:00Z", price: "11.9700", qty: "3.0000", unit: "each", norm_unit_price: "0.0018", age_days: "3", stale: false };
+    const paid = { ...base, observation_id: "p", observed_at: "2026-09-18T10:00:00Z", price: "10.9800", qty: "2.0000", unit: "each", source: "receipt" as const, norm_unit_price: "0.0022", display_unit_price: "0.998", display_unit: "lb", location_id: chainLocationId, location_name: "x", vendor_id: "v", vendor_name: "x", price_scope: "chain" as const, series: "s" };
+    const best = { ...base, location_id: "l", location_name: "Pier", vendor_id: "Pier", vendor_name: "Pier Farmers Market", price_scope: "location" as const, observation_id: "b", observed_at: "2026-09-20T10:00:00Z", price: "11.9700", qty: "3.0000", unit: "each", norm_unit_price: "0.0018", display_unit_price: "0.816", display_unit: "lb", age_days: "3", stale: false };
     mockApi(baseRoutes({ prices: { points: [paid], latest: [best] } }));
     const user = userEvent.setup();
     renderApp("/shop/shelf-prices");
@@ -511,6 +513,8 @@ describe("shelf price: review findings", () => {
       is_promo: false,
       norm_unit_price: price === "1.99" ? "0.0010" : "0.0020",
       norm_unit: "g",
+      display_unit_price: price === "1.99" ? "0.454" : "0.907",
+      display_unit: "lb",
       norm_status: "ok" as const,
       age_days: stale ? "400" : "3",
       stale,

@@ -28,7 +28,7 @@ const result: CompareResult = {
           observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7001",
           observed_at: "2026-09-18T15:00:00Z",
           is_promo: false,
-          norm_unit_price: "0.002200",
+          norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb",
           norm_unit: "g",
           stale: false,
           cheapest: true,
@@ -67,9 +67,9 @@ describe("comparison matrix", () => {
     expect(post?.body).toEqual({ ingredient_ids: [flourId] });
 
     const cheapest = screen.getByTestId(`cell-${flourId}-${chainVendorId}`);
-    expect(cheapest).toHaveTextContent("$0.0022/g");
+    expect(cheapest).toHaveTextContent("$0.998/lb");
     expect(within(cheapest).getByText("cheapest")).toBeInTheDocument();
-    expect(within(cheapest).getByText(/\$0\.0022\/g/)).toHaveClass("font-bold");
+    expect(within(cheapest).getByText(/\$0\.998\/lb/)).toHaveClass("font-bold");
     expect(cheapest).toHaveTextContent("3 days");
 
     const unknown = screen.getByTestId(`cell-${flourId}-${marketVendorId}`);

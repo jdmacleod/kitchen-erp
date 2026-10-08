@@ -935,6 +935,17 @@
       "CheapestOut": {
         "additionalProperties": false,
         "properties": {
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/CheapestPin"
@@ -964,6 +975,28 @@
       "CheapestPin": {
         "additionalProperties": false,
         "properties": {
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
+          },
           "is_promo": {
             "title": "Is Promo",
             "type": "boolean"
@@ -1164,6 +1197,28 @@
           "cheapest": {
             "title": "Cheapest",
             "type": "boolean"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
           },
           "is_promo": {
             "title": "Is Promo",
@@ -1889,6 +1944,28 @@
       "HistoryPoint": {
         "additionalProperties": false,
         "properties": {
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
+          },
           "is_promo": {
             "title": "Is Promo",
             "type": "boolean"
@@ -3355,6 +3432,39 @@
             "title": "Days",
             "type": "integer"
           },
+          "display_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display High"
+          },
+          "display_low": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Low"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
           "high": {
             "anyOf": [
               {
@@ -3397,6 +3507,28 @@
       "IngredientPricePoint": {
         "additionalProperties": false,
         "properties": {
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
+          },
           "is_promo": {
             "title": "Is Promo",
             "type": "boolean"
@@ -3868,6 +4000,28 @@
           "age_days": {
             "title": "Age Days",
             "type": "string"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
           },
           "is_promo": {
             "title": "Is Promo",
@@ -6594,6 +6748,28 @@
             "title": "Convert Version",
             "type": "string"
           },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
+          },
           "norm_unit": {
             "anyOf": [
               {
@@ -6892,6 +7068,28 @@
               }
             ],
             "title": "Brand"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
           },
           "is_promo": {
             "title": "Is Promo",
@@ -10497,6 +10695,28 @@
               }
             ],
             "title": "Brand"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
           },
           "is_promo": {
             "title": "Is Promo",

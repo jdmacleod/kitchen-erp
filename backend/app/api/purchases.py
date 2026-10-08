@@ -60,12 +60,14 @@ from app.services import (
     resolution,
     review,
     store_codes,
+    unit_display,
 )
 
 router = APIRouter(tags=["purchases"])
 
 
-def observation_out(o) -> ObservationOut:
+def observation_out(o, mass: str | None = None) -> ObservationOut:
+    """An observation; ``mass`` is its ingredient's display weight unit (issue 245)."""
     return ObservationOut(
         id=o.id,
         product={
@@ -104,9 +106,34 @@ def observation_out(o) -> ObservationOut:
         listing_id=o.listing_id,
         voided=o.void is not None,
         void_reason=o.void.reason if o.void is not None else None,
-        norm=o.norm,
+        norm=_norm_out(o.norm, mass),
         created_at=o.created_at,
     )
+
+
+def _norm_out(norm, mass: str | None) -> dict | None:
+    """The stored normalization, with its price as shown (issue 245)."""
+    if norm is None:
+        return None
+    shown = unit_display.shown(norm.norm_unit_price, norm.norm_unit, mass)
+    return {
+        "status": norm.status,
+        "canonical_qty": norm.canonical_qty,
+        "norm_unit": norm.norm_unit,
+        "norm_unit_price": norm.norm_unit_price,
+        "display_unit_price": shown.price if shown else None,
+        "display_unit": shown.unit if shown else None,
+        "bridge_kind": norm.bridge_kind,
+        "bridge_source": norm.bridge_source,
+        "bridge_confirmed": norm.bridge_confirmed,
+        "convert_version": norm.convert_version,
+        "computed_at": norm.computed_at,
+    }
+
+
+async def _observation_mass(db, o) -> str | None:
+    iid = o.product.ingredient_id
+    return (await unit_display.mass_units(db, [iid])).get(iid)
 
 
 @router.get("/price-observations", response_model=ObservationList)
@@ -127,7 +154,11 @@ async def list_observations(
         limit=limit,
         cursor=cursor,
     )
-    return ObservationList(items=[observation_out(o) for o in rows], next_cursor=next_cursor)
+    masses = await unit_display.mass_units(db, {o.product.ingredient_id for o in rows})
+    return ObservationList(
+        items=[observation_out(o, masses.get(o.product.ingredient_id)) for o in rows],
+        next_cursor=next_cursor,
+    )
 
 
 @router.post(
@@ -152,14 +183,16 @@ async def create_observation(
         observed_at=payload.observed_at,
     )
     await db.commit()
-    return await guard.commit(201, observation_out(o).model_dump(mode="json"))
+    mass = await _observation_mass(db, o)
+    return await guard.commit(201, observation_out(o, mass).model_dump(mode="json"))
 
 
 @router.get("/price-observations/{observation_id}", response_model=ObservationOut)
 async def get_observation(
     observation_id: uuid.UUID, _: CurrentUser, db: DbSession
 ) -> ObservationOut:
-    return observation_out(await pricebook.get_observation(db, observation_id))
+    o = await pricebook.get_observation(db, observation_id)
+    return observation_out(o, await _observation_mass(db, o))
 
 
 @router.post("/price-observations/{observation_id}/void", response_model=ObservationOut)
@@ -168,7 +201,7 @@ async def void_observation(
 ) -> ObservationOut:
     observation = await pricebook.void(db, observation_id, payload.reason, user)
     await db.commit()
-    return observation_out(observation)
+    return observation_out(observation, await _observation_mass(db, observation))
 
 
 @router.get("/price-book/needs-bridge", response_model=NeedsBridgeList)
@@ -660,7 +693,11 @@ async def cheapest(
         exclude_stale=exclude_stale,
         include_posted=include_posted,
     )
-    return CheapestOut(items=items, unit=ingredient.canonical_unit)
+    return CheapestOut(
+        items=items,
+        unit=ingredient.canonical_unit,
+        display_unit=items[0]["display_unit"] if items else None,
+    )
 
 
 @router.post(

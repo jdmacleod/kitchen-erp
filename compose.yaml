@@ -45,6 +45,7 @@ services:
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       RECEIPT_DATE_ORDER: ${RECEIPT_DATE_ORDER:-MDY}
       CURRENCY: ${CURRENCY:-USD}
+      UNIT_DISPLAY: ${UNIT_DISPLAY:-us}
       INGEST_LOCK_TIMEOUT_SECONDS: ${INGEST_LOCK_TIMEOUT_SECONDS:-600}
       INGEST_STALL_MINUTES: ${INGEST_STALL_MINUTES:-10}
       # Everything .env.example documents has to be forwarded here or setting

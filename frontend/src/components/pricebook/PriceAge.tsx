@@ -1,11 +1,16 @@
 import { formatAge } from "../../api/pricebook";
-import { formatMoney } from "../../lib/decimal";
 import { Badge } from "../catalog/fields";
 
-/** A price per canonical unit, "$0.0022/g", or "—" when not normalized. */
+/**
+ * A unit price as the server worked it out (issue 245): "$2.99/lb", "$0.269/fl oz",
+ * "$1.29 each", or "—" when the price isn't normalized. The browser does no unit
+ * arithmetic: the server already chose the unit and rounded the price.
+ */
 export function formatUnitPrice(price: string | null | undefined, unit: string | null | undefined): string {
   if (!price || !unit) return "—";
-  return `${formatMoney(price, 2, 6)}/${unit}`;
+  // The server's digits as sent: it already chose 2 or 3 places ("0.680" stays "0.680").
+  const money = price.startsWith("-") ? `-$${price.slice(1)}` : `$${price}`;
+  return unit === "each" ? `${money} each` : `${money}/${unit}`;
 }
 
 interface PriceAgeProps {

@@ -403,7 +403,15 @@ async def test_ingredient_history_counts_committed_purchases_only(admin_client):
     r = await admin_client.post(f"/api/v1/purchases/{purchase_id}/reopen")
     assert r.status_code == 200, r.text
     h = await _history(admin_client, ingredient_id)
-    assert h == {"days": 90, "points": [], "low": None, "high": None}
+    assert h == {
+        "days": 90,
+        "points": [],
+        "low": None,
+        "high": None,
+        "display_low": None,
+        "display_high": None,
+        "display_unit": None,
+    }
 
 
 async def test_ingredient_history_bounds_and_errors(admin_client):

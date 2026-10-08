@@ -10,7 +10,7 @@ import { PriceHistoryChart } from "./PriceHistoryChart";
 /** The product page's price history chart and latest-price-per-location table. */
 export function ProductPrices({ product }: { product: Product }) {
   const prices = useProductPrices(product.id);
-  const unit = prices.data?.points.find((p) => p.norm_unit)?.norm_unit ?? prices.data?.latest.find((l) => l.norm_unit)?.norm_unit ?? product.ingredient.canonical_unit;
+  const unit = prices.data?.points.find((p) => p.display_unit)?.display_unit ?? prices.data?.latest.find((l) => l.display_unit)?.display_unit ?? null;
 
   return (
     <Card>
@@ -47,7 +47,7 @@ export function ProductPrices({ product }: { product: Product }) {
                       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
                         {formatMoney(l.price)} / {stripZeros(l.qty)} {l.unit} <PromoBadge promo={l.is_promo} />
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{formatUnitPrice(l.norm_unit_price, l.norm_unit)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">{formatUnitPrice(l.display_unit_price, l.display_unit)}</td>
                       <td className="py-2">
                         <PriceAge observedAt={l.observed_at} ageDays={l.age_days} stale={l.stale} />
                       </td>

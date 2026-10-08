@@ -19,6 +19,9 @@ class HistoryPoint(ApiModel):
     source: str
     norm_unit_price: DecimalStr | None
     norm_unit: str | None
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     norm_status: str | None
     location_id: uuid.UUID
     location_name: str
@@ -42,6 +45,9 @@ class LatestAtLocation(ApiModel):
     is_promo: bool
     norm_unit_price: DecimalStr | None
     norm_unit: str | None
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     norm_status: str | None
     age_days: DecimalStr
     stale: bool
@@ -57,6 +63,9 @@ class IngredientPricePoint(ApiModel):
     observed_at: datetime
     norm_unit_price: DecimalStr
     norm_unit: str
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     is_promo: bool
     source: str
     product_id: uuid.UUID
@@ -78,6 +87,10 @@ class IngredientPriceHistory(ApiModel):
     # The range across every point in the window; null when there are none.
     low: DecimalStr | None
     high: DecimalStr | None
+    # The same range as shown, and the unit every point's display price uses.
+    display_low: DecimalStr | None = None
+    display_high: DecimalStr | None = None
+    display_unit: str | None = None
 
 
 class Offer(ApiModel):
@@ -100,6 +113,9 @@ class Offer(ApiModel):
     is_promo: bool
     norm_unit_price: DecimalStr | None
     norm_unit: str | None
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     norm_status: str | None
     age_days: DecimalStr
     stale: bool
@@ -131,6 +147,9 @@ class CompareCell(ApiModel):
     is_promo: bool
     norm_unit_price: DecimalStr
     norm_unit: str
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     stale: bool
     cheapest: bool
 
@@ -162,6 +181,9 @@ class RecentPrice(ApiModel):
     is_promo: bool
     norm_unit_price: DecimalStr | None
     norm_unit: str | None
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     norm_status: str | None
     product_id: uuid.UUID
     product_name: str
@@ -192,12 +214,17 @@ class CheapestPin(ApiModel):
     is_promo: bool
     norm_unit_price: DecimalStr
     norm_unit: str
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     stale: bool
 
 
 class CheapestOut(ApiModel):
     items: list[CheapestPin]
     unit: str | None
+    # The unit the pins' display prices read in (issue 245).
+    display_unit: str | None = None
 
 
 def as_any(value: Any) -> Any:

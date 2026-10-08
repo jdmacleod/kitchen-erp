@@ -50,6 +50,9 @@ class NormOut(ApiModel):
     canonical_qty: DecimalStr | None
     norm_unit: str | None
     norm_unit_price: DecimalStr | None
+    # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
+    display_unit_price: DecimalStr | None = None
+    display_unit: str | None = None
     bridge_kind: BridgeKind
     bridge_source: str | None
     bridge_confirmed: bool | None

@@ -26,16 +26,16 @@ const chainPoint = {
 
 const history: ProductPrices = {
   points: [
-    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01", observed_at: "2026-07-01T15:00:00Z", is_promo: false, norm_unit_price: "0.002200" },
-    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a02", observed_at: "2026-08-01T15:00:00Z", is_promo: true, price: "3.99", norm_unit_price: "0.001760" },
-    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", is_promo: false, norm_unit_price: "0.002200", location_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009", location_name: "Millstone Cove" },
+    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01", observed_at: "2026-07-01T15:00:00Z", is_promo: false, norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb" },
+    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a02", observed_at: "2026-08-01T15:00:00Z", is_promo: true, price: "3.99", norm_unit_price: "0.001760", display_unit_price: "0.798", display_unit: "lb" },
+    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", is_promo: false, norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb", location_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6009", location_name: "Millstone Cove" },
     {
       ...chainPoint,
       observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04",
       observed_at: "2026-05-20T15:00:00Z",
       is_promo: false,
       price: "5.50",
-      norm_unit_price: "0.002425",
+      norm_unit_price: "0.002425", display_unit_price: "1.10", display_unit: "lb",
       location_id: marketLocationId,
       location_name: marketLocation.name,
       vendor_id: marketVendorId,
@@ -44,11 +44,11 @@ const history: ProductPrices = {
       series: marketLocationId,
     },
     // Not normalized: charted nowhere, counted in the caption.
-    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a05", observed_at: "2026-09-19T15:00:00Z", is_promo: false, unit: "cup", norm_unit: null, norm_unit_price: null, norm_status: "no_density" },
+    { ...chainPoint, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a05", observed_at: "2026-09-19T15:00:00Z", is_promo: false, unit: "cup", norm_unit: null, norm_unit_price: null, display_unit_price: null, display_unit: null, norm_status: "no_density" },
   ],
   latest: [
-    { location_id: chainLocationId, location_name: chainLocation.name, vendor_id: chainVendorId, vendor_name: chainLocation.vendor.name, price_scope: "chain", observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", price: "4.99", qty: "1", unit: "each", is_promo: false, norm_unit_price: "0.002200", norm_unit: "g", norm_status: "ok", age_days: "3", stale: false },
-    { location_id: marketLocationId, location_name: marketLocation.name, vendor_id: marketVendorId, vendor_name: marketLocation.vendor.name, price_scope: "location", observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04", observed_at: "2026-05-20T15:00:00Z", price: "5.50", qty: "1", unit: "each", is_promo: false, norm_unit_price: "0.002425", norm_unit: "g", norm_status: "ok", age_days: "124", stale: true },
+    { location_id: chainLocationId, location_name: chainLocation.name, vendor_id: chainVendorId, vendor_name: chainLocation.vendor.name, price_scope: "chain", observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", observed_at: "2026-09-18T15:00:00Z", price: "4.99", qty: "1", unit: "each", is_promo: false, norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb", norm_unit: "g", norm_status: "ok", age_days: "3", stale: false },
+    { location_id: marketLocationId, location_name: marketLocation.name, vendor_id: marketVendorId, vendor_name: marketLocation.vendor.name, price_scope: "location", observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04", observed_at: "2026-05-20T15:00:00Z", price: "5.50", qty: "1", unit: "each", is_promo: false, norm_unit_price: "0.002425", display_unit_price: "1.10", display_unit: "lb", norm_unit: "g", norm_status: "ok", age_days: "124", stale: true },
   ],
 };
 
@@ -70,8 +70,8 @@ const offerBase = {
   stale: false,
 };
 const offers: Offer[] = [
-  { ...offerBase, product_id: hits[1].id, product_name: hits[1].name, brand: hits[1].brand, quality_rating: 2, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b01", price: "3.50", norm_unit_price: "0.001750", is_promo: true },
-  { ...offerBase, product_id: flourProductId, product_name: flourProduct.name, brand: flourProduct.brand, quality_rating: 4, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b02", price: "4.99", norm_unit_price: "0.002200", age_days: "130", stale: true },
+  { ...offerBase, product_id: hits[1].id, product_name: hits[1].name, brand: hits[1].brand, quality_rating: 2, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b01", price: "3.50", norm_unit_price: "0.001750", display_unit_price: "0.794", display_unit: "lb", is_promo: true },
+  { ...offerBase, product_id: flourProductId, product_name: flourProduct.name, brand: flourProduct.brand, quality_rating: 4, observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b02", price: "4.99", norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb", age_days: "130", stale: true },
 ];
 
 function baseRoutes() {
@@ -94,7 +94,7 @@ describe("product price history", () => {
     renderApp(`/catalog/products/${flourProductId}`);
 
     const chart = await screen.findByTestId("price-history-chart");
-    expect(chart).toHaveAccessibleName("Price per g over time, 2 series");
+    expect(chart).toHaveAccessibleName("Price per lb over time, 2 series");
     const series = within(chart).getAllByTestId("price-series");
     expect(series.map((s) => s.dataset.series)).toEqual([chainVendorId, marketLocationId]);
     // Three normalized chain points, at two branches, fall in one series.
@@ -118,7 +118,7 @@ describe("product price history", () => {
     expect(rows[1]).toHaveTextContent("124 days");
     // The date and its mark appear once per layout (phone and wider); CSS shows one.
     expect(within(rows[1]).getAllByText("stale").length).toBeGreaterThan(0);
-    expect(rows[1]).toHaveTextContent("$0.002425/g");
+    expect(rows[1]).toHaveTextContent("$1.10/lb");
   });
 
   it("says so when there is no history yet", async () => {
@@ -149,7 +149,7 @@ describe("ingredient offers", () => {
     let rows = within(table).getAllByTestId("offer");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Riverbend Bread Flour");
-    expect(rows[0]).toHaveTextContent("$0.00175/g");
+    expect(rows[0]).toHaveTextContent("$0.794/lb");
     expect(rows[0]).toHaveTextContent("sale");
     expect(rows[0]).toHaveTextContent("2/5");
     expect(rows[1]).toHaveTextContent("130 days");
