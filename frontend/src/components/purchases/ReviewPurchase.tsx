@@ -38,6 +38,7 @@ import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
+import { BestBy } from "./BestBy";
 import { ProductPicker } from "./ProductPicker";
 import { ReceiptImage } from "./ReceiptImage";
 import { CategoryChip } from "../CategoryChip";
@@ -992,6 +993,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
         </span>
       ) : null}
       {line.code_offer && line.product ? <RememberCode line={line} /> : null}
+      {line.product && isItem ? <ReviewBestBy line={line} /> : null}
       {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
         <ul aria-label={`Suggestions for line ${line.seq}`} className={`mt-1 flex flex-col ${touch ? "gap-2" : "gap-1"}`}>
           {suggestions.map((s, i) =>
@@ -1394,6 +1396,16 @@ function AddLineForm({ itemLines, busy, onAdd }: { itemLines: PurchaseLine[]; bu
           Add line
         </Button>
       </div>
+    </div>
+  );
+}
+
+/** The line's best-by date, and a field for the date printed on its label (2Q). */
+function ReviewBestBy({ line }: { line: PurchaseLine }) {
+  const { id = "" } = useParams<{ id: string }>();
+  return (
+    <div className="mt-1 text-sm">
+      <BestBy purchaseId={id} line={line} inReview />
     </div>
   );
 }

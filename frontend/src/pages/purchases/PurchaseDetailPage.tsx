@@ -20,6 +20,7 @@ import {
 import { Badge } from "../../components/catalog/fields";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
 import { RemovedLinesCaption, RemovePurchase, RestorePurchase } from "../../components/purchases/RemovePurchase";
+import { BestBy } from "../../components/purchases/BestBy";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
@@ -250,13 +251,14 @@ function CommittedPurchase({
                   <th className="py-2 pr-3 text-right">Qty</th>
                   <th className="py-2 pr-3 text-right">Unit price</th>
                   <th className="py-2 pr-3 text-right">Total</th>
+                  <th className="py-2 pr-3">Best by</th>
                   <th className="py-2 pr-3">Flags</th>
                   <th className="py-2">Observation</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
                 {p.lines.map((l) => (
-                  <LineRow key={l.id} line={l} voided={voided} />
+                  <LineRow key={l.id} purchaseId={p.id} line={l} voided={voided} />
                 ))}
               </tbody>
             </table>
@@ -288,7 +290,7 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function LineRow({ line, voided = false }: { line: PurchaseLine; voided?: boolean }) {
+function LineRow({ purchaseId, line, voided = false }: { purchaseId: string; line: PurchaseLine; voided?: boolean }) {
   const isItem = line.line_kind === "item";
   const resolution = line.resolution as Resolution | null;
   return (
@@ -326,6 +328,9 @@ function LineRow({ line, voided = false }: { line: PurchaseLine; voided?: boolea
       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</td>
       <td className="py-2 pr-3 text-right tabular-nums">{line.unit_price !== null ? formatMoney(line.unit_price, 2, 4) : "—"}</td>
       <td className="py-2 pr-3 text-right tabular-nums">{line.line_total !== null ? formatMoney(line.line_total) : "—"}</td>
+      <td className="py-2 pr-3 align-top">
+        <BestBy purchaseId={purchaseId} line={line} editable={!voided} />
+      </td>
       <td className="py-2 pr-3">
         <span className="flex flex-wrap gap-1">
           {line.flags.map((f) => (

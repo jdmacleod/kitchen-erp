@@ -36,7 +36,7 @@ from app.models import (
     ReceiptAlias,
 )
 from app.models.geo import Vendor, VendorLocation
-from app.services import pricebook
+from app.services import best_by, pricebook
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
 from app.services.purchases import ensure_not_voided, get_purchase, live_observations
@@ -583,6 +583,7 @@ async def decide_line(
     live = await live_observations(db, purchase)
     if line.id in live:
         await pricebook.void(db, live[line.id], "line re-pointed in review", user)
+    repointed = line.product_id != product_id
     line.product_id = product_id
     line.resolution = "ignored" if ignore else (accepted_kind or "manual")
     if line.resolution not in ("alias", "fuzzy", "llm", "similar", "manual", "ignored", "barcode"):
@@ -597,6 +598,7 @@ async def decide_line(
         if norm:
             await upsert_alias(db, purchase.vendor_location.vendor_id, norm, product_id)
     await db.flush()
+    await best_by.refresh(db, purchase, [line], repointed=[line.id] if repointed else [])
     if purchase.status == "committed" and _resolved_item(line):
         await _emit_for_line(db, user, purchase, line)
     await db.commit()
@@ -700,6 +702,7 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
             await _emit_for_line(db, user, purchase, line)
         elif current is not None:
             await pricebook.void(db, current.id, "line no longer resolved on recommit", user)
+    await best_by.refresh(db, purchase)
     purchase.status = "committed"
     # The receipt's job is finished too; left at needs_review, the Receipts page
     # kept offering "ready to review" for a purchase already in the price book.

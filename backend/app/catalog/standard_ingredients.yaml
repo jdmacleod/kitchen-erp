@@ -11,24 +11,28 @@ ingredients:
     name: "1% milk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 170872
   - key: 2pct-milk
     name: "2% milk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171267
   - key: acorn-squash
     name: "acorn squash"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 168472
   - key: active-dry-yeast
     name: "active dry yeast"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175043
     spellings: ["dry yeast"]
@@ -36,6 +40,7 @@ ingredients:
     name: "agar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170090
     spellings: ["agar agar"]
@@ -43,6 +48,7 @@ ingredients:
     name: "aioli"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     spellings: ["garlic aioli"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -51,6 +57,7 @@ ingredients:
     proper_noun: true
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["aleppo chili flakes"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -58,12 +65,14 @@ ingredients:
     name: "alfalfa sprouts"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 168384
   - key: all-purpose-flour
     name: "all-purpose flour"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168894
     spellings: ["ap flour", "plain flour"]
@@ -71,12 +80,14 @@ ingredients:
     name: "almond butter"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 168588
   - key: almond-flour
     name: "almond flour"
     category: pantry
     perishability: shelf_months
+    keep: {room: 30, fridge: 180, freezer: 365}
     unit: g
     fdc: 2261420
     spellings: ["almond meal"]
@@ -84,12 +95,14 @@ ingredients:
     name: "almond milk"
     category: beverages
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: ml
     fdc: 174832
   - key: almond-paste
     name: "almond paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170160
     spellings: ["marzipan"]
@@ -97,6 +110,7 @@ ingredients:
     name: "almonds"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170567
   - key: anaheim-pepper
@@ -104,6 +118,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     spellings: ["anaheim chile"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -111,6 +126,7 @@ ingredients:
     name: "ancho chiles"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169396
     spellings: ["dried ancho chiles"]
@@ -118,6 +134,7 @@ ingredients:
     name: "anchovies"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 174183
     spellings: ["anchovy fillets"]
@@ -125,6 +142,7 @@ ingredients:
     name: "andouille"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     spellings: ["andouille sausage"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -132,6 +150,7 @@ ingredients:
     name: "anise seed"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171316
     spellings: ["aniseed"]
@@ -139,18 +158,21 @@ ingredients:
     name: "apple"
     category: produce
     perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
     unit: g
     fdc: 171688
   - key: apricot
     name: "apricot"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 171697
   - key: artichoke
     name: "artichoke"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 7, freezer: null}
     unit: each
     fdc: 169205
     spellings: ["globe artichoke"]
@@ -158,6 +180,7 @@ ingredients:
     name: "artichoke hearts"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["marinated artichoke hearts", "canned artichoke hearts"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -165,6 +188,7 @@ ingredients:
     name: "arugula"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169387
     spellings: ["baby arugula", "rocket"]
@@ -172,24 +196,28 @@ ingredients:
     name: "asparagus"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 168389
   - key: avocado
     name: "avocado"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 3, freezer: null}
     unit: each
     fdc: 171705
   - key: avocado-oil
     name: "avocado oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 173573
   - key: baba-ghanoush
     name: "baba ghanoush"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     spellings: ["baba ganoush", "baba ghannouj"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -197,18 +225,21 @@ ingredients:
     name: "baby carrots"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 300}
     unit: g
     fdc: 168568
   - key: bacon
     name: "bacon"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 168277
   - key: bacon-grease
     name: "bacon grease"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 90, freezer: 365}
     unit: g
     fdc: 172345
     spellings: ["bacon fat", "bacon drippings"]
@@ -216,12 +247,14 @@ ingredients:
     name: "bagel chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 173150
   - key: bagels
     name: "bagels"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: each
     fdc: 174899
     spellings: ["bagel"]
@@ -229,18 +262,21 @@ ingredients:
     name: "baharat"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: baking-powder
     name: "baking powder"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172803
   - key: baking-soda
     name: "baking soda"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175040
     spellings: ["bicarbonate of soda", "sodium bicarbonate"]
@@ -248,6 +284,7 @@ ingredients:
     name: "balsamic vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 172241
     spellings: ["balsamic"]
@@ -255,12 +292,14 @@ ingredients:
     name: "banana"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: 30}
     unit: g
     fdc: 173944
   - key: barbecue-sauce
     name: "barbecue sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 174523
     spellings: ["bbq sauce"]
@@ -268,12 +307,14 @@ ingredients:
     name: "basil"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 172232
   - key: bay-leaves
     name: "bay leaves"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170917
     spellings: ["bay leaf"]
@@ -281,6 +322,7 @@ ingredients:
     name: "bean sprouts"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169957
     spellings: ["mung bean sprouts"]
@@ -288,6 +330,7 @@ ingredients:
     name: "beef brisket"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 173129
     spellings: ["brisket"]
@@ -295,6 +338,7 @@ ingredients:
     name: "beef broth"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171538
     spellings: ["beef stock"]
@@ -302,6 +346,7 @@ ingredients:
     name: "beef jerky"
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     fdc: 167536
     spellings: ["jerky"]
@@ -309,12 +354,14 @@ ingredients:
     name: "beef liver"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 169451
   - key: beef-shank
     name: "beef shank"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169441
     spellings: ["beef shin"]
@@ -322,6 +369,7 @@ ingredients:
     name: "beef short ribs"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169439
     spellings: ["short ribs"]
@@ -329,6 +377,7 @@ ingredients:
     name: "beef stew meat"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 171206
     spellings: ["stew beef", "beef chuck"]
@@ -336,6 +385,7 @@ ingredients:
     name: "beef tallow"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171400
     spellings: ["tallow"]
@@ -343,6 +393,7 @@ ingredients:
     name: "beef tenderloin"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 2727573
     spellings: ["filet mignon", "tenderloin steak"]
@@ -350,24 +401,28 @@ ingredients:
     name: "beef top round"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169529
   - key: beer
     name: "beer"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 120, fridge: null, freezer: null}
     unit: ml
     fdc: 168746
   - key: beet-greens
     name: "beet greens"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 170375
   - key: beets
     name: "beets"
     category: produce
     perishability: refrigerated
+    keep: {room: 1, fridge: 7, freezer: 180}
     unit: g
     fdc: 169145
     spellings: ["beetroot"]
@@ -375,6 +430,7 @@ ingredients:
     name: "bitter melon"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: null}
     unit: g
     fdc: 168393
     spellings: ["bitter gourd", "karela"]
@@ -382,12 +438,14 @@ ingredients:
     name: "black bean sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: black-olives
     name: "black olives"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169094
     spellings: ["ripe olives"]
@@ -395,6 +453,7 @@ ingredients:
     name: "black pepper"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170931
     note: "Whole peppercorns become their own entry when a recipe needs them."
@@ -402,6 +461,7 @@ ingredients:
     name: "black vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["chinkiang vinegar", "zhenjiang vinegar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -409,12 +469,14 @@ ingredients:
     name: "blackberries"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 173946
   - key: blood-orange
     name: "blood orange"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     spellings: ["blood oranges"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -422,6 +484,7 @@ ingredients:
     name: "blue cheese"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172175
     spellings: ["bleu cheese"]
@@ -429,12 +492,14 @@ ingredients:
     name: "blueberries"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 171711
   - key: bok-choy
     name: "bok choy"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 170390
     spellings: ["pak choi"]
@@ -442,6 +507,7 @@ ingredients:
     name: "bologna"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 172013
     spellings: ["baloney"]
@@ -449,6 +515,7 @@ ingredients:
     name: "bonito flakes"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["katsuobushi"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -456,6 +523,7 @@ ingredients:
     name: "bottled lemon juice"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 167748
     spellings: ["lemon juice from concentrate"]
@@ -463,11 +531,13 @@ ingredients:
     name: "brandy"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
   - key: bratwurst
     name: "bratwurst"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 30}
     unit: g
     fdc: 171622
     spellings: ["brats"]
@@ -475,12 +545,14 @@ ingredients:
     name: "bread flour"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168896
   - key: breadcrumbs
     name: "breadcrumbs"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 174928
     spellings: ["bread crumbs", "dry breadcrumbs"]
@@ -488,6 +560,7 @@ ingredients:
     name: "breadsticks"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174929
     spellings: ["grissini"]
@@ -495,24 +568,28 @@ ingredients:
     name: "bresaola"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     fdc: 170604
   - key: brie
     name: "brie"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172177
   - key: broccoli
     name: "broccoli"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 170379
   - key: broccoli-rabe
     name: "broccoli rabe"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 170381
     spellings: ["rapini", "broccoli raab"]
@@ -520,12 +597,14 @@ ingredients:
     name: "brown rice"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 169703
   - key: brown-sugar
     name: "brown sugar"
     category: pantry
     perishability: shelf_months
+    keep: {room: 120, fridge: null, freezer: null}
     unit: g
     fdc: 168833
   - key: brussels-sprouts
@@ -533,18 +612,21 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 170383
   - key: buckwheat-flour
     name: "buckwheat flour"
     category: pantry
     perishability: shelf_months
+    keep: {room: 30, fridge: 180, freezer: 365}
     unit: g
     fdc: 170687
   - key: bulgur
     name: "bulgur"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170688
     spellings: ["bulgur wheat"]
@@ -552,12 +634,14 @@ ingredients:
     name: "burrata"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: butter-crackers
     name: "butter crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174982
     spellings: ["round crackers"]
@@ -565,30 +649,35 @@ ingredients:
     name: "buttermilk"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 170874
   - key: butternut-squash
     name: "butternut squash"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 169295
   - key: cabbage
     name: "cabbage"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169975
   - key: cake-flour
     name: "cake flour"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169723
   - key: camembert
     name: "camembert"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172178
   - key: canadian-bacon
@@ -596,6 +685,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 167869
     spellings: ["back bacon"]
@@ -603,12 +693,14 @@ ingredients:
     name: "canned black beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175188
   - key: canned-chickpeas
     name: "canned chickpeas"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175206
     spellings: ["canned garbanzo beans"]
@@ -616,12 +708,14 @@ ingredients:
     name: "canned clams"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171976
   - key: canned-crab
     name: "canned crab"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171966
     spellings: ["crab meat", "lump crab"]
@@ -629,18 +723,21 @@ ingredients:
     name: "canned kidney beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175195
   - key: canned-pinto-beans
     name: "canned pinto beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175201
   - key: canned-pumpkin
     name: "canned pumpkin"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168450
     spellings: ["pumpkin puree"]
@@ -648,12 +745,14 @@ ingredients:
     name: "canned salmon"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 175175
   - key: canned-tomatoes
     name: "canned tomatoes"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170051
     spellings: ["tinned tomatoes"]
@@ -662,12 +761,14 @@ ingredients:
     name: "canned tuna"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 173709
   - key: canned-white-beans
     name: "canned white beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175204
     spellings: ["canned cannellini beans"]
@@ -675,12 +776,14 @@ ingredients:
     name: "canola oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 172336
   - key: cantaloupe
     name: "cantaloupe"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 3, freezer: 30}
     unit: g
     fdc: 169092
     spellings: ["muskmelon"]
@@ -688,12 +791,14 @@ ingredients:
     name: "capers"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172238
   - key: capicola
     name: "capicola"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     spellings: ["coppa", "capocollo", "gabagool"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -701,6 +806,7 @@ ingredients:
     name: "caraway seed"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170918
     spellings: ["caraway seeds"]
@@ -708,6 +814,7 @@ ingredients:
     name: "cardamom"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170919
     spellings: ["ground cardamom"]
@@ -715,12 +822,14 @@ ingredients:
     name: "carrot"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 300}
     unit: g
     fdc: 170393
   - key: cashews
     name: "cashews"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170571
     note: "Cashews are sold dry-roasted; the reference is that record."
@@ -728,18 +837,21 @@ ingredients:
     name: "catfish"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 60}
     unit: g
     fdc: 175165
   - key: cauliflower
     name: "cauliflower"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 169986
   - key: cayenne
     name: "cayenne"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170932
     spellings: ["cayenne pepper"]
@@ -747,6 +859,7 @@ ingredients:
     name: "celeriac"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 170400
     spellings: ["celery root"]
@@ -754,24 +867,28 @@ ingredients:
     name: "celery"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169988
   - key: celery-seed
     name: "celery seed"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170920
   - key: chayote
     name: "chayote"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 4, freezer: null}
     unit: g
     fdc: 170402
   - key: cheddar
     name: "cheddar"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 173414
     spellings: ["cheddar cheese"]
@@ -779,12 +896,14 @@ ingredients:
     name: "cheese crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174975
   - key: cherries
     name: "cherries"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 171719
     spellings: ["sweet cherries"]
@@ -792,12 +911,14 @@ ingredients:
     name: "chia seeds"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170554
   - key: chicken-breast
     name: "chicken breast"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 171077
     spellings: ["boneless skinless chicken breast"]
@@ -805,6 +926,7 @@ ingredients:
     name: "chicken broth"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174536
     spellings: ["chicken stock"]
@@ -812,12 +934,14 @@ ingredients:
     name: "chicken drumstick"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 173614
   - key: chicken-fat
     name: "chicken fat"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 90, freezer: 365}
     unit: g
     fdc: 173564
     spellings: ["schmaltz"]
@@ -825,6 +949,7 @@ ingredients:
     name: "chicken leg quarters"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 172378
     spellings: ["chicken legs", "whole chicken legs"]
@@ -832,12 +957,14 @@ ingredients:
     name: "chicken livers"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 171060
   - key: chicken-tenders
     name: "chicken tenders"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 2646170
     spellings: ["chicken tenderloins"]
@@ -845,12 +972,14 @@ ingredients:
     name: "chicken thigh"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 173627
   - key: chicken-wings
     name: "chicken wings"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 172390
     spellings: ["wings"]
@@ -858,6 +987,7 @@ ingredients:
     name: "chili crisp"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["chili oil crisp", "crispy chili oil"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -865,6 +995,7 @@ ingredients:
     name: "chili oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     spellings: ["la you", "hot chili oil"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -872,12 +1003,14 @@ ingredients:
     name: "chili powder"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171319
   - key: chili-sauce
     name: "chili sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171595
   - key: chinese-broccoli
@@ -885,6 +1018,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169404
     spellings: ["gai lan"]
@@ -893,6 +1027,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     spellings: ["lap cheong", "lap chong"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -900,18 +1035,21 @@ ingredients:
     name: "chives"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 169994
   - key: chorizo
     name: "chorizo"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: chuck-roast
     name: "chuck roast"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 174056
     spellings: ["pot roast"]
@@ -919,6 +1057,7 @@ ingredients:
     name: "apple cider vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 173469
     spellings: ["cider vinegar"]
@@ -926,6 +1065,7 @@ ingredients:
     name: "cilantro"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
@@ -933,18 +1073,21 @@ ingredients:
     name: "cocktail sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 174067
   - key: cocoa-powder
     name: "cocoa powder"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169593
   - key: coconut-milk
     name: "coconut milk"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 170173
     spellings: ["canned coconut milk"]
@@ -952,18 +1095,21 @@ ingredients:
     name: "coconut oil"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171412
   - key: cod
     name: "cod"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 174191
   - key: coffee
     name: "coffee"
     category: beverages
     perishability: shelf_months
+    keep: {room: 7, fridge: null, freezer: 90}
     unit: g
     spellings: ["coffee beans", "ground coffee"]
     note: "USDA records only brewed coffee; the list means the beans or grounds you buy."
@@ -971,6 +1117,7 @@ ingredients:
     name: "colby"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 173416
     spellings: ["colby jack"]
@@ -978,6 +1125,7 @@ ingredients:
     name: "collard greens"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 170406
     spellings: ["collards"]
@@ -985,12 +1133,14 @@ ingredients:
     name: "corn chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 167537
   - key: corn-kernels
     name: "corn kernels"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 168398
     note: "Frozen kernels, the usual way loose kernels are bought; the raw record (169998) is corn on the cob's, by the ear."
@@ -998,12 +1148,14 @@ ingredients:
     name: "corn oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171029
   - key: corn-on-the-cob
     name: "corn on the cob"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: each
     fdc: 169998
     spellings: ["sweet corn", "ears of corn"]
@@ -1012,12 +1164,14 @@ ingredients:
     name: "corn tortilla"
     category: bakery
     perishability: refrigerated
+    keep: {room: 2, fridge: 4, freezer: 120}
     unit: each
     fdc: 175036
   - key: corned-beef
     name: "corned beef"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 5, freezer: 30}
     unit: g
     fdc: 170199
   - key: cornish-hen
@@ -1025,6 +1179,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: each
     fdc: 171507
     spellings: ["cornish game hen", "game hen"]
@@ -1032,12 +1187,14 @@ ingredients:
     name: "cornmeal"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 365, freezer: null}
     unit: g
     fdc: 168929
   - key: cornstarch
     name: "cornstarch"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169698
     spellings: ["cornflour", "corn starch"]
@@ -1045,6 +1202,7 @@ ingredients:
     name: "cotija"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 2647443
     spellings: ["cotija cheese"]
@@ -1052,30 +1210,35 @@ ingredients:
     name: "cottage cheese"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172179
   - key: couscous
     name: "couscous"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169699
   - key: cranberries
     name: "cranberries"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 21, freezer: null}
     unit: g
     fdc: 171722
   - key: cranberry-sauce
     name: "cranberry sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173961
   - key: crayfish
     name: "crayfish"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 180}
     unit: g
     fdc: 174206
     spellings: ["crawfish", "crawdads"]
@@ -1083,24 +1246,28 @@ ingredients:
     name: "cream cheese"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
     unit: g
     fdc: 173418
   - key: cream-of-tartar
     name: "cream of tartar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175041
   - key: creme-fraiche
     name: "crème fraîche"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: cremini-mushrooms
     name: "cremini mushrooms"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 168434
     spellings: ["cremini", "crimini mushrooms", "baby bella mushrooms"]
@@ -1108,6 +1275,7 @@ ingredients:
     name: "crispbread"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 172739
     spellings: ["rye crispbread", "knäckebröd"]
@@ -1115,12 +1283,14 @@ ingredients:
     name: "cucumber"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: null}
     unit: g
     fdc: 168409
   - key: cumin-seed
     name: "cumin seed"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170923
     note: "Ground cumin is a separate entry."
@@ -1128,18 +1298,21 @@ ingredients:
     name: "curry leaves"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: curry-powder
     name: "curry powder"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170924
   - key: daikon
     name: "daikon"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 168451
     spellings: ["daikon radish", "mooli", "white radish"]
@@ -1147,18 +1320,21 @@ ingredients:
     name: "dandelion greens"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169226
   - key: dark-soy-sauce
     name: "dark soy sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dashi
     name: "dashi"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["dashi stock"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1166,6 +1342,7 @@ ingredients:
     name: "dates"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 168191
     spellings: ["medjool dates"]
@@ -1173,6 +1350,7 @@ ingredients:
     name: "deli turkey"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 172941
     spellings: ["sliced turkey", "turkey lunch meat"]
@@ -1180,6 +1358,7 @@ ingredients:
     name: "delicata squash"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     spellings: ["delicata"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1188,6 +1367,7 @@ ingredients:
     proper_noun: true
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["dijon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1195,12 +1375,14 @@ ingredients:
     name: "dill pickles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168558
   - key: distilled-vinegar
     name: "distilled vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: ml
     fdc: 172237
     spellings: ["white vinegar"]
@@ -1208,6 +1390,7 @@ ingredients:
     name: "doenjang"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["korean soybean paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1215,6 +1398,7 @@ ingredients:
     name: "doubanjiang"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["chili bean paste", "broad bean paste", "toban djan"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1222,6 +1406,7 @@ ingredients:
     name: "dragon fruit"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     spellings: ["pitaya", "pitahaya"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1229,18 +1414,21 @@ ingredients:
     name: "dried apricots"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 173941
   - key: dried-basil
     name: "dried basil"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171317
   - key: dried-black-beans
     name: "dried black beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173734
     spellings: ["black beans"]
@@ -1248,6 +1436,7 @@ ingredients:
     name: "dried chickpeas"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173756
     spellings: ["chickpeas", "garbanzo beans"]
@@ -1255,6 +1444,7 @@ ingredients:
     name: "dried chiles"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168570
     spellings: ["dried chili peppers", "guajillo chiles"]
@@ -1262,6 +1452,7 @@ ingredients:
     name: "dried cranberries"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 2758976
     spellings: ["craisins"]
@@ -1269,6 +1460,7 @@ ingredients:
     name: "dried dill"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171322
     spellings: ["dill weed"]
@@ -1276,12 +1468,14 @@ ingredients:
     name: "dried figs"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 746768
   - key: dried-kidney-beans
     name: "dried kidney beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173744
     spellings: ["kidney beans", "red kidney beans"]
@@ -1289,6 +1483,7 @@ ingredients:
     name: "dried marjoram"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170928
     spellings: ["marjoram"]
@@ -1296,18 +1491,21 @@ ingredients:
     name: "dried oregano"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171328
   - key: dried-parsley
     name: "dried parsley"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170930
   - key: dried-pinto-beans
     name: "dried pinto beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175199
     spellings: ["pinto beans"]
@@ -1315,12 +1513,14 @@ ingredients:
     name: "dried rosemary"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171333
   - key: dried-shiitake-mushrooms
     name: "dried shiitake mushrooms"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 168436
     spellings: ["dried shiitake"]
@@ -1328,12 +1528,14 @@ ingredients:
     name: "dried shrimp"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dried-tarragon
     name: "dried tarragon"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170937
     spellings: ["tarragon"]
@@ -1341,12 +1543,14 @@ ingredients:
     name: "dried thyme"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170938
   - key: dried-white-beans
     name: "dried white beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 2644281
     spellings: ["cannellini beans", "white beans", "navy beans", "great northern beans"]
@@ -1354,6 +1558,7 @@ ingredients:
     name: "duck"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 172410
     spellings: ["duck breast"]
@@ -1361,12 +1566,14 @@ ingredients:
     name: "duck eggs"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 21, freezer: null}
     unit: each
     fdc: 172189
   - key: dukkah
     name: "dukkah"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["duqqa"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1374,36 +1581,42 @@ ingredients:
     name: "dulce de leche"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173461
   - key: egg
     name: "egg"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 21, freezer: null}
     unit: each
     fdc: 171287
   - key: egg-noodles
     name: "egg noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169731
   - key: egg-white
     name: "egg white"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 365}
     unit: each
     fdc: 172183
   - key: egg-yolk
     name: "egg yolk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 365}
     unit: each
     fdc: 172184
   - key: eggplant
     name: "eggplant"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 3, freezer: 180}
     unit: g
     fdc: 169228
     spellings: ["aubergine"]
@@ -1411,12 +1624,14 @@ ingredients:
     name: "enchilada sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174074
   - key: endive
     name: "endive"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 168412
     spellings: ["belgian endive"]
@@ -1425,12 +1640,14 @@ ingredients:
     proper_noun: true
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: each
     fdc: 174994
   - key: enoki-mushrooms
     name: "enoki mushrooms"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 169382
     spellings: ["enoki"]
@@ -1438,12 +1655,14 @@ ingredients:
     name: "evaporated milk"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171276
   - key: extra-virgin-olive-oil
     name: "extra virgin olive oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 748608
     spellings: ["evoo"]
@@ -1451,6 +1670,7 @@ ingredients:
     name: "farmer cheese"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     spellings: ["farmer's cheese", "pot cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1458,6 +1678,7 @@ ingredients:
     name: "fava beans"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 175205
     spellings: ["broad beans"]
@@ -1465,6 +1686,7 @@ ingredients:
     name: "fennel"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 169385
     spellings: ["fennel bulb"]
@@ -1472,6 +1694,7 @@ ingredients:
     name: "fennel seed"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171323
     spellings: ["fennel seeds"]
@@ -1479,6 +1702,7 @@ ingredients:
     name: "fermented black beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["douchi", "salted black beans"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1486,6 +1710,7 @@ ingredients:
     name: "feta"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 173420
     spellings: ["feta cheese"]
@@ -1493,6 +1718,7 @@ ingredients:
     name: "figs"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 173021
     spellings: ["fresh figs"]
@@ -1500,6 +1726,7 @@ ingredients:
     name: "fingerling potatoes"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     spellings: ["fingerlings"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1507,6 +1734,7 @@ ingredients:
     name: "fish sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174531
     spellings: ["nam pla", "nuoc mam"]
@@ -1514,6 +1742,7 @@ ingredients:
     name: "five-spice powder"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["chinese five spice", "five spice"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1521,18 +1750,21 @@ ingredients:
     name: "flank steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169564
   - key: flat-iron-steak
     name: "flat iron steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169536
   - key: flaxseed
     name: "flaxseed"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 169414
     spellings: ["flax seeds", "ground flaxseed"]
@@ -1540,12 +1772,14 @@ ingredients:
     name: "flour tortilla"
     category: bakery
     perishability: refrigerated
+    keep: {room: 2, fridge: 4, freezer: 120}
     unit: each
     fdc: 175037
   - key: fontina
     name: "fontina"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 170843
   - key: french-bread
@@ -1553,6 +1787,7 @@ ingredients:
     proper_noun: true
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 172675
     spellings: ["baguette", "sourdough bread"]
@@ -1560,6 +1795,7 @@ ingredients:
     name: "fresh dill"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 172233
     spellings: ["dill"]
@@ -1567,6 +1803,7 @@ ingredients:
     name: "fresh mint"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 173475
     spellings: ["mint", "spearmint"]
@@ -1574,6 +1811,7 @@ ingredients:
     name: "fresh mozzarella"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     fdc: 170845
     spellings: ["bocconcini", "ciliegine", "mozzarella balls"]
@@ -1581,12 +1819,14 @@ ingredients:
     name: "fresh oregano"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-rosemary
     name: "fresh rosemary"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 173473
     spellings: ["rosemary"]
@@ -1594,6 +1834,7 @@ ingredients:
     name: "fresh sage"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     spellings: ["sage"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1601,12 +1842,14 @@ ingredients:
     name: "fresh tarragon"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-thyme
     name: "fresh thyme"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 173470
   - key: fresno-chile
@@ -1614,6 +1857,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     spellings: ["fresno pepper"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1621,6 +1865,7 @@ ingredients:
     name: "frisée"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     spellings: ["curly endive"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1628,12 +1873,14 @@ ingredients:
     name: "fromage blanc"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: frozen-hash-browns
     name: "frozen hash browns"
     category: frozen
     perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
     unit: g
     fdc: 170043
     spellings: ["hash browns", "hashbrowns", "shredded hash browns"]
@@ -1641,6 +1888,7 @@ ingredients:
     name: "frozen mixed vegetables"
     category: frozen
     perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
     unit: g
     fdc: 170471
     spellings: ["mixed vegetables"]
@@ -1648,12 +1896,14 @@ ingredients:
     name: "furikake"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: galangal
     name: "galangal"
     category: produce
     perishability: refrigerated
+    keep: {room: 2, fridge: 7, freezer: 30}
     unit: g
     spellings: ["galangal root", "blue ginger"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1661,24 +1911,28 @@ ingredients:
     name: "garlic"
     category: produce
     perishability: refrigerated
+    keep: {room: 2, fridge: 7, freezer: 30}
     unit: g
     fdc: 169230
   - key: garlic-powder
     name: "garlic powder"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171325
   - key: garlic-scapes
     name: "garlic scapes"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ghee
     name: "ghee"
     category: dairy
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173412
     spellings: ["clarified butter", "butter oil"]
@@ -1686,6 +1940,7 @@ ingredients:
     name: "gin"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174815
     note: "USDA has no gin-only record; the reference is its record for all 80-proof spirits."
@@ -1693,12 +1948,14 @@ ingredients:
     name: "ginger"
     category: produce
     perishability: refrigerated
+    keep: {room: 2, fridge: 7, freezer: 30}
     unit: g
     fdc: 169231
   - key: glass-noodles
     name: "glass noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 174258
     spellings: ["cellophane noodles", "bean thread noodles"]
@@ -1706,6 +1963,7 @@ ingredients:
     name: "goat cheese"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 173435
     spellings: ["chevre", "chèvre"]
@@ -1713,6 +1971,7 @@ ingredients:
     name: "goat meat"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 175303
     spellings: ["mutton goat"]
@@ -1720,12 +1979,14 @@ ingredients:
     name: "goat milk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171278
   - key: gochugaru
     name: "gochugaru"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["korean chili flakes", "korean red pepper flakes"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1733,6 +1994,7 @@ ingredients:
     name: "gochujang"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["korean chili paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1740,30 +2002,35 @@ ingredients:
     name: "gouda"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171241
   - key: graham-crackers
     name: "graham crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174957
   - key: granola
     name: "granola"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 171646
   - key: granola-bars
     name: "granola bars"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: each
     fdc: 167542
   - key: granulated-sugar
     name: "granulated sugar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 169655
     spellings: ["white sugar"]
@@ -1771,6 +2038,7 @@ ingredients:
     name: "grape leaves"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168575
     spellings: ["vine leaves", "dolma leaves"]
@@ -1778,12 +2046,14 @@ ingredients:
     name: "grapefruit"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: g
     fdc: 174673
   - key: grapes
     name: "grapes"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 7, freezer: 30}
     unit: g
     fdc: 2346413
     spellings: ["grape"]
@@ -1793,6 +2063,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 171304
     spellings: ["greek yoghurt"]
@@ -1800,6 +2071,7 @@ ingredients:
     name: "green beans"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 169961
     spellings: ["string beans", "snap beans"]
@@ -1807,12 +2079,14 @@ ingredients:
     name: "green bell pepper"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170427
   - key: green-curry-paste
     name: "green curry paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["thai green curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1820,6 +2094,7 @@ ingredients:
     name: "green leaf lettuce"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     fdc: 169249
     spellings: ["leaf lettuce"]
@@ -1827,12 +2102,14 @@ ingredients:
     name: "green olives"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169096
   - key: green-peas
     name: "green peas"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 170419
     spellings: ["peas"]
@@ -1840,6 +2117,7 @@ ingredients:
     name: "ground allspice"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171315
     spellings: ["allspice"]
@@ -1847,6 +2125,7 @@ ingredients:
     name: "ground beef"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 174036
     spellings: ["hamburger meat"]
@@ -1854,24 +2133,28 @@ ingredients:
     name: "ground chicken"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 171116
   - key: ground-cinnamon
     name: "ground cinnamon"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171320
   - key: ground-cloves
     name: "ground cloves"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171321
   - key: ground-coriander
     name: "ground coriander"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170922
     spellings: ["coriander seed"]
@@ -1879,6 +2162,7 @@ ingredients:
     name: "ground cumin"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["cumin"]
     note: "USDA records only cumin seed (see cumin seed); ground cumin is what most recipes mean by cumin."
@@ -1886,18 +2170,21 @@ ingredients:
     name: "ground ginger"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170926
   - key: ground-lamb
     name: "ground lamb"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 174370
   - key: ground-mace
     name: "ground mace"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170927
     spellings: ["mace"]
@@ -1905,6 +2192,7 @@ ingredients:
     name: "ground mustard"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170929
     spellings: ["mustard powder", "dry mustard"]
@@ -1912,18 +2200,21 @@ ingredients:
     name: "ground nutmeg"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171326
   - key: ground-pork
     name: "ground pork"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 167902
   - key: ground-sage
     name: "ground sage"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170935
     spellings: ["dried sage"]
@@ -1931,12 +2222,14 @@ ingredients:
     name: "ground turkey"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 171505
   - key: ground-turmeric
     name: "ground turmeric"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172231
     spellings: ["turmeric"]
@@ -1944,6 +2237,7 @@ ingredients:
     name: "ground veal"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 90}
     unit: g
     fdc: 175290
   - key: gruyere
@@ -1951,6 +2245,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171242
     spellings: ["gruyere cheese"]
@@ -1958,18 +2253,21 @@ ingredients:
     name: "guanciale"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: guava
     name: "guava"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 173044
   - key: habanero
     name: "habanero"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     spellings: ["habanero pepper", "habanero chile"]
     note: "USDA has no habanero record; add a reference in review if one fits."
@@ -1977,18 +2275,21 @@ ingredients:
     name: "half-and-half"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: ml
     fdc: 171255
   - key: halibut
     name: "halibut"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 174200
   - key: halloumi
     name: "halloumi"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     spellings: ["halloumi cheese", "grilling cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1996,6 +2297,7 @@ ingredients:
     name: "ham"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 169148
     spellings: ["deli ham"]
@@ -2004,6 +2306,7 @@ ingredients:
     name: "ham hock"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     spellings: ["smoked ham hock", "pork hock"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2011,6 +2314,7 @@ ingredients:
     name: "hamburger buns"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: each
     fdc: 172796
     spellings: ["hot dog buns", "buns"]
@@ -2018,12 +2322,14 @@ ingredients:
     name: "hanger steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: harissa
     name: "harissa"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["harissa paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2031,12 +2337,14 @@ ingredients:
     name: "havarti"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hazelnuts
     name: "hazelnuts"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170581
     spellings: ["filberts"]
@@ -2044,12 +2352,14 @@ ingredients:
     name: "hearts of palm"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168569
   - key: heavy-cream
     name: "heavy cream"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: null}
     unit: ml
     fdc: 170859
     spellings: ["heavy whipping cream", "whipping cream"]
@@ -2057,6 +2367,7 @@ ingredients:
     name: "hoisin sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 172886
     spellings: ["hoisin"]
@@ -2064,18 +2375,21 @@ ingredients:
     name: "hominy"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169701
   - key: honey
     name: "honey"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169640
   - key: honeydew
     name: "honeydew"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 3, freezer: 30}
     unit: g
     fdc: 169911
     spellings: ["honeydew melon"]
@@ -2083,6 +2397,7 @@ ingredients:
     name: "horseradish"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 90, freezer: null}
     unit: g
     fdc: 173472
     spellings: ["prepared horseradish"]
@@ -2090,6 +2405,7 @@ ingredients:
     name: "hot dogs"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     spellings: ["frankfurters", "wieners", "franks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2097,6 +2413,7 @@ ingredients:
     name: "hot sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174528
     spellings: ["pepper sauce"]
@@ -2105,12 +2422,14 @@ ingredients:
     name: "hummus"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 174289
   - key: iceberg-lettuce
     name: "iceberg lettuce"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 169248
   - key: italian-bread
@@ -2118,6 +2437,7 @@ ingredients:
     proper_noun: true
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 174913
   - key: italian-sausage
@@ -2125,24 +2445,28 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 30}
     unit: g
     fdc: 171631
   - key: jackfruit
     name: "jackfruit"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 174687
   - key: jalapeno
     name: "jalapeño"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 168576
   - key: jam
     name: "jam"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169641
     spellings: ["preserves"]
@@ -2150,12 +2474,14 @@ ingredients:
     name: "jicama"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 170073
   - key: kabocha-squash
     name: "kabocha squash"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     spellings: ["kabocha", "japanese pumpkin"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2164,6 +2490,7 @@ ingredients:
     proper_noun: true
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["kalamata"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2171,6 +2498,7 @@ ingredients:
     name: "kale"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 168421
     spellings: ["lacinato kale", "tuscan kale"]
@@ -2178,6 +2506,7 @@ ingredients:
     name: "kecap manis"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["sweet soy sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2185,6 +2514,7 @@ ingredients:
     name: "ketchup"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168556
     spellings: ["catsup"]
@@ -2192,6 +2522,7 @@ ingredients:
     name: "kielbasa"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 174577
     spellings: ["polish sausage", "kielbasy"]
@@ -2199,12 +2530,14 @@ ingredients:
     name: "kimchi"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 90, freezer: null}
     unit: g
     fdc: 170392
   - key: kiwi
     name: "kiwi"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 3, freezer: null}
     unit: g
     fdc: 168153
     spellings: ["kiwifruit"]
@@ -2212,12 +2545,14 @@ ingredients:
     name: "kohlrabi"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 168424
   - key: kombu
     name: "kombu"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168457
     spellings: ["dried kelp", "konbu"]
@@ -2225,12 +2560,14 @@ ingredients:
     name: "kumquat"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: g
     fdc: 168154
   - key: labneh
     name: "labneh"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
     unit: g
     spellings: ["labne", "strained yogurt cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2238,6 +2575,7 @@ ingredients:
     name: "lamb chops"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172551
     spellings: ["lamb loin chops"]
@@ -2245,6 +2583,7 @@ ingredients:
     name: "lamb shank"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172513
     spellings: ["lamb shanks"]
@@ -2252,30 +2591,35 @@ ingredients:
     name: "lamb shoulder"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172496
   - key: lard
     name: "lard"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171401
   - key: leek
     name: "leek"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169246
   - key: leg-of-lamb
     name: "leg of lamb"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 174372
   - key: lemon
     name: "lemon"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     fdc: 167746
     measures:
@@ -2286,6 +2630,7 @@ ingredients:
     name: "lemongrass"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 168573
     spellings: ["lemon grass"]
@@ -2293,12 +2638,14 @@ ingredients:
     name: "lentils"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172420
   - key: light-corn-syrup
     name: "light corn syrup"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 168837
     spellings: ["corn syrup"]
@@ -2306,6 +2653,7 @@ ingredients:
     name: "light cream"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: ml
     fdc: 170857
     spellings: ["coffee cream", "table cream"]
@@ -2313,6 +2661,7 @@ ingredients:
     name: "lima beans"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 168396
     note: "Fresh or frozen limas. Dried lima beans become their own entry, as \"dried lima beans\", when someone buys them."
@@ -2320,6 +2669,7 @@ ingredients:
     name: "lime"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     fdc: 168155
     note: "Juice and zest are recipe notes on lime, as on lemon; bottled lime juice is lime juice."
@@ -2327,12 +2677,14 @@ ingredients:
     name: "lime juice"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 90}
     unit: ml
     fdc: 168156
   - key: liverwurst
     name: "liverwurst"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 173870
     spellings: ["braunschweiger", "liver sausage"]
@@ -2340,12 +2692,14 @@ ingredients:
     name: "lobster"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 60}
     unit: g
     fdc: 174208
   - key: long-beans
     name: "long beans"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 169222
     spellings: ["yard-long beans", "yardlong beans", "chinese long beans"]
@@ -2353,6 +2707,7 @@ ingredients:
     name: "long-grain white rice"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 168877
     spellings: ["white rice"]
@@ -2360,12 +2715,14 @@ ingredients:
     name: "lotus root"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 169250
   - key: lychee
     name: "lychee"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 169086
     spellings: ["litchi"]
@@ -2373,18 +2730,21 @@ ingredients:
     name: "macadamia nuts"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170178
   - key: mackerel
     name: "mackerel"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 60}
     unit: g
     fdc: 175119
   - key: makrut-lime-leaves
     name: "makrut lime leaves"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     spellings: ["kaffir lime leaves", "lime leaves"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2392,6 +2752,7 @@ ingredients:
     name: "mandarin orange"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: g
     fdc: 169105
     spellings: ["tangerine", "clementine"]
@@ -2399,36 +2760,42 @@ ingredients:
     name: "mango"
     category: produce
     perishability: fresh
+    keep: {room: 3, fridge: 7, freezer: null}
     unit: g
     fdc: 169910
   - key: maple-syrup
     name: "maple syrup"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 169661
   - key: margarine
     name: "margarine"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 120, freezer: 365}
     unit: g
     fdc: 172346
   - key: marinara-sauce
     name: "marinara sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171192
   - key: marshmallows
     name: "marshmallows"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 167995
   - key: masa-harina
     name: "masa harina"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 365, freezer: null}
     unit: g
     fdc: 169694
     spellings: ["masa flour"]
@@ -2436,12 +2803,14 @@ ingredients:
     name: "mascarpone"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: matzo
     name: "matzo"
     category: bakery
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172740
     spellings: ["matzah", "matza"]
@@ -2449,12 +2818,14 @@ ingredients:
     name: "mayonnaise"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171009
   - key: medium-grain-rice
     name: "medium-grain rice"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 168879
     spellings: ["arborio rice", "calrose rice"]
@@ -2463,6 +2834,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     spellings: ["meyer lemons"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2470,12 +2842,14 @@ ingredients:
     name: "microgreens"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: milk-chocolate
     name: "milk chocolate"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 167587
     spellings: ["milk chocolate chips"]
@@ -2483,6 +2857,7 @@ ingredients:
     name: "mirin"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["sweet rice wine"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2490,6 +2865,7 @@ ingredients:
     name: "miso"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: null}
     unit: g
     fdc: 172442
     spellings: ["miso paste"]
@@ -2497,6 +2873,7 @@ ingredients:
     name: "molasses"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 168820
   - key: monterey-jack
@@ -2504,6 +2881,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 2647438
     spellings: ["monterey jack cheese", "jack cheese"]
@@ -2511,12 +2889,14 @@ ingredients:
     name: "mortadella"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 174573
   - key: mozzarella
     name: "mozzarella"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 171244
     spellings: ["mozzarella cheese"]
@@ -2525,36 +2905,42 @@ ingredients:
     name: "muenster"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171245
   - key: muhammara
     name: "muhammara"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mushroom
     name: "mushroom"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 169251
   - key: mussels
     name: "mussels"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
     unit: g
     fdc: 174216
   - key: mustard-greens
     name: "mustard greens"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 169256
   - key: napa-cabbage
     name: "napa cabbage"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169979
     spellings: ["chinese cabbage"]
@@ -2562,12 +2948,14 @@ ingredients:
     name: "natto"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172443
   - key: nectarine
     name: "nectarine"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 3, freezer: 60}
     unit: g
     fdc: 169914
   - key: neufchatel
@@ -2575,6 +2963,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
     unit: g
     spellings: ["neufchatel cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2582,6 +2971,7 @@ ingredients:
     name: "nonfat dry milk"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170877
     spellings: ["powdered milk", "milk powder"]
@@ -2589,6 +2979,7 @@ ingredients:
     name: "nori"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168458
     spellings: ["seaweed sheets", "laver"]
@@ -2596,6 +2987,7 @@ ingredients:
     name: "nutritional yeast"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["nooch"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2603,6 +2995,7 @@ ingredients:
     name: "oat milk"
     category: beverages
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oaxaca-cheese
@@ -2610,6 +3003,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 2647441
     spellings: ["quesillo"]
@@ -2617,42 +3011,49 @@ ingredients:
     name: "octopus"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 174218
   - key: okra
     name: "okra"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 169260
   - key: olive-oil
     name: "olive oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171413
   - key: onion
     name: "onion"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     fdc: 170000
   - key: onion-powder
     name: "onion powder"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171327
   - key: orange
     name: "orange"
     category: produce
     perishability: refrigerated
+    keep: {room: 10, fridge: 7, freezer: null}
     unit: g
     fdc: 169097
   - key: orange-bell-pepper
     name: "orange bell pepper"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 2258591
     note: "Foundation record: SR Legacy has no orange sweet pepper."
@@ -2660,6 +3061,7 @@ ingredients:
     name: "oxtail"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     spellings: ["oxtails"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2667,30 +3069,35 @@ ingredients:
     name: "oyster crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oyster-mushrooms
     name: "oyster mushrooms"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 168580
   - key: oyster-sauce
     name: "oyster sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174529
   - key: oysters
     name: "oysters"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
     unit: g
     fdc: 171978
   - key: palm-sugar
     name: "palm sugar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["coconut sugar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2698,18 +3105,21 @@ ingredients:
     name: "pancetta"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: paneer
     name: "paneer"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: panko
     name: "panko"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     spellings: ["panko breadcrumbs"]
     note: "USDA has no panko record; plain breadcrumbs (174928) is the nearest."
@@ -2717,18 +3127,21 @@ ingredients:
     name: "papaya"
     category: produce
     perishability: fresh
+    keep: {room: 3, fridge: 7, freezer: null}
     unit: g
     fdc: 169926
   - key: paprika
     name: "paprika"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171329
   - key: parmesan
     name: "parmesan"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171247
     spellings: ["parmesan cheese"]
@@ -2737,24 +3150,28 @@ ingredients:
     name: "parsley"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 170416
   - key: parsnip
     name: "parsnip"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 170417
   - key: passion-fruit
     name: "passion fruit"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 169108
   - key: pasta
     name: "dried pasta"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169736
     spellings: ["pasta"]
@@ -2763,12 +3180,14 @@ ingredients:
     name: "pastrami"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 170204
   - key: pea-shoots
     name: "pea shoots"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     spellings: ["pea tendrils", "dou miao"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2776,36 +3195,42 @@ ingredients:
     name: "peach"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 3, freezer: 60}
     unit: g
     fdc: 169928
   - key: peanut-butter
     name: "peanut butter"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 174266
   - key: peanut-oil
     name: "peanut oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171410
   - key: peanuts
     name: "peanuts"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 172430
   - key: pear
     name: "pear"
     category: produce
     perishability: fresh
+    keep: {room: 3, fridge: 3, freezer: null}
     unit: g
     fdc: 169118
   - key: pearl-barley
     name: "pearl barley"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170284
     spellings: ["barley"]
@@ -2813,12 +3238,14 @@ ingredients:
     name: "pearl onions"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pecans
     name: "pecans"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170182
   - key: pecorino-romano
@@ -2826,6 +3253,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171249
     spellings: ["pecorino", "romano cheese"]
@@ -2833,18 +3261,21 @@ ingredients:
     name: "pepperoni"
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     fdc: 2759006
   - key: persimmon
     name: "persimmon"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 169941
   - key: pesto
     name: "pesto"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 171579
     spellings: ["basil pesto", "pesto sauce"]
@@ -2852,6 +3283,7 @@ ingredients:
     name: "phyllo dough"
     category: bakery
     perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
     unit: g
     fdc: 172791
     spellings: ["filo", "phyllo"]
@@ -2859,12 +3291,14 @@ ingredients:
     name: "pimento"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168559
   - key: pine-nuts
     name: "pine nuts"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170591
     spellings: ["pignoli"]
@@ -2872,18 +3306,21 @@ ingredients:
     name: "pineapple"
     category: produce
     perishability: fresh
+    keep: {room: 3, fridge: 7, freezer: null}
     unit: g
     fdc: 169124
   - key: pistachios
     name: "pistachios"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170184
   - key: pita
     name: "pita"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: each
     fdc: 174915
     spellings: ["pita bread"]
@@ -2891,12 +3328,14 @@ ingredients:
     name: "pita chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 173147
   - key: plain-yogurt
     name: "plain yogurt"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 171284
     spellings: ["yogurt", "yoghurt"]
@@ -2904,12 +3343,14 @@ ingredients:
     name: "plantain"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: 30}
     unit: g
     fdc: 169130
   - key: plantain-chips
     name: "plantain chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 173142
     spellings: ["platanitos"]
@@ -2917,12 +3358,14 @@ ingredients:
     name: "plum"
     category: produce
     perishability: fresh
+    keep: {room: 3, fridge: 3, freezer: null}
     unit: g
     fdc: 169949
   - key: poblano
     name: "poblano"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170497
     spellings: ["poblano pepper"]
@@ -2931,6 +3374,7 @@ ingredients:
     name: "pomegranate"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: null}
     unit: each
     fdc: 169134
     note: "Arils are a recipe note on pomegranate; no measure until one is confirmed on a real fruit."
@@ -2938,6 +3382,7 @@ ingredients:
     name: "pomegranate molasses"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["pomegranate syrup"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2945,6 +3390,7 @@ ingredients:
     name: "ponzu"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["ponzu sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2952,6 +3398,7 @@ ingredients:
     name: "popcorn kernels"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["popping corn", "unpopped popcorn"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -2959,18 +3406,21 @@ ingredients:
     name: "poppy seeds"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171330
   - key: pork-belly
     name: "pork belly"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 167812
   - key: pork-chop
     name: "pork chop"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 168238
     spellings: ["pork chops"]
@@ -2978,12 +3428,14 @@ ingredients:
     name: "pork loin"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 168230
   - key: pork-ribs
     name: "pork ribs"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 167853
     spellings: ["spareribs", "spare ribs", "baby back ribs"]
@@ -2991,6 +3443,7 @@ ingredients:
     name: "pork rinds"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 167961
     spellings: ["chicharrones", "pork cracklings"]
@@ -2998,12 +3451,14 @@ ingredients:
     name: "pork sausage"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 30}
     unit: g
     fdc: 172934
   - key: pork-shoulder
     name: "pork shoulder"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 167849
     spellings: ["boston butt", "pork butt"]
@@ -3011,6 +3466,7 @@ ingredients:
     name: "pork shoulder steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 168260
     spellings: ["pork blade steak"]
@@ -3018,12 +3474,14 @@ ingredients:
     name: "pork tenderloin"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 168249
   - key: portobello-mushrooms
     name: "portobello mushrooms"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 169255
     spellings: ["portobello", "portabella mushrooms"]
@@ -3031,12 +3489,14 @@ ingredients:
     name: "potato"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 170026
   - key: potato-chips
     name: "potato chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 169677
     spellings: ["crisps"]
@@ -3044,6 +3504,7 @@ ingredients:
     name: "powdered sugar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 169656
     spellings: ["confectioners sugar", "icing sugar"]
@@ -3051,6 +3512,7 @@ ingredients:
     name: "preserved lemons"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["preserved lemon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3058,6 +3520,7 @@ ingredients:
     name: "pretzels"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 167555
     spellings: ["pretzel twists", "pretzel sticks"]
@@ -3065,6 +3528,7 @@ ingredients:
     name: "prosciutto"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     spellings: ["prosciutto crudo", "parma ham"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3072,6 +3536,7 @@ ingredients:
     name: "provolone"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 170850
     spellings: ["provolone cheese"]
@@ -3079,24 +3544,28 @@ ingredients:
     name: "puff pastry"
     category: frozen
     perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
     unit: g
     fdc: 172790
   - key: puffed-rice-cakes
     name: "puffed rice cakes"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 170250
   - key: pumpkin
     name: "pumpkin"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 168448
   - key: pumpkin-seeds
     name: "pumpkin seeds"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170556
     spellings: ["pepitas"]
@@ -3104,12 +3573,14 @@ ingredients:
     name: "quail eggs"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 21, freezer: null}
     unit: each
     fdc: 172191
   - key: quark
     name: "quark"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     spellings: ["curd cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3117,18 +3588,21 @@ ingredients:
     name: "queso blanco"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172224
   - key: queso-fresco
     name: "queso fresco"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 2647442
   - key: queso-panela
     name: "queso panela"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     spellings: ["panela cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3136,18 +3610,21 @@ ingredients:
     name: "quinoa"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168874
   - key: radicchio
     name: "radicchio"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 168564
   - key: radishes
     name: "radishes"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 169276
     spellings: ["radish"]
@@ -3155,12 +3632,14 @@ ingredients:
     name: "raisins"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 168165
   - key: ramen-noodles
     name: "ramen noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171177
     spellings: ["ramen", "dried ramen"]
@@ -3168,6 +3647,7 @@ ingredients:
     name: "ramps"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     spellings: ["wild leeks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3175,24 +3655,28 @@ ingredients:
     name: "ras el hanout"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: raspberries
     name: "raspberries"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 167755
   - key: red-bell-pepper
     name: "red bell pepper"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170108
   - key: red-cabbage
     name: "red cabbage"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169977
     spellings: ["purple cabbage"]
@@ -3200,12 +3684,14 @@ ingredients:
     name: "red chili"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170106
   - key: red-curry-paste
     name: "red curry paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["thai red curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3213,6 +3699,7 @@ ingredients:
     name: "red onion"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     fdc: 790577
     spellings: ["purple onion"]
@@ -3220,6 +3707,7 @@ ingredients:
     name: "red pepper flakes"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["crushed red pepper", "chili flakes"]
     note: "USDA has no record for pepper flakes; ground cayenne (170932) is the nearest."
@@ -3227,36 +3715,42 @@ ingredients:
     name: "red potato"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 2346402
   - key: red-wine
     name: "red wine"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 173190
   - key: red-wine-vinegar
     name: "red wine vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 172240
   - key: refried-beans
     name: "refried beans"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172438
   - key: rhubarb
     name: "rhubarb"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 167758
   - key: ribeye-steak
     name: "ribeye steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 173402
     spellings: ["rib eye", "ribeye"]
@@ -3264,6 +3758,7 @@ ingredients:
     name: "rice crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 173161
     spellings: ["senbei"]
@@ -3271,18 +3766,21 @@ ingredients:
     name: "rice flour"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169714
   - key: rice-noodles
     name: "rice noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169742
   - key: rice-paper
     name: "rice paper"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["spring roll wrappers"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3290,6 +3788,7 @@ ingredients:
     name: "rice vinegar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["rice wine vinegar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3297,6 +3796,7 @@ ingredients:
     name: "ricotta"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 170851
     spellings: ["ricotta cheese"]
@@ -3304,12 +3804,14 @@ ingredients:
     name: "ricotta salata"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: roasted-red-peppers
     name: "roasted red peppers"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168546
     spellings: ["jarred roasted peppers", "roasted peppers"]
@@ -3317,6 +3819,7 @@ ingredients:
     name: "rolled oats"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173904
     spellings: ["old-fashioned oats"]
@@ -3324,6 +3827,7 @@ ingredients:
     name: "romaine lettuce"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     fdc: 169247
     spellings: ["romaine", "cos lettuce"]
@@ -3331,6 +3835,7 @@ ingredients:
     name: "romesco"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["romesco sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3338,12 +3843,14 @@ ingredients:
     name: "rum"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174817
   - key: russet-potato
     name: "russet potato"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 2346401
     spellings: ["idaho potato", "baking potato"]
@@ -3351,6 +3858,7 @@ ingredients:
     name: "rutabaga"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 168454
     spellings: ["swede"]
@@ -3358,30 +3866,35 @@ ingredients:
     name: "rye bread"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 172684
   - key: safflower-oil
     name: "safflower oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171027
   - key: saffron
     name: "saffron"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170934
   - key: sake
     name: "sake"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 167723
   - key: salami
     name: "salami"
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     fdc: 174582
     spellings: ["genoa salami", "hard salami"]
@@ -3389,18 +3902,21 @@ ingredients:
     name: "salmon"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 60}
     unit: g
     fdc: 175167
   - key: salsa
     name: "salsa"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 174524
   - key: salsa-verde
     name: "salsa verde"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171824
     spellings: ["green salsa"]
@@ -3408,6 +3924,7 @@ ingredients:
     name: "salt"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173468
     spellings: ["table salt"]
@@ -3416,18 +3933,21 @@ ingredients:
     name: "salt pork"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: null}
     unit: g
     fdc: 168287
   - key: salted-butter
     name: "salted butter"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: 180}
     unit: g
     fdc: 173410
   - key: saltines
     name: "saltines"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 172746
     spellings: ["saltine crackers", "soda crackers"]
@@ -3435,6 +3955,7 @@ ingredients:
     name: "sambal oelek"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["sambal"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3442,6 +3963,7 @@ ingredients:
     name: "white sandwich bread"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 174924
     spellings: ["white bread"]
@@ -3449,24 +3971,28 @@ ingredients:
     name: "sardines"
     category: seafood
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 175139
   - key: sauerkraut
     name: "sauerkraut"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169279
   - key: savoy-cabbage
     name: "savoy cabbage"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 170388
   - key: scallion
     name: "scallion"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 170005
     spellings: ["green onion", "spring onion"]
@@ -3474,18 +4000,21 @@ ingredients:
     name: "scallops"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 90}
     unit: g
     fdc: 174220
   - key: sea-bass
     name: "sea bass"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 175142
   - key: seaweed-snacks
     name: "seaweed snacks"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     spellings: ["roasted seaweed snacks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3493,6 +4022,7 @@ ingredients:
     name: "self-rising flour"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168895
     spellings: ["self-raising flour"]
@@ -3500,6 +4030,7 @@ ingredients:
     name: "semisweet chocolate"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 167976
     spellings: ["chocolate chips", "semisweet chocolate chips"]
@@ -3507,6 +4038,7 @@ ingredients:
     name: "semolina"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169715
     spellings: ["semolina flour"]
@@ -3514,6 +4046,7 @@ ingredients:
     name: "serrano"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 169395
     spellings: ["serrano pepper", "serrano chile"]
@@ -3521,18 +4054,21 @@ ingredients:
     name: "sesame oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171016
   - key: sesame-seeds
     name: "sesame seeds"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170150
   - key: shallot
     name: "shallot"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     fdc: 170499
   - key: shaoxing-wine
@@ -3540,6 +4076,7 @@ ingredients:
     proper_noun: true
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 169070
     spellings: ["chinese cooking wine", "shaoxing rice wine"]
@@ -3547,6 +4084,7 @@ ingredients:
     name: "shiitake mushrooms"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 300}
     unit: g
     fdc: 169242
     spellings: ["shiitake"]
@@ -3554,6 +4092,7 @@ ingredients:
     name: "shishito peppers"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     spellings: ["shishitos"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3561,6 +4100,7 @@ ingredients:
     name: "short-grain rice"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 168931
     spellings: ["sushi rice"]
@@ -3568,12 +4108,14 @@ ingredients:
     name: "shortening"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173584
   - key: shredded-coconut
     name: "shredded coconut"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 170577
     spellings: ["flaked coconut", "sweetened coconut"]
@@ -3581,6 +4123,7 @@ ingredients:
     name: "shrimp"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 180}
     unit: g
     fdc: 174210
     spellings: ["prawns"]
@@ -3589,6 +4132,7 @@ ingredients:
     name: "shrimp paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["belacan", "kapi"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3597,6 +4141,7 @@ ingredients:
     proper_noun: true
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["szechuan peppercorns", "szechuan pepper"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3604,6 +4149,7 @@ ingredients:
     name: "sirloin steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169551
     spellings: ["top sirloin"]
@@ -3611,18 +4157,21 @@ ingredients:
     name: "skim milk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171269
   - key: skirt-steak
     name: "skirt steak"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172160
   - key: skyr
     name: "skyr"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 330137
     spellings: ["icelandic yogurt"]
@@ -3630,6 +4179,7 @@ ingredients:
     name: "smoked paprika"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["pimenton"]
     note: "USDA records only plain paprika (171329); smoked paprika is a separate thing to buy."
@@ -3637,6 +4187,7 @@ ingredients:
     name: "smoked salmon"
     category: seafood
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 60}
     unit: g
     fdc: 173687
     spellings: ["lox"]
@@ -3644,12 +4195,14 @@ ingredients:
     name: "smoked sausage"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 174585
   - key: snow-peas
     name: "snow peas"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 240}
     unit: g
     fdc: 170010
     spellings: ["sugar snap peas", "snap peas"]
@@ -3657,6 +4210,7 @@ ingredients:
     name: "soba noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168906
     spellings: ["soba"]
@@ -3664,6 +4218,7 @@ ingredients:
     name: "soppressata"
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     fdc: 172938
     spellings: ["sopressata"]
@@ -3671,12 +4226,14 @@ ingredients:
     name: "sour cream"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 171257
   - key: soy-milk
     name: "soy milk"
     category: beverages
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: ml
     fdc: 1750337
     spellings: ["soymilk"]
@@ -3684,6 +4241,7 @@ ingredients:
     name: "soy sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174277
     spellings: ["light soy sauce"]
@@ -3691,6 +4249,7 @@ ingredients:
     name: "spaghetti squash"
     category: produce
     perishability: refrigerated
+    keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 169298
   - key: spanish-chorizo
@@ -3698,6 +4257,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: shelf_stable
+    keep: {room: 42, fridge: null, freezer: null}
     unit: g
     spellings: ["dry chorizo", "cured chorizo"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3705,30 +4265,35 @@ ingredients:
     name: "speck"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: spelt-flour
     name: "spelt flour"
     category: pantry
     perishability: shelf_months
+    keep: {room: 30, fridge: 180, freezer: 365}
     unit: g
     note: "USDA has spelt grain but no spelt flour record."
   - key: spinach
     name: "spinach"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 168462
   - key: split-peas
     name: "split peas"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172428
   - key: squid
     name: "squid"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 174223
     spellings: ["calamari"]
@@ -3736,6 +4301,7 @@ ingredients:
     name: "sriracha"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171186
     spellings: ["sriracha sauce"]
@@ -3744,12 +4310,14 @@ ingredients:
     name: "star anise"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: star-fruit
     name: "star fruit"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 171715
     spellings: ["carambola"]
@@ -3757,18 +4325,21 @@ ingredients:
     name: "stracciatella"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: strawberries
     name: "strawberries"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 167762
   - key: string-cheese
     name: "string cheese"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 329370
     spellings: ["cheese sticks"]
@@ -3777,6 +4348,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 2727572
     spellings: ["strip steak", "new york strip", "ny strip"]
@@ -3784,6 +4356,7 @@ ingredients:
     name: "sumac"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["ground sumac"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3791,12 +4364,14 @@ ingredients:
     name: "summer sausage"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 172940
   - key: sun-dried-tomatoes
     name: "sun-dried tomatoes"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168567
     spellings: ["sundried tomatoes"]
@@ -3804,6 +4379,7 @@ ingredients:
     name: "sunchokes"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 169236
     spellings: ["jerusalem artichokes"]
@@ -3811,24 +4387,28 @@ ingredients:
     name: "sunflower oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 1750349
   - key: sunflower-seeds
     name: "sunflower seeds"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170562
   - key: sweet-and-sour-sauce
     name: "sweet and sour sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174066
   - key: sweet-chili-sauce
     name: "sweet chili sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["thai sweet chili sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3836,6 +4416,7 @@ ingredients:
     name: "sweet potato"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 168482
     spellings: ["yam"]
@@ -3843,12 +4424,14 @@ ingredients:
     name: "sweet relish"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168561
   - key: sweetened-condensed-milk
     name: "sweetened condensed milk"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171275
     spellings: ["condensed milk"]
@@ -3857,6 +4440,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 169991
     spellings: ["chard"]
@@ -3865,6 +4449,7 @@ ingredients:
     proper_noun: true
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171251
   - key: t-bone-steak
@@ -3872,6 +4457,7 @@ ingredients:
     proper_noun: true
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172118
     spellings: ["t-bone", "porterhouse", "porterhouse steak"]
@@ -3879,6 +4465,7 @@ ingredients:
     name: "tahini"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 168604
     spellings: ["sesame paste"]
@@ -3886,18 +4473,21 @@ ingredients:
     name: "taleggio"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tamari
     name: "tamari"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174278
   - key: tamarind-paste
     name: "tamarind paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["tamarind concentrate", "tamarind pulp"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3905,6 +4495,7 @@ ingredients:
     name: "tapenade"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["olive tapenade"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3912,6 +4503,7 @@ ingredients:
     name: "tapioca pearls"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169717
     spellings: ["tapioca"]
@@ -3919,6 +4511,7 @@ ingredients:
     name: "taro"
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 169308
     spellings: ["taro root", "eddo"]
@@ -3926,23 +4519,27 @@ ingredients:
     name: "tartar sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171826
   - key: tempeh
     name: "tempeh"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 120}
     unit: g
     fdc: 174272
   - key: tequila
     name: "tequila"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
   - key: teriyaki-sauce
     name: "teriyaki sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171167
   - key: thai-basil
@@ -3950,6 +4547,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: thai-chiles
@@ -3957,6 +4555,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     spellings: ["bird's eye chiles", "thai chili peppers", "birds eye chili"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3964,12 +4563,14 @@ ingredients:
     name: "tilapia"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 175176
   - key: toasted-sesame-oil
     name: "toasted sesame oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     spellings: ["dark sesame oil"]
     note: "USDA has no separate record for toasted sesame oil."
@@ -3977,6 +4578,7 @@ ingredients:
     name: "tofu"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 150}
     unit: g
     fdc: 172449
     note: "Reference is soft tofu; firm and silken are products or their own entries."
@@ -3984,12 +4586,14 @@ ingredients:
     name: "tomatillo"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: null}
     unit: g
     fdc: 168566
   - key: tomato
     name: "tomato"
     category: produce
     perishability: fresh
+    keep: {room: 2, fridge: 2, freezer: 60}
     unit: g
     fdc: 170457
     spellings: ["roma tomato", "plum tomato"]
@@ -3998,30 +4602,35 @@ ingredients:
     name: "tomato paste"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170459
   - key: tomato-puree
     name: "tomato purée"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170460
   - key: tomato-sauce
     name: "tomato sauce"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170054
   - key: tortilla-chips
     name: "tortilla chips"
     category: pantry
     perishability: shelf_months
+    keep: {room: 60, fridge: null, freezer: null}
     unit: g
     fdc: 167558
   - key: toum
     name: "toum"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
     unit: g
     spellings: ["lebanese garlic sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4029,12 +4638,14 @@ ingredients:
     name: "trail mix"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 167561
   - key: tri-tip
     name: "tri-tip"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 169559
     spellings: ["tri-tip roast", "tri tip"]
@@ -4042,6 +4653,7 @@ ingredients:
     name: "trout"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 60}
     unit: g
     fdc: 173717
     spellings: ["rainbow trout"]
@@ -4049,6 +4661,7 @@ ingredients:
     name: "tteok"
     category: pantry
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: g
     spellings: ["korean rice cakes", "rice cake sticks", "garaetteok"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4056,6 +4669,7 @@ ingredients:
     name: "tuna steak"
     category: seafood
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 60}
     unit: g
     fdc: 175159
     spellings: ["ahi tuna", "yellowfin tuna"]
@@ -4063,6 +4677,7 @@ ingredients:
     name: "turbinado sugar"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170674
     spellings: ["raw sugar", "demerara sugar"]
@@ -4070,18 +4685,21 @@ ingredients:
     name: "turkey bacon"
     category: meat
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 174592
   - key: turkey-breast
     name: "turkey breast"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 171098
   - key: turkey-legs
     name: "turkey legs"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 270}
     unit: g
     fdc: 171493
     spellings: ["turkey drumsticks"]
@@ -4089,12 +4707,14 @@ ingredients:
     name: "turnip"
     category: produce
     perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: 240}
     unit: g
     fdc: 170465
   - key: tzatziki
     name: "tzatziki"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: null}
     unit: g
     spellings: ["tzatziki sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4102,6 +4722,7 @@ ingredients:
     name: "udon noodles"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["udon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4109,6 +4730,7 @@ ingredients:
     name: "unflavored gelatin"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169599
     spellings: ["gelatin", "gelatine"]
@@ -4116,12 +4738,14 @@ ingredients:
     name: "unsalted butter"
     category: dairy
     perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: 180}
     unit: g
     fdc: 173430
   - key: unsweetened-chocolate
     name: "unsweetened chocolate"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 167568
     spellings: ["baking chocolate"]
@@ -4129,12 +4753,14 @@ ingredients:
     name: "vanilla extract"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 173471
   - key: veal-cutlets
     name: "veal cutlets"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 120}
     unit: g
     fdc: 172643
     spellings: ["veal scaloppine", "veal scallopini"]
@@ -4142,36 +4768,42 @@ ingredients:
     name: "vegetable oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     note: "USDA has no record for generic vegetable oil (FNDDS \"Vegetable oil, NFS\" is code-only)."
   - key: vodka
     name: "vodka"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174818
   - key: wakame
     name: "wakame"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170496
   - key: walnut-oil
     name: "walnut oil"
     category: pantry
     perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     fdc: 171030
   - key: walnuts
     name: "walnuts"
     category: pantry
     perishability: shelf_months
+    keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170187
   - key: water-crackers
     name: "water crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 171856
     spellings: ["table water crackers"]
@@ -4179,18 +4811,21 @@ ingredients:
     name: "watercress"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 170068
   - key: watermelon
     name: "watermelon"
     category: produce
     perishability: fresh
+    keep: {room: 1, fridge: 3, freezer: 30}
     unit: g
     fdc: 167765
   - key: wheat-crackers
     name: "wheat crackers"
     category: pantry
     perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174985
     spellings: ["whole wheat crackers"]
@@ -4198,6 +4833,7 @@ ingredients:
     name: "whiskey"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174819
     spellings: ["whisky"]
@@ -4205,6 +4841,7 @@ ingredients:
     name: "white chocolate"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 167571
     spellings: ["white chocolate chips"]
@@ -4212,12 +4849,14 @@ ingredients:
     name: "white onion"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     fdc: 1104962
   - key: white-pepper
     name: "white pepper"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170933
     spellings: ["ground white pepper"]
@@ -4225,6 +4864,7 @@ ingredients:
     name: "white wine"
     category: beverages
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174837
     spellings: ["dry white wine"]
@@ -4232,6 +4872,7 @@ ingredients:
     name: "whole chicken"
     category: meat
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: 365}
     unit: g
     fdc: 171447
     spellings: ["roasting chicken"]
@@ -4239,12 +4880,14 @@ ingredients:
     name: "whole milk"
     category: dairy
     perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171265
   - key: whole-wheat-bread
     name: "whole wheat bread"
     category: bakery
     perishability: fresh
+    keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 172688
     spellings: ["wheat bread"]
@@ -4252,24 +4895,28 @@ ingredients:
     name: "whole wheat flour"
     category: pantry
     perishability: shelf_months
+    keep: {room: 30, fridge: 180, freezer: 365}
     unit: g
     fdc: 168893
   - key: whole-wheat-pasta
     name: "whole wheat pasta"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169738
   - key: wild-rice
     name: "wild rice"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169726
   - key: wonton-wrappers
     name: "wonton wrappers"
     category: bakery
     perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 60}
     unit: g
     fdc: 172802
     spellings: ["dumpling wrappers", "gyoza wrappers", "potsticker wrappers"]
@@ -4278,6 +4925,7 @@ ingredients:
     proper_noun: true
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171610
     spellings: ["worcestershire"]
@@ -4285,12 +4933,14 @@ ingredients:
     name: "yellow bell pepper"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 169383
   - key: yellow-mustard
     name: "yellow mustard"
     category: pantry
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172234
     spellings: ["prepared mustard"]
@@ -4298,12 +4948,14 @@ ingredients:
     name: "yellow onion"
     category: produce
     perishability: refrigerated
+    keep: {room: 14, fridge: 60, freezer: 300}
     unit: g
     fdc: 790646
   - key: yellow-squash
     name: "yellow squash"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 300}
     unit: g
     fdc: 168464
     spellings: ["summer squash"]
@@ -4311,6 +4963,7 @@ ingredients:
     name: "yu choy"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
     unit: g
     spellings: ["choy sum", "yu choy sum"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4319,6 +4972,7 @@ ingredients:
     proper_noun: true
     category: produce
     perishability: refrigerated
+    keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 2346403
     spellings: ["gold potato"]
@@ -4326,6 +4980,7 @@ ingredients:
     name: "za'atar"
     category: spices
     perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["zatar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -4333,6 +4988,7 @@ ingredients:
     name: "zucchini"
     category: produce
     perishability: fresh
+    keep: {room: null, fridge: 4, freezer: 300}
     unit: g
     fdc: 169291
     spellings: ["courgette"]

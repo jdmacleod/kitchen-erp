@@ -7,6 +7,9 @@ import {
   catalogErrorMessage,
   formatPack,
   isPositiveDecimal,
+  KEEP_PLACES,
+  keepTimesHint,
+  keepTimesText,
   perishabilityHint,
   perishabilityLabel,
   productTitle,
@@ -94,6 +97,12 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
       <span>Measured in {ingredient.canonical_unit}</span>
       <span aria-hidden="true">·</span>
       <span>{perishabilityLabel[ingredient.perishability]}</span>
+      {keepTimesText(ingredient) ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <span>{keepTimesText(ingredient)}</span>
+        </>
+      ) : null}
       {trimDecimal(ingredient.yield_pct) !== "1" ? (
         <>
           <span aria-hidden="true">·</span>
@@ -218,6 +227,10 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   );
 }
 
+function dayText(n: number | null | undefined): string {
+  return n == null ? "" : String(n);
+}
+
 function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDone: () => void }) {
   const update = useUpdateIngredient(ingredient.id);
   const [form, setForm] = useState({
@@ -226,6 +239,9 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
     canonical_unit: ingredient.canonical_unit as CanonicalUnit,
     yield_pct: ingredient.yield_pct,
     perishability: ingredient.perishability as Perishability,
+    keep_room_days: dayText(ingredient.keep_room_days),
+    keep_fridge_days: dayText(ingredient.keep_fridge_days),
+    keep_freezer_days: dayText(ingredient.keep_freezer_days),
     notes: ingredient.notes ?? "",
   });
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -241,8 +257,16 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
       setInvalid("Yield must be a positive fraction such as 0.85.");
       return;
     }
+    if (KEEP_PLACES.some(({ key }) => form[key].trim() !== "" && !/^\d{1,4}$/.test(form[key].trim()))) {
+      setInvalid("Keep times are whole days, such as 3.");
+      return;
+    }
     setInvalid(null);
     const input: IngredientUpdateInput = {};
+    for (const { key } of KEEP_PLACES) {
+      const value = form[key].trim() === "" ? null : Number(form[key].trim());
+      if (value !== (ingredient[key] ?? null)) input[key] = value;
+    }
     if (form.name.trim() !== ingredient.name) input.name = form.name.trim();
     if ((form.category.trim() || null) !== ingredient.category) input.category = form.category.trim() || null;
     if (form.canonical_unit !== ingredient.canonical_unit) input.canonical_unit = form.canonical_unit;
@@ -304,6 +328,15 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
             ))}
           </SelectField>
         </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium">Keeps, in days</legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {KEEP_PLACES.map(({ key, label }) => (
+              <Field key={key} id={`edit-${key}`} label={label} inputMode="numeric" autoComplete="off" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+            ))}
+          </div>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">{keepTimesHint}</p>
+        </fieldset>
         <TextAreaField id="edit-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={update.isPending}>

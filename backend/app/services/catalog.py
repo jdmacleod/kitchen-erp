@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.catalog import categories, perishability, standard
+from app.catalog import categories, keep, perishability, standard
 from app.catalog.attributes import validate_attributes
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import (
@@ -50,6 +50,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
+from app.services import best_by
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
@@ -460,6 +461,11 @@ async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient
         _start_perishability(
             ingredient, spec.perishability, perishability.default_for(spec.category), "category"
         )
+        _start_keep_times(
+            ingredient,
+            keep.BY_PERISHABILITY[ingredient.perishability],
+            "category",  # type: ignore[index]
+        )
         db.add(ingredient)
         await db.flush()
         await add_generated_spellings(db, ingredient)
@@ -479,6 +485,7 @@ async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient
         notes=spec.notes,
     )
     _start_perishability(ingredient, spec.perishability, entry.perishability, "standard")
+    _start_keep_times(ingredient, entry.keep, "standard")
     db.add(ingredient)
     await db.flush()
     await apply_standard_entry(db, ingredient, entry)
@@ -506,6 +513,22 @@ def _start_perishability(
             "imported": default,
         },
     }
+
+
+def _start_keep_times(ingredient: Ingredient, times: keep.KeepTimes, source: str) -> None:
+    """Default keep times, each recorded as its source's so a catch-up may revise it (2Q)."""
+    now = datetime.now(UTC).isoformat()
+    records = dict(ingredient.field_source or {})
+    for place in keep.PLACES:
+        days = times.days(place)
+        setattr(ingredient, f"keep_{place}_days", days)
+        records[f"keep_{place}_days"] = {
+            "source": source,
+            "ref": None,
+            "checked_at": now,
+            "imported": days,
+        }
+    ingredient.field_source = records
 
 
 async def apply_standard_entry(
@@ -632,6 +655,9 @@ async def update_ingredient(
         {"density_g_per_ml", "density_source", "clear_density", "canonical_unit"} & set_fields
     )
     unit_changed = "canonical_unit" in set_fields and ingredient.canonical_unit != old_unit
+    if {"keep_room_days", "keep_fridge_days", "keep_freezer_days"} & set_fields:
+        await db.flush()
+        await best_by.refresh_ingredient(db, ingredient_id)
     try:
         await db.commit()
     except IntegrityError as exc:

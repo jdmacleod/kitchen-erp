@@ -119,6 +119,30 @@ export interface PurchaseLine {
   observation_id: string | null;
   /** Whether it ever reached the price book, so removing it voids a price. Null in lists. */
   recorded?: boolean | null;
+  /** Where it is kept and when it is best by (2Q). */
+  stored_in?: StoragePlace | null;
+  best_by?: string | null;
+  best_by_source?: BestBySource | null;
+}
+
+export type StoragePlace = "room" | "fridge" | "freezer";
+export type BestBySource = "inferred" | "printed" | "person";
+
+export const STORAGE_PLACES: { value: StoragePlace; label: string }[] = [
+  { value: "room", label: "Room temperature" },
+  { value: "fridge", label: "Fridge" },
+  { value: "freezer", label: "Freezer" },
+];
+
+/**
+ * Move a line, or give its best-by date (2Q). `use_by` is a printed use-by date
+ * and replaces the inferred one; `sell_by` does not, so the inferred date stands;
+ * `set` and `clear` are a person's; `infer` goes back to the inferred date.
+ */
+export interface LineKeepingInput {
+  stored_in?: StoragePlace;
+  date?: "use_by" | "sell_by" | "set" | "clear" | "infer";
+  best_by?: string;
 }
 
 /** What removing the purchase would do, from the rule the server applies (spec 04, 2H). */
@@ -515,6 +539,12 @@ export function useReResolveLine(purchaseId: string) {
 export function usePatchLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, ({ lineId, ...input }: LinePatchInput & { lineId: string }) =>
     api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}`, { method: "PATCH", body: input }),
+  );
+}
+
+export function useLineKeeping(purchaseId: string) {
+  return usePurchaseMutation(purchaseId, ({ lineId, ...input }: LineKeepingInput & { lineId: string }) =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/keeping`, { method: "PUT", body: input }),
   );
 }
 
