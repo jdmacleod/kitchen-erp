@@ -547,6 +547,45 @@ def ingredients_perishability(
     asyncio.run(_run())
 
 
+@ingredients_cli.command("keep-times")
+def ingredients_keep_times(
+    plan_out: Path | None = PLAN_OUT, apply_from: Path | None = APPLY_FROM
+) -> None:
+    """Catch up keep times: propose them (--plan), then write approved ones (--apply).
+
+    A proposal comes from the ingredient's standard entry, or else the defaults for
+    its perishability. Times a person set are never proposed. --apply takes a JSON
+    list of {"id", "room", "fridge", "freezer"} (whole days, or null for none) and
+    writes only those, then recomputes inferred best-by dates.
+    """
+    import json
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import ingredient_keep_times as catchup
+
+    if (plan_out is None) == (apply_from is None):
+        typer.echo("error: give exactly one of --plan or --apply", err=True)
+        raise typer.Exit(code=2)
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            if plan_out is not None:
+                rows = await catchup.plan(db)
+                plan_out.write_text(json.dumps(rows, indent=1) + "\n")
+                moving = sum(1 for r in rows if r["proposed"] != r["current"])
+                typer.echo(f"{len(rows)} proposal(s), {moving} would change: {plan_out}")
+            else:
+                decisions = json.loads(apply_from.read_text())  # type: ignore[union-attr]
+                counts = await catchup.apply(db, decisions)
+                typer.echo(
+                    f"changed {counts['changed']}, unchanged {counts['unchanged']}, "
+                    f"missing {counts['missing']}"
+                )
+        await dispose_engine()
+
+    asyncio.run(_run())
+
+
 @ingredients_cli.command("usda-candidates")
 def ingredients_usda_candidates(
     query: str = typer.Argument(..., help="An FDC id (lists its raw or dry siblings) or text."),

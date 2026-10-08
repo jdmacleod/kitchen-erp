@@ -38,6 +38,7 @@ ingredient(
   density_g_per_ml NUMERIC(10,5)?, density_source?, density_confirmed BOOLEAN DEFAULT false,
   yield_pct NUMERIC(5,4) DEFAULT 1 CHECK (0 < yield_pct <= 1),
   perishability CHECK IN (shelf_stable, shelf_months, refrigerated, fresh, frozen),
+  keep_room_days INT?, keep_fridge_days INT?, keep_freezer_days INT?,   -- whole days unopened (2Q); each >= 0
   notes?
 )
 
@@ -63,6 +64,8 @@ ingredient_measure(
 | `frozen` | Bought and kept frozen | Frozen vegetables and fruit, frozen fish, ice cream, puff pastry |
 
 Every standard-list entry carries a perishability. A new ingredient takes its entry's value, or for a name typed in, its category's default (produce, meat, seafood and bakery `fresh`, dairy `refrigerated`, frozen `frozen`, everything else `shelf_stable`), unless a person picks one. A defaulted value is recorded in `field_source`, so a person's later change wins (the 1F rule). `kerp ingredients perishability --plan` proposes values for the ingredients nobody has set, and `--apply` writes the ones a person approved.
+
+**Keep times** (2Q, spec 15) say how many whole days an ingredient keeps unopened at room temperature, in the fridge and in the freezer, from the low end of each range in the same charts; null means the charts give no time for that place. Where it is kept by default (`stored_in`, not stored) follows from perishability: `shelf_stable` and `shelf_months` at room temperature, `refrigerated` and `fresh` in the fridge, `frozen` in the freezer. Each standard-list entry carries its times; a name typed in takes its perishability's defaults. Defaulted times are recorded in `field_source` like perishability, and `kerp ingredients keep-times --plan` / `--apply` catches up existing ingredients the same way.
 
 ### Ingredient vocabulary (1G)
 
@@ -354,7 +357,11 @@ purchase_line(
   resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode, identifier and alias
   resolution_confidence NUMERIC?, flags TEXT[],
   removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
-  CHECK (line_kind = 'item' OR product_id IS NULL)
+  stored_in CHECK IN (room, fridge, freezer)?, -- where it is kept (2Q); defaults from the ingredient once resolved
+  best_by DATE?,                              -- a local date
+  best_by_source CHECK IN (inferred, printed, person)?,   -- a person's null date is a cleared one
+  CHECK (line_kind = 'item' OR product_id IS NULL),
+  CHECK (best_by IS NULL OR best_by_source IS NOT NULL)
 )
 
 receipt_alias(
@@ -372,6 +379,8 @@ normalize_v2_backup(                         -- rows migration 0030 changed or d
 ```
 
 A line with `removed_at` set is kept only because an observation still points at it as provenance (observations are append-only). Every reader of a purchase's lines skips it: totals, reconcile, review, the edit form, the inbox and the to-identify queue. Backup keeps it. A line that never produced an observation is deleted outright rather than marked removed. Line numbers (`seq`) stay unique across removed lines too, so a number always names one line (#72, D8).
+
+A line's inferred `best_by` is the purchase's local date plus the ingredient's keep time for where the line is stored. It is recomputed when the purchase date is corrected, the line is re-pointed or moved, or the keep time changes; printed and person dates never are. Best-by dates never touch the price book (spec 15).
 
 A purchase is removed by deleting it when none of its lines ever produced an observation, and by setting `status = voided` (and voiding its live observations) otherwise; see 04, 2H.
 

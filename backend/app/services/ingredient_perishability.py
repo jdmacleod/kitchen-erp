@@ -2,7 +2,7 @@
 
 Ingredients made before the standard list carried perishability all hold the old
 default, ``shelf_stable``. ``plan`` proposes a value for each ingredient a person
-has not set; a person reviews the proposals, and ``apply`` writes only the
+has not set or approved; a person reviews the proposals, and ``apply`` writes only the
 values they approved. A field is a person's when it differs from what a source
 last wrote to it (``field_source``, the 1F edit-wins rule); an ingredient with no
 record at all is proposed too, since nobody has reviewed it yet.
@@ -22,11 +22,13 @@ from app.models import Ingredient
 from app.services import interchange
 
 
-def _persons(ingredient: Ingredient) -> bool:
-    """True when a person set this perishability after a source last wrote it."""
+def _settled(ingredient: Ingredient) -> bool:
+    """True when a person set this perishability, or approved it in a review."""
     record = (ingredient.field_source or {}).get("perishability")
     if not isinstance(record, dict):
         return False
+    if record.get("source") == "review":
+        return True
     return ingredient.perishability != interchange.recorded(ingredient, "perishability")
 
 
@@ -40,7 +42,7 @@ def proposal(ingredient: Ingredient) -> tuple[str, str]:
 
 
 async def plan(db: AsyncSession) -> list[dict[str, Any]]:
-    """A proposal for every active ingredient whose perishability is not a person's."""
+    """A proposal for every active ingredient whose perishability nobody has settled."""
     rows = (
         await db.execute(
             select(Ingredient)
@@ -50,7 +52,7 @@ async def plan(db: AsyncSession) -> list[dict[str, Any]]:
     ).scalars()
     out = []
     for ingredient in rows:
-        if _persons(ingredient):
+        if _settled(ingredient):
             continue
         value, basis = proposal(ingredient)
         out.append(

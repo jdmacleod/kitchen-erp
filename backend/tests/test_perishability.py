@@ -105,3 +105,8 @@ async def test_the_catch_up_proposes_unreviewed_values_and_writes_approved_ones(
     async with get_sessionmaker()() as db:
         with pytest.raises(ValueError):
             await catchup.apply(db, [{"id": chicken["id"], "perishability": "chilled"}])
+
+    # Approved in review, even against the proposal: settled, not proposed again.
+    async with get_sessionmaker()() as db:
+        await catchup.apply(db, [{"id": chicken["id"], "perishability": "refrigerated"}])
+        assert chicken["id"] not in {row["id"] for row in await catchup.plan(db)}

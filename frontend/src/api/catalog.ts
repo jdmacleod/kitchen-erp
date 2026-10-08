@@ -42,6 +42,29 @@ export const perishabilityHint: Record<Perishability, string> = {
   frozen: "Bought and kept frozen.",
 };
 
+export const KEEP_PLACES = [
+  { key: "keep_room_days", label: "Room temperature" },
+  { key: "keep_fridge_days", label: "Fridge" },
+  { key: "keep_freezer_days", label: "Freezer" },
+] as const;
+
+export const keepTimesHint =
+  "Whole days it keeps unopened, from the USDA FSIS and FoodSafety.gov storage charts at the low end of each range. Freezer times are for quality. Empty means no time for that place.";
+
+function days(n: number): string {
+  return n === 1 ? "1 day" : `${n} days`;
+}
+
+/** "Keeps 1 day in the fridge, 270 days in the freezer", or null with no times. */
+export function keepTimesText(i: Pick<Ingredient, "keep_room_days" | "keep_fridge_days" | "keep_freezer_days">): string | null {
+  const parts = [
+    i.keep_room_days != null ? `${days(i.keep_room_days)} at room temperature` : null,
+    i.keep_fridge_days != null ? `${days(i.keep_fridge_days)} in the fridge` : null,
+    i.keep_freezer_days != null ? `${days(i.keep_freezer_days)} in the freezer` : null,
+  ].filter((x): x is string => x !== null);
+  return parts.length ? `Keeps ${parts.join(", ")}` : null;
+}
+
 export interface Unit {
   code: string;
   dimension: string;
@@ -84,6 +107,12 @@ export interface Ingredient {
   density_confirmed: boolean;
   yield_pct: string;
   perishability: Perishability;
+  /** Whole days it keeps unopened in each place (2Q); null when the charts give none. */
+  keep_room_days?: number | null;
+  keep_fridge_days?: number | null;
+  keep_freezer_days?: number | null;
+  /** Where it is kept by default, from its perishability. */
+  stored_in?: "room" | "fridge" | "freezer";
   active: boolean;
   notes: string | null;
   measures: Measure[];
@@ -225,6 +254,9 @@ export interface IngredientUpdateInput {
   clear_density?: boolean;
   yield_pct?: string;
   perishability?: Perishability;
+  keep_room_days?: number | null;
+  keep_fridge_days?: number | null;
+  keep_freezer_days?: number | null;
   notes?: string | null;
 }
 

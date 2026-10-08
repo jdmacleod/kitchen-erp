@@ -3416,6 +3416,39 @@
             "title": "Id",
             "type": "string"
           },
+          "keep_freezer_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Freezer Days"
+          },
+          "keep_fridge_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Fridge Days"
+          },
+          "keep_room_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Room Days"
+          },
           "measures": {
             "default": [],
             "items": {
@@ -3477,6 +3510,17 @@
             "title": "Slug",
             "type": "string"
           },
+          "stored_in": {
+            "description": "Where it is kept by default, from its perishability (2Q).",
+            "enum": [
+              "room",
+              "fridge",
+              "freezer"
+            ],
+            "readOnly": true,
+            "title": "Stored In",
+            "type": "string"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -3502,7 +3546,8 @@
           "notes",
           "created_at",
           "updated_at",
-          "category_key"
+          "category_key",
+          "stored_in"
         ],
         "title": "IngredientOut",
         "type": "object"
@@ -3896,6 +3941,45 @@
               }
             ],
             "title": "Density Source"
+          },
+          "keep_freezer_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Freezer Days"
+          },
+          "keep_fridge_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Fridge Days"
+          },
+          "keep_room_days": {
+            "anyOf": [
+              {
+                "maximum": 3650.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Keep Room Days"
           },
           "name": {
             "anyOf": [
@@ -4618,6 +4702,60 @@
         "title": "LineIn",
         "type": "object"
       },
+      "LineKeepingIn": {
+        "additionalProperties": false,
+        "description": "Move a line to another place, or give its best-by date (2Q).\n\n``date``: ``use_by`` is a printed use-by date and replaces the inferred one;\n``sell_by`` is a printed sell-by date, which does not, so the inferred date\nstands; ``set`` and ``clear`` are a person's; ``infer`` goes back to the\ninferred date.",
+        "properties": {
+          "best_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best By"
+          },
+          "date": {
+            "anyOf": [
+              {
+                "enum": [
+                  "use_by",
+                  "sell_by",
+                  "set",
+                  "clear",
+                  "infer"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date"
+          },
+          "stored_in": {
+            "anyOf": [
+              {
+                "enum": [
+                  "room",
+                  "fridge",
+                  "freezer"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored In"
+          }
+        },
+        "title": "LineKeepingIn",
+        "type": "object"
+      },
       "LineMerge": {
         "additionalProperties": false,
         "description": "Join a line that is only a weight or count to the item it belongs to (#87).",
@@ -4637,6 +4775,34 @@
       "LineOut": {
         "additionalProperties": false,
         "properties": {
+          "best_by": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best By"
+          },
+          "best_by_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "inferred",
+                  "printed",
+                  "person"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best By Source"
+          },
           "code_offer": {
             "anyOf": [
               {
@@ -4786,6 +4952,22 @@
           "seq": {
             "title": "Seq",
             "type": "integer"
+          },
+          "stored_in": {
+            "anyOf": [
+              {
+                "enum": [
+                  "room",
+                  "fridge",
+                  "freezer"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stored In"
           },
           "suggestions": {
             "default": [],
@@ -19498,6 +19680,70 @@
           }
         },
         "summary": "Edit Line",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/lines/{line_id}/keeping": {
+      "put": {
+        "description": "Move a line to another place, or give or clear its best-by date (2Q).",
+        "operationId": "set_line_keeping_api_v1_purchases__purchase_id__lines__line_id__keeping_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "line_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Line Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LineKeepingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Line Keeping",
         "tags": [
           "purchases"
         ]

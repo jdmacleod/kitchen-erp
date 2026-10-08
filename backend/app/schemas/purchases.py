@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime as dt
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -182,6 +183,11 @@ class LineOut(ApiModel):
     # A code on the line its product could be remembered by, for this vendor
     # (04, 2K): offered as "Remember {code} for {product}", recorded on a click.
     code_offer: CodeOffer | None = None
+    # Where it is kept and when it is best by (2Q); the date's source is
+    # inferred from a keep time, printed on the label, or a person's.
+    stored_in: Literal["room", "fridge", "freezer"] | None = None
+    best_by: dt.date | None = None
+    best_by_source: Literal["inferred", "printed", "person"] | None = None
 
 
 class PurchaseLocationRef(ApiModel):
@@ -302,6 +308,28 @@ class LineEdit(ApiModel):
     parent_line_id: uuid.UUID | None = None
     clear_parent: bool = False
     clear_qty: bool = False
+
+
+class LineKeepingIn(ApiModel):
+    """Move a line to another place, or give its best-by date (2Q).
+
+    ``date``: ``use_by`` is a printed use-by date and replaces the inferred one;
+    ``sell_by`` is a printed sell-by date, which does not, so the inferred date
+    stands; ``set`` and ``clear`` are a person's; ``infer`` goes back to the
+    inferred date.
+    """
+
+    stored_in: Literal["room", "fridge", "freezer"] | None = None
+    date: Literal["use_by", "sell_by", "set", "clear", "infer"] | None = None
+    best_by: dt.date | None = None
+
+    @model_validator(mode="after")
+    def _dated(self):
+        if self.date in ("use_by", "set") and self.best_by is None:
+            raise ValueError("a use-by or set date needs best_by")
+        if self.stored_in is None and self.date is None:
+            raise ValueError("give stored_in, date, or both")
+        return self
 
 
 class LineMerge(ApiModel):

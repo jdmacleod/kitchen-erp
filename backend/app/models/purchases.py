@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -11,6 +11,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -52,6 +53,9 @@ NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack", "pack_count")
 # What became of one file in an upload batch (issue 122).
 UPLOAD_OUTCOMES = ("new", "revived", "already_seen")
+# Where a purchased item is kept, and where its best-by date came from (2Q).
+STORAGE_PLACES = ("room", "fridge", "freezer")
+BEST_BY_SOURCES = ("inferred", "printed", "person")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:
@@ -245,6 +249,13 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint(
             "(removed_at IS NULL) = (removed_by IS NULL)", name="ck_purchase_line_removed"
         ),
+        CheckConstraint(_in("stored_in", STORAGE_PLACES), name="ck_purchase_line_stored_in"),
+        CheckConstraint(
+            _in("best_by_source", BEST_BY_SOURCES), name="ck_purchase_line_best_by_source"
+        ),
+        CheckConstraint(
+            "best_by IS NULL OR best_by_source IS NOT NULL", name="ck_purchase_line_best_by"
+        ),
     )
 
     purchase_id: Mapped[uuid.UUID] = mapped_column(
@@ -275,6 +286,9 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     removed_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id", name="fk_purchase_line_removed_by")
     )
+    stored_in: Mapped[str | None] = mapped_column(String(8))
+    best_by: Mapped[date | None] = mapped_column(Date)
+    best_by_source: Mapped[str | None] = mapped_column(String(8))
 
     purchase: Mapped[Purchase] = relationship(viewonly=True)
     product: Mapped[Product | None] = relationship(lazy="joined")

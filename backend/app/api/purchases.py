@@ -22,6 +22,7 @@ from app.schemas.purchases import (
     LineAdd,
     LineDecision,
     LineEdit,
+    LineKeepingIn,
     LineMerge,
     LineOut,
     LinesReplace,
@@ -291,6 +292,9 @@ async def purchase_out(
             suggestions=line.suggestions or [],
             recorded=None if recorded is None else line.id in recorded,
             code_offer=offers.get(line.id),  # type: ignore[arg-type]
+            stored_in=line.stored_in,  # type: ignore[arg-type]
+            best_by=line.best_by,
+            best_by_source=line.best_by_source,  # type: ignore[arg-type]
         )
         for line in purchase.lines
     ]
@@ -477,6 +481,18 @@ async def edit_line(
     purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineEdit, _: CurrentUser, db: DbSession
 ) -> PurchaseOut:
     return await purchase_out(db, await review.edit_line(db, purchase_id, line_id, payload))
+
+
+@router.put("/purchases/{purchase_id}/lines/{line_id}/keeping", response_model=PurchaseOut)
+async def set_line_keeping(
+    purchase_id: uuid.UUID,
+    line_id: uuid.UUID,
+    payload: LineKeepingIn,
+    _: CurrentUser,
+    db: DbSession,
+) -> PurchaseOut:
+    """Move a line to another place, or give or clear its best-by date (2Q)."""
+    return await purchase_out(db, await review.set_keeping(db, purchase_id, line_id, payload))
 
 
 @router.delete("/purchases/{purchase_id}/lines/{line_id}", response_model=PurchaseOut)

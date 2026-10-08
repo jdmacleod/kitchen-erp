@@ -21,6 +21,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.catalog.categories import CategoryKey
+from app.catalog.keep import KeepTimes
 from app.catalog.names import STANDARD_KEY_RE, normalize_name
 from app.catalog.perishability import Perishability
 
@@ -50,6 +51,7 @@ class StandardEntry(BaseModel):
     proper_noun: bool = False
     category: CategoryKey
     perishability: Perishability
+    keep: KeepTimes
     unit: Literal["g", "ml", "each"]
     fdc: int | None = Field(default=None, gt=0)
     spellings: tuple[str, ...] = ()

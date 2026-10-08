@@ -60,6 +60,9 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
             name="ck_ingredient_reconcile_state",
         ),
         UniqueConstraint("slug", name="uq_ingredient_slug"),
+        CheckConstraint("keep_room_days >= 0", name="ck_ingredient_keep_room_days"),
+        CheckConstraint("keep_fridge_days >= 0", name="ck_ingredient_keep_fridge_days"),
+        CheckConstraint("keep_freezer_days >= 0", name="ck_ingredient_keep_freezer_days"),
     )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -72,6 +75,10 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
     density_confirmed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     yield_pct: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False, default=Decimal("1"))
     perishability: Mapped[str] = mapped_column(String(16), nullable=False, default="shelf_stable")
+    # Whole days it keeps unopened in each place (2Q); null when the charts give none.
+    keep_room_days: Mapped[int | None] = mapped_column(Integer)
+    keep_fridge_days: Mapped[int | None] = mapped_column(Integer)
+    keep_freezer_days: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text)
     # 1G: the standard key when created from, or linked to, the standard list;

@@ -11,17 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ApiError
 from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS, prints_an_amount, quantity_only
 from app.ingest.lines import restored as restored_amount
-from app.models import AppUser, Product, PurchaseLine
+from app.models import AppUser, Product, Purchase, PurchaseLine
 from app.models.geo import VendorLocation
 from app.models.units import UnitRow
 from app.schemas.purchases import (
     LineAdd,
     LineEdit,
+    LineKeepingIn,
     LineMerge,
     LineRow,
     LinesReplace,
     PurchaseHeaderEdit,
 )
+from app.services import best_by
 from app.services.normalize import normalize_receipt_text
 from app.services.purchases import (
     TOTAL_TOLERANCE,
@@ -473,5 +475,36 @@ async def re_resolve_line(db: AsyncSession, purchase_id: uuid.UUID, line_id: uui
         raise ApiError(404, "not_found", "No such line on this purchase.")
     line.resolved_by = None
     await resolve_line(db, purchase, line)
+    await db.commit()
+    return await get_purchase(db, purchase_id)
+
+
+async def set_keeping(
+    db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineKeepingIn
+) -> Purchase:
+    """Move a line to another place, or give or clear its best-by date.
+
+    Allowed at any status but voided: a label is often read after the receipt is
+    committed. A ``sell_by`` date is not a best-by date; the inferred one stands.
+    """
+    purchase = await get_purchase(db, purchase_id, lock=True)
+    ensure_not_voided(purchase)
+    line = next((x for x in purchase.lines if x.id == line_id), None)
+    if line is None:
+        raise ApiError(404, "not_found", "No such line on this purchase.")
+    if line.line_kind != "item":
+        raise ApiError(422, "not_an_item", "Only item lines have a best-by date.")
+    if payload.stored_in is not None:
+        line.stored_in = payload.stored_in
+    match payload.date:
+        case "use_by":
+            line.best_by, line.best_by_source = payload.best_by, "printed"
+        case "set":
+            line.best_by, line.best_by_source = payload.best_by, "person"
+        case "clear":
+            line.best_by, line.best_by_source = None, "person"
+        case "sell_by" | "infer":
+            line.best_by, line.best_by_source = None, None
+    await best_by.refresh(db, purchase, [line])
     await db.commit()
     return await get_purchase(db, purchase_id)

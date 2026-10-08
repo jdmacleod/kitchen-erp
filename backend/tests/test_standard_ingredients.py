@@ -75,6 +75,7 @@ def _one(**fields) -> str:
         "name": "leek",
         "category": "produce",
         "perishability": "refrigerated",
+        "keep": "{room: null, fridge: 14, freezer: 300}",
         "unit": "g",
         **fields,
     }
@@ -114,6 +115,10 @@ def test_cross_entry_rules(entries, problem):
         _one(unit="lb"),
         _one(colour="green"),
         _one(measures="[{label: stalk, qty: 80}]"),
+        _one(keep="{room: null, fridge: -1, freezer: null}"),
+        _one(keep="{room: null, fridge: 1.5, freezer: null}"),
+        _one(keep="{room: null, fridge: 7}"),
+        _one(keep='{room: null, fridge: "7", freezer: null}'),
     ],
 )
 def test_entry_shape(entry):

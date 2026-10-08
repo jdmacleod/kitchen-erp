@@ -25,7 +25,7 @@ from app.models import (
 )
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineIn, ManualPurchaseIn
-from app.services import pricebook
+from app.services import best_by, pricebook
 from app.services.pagination import decode_cursor, encode_cursor
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
@@ -368,6 +368,7 @@ async def create_manual(db: AsyncSession, user: AppUser, payload: ManualPurchase
     await db.flush()
     for line in purchase.lines:
         await _emit(db, purchase, line, user)
+    await best_by.refresh(db, purchase)
     await db.commit()
     return await get_purchase(db, purchase.id)
 
@@ -427,6 +428,7 @@ async def update_manual(
     seq = await next_seq(db, purchase.id)
     subtotal = Decimal("0")
     to_emit: list[PurchaseLine] = []
+    repointed: list[uuid.UUID] = []
     for line_in in payload.lines:
         price, total = complete_line(line_in)
         subtotal += total
@@ -441,6 +443,8 @@ async def update_manual(
             continue
         if line.id in live:
             await pricebook.void(db, live[line.id], "line edited on recommit", user)
+        if line.product_id != line_in.product_id:
+            repointed.append(line.id)
         line.product_id = line_in.product_id
         line.qty, line.unit = line_in.qty, line_in.unit
         line.unit_price, line.line_total = price, total
@@ -450,6 +454,7 @@ async def update_manual(
     await db.flush()
     for line in to_emit:
         await _emit(db, purchase, line, user)
+    await best_by.refresh(db, purchase, repointed=repointed)
     await db.commit()
     return await get_purchase(db, purchase_id)
 

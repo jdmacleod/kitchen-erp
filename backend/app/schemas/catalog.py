@@ -7,10 +7,11 @@ from typing import Any, Literal
 
 from pydantic import Field, computed_field, model_validator
 
-from app.catalog import categories
+from app.catalog import categories, keep
 from app.catalog.attributes import ProductKind
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import Symbology as BarcodeSymbology
+from app.catalog.keep import Place as StoragePlace
 from app.catalog.perishability import Perishability
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.product_photos import PhotoSummary
@@ -82,6 +83,10 @@ class IngredientUpdate(ApiModel):
     clear_density: bool = False
     yield_pct: Decimal | None = Field(default=None, gt=0, le=1)
     perishability: Perishability | None = None
+    # Whole days it keeps unopened in each place (2Q); null clears one.
+    keep_room_days: int | None = Field(default=None, ge=0, le=3650)
+    keep_fridge_days: int | None = Field(default=None, ge=0, le=3650)
+    keep_freezer_days: int | None = Field(default=None, ge=0, le=3650)
     notes: str | None = None
 
     @model_validator(mode="after")
@@ -124,6 +129,9 @@ class IngredientOut(Categorized):
     density_confirmed: bool
     yield_pct: DecimalStr
     perishability: Perishability
+    keep_room_days: int | None = None
+    keep_fridge_days: int | None = None
+    keep_freezer_days: int | None = None
     active: bool
     notes: str | None
     measures: list[MeasureOut] = []
@@ -133,6 +141,12 @@ class IngredientOut(Categorized):
     merged_into: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    @property
+    def stored_in(self) -> StoragePlace:
+        """Where it is kept by default, from its perishability (2Q)."""
+        return keep.stored_in(self.perishability)
 
 
 class IngredientMatch(Categorized):
