@@ -656,7 +656,7 @@
     "model_attempts": 3,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "parts": 3,
     "purchase_flags": [],
     "purchase_id": "<uuid>",
@@ -687,33 +687,33 @@
       "stage": "header"
     },
     {
-      "messages_digest": "hjeholljklkpdbmn",
+      "messages_digest": "pbkllencmanaelim",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,
         "temperature": 0
       },
-      "read_timeout": 77.0,
+      "read_timeout": 89.0,
       "stage": "lines"
     },
     {
-      "messages_digest": "fpafnadiojmkelkc",
+      "messages_digest": "nfflappkajldliob",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,
         "temperature": 0
       },
-      "read_timeout": 80.0,
+      "read_timeout": 101.0,
       "stage": "lines"
     },
     {
-      "messages_digest": "cnnafpjholmcednh",
+      "messages_digest": "jankfhpkjgikoghf",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,
         "temperature": 0
       },
-      "read_timeout": 20.0,
+      "read_timeout": 32.0,
       "stage": "lines"
     }
   ]

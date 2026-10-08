@@ -50,7 +50,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "reconciliation": {
@@ -79,7 +79,7 @@
       "stage": "header"
     },
     {
-      "messages_digest": "mpgfdbeikoibhhnf",
+      "messages_digest": "lkpjlfcajailpdch",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,

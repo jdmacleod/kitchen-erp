@@ -15,7 +15,7 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.ingest import formats as ingest_formats
 from app.ingest import llm, parsers, raster
-from app.ingest.lines import PRICE_FLAGS, lines_budget_seconds, split_receipt
+from app.ingest.lines import PRICE_FLAGS, lines_budget_seconds, parts_with_context, split_receipt
 from app.ingest.llm import BEGIN_DELIMITER, END_DELIMITER
 from app.ingest.replay import RecordedTransport
 from app.ingest.schemas import ReceiptLine, ReceiptLines
@@ -124,7 +124,8 @@ async def test_fixture_advances_to_review(
     # Connecting never takes longer than the budget it belongs to.
     assert header_req["timeout"]["connect"] == min(connect, settings.llm_timeout_seconds)
     assert header_req["timeout"]["read"] == settings.llm_timeout_seconds
-    assert lines_req["timeout"]["read"] == lines_budget_seconds(parts[0])
+    # A part is read with the rows around it shown as context (#181).
+    assert lines_req["timeout"]["read"] == lines_budget_seconds(parts_with_context(parts)[0][0])
     assert lines_req["timeout"]["read"] > settings.llm_timeout_seconds
     assert lines_req["timeout"]["connect"] == min(connect, lines_req["timeout"]["read"])
 

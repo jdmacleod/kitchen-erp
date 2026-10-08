@@ -119,9 +119,11 @@ async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesR
     unattached discount.
     """
     parts = lines_stage.split_receipt(text)
+    shown = lines_stage.parts_with_context(parts)
     joined: list[ReceiptLine] = []
     attempts, reason, unread = 0, None, []
     for index, part in enumerate(parts, start=1):
+        seen, context = shown[index - 1]
         remaining = _remaining(deadline_at)
         if remaining <= 0 and joined:
             # Out of time with parts already read: keep them, mark the rest.
@@ -132,8 +134,8 @@ async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesR
             answer, used = await llm.extract(
                 ReceiptLines,
                 lines_stage.part_task(index, len(parts)),
-                part,
-                timeout_seconds=lines_stage.lines_budget_seconds(part),
+                seen,
+                timeout_seconds=lines_stage.lines_budget_seconds(seen),
                 deadline_seconds=max(remaining, _MIN_REMAINING_SECONDS),
             )
         except InvalidModelOutput as exc:
@@ -162,8 +164,8 @@ async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesR
                 answer, used = await llm.extract(
                     ReceiptLines,
                     lines_stage.part_task(index, len(parts)),
-                    part,
-                    timeout_seconds=lines_stage.lines_budget_seconds(part),
+                    seen,
+                    timeout_seconds=lines_stage.lines_budget_seconds(seen),
                     deadline_seconds=max(_remaining(deadline_at), _MIN_REMAINING_SECONDS),
                     temperature=EMPTY_PART_RETRY_TEMPERATURE,
                 )
@@ -175,6 +177,7 @@ async def read_lines(llm: LlmClient, text: str, *, deadline_at: float) -> LinesR
                 unread.append(index)
                 reason = "empty_part"
                 continue
+        answer = lines_stage.without_context_rows(answer, part, context)
         offset = len(joined)
         for line in answer.lines:
             parent = line.parent_index

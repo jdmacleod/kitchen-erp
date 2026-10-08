@@ -534,3 +534,35 @@ def test_header_total_and_payment_rows_are_never_listed():
         ("TAX 0.00", "tax", "0.00"),
     )
     assert passes.unread_rows == []
+
+
+# --- Context rows around a part (#181) ---------------------------------------
+
+
+def test_each_part_is_shown_with_the_rows_printed_around_it():
+    from app.ingest import lines as lines_stage
+
+    parts = ["A 1.00\nB 2.00\nC 3.00", "D 4.00\nE 5.00", "F 6.00"]
+    shown = lines_stage.parts_with_context(parts)
+    first, context = shown[0]
+    assert first.splitlines()[0] == lines_stage.PART_START and context == ["D 4.00", "E 5.00"]
+    middle, context = shown[1]
+    assert middle.splitlines()[:3] == [lines_stage.CONTEXT_ABOVE, "B 2.00", "C 3.00"]
+    assert context == ["B 2.00", "C 3.00", "F 6.00"]
+    assert lines_stage.parts_with_context(["only 1.00"]) == [("only 1.00", [])]
+
+
+def test_lines_that_are_only_context_rows_are_dropped():
+    from app.ingest import lines as lines_stage
+
+    answer = _model(
+        ("C 3.00", "item", "3.00"),  # a context row the model listed anyway
+        ("D 4.00", "item", "4.00"),
+        ("SAVINGS 0.50", "discount", "0.50", 1),
+        ("E 5.00", "item", "5.00"),
+    )
+    kept = lines_stage.without_context_rows(
+        answer, "D 4.00\nSAVINGS 0.50\nE 5.00", ["B 2.00", "C 3.00"]
+    )
+    assert [line.raw_text for line in kept.lines] == ["D 4.00", "SAVINGS 0.50", "E 5.00"]
+    assert kept.lines[1].parent_index == 0

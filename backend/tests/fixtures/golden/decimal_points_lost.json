@@ -80,7 +80,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "purchase_flags": [
       "reconcile_mismatch",
       "decimals_restore_total"
@@ -112,7 +112,7 @@
       "stage": "header"
     },
     {
-      "messages_digest": "ajcmcplifmmaeipj",
+      "messages_digest": "dgkloiepbdcfnpkk",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,

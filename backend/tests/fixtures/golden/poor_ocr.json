@@ -98,7 +98,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "10",
+    "parser_version": "11",
     "purchase_flags": [
       "reconcile_mismatch"
     ],
@@ -129,7 +129,7 @@
       "stage": "header"
     },
     {
-      "messages_digest": "gmimgmifjclecobj",
+      "messages_digest": "kakdlmacbecnafne",
       "options": {
         "num_ctx": 8192,
         "num_predict": 8192,

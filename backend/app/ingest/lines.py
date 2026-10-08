@@ -60,7 +60,10 @@ LINES_TASK = (
     "discounts or savings printed beneath an item, container deposits (CRV, redemption "
     "value, bottle deposit), fees (bag fee, surcharge), and the tax line(s) printed in "
     "the totals block. Exclude the store header, subtotal, total, tender, change, "
-    "loyalty summaries, and footer text. Keep raw_text exactly as printed."
+    "loyalty summaries, and footer text. Keep raw_text exactly as printed. A weight or "
+    'count row printed just above or below an item\'s name ("2.31 lb @ 0.69/lb", '
+    '"3 @ 1.25") belongs to that item: give it as the item\'s qty, unit and '
+    "unit_price, not as a line of its own."
 )
 
 # A receipt longer than this many rows is read in parts of about this size (#60).
@@ -95,7 +98,10 @@ GENERIC_PARSER = "llm-generic"
 #    out, footer sentences, and a tax line read at its base.
 # 9: a weight row whose "lb" OCR garbled ("ll", "|i") joins its item when its
 #    arithmetic proves it (unit_misread).
-GENERIC_PARSER_VERSION = "10"
+# 10: rate notes, tax-letter items, netted savings and rows not read (#181).
+# 11: each part is read with the two printed rows on either side of it, marked as
+#     context, and the task says a weight or count row belongs to its item (#181).
+GENERIC_PARSER_VERSION = "11"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 
@@ -204,6 +210,76 @@ def split_receipt(receipt_text: str) -> list[str]:
     return parts
 
 
+# Rows printed on either side of a part, shown to the model as context (#181).
+PART_CONTEXT_ROWS = 2
+CONTEXT_ABOVE = (
+    "[context: rows printed just above this part, read with the part before; do not list them]"
+)
+CONTEXT_BELOW = (
+    "[context: rows printed just below this part, read with the next part; do not list them]"
+)
+PART_START = "[the rows to read]"
+
+
+def parts_with_context(parts: list[str]) -> list[tuple[str, list[str]]]:
+    """Each part as the model sees it, and the context rows shown with it.
+
+    A weight row or a saving can fall on the other side of a part boundary from
+    its item. So a part is shown with the rows printed just above and below it,
+    marked as context, and the model is told not to list them. A single part
+    has no neighbours and is shown as it is.
+    """
+    if len(parts) == 1:
+        return [(parts[0], [])]
+    rows = [[row for row in part.splitlines() if row.strip()] for part in parts]
+    shown: list[tuple[str, list[str]]] = []
+    for i, part_rows in enumerate(rows):
+        above = rows[i - 1][-PART_CONTEXT_ROWS:] if i > 0 else []
+        below = rows[i + 1][:PART_CONTEXT_ROWS] if i + 1 < len(rows) else []
+        text: list[str] = []
+        if above:
+            text += [CONTEXT_ABOVE, *above]
+        text += [PART_START, *part_rows]
+        if below:
+            text += [CONTEXT_BELOW, *below]
+        shown.append(("\n".join(text), above + below))
+    return shown
+
+
+def without_context_rows(answer: ReceiptLines, part: str, context: list[str]) -> ReceiptLines:
+    """The answer without lines that are only a context row (or a marker).
+
+    A line counts as a context row when its text is one of the context rows and
+    none of the part's own rows. Parent indexes are moved to follow the lines
+    that stay; one that pointed at a dropped line is cleared.
+    """
+    if not context:
+        return answer
+
+    def key(text: str) -> str:
+        return " ".join(text.split()).lower()
+
+    own = {key(row) for row in part.splitlines() if row.strip()}
+    noise = {key(row) for row in context} - own
+    noise |= {key(CONTEXT_ABOVE), key(CONTEXT_BELOW), key(PART_START)}
+    kept: list[ReceiptLine] = []
+    moved: dict[int, int] = {}
+    for i, line in enumerate(answer.lines):
+        if key(line.raw_text) in noise:
+            continue
+        moved[i] = len(kept)
+        kept.append(line)
+    fixed = [
+        line.model_copy(
+            update={
+                "parent_index": None if line.parent_index is None else moved.get(line.parent_index)
+            }
+        )
+        for line in kept
+    ]
+    return ReceiptLines.model_construct(lines=fixed)
+
+
 def part_task(index: int, count: int) -> str:
     """The lines task for part ``index`` (1-based) of ``count``."""
     if count == 1:
@@ -212,8 +288,10 @@ def part_task(index: int, count: int) -> str:
     # looked like purchased lines to the model; say that a part may have none.
     return (
         f"{LINES_TASK} This is part {index} of {count} of one receipt, split for length: "
-        "list only the lines in this part. A part may hold only the store header, the "
-        "totals, the payment or the footer; then return an empty list."
+        "list only the lines in this part, the rows after the marker that says so; rows "
+        "marked as context are shown only so you can see what is printed around the part. "
+        "A part may hold only the store header, the totals, the payment or the footer; "
+        "then return an empty list."
     )
 
 
