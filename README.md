@@ -368,7 +368,9 @@ shows, and nothing enters your catalog until you accept it.
      asks you to say which.
    - **Accept** (or Ctrl/⌘+Enter) creates the product, or fills in the gaps on
      the existing one (values it already has are kept). It also saves the
-     page's listing, its item number, and the posted price if ticked. A barcode
+     page's listing, its item number, and the posted price if ticked. Receipt
+     lines waiting in the to-identify queue that print the product's new code
+     are matched to it then, and their prices recorded. A barcode
      that belongs to another product offers "Update {that product} instead".
      **Reject** drops the proposal; the capture record is kept.
 6. **Afterwards.** A posted price shows in the product's price records as

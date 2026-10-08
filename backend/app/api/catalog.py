@@ -31,7 +31,7 @@ from app.schemas.catalog import (
     SearchOut,
     UsdaSuggestionList,
 )
-from app.services import catalog, product_merge, usda
+from app.services import catalog, product_merge, resolution, usda
 
 router = APIRouter(tags=["catalog"])
 
@@ -208,11 +208,14 @@ async def search_products(
 
 @router.post("/products", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
 async def create_product(
-    payload: ProductCreate, _: CurrentUser, db: DbSession, guard: Idempotency
+    payload: ProductCreate, user: CurrentUser, db: DbSession, guard: Idempotency
 ) -> JSONResponse:
     if guard.replay is not None:
         return guard.replay
     row = await catalog.create_product(db, payload)
+    if payload.barcode:
+        await resolution.match_waiting(db, user, row.id)
+        row = await catalog.get_product(db, row.id)
     return await guard.commit(201, ProductOut.model_validate(row).model_dump(mode="json"))
 
 
@@ -223,9 +226,13 @@ async def get_product(product_id: uuid.UUID, _: CurrentUser, db: DbSession) -> P
 
 @router.patch("/products/{product_id}", response_model=ProductOut)
 async def update_product(
-    product_id: uuid.UUID, payload: ProductUpdate, _: CurrentUser, db: DbSession
+    product_id: uuid.UUID, payload: ProductUpdate, user: CurrentUser, db: DbSession
 ) -> ProductOut:
-    return ProductOut.model_validate(await catalog.update_product(db, product_id, payload))
+    row = await catalog.update_product(db, product_id, payload)
+    if payload.barcode:
+        await resolution.match_waiting(db, user, product_id)
+        row = await catalog.get_product(db, product_id)
+    return ProductOut.model_validate(row)
 
 
 @router.post("/products/{product_id}/deactivate", response_model=ProductOut)

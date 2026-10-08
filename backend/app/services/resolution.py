@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select, text, update
+from sqlalchemy import or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -751,6 +751,58 @@ def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
             VendorLocation.vendor_id == vendor_id,
         )
     )
+
+
+async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) -> int:
+    """Run the ladder again over queued lines that print one of the product's codes.
+
+    A product often gains its barcode after the receipts that bought it were read:
+    a clipped page, an edit, a remembered code. Lines already in the to-identify
+    queue are not read again on their own, so this gives them the same ladder a
+    new receipt gets, and prices the ones it resolves. Returns how many resolved.
+    """
+    codes = (
+        await db.execute(
+            select(ProductIdentifier.scheme, ProductIdentifier.value).where(
+                ProductIdentifier.product_id == product_id
+            )
+        )
+    ).all()
+    # A barcode may be printed without its leading zeros; the ladder reads it exactly.
+    cores = {value.lstrip("0") if scheme == "gtin" else value for scheme, value in codes}
+    cores = {c for c in cores if len(c) >= 3}
+    if not cores:
+        return 0
+    rows = (
+        await db.execute(
+            select(PurchaseLine.id, PurchaseLine.purchase_id)
+            .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
+            .where(
+                Purchase.status == "committed",
+                PurchaseLine.line_kind == "item",
+                PurchaseLine.resolution == "unmatched",
+                PurchaseLine.removed_at.is_(None),
+                or_(*(PurchaseLine.raw_text.contains(c, autoescape=True) for c in cores)),
+            )
+        )
+    ).all()
+    waiting: dict[uuid.UUID, set[uuid.UUID]] = {}
+    for line_id, purchase_id in rows:
+        waiting.setdefault(purchase_id, set()).add(line_id)
+    resolved = 0
+    for purchase_id, line_ids in waiting.items():
+        purchase = await get_purchase(db, purchase_id, lock=True)
+        changed = False
+        for line in purchase.lines:
+            if line.id in line_ids and line.resolution == "unmatched":
+                await resolve_line(db, purchase, line)
+                if line.resolution != "unmatched":
+                    changed = True
+                    resolved += 1
+        await db.commit()
+        if changed:
+            await commit_purchase(db, user, purchase_id)
+    return resolved
 
 
 async def queued_line_ids(
