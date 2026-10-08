@@ -49,6 +49,10 @@ Creating a product asks for the ingredient it fulfils, with inline creation of a
 
 Duplicate products are merged rather than deleted (#179). "Merge into…" on a product page chooses the product to keep and previews the merge before it is confirmed: what moves (prices, codes, store pages, photos and receipt wordings), whether the two packs are in different units (the kept product's pack stays), and how many of the duplicate's prices are in another dimension and wait on a density. Price observations are facts and are not moved; the duplicate becomes inactive with `merged_into` set, and the price views report its prices under the kept product (02). Everything else that names the duplicate and may change moves in the same transaction. The duplicate's page then says "Merged into {product}" with a link, so old links still resolve. A merge can't be undone from the UI.
 
+**Possible duplicates (amendment, 2026-10-08).** The catalog looks for duplicates it already holds, so a merge doesn't depend on someone noticing. Pairs of active products whose names are similar by trigram are compared with the sameness rules of 2P, and only pairs it calls *the same product* are offered. A different size or a different variant is never offered. The count appears as one row in Needs you, "3 possible duplicate products", and leads to a section of the Products page that shows each pair side by side, with name, brand, pack, ingredient and main photo. Each pair offers "Merge…", the merge above with the pair already filled in, and "Not the same", which is remembered for that pair (`product_distinct_pair`, 02) so it is never offered again. Nothing is merged without a person.
+
+The receipt naming pass's same-product check (2I, `product_exists`) compares names by the same name key, so letter case, trademark signs and a printed size no longer hide a duplicate.
+
 A bridge editor on the ingredient page shows the density and every named measure with its source and confirmation state, lets the user add a measured value (for instance after weighing a cup of flour), and offers a small test bench: enter a quantity and unit, see the canonical result and the provenance, or see the typed failure. This bench is how a person builds trust in the conversion library.
 
 ### Acceptance criteria
@@ -64,6 +68,9 @@ A bridge editor on the ingredient page shows the density and every named measure
 103. (#179) Merging A into B leaves B with A's prices (through the views, normalized against B's pack and density), store pages, codes, photos and receipt aliases, while every `price_observation` row still names A. A becomes inactive with `merged_into = B` and its page says "Merged into B"; a later receipt line matching A's alias resolves to B; recommitting a purchase whose line moved to B voids nothing.
 104. (#179) A merge is one transaction: a failure partway leaves both products and everything that names them unchanged. A preview writes nothing. Merging a product into itself, into a merged or inactive product, or merging one already merged is refused with a specific code, and a merged product can't be reactivated. Merges stay one level deep.
 105. (#179) The preview reports both packs' units and counts the duplicate's prices in a mass or volume unit of another dimension than the ingredient's canonical unit that won't compare without a density; a count price ("1 each") is priced through the kept product's pack and is not counted.
+106. Two active products that 2P calls the same appear as one possible-duplicate pair, and Needs you counts them. Two products that differ only in pack size, or only in a distinguishing word, never appear. Inactive and merged products never appear.
+107. "Not the same" records the pair once, in either order, and the pair is never offered again; merging either product removes the pair from the list.
+108. The naming pass reports a product as existing when its name differs from an existing one only by letter case, trademark signs or a printed size.
 
 ## 1D — Vendors, locations, and kitchens
 
