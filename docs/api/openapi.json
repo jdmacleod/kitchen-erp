@@ -13066,6 +13066,16 @@
             "title": "Created At",
             "type": "string"
           },
+          "fetch_policy": {
+            "default": "capture_only",
+            "enum": [
+              "server_fetch",
+              "capture_only",
+              "none"
+            ],
+            "title": "Fetch Policy",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -13119,6 +13129,30 @@
             ],
             "title": "Price Scope",
             "type": "string"
+          },
+          "refresh_paused_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Paused Until"
+          },
+          "refresh_unreachable_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Unreachable Since"
           },
           "slug": {
             "title": "Slug",
@@ -13950,6 +13984,16 @@
             "title": "Created At",
             "type": "string"
           },
+          "fetch_policy": {
+            "default": "capture_only",
+            "enum": [
+              "server_fetch",
+              "capture_only",
+              "none"
+            ],
+            "title": "Fetch Policy",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -13987,6 +14031,30 @@
             ],
             "title": "Price Scope",
             "type": "string"
+          },
+          "refresh_paused_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Paused Until"
+          },
+          "refresh_unreachable_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Unreachable Since"
           },
           "slug": {
             "title": "Slug",
@@ -14038,6 +14106,25 @@
         "title": "VendorOut",
         "type": "object"
       },
+      "VendorPriceCheckOut": {
+        "additionalProperties": false,
+        "description": "What \"Check now\" did: how many listings it queued, and the vendor now.",
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "vendor": {
+            "$ref": "#/components/schemas/VendorOut"
+          }
+        },
+        "required": [
+          "queued",
+          "vendor"
+        ],
+        "title": "VendorPriceCheckOut",
+        "type": "object"
+      },
       "VendorSummary": {
         "additionalProperties": false,
         "properties": {
@@ -14072,6 +14159,22 @@
               }
             ],
             "title": "Brand"
+          },
+          "fetch_policy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "server_fetch",
+                  "capture_only",
+                  "none"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetch Policy"
           },
           "kind": {
             "anyOf": [
@@ -22147,6 +22250,51 @@
           }
         },
         "summary": "Activate Vendor",
+        "tags": [
+          "geo",
+          "vendors"
+        ]
+      }
+    },
+    "/api/v1/vendors/{vendor_id}/check-prices": {
+      "post": {
+        "description": "\"Check now\": end a refresh pause and ask the helper for its listings' pages (#264).",
+        "operationId": "check_vendor_prices_api_v1_vendors__vendor_id__check_prices_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vendor Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VendorPriceCheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Vendor Prices",
         "tags": [
           "geo",
           "vendors"

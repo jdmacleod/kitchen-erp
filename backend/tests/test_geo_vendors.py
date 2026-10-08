@@ -27,7 +27,12 @@ async def test_create_get_patch(admin_client: httpx.AsyncClient):
         "slug",
         "brand",
         "wikidata",
+        "fetch_policy",
+        "refresh_paused_until",
+        "refresh_unreachable_since",
     }
+    assert created["fetch_policy"] == "capture_only"
+    assert created["refresh_paused_until"] is None
     patched = await admin_client.patch(
         f"/api/v1/vendors/{created['id']}", json={"kind": "market", "notes": "Saturdays"}
     )

@@ -7,6 +7,7 @@ import {
   formatLatLon,
   geoErrorMessage,
   priceScopeLabel,
+  useCheckVendorPrices,
   useCreateLocation,
   useHomeBases,
   useLocations,
@@ -19,6 +20,7 @@ import {
   useUpdateVendor,
   useVendor,
   vendorKindLabel,
+  type FetchPolicy,
   type LocationCreateInput,
   type LinkedField,
   type LocationUpdateInput,
@@ -37,6 +39,7 @@ import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondar
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { describeSource, fieldLabel, phoneError } from "../../lib/sources";
+import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function VendorDetailPage() {
@@ -112,6 +115,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
         <VendorSuggestionsLine vendor={vendor} />
         {vendor.notes ? <p className="text-sm whitespace-pre-wrap">{vendor.notes}</p> : null}
         {editing ? <EditVendorForm vendor={vendor} onDone={() => setEditing(false)} /> : null}
+        <PostedPrices vendor={vendor} />
         <VendorLocations vendor={vendor} />
       </div>
     </>
@@ -138,6 +142,60 @@ function VendorSuggestionsLine({ vendor }: { vendor: Vendor }) {
       ) : null}
       {open ? <SuggestionReviewDrawer initialVendorId={vendor.id} onClose={() => setOpen(false)} /> : null}
     </>
+  );
+}
+
+const CHECK_ONLINE: { value: Exclude<FetchPolicy, "none">; label: string }[] = [
+  { value: "server_fetch", label: "On" },
+  { value: "capture_only", label: "Off" },
+];
+
+/**
+ * Whether the lookup helper checks this store's posted prices online, and whether
+ * those checks are paused because its pages kept failing to load (issue 264).
+ */
+function PostedPrices({ vendor }: { vendor: Vendor }) {
+  const update = useUpdateVendor(vendor.id);
+  const check = useCheckVendorPrices(vendor.id);
+  const paused = vendor.fetch_policy === "server_fetch" && vendor.refresh_paused_until !== null;
+  return (
+    <Card>
+      <div className="flex flex-col gap-3">
+        <h2 className="text-lg font-medium">Posted prices</h2>
+        {vendor.fetch_policy === "none" ? (
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">Pages from this store aren't saved or checked.</p>
+        ) : (
+          <RadioGroup
+            name={`check-online-${vendor.id}`}
+            legend="Check posted prices online"
+            options={CHECK_ONLINE}
+            value={vendor.fetch_policy}
+            disabled={update.isPending}
+            onChange={(value) => update.mutate({ fetch_policy: value })}
+            hint="The lookup helper reads this store's product pages for price changes. Some stores only work through Save to Kitchen ERP; leave this off for them."
+          />
+        )}
+        {paused ? (
+          <div className="flex flex-col gap-2">
+            <Alert tone="warn">
+              Posted prices haven't been reachable since {formatDate(vendor.refresh_unreachable_since)}; checking again {formatDate(vendor.refresh_paused_until)}.
+            </Alert>
+            <div>
+              <Button variant="secondary" disabled={check.isPending} onClick={() => check.mutate()}>
+                {check.isPending ? "Checking…" : "Check now"}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+        {check.isSuccess ? (
+          <Alert tone="success">
+            {check.data.queued === 1 ? "Asked the lookup helper for 1 page." : `Asked the lookup helper for ${check.data.queued} pages.`}
+          </Alert>
+        ) : null}
+        {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
+        {check.isError ? <Alert tone="error">{geoErrorMessage(check.error)}</Alert> : null}
+      </div>
+    </Card>
   );
 }
 

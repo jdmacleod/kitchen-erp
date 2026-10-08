@@ -196,6 +196,10 @@ vendor(
   field_source JSONB DEFAULT '{}',           -- 1F: {field: {source, ref, checked_at, imported}}
   platform?,                                 -- 1H: storefront software, chooses an adapter
   fetch_policy CHECK IN (server_fetch, capture_only, none) DEFAULT capture_only,   -- 1H
+  refresh_failures int DEFAULT 0,            -- 2N: unreachable refresh answers since the last good one (#264)
+  refresh_unreachable_since timestamptz?,    -- 2N: when the first of those arrived
+  refresh_paused_until timestamptz?,         -- 2N: no listing refresh is queued for it before then
+  refresh_backoff_days smallint?,            -- 2N: the current pause's length; doubles, capped at 56
   rw_layout JSONB?,                          -- 1H: item and price positions in weighed-item labels
   code_position JSONB?                       -- 1H: where receipts print item codes (04, 2K)
 )
@@ -408,6 +412,10 @@ lookup_request(
   value?,                                     -- the GTIN, page or image address, or (name) the product's brand, name and pack as JSON; null for cutout
   requested_by FK app_user?,                  -- null when queued automatically (auto-queue setting, cutouts)
   status CHECK IN (open, answered, closed), created_at, answered_at?
+)
+
+lookup_refresh_closed_0035(                   -- refreshes migration 0035 closed, reopened by its downgrade (#264)
+  request_id PK FK lookup_request
 )
 ```
 

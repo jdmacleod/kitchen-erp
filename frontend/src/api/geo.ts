@@ -66,7 +66,14 @@ export interface Vendor extends VendorRef {
   active: boolean;
   created_at: string;
   sources: Sources;
+  /** Whether the lookup helper may fetch its pages, e.g. to check posted prices (03). */
+  fetch_policy: FetchPolicy;
+  /** Posted-price checks are paused until then: its pages kept failing to load (issue 264). */
+  refresh_paused_until: string | null;
+  refresh_unreachable_since: string | null;
 }
+
+export type FetchPolicy = "server_fetch" | "capture_only" | "none";
 
 /** A row of the vendor list, with what its card shows (T16). */
 export interface VendorListItem extends Vendor {
@@ -168,6 +175,7 @@ export interface VendorUpdateInput {
   price_scope?: PriceScope;
   website?: string | null;
   notes?: string | null;
+  fetch_policy?: FetchPolicy;
 }
 
 export interface VendorInline {
@@ -362,6 +370,18 @@ export function useUpdateVendor(id: string) {
       client.setQueryData(geoKeys.vendor(id), updated);
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
       invalidateLocations(client);
+    },
+  });
+}
+
+/** "Check now": end a pause and ask the lookup helper for this vendor's listing pages. */
+export function useCheckVendorPrices(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ queued: number; vendor: Vendor }>(`/vendors/${enc(id)}/check-prices`, { method: "POST" }),
+    onSuccess: (result) => {
+      client.setQueryData(geoKeys.vendor(id), result.vendor);
+      void client.invalidateQueries({ queryKey: geoKeys.vendors });
     },
   });
 }
