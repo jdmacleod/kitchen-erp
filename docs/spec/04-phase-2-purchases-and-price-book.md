@@ -445,8 +445,11 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
   - An answer to a rejected one is recorded and closed.
 - **Listing refreshes.** The helper may report changed posted prices. They appear as one inbox row, "4 posted prices changed", and nothing is recorded until a person accepts. A reported price equal to the listing's latest posted price, or to its latest reported change in any state, is not added, so an unchanged or already-rejected price never reaches a person again.
   - The helper learns which listings to refresh through the queue (decided 2026-10-02):
-    - while a helper token exists, the app queues a `page` request for each active listing every `LISTING_REFRESH_DAYS` (default 7; 0 turns it off);
+    - while a helper token exists, the app queues a `page` request for each active listing every `LISTING_REFRESH_DAYS` (default 7; 0 turns it off), but only at vendors whose `fetch_policy` is `server_fetch` (03), and never while the vendor's refreshes are paused (#264);
     - each such request carries its `listing_id`, so a changed price can be reported against that listing;
+    - an answer may give `reason: "unreachable"` when the page never loaded (network failures, or a store that refuses the helper). It is recorded as `no_change` with that detail. Three in a row for one vendor pause its refreshes for 7 days, doubling each time a pause ends in another failure, up to 56 days. A refresh that read the page clears the pause. An answer that found nothing without that reason never counts, so a page with nothing new never pauses a store;
+    - "Check now" on the vendor page (`POST /vendors/{id}/check-prices`) ends a pause and queues that vendor's listings at once, without doubling open requests;
+    - migration 0034 turned `server_fetch` on for the vendors whose pages the helper had already read, recorded in `field_source` so a person's later choice wins;
     - `products:read` still reads the queue and nothing else.
 
 The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
@@ -464,6 +467,7 @@ This sub-phase is built just before the helper itself.
 89. A `products:read` token reads only the lookup queue, and every other route answers 403 (route walk). A `products:suggest` token posts only answers.
 90. An answer that validates merges into its pending proposal with each field's source. An answer with an unknown field or an over-cap confidence is refused and recorded. An answer to an accepted proposal opens a Product update; one to a rejected proposal is recorded and closed.
 91. Refreshed listing prices appear as one aggregate inbox row and are recorded only for the rows a person accepts.
+91a. A vendor whose `fetch_policy` isn't `server_fetch` gets no listing refresh. Three `unreachable` answers in a row pause a vendor's refreshes, a page that was read ends the pause, and an answer that found nothing without that reason never pauses (#264).
 92. The `kitchen-erp-products/1` schema is checked by a contract test that the helper repository runs too. A `products:read` token can read the original of a photo only through an open `cutout` request for it, and a mask posted for it produces `cutout_source = tool`.
 
 ## 2O — Reading receipts with a vision transcriber (amendment, 2026-10-07)
