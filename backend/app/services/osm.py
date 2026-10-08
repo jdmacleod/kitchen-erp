@@ -332,7 +332,7 @@ def cache_key(anchor_id: Any, lat: Decimal, lon: Decimal, radius_m: int) -> str:
 async def candidates_around(
     anchor_id: Any, lat: Decimal, lon: Decimal, radius_m: int
 ) -> list[OsmCandidate]:
-    """Cached candidate list around a home base or a location's pin, for a radius."""
+    """Cached candidate list around a kitchen or a location's pin, for a radius."""
     ensure_enabled()
     key = cache_key(anchor_id, lat, lon, radius_m)
     cached = cache.get(key)

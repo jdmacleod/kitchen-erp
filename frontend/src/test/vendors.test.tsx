@@ -67,8 +67,8 @@ describe("vendors", () => {
 
     await user.click(screen.getByRole("button", { name: "Find nearby" }));
     const dialog = await screen.findByRole("dialog", { name: "Find nearby" });
-    // The only home base is chosen already (UI-3.8).
-    await waitFor(() => expect(within(dialog).getByLabelText("Home base")).toHaveValue(homeBaseId));
+    // The only kitchen is chosen already (UI-3.8).
+    await waitFor(() => expect(within(dialog).getByLabelText("Kitchen")).toHaveValue(homeBaseId));
     await user.click(within(dialog).getByRole("button", { name: "Find candidates" }));
 
     expect(await screen.findByText("OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.")).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("vendors", () => {
     await screen.findByRole("list", { name: "Vendors" });
     await user.click(screen.getByRole("button", { name: "Find nearby" }));
     const dialog = await screen.findByRole("dialog", { name: "Find nearby" });
-    await waitFor(() => expect(within(dialog).getByLabelText("Home base")).toHaveValue(homeBaseId));
+    await waitFor(() => expect(within(dialog).getByLabelText("Kitchen")).toHaveValue(homeBaseId));
     await user.click(within(dialog).getByRole("button", { name: "Find candidates" }));
 
     const row = await screen.findByText("Pier Bakery");
@@ -310,7 +310,7 @@ describe("vendors", () => {
     vi.unstubAllGlobals();
   });
 
-  it("creates a home base from the settings page and reports the in-use message on delete", async () => {
+  it("creates a kitchen from the settings page and reports the in-use message on delete", async () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -322,13 +322,13 @@ describe("vendors", () => {
     const user = userEvent.setup();
     renderApp("/settings/kitchens");
 
-    const list = await screen.findByRole("list", { name: "Home bases" });
+    const list = await screen.findByRole("list", { name: "Kitchens" });
     expect(within(list).getByText("Harbour flat")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create home base" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Create kitchen" })).toBeDisabled();
 
     await user.click(within(list).getByRole("button", { name: "Delete Harbour flat" }));
     await user.click(within(list).getByRole("button", { name: "Confirm delete" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("This home base is the default for 2 locations. Reassign them first.");
+    expect(await screen.findByRole("alert")).toHaveTextContent("This kitchen is the default for 2 locations. Reassign them first.");
   });
 
   it("does not repeat the name as a label the API filled in", async () => {
@@ -339,12 +339,12 @@ describe("vendors", () => {
       "GET /home-bases": () => jsonResponse(200, { items: [{ ...homeBase, label: homeBase.name }, { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", name: "Cabin", label: "weekend place" }] }),
     });
     renderApp("/settings/kitchens");
-    const list = await screen.findByRole("list", { name: "Home bases" });
+    const list = await screen.findByRole("list", { name: "Kitchens" });
     expect(within(list).queryByText(`· ${homeBase.name}`)).not.toBeInTheDocument();
     expect(within(list).getByText("· weekend place")).toBeInTheDocument();
   });
 
-  it("creates a home base from typed coordinates, with no map click", async () => {
+  it("creates a kitchen from typed coordinates, with no map click", async () => {
     // Without WebGL, or from the keyboard, the map cannot be clicked at all; the
     // vendor map already took coordinates and this page did not.
     const calls = mockApi({
@@ -359,7 +359,7 @@ describe("vendors", () => {
 
     await user.type(await screen.findByLabelText("Coordinates"), "33.25, -120.75");
     await user.type(screen.getByLabelText("Name"), "The cabin");
-    await user.click(screen.getByRole("button", { name: "Create home base" }));
+    await user.click(screen.getByRole("button", { name: "Create kitchen" }));
     await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/home-bases")?.body).toEqual({ name: "The cabin", lat: "33.25", lon: "-120.75" }));
     // The form is ready for the next one: no leftover pair without a pin.
     await waitFor(() => expect(screen.getByLabelText("Coordinates")).toHaveValue(""));

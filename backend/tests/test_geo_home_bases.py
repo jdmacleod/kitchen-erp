@@ -1,4 +1,4 @@
-"""Home bases: a pin and a name (criterion 21), coordinates as decimal strings, delete rules."""
+"""Kitchens: a pin and a name (criterion 21), coordinates as decimal strings, delete rules."""
 
 import uuid
 

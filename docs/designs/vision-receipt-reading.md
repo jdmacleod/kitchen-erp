@@ -23,7 +23,9 @@ Mode: Builder
 | ET4 settings forwarded by compose | nothing to do: no new settings, and `tools/check_compose_env` enforces it in CI | — |
 | ET5/T4 `kerp reading-benchmark` and `ingest/witness.py` | merged | #160 |
 | T5 household run | done: (b) glm-ocr → qwen2.5:14b reconciled 10/12 (83%); the rule says ship (b) | run `20261007T194503Z` |
-| T6 spec 04 amendment (2O, Phase 1-A) | **drafted, awaiting approval**; then the hold-out run on 10+ new receipts | this PR |
+| T6 spec 04 amendment (2O, Phase 1-A) | approved and merged | #224 |
+| Phase 1-A build | merged: adapter, `--uploaded-since`, default model, review line | #227, #229, #230 |
+| Household switch | **switched early on 2026-10-07**; hold-out confirmation run due about 2026-11-06 | 2O rollout |
 
 **Next steps, in order:**
 1. **Rebuild the stack** (`make up`), so the worker runs the code that names its connections `kerp-worker`; the benchmark's worker guard relies on it.
@@ -38,7 +40,7 @@ Mode: Builder
 
 **Where the code is.**
 - `backend/app/services/reading_benchmark.py`: the command's logic.
-- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
+- `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--uploaded-since` (a hold-out batch, 2O), `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
 - `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
 - Tests:
   - `test_reading_benchmark.py`, `test_ingest_witness.py`, `test_ingest_readers.py`, `test_raster_render.py`;

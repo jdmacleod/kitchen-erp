@@ -63,14 +63,15 @@ ingredient(
                                       -- otherwise generated, and never equal to a standard key
   reconcile_state CHECK IN (unreviewed, linked, skipped, not_applicable) DEFAULT not_applicable,  -- indexed
   usda_reviewed_fdc_id INT?,          -- the FDC food whose suggestions a person last reviewed
-  merged_into FK ingredient?          -- set on the loser of a merge, which is also deactivated
+  merged_into FK ingredient?,         -- set on the loser of a merge, which is also deactivated
+  field_source JSONB DEFAULT '{}'     -- {field: {source, ref, checked_at, imported}}: what an ingredient file last wrote (#241, 0033)
 )
 
 ingredient_alias(
   id, name_norm TEXT UNIQUE,          -- other spellings only; the canonical name is never a row here
   ingredient_id FK,
   kind CHECK IN (synonym, inflection, legacy),
-  source TEXT,                        -- standard, generated, rename, merge, manual; Phase 3 adds recipe
+  source TEXT,                        -- standard, generated, rename, merge, manual, import (#241); Phase 3 adds recipe
   confirmed_count INT DEFAULT 0, last_seen_at?
 )                                     -- trigram GIN index on name_norm
 
@@ -264,7 +265,8 @@ Loaded by `kerp import usda` from a local, unzipped USDA FoodData Central downlo
 
 ```
 receipt_document(
-  id, sha256 UNIQUE, image_path, mime, bytes,
+  id, sha256 UNIQUE, upload_sha256 UNIQUE?,   -- stored file's digest; the uploaded file's (#221)
+  image_path, mime, bytes,
   captured_at?, capture_geo GEOGRAPHY(Point,4326)?,
   client_ocr_text?,                          -- supplied by a capture client, never edited
   uploaded_by FK app_user
@@ -296,7 +298,7 @@ ingest_stage_result(                          -- append-only
 )
 ```
 
-`receipt_document` is immutable after insert. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one. A receipt uploaded again in a later batch keeps its one job and gains a second `upload_batch_receipt` row, so each batch can say what became of its files.
+`receipt_document` changes only when its file's metadata is removed (#221): on a revived upload, or by `kerp receipts strip-metadata`, which change `sha256`, `upload_sha256`, `image_path`, `mime` and `bytes` together. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one. A receipt uploaded again in a later batch keeps its one job and gains a second `upload_batch_receipt` row, so each batch can say what became of its files.
 
 ### Purchases
 

@@ -337,9 +337,13 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     }
   };
   const totalMissing = purchase.flags.includes("total_missing");
+  // The image transcriber was set up but could not read this receipt (04, 2O):
+  // information, not a warning, and gone once the purchase is committed.
+  const readFromTextScan = purchase.flags.includes("ocr_fallback") && purchase.status !== "committed";
 
   return (
     <div onKeyDown={onKeyDown} className="flex flex-col gap-4" data-testid="review">
+      {readFromTextScan ? <p className="text-sm text-neutral-600 dark:text-neutral-400">Read from the text scan: the image reader wasn't available.</p> : null}
       <dl aria-label="Keyboard shortcuts" className="hidden flex-wrap gap-x-4 lg:flex gap-y-1 text-xs text-neutral-600 dark:text-neutral-400">
         {SHORTCUTS.map(([key, what]) => (
           <div key={key} className="inline-flex items-center gap-1">
@@ -787,6 +791,8 @@ const FLAG_LABELS: Record<string, string> = {
   continuation_row: "part of the item above",
   // Issue 121: the amount is printed nowhere in the scan's text.
   not_in_scan: "not on the scan",
+  // An imported line whose quantity the export never gave: no price is recorded.
+  no_price: "quantity unknown, no price",
 };
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */

@@ -59,11 +59,16 @@ def _in(column: str, values: tuple[str, ...]) -> str:
 
 
 class ReceiptDocument(UUIDPrimaryKey, Base):
-    """Immutable after insert."""
+    """A stored receipt file. Its file and digest change only when its metadata is
+    removed (#221): on a revived upload, or by `kerp receipts strip-metadata`."""
 
     __tablename__ = "receipt_document"
 
+    # The stored file's digest; the file is stored without its metadata.
     sha256: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # The digest of the bytes as uploaded, so a second upload of the same file is
+    # still caught. Null for a receipt stored before 0032: its sha256 is the upload's.
+    upload_sha256: Mapped[str | None] = mapped_column(String(64), unique=True)
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
     mime: Mapped[str] = mapped_column(String(100), nullable=False)
     bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)

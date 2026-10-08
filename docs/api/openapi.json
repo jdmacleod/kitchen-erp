@@ -21288,7 +21288,7 @@
     },
     "/api/v1/vendors/export": {
       "get": {
-        "description": "The vendor list as a file. Public mode holds public facts only (1F).\n\nA ``vendors:read`` token may read the public file and nothing else: the\nhousehold file carries notes, home bases and store codes.",
+        "description": "The vendor list as a file. Public mode holds public facts only (1F).\n\nA ``vendors:read`` token may read the public file and nothing else: the\nhousehold file carries notes, kitchens and store codes.",
         "operationId": "export_vendors_api_v1_vendors_export_get",
         "parameters": [
           {

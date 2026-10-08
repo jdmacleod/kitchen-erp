@@ -17,25 +17,13 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 6 approval, or a decision to do it in the web app first
 
-### Searchable actions in the ⌘K palette
-
-**What:** Make actions ("new purchase", "log shelf price") findable in the search palette alongside ingredients, products and vendors (the addendum's UI-2.9).
-
-**Why:** Keyboard users reach any action without the sidebar.
-
-**Context:** Deferred by the UI addendum review on 2026-09-25 (ruling S2). Entity search ships first. "Switch to <kitchen>" also depends on the kitchen switcher below.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** Search palette shipped
-
 ### Kitchen switcher and per-user current kitchen
 
 **What:** A current-kitchen switcher persisted per user on the server, kitchen tags on kitchen-scoped panels, and an explicit `home_base_id` on scoped endpoints (the addendum's UI-2.4 to 2.7).
 
 **Why:** Shopping lists, trips and stock are tied to one kitchen, and the household has two.
 
-**Context:** Deferred by the UI addendum review on 2026-09-25 (ruling S3). In Phases 1 and 2 almost nothing is kitchen-scoped. Find-nearby keeps its home-base picker, and Capture's no-geolocation fallback uses the remembered last location. Needs a preference table, a migration and an endpoint.
+**Context:** Deferred by the UI addendum review on 2026-09-25 (ruling S3). In Phases 1 and 2 almost nothing is kitchen-scoped. Find-nearby keeps its kitchen picker, and Capture's no-geolocation fallback uses the remembered last location. Needs a preference table, a migration and an endpoint.
 
 **Effort:** M (human) / S (CC)
 **Priority:** P2
@@ -55,7 +43,7 @@ source is named so it can be traced back.
 
 ### Decide whether recipe costing is per kitchen
 
-**What:** Settle whether recipe costing is household-wide (the UI addendum) or restricted to a home base's locations (the Phase 3 draft).
+**What:** Settle whether recipe costing is household-wide (the UI addendum) or restricted to a kitchen's locations (the Phase 3 draft).
 
 **Why:** The two documents disagree, and whichever is built second has to change.
 
@@ -64,44 +52,6 @@ source is named so it can be traced back.
 **Effort:** S (human) / S (CC)
 **Priority:** P2
 **Depends on:** Phase 3 review
-
-### One name for home bases
-
-**What:** Pick one of "kitchen" and "home base" and use it everywhere. Today the Settings page title and nav item say Kitchens, while its form, list, empty state, the map's "Add home base here" button and the Vendors filter all say home base.
-
-**Why:** A new user reads two names and wonders whether they are two things.
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27. The rename was left out of #57 because a partial rename would only move the inconsistency somewhere else. Spec 09 names the page Kitchens.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** A naming decision
-
-## Receipts and import
-
-### Upload several receipts at once
-
-**What:** Let the Receipts upload take several files (`multiple`), one ingest job each.
-
-**Why:** A backlog of receipts, the normal first import, means one file-picker round trip per receipt today.
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27 with eight receipts. The worker runs one job at a time, so a batch also makes #60 more visible.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** None
-
-### Strip GPS and other metadata from receipt photos
-
-**What:** Remove EXIF, XMP and GPS from receipt originals on upload, and add a one-off command that does the same to files already stored.
-
-**Why:** A receipt photographed at home keeps the home's coordinates. Originals are stored byte for byte and served untouched (`services/receipt_images.py`), while product photos will be stripped (spec 13 §6.2).
-
-**Context:** Found in the 2026-10-01 CEO review of draft spec 13 (ruling TODO1); outside that plan's scope. Content addressing means a stripped file gets a new sha256, so the command must update `receipt_document.sha256` and `image_path` together and keep the receipt's link to its purchase. Reuse the stripping code spec 13 adds for product images.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** Spec 13's image normalization (sub-phase 1I), or written first and shared
 
 ### Flag a second photo of the same receipt
 
@@ -167,7 +117,7 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Spec 03 §1F builds the app side (public export, scoped tokens, the suggestion API and review), but nothing uses it until this tool exists, and the public dataset needs a home that is not this repository.
 
-**Context:** Plan `playful-launching-parrot.md`, Phase 4; eng review 2026-09-29. The tool authenticates with a `vendors:read` + `vendors:suggest` token, which can read only the public export. It sends a model public facts only (vendor and branch names, city or region, OSM ids, public coordinates, current public values), one vendor per prompt, never home bases, notes, purchases or receipt text. Every suggestion carries a `source_url`; values from sources whose terms are incompatible with the ODbL are dropped. The app caps a batch at 200 items and pending suggestions at 2,000. Start from the suggestion API's schema in `docs/api/openapi.json`.
+**Context:** Plan `playful-launching-parrot.md`, Phase 4; eng review 2026-09-29. The tool authenticates with a `vendors:read` + `vendors:suggest` token, which can read only the public export. It sends a model public facts only (vendor and branch names, city or region, OSM ids, public coordinates, current public values), one vendor per prompt, never kitchens, notes, purchases or receipt text. Every suggestion carries a `source_url`; values from sources whose terms are incompatible with the ODbL are dropped. The app caps a batch at 200 items and pending suggestions at 2,000. Start from the suggestion API's schema in `docs/api/openapi.json`.
 
 **Effort:** L
 **Priority:** P3
@@ -210,18 +160,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Effort:** S (human) / S (CC)
 **Priority:** P3
 **Depends on:** Phase 3 approval
-
-### Ingredient vocabulary export and import
-
-**What:** `kerp export ingredients` and `kerp import ingredients [--dry-run]` reading and writing a versioned `kitchen-erp-ingredients/1` file, with the vendor file loader's rules and the 1F edit-wins merge, lifted into one module shared with vendors.
-
-**Why:** Moving the household's vocabulary between deployments, or sharing a standard list, needs a plain file.
-
-**Context:** CEO ruling VC1 (2026-09-30) made the database the source with this file as its interchange. The eng review the same day deferred the file itself (D1): nothing reads it yet, backups are full pg_dumps (`kerp backup`), and building it means refactoring `vendor_import.py`'s loader and `geo.py`'s `write_unless_edited` into a shared module. Start from `app/services/vendor_exchange.py` and `vendor_import.py`.
-
-**Effort:** M (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G; a reader for the file
 
 ### Stock photos for produce and counter items, by ingredient
 

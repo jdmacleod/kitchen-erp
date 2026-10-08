@@ -1,4 +1,4 @@
-"""Places, home bases, vendors, and vendor locations (Phase 1D).
+"""Places, kitchens, vendors, and vendor locations (Phase 1D).
 
 Coordinates are kept twice on ``place``: as exact ``numeric`` ``lat``/``lon``
 columns, which are the values the API reads and writes, and as a PostGIS

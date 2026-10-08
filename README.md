@@ -183,6 +183,19 @@ links reach outside the deployment, and only when switched on.
      as unconfirmed: confirm each on its ingredient page after checking a
      label or weighing it.
 
+- **Receipt photos without their metadata (#221).** New uploads are stored
+  without GPS, EXIF or XMP. Photos stored before keep theirs until this runs
+  once, after `kerp migrate`, while no receipt is being read:
+
+  ```bash
+  docker compose exec api kerp receipts strip-metadata --dry-run   # counts only
+  docker compose exec api kerp receipts strip-metadata
+  ```
+
+  Take a backup first: the old files are replaced. It refuses to start while a
+  stored file is missing, and it leaves a receipt that is being read; run it
+  again later for those.
+
   `kerp ingredients check` lists plurals another ingredient already has,
   ingredients with no USDA reference, and references missing from the loaded
   release. `kerp ingredients usda-candidates <fdc id | text>` lists raw or dry
@@ -205,7 +218,7 @@ links reach outside the deployment, and only when switched on.
   ```
 
   `public` holds only locations you ticked "Share in public export" on or linked
-  to OpenStreetMap, and none of your notes, home bases, store codes or stands:
+  to OpenStreetMap, and none of your notes, kitchens, store codes or stands:
   read it before contributing it anywhere. `household` holds everything and is
   for moving between your own deployments; keep it private. See spec 03 §1F.
 
@@ -217,7 +230,23 @@ links reach outside the deployment, and only when switched on.
 
   A dry run (the page always starts with one) says what would be created,
   updated or left alone, and what needs you. Import never overwrites a field
-  you edited, never deletes anything, and never creates a home base.
+  you edited, never deletes anything, and never creates a kitchen.
+
+- **Ingredient files.** The ingredient vocabulary exports as a
+  `kitchen-erp-ingredients/1` file: names, categories, units, densities,
+  spellings, USDA references and measures, with nothing from purchases, prices
+  or vendors. Use it to move the vocabulary to another deployment or to share a
+  list:
+
+  ```bash
+  docker compose exec api kerp export ingredients --out /data/exports/ingredients.json
+  docker compose exec api kerp import ingredients --from /data/exports/ingredients.json --dry-run
+  ```
+
+  Import matches by key, name or spelling. It adds what is missing, never
+  overwrites a field you edited, and never deletes, renames or merges an
+  ingredient. Run it without `--dry-run` once the report looks right. See
+  spec 03 §1G.
 
 - **Suggestions from an enrichment tool.** A tool that fills in missing store
   facts works through the API with a token made under Settings → API tokens as

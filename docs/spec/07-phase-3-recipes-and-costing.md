@@ -251,12 +251,12 @@ most recent qualifying normalized price), `average` over `window_days`, or
 `cheapest` qualifying. Qualifying means a non-voided observation with a
 successful normalization, from an active location, of a product that fulfils the
 line's ingredient with at least `min_quality` when given, restricted to the
-locations of a home base when one is given, and to the pinned product when the
+locations of a kitchen when one is given, and to the pinned product when the
 line has a pin. Stale prices are used and reported, never silently preferred.
 
 Open for this document's approval: the UI documents (08–11) were adopted
-without deciding whether costing is household-wide or restricted to a home base
-by default (UI review T8, 2026-09-25). This section's optional home-base filter
+without deciding whether costing is household-wide or restricted to a kitchen
+by default (UI review T8, 2026-09-25). This section's optional kitchen filter
 stands until the Phase 3 review settles that.
 
 Each line's quantity converts to the ingredient's canonical unit through
@@ -306,7 +306,7 @@ completeness. A recipe page shows the file's rendered structure beside a cost
 table: each line with its raw text, resolved ingredient (with the typeahead to
 change it, which writes an alias), pin, converted quantity and provenance,
 price used with its age and location, and line cost; totals with low and high;
-completeness and unconfirmed share; a basis selector and home-base selector; a
+completeness and unconfirmed share; a basis selector and kitchen selector; a
 history of committed snapshots as a chart with provisional points marked. Parse
 errors show the message and line. Relink proposals appear on `missing` recipes.
 Unmapped recipe names reach the person through the Home inbox; the
@@ -316,7 +316,7 @@ to-identify page stays for receipt lines.
 
 28. Resolving an unmapped line from the recipe page writes the alias and
     updates the cost without a reload.
-29. Switching basis or home base changes the figures and shows which prices
+29. Switching basis or kitchen changes the figures and shows which prices
     were used.
 30. A dirty recipe shows the marker on the list and page, and its snapshot is
     labelled provisional.

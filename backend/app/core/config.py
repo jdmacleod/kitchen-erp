@@ -55,7 +55,10 @@ class Settings(BaseSettings):
     build_commit: str = UNKNOWN_COMMIT
 
     ollama_base_url: str = "http://host.docker.internal:11434"
-    llm_model: str = "gpt-oss:20b"
+    # The one text model: receipts, naming, the product ranker, product reading.
+    # qwen2.5:14b read receipt transcripts best in the reading benchmark (04, 2O);
+    # before a deployment switches, the opt-in llm suite runs every use against it.
+    llm_model: str = "qwen2.5:14b"
     # Whether the text model reasons before it answers. Empty sends nothing and
     # leaves it to the model; "false" stops a model that would otherwise reason
     # past the timeout (gemma4 on receipt text). "true" and the levels go only to
@@ -66,6 +69,12 @@ class Settings(BaseSettings):
     # receipt reading will use (2J). Empty: photos are read by Tesseract and the
     # text model instead.
     vision_model: str = ""
+    # The transcriber the "vision" OCR adapter asks to read a receipt image as text
+    # (04, 2O). A transcriber, not a structured reader: asked for JSON it returns
+    # nothing usable, so it is not VISION_MODEL. Used only when OCR_ADAPTERS names
+    # "vision".
+    ocr_vision_model: str = "glm-ocr"
+    ocr_vision_timeout_seconds: float = 300.0
     # Ingest (Phase 2C). OCR adapters are tried in order; `client` uses text sent
     # with the upload, `tesseract` runs the binary in the worker image. As an
     # environment variable this is a JSON list: OCR_ADAPTERS='["client","tesseract"]'.

@@ -131,10 +131,18 @@ async def stage_ocr(ctx: StageContext) -> StageOutcome:
     adapter, text, skipped = await run_ocr(
         ctx.document, document_path(ctx.document), ctx.ocr_adapters
     )
+    output: dict[str, Any] = {"text": text, "chars": len(text), "skipped": skipped}
+    record = getattr(adapter, "record", None)
+    if record:
+        output["vision"] = record  # what the transcription cost and how it ended (2O)
+    if any(s["adapter"] == "vision" for s in skipped):
+        # The transcriber was asked and could not read it; the text is another
+        # adapter's. Review says so (ocr_fallback).
+        output["fallback"] = True
     return StageOutcome(
         adapter=adapter.name,
         adapter_version=adapter.version,
-        output={"text": text, "chars": len(text), "skipped": skipped},
+        output=output,
         next_stage="header",
     )
 
@@ -233,6 +241,8 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     parsed, merged_rows, informational = passes.lines, passes.merged_rows, passes.dropped_rows
 
     purchase_flags: list[str] = []
+    if (ctx.latest_output("ocr") or {}).get("fallback"):
+        purchase_flags.append("ocr_fallback")
     if not header.get("parsed", False):
         purchase_flags.append("header_unparsed")
     if result is None:

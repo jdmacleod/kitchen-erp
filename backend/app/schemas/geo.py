@@ -1,4 +1,4 @@
-"""Request and response models for home bases, vendors, vendor locations, and OSM adoption."""
+"""Request and response models for kitchens, vendors, vendor locations, and OSM adoption."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class FieldSourceOut(ApiModel):
     checked_at: datetime | None
 
 
-# --- home bases --------------------------------------------------------------
+# --- kitchens --------------------------------------------------------------
 
 
 class HomeBaseCreate(ApiModel):
@@ -161,7 +161,7 @@ class VendorLocationCreate(ApiModel):
     publishable: bool = False
     parent_location_id: uuid.UUID | None = None
     opening_hours: str | None = None
-    # Omitted: nearest home base. Explicit null: none. See model_fields_set.
+    # Omitted: nearest kitchen. Explicit null: none. See model_fields_set.
     home_base_id: uuid.UUID | None = None
     stop_overhead_min: int | None = Field(default=None, ge=0, le=32767)
     receipt_identifiers: list[Annotated[str, Field(max_length=200)]] = Field(

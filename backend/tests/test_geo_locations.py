@@ -1,4 +1,4 @@
-"""Vendor locations: pin-and-name creation (21), stalls (22), nearest home base (27), filters."""
+"""Vendor locations: pin-and-name creation (21), stalls (22), nearest kitchen (27), filters."""
 
 import uuid
 

@@ -2,9 +2,10 @@
 
 The image is stored content-addressed at ``<RECEIPTS_PATH>/<aa>/<bb>/<sha256>.<ext>``
 where the extension comes from the sniffed MIME type, never from the client's
-file name or declared content type. ``receipt_document`` is immutable after
-insert; a second upload of the same bytes returns the existing document and
-job (criterion 16).
+file name or declared content type. A photo is stored without its metadata (#221),
+so ``sha256`` is the stored file's digest and ``upload_sha256`` the uploaded
+file's. A second upload of the same file returns the existing document and job
+(criterion 16).
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -34,7 +35,7 @@ from app.models import (
     ReceiptDocument,
 )
 from app.models.geo import point_expr
-from app.services import upload_batches
+from app.services import image_metadata, upload_batches
 
 log = get_logger(__name__)
 
@@ -124,10 +125,17 @@ async def upload_receipt(
     else:
         batch_id = (await upload_batches.create_batch(db, user=user, file_count=1)).id
 
+    # Stored without its metadata (#221): a photo taken at home keeps no coordinates.
+    upload_digest = hashlib.sha256(data).hexdigest()
+    try:
+        stripped = image_metadata.strip(data, mime)
+    except image_metadata.Unreadable:
+        raise ApiError(
+            422, "image_unreadable", "This photo can't be read. Take it again and upload that."
+        ) from None
+    data, mime = stripped.data, stripped.mime
     digest = hashlib.sha256(data).hexdigest()
-    existing = (
-        await db.execute(select(ReceiptDocument).where(ReceiptDocument.sha256 == digest))
-    ).scalar_one_or_none()
+    existing = await _same_file(db, digest, upload_digest)
     if existing is not None:
         job = (
             await db.execute(
@@ -148,7 +156,7 @@ async def upload_receipt(
         # back, so it is stored again and read from the start into a new draft;
         # the voided purchase stays as the record of the prices it voided, and
         # the earlier stage results stay (append-only) with the new ones after.
-        _store(Path(settings.receipts_path) / existing.image_path, data)
+        moved_from = _restore(existing, data, mime, digest, upload_digest)
         job.purchase_id = None
         job.status = "pending"
         job.stage = "captured"
@@ -162,6 +170,8 @@ async def upload_receipt(
         job.uploaded_at = func.now()
         await upload_batches.record(db, batch_id, job, "revived")
         await db.commit()
+        if moved_from is not None:
+            moved_from.unlink(missing_ok=True)  # only once the new address is committed
         await db.refresh(job)
         log.info("removed receipt uploaded again", extra={"job_id": str(job.id)})
         return UploadResult(existing, job, created=False, revived=True, batch_id=batch_id)
@@ -172,6 +182,7 @@ async def upload_receipt(
     document = ReceiptDocument(
         id=new_id(),
         sha256=digest,
+        upload_sha256=upload_digest,
         image_path=rel,
         mime=mime,
         bytes=len(data),
@@ -197,6 +208,56 @@ async def upload_receipt(
     await db.refresh(job)
     log.info("receipt uploaded", extra={"document_id": str(document.id), "job_id": str(job.id)})
     return UploadResult(document, job, created=True, batch_id=batch_id)
+
+
+async def _same_file(db: AsyncSession, digest: str, upload_digest: str) -> ReceiptDocument | None:
+    """The receipt this file was uploaded as before, if any.
+
+    Three ways to match: the stored file is these stripped bytes; it is the file
+    exactly as uploaded (a receipt stored before 0032); or it was stored stripped
+    from this very upload. A match on the stored bytes wins.
+    """
+    rows = (
+        (
+            await db.execute(
+                select(ReceiptDocument).where(
+                    or_(
+                        ReceiptDocument.sha256.in_((digest, upload_digest)),
+                        ReceiptDocument.upload_sha256 == upload_digest,
+                    )
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return next((r for r in rows if r.sha256 == digest), rows[0] if rows else None)
+
+
+def _restore(
+    document: ReceiptDocument, data: bytes, mime: str, digest: str, upload_digest: str
+) -> Path | None:
+    """Write a revived receipt's file back, stripped (#221).
+
+    A receipt stored before 0032 kept its metadata under the upload's digest; it
+    moves to the stripped file's address. Returns the old file, for the caller to
+    delete after the commit.
+    """
+    root = Path(get_settings().receipts_path)
+    if document.sha256 == digest:
+        _store(root / document.image_path, data)
+        return None
+    old = root / document.image_path
+    rel = relative_path(digest, mime)
+    _store(root / rel, data)
+    document.upload_sha256 = document.upload_sha256 or (
+        document.sha256 if document.sha256 == upload_digest else upload_digest
+    )
+    document.sha256 = digest
+    document.image_path = rel
+    document.mime = mime
+    document.bytes = len(data)
+    return old if old != root / rel else None
 
 
 def _store(target: Path, data: bytes) -> None:

@@ -14,7 +14,7 @@ file ─▶ ≤ 5 MB ─▶ loader (no anchors or aliases, no floats) ─▶ Ven
 Rules for each field: a field is written only while it is empty or still
 holds what a source last wrote there (``services.geo.write_unless_edited``);
 otherwise it is a conflict, left alone and reported. Household fields are read
-only from a household-mode file. Nothing is deleted, and no home base is ever
+only from a household-mode file. Nothing is deleted, and no kitchen is ever
 created: a name this deployment lacks is reported and the location keeps its
 nearest-base default. Importing the same file twice changes nothing the
 second time.
@@ -25,15 +25,12 @@ by the same rules as the edit forms, and never interpreted.
 
 from __future__ import annotations
 
-import json
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-import yaml
-from pydantic import ValidationError
 from sqlalchemy import Integer, Numeric, String, cast, column, func, select, values
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -52,7 +49,7 @@ from app.schemas.vendor_interchange import (
     VendorEntry,
     VendorFile,
 )
-from app.services import geo
+from app.services import geo, interchange
 
 MAX_BYTES = 5 * 1024 * 1024
 MATCH_RADIUS_M = 150
@@ -61,75 +58,23 @@ SOURCE = "import"
 
 
 def _bad(message: str, **details: Any) -> ApiError:
-    return ApiError(422, "bad_export", message, details or None)
+    return interchange.bad_file(message, **details)
 
 
 # --- reading -------------------------------------------------------------------
 
 
-class _Loader(yaml.SafeLoader):
-    """SafeLoader still expands anchors and aliases; this one refuses them."""
-
-    def compose_node(self, parent: Any, index: Any) -> Any:  # type: ignore[override]
-        event = self.peek_event()
-        if isinstance(event, yaml.AliasEvent) or getattr(event, "anchor", None):
-            raise _bad("YAML anchors and aliases are not allowed in a vendor file.")
-        return super().compose_node(parent, index)
-
-
-def _no_floats(node: Any, path: str = "") -> None:
-    if isinstance(node, float):
-        raise _bad(f"{path or 'A value'} is a floating-point number; write it as a string.")
-    if isinstance(node, dict):
-        for k, v in node.items():
-            _no_floats(v, f"{path}.{k}" if path else str(k))
-    elif isinstance(node, list):
-        for i, v in enumerate(node):
-            _no_floats(v, f"{path}[{i}]")
-
-
-def _refuse_float(text: str) -> Any:
-    raise _bad(f"{text} is a floating-point number; write numbers as strings.")
-
-
 def parse(raw: bytes, fmt: str | None = None) -> VendorFile:
     """Bytes to a validated file, or 422 ``bad_export``; nothing is written."""
-    if len(raw) > MAX_BYTES:
-        raise _bad("The file is over the 5 MB limit.", limit_bytes=MAX_BYTES)
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError:
-        raise _bad("The file is not UTF-8 text.") from None
-    if fmt is None:
-        fmt = "json" if text.lstrip().startswith(("{", "[")) else "yaml"
-    try:
-        if fmt == "json":
-            data = json.loads(text, parse_float=_refuse_float, parse_constant=_refuse_float)
-        else:
-            data = yaml.load(text, Loader=_Loader)  # noqa: S506 - SafeLoader subclass
-            _no_floats(data)
-    except ApiError:
-        raise
-    except (ValueError, yaml.YAMLError) as exc:
-        raise _bad(f"The file is not valid {fmt.upper()}: {exc}") from None
-    if not isinstance(data, dict):
-        raise _bad("The file must hold one document with a format, a source and vendors.")
-    if data.get("format") not in FORMATS:
-        raise _bad(
-            f"Unsupported format {data.get('format')!r}; expected one of {', '.join(FORMATS)}."
-        )
-    try:
-        file = VendorFile.model_validate(data)
-    except ValidationError as exc:
-        errors = [
-            {"at": ".".join(str(p) for p in e["loc"]), "problem": e["msg"]}
-            for e in exc.errors()[:20]
-        ]
-        raise _bad(
-            f"The file does not match {data['format']}: {errors[0]['at']}: {errors[0]['problem']}",
-            errors=errors,
-        ) from None
-    return file
+    data = interchange.load(
+        raw,
+        fmt,
+        kind="a vendor file",
+        formats=FORMATS,
+        shape="a format, a source and vendors",
+        max_bytes=MAX_BYTES,
+    )
+    return interchange.validate(VendorFile, data)
 
 
 async def check_structure(db: AsyncSession, file: VendorFile) -> None:

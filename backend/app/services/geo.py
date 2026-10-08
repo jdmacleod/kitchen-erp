@@ -1,8 +1,8 @@
-"""Home bases, vendors, vendor locations, and OSM adoption. Routers stay thin; rules live here.
+"""Kitchens, vendors, vendor locations, and OSM adoption. Routers stay thin; rules live here.
 
 Conventions: vendors and locations are deactivated, never deleted, because a
-purchase may reference them. Home bases may be deleted while nothing points at
-them. A new location's home base is the nearest one by geodesic distance unless
+purchase may reference them. Kitchens may be deleted while nothing points at
+them. A new location's kitchen is the nearest one by geodesic distance unless
 the caller names one or explicitly clears it. A stall (a location with a parent)
 inherits its parent's opening hours while its own are null; a parent must itself
 be a top-level location, so stalls do not nest.
@@ -26,7 +26,7 @@ from sqlalchemy.orm import contains_eager, selectinload
 from app.core.errors import ApiError
 from app.models.geo import HomeBase, Place, Vendor, VendorLocation, point_expr
 from app.models.purchases import Purchase
-from app.services import osm
+from app.services import interchange, osm
 from app.services import phone as phones
 from app.services.opening_hours import OpeningHoursError, is_open_at, normalize_hours, to_household
 
@@ -35,7 +35,7 @@ _INTEGRITY_CODES = {
     "uq_home_base_name": (
         409,
         "home_base_name_taken",
-        "A home base with that name already exists.",
+        "A kitchen with that name already exists.",
     ),
     "uq_location_osm": (409, "already_adopted", "That OpenStreetMap object is already adopted."),
     "fk_product_exclusive_vendor": (409, "vendor_in_use", "A product references this vendor."),
@@ -121,18 +121,7 @@ def _last_written(obj: Vendor | VendorLocation, name: str) -> Any:
     return getattr(obj, snapshot) if snapshot else None
 
 
-def edit_outcome(current: Any, last_written: Any, value: Any) -> str:
-    """What writing ``value`` over ``current`` would do.
-
-    ``unchanged`` when they are equal; ``kept`` when a person changed the field
-    since a source last wrote it (it no longer equals ``last_written``), so their
-    edit wins; otherwise ``filled`` (it was empty) or ``updated``.
-    """
-    if value == current:
-        return "unchanged"
-    if current != last_written:
-        return "kept"
-    return "filled" if current is None else "updated"
+edit_outcome = interchange.edit_outcome
 
 
 def write_unless_edited(
@@ -147,22 +136,21 @@ def write_unless_edited(
 ) -> str:
     """Write ``value`` to ``obj.<name>`` unless a person has edited the field.
 
-    The one rule for every writer that is not a person (OSM link and refresh, and
-    later import and accepted suggestions). ``field_source[name].imported``
-    always advances to what the source now says, like the ``osm_*`` snapshots, so
-    a field is a person's exactly while it differs from its source. With
-    ``only_if_empty`` a field that holds any value is left entirely alone.
-    Returns the ``edit_outcome``.
+    The one rule for every writer that is not a person (OSM link and refresh,
+    import and accepted suggestions), shared with ingredient files through
+    ``services.interchange``. A location adopted before ``field_source`` existed
+    falls back to its ``osm_*`` snapshot. Returns the ``edit_outcome``.
     """
-    current = getattr(obj, name)
-    if only_if_empty and current is not None:
-        return "unchanged" if value == current else "kept"
-    outcome = edit_outcome(current, _last_written(obj, name), value)
-    if outcome in ("filled", "updated"):
-        setattr(obj, name, value)
-    record = {"source": source, "ref": ref, "checked_at": now.isoformat(), "imported": value}
-    obj.field_source = {**(obj.field_source or {}), name: record}
-    return outcome
+    return interchange.write_unless_edited(
+        obj,
+        name,
+        value,
+        source=source,
+        ref=ref,
+        now=now,
+        only_if_empty=only_if_empty,
+        last_written=_last_written,
+    )
 
 
 def sources_of(obj: Vendor | VendorLocation, names: tuple[str, ...]) -> dict[str, dict[str, Any]]:
@@ -205,7 +193,7 @@ def _move_place(place: Place, lat: Decimal | None, lon: Decimal | None) -> None:
     place.geom = point_expr(new_lat, new_lon)
 
 
-# --- home bases --------------------------------------------------------------
+# --- kitchens --------------------------------------------------------------
 
 
 async def _load_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> HomeBase:
@@ -216,7 +204,7 @@ async def _load_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> HomeBase
     )
     home_base = result.unique().scalar_one_or_none()
     if home_base is None:
-        raise ApiError(404, "not_found", "No such home base.")
+        raise ApiError(404, "not_found", "No such kitchen.")
     return home_base
 
 
@@ -264,7 +252,7 @@ async def delete_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> None:
         raise ApiError(
             409,
             "home_base_in_use",
-            "Vendor locations still point at this home base; reassign or clear them first.",
+            "Vendor locations still point at this kitchen; reassign or clear them first.",
             {"locations": int(referenced)},
         )
     place = home_base.place
@@ -758,7 +746,7 @@ async def adopt_osm(
         raise ApiError(
             404,
             "osm_candidate_not_found",
-            "That object is not among the candidates for this home base and radius.",
+            "That object is not among the candidates for this kitchen and radius.",
         )
     if candidate.name is None:
         raise ApiError(
