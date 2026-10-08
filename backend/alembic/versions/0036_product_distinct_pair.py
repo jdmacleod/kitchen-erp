@@ -8,8 +8,8 @@ so either order of the same two products finds it.
 
 Downgrade drops the table; the pairs would then be offered again.
 
-Revision ID: 0034
-Revises: 0033
+Revision ID: 0036
+Revises: 0035
 Create Date: 2026-10-08
 """
 
@@ -20,8 +20,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0034"
-down_revision = "0033"
+revision = "0036"
+down_revision = "0035"
 branch_labels = None
 depends_on = None
 
