@@ -165,6 +165,8 @@ async def stage_header(ctx: StageContext) -> StageOutcome:
             text,
             settings.household_timezone,
             settings.receipt_date_order,
+            # When it was photographed or first uploaded: the purchase came before.
+            reference=ctx.document.captured_at or ctx.job.created_at,
         )
         flags.extend(when_flags)
         if header.purchased_at_local and purchased_at is None:

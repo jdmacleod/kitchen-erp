@@ -126,7 +126,7 @@
     "model_attempts": 1,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "8",
+    "parser_version": "9",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "reconciliation": {
