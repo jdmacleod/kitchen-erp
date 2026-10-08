@@ -93,6 +93,19 @@ def name_key(name: str, brand: str | None = None) -> NameKey:
     )
 
 
+def key_text(name: str, brand: str | None = None) -> str:
+    """The identifying words in their printed order, for a search: "Fernhill Plum Jam,
+    8 oz" with brand Fernhill searches as "plum jam", which a shorter catalog name
+    matches where the whole title would not."""
+    key = name_key(name, brand)
+    seen: list[str] = []
+    for word in _words(_SIZE.sub(" ", name)):
+        stem = _stem(word)
+        if stem in key.words and stem not in seen:
+            seen.append(stem)
+    return " ".join(seen)
+
+
 @dataclass(frozen=True)
 class Facts:
     name: str

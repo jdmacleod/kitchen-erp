@@ -27,8 +27,10 @@ from typing import Any
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.catalog import proposals as merging
+from app.catalog import sameness
 from app.catalog.identifiers import classify_barcode
 from app.core.errors import ApiError
 from app.core.ids import new_id
@@ -303,6 +305,10 @@ async def match_catalog(
     queries = [str(title)] if title else []
     if title and brand:
         queries.append(f"{brand} {title}")
+    # A page title carries brand and size that a catalog name usually doesn't (2P).
+    key = sameness.key_text(str(title), str(brand) if brand else None) if title else ""
+    if key and key not in (q.lower() for q in queries):
+        queries.append(key)
     best: dict[str, dict[str, Any]] = {}
     for query in queries:
         for hit in await search_products(db, query, SHORTLIST):
@@ -322,6 +328,80 @@ async def match_catalog(
         # A strong match preselects "Update"; a fuzzy one preselects nothing (criterion 74).
         "preselect": f"update:{strong['product_id']}" if strong else None,
     }
+
+
+# Likely the same first, then merely similar, then siblings: a different size or variant.
+_VERDICT_ORDER = {"same": 0, "similar": 1, "other_size": 2, "variant": 3}
+
+
+def _proposal_facts(fields: dict[str, Any]) -> sameness.Facts:
+    brand = merging.value(fields, "brand")
+    return sameness.Facts(
+        name=str(merging.value(fields, "title") or ""),
+        brand=str(brand) if brand else None,
+        pack=merging.value(fields, "pack"),
+        gtin=merging.value(fields, "gtin"),
+    )
+
+
+def _product_facts(product: Product) -> sameness.Facts:
+    gtin = next(
+        (i.value for i in product.identifiers if i.scheme == "gtin" and i.vendor_id is None), None
+    )
+    pack = (
+        {"qty": format(product.pack_qty, "f"), "unit": product.pack_unit}
+        if product.pack_qty is not None and product.pack_unit
+        else None
+    )
+    return sameness.Facts(
+        name=product.name,
+        brand=product.brand,
+        pack=pack,
+        gtin=gtin,
+        ingredient_id=product.ingredient_id,
+    )
+
+
+async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dict[str, Any]]:
+    """The match's fuzzy candidates as they are now, each with its sameness verdict
+    against the proposal, ordered by verdict and then similarity (2P). Computed on read,
+    so packs and photos are current and proposals matched before 2P get verdicts too.
+    A candidate since deactivated or merged is left out."""
+    stored = (proposal.match or {}).get("candidates") or []
+    scores = {c["product_id"]: Decimal(str(c.get("score") or 0)) for c in stored}
+    if not scores:
+        return []
+    rows = (
+        await db.execute(
+            select(Product)
+            .options(selectinload(Product.ingredient), selectinload(Product.identifiers))
+            .where(Product.id.in_([uuid.UUID(i) for i in scores]), Product.active)
+        )
+    ).scalars()
+    mine = _proposal_facts(proposal.fields or {})
+    out = []
+    for product in rows:
+        verdict = sameness.compare(mine, _product_facts(product))
+        out.append(
+            {
+                "product_id": product.id,
+                "name": product.name,
+                "brand": product.brand,
+                "pack_qty": product.pack_qty,
+                "pack_unit": product.pack_unit,
+                "pack_count": product.pack_count,
+                "piece_name": product.piece_name,
+                "photo": product.photo,
+                "ingredient": product.ingredient,
+                "score": scores[str(product.id)],
+                "verdict": verdict.kind,
+                "reasons": list(verdict.reasons),
+                "only_here": list(verdict.only_a),
+                "only_there": list(verdict.only_b),
+            }
+        )
+    out.sort(key=lambda c: (_VERDICT_ORDER[c["verdict"]], -c["score"], c["name"]))
+    return out
 
 
 def apply_model_pick(match: dict[str, Any], pick: str | None) -> dict[str, Any]:

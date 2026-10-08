@@ -35,6 +35,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         capture=CaptureOut.model_validate(capture) if capture else None,
         fields=proposal.fields,  # type: ignore[arg-type]
         match=proposal.match,
+        candidates=await proposals.candidates_of(db, proposal),  # type: ignore[arg-type]
         listing=proposal.listing,
         vendor=await proposals.vendor_context(db, proposal),  # type: ignore[arg-type]
         price=proposal.price,

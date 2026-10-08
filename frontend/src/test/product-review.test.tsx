@@ -222,6 +222,28 @@ describe("product review", () => {
     expect(screen.getByRole("radio", { name: "Create new product" })).not.toBeChecked();
   });
 
+  it("labels each candidate with its verdict and pack, and still preselects nothing (2P)", async () => {
+    const ingredient = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b40", name: "Flour", category_key: null };
+    const base = { brand: "Larkfield", pack_count: null, piece_name: null, photo: null, ingredient, score: "0.9", reasons: ["words"], only_here: [], only_there: [] };
+    const sizeId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b41";
+    const variantId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b42";
+    const candidates = [
+      { ...base, product_id: otherProductId, name: "Strong white flour", pack_qty: "1.5", pack_unit: "kg", verdict: "same" as const },
+      { ...base, product_id: sizeId, name: "Strong white flour", pack_qty: "3", pack_unit: "kg", verdict: "other_size" as const, reasons: ["pack"] },
+      { ...base, product_id: variantId, name: "Strong brown flour", pack_qty: "1.5", pack_unit: "kg", verdict: "variant" as const, only_here: ["white"], only_there: ["brown"] },
+    ];
+    const stored = candidates.map(({ product_id, name, brand, score }) => ({ product_id, name, brand, score }));
+    mockApi(routes(proposal({ match: { strong: null, candidates: stored, preselect: null }, candidates })));
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const match = await screen.findByRole("group", { name: "Match" });
+    const radios = within(match).getAllByRole("radio");
+    expect(radios[0]).toHaveAccessibleName(/Strong white flour \(Larkfield\) · 1\.5 kg\s*Likely the same product/);
+    expect(radios[1]).toHaveAccessibleName(/3 kg\s*Different size \(3 kg\)/);
+    expect(radios[2]).toHaveAccessibleName(/Different variant \(brown, not white\)/);
+    // A verdict labels; nothing is chosen until the reviewer chooses (criterion 74).
+    for (const radio of radios) expect(radio).not.toBeChecked();
+  });
+
   it("keeps Accept disabled with its reason while something blocks it", async () => {
     mockApi(routes(proposal()));
     renderApp(`/catalog/products/review/${proposalId}`);
