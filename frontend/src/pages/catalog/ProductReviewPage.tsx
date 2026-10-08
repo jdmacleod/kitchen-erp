@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { api, errorMessage, isApiError } from "../../api/client";
-import { formatPieces, useProduct, type Ingredient } from "../../api/catalog";
+import { formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
 import { ROLE_LABELS, type PhotoRole, type ProductPhoto } from "../../api/productPhotos";
 import {
   CHANNEL_WORDS,
@@ -34,6 +34,7 @@ import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { piecesFit } from "./ProductForm";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const sectionHeading = "font-display mb-2 text-lg";
@@ -218,6 +219,15 @@ function Review({ proposal }: { proposal: Proposal }) {
     return candidates(field)[index]?.value;
   };
   const title = String(chosenValue("title") ?? "").trim();
+  // Pieces go with a pack sold by weight or volume ("12 oz in 4 links"); a pack
+  // counted in each already says how many, so the box is not offered for one.
+  const units = useUnits();
+  const packUnit = ((): string => {
+    const pack = chosenValue("pack");
+    if (typeof pack === "string") return pack.trim().match(/^\d+(?:\.\d+)?\s*([a-zA-Z_ ]+)$/)?.[1].trim().toLowerCase() ?? "";
+    return (pack as Pack | undefined)?.unit ?? "";
+  })();
+  const piecesOffered = !units.data || piecesFit(packUnit, units.data);
 
   const blocker = ((): string | null => {
     if (readOnly) return null;
@@ -234,6 +244,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     const out: Record<string, unknown> = {};
     for (const [name, field] of Object.entries(fields)) {
       if (!field || typed[name] !== undefined || kept(name)) continue;
+      if (name === "pieces" && !piecesOffered) continue;
       const index = choices[name]?.index;
       // A choice other than the merge's, one that settles a conflict, or one made over
       // what the product has, is the person's.
@@ -244,6 +255,7 @@ function Review({ proposal }: { proposal: Proposal }) {
         const m = value.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/);
         if (m) out.pack = { qty: m[1], unit: m[2].trim().toLowerCase() };
       } else if (name === "pieces") {
+        if (!piecesOffered) continue;
         const pieces = parsePieces(value);
         if (pieces) out.pieces = pieces;
       } else if (value.trim() !== "") out[name] = value.trim();
@@ -353,7 +365,7 @@ function Review({ proposal }: { proposal: Proposal }) {
               Summary
             </h2>
             <p data-testid="review-summary" className="text-sm">
-              {REVIEWED.filter(([name]) => name !== "pieces" || chosenValue("pieces") !== undefined)
+              {REVIEWED.filter(([name]) => name !== "pieces" || (piecesOffered && chosenValue("pieces") !== undefined))
                 .map(([name]) => showValue(name, chosenValue(name)))
                 .join(" · ")}
             </p>
@@ -376,6 +388,7 @@ function Review({ proposal }: { proposal: Proposal }) {
             {editing ? (
               <div className="mt-3 flex flex-col gap-4">
                 {REVIEWED.map(([name, label]) => {
+                  if (name === "pieces" && !piecesOffered) return null;
                   const field = fields[name];
                   if (field && (field.alternatives.length > 0 || field.conflict)) {
                     return (

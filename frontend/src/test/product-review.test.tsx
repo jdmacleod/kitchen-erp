@@ -187,6 +187,23 @@ describe("product review", () => {
     expect(sent.edits.pieces).toEqual({ count: "6", name: "link" });
   });
 
+  it("offers no pieces for a pack counted in each, and offers them once the pack is a weight", async () => {
+    const single = proposal({
+      fields: { ...proposal().fields, pack: { value: { qty: "1", unit: "each" }, source: "page_data", confidence: null, alternatives: [], conflict: false } },
+    });
+    mockApi(routes(single));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await screen.findByTestId("review-summary");
+    await user.click(screen.getByRole("radio", { name: "Create new product" }));
+    expect(screen.getByLabelText("Pack")).toHaveValue("1 each");
+    expect(screen.queryByLabelText("Pieces")).not.toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText("Pack"));
+    await user.type(screen.getByLabelText("Pack"), "300 g");
+    expect(screen.getByLabelText("Pieces")).toBeInTheDocument();
+  });
+
   it("reads typed pieces", () => {
     expect(parsePieces("5 links")).toEqual({ count: "5", name: "link" });
     expect(parsePieces("3 patties")).toEqual({ count: "3", name: "patty" });

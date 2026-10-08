@@ -129,3 +129,21 @@ async def test_a_count_pack_takes_no_pieces(admin_client, helper, store):
         "each",
         None,
     )
+
+
+async def test_typed_pieces_on_a_count_pack_say_what_to_change(admin_client, helper, store):
+    eggs = await make_product(
+        admin_client, "Eggs", "Large eggs", canonical_unit="each", pack_qty="12", pack_unit="each"
+    )
+    request = (await pasted.ask(admin_client, eggs["id"])).json()
+    r = await pasted.post_answer(helper, _answer(request["id"]))
+    update = (await admin_client.get(f"/api/v1/product-proposals/{r.json()['proposal_id']}")).json()
+    refused = await admin_client.post(
+        f"/api/v1/product-proposals/{update['id']}/accept",
+        json={"action": "update", "product_id": eggs["id"], "edits": {"pieces": {"count": "1"}}},
+    )
+    assert refused.status_code == 422, refused.text
+    error = refused.json()["error"]
+    assert error["code"] == "pieces_need_size"
+    # The reviewer is told which field to change and how, not only the rule.
+    assert "counted in each" in error["message"] and "leave Pieces empty" in error["message"]
