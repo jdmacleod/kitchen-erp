@@ -95,7 +95,7 @@ GENERIC_PARSER = "llm-generic"
 #    out, footer sentences, and a tax line read at its base.
 # 9: a weight row whose "lb" OCR garbled ("ll", "|i") joins its item when its
 #    arithmetic proves it (unit_misread).
-GENERIC_PARSER_VERSION = "9"
+GENERIC_PARSER_VERSION = "10"
 RECONCILE_TOLERANCE = Decimal("0.02")
 CENTS = Decimal("0.01")
 

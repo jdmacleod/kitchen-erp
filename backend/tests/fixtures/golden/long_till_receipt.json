@@ -656,7 +656,7 @@
     "model_attempts": 3,
     "parsed": true,
     "parser": "llm-generic",
-    "parser_version": "9",
+    "parser_version": "10",
     "parts": 3,
     "purchase_flags": [],
     "purchase_id": "<uuid>",

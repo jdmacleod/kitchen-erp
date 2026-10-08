@@ -322,6 +322,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const dateMissing = purchase.flags.includes("purchased_at_missing");
   // A long receipt is read in parts; one that never answered leaves a gap (#60).
   const linesPartial = purchase.flags.includes("lines_partial");
+  // Rows the scan prints like purchases that no line accounts for (issue 181).
+  const rowsNotRead = purchase.flags.includes("rows_not_read") && purchase.status !== "committed";
   // Lines read without their decimal point, when putting it back makes the lines
   // match the printed total (#59). Offered, never applied without a click.
   const decimalSuspects = purchase.flags.includes("decimals_restore_total")
@@ -385,6 +387,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       {linesPartial ? (
         <Alert tone="info">
           Part of this receipt could not be read, so some of its lines are missing. Compare the lines with the receipt image and add the ones that are not here.
+        </Alert>
+      ) : null}
+      {rowsNotRead && !linesPartial ? (
+        <Alert tone="info">
+          Some rows on the receipt print an amount but were not read as lines. Compare the lines with the receipt image and add any that are missing.
         </Alert>
       ) : null}
       {dateMissing ? (
@@ -738,7 +745,7 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row", "continuation_row"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row", "continuation_row", "rate_note", "saving_already_netted"];
 
 /** A line whose amount, or whether it is a line at all, is in doubt: shown first on a receipt held for a careful look. */
 function suspectLine(line: PurchaseLine): boolean {
@@ -789,6 +796,9 @@ const FLAG_LABELS: Record<string, string> = {
   payment_row: "a payment, not a purchase",
   // A row of the item above (its rate, its name in another script, its code).
   continuation_row: "part of the item above",
+  // A rate note ("2 @ 0.45") read as a discount; a saving the price already had.
+  rate_note: "a rate note, not a saving",
+  saving_already_netted: "saving already in the price",
   // Issue 121: the amount is printed nowhere in the scan's text.
   not_in_scan: "not on the scan",
   // An imported line whose quantity the export never gave: no price is recorded.
