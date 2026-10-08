@@ -28,7 +28,7 @@ from typing import Any
 
 import anyio
 from pydantic import ValidationError
-from sqlalchemy import func, select, text
+from sqlalchemy import and_, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import proposals as merging
@@ -404,14 +404,52 @@ async def _note_refresh(
     )
     vendor.refresh_backoff_days = days
     vendor.refresh_paused_until = now + timedelta(days=days)
+    await close_vendor_refreshes(db, vendor.id)
+
+
+async def close_vendor_refreshes(db: AsyncSession, vendor_id: uuid.UUID) -> int:
+    """Close a vendor's open listing refreshes; the caller commits.
+
+    Once a vendor's pages may not be fetched (its ``fetch_policy`` isn't
+    ``server_fetch``) or its refreshes pause, a refresh already queued would
+    only send the helper to a store it shouldn't, or can't, reach. Page
+    requests for proposals (a clip without a price) are left alone.
+    """
+    listings = select(VendorListing.id).where(VendorListing.vendor_id == vendor_id)
+    result = await db.execute(
+        update(LookupRequest)
+        .where(
+            LookupRequest.status == "open",
+            LookupRequest.kind == "page",
+            LookupRequest.listing_id.in_(listings),
+        )
+        .values(status="closed")
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount or 0
 
 
 async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
+    """What the helper is asked to answer, oldest first.
+
+    A listing refresh is held back while its vendor's pages may not be fetched
+    or its refreshes are paused, even if it was queued before that changed.
+    """
+    now = datetime.now(UTC)
+    fetchable = and_(
+        Vendor.fetch_policy == "server_fetch",
+        or_(Vendor.refresh_paused_until.is_(None), Vendor.refresh_paused_until <= now),
+    )
     return list(
         (
             await db.execute(
                 select(LookupRequest)
-                .where(LookupRequest.status == "open")
+                .outerjoin(VendorListing, VendorListing.id == LookupRequest.listing_id)
+                .outerjoin(Vendor, Vendor.id == VendorListing.vendor_id)
+                .where(
+                    LookupRequest.status == "open",
+                    or_(LookupRequest.listing_id.is_(None), fetchable),
+                )
                 .order_by(LookupRequest.created_at, LookupRequest.id)
                 .limit(limit)
             )

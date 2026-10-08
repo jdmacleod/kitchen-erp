@@ -401,7 +401,13 @@ async def get_vendor(db: AsyncSession, vendor_id: uuid.UUID) -> Vendor:
 
 async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[str, Any]) -> Vendor:
     vendor = await _load_vendor(db, vendor_id)
+    fetched = vendor.fetch_policy == "server_fetch"
     apply_vendor_changes(vendor, changes)
+    if fetched and vendor.fetch_policy != "server_fetch":
+        # Its pages may no longer be fetched: refreshes already queued go too (#264).
+        from app.services import lookups
+
+        await lookups.close_vendor_refreshes(db, vendor.id)
     await _commit(db)
     return await _load_vendor(db, vendor_id)
 
