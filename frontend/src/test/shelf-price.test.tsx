@@ -475,6 +475,26 @@ describe("shelf price: review findings", () => {
     expect(within(recent).getByRole("button", { name: /Older Product/ })).toBeInTheDocument();
   });
 
+  // Regression: ISSUE-001 — a price paid for several of a product read as the price of one
+  // Found by /qa on 2026-10-08
+  // Report: .gstack/qa-reports/qa-report-127-0-0-1-2026-10-08.md
+  it("says how many Last paid here and Best known were for", async () => {
+    localStorage.setItem(LAST_LOCATION, chainLocationId);
+    const base = { is_promo: false, norm_unit: "g", norm_status: "ok" as const };
+    const paid = { ...base, observation_id: "p", observed_at: "2026-09-18T10:00:00Z", price: "10.9800", qty: "2.0000", unit: "each", source: "receipt" as const, norm_unit_price: "0.0022", location_id: chainLocationId, location_name: "x", vendor_id: "v", vendor_name: "x", price_scope: "chain" as const, series: "s" };
+    const best = { ...base, location_id: "l", location_name: "Pier", vendor_id: "Pier", vendor_name: "Pier Farmers Market", price_scope: "location" as const, observation_id: "b", observed_at: "2026-09-20T10:00:00Z", price: "11.9700", qty: "3.0000", unit: "each", norm_unit_price: "0.0018", age_days: "3", stale: false };
+    mockApi(baseRoutes({ prices: { points: [paid], latest: [best] } }));
+    const user = userEvent.setup();
+    renderApp("/shop/shelf-prices");
+    await screen.findByRole("button", { name: `Last used: ${CHAIN}. Change store` });
+    await user.type(entry(), "flour");
+    await user.click(await screen.findByRole("option", { name: /All-Purpose Flour/ }));
+
+    const lastPaid = await screen.findByText("Last paid here");
+    await waitFor(() => expect(lastPaid.nextElementSibling).toHaveTextContent(/^\$10\.98 \/ 2 each · /));
+    expect(screen.getByText("Best known").nextElementSibling).toHaveTextContent("$11.97 / 3 each · Pier Farmers Market");
+  });
+
   it("leaves stale offers out of Best known", async () => {
     localStorage.setItem(LAST_LOCATION, chainLocationId);
     const latest = (price: string, vendor: string, stale: boolean) => ({

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { add, cmp, div, formatMoney, isDecimal, isNonNegativeDecimal, isZero, mul, roundTo, stripZeros, sub } from "../lib/decimal";
+import { add, cmp, div, formatMoney, isDecimal, isNonNegativeDecimal, isZero, moneyForQty, mul, roundTo, stripZeros, sub } from "../lib/decimal";
 
 describe("decimal", () => {
   it("adds without floating-point error", () => {
@@ -56,6 +56,16 @@ describe("decimal", () => {
     expect(isNonNegativeDecimal("0")).toBe(true);
     expect(isNonNegativeDecimal("-0")).toBe(true);
     expect(isNonNegativeDecimal("-0.01")).toBe(false);
+  });
+
+  // Regression: ISSUE-001 — a price paid for several of a product read as the price of one
+  // Found by /qa on 2026-10-08
+  // Report: .gstack/qa-reports/qa-report-127-0-0-1-2026-10-08.md
+  it("says how many a price was for, unless it was one each", () => {
+    expect(moneyForQty("11.4400", "1.0000", "each")).toBe("$11.44");
+    expect(moneyForQty("23.1200", "2.0000", "each")).toBe("$23.12 / 2 each");
+    expect(moneyForQty("4.6200", "1.5", "lb")).toBe("$4.62 / 1.5 lb");
+    expect(moneyForQty("3.0000", "1", "kg")).toBe("$3.00 / 1 kg");
   });
 
   it("strips zeros and formats money for display only", () => {

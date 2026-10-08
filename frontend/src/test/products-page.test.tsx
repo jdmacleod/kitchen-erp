@@ -37,6 +37,17 @@ function mount(products: RouteHandler, path = "/catalog/products") {
 const productCalls = (calls: RecordedCall[]) => calls.filter((c) => c.method === "GET" && c.path.startsWith("/products?"));
 
 describe("the Products page (UI-3.4)", () => {
+  // Regression: ISSUE-001 — a price paid for several of a product read as the price of one
+  // Found by /qa on 2026-10-08
+  // Report: .gstack/qa-reports/qa-report-127-0-0-1-2026-10-08.md
+  it("says how many the last price paid was for", async () => {
+    const two = { ...paidFlour, last_paid: { ...paidFlour.last_paid!, price: "12.9800", qty: "2.0000" } };
+    mount(() => jsonResponse(200, { items: [two], next_cursor: null }));
+    const table = await screen.findByRole("table", { name: "Products" });
+    const [row] = within(table).getAllByRole("row").slice(1);
+    expect(row).toHaveTextContent("$12.98 / 2 each");
+  });
+
   it("shows the five columns, with stars and what was last paid", async () => {
     mount(() => jsonResponse(200, { items: [paidFlour, { ...flourProduct, id: "x2", name: "Rye", brand: null, quality_rating: null, last_paid: null }], next_cursor: null }));
     const table = await screen.findByRole("table", { name: "Products" });
