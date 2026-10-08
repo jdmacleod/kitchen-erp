@@ -24,6 +24,7 @@ from app.catalog.identifiers import (
     lookup_keys,
 )
 from app.catalog.names import normalize_name, singulars
+from app.catalog.product_names import tidy
 from app.catalog.standard_match import match_entry
 from app.core.errors import ApiError
 from app.core.logging import get_logger
@@ -1274,7 +1275,8 @@ async def search_products(
     uncategorized: bool = False,
     no_photo: bool = False,
 ) -> list[SearchHit]:
-    ql = q.strip().lower()
+    # Names are stored tidied (2P), so a pasted sign or curly apostrophe still matches.
+    ql = (tidy(q) or "").lower()
     if not ql:
         return []
     params: dict[str, object] = {

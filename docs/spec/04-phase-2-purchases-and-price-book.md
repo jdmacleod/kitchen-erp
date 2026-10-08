@@ -518,10 +518,13 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 - **The name key.** A name is lowercased and Unicode-normalized; trademark signs and punctuation are dropped. A printed size ("10 oz", "8 ct", a size in inches) is taken out of the name and kept apart. A leading brand equal to the product's brand and a short list of filler words ("made with", "fresh", "original") are dropped. What remains is a set of words.
 - **The verdict**, one of four, with its reasons:
   - *the same product*: the word sets agree, or differ only by filler or by a word of the other product's brand; the packs agree within 5%, or one is unknown; the brands agree, or one is empty. Two entries of one product filed under different ingredients are still the same product, with the difference reported, since a merge settles it;
-  - *a different size*: the words agree and the packs disagree, by the rule that already flags an identity conflict (2L);
+  - *a different size*: the words agree and the packs disagree, by the rule that already flags an identity conflict (2L). A count against a weight or a volume ("6 each" against "12 oz") says nothing either way, and so many ounces against as many fluid ounces is one label read two ways; neither is a different size (amended 2026-10-08);
   - *a different variant*: the words differ only by a word from a closed list of distinguishing words (colours, heat, salted or unsalted, whole or skim, sliced, shredded or block, smoked or uncured, and the like), or both carry different GTINs;
   - *similar*: anything else.
 - Two different GTINs are never *the same product*.
+- Two names also agree when the only difference is a brand: the other product's brand field, or a ", Brand" segment of one to three words ending a brandless name ("Smoked tarn ham, Copperleaf"), unless a word of it is a distinguishing word; or a bare number that the other name prints as part of a size ("10" against '10"'), the inch mark lost (amended 2026-10-08).
+
+**Names are tidied as they are saved (amended 2026-10-08).** A product's name and brand are tidied whenever they are written, by any path (Add product, an edit, an accepted proposal, bulk naming, a merge, an import): trademark signs (™ ® © ℠) are removed; curly quotes and apostrophes become straight ones and a double prime becomes an inch mark, which is kept; en and em dashes and the minus sign become a hyphen; unusual and non-breaking spaces become plain spaces and invisible characters are removed; runs of spaces collapse and the ends are trimmed. A brand left empty becomes no brand. Letters, case, digits and other punctuation are kept. Migration 0041 tidies the names saved before, keeping each original so a downgrade restores it.
 
 **Finding candidates.** A page's title usually carries the brand and size that a catalog name leaves out ("Fernhill Plum Jam, 8 oz" against "Plum Jam"), and trigram search over the whole title finds nothing. Matching therefore also searches the title's identifying words, its name key in printed order, beside the title alone and with the brand.
 
@@ -533,12 +536,14 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 
 ### Acceptance criteria
 
-100. The sameness rules are symmetric; a printed size never changes a name key; *the same product* never holds for two different GTINs or two packs of different dimensions. Each verdict is covered by invented pairs, and the suite contains no household product names.
+100. The sameness rules are symmetric; a printed size never changes a name key; *the same product* never holds for two different GTINs, nor for a weight and a volume other than as many ounces as fluid ounces. Each verdict is covered by invented pairs, and the suite contains no household product names.
 101. A proposal titled with brand and size ("Fernhill Plum Jam, 8 oz") finds a product named without them ("Plum Jam") as a candidate. A proposal whose title matches a product of the same words and a disagreeing pack shows that product as "Different size", ordered after any *same* or *similar* candidate, and preselects nothing. Verdicts are worked out when the proposal is read, so a proposal matched before 2P shows them too.
 102. A proposal whose candidate is *the same product* shows "Likely the same product" first and still preselects nothing; "Create new product" stays chosen.
 103. A proposal captured before a matching product was created gains that product as a candidate when it is created, and gains a strong match and "Update" preselected when the new product shares its GTIN or listing. A merge does the same for the survivor.
 104. Two pending proposals that are *the same product* each list the other.
 105. The address check names the existing product for a known listing, item number or barcode, and names none for an unknown page.
+106. A product saved with a trademark sign, a curly apostrophe, a long dash or a non-breaking space in its name or brand is stored without it, by every path that saves one; an inch mark is kept. Tidying is idempotent, and migration 0041 restores the originals on downgrade.
+107. A brandless name ending in a ", Brand" segment, a lost inch mark ("10" against '10"'), a count against a weight, and as many ounces as fluid ounces each leave a pair *the same product*; a ", Spicy" ending, being a distinguishing word, does not.
 
 ## Out of scope for Phase 2
 

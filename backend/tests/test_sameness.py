@@ -48,6 +48,26 @@ def facts(name, brand=None, pack=None, gtin=None, ingredient_id=None):
         (facts("Plum Jam", "Fernhill"), facts("Plum Jam", "Copperleaf"), "similar"),
         (facts("Plum Jam", "Copperleaf Organic"), facts("Organic Plum Jam"), "same"),
         (facts("Plum Jam"), facts("Organic Plum Jam"), "variant"),
+        # A ", Brand" ending a brandless name, a size's lost inch mark, a count against a
+        # weight, and ounces against as many fluid ounces are not differences.
+        (facts("Smoked Tarn Ham, Copperleaf"), facts("Smoked Tarn Ham"), "same"),
+        (facts("Smoked Tarn Ham, Spicy"), facts("Smoked Tarn Ham"), "variant"),
+        (facts('Lark Wrap 10" 6 ct'), facts("Lark Wrap 10 6 ct"), "same"),
+        (
+            facts("Lark Buns", pack={"qty": "4", "unit": "each"}),
+            facts("Lark Buns", pack=OZ8),
+            "same",
+        ),
+        (
+            facts("Plum Glaze", pack={"qty": "15", "unit": "fl_oz"}),
+            facts("Plum Glaze", pack={"qty": "15", "unit": "oz"}),
+            "same",
+        ),
+        (
+            facts("Plum Glaze", pack={"qty": "12", "unit": "fl_oz"}),
+            facts("Plum Glaze", pack={"qty": "15", "unit": "oz"}),
+            "other_size",
+        ),
         # Filed under two ingredients, it is still the same product; a merge settles it.
         (
             facts("Plum Jam", ingredient_id=uuid.UUID(int=1)),
@@ -79,7 +99,7 @@ _packs = st.one_of(
     st.builds(
         lambda q, u: {"qty": str(q), "unit": u},
         st.integers(min_value=1, max_value=5000),
-        st.sampled_from(["g", "kg", "oz", "lb", "ml", "l", "each"]),
+        st.sampled_from(["g", "kg", "oz", "lb", "ml", "l", "fl_oz", "each"]),
     ),
 )
 _gtins = st.one_of(st.none(), st.sampled_from(["00000000000017", "00000000000024"]))
@@ -92,13 +112,18 @@ def test_compare_is_symmetric(a, b):
 
 
 @given(_facts, _facts)
-def test_same_never_holds_across_barcodes_or_dimensions(a, b):
+def test_same_never_holds_across_barcodes_or_weight_and_volume(a, b):
+    """Two barcodes are never the same product, nor a weight and a volume, except as
+    many ounces as fluid ounces; a count against either says nothing (2P)."""
     if compare(a, b).kind != "same":
         return
     assert not (a.gtin and b.gtin and a.gtin != b.gtin)
     if a.pack and b.pack:
-        mass_or_volume = {"g": "m", "kg": "m", "oz": "m", "lb": "m", "ml": "v", "l": "v"}
-        assert mass_or_volume.get(a.pack["unit"], "e") == mass_or_volume.get(b.pack["unit"], "e")
+        kind = {"g": "m", "kg": "m", "oz": "m", "lb": "m", "ml": "v", "l": "v", "fl_oz": "v"}
+        dims = {kind.get(a.pack["unit"], "e"), kind.get(b.pack["unit"], "e")}
+        if dims == {"m", "v"}:
+            assert {a.pack["unit"], b.pack["unit"]} == {"oz", "fl_oz"}
+            assert a.pack["qty"] == b.pack["qty"]
 
 
 @given(_names, st.integers(min_value=1, max_value=999), st.sampled_from(["oz", "g", "ct", "fl oz"]))

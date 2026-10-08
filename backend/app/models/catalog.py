@@ -24,8 +24,9 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
+from app.catalog.product_names import tidy
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
 
 if TYPE_CHECKING:
@@ -296,6 +297,15 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
 
         ident = self.barcode_identifier
         return display(ident.scheme, ident.value) if ident else None
+
+    @validates("name", "brand")
+    def _tidy(self, key: str, value: str | None) -> str | None:
+        """Every saved name and brand is tidied (2P): no trademark signs, plain
+        quotes, dashes and spaces. A brand of only signs becomes no brand."""
+        cleaned = tidy(value)
+        if key == "brand":
+            return cleaned or None
+        return cleaned or value
 
 
 class ProductDistinctPair(Base):
