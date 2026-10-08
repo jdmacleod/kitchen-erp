@@ -510,6 +510,36 @@ This sub-phase is built just before the helper itself.
 98. With the default `OCR_ADAPTERS`, every fixture's stage outputs are identical to those before this amendment.
 99. `kerp reading-benchmark --uploaded-since` scores only receipts uploaded on or after that day in the household's time zone, and reports how many it left out as `uploaded_before`.
 
+## 2P — Duplicates, sizes and variants (amendment, 2026-10-08)
+
+A catalog of a few hundred products from several vendors collects two kinds of near match, and they need opposite answers. A **duplicate** is the same purchasable thing entered twice, often through two vendors' pages; it should be merged (03, #179). A **sibling** is a different size, flavour or colour of something already in the catalog; it stays its own product, because a product is one purchasable size (06), and its prices must not be mixed with its sibling's. Trigram similarity alone can't tell these apart: "Pepper Jack, 8 oz" and "Pepper Jack, 16 oz" are more alike by trigram than two spellings of the same cheese.
+
+**The sameness rules.** A pure module (`app/catalog/sameness.py`, no I/O, property-tested like `app/units/`) compares two products, or a proposal and a product, by their facts: name, brand, pack, piece count, GTIN and ingredient.
+- **The name key.** A name is lowercased and Unicode-normalized; trademark signs and punctuation are dropped. A printed size ("10 oz", "8 ct", a size in inches) is taken out of the name and kept apart. A leading brand equal to the product's brand and a short list of filler words ("made with", "fresh", "original") are dropped. What remains is a set of words.
+- **The verdict**, one of four, with its reasons:
+  - *the same product*: the word sets agree, or differ only by filler or by a word of the other product's brand; the packs agree within 5%, or one is unknown; the brands agree, or one is empty. Two entries of one product filed under different ingredients are still the same product, with the difference reported, since a merge settles it;
+  - *a different size*: the words agree and the packs disagree, by the rule that already flags an identity conflict (2L);
+  - *a different variant*: the words differ only by a word from a closed list of distinguishing words (colours, heat, salted or unsalted, whole or skim, sliced, shredded or block, smoked or uncured, and the like), or both carry different GTINs;
+  - *similar*: anything else.
+- Two different GTINs are never *the same product*.
+
+**Finding candidates.** A page's title usually carries the brand and size that a catalog name leaves out ("Fernhill Plum Jam, 8 oz" against "Plum Jam"), and trigram search over the whole title finds nothing. Matching therefore also searches the title's identifying words, its name key in printed order, beside the title alone and with the brand.
+
+**On the review page.** Each fuzzy candidate carries its verdict, its pack and its main photo. Candidates are ordered *the same product*, then *similar*, then *a different size*, then *a different variant*, by similarity within each group. The note beside a candidate says "Likely the same product", "Different size (8 oz)", "Different variant (red, not white)" or "Similar name". A verdict never preselects anything: criterion 74 stands, and "Create new product" stays the default when only fuzzy candidates exist. A title that says nothing about the product ("Product details", "Product") already counts as no title (#176).
+
+**Matches are kept current.** A proposal's matches are computed when it is captured, so a product created afterwards was invisible to it. Creating a product (by accepting a proposal as new, or from the Add product form) and merging one recompute the matches of pending proposals whose titles resemble that product's name. A recomputed strong match preselects "Update", exactly as at capture. Pending proposals that the rules call *the same product* as one another are listed on each other's review pages ("Also waiting: 2 likely the same"), so a reviewer accepts one as new and the others as updates.
+
+**At clip time.** The address check that the clip window and the Add product drawer already make (`POST /product-captures/address`) also says whether the page, its item number or its barcode is already in the catalog, through the same three strong lookups as matching. The window then says "Already in your catalog: {product}" with a link. Saving still works, since a new clip refreshes the listing's price and photos.
+
+### Acceptance criteria
+
+100. The sameness rules are symmetric; a printed size never changes a name key; *the same product* never holds for two different GTINs or two packs of different dimensions. Each verdict is covered by invented pairs, and the suite contains no household product names.
+101. A proposal titled with brand and size ("Fernhill Plum Jam, 8 oz") finds a product named without them ("Plum Jam") as a candidate. A proposal whose title matches a product of the same words and a disagreeing pack shows that product as "Different size", ordered after any *same* or *similar* candidate, and preselects nothing. Verdicts are worked out when the proposal is read, so a proposal matched before 2P shows them too.
+102. A proposal whose candidate is *the same product* shows "Likely the same product" first and still preselects nothing; "Create new product" stays chosen.
+103. A proposal captured before a matching product was created gains that product as a candidate when it is created, and gains a strong match and "Update" preselected when the new product shares its GTIN or listing. A merge does the same for the survivor.
+104. Two pending proposals that are *the same product* each list the other.
+105. The address check names the existing product for a known listing, item number or barcode, and names none for an unknown page.
+
 ## Out of scope for Phase 2
 
 The native capture app itself, barcode lookup against external databases (the optional products helper does it outside this application, 2N), vendor-specific deterministic parsers, vision models reading a receipt's structure, header or lines from its image (2O only transcribes it; 2J allows measuring the rest), any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.
