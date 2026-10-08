@@ -19,10 +19,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import keep
-from app.core.errors import ApiError
 from app.models import Ingredient, Product, Purchase, PurchaseLine
-from app.schemas.purchases import LineKeepingIn
-from app.services import purchases
 from app.services.opening_hours import household_zone
 
 FIXED = ("printed", "person")
@@ -109,34 +106,3 @@ async def refresh_ingredient(db: AsyncSession, ingredient_id: uuid.UUID) -> int:
         infer(line, ingredient, local_date(purchased_at))
         count += 1
     return count
-
-
-async def set_keeping(
-    db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID, payload: LineKeepingIn
-) -> Purchase:
-    """Move a line to another place, or give or clear its best-by date.
-
-    Allowed at any status but voided: a label is often read after the receipt is
-    committed. A ``sell_by`` date is not a best-by date; the inferred one stands.
-    """
-    purchase = await purchases.get_purchase(db, purchase_id, lock=True)
-    purchases.ensure_not_voided(purchase)
-    line = next((x for x in purchase.lines if x.id == line_id), None)
-    if line is None:
-        raise ApiError(404, "not_found", "No such line on this purchase.")
-    if line.line_kind != "item":
-        raise ApiError(422, "not_an_item", "Only item lines have a best-by date.")
-    if payload.stored_in is not None:
-        line.stored_in = payload.stored_in
-    match payload.date:
-        case "use_by":
-            line.best_by, line.best_by_source = payload.best_by, "printed"
-        case "set":
-            line.best_by, line.best_by_source = payload.best_by, "person"
-        case "clear":
-            line.best_by, line.best_by_source = None, "person"
-        case "sell_by" | "infer":
-            line.best_by, line.best_by_source = None, None
-    await refresh(db, purchase, [line])
-    await db.commit()
-    return await purchases.get_purchase(db, purchase_id)

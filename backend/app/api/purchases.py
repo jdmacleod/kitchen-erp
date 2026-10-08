@@ -52,7 +52,6 @@ from app.schemas.purchases import (
     VoidIn,
 )
 from app.services import (
-    best_by,
     catalog,
     naming,
     pricebook,
@@ -493,7 +492,7 @@ async def set_line_keeping(
     db: DbSession,
 ) -> PurchaseOut:
     """Move a line to another place, or give or clear its best-by date (2Q)."""
-    return await purchase_out(db, await best_by.set_keeping(db, purchase_id, line_id, payload))
+    return await purchase_out(db, await review.set_keeping(db, purchase_id, line_id, payload))
 
 
 @router.delete("/purchases/{purchase_id}/lines/{line_id}", response_model=PurchaseOut)
