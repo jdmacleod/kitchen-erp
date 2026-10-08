@@ -123,7 +123,7 @@ class Offer(ApiModel):
 
 class OfferList(ApiModel):
     items: list[Offer]
-    stale_thresholds: dict[str, int]
+    stale_after_days: int
 
 
 class CompareIn(ApiModel):
@@ -169,7 +169,7 @@ class VendorColumn(ApiModel):
 class CompareOut(ApiModel):
     vendors: list[VendorColumn]
     rows: list[CompareRow]
-    stale_thresholds: dict[str, int]
+    stale_after_days: int
 
 
 class RecentPrice(ApiModel):

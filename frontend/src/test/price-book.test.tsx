@@ -6,7 +6,6 @@ import { flour, flourId, flourProduct, flourProductId, hits, units } from "./cat
 import { chainLocation, chainLocationId, chainVendorId, marketLocation, marketLocationId, marketVendorId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
-const thresholds = { fresh: 14, refrigerated: 45, shelf_stable: 120 };
 
 const chainPoint = {
   price: "4.99",
@@ -139,7 +138,7 @@ describe("ingredient offers", () => {
       [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
       [`GET /ingredients/${flourId}/offers`]: (call: RecordedCall) => {
         const min = call.query.get("min_quality");
-        return jsonResponse(200, { items: min ? offers.filter((o) => (o.quality_rating ?? 0) >= Number(min)) : offers, stale_thresholds: thresholds });
+        return jsonResponse(200, { items: min ? offers.filter((o) => (o.quality_rating ?? 0) >= Number(min)) : offers, stale_after_days: 90 });
       },
     });
     const user = userEvent.setup();
@@ -155,7 +154,7 @@ describe("ingredient offers", () => {
     expect(rows[1]).toHaveTextContent("130 days");
     // The date and its mark appear once per layout (phone and wider); CSS shows one.
     expect(within(rows[1]).getAllByText("stale").length).toBeGreaterThan(0);
-    expect(screen.getByText("Prices older than 120 days count as stale for a shelf-stable ingredient.")).toBeInTheDocument();
+    expect(screen.getByText("Prices older than 90 days are marked stale.")).toBeInTheDocument();
     expect(calls.filter((c) => c.path.startsWith(`/ingredients/${flourId}/offers`)).at(-1)?.query.has("min_quality")).toBe(false);
 
     await user.selectOptions(screen.getByLabelText("Minimum quality"), "4");

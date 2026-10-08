@@ -1362,12 +1362,9 @@
             "title": "Rows",
             "type": "array"
           },
-          "stale_thresholds": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Stale Thresholds",
-            "type": "object"
+          "stale_after_days": {
+            "title": "Stale After Days",
+            "type": "integer"
           },
           "vendors": {
             "items": {
@@ -1380,7 +1377,7 @@
         "required": [
           "vendors",
           "rows",
-          "stale_thresholds"
+          "stale_after_days"
         ],
         "title": "CompareOut",
         "type": "object"
@@ -7535,17 +7532,14 @@
             "title": "Items",
             "type": "array"
           },
-          "stale_thresholds": {
-            "additionalProperties": {
-              "type": "integer"
-            },
-            "title": "Stale Thresholds",
-            "type": "object"
+          "stale_after_days": {
+            "title": "Stale After Days",
+            "type": "integer"
           }
         },
         "required": [
           "items",
-          "stale_thresholds"
+          "stale_after_days"
         ],
         "title": "OfferList",
         "type": "object"

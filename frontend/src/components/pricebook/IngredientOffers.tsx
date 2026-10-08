@@ -62,7 +62,7 @@ export function IngredientOffers({
       <p className={`mt-3 flex flex-wrap justify-between gap-2 text-xs ${muted}`}>
         <span>
           {staleThreshold !== undefined
-            ? `Prices older than ${staleThreshold} days count as stale for a ${ingredient.perishability.replace("_", "-")} ingredient.`
+            ? `Prices older than ${staleThreshold} days are marked stale.`
             : null}
         </span>
         <Link to="/shop/compare" className={`inline-flex min-h-11 items-center lg:min-h-0 rounded text-sm font-medium underline ${focusRing}`}>

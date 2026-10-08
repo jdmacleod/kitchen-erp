@@ -14,36 +14,18 @@ from app.core.config import get_settings
 from app.services import unit_display
 
 
-def stale_thresholds() -> dict[str, int]:
-    s = get_settings()
-    return {
-        "fresh": s.stale_days_fresh,
-        "refrigerated": s.stale_days_refrigerated,
-        "shelf_stable": s.stale_days_shelf_stable,
-        "frozen": s.stale_days_frozen,
-        "shelf_months": s.stale_days_shelf_months,
-    }
+def stale_after_days() -> int:
+    """Days after which a price is marked stale. Prices never expire; the mark
+    only says an old price may not be today's, the same for every ingredient."""
+    return get_settings().stale_after_days
 
 
-_STALE_SQL = """
-    CASE i.perishability
-        WHEN 'fresh' THEN CAST(:stale_fresh AS integer)
-        WHEN 'refrigerated' THEN CAST(:stale_refrigerated AS integer)
-        WHEN 'frozen' THEN CAST(:stale_frozen AS integer)
-        WHEN 'shelf_months' THEN CAST(:stale_shelf_months AS integer)
-        ELSE CAST(:stale_shelf_stable AS integer)
-    END
-"""
+_STALE_SQL = "CAST(:stale_after_days AS integer)"
 
 
 def _params(**extra: Any) -> dict[str, Any]:
-    t = stale_thresholds()
     return {
-        "stale_fresh": t["fresh"],
-        "stale_refrigerated": t["refrigerated"],
-        "stale_frozen": t["frozen"],
-        "stale_shelf_months": t["shelf_months"],
-        "stale_shelf_stable": t["shelf_stable"],
+        "stale_after_days": stale_after_days(),
         "now": datetime.now(UTC),
         **extra,
     }

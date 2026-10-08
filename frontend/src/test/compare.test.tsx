@@ -37,7 +37,7 @@ const result: CompareResult = {
       },
     },
   ],
-  stale_thresholds: { fresh: 14, refrigerated: 45, shelf_stable: 120 },
+  stale_after_days: 90,
 };
 
 function baseRoutes() {

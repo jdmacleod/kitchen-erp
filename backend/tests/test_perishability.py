@@ -11,7 +11,7 @@ from app.catalog import perishability
 from app.catalog.standard import parse, standard_list
 from app.core.db import get_sessionmaker
 from app.services import ingredient_perishability as catchup
-from app.services.pricebook_views import stale_thresholds
+from app.services.pricebook_views import stale_after_days
 from tests.catalog_helpers import make_ingredient, seed_units_via_service
 
 HEADER = "format: kitchen-erp-standard-ingredients/1\ningredients:\n"
@@ -52,10 +52,8 @@ def test_the_default_follows_the_category():
     assert perishability.default_for("something new") == "shelf_stable"
 
 
-def test_frozen_prices_go_stale_like_shelf_stable_ones():
-    t = stale_thresholds()
-    assert t["frozen"] == t["shelf_stable"]
-    assert t["refrigerated"] < t["shelf_months"] < t["shelf_stable"]
+def test_a_price_goes_stale_after_one_window_whatever_the_ingredient():
+    assert stale_after_days() == 90
 
 
 async def test_a_new_ingredient_takes_its_entry_or_category_value(admin_client, db_session):

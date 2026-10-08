@@ -73,13 +73,7 @@ async def test_ingredient_offers_min_quality_filter(admin_client):
         await admin_client.get(f"/api/v1/ingredients/{iid}/offers", params={"min_quality": 4})
     ).json()
     assert [o["product_id"] for o in filtered["items"]] == [good["id"]]
-    assert offers["stale_thresholds"] == {
-        "fresh": 14,
-        "refrigerated": 45,
-        "shelf_stable": 120,
-        "frozen": 120,
-        "shelf_months": 60,
-    }
+    assert offers["stale_after_days"] == 90
 
 
 async def test_compare_matrix_highlights_cheapest_and_leaves_unknown_empty(admin_client):
@@ -120,10 +114,19 @@ async def test_stale_marking_and_exclusion(admin_client, owner_conn: asyncpg.Con
     )
     berries = r.json()
     iid = berries["ingredient"]["id"]
-    stale_at = (datetime.now(UTC) - timedelta(days=20)).isoformat()
+    # A price ages the same for every ingredient: a fresh one is not stale at 20 days.
+    recent_at = (datetime.now(UTC) - timedelta(days=20)).isoformat()
+    obs = await shelf(admin_client, berries["id"], indie["id"], "4.99", observed_at=recent_at)
+    offers = (await admin_client.get(f"/api/v1/ingredients/{iid}/offers")).json()
+    assert offers["items"][0]["stale"] is False
+    r = await admin_client.post(
+        f"/api/v1/price-observations/{obs['id']}/void", json={"reason": "test: dated again"}
+    )
+    assert r.status_code == 200, r.text
+    stale_at = (datetime.now(UTC) - timedelta(days=100)).isoformat()
     await shelf(admin_client, berries["id"], indie["id"], "4.99", observed_at=stale_at)
     offers = (await admin_client.get(f"/api/v1/ingredients/{iid}/offers")).json()
-    assert offers["items"][0]["stale"] is True and D(offers["items"][0]["age_days"]) > 19
+    assert offers["items"][0]["stale"] is True and D(offers["items"][0]["age_days"]) > 99
     excluded = (
         await admin_client.get(
             f"/api/v1/ingredients/{iid}/offers", params={"exclude_stale": "true"}

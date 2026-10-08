@@ -204,7 +204,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
                 offers={items}
                 filters={filters}
                 onFilters={setFilters}
-                staleThreshold={offers.data.stale_thresholds[ingredient.perishability]}
+                staleThreshold={offers.data.stale_after_days}
               />
             ) : null}
           </div>
