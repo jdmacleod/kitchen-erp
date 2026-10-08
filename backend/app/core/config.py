@@ -142,6 +142,7 @@ class Settings(BaseSettings):
     stale_days_refrigerated: int = 45
     stale_days_shelf_stable: int = 120
     stale_days_frozen: int = 120
+    stale_days_shelf_months: int = 60
 
     session_ttl_days: int = 30
     idempotency_ttl_hours: int = 24

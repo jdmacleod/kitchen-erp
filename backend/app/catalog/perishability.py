@@ -3,7 +3,9 @@
 The four values follow the USDA storage charts (FSIS "Food Product Dating", the
 FoodSafety.gov cold storage chart) and the food bank guides that reprint them:
 
-- ``shelf_stable``: keeps months or more at room temperature, unopened;
+- ``shelf_stable``: keeps a year or more at room temperature, unopened;
+- ``shelf_months``: room temperature, but keeps weeks to months before it goes
+  stale or rancid (nuts, chips, crackers, oils, whole-grain flour);
 - ``refrigerated``: kept cold, or lasts weeks, about a week or longer;
 - ``fresh``: lasts a week or less;
 - ``frozen``: bought and kept frozen.
@@ -18,7 +20,7 @@ from typing import Literal, get_args
 
 from app.catalog import categories
 
-Perishability = Literal["shelf_stable", "refrigerated", "fresh", "frozen"]
+Perishability = Literal["shelf_stable", "shelf_months", "refrigerated", "fresh", "frozen"]
 
 VALUES: tuple[Perishability, ...] = get_args(Perishability)
 

@@ -37,7 +37,7 @@ ingredient(
   canonical_unit FK unit CHECK IN (g, ml, each),
   density_g_per_ml NUMERIC(10,5)?, density_source?, density_confirmed BOOLEAN DEFAULT false,
   yield_pct NUMERIC(5,4) DEFAULT 1 CHECK (0 < yield_pct <= 1),
-  perishability CHECK IN (shelf_stable, refrigerated, fresh, frozen),
+  perishability CHECK IN (shelf_stable, shelf_months, refrigerated, fresh, frozen),
   notes?
 )
 
@@ -56,7 +56,8 @@ ingredient_measure(
 
 | Value | Meaning | Examples |
 |---|---|---|
-| `shelf_stable` | Keeps months or more at room temperature | Canned goods (high-acid 12–18 months, low-acid 2–5 years), flour, rice, pasta, dried beans, spices, oils, vinegar, unopened condiments, hard or dry sausage |
+| `shelf_stable` | Keeps a year or more at room temperature | Canned goods (high-acid 12–18 months, low-acid 2–5 years), white flour, white rice and dry pasta (2 years), dried beans, sugar, spices, vinegar, unopened condiments, hard or dry sausage |
+| `shelf_months` | Room temperature, but goes stale or rancid in weeks to months | Potato chips (2 months), commercially popped popcorn (2–3 months), crackers (8 months), jarred nuts (12 months), peanut butter (6–9 months), oils (6 months), whole-wheat flour (1 month), brown sugar (4 months), dried fruit (6 months), whole coffee beans |
 | `refrigerated` | Kept cold, or keeps about a week or longer | Eggs (3–5 weeks), butter, hard cheese, yogurt, bacon, hot dogs and sealed lunch meat (2 weeks), cured ham, tortillas; carrots, cabbage, celery, apples, citrus, and potatoes, onions and garlic (weeks) |
 | `fresh` | Keeps a week or less | Raw poultry, ground meat and raw sausage (1–2 days), beef, pork and lamb (3–5 days), fish (1–3 days), milk (7 days), cream, soft cheese; greens, berries, mushrooms, fresh herbs, tomatoes, ripening fruit; bread |
 | `frozen` | Bought and kept frozen | Frozen vegetables and fruit, frozen fish, ice cream, puff pastry |

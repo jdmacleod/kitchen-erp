@@ -3137,6 +3137,7 @@
               {
                 "enum": [
                   "shelf_stable",
+                  "shelf_months",
                   "refrigerated",
                   "fresh",
                   "frozen"
@@ -3456,6 +3457,7 @@
           "perishability": {
             "enum": [
               "shelf_stable",
+              "shelf_months",
               "refrigerated",
               "fresh",
               "frozen"
@@ -3927,6 +3929,7 @@
               {
                 "enum": [
                   "shelf_stable",
+                  "shelf_months",
                   "refrigerated",
                   "fresh",
                   "frozen"

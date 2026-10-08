@@ -78,6 +78,7 @@ async def test_ingredient_offers_min_quality_filter(admin_client):
         "refrigerated": 45,
         "shelf_stable": 120,
         "frozen": 120,
+        "shelf_months": 60,
     }
 
 

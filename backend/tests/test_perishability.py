@@ -30,6 +30,12 @@ def test_every_standard_entry_says_how_it_keeps():
     assert by_key["canned-tuna"] == "shelf_stable"
     assert by_key["all-purpose-flour"] == "shelf_stable"
     assert by_key["frozen-mixed-vegetables"] == "frozen"
+    # Room temperature, but stale or rancid within months [FB-BC].
+    assert by_key["walnuts"] == "shelf_months"
+    assert by_key["tortilla-chips"] == "shelf_months"
+    assert by_key["saltines"] == "shelf_months"
+    assert by_key["olive-oil"] == "shelf_months"
+    assert by_key["long-grain-white-rice"] == "shelf_stable"
 
 
 def test_an_entry_without_perishability_is_refused():
@@ -49,6 +55,7 @@ def test_the_default_follows_the_category():
 def test_frozen_prices_go_stale_like_shelf_stable_ones():
     t = stale_thresholds()
     assert t["frozen"] == t["shelf_stable"]
+    assert t["refrigerated"] < t["shelf_months"] < t["shelf_stable"]
 
 
 async def test_a_new_ingredient_takes_its_entry_or_category_value(admin_client, db_session):

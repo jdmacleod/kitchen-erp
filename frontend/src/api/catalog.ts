@@ -19,14 +19,15 @@ import type { ListResponse } from "./types";
 
 export type CanonicalUnit = "g" | "ml" | "each";
 export type BridgeSource = "usda" | "label" | "measured" | "llm" | "manual";
-export type Perishability = "shelf_stable" | "refrigerated" | "fresh" | "frozen";
+export type Perishability = "shelf_stable" | "shelf_months" | "refrigerated" | "fresh" | "frozen";
 
 export const CANONICAL_UNITS: readonly CanonicalUnit[] = ["g", "ml", "each"];
 export const BRIDGE_SOURCES: readonly BridgeSource[] = ["manual", "measured", "label", "usda", "llm"];
-export const PERISHABILITIES: readonly Perishability[] = ["shelf_stable", "refrigerated", "fresh", "frozen"];
+export const PERISHABILITIES: readonly Perishability[] = ["shelf_stable", "shelf_months", "refrigerated", "fresh", "frozen"];
 
 export const perishabilityLabel: Record<Perishability, string> = {
   shelf_stable: "Shelf stable",
+  shelf_months: "Shelf, months",
   refrigerated: "Refrigerated",
   fresh: "Fresh",
   frozen: "Frozen",
@@ -34,7 +35,8 @@ export const perishabilityLabel: Record<Perishability, string> = {
 
 /** What each value means, after the USDA storage charts (spec 02). */
 export const perishabilityHint: Record<Perishability, string> = {
-  shelf_stable: "Keeps months or more at room temperature, unopened: canned and dry goods, spices, oils.",
+  shelf_stable: "Keeps a year or more at room temperature, unopened: canned goods, rice, pasta, sugar, spices.",
+  shelf_months: "Room temperature, but goes stale or rancid in weeks to months: nuts, chips, crackers, oils, whole-grain flour.",
   refrigerated: "Kept cold, or keeps about a week or longer: eggs, butter, hard cheese, bacon, carrots, onions.",
   fresh: "Keeps a week or less: raw meat, poultry and fish, milk, greens, berries, bread.",
   frozen: "Bought and kept frozen.",
