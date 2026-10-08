@@ -380,20 +380,13 @@ async def _shortlist(db: AsyncSession, line: PurchaseLine, norm: str) -> list[di
     return out
 
 
-async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:
-    """Run the ladder for one item line. Mutates the line; does not commit."""
-    vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
-    norm = normalize_receipt_text(line.raw_text or "")
-    line.raw_text_norm = norm
-    suggestions: list[dict[str, Any]] = []
-    record: dict[str, Any] = {"line_id": str(line.id), "norm": norm, "rung": None}
-    if line.line_kind != "item":
-        line.suggestions = []
-        record["rung"] = "not_item"
-        return record
+async def _by_code(
+    db: AsyncSession, line: PurchaseLine, vendor_id: uuid.UUID | None, record: dict[str, Any]
+) -> receipt_codes.LineCodes:
+    """The identifier rung alone: resolve the line when it prints a product's code.
 
-    # 1. Identifier (2K): a GTIN, a weighed-item label, or a code where the vendor
-    # prints them. Read from the raw text, before normalization drops leading codes.
+    Sets ``record["rung"]`` to "identifier" when it resolved; returns the codes read.
+    """
     vendor = await db.get(Vendor, vendor_id) if vendor_id is not None else None
     codes = receipt_codes.read(
         line.raw_text or "",
@@ -415,6 +408,25 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
         line.suggestions = []
         record["rung"] = "identifier"
         record["price_outlier"] = "price_outlier" in flags
+    return codes
+
+
+async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:
+    """Run the ladder for one item line. Mutates the line; does not commit."""
+    vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
+    norm = normalize_receipt_text(line.raw_text or "")
+    line.raw_text_norm = norm
+    suggestions: list[dict[str, Any]] = []
+    record: dict[str, Any] = {"line_id": str(line.id), "norm": norm, "rung": None}
+    if line.line_kind != "item":
+        line.suggestions = []
+        record["rung"] = "not_item"
+        return record
+
+    # 1. Identifier (2K): a GTIN, a weighed-item label, or a code where the vendor
+    # prints them. Read from the raw text, before normalization drops leading codes.
+    codes = await _by_code(db, line, vendor_id, record)
+    if record["rung"] == "identifier":
         return record
     # A digit run anywhere else is only ever a suggestion.
     suggestions.extend(await _loose_code_suggestions(db, codes, vendor_id))
@@ -754,12 +766,14 @@ def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
 
 
 async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) -> int:
-    """Run the ladder again over queued lines that print one of the product's codes.
+    """Run the code rung again over queued lines that print one of the product's codes.
 
     A product often gains its barcode after the receipts that bought it were read:
     a clipped page, an edit, a remembered code. Lines already in the to-identify
-    queue are not read again on their own, so this gives them the same ladder a
-    new receipt gets, and prices the ones it resolves. Returns how many resolved.
+    queue are not read again on their own, so this gives them the identifier rung
+    a new receipt gets, and prices the ones it resolves. Aliases, similar names
+    and the model are left to the queue, so saving a product never waits on them.
+    Returns how many resolved.
     """
     codes = (
         await db.execute(
@@ -793,10 +807,14 @@ async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) 
     for purchase_id, line_ids in waiting.items():
         purchase = await get_purchase(db, purchase_id, lock=True)
         changed = False
+        vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
         for line in purchase.lines:
             if line.id in line_ids and line.resolution == "unmatched":
-                await resolve_line(db, purchase, line)
-                if line.resolution != "unmatched":
+                # Only the code rung: a line that merely contains the digits must
+                # not wait on aliases or the model while a person saves a product.
+                record: dict[str, Any] = {"rung": None}
+                await _by_code(db, line, vendor_id, record)
+                if record["rung"] == "identifier":
                     changed = True
                     resolved += 1
         await db.commit()

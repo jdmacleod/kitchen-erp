@@ -103,3 +103,66 @@ async def test_the_catch_up_matches_codes_added_before(admin_client, admin, tmp_
     after = (await admin_client.get(f"/api/v1/purchases/{purchase['id']}")).json()
     first = min(after["lines"], key=lambda ln: ln["seq"])
     assert first["product"]["id"] == rig["id"] and first["observation_id"]
+
+
+async def test_a_line_that_only_contains_the_digits_never_asks_the_model(
+    admin_client, admin, tmp_path, monkeypatch
+):
+    """Saving a product runs the code rung alone: no alias, no similar names, no model."""
+    from app.services import resolution
+    from app.services.resolution import set_ranker
+
+    asked: list[str] = []
+
+    async def ranker(norm, shortlist):
+        asked.append(norm)
+        return None
+
+    purchase = await _imported(admin_client, admin, tmp_path)
+    async with get_sessionmaker()() as db:
+        # A lot number that holds the barcode's digits but is not a barcode itself.
+        await import_export(
+            db,
+            admin,
+            # pii-scan: allow invented lot number holding the test barcode's digits
+            load_export(_one_line(tmp_path, "RIGATONI LOT 9036000291452", "T-0201")),
+        )
+
+    async def shortlist(db, line, norm):
+        # Every line would offer the model a candidate, were it asked.
+        return [{"id": "candidate-1", "name": "Rigatoni 16 oz"}]
+
+    monkeypatch.setattr(resolution, "_shortlist", shortlist)
+    set_ranker(ranker)
+    try:
+        await make_product(
+            admin_client, "Rigatoni", "Rigatoni 16 oz", barcode=UPC, pack_qty="16", pack_unit="oz"
+        )
+    finally:
+        set_ranker(None)
+    assert asked == []
+    lots = [
+        ln
+        for p in (await admin_client.get("/api/v1/purchases")).json()["items"]
+        if p["id"] != purchase["id"]
+        for ln in p["lines"]
+    ]
+    assert [ln["resolution"] for ln in lots] == ["unmatched"]
+
+
+def _one_line(tmp_path: Path, description: str, ref: str) -> Path:
+    doc = {
+        "format": "kitchen-erp-purchase-export/1",
+        "retailer": "Invented Mart",
+        "transactions": [
+            {
+                "ref": ref,
+                "store_code": "0417",
+                "occurred_at": "2026-03-21T10:00:00",
+                "lines": [{"description": description, "upc": None, "amount": "2.49"}],
+            }
+        ],
+    }
+    path = tmp_path / f"{ref}.json"
+    path.write_text(json.dumps(doc))
+    return path
