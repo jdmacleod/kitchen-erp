@@ -186,6 +186,31 @@ async def test_a_structured_price_reaches_the_observation_exactly(
     assert stored == Decimal(price)
 
 
+async def test_a_half_emoji_in_the_page_is_kept_as_a_replacement_mark(
+    admin_client, store, owner_conn: asyncpg.Connection
+):
+    """A storefront that cuts a review short can split an emoji, leaving half of it.
+    That half cannot be stored as UTF-8; it must not cost the whole clip."""
+    half = "\ud83d"
+    body = page(
+        dom_text=f"Five stars {half}..",
+        title=f"Rolled Oats 500g {half}",
+        meta={**META, "description": f"Tasty {half}"},
+    )
+    # As a browser sends it: JSON.stringify writes the half as the escape \ud83d.
+    r = await admin_client.post(
+        "/api/v1/product-captures",
+        content=json.dumps(body).encode("ascii"),
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 201, r.text
+    payload = await owner_conn.fetchval(
+        "SELECT payload::text FROM product_capture WHERE id = $1",
+        uuid.UUID(r.json()["capture"]["id"]),
+    )
+    assert "\ufffd" in payload and "\\ud83d" not in payload
+
+
 async def test_page_text_over_200_kb_is_refused_naming_the_field(admin_client, store):
     """Criterion 84, first part."""
     r = await admin_client.post(
