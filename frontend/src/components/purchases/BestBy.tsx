@@ -5,6 +5,8 @@ import { formatCalendarDate } from "../../lib/format";
 import { Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { Alert, Button, Field } from "../ui";
 
+const placePhrase = { room: "at room temperature", fridge: "in the fridge", freezer: "in the freezer" } as const;
+
 const sourceLabel = { inferred: "inferred", printed: "printed", person: "your date" } as const;
 
 /** "Jun 4, 2026", or for a line in the freezer "Frozen: best quality by Jun 4, 2026" (2Q). */
@@ -41,7 +43,7 @@ export function BestBy({ purchaseId, line, editable = true, inReview = false }: 
           {line.best_by_source ? <span className={`ml-1 ${hintClass}`}>· {sourceLabel[line.best_by_source]}</span> : null}
         </span>
       ) : (
-        <span className={hintClass}>{line.best_by_source === "person" ? "No date (cleared)" : "No date"}</span>
+        <span className={hintClass}>{line.best_by_source === "person" ? "No date (cleared)" : line.stored_in ? `No date: no keep time ${placePhrase[line.stored_in]}` : "No date"}</span>
       )}
       {editable ? <BestByForm purchaseId={purchaseId} line={line} /> : null}
     </div>
