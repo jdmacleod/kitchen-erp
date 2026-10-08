@@ -54,7 +54,23 @@ describe("category chips on pages", () => {
     });
     renderApp("/catalog/products");
     const list = await screen.findByRole("table", { name: "Products" });
-    expect(within(list).getByText("pantry")).toHaveClass("cat-pantry");
+    // The row names the group the filter chips use (issue 247).
+    expect(within(list).getByText("Pantry")).toHaveClass("cat-pantry");
+  });
+
+  it("names a product row's group as the chips do, with the ingredient's own word beside it", async () => {
+    const dry: Product = { ...flourProduct, ingredient: { ...flourProduct.ingredient, category: "Dry goods", category_key: "pantry" } };
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /units": () => jsonResponse(200, { items: units }),
+      "GET /products": () => jsonResponse(200, { items: [dry], next_cursor: null }),
+      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+    });
+    renderApp("/catalog/products");
+    const list = await screen.findByRole("table", { name: "Products" });
+    expect(within(list).getByText("Pantry")).toHaveClass("cat-pantry");
+    expect(within(list).getByText("Dry goods")).not.toHaveClass("cat-pantry");
   });
 
   it("shows each purchase line's ingredient chip", async () => {
