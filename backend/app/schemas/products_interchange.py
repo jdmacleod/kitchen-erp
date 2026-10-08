@@ -63,6 +63,10 @@ class HelperAnswer(_Strict):
     format: Literal["kitchen-erp-products/1"]
     request_id: uuid.UUID
     found: bool = True
+    # Why nothing was found, when the helper knows: ``unreachable`` means the page
+    # never loaded (network failures or a store that refuses the helper), which can
+    # pause the vendor's listing refreshes (#264). Older helpers leave it out.
+    reason: Literal["unreachable"] | None = None
     candidates: Annotated[list[AnswerCandidate], Field(max_length=100)] = []
     photos: Annotated[list[AnswerPhoto], Field(max_length=4)] = []
 

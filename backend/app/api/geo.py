@@ -42,10 +42,11 @@ from app.schemas.geo import (
     VendorLocationOut,
     VendorLocationUpdate,
     VendorOut,
+    VendorPriceCheckOut,
     VendorUpdate,
 )
 from app.schemas.vendor_interchange import ImportReport, VendorFile
-from app.services import geo, place_search, vendor_exchange, vendor_import
+from app.services import geo, lookups, place_search, vendor_exchange, vendor_import
 from app.services.opening_hours import is_open_at, to_household, validate_hours
 
 router = APIRouter(tags=["geo"])
@@ -250,6 +251,16 @@ async def deactivate_vendor(vendor_id: uuid.UUID, _: CurrentUser, db: DbSession)
 @vendors.post("/{vendor_id}/activate", response_model=VendorOut)
 async def activate_vendor(vendor_id: uuid.UUID, _: CurrentUser, db: DbSession) -> VendorOut:
     return VendorOut.from_model(await geo.set_vendor_active(db, vendor_id, True))
+
+
+@vendors.post("/{vendor_id}/check-prices", response_model=VendorPriceCheckOut)
+async def check_vendor_prices(
+    vendor_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> VendorPriceCheckOut:
+    """ "Check now": end a refresh pause and ask the helper for its listings' pages (#264)."""
+    queued = await lookups.check_vendor_now(db, vendor_id)
+    vendor = await geo.get_vendor(db, vendor_id)
+    return VendorPriceCheckOut(queued=queued, vendor=VendorOut.from_model(vendor))
 
 
 # --- vendor locations ----------------------------------------------------------

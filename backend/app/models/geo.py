@@ -11,14 +11,17 @@ unchanged and no float ever appears in Python.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     SmallInteger,
     String,
@@ -96,6 +99,7 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
         Index("uq_vendor_name_lower", func.lower("name"), unique=True),
         UniqueConstraint("slug", name="uq_vendor_slug"),
         CheckConstraint("wikidata IS NULL OR wikidata ~ '^Q[0-9]+$'", name="ck_vendor_wikidata"),
+        CheckConstraint("refresh_failures >= 0", name="ck_vendor_refresh_failures"),
     )
 
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -114,6 +118,11 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     # weighed-item label layout, and where receipts print item codes.
     platform: Mapped[str | None] = mapped_column(String(64))
     fetch_policy: Mapped[str] = mapped_column(String(16), nullable=False, default="capture_only")
+    # Listing refreshes pause while its pages keep coming back unreachable (0034).
+    refresh_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    refresh_unreachable_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refresh_paused_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refresh_backoff_days: Mapped[int | None] = mapped_column(SmallInteger)
     rw_layout: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     code_position: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
