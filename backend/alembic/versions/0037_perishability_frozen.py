@@ -7,8 +7,8 @@ frozen vegetable is no longer filed as shelf-stable.
 Downgrade turns ``frozen`` back into ``shelf_stable``, which is what frozen
 ingredients were filed as before, then restores the old constraint.
 
-Revision ID: 0036
-Revises: 0035
+Revision ID: 0037
+Revises: 0036
 Create Date: 2026-10-08
 """
 
@@ -16,8 +16,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "0036"
-down_revision = "0035"
+revision = "0037"
+down_revision = "0036"
 branch_labels = None
 depends_on = None
 
