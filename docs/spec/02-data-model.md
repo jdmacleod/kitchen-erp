@@ -417,6 +417,10 @@ lookup_request(
 lookup_refresh_closed_0035(                   -- refreshes migration 0035 closed, reopened by its downgrade (#264)
   request_id PK FK lookup_request
 )
+
+lookup_clip_closed_0036(                      -- clip page requests migration 0036 closed, reopened by its downgrade (#264)
+  request_id PK FK lookup_request
+)
 ```
 
 The runtime role may update only `payload` on `product_capture`, and a trigger allows only removing `dom_text`; both are listed in `app/core/grants.py`.

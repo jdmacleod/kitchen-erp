@@ -315,6 +315,10 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     proposal = await proposals.get_proposal(db, proposal.id, lock=True)
     if await lookups.queue_page_for_price(db, proposal):
         output["page_lookup"] = True
+    elif proposal.price is None and proposal.status == "pending":
+        blocked = await lookups.page_lookup_blocked(db, proposal)
+        if blocked in ("capture_only", "paused"):
+            output["page_lookup_skipped"] = blocked
     await product_photos.record(db, job, started, output)
     job.status = "done"
     job.last_error = output.get("error")
