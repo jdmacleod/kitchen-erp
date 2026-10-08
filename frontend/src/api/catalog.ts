@@ -18,16 +18,25 @@ import type { ListResponse } from "./types";
 
 export type CanonicalUnit = "g" | "ml" | "each";
 export type BridgeSource = "usda" | "label" | "measured" | "llm" | "manual";
-export type Perishability = "shelf_stable" | "refrigerated" | "fresh";
+export type Perishability = "shelf_stable" | "refrigerated" | "fresh" | "frozen";
 
 export const CANONICAL_UNITS: readonly CanonicalUnit[] = ["g", "ml", "each"];
 export const BRIDGE_SOURCES: readonly BridgeSource[] = ["manual", "measured", "label", "usda", "llm"];
-export const PERISHABILITIES: readonly Perishability[] = ["shelf_stable", "refrigerated", "fresh"];
+export const PERISHABILITIES: readonly Perishability[] = ["shelf_stable", "refrigerated", "fresh", "frozen"];
 
 export const perishabilityLabel: Record<Perishability, string> = {
   shelf_stable: "Shelf stable",
   refrigerated: "Refrigerated",
   fresh: "Fresh",
+  frozen: "Frozen",
+};
+
+/** What each value means, after the USDA storage charts (spec 02). */
+export const perishabilityHint: Record<Perishability, string> = {
+  shelf_stable: "Keeps months or more at room temperature, unopened: canned and dry goods, spices, oils.",
+  refrigerated: "Kept cold, or keeps about a week or longer: eggs, butter, hard cheese, bacon, carrots, onions.",
+  fresh: "Keeps a week or less: raw meat, poultry and fish, milk, greens, berries, bread.",
+  frozen: "Bought and kept frozen.",
 };
 
 export interface Unit {

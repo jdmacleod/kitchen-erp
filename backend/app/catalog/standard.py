@@ -22,6 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.catalog.categories import CategoryKey
 from app.catalog.names import STANDARD_KEY_RE, normalize_name
+from app.catalog.perishability import Perishability
 
 FORMAT = "kitchen-erp-standard-ingredients/1"
 PATH = Path(__file__).with_name("standard_ingredients.yaml")
@@ -48,6 +49,7 @@ class StandardEntry(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     proper_noun: bool = False
     category: CategoryKey
+    perishability: Perishability
     unit: Literal["g", "ml", "each"]
     fdc: int | None = Field(default=None, gt=0)
     spellings: tuple[str, ...] = ()

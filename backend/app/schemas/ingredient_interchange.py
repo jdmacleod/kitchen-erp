@@ -18,6 +18,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.catalog.perishability import Perishability
+
 FORMAT = "kitchen-erp-ingredients/1"
 FORMATS = (FORMAT,)
 
@@ -55,7 +57,7 @@ class IngredientEntry(_Strict):
     unit: Literal["g", "ml", "each"]
     density: Density | None = None
     yield_pct: Annotated[Decimal, Field(gt=0, le=1)] = Decimal("1")
-    perishability: Literal["shelf_stable", "refrigerated", "fresh"] = "shelf_stable"
+    perishability: Perishability = "shelf_stable"
     notes: Annotated[str, Field(max_length=4000)] | None = None
     spellings: Annotated[list[Text], Field(max_length=200)] = []
     # USDA FoodData Central ids; the first is the preferred one.

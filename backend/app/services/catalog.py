@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Literal
 
@@ -12,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.catalog import categories, standard
+from app.catalog import categories, perishability, standard
 from app.catalog.attributes import validate_attributes
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import (
@@ -454,8 +455,10 @@ async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient
             density_source=spec.density_source,
             density_confirmed=False,
             yield_pct=spec.yield_pct,
-            perishability=spec.perishability,
             notes=spec.notes,
+        )
+        _start_perishability(
+            ingredient, spec.perishability, perishability.default_for(spec.category), "category"
         )
         db.add(ingredient)
         await db.flush()
@@ -473,13 +476,36 @@ async def new_ingredient(db: AsyncSession, spec: IngredientCreate) -> Ingredient
         category=entry.category,
         canonical_unit=entry.unit,
         yield_pct=spec.yield_pct,
-        perishability=spec.perishability,
         notes=spec.notes,
     )
+    _start_perishability(ingredient, spec.perishability, entry.perishability, "standard")
     db.add(ingredient)
     await db.flush()
     await apply_standard_entry(db, ingredient, entry)
     return ingredient
+
+
+def _start_perishability(
+    ingredient: Ingredient, chosen: str | None, default: str, source: str
+) -> None:
+    """The person's choice, or the default recorded as its source's (1F edit-wins).
+
+    A default carries a ``field_source`` record, so a catch-up may revise it until
+    a person changes the value; a person's choice carries none and is theirs.
+    """
+    if chosen is not None:
+        ingredient.perishability = chosen
+        return
+    ingredient.perishability = default
+    ingredient.field_source = {
+        **(ingredient.field_source or {}),
+        "perishability": {
+            "source": source,
+            "ref": None,
+            "checked_at": datetime.now(UTC).isoformat(),
+            "imported": default,
+        },
+    }
 
 
 async def apply_standard_entry(

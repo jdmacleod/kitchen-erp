@@ -7,6 +7,7 @@ import {
   catalogErrorMessage,
   formatPack,
   isPositiveDecimal,
+  perishabilityHint,
   perishabilityLabel,
   productTitle,
   trimDecimal,
@@ -292,6 +293,7 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
           <SelectField
             id="edit-perishability"
             label="Perishability"
+            hint={perishabilityHint[form.perishability]}
             value={form.perishability}
             onChange={(e) => set("perishability", e.target.value as Perishability)}
           >

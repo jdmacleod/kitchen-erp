@@ -70,7 +70,14 @@ def test_proper_nouns_are_the_only_capitals():
 
 
 def _one(**fields) -> str:
-    body = {"key": "leek", "name": "leek", "category": "produce", "unit": "g", **fields}
+    body = {
+        "key": "leek",
+        "name": "leek",
+        "category": "produce",
+        "perishability": "refrigerated",
+        "unit": "g",
+        **fields,
+    }
     lines = [
         f"  - {k}: {v}" if i == 0 else f"    {k}: {v}" for i, (k, v) in enumerate(body.items())
     ]

@@ -20,6 +20,7 @@ def stale_thresholds() -> dict[str, int]:
         "fresh": s.stale_days_fresh,
         "refrigerated": s.stale_days_refrigerated,
         "shelf_stable": s.stale_days_shelf_stable,
+        "frozen": s.stale_days_frozen,
     }
 
 
@@ -27,6 +28,7 @@ _STALE_SQL = """
     CASE i.perishability
         WHEN 'fresh' THEN CAST(:stale_fresh AS integer)
         WHEN 'refrigerated' THEN CAST(:stale_refrigerated AS integer)
+        WHEN 'frozen' THEN CAST(:stale_frozen AS integer)
         ELSE CAST(:stale_shelf_stable AS integer)
     END
 """
@@ -37,6 +39,7 @@ def _params(**extra: Any) -> dict[str, Any]:
     return {
         "stale_fresh": t["fresh"],
         "stale_refrigerated": t["refrigerated"],
+        "stale_frozen": t["frozen"],
         "stale_shelf_stable": t["shelf_stable"],
         "now": datetime.now(UTC),
         **extra,
