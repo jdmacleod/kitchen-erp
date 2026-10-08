@@ -3057,14 +3057,21 @@
             "title": "Notes"
           },
           "perishability": {
-            "default": "shelf_stable",
-            "enum": [
-              "shelf_stable",
-              "refrigerated",
-              "fresh"
+            "anyOf": [
+              {
+                "enum": [
+                  "shelf_stable",
+                  "refrigerated",
+                  "fresh",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Perishability",
-            "type": "string"
+            "title": "Perishability"
           },
           "standard_key": {
             "anyOf": [
@@ -3374,7 +3381,8 @@
             "enum": [
               "shelf_stable",
               "refrigerated",
-              "fresh"
+              "fresh",
+              "frozen"
             ],
             "title": "Perishability",
             "type": "string"
@@ -3844,7 +3852,8 @@
                 "enum": [
                   "shelf_stable",
                   "refrigerated",
-                  "fresh"
+                  "fresh",
+                  "frozen"
                 ],
                 "type": "string"
               },

@@ -9,6 +9,7 @@ import {
   addMeasure,
   catalogErrorMessage,
   isPositiveDecimal,
+  perishabilityHint,
   perishabilityLabel,
   useCreateIngredient,
   useIngredients,
@@ -206,7 +207,7 @@ const emptyForm = {
   density: "",
   density_source: "measured" as BridgeSource,
   yield_pct: "",
-  perishability: "shelf_stable" as Perishability,
+  perishability: "" as Perishability | "",
   notes: "",
 };
 
@@ -251,7 +252,7 @@ function AddIngredientDrawer({
       input.density_source = form.density_source;
     }
     if (form.yield_pct.trim()) input.yield_pct = form.yield_pct.trim();
-    if (form.perishability !== "shelf_stable") input.perishability = form.perishability;
+    if (form.perishability) input.perishability = form.perishability;
     if (form.notes.trim()) input.notes = form.notes.trim();
 
     let ingredient: Ingredient;
@@ -394,9 +395,11 @@ function AddIngredientDrawer({
             <SelectField
               id="new-ingredient-perishability"
               label="Perishability"
+              hint={form.perishability ? perishabilityHint[form.perishability] : "From the standard list, or else the category."}
               value={form.perishability}
-              onChange={(e) => set("perishability", e.target.value as Perishability)}
+              onChange={(e) => set("perishability", e.target.value as Perishability | "")}
             >
+              <option value="">Automatic</option>
               {PERISHABILITIES.map((p) => (
                 <option key={p} value={p}>
                   {perishabilityLabel[p]}

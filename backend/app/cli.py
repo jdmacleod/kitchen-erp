@@ -503,6 +503,50 @@ def ingredients_recheck() -> None:
     asyncio.run(_run())
 
 
+PLAN_OUT = typer.Option(None, "--plan", help="write proposals to this JSON file", dir_okay=False)
+APPLY_FROM = typer.Option(
+    None, "--apply", help="write the approved values in this JSON file", exists=True, dir_okay=False
+)
+
+
+@ingredients_cli.command("perishability")
+def ingredients_perishability(
+    plan_out: Path | None = PLAN_OUT, apply_from: Path | None = APPLY_FROM
+) -> None:
+    """Catch up perishability: propose values (--plan), then write approved ones (--apply).
+
+    A proposal comes from the ingredient's standard entry, or else its category.
+    Values a person set are never proposed. --apply takes a JSON list of
+    {"id", "perishability"} and writes only those.
+    """
+    import json
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import ingredient_perishability as catchup
+
+    if (plan_out is None) == (apply_from is None):
+        typer.echo("error: give exactly one of --plan or --apply", err=True)
+        raise typer.Exit(code=2)
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            if plan_out is not None:
+                rows = await catchup.plan(db)
+                plan_out.write_text(json.dumps(rows, indent=1) + "\n")
+                moving = sum(1 for r in rows if r["proposed"] != r["current"])
+                typer.echo(f"{len(rows)} proposal(s), {moving} would change: {plan_out}")
+            else:
+                decisions = json.loads(apply_from.read_text())  # type: ignore[union-attr]
+                counts = await catchup.apply(db, decisions)
+                typer.echo(
+                    f"changed {counts['changed']}, unchanged {counts['unchanged']}, "
+                    f"missing {counts['missing']}"
+                )
+        await dispose_engine()
+
+    asyncio.run(_run())
+
+
 @ingredients_cli.command("usda-candidates")
 def ingredients_usda_candidates(
     query: str = typer.Argument(..., help="An FDC id (lists its raw or dry siblings) or text."),

@@ -58,6 +58,30 @@ describe("ingredients", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("leaves perishability to the standard list or category unless one is picked", async () => {
+    const created: Ingredient = { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b0a", name: "peas", category: null, measures: [] };
+    const calls = mockApi({ ...baseRoutes(() => []), "POST /ingredients": () => jsonResponse(201, created) });
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients");
+
+    await openAddDrawer(user);
+    await user.type(screen.getByLabelText("Name"), "peas");
+    await user.click(screen.getByText("More: density, yield, perishability, notes"));
+    const select = screen.getByLabelText("Perishability");
+    expect(select).toHaveValue("");
+    expect(screen.getByText("From the standard list, or else the category.")).toBeInTheDocument();
+    await user.selectOptions(select, "frozen");
+    expect(screen.getByText("Bought and kept frozen.")).toBeInTheDocument();
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+
+    const post = await waitFor(() => {
+      const found = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
+      expect(found).toBeDefined();
+      return found;
+    });
+    expect(post?.body).toEqual({ name: "peas", canonical_unit: "g", perishability: "frozen" });
+  });
+
   it("fills the density from a USDA suggestion with source usda and queues a measure", async () => {
     const created: Ingredient = { ...flour, measures: [] };
     const calls = mockApi({
