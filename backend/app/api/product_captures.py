@@ -141,4 +141,5 @@ async def preview_address(payload: AddressIn, _: CurrentUser, db: DbSession) -> 
         canonical_url=found.canonical_url,
         title=found.title,
         item_number=found.item_number,
+        known=found.known,  # type: ignore[arg-type]
     )

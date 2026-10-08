@@ -106,6 +106,14 @@ class VendorRef(ApiModel):
     name: str
 
 
+class KnownProduct(ApiModel):
+    """The catalog product an address already names (2P): "Already in your catalog"."""
+
+    product_id: uuid.UUID
+    name: str
+    reason: Literal["identifier", "listing"]
+
+
 class AddressPreviewOut(ApiModel):
     """What an address alone says; nothing is fetched (criterion 88)."""
 
@@ -113,3 +121,4 @@ class AddressPreviewOut(ApiModel):
     canonical_url: str
     title: str | None
     item_number: str | None
+    known: KnownProduct | None = None

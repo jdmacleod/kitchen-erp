@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, api, errorMessage, isApiError, newIdempotencyKey } from "../../api/client";
 import { useVendors } from "../../api/geo";
 import { useLogin, useMe } from "../../api/queries";
-import type { Proposal } from "../../api/proposals";
+import type { KnownProduct, Proposal } from "../../api/proposals";
 import { Alert, Button, Field, focusRing } from "../../components/ui";
 import { CLIP_VERSION } from "../../lib/bookmarklet";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -58,6 +58,7 @@ interface AddressPreview {
   canonical_url: string;
   title: string | null;
   item_number: string | null;
+  known?: KnownProduct | null;
 }
 
 type State =
@@ -262,6 +263,7 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
           </label>
         </div>
       ) : null}
+      {preview?.known ? <KnownNotice known={preview.known} /> : null}
       {error ? <Alert tone="error">{clipErrorMessage(error)}</Alert> : null}
       <div className="flex gap-2">
         <Button disabled={busy || preview === null || needsChoice} onClick={() => void save()}>
@@ -302,6 +304,19 @@ export function clipErrorMessage(e: unknown): string {
     default:
       return e.status >= 500 ? `Couldn't save this page: something went wrong in Kitchen ERP. ${NEXT}` : `Couldn't save this page. ${NEXT}`;
   }
+}
+
+/** The page is already a product (2P). Saving still works: it opens an update to it. */
+function KnownNotice({ known }: { known: KnownProduct }) {
+  return (
+    <Alert tone="info">
+      Already in your catalog:{" "}
+      <a href={`/catalog/products/${known.product_id}`} target="_blank" rel="noreferrer" className={`rounded font-medium underline ${focusRing}`}>
+        {known.name}
+      </a>
+      . Saving opens an update to it.
+    </Alert>
+  );
 }
 
 function Saved({ proposal, already }: { proposal: Proposal; already: boolean }) {

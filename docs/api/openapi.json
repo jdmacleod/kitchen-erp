@@ -187,6 +187,16 @@
             ],
             "title": "Item Number"
           },
+          "known": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnownProduct"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "anyOf": [
               {
@@ -3918,6 +3928,36 @@
           "effective_opening_hours"
         ],
         "title": "IsOpenOut",
+        "type": "object"
+      },
+      "KnownProduct": {
+        "additionalProperties": false,
+        "description": "The catalog product an address already names (2P): \"Already in your catalog\".",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "identifier",
+              "listing"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "reason"
+        ],
+        "title": "KnownProduct",
         "type": "object"
       },
       "LastPaid": {

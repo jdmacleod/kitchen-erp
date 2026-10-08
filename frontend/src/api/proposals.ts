@@ -79,6 +79,13 @@ export interface ReviewCandidate {
   only_there: string[];
 }
 
+/** The catalog product an address already names (2P): "Already in your catalog". */
+export interface KnownProduct {
+  product_id: string;
+  name: string;
+  reason: "identifier" | "listing";
+}
+
 export interface ProposalMatch {
   strong?: { product_id: string; reason: "identifier" | "listing" | "lookup" } | null;
   candidates?: MatchCandidate[];

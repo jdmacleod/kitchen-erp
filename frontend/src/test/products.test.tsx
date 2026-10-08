@@ -223,4 +223,23 @@ describe("a pasted page with the lookup helper (2M)", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/products")).toBe(true));
     expect(calls.some((c) => c.path.endsWith("/look-up"))).toBe(false);
   });
+
+  it("says when the address is already in the catalog (2P)", async () => {
+    const knownId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e09";
+    mockApi({
+      ...baseRoutes(() => []),
+      "GET /products-helper": () => jsonResponse(200, { configured: false }),
+      "POST /product-captures/address": () =>
+        jsonResponse(200, { vendor: null, canonical_url: PAGE, title: "Rolled oats 1kg", item_number: "4417", known: { product_id: knownId, name: "Rolled oats", reason: "identifier" } }),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.click(within(form).getByLabelText("Web address (optional)"));
+    await user.paste(PAGE);
+    expect(await within(form).findByText(/Already in your catalog:/)).toBeInTheDocument();
+    const link = within(form).getByRole("link", { name: "Rolled oats" });
+    expect(link).toHaveAttribute("href", `/catalog/products/${knownId}`);
+    expect(link).toHaveAttribute("target", "_blank");
+  });
 });

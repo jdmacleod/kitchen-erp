@@ -274,10 +274,10 @@ async def _identifier_owner(
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def match_catalog(
+async def strong_match(
     db: AsyncSession, fields: dict[str, Any], listing: dict[str, Any] | None
-) -> dict[str, Any]:
-    """A strong match by identifier or known listing, else up to eight fuzzy candidates."""
+) -> dict[str, str] | None:
+    """The product a GTIN, a known listing or the store's item number names, if any."""
     strong = None
     gtin = merging.value(fields, "gtin")
     if gtin and (owner := await _identifier_owner(db, "gtin", gtin)):
@@ -300,6 +300,14 @@ async def match_catalog(
             )
         ):
             strong = {"product_id": str(owner), "reason": "identifier"}
+    return strong
+
+
+async def match_catalog(
+    db: AsyncSession, fields: dict[str, Any], listing: dict[str, Any] | None
+) -> dict[str, Any]:
+    """A strong match by identifier or known listing, else up to eight fuzzy candidates."""
+    strong = await strong_match(db, fields, listing)
     # The title alone, and with the brand: a household's product often has no brand.
     title, brand = merging.value(fields, "title"), merging.value(fields, "brand")
     queries = [str(title)] if title else []

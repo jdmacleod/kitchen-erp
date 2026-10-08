@@ -14,7 +14,7 @@ import {
   type ProductCreateInput,
   type ProductListItem,
 } from "../../api/catalog";
-import { useProductsHelper } from "../../api/proposals";
+import { useProductsHelper, type KnownProduct } from "../../api/proposals";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
@@ -378,7 +378,7 @@ function AddProductForm({
   const [ingredientText, setIngredientText] = useState("");
   // A web address to start from (2M, PD20); a pasted one counts as typed input.
   const [address, setAddress] = useState("");
-  const [fromAddress, setFromAddress] = useState<{ name: string | null; item: string | null } | null>(null);
+  const [fromAddress, setFromAddress] = useState<{ name: string | null; item: string | null; known: KnownProduct | null } | null>(null);
   // Typed input, not a preselected ingredient, is what closing must ask about.
   const dirty = JSON.stringify(values) !== JSON.stringify(initial) || ingredientText.trim() !== "" || address.trim() !== "";
 
@@ -386,8 +386,11 @@ function AddProductForm({
     const url = raw.trim();
     if (!/^https?:\/\//i.test(url)) return;
     try {
-      const found = await api<{ title: string | null; item_number: string | null }>("/product-captures/address", { method: "POST", body: { page_url: url } });
-      setFromAddress({ name: found.title, item: found.item_number });
+      const found = await api<{ title: string | null; item_number: string | null; known?: KnownProduct | null }>("/product-captures/address", {
+        method: "POST",
+        body: { page_url: url },
+      });
+      setFromAddress({ name: found.title, item: found.item_number, known: found.known ?? null });
       if (found.title && !values.name.trim()) setValues((v) => ({ ...v, name: found.title ?? "" }));
     } catch {
       setFromAddress(null);
@@ -464,6 +467,16 @@ function AddProductForm({
               onBlur={(e) => void readAddress(e.target.value)}
               onPaste={(e) => void readAddress(e.clipboardData.getData("text"))}
             />
+            {address.trim() && fromAddress?.known ? (
+              <Alert tone="info">
+                Already in your catalog:{" "}
+                {/* A new tab, so the drawer's typed input isn't lost. */}
+                <a href={`/catalog/products/${fromAddress.known.product_id}`} target="_blank" rel="noreferrer" className={`rounded font-medium underline ${focusRing}`}>
+                  {fromAddress.known.name}
+                </a>
+                .
+              </Alert>
+            ) : null}
             {address.trim() ? (
               <p className={`text-xs ${muted}`}>
                 {fromAddress?.item ? `Item number ${fromAddress.item} · From the address. ` : ""}
