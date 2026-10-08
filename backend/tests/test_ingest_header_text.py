@@ -92,3 +92,71 @@ def test_a_model_reading_that_agrees_with_the_print_is_kept():
         model_at,
         [],
     )
+
+
+# --- A card slip's total misread, under a BALANCE the tender repeats ----------
+
+_SLIP_MISREAD = "\n".join(
+    [
+        "FENWICK OATS              6.40",
+        "CINDER PLUMS             20.45",
+        "**** BALANCE             26.85",
+        "Visa Credit",
+        "TOTAI AMOUNT: $28.85",  # the slip's own total, one digit misread
+        "Visa                     26.85",
+        "CHANGE                    0.00",
+    ]
+)
+
+
+def test_a_balance_the_tender_repeats_beats_a_total_printed_only_on_the_slip():
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("28.85")), _SLIP_MISREAD)
+    assert fixed.total == Decimal("26.85") and flags == ["total_from_balance"]
+
+
+def test_a_balance_printed_once_does_not_replace_a_slip_total():
+    text = _SLIP_MISREAD.replace("Visa                     26.85", "Visa")
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("28.85")), text)
+    assert fixed.total == Decimal("28.85") and flags == []
+
+
+def test_a_model_total_printed_outside_the_slip_stands_over_a_bare_balance():
+    text = "FENWICK OATS 6.10\nBALANCE 3.00\nVisa 3.00"
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("6.10")), text)
+    assert fixed.total == Decimal("6.10") and flags == []
+
+
+# --- One date printed twice, its year misread differently --------------------
+
+_UPLOADED = datetime(2025, 4, 2, 18, 0, tzinfo=UTC)
+
+
+def test_years_misread_on_both_printed_dates_come_from_the_upload():
+    text = "03/22/19 11:05am 4 7 120\nFENWICK OATS 2.00\n03/22/71 11:05am"
+    at, flags = header_stage.datetime_from_text(None, None, text, "UTC", reference=_UPLOADED)
+    assert at == datetime(2025, 3, 22, 11, 5, tzinfo=UTC)
+    assert flags == ["year_from_upload", "time_from_text", "date_from_text"]
+
+
+def test_a_month_and_day_after_the_upload_date_fall_in_the_year_before():
+    text = "11/30/19 9:10 PM\n11/30/61 9:10 PM"
+    uploaded = datetime(2025, 1, 15, 12, 0, tzinfo=UTC)
+    at, flags = header_stage.datetime_from_text(None, None, text, "UTC", reference=uploaded)
+    assert at == datetime(2024, 11, 30, 21, 10, tzinfo=UTC) and "year_from_upload" in flags
+
+
+def test_the_one_plausible_year_is_taken():
+    text = "03/22/25 11:05am\n03/22/75 11:05am"
+    at, flags = header_stage.datetime_from_text(None, None, text, "UTC", reference=_UPLOADED)
+    assert at == datetime(2025, 3, 22, 11, 5, tzinfo=UTC) and "year_from_upload" in flags
+
+
+def test_dates_that_differ_in_more_than_the_year_stay_with_the_model():
+    for text in ("03/22/19 11:05am\n03/23/71 11:05am", "03/22/19 11:05am\n03/22/71 4:30pm"):
+        assert header_stage.datetime_from_text(None, None, text, "UTC", reference=_UPLOADED) == (
+            None,
+            [],
+        )
+    # Without a reference nothing changes.
+    text = "03/22/19 11:05am\n03/22/71 11:05am"
+    assert header_stage.datetime_from_text(None, None, text, "UTC") == (None, [])

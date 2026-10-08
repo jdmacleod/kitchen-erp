@@ -161,18 +161,6 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Phase 3 approval
 
-### Ingredient vocabulary export and import
-
-**What:** `kerp export ingredients` and `kerp import ingredients [--dry-run]` reading and writing a versioned `kitchen-erp-ingredients/1` file, with the vendor file loader's rules and the 1F edit-wins merge, lifted into one module shared with vendors.
-
-**Why:** Moving the household's vocabulary between deployments, or sharing a standard list, needs a plain file.
-
-**Context:** CEO ruling VC1 (2026-09-30) made the database the source with this file as its interchange. The eng review the same day deferred the file itself (D1): nothing reads it yet, backups are full pg_dumps (`kerp backup`), and building it means refactoring `vendor_import.py`'s loader and `geo.py`'s `write_unless_edited` into a shared module. Start from `app/services/vendor_exchange.py` and `vendor_import.py`.
-
-**Effort:** M (human) / S (CC)
-**Priority:** P3
-**Depends on:** Sub-phase 1G; a reader for the file
-
 ### Stock photos for produce and counter items, by ingredient
 
 **What:** For a product with no photo whose ingredient has a freely licensed stock photo (for example from Wikimedia Commons, CC-licensed), show that photo marked as a stock photo, with its attribution, until the household adds its own.

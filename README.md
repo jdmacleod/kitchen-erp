@@ -232,6 +232,22 @@ links reach outside the deployment, and only when switched on.
   updated or left alone, and what needs you. Import never overwrites a field
   you edited, never deletes anything, and never creates a kitchen.
 
+- **Ingredient files.** The ingredient vocabulary exports as a
+  `kitchen-erp-ingredients/1` file: names, categories, units, densities,
+  spellings, USDA references and measures, with nothing from purchases, prices
+  or vendors. Use it to move the vocabulary to another deployment or to share a
+  list:
+
+  ```bash
+  docker compose exec api kerp export ingredients --out /data/exports/ingredients.json
+  docker compose exec api kerp import ingredients --from /data/exports/ingredients.json --dry-run
+  ```
+
+  Import matches by key, name or spelling. It adds what is missing, never
+  overwrites a field you edited, and never deletes, renames or merges an
+  ingredient. Run it without `--dry-run` once the report looks right. See
+  spec 03 §1G.
+
 - **Suggestions from an enrichment tool.** A tool that fills in missing store
   facts works through the API with a token made under Settings → API tokens as
   "Read and suggest vendor facts". That token can read the public vendor file

@@ -63,14 +63,15 @@ ingredient(
                                       -- otherwise generated, and never equal to a standard key
   reconcile_state CHECK IN (unreviewed, linked, skipped, not_applicable) DEFAULT not_applicable,  -- indexed
   usda_reviewed_fdc_id INT?,          -- the FDC food whose suggestions a person last reviewed
-  merged_into FK ingredient?          -- set on the loser of a merge, which is also deactivated
+  merged_into FK ingredient?,         -- set on the loser of a merge, which is also deactivated
+  field_source JSONB DEFAULT '{}'     -- {field: {source, ref, checked_at, imported}}: what an ingredient file last wrote (#241, 0033)
 )
 
 ingredient_alias(
   id, name_norm TEXT UNIQUE,          -- other spellings only; the canonical name is never a row here
   ingredient_id FK,
   kind CHECK IN (synonym, inflection, legacy),
-  source TEXT,                        -- standard, generated, rename, merge, manual; Phase 3 adds recipe
+  source TEXT,                        -- standard, generated, rename, merge, manual, import (#241); Phase 3 adds recipe
   confirmed_count INT DEFAULT 0, last_seen_at?
 )                                     -- trigram GIN index on name_norm
 

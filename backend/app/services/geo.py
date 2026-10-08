@@ -26,7 +26,7 @@ from sqlalchemy.orm import contains_eager, selectinload
 from app.core.errors import ApiError
 from app.models.geo import HomeBase, Place, Vendor, VendorLocation, point_expr
 from app.models.purchases import Purchase
-from app.services import osm
+from app.services import interchange, osm
 from app.services import phone as phones
 from app.services.opening_hours import OpeningHoursError, is_open_at, normalize_hours, to_household
 
@@ -121,18 +121,7 @@ def _last_written(obj: Vendor | VendorLocation, name: str) -> Any:
     return getattr(obj, snapshot) if snapshot else None
 
 
-def edit_outcome(current: Any, last_written: Any, value: Any) -> str:
-    """What writing ``value`` over ``current`` would do.
-
-    ``unchanged`` when they are equal; ``kept`` when a person changed the field
-    since a source last wrote it (it no longer equals ``last_written``), so their
-    edit wins; otherwise ``filled`` (it was empty) or ``updated``.
-    """
-    if value == current:
-        return "unchanged"
-    if current != last_written:
-        return "kept"
-    return "filled" if current is None else "updated"
+edit_outcome = interchange.edit_outcome
 
 
 def write_unless_edited(
@@ -147,22 +136,21 @@ def write_unless_edited(
 ) -> str:
     """Write ``value`` to ``obj.<name>`` unless a person has edited the field.
 
-    The one rule for every writer that is not a person (OSM link and refresh, and
-    later import and accepted suggestions). ``field_source[name].imported``
-    always advances to what the source now says, like the ``osm_*`` snapshots, so
-    a field is a person's exactly while it differs from its source. With
-    ``only_if_empty`` a field that holds any value is left entirely alone.
-    Returns the ``edit_outcome``.
+    The one rule for every writer that is not a person (OSM link and refresh,
+    import and accepted suggestions), shared with ingredient files through
+    ``services.interchange``. A location adopted before ``field_source`` existed
+    falls back to its ``osm_*`` snapshot. Returns the ``edit_outcome``.
     """
-    current = getattr(obj, name)
-    if only_if_empty and current is not None:
-        return "unchanged" if value == current else "kept"
-    outcome = edit_outcome(current, _last_written(obj, name), value)
-    if outcome in ("filled", "updated"):
-        setattr(obj, name, value)
-    record = {"source": source, "ref": ref, "checked_at": now.isoformat(), "imported": value}
-    obj.field_source = {**(obj.field_source or {}), name: record}
-    return outcome
+    return interchange.write_unless_edited(
+        obj,
+        name,
+        value,
+        source=source,
+        ref=ref,
+        now=now,
+        only_if_empty=only_if_empty,
+        last_written=_last_written,
+    )
 
 
 def sources_of(obj: Vendor | VendorLocation, names: tuple[str, ...]) -> dict[str, dict[str, Any]]:

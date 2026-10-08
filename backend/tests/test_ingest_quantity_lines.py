@@ -265,3 +265,66 @@ def test_an_ocr_weight_row_joins_an_item_whose_tax_letter_was_read_as_a_digit():
         Decimal("1.79"),
     )
     assert not lines_mod.reconcile(kept, Decimal("5.28"), None)["mismatch"]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        # A phone scan of a thermal receipt garbles "lb" past "Ib": "ll", "|i", "lt".
+        ("1.24 ll @ 2.50 /lt", ("1.24", "lb", "2.50", None)),
+        ("0.86 |i @ 3.25 /lb", ("0.86", "lb", "3.25", None)),
+        ("2.10 1l @ 1.80 /lk   3.78", ("2.10", "lb", "1.80", "3.78")),
+    ],
+)
+def test_a_weight_row_whose_unit_ocr_garbled_is_read_as_pounds(raw, expected):
+    printed = lines_mod.quantity_only(raw)
+    assert printed is not None and printed.unit_misread
+    assert (
+        str(printed.qty),
+        printed.unit,
+        str(printed.rate),
+        None if printed.amount is None else str(printed.amount),
+    ) == expected
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "3 ll @ 2.00",  # a whole number is never a garbled weight
+        "SQUASH 1.24 ll @ 2.50",  # a name: the row is the item
+        "1.24 ll @ 2.50 /lt  3.10  3.11",  # two amounts
+        "1.24 kq @ 2.50",  # not an "l" shape
+    ],
+)
+def test_a_garbled_unit_needs_the_whole_weight_row_shape(raw):
+    assert lines_mod.quantity_only(raw) is None
+
+
+def test_weight_rows_whose_unit_ocr_garbled_join_their_items_by_the_arithmetic():
+    lines = _read(
+        ("1.24 ll @ 2.50 /lt", "item", "2.50"),
+        ("WT BUTTERNUT SQUASH 3.10 F", "item", "3.10"),
+        ("OAT MILK 3.49 F", "item", "3.49"),
+        ("0.86 |i @ 3.25 /lb", "item", "3.25"),
+        ("WT RED PEARS 2.80 F", "item", "2.80"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["1.24 ll @ 2.50 /lt", "0.86 |i @ 3.25 /lb"]
+    assert _shape(kept) == [
+        (1, "WT BUTTERNUT SQUASH 3.10 F", "item", "1.24", "lb", "2.50", "3.10", None,
+         ["qty_from_line_above", "unit_misread"]),
+        (2, "OAT MILK 3.49 F", "item", "1", "each", None, "3.49", None, []),
+        (3, "WT RED PEARS 2.80 F", "item", "0.86", "lb", "3.25", "2.80", None,
+         ["qty_from_line_above", "unit_misread"]),
+    ]  # fmt: skip
+    assert not lines_mod.reconcile(kept, Decimal("9.39"), None)["mismatch"]
+
+
+def test_a_garbled_weight_row_whose_arithmetic_fits_no_item_is_not_joined():
+    lines = _read(
+        ("1.24 ll @ 2.50 /lt", "item", "2.50"),
+        ("WT BUTTERNUT SQUASH 4.10 F", "item", "4.10"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == []
+    assert "quantity_line" in kept[0].flags and kept[1].qty == Decimal("1")

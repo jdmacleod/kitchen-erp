@@ -166,6 +166,8 @@ def unjoined_quantity_rows(lines: list[ParsedLine]) -> None:
         line.parent_seq = None
         line.qty, line.unit, line.unit_price = printed.qty, printed.unit, printed.rate
         line.flags.append("no_amount_printed")
+        if printed.unit_misread:
+            line.flags.append("unit_misread")
     for line in lines:
         # Nothing hangs off a row that is not a purchase of its own.
         parent = next((p for p in lines if p.seq == line.parent_seq), None)
