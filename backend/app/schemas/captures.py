@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, model_validator
 
@@ -55,6 +56,22 @@ class CapturedImage(ApiModel):
     data_base64: str
 
 
+# Half of a surrogate pair. A storefront that cuts its text short can split an
+# emoji, and the browser sends the half as "\\ud83d"; it cannot be stored as UTF-8.
+_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
+def _whole(value: Any) -> Any:
+    """Every string in the page, with a lone surrogate replaced by U+FFFD."""
+    if isinstance(value, str):
+        return _LONE_SURROGATE.sub("\ufffd", value)
+    if isinstance(value, list):
+        return [_whole(v) for v in value]
+    if isinstance(value, dict):
+        return {_whole(k): _whole(v) for k, v in value.items()}
+    return value
+
+
 class PageCaptureIn(ApiModel):
     """What the bookmarklet collects, or just a pasted address (2M).
 
@@ -73,6 +90,11 @@ class PageCaptureIn(ApiModel):
     images: list[CapturedImage] = Field(default=[], max_length=4)
     vendor_id: uuid.UUID | None = None
     without_store: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_half_characters(cls, data: Any) -> Any:
+        return _whole(data)
 
 
 class AddressIn(ApiModel):
