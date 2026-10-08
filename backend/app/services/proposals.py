@@ -592,7 +592,18 @@ async def _apply_fields(
             product.piece_name = pieces.get("name")
             sources["pieces"] = _source_note(fields, "pieces", now)
         elif fields["pieces"]["source"] == "person":
-            raise ApiError(422, "pieces_need_size", "Pieces go with a pack's weight or volume.")
+            fix = (
+                f"This pack is counted in {product.pack_unit}, so it already says how many: "
+                "leave Pieces empty, or give the pack's weight instead."
+                if product.pack_unit
+                else "Give the pack's weight or volume first, or leave Pieces empty."
+            )
+            raise ApiError(
+                422,
+                "pieces_need_size",
+                "Pieces only go with a pack sold by weight or volume, like 12 oz in 4 links. "
+                + fix,
+            )
     elif product.pack_count and not _holds_pieces(product.pack_unit):
         # A new pack counted in pieces says how many itself.
         product.pack_count, product.piece_name = None, None
