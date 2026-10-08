@@ -107,7 +107,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
     if (!cheapestOf) return out;
     for (const item of cheapest.data?.items ?? []) {
       // Every price carries its age, even on a pin.
-      out.set(item.location_id, { label: `${formatUnitPrice(item.norm_unit_price, item.norm_unit)} · ${formatAge(null, item.observed_at)}`, stale: item.stale });
+      out.set(item.location_id, { label: `${formatUnitPrice(item.display_unit_price, item.display_unit)} · ${formatAge(null, item.observed_at)}`, stale: item.stale });
     }
     return out;
   }, [cheapestOf, cheapest.data]);
@@ -256,7 +256,7 @@ export function MapPage({ embedded = false }: { embedded?: boolean }) {
         onIngredient={setCheapestOf}
         filters={cheapestFilters}
         onFilters={setCheapestFilters}
-        unit={cheapest.data?.unit ?? cheapestOf?.canonical_unit ?? null}
+        unit={cheapest.data?.display_unit ?? null}
         count={cheapest.data?.items.length ?? 0}
         loading={cheapest.isFetching}
         error={cheapest.error}
@@ -425,7 +425,7 @@ interface CheapestControlProps {
   error: unknown;
 }
 
-/** Choose an ingredient and each pin is labelled with its best price per canonical unit. */
+/** Choose an ingredient and each pin is labelled with its best price per lb, oz or fl oz (issue 245). */
 function CheapestControl({ ingredient, onIngredient, filters, onFilters, unit, count, loading, error }: CheapestControlProps) {
   return (
     <form aria-label="Where is this cheapest" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900" onSubmit={(e) => e.preventDefault()}>
@@ -661,7 +661,7 @@ function LocationPrices({ id }: { id: string }) {
                   </Link>
                   <span className="text-xs whitespace-nowrap tabular-nums">
                     {formatMoney(r.price)} / {stripZeros(r.qty)} {r.unit} <PromoBadge promo={r.is_promo} />
-                    {r.norm_unit_price ? <span className="text-neutral-600 dark:text-neutral-400"> · {formatUnitPrice(r.norm_unit_price, r.norm_unit)}</span> : null}
+                    {r.norm_unit_price ? <span className="text-neutral-600 dark:text-neutral-400"> · {formatUnitPrice(r.display_unit_price, r.display_unit)}</span> : null}
                     {" · "}
                     <PriceAge observedAt={r.observed_at} />
                   </span>

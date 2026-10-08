@@ -7,6 +7,7 @@ import { useProductPrices } from "../../api/pricebook";
 import { purchaseErrorMessage, useCreateObservation, useObservations, type Observation, type ObservationCreateInput } from "../../api/purchases";
 import { Combobox } from "../../components/catalog/Combobox";
 import { HitRow } from "../../components/catalog/ProductTypeahead";
+import { formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
 import { Drawer } from "../../components/Drawer";
@@ -649,7 +650,7 @@ export function ObservationResult({ observation }: { observation: Observation })
       <Alert tone="success">
         {recorded}{" "}
         <span data-testid="norm-price" className="font-medium">
-          {formatMoney(norm.norm_unit_price, 2, 6)} per {norm.norm_unit}
+          {formatUnitPrice(norm.display_unit_price, norm.display_unit)}
         </span>
         {bridge}.
       </Alert>

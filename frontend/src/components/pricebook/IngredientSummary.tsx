@@ -29,10 +29,10 @@ export function bestRecent(points: IngredientPricePoint[]): IngredientPricePoint
  * The hub's summary strip. Built only from the 90-day history, so the price
  * table's filters (quality, stale, sale) never change what it says.
  */
-export function IngredientSummary({ ingredient, history }: { ingredient: Ingredient; history: UseQueryResult<IngredientPriceHistory> }) {
+export function IngredientSummary({ history }: { ingredient: Ingredient; history: UseQueryResult<IngredientPriceHistory> }) {
   const points = history.data?.points ?? [];
   const best = bestRecent(points);
-  const unit = points[0]?.norm_unit ?? ingredient.canonical_unit;
+  const unit = history.data?.display_unit ?? null;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -47,7 +47,7 @@ export function IngredientSummary({ ingredient, history }: { ingredient: Ingredi
           </p>
         ) : best ? (
           <>
-            <p className="font-display mt-1 text-2xl tabular-nums">{formatUnitPrice(best.norm_unit_price, best.norm_unit)}</p>
+            <p className="font-display mt-1 text-2xl tabular-nums">{formatUnitPrice(best.display_unit_price, best.display_unit)}</p>
             <p className="text-sm text-green-900 dark:text-green-200">
               {best.product_name} · {best.vendor_name} · {formatDate(best.observed_at)}
             </p>
@@ -72,9 +72,9 @@ export function IngredientSummary({ ingredient, history }: { ingredient: Ingredi
         ) : (
           <>
             <p className="mt-1 text-sm tabular-nums" data-testid="price-range">
-              {history.data.low === history.data.high
-                ? formatUnitPrice(history.data.low, unit)
-                : `${formatUnitPrice(history.data.low, unit)} – ${formatUnitPrice(history.data.high, unit)}`}
+              {history.data.display_low === history.data.display_high
+                ? formatUnitPrice(history.data.display_low, unit)
+                : `${formatUnitPrice(history.data.display_low, unit)} – ${formatUnitPrice(history.data.display_high, unit)}`}
             </p>
             {/* A line needs two points; one price is said by the range alone (D22). */}
             {points.length >= 2 ? (

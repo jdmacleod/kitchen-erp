@@ -3,6 +3,7 @@ import type { PricePoint } from "../../api/pricebook";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { SERIES_COLOURS } from "../../lib/palette";
+import { formatUnitPrice } from "./PriceAge";
 
 // Six strokes, each paired with its own dash pattern and marker shape, so
 // series are told apart without colour.
@@ -26,19 +27,19 @@ interface PriceHistoryChartProps {
 }
 
 /**
- * Price per canonical unit over time, one line per series (a chain-scoped
+ * Price per unit (per lb, oz or fl oz, as the server shows it) over time, one line per series (a chain-scoped
  * vendor or a single location), drawn with inline SVG. Promotional points get
  * a diamond marker and the word "sale" next to it, never colour alone.
  * Decimal strings become numbers here only to place marks on the canvas.
  */
 export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
   const chart = useMemo(() => {
-    const usable = points.filter((p) => p.norm_status === "ok" && p.norm_unit_price !== null);
+    const usable = points.filter((p) => p.norm_status === "ok" && p.display_unit_price !== null);
     const skipped = points.length - usable.length;
     if (usable.length === 0) return { series: [] as Series[], skipped, ticksY: [] as number[], ticksX: [] as number[], scale: null };
 
     const times = usable.map((p) => new Date(p.observed_at).getTime());
-    const prices = usable.map((p) => Number(p.norm_unit_price));
+    const prices = usable.map((p) => Number(p.display_unit_price));
     let tMin = Math.min(...times);
     let tMax = Math.max(...times);
     if (tMin === tMax) {
@@ -57,7 +58,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
         s = { key: p.series, name: p.price_scope === "chain" ? p.vendor_name : p.location_name, points: [] };
         bySeries.set(p.series, s);
       }
-      s.points.push({ ...p, x: sx(new Date(p.observed_at).getTime()), y: sy(Number(p.norm_unit_price)) });
+      s.points.push({ ...p, x: sx(new Date(p.observed_at).getTime()), y: sy(Number(p.display_unit_price)) });
     }
     for (const s of bySeries.values()) s.points.sort((a, b) => a.x - b.x);
 
@@ -116,7 +117,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
               {s.points.map((p) => (
                 <g key={p.observation_id} data-testid={p.is_promo ? "promo-point" : "price-point"}>
                   <title>
-                    {`${s.name}: ${formatMoney(p.norm_unit_price, 2, 6)} per ${p.norm_unit} on ${formatDate(p.observed_at)}${p.is_promo ? " (sale)" : ""}`}
+                    {`${s.name}: ${formatUnitPrice(p.display_unit_price, p.display_unit)} on ${formatDate(p.observed_at)}${p.is_promo ? " (sale)" : ""}`}
                   </title>
                   {p.is_promo ? (
                     <>

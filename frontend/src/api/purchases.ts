@@ -35,6 +35,9 @@ export interface PriceNorm {
   canonical_qty: string | null;
   norm_unit: string | null;
   norm_unit_price: string | null;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   bridge_kind: string | null;
   bridge_source: string | null;
   bridge_confirmed: boolean | null;

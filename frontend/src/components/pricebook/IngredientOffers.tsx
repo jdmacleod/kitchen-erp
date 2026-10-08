@@ -100,7 +100,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
       </td>
       <td className="py-2 pr-3 text-right align-top tabular-nums">
         {comparable ? (
-          <span className="font-medium">{formatUnitPrice(o.norm_unit_price, o.norm_unit)}</span>
+          <span className="font-medium">{formatUnitPrice(o.display_unit_price, o.display_unit)}</span>
         ) : (
           <>
             <span className="block">

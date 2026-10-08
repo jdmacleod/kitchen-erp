@@ -120,7 +120,7 @@ function CellView({ cell }: { cell: CompareCell }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className={`tabular-nums ${cell.cheapest ? "font-bold" : ""}`}>
-        {formatUnitPrice(cell.norm_unit_price, cell.norm_unit)} {cell.cheapest ? <Badge tone="good">cheapest</Badge> : null}
+        {formatUnitPrice(cell.display_unit_price, cell.display_unit)} {cell.cheapest ? <Badge tone="good">cheapest</Badge> : null}
       </span>
       <span className="text-xs text-neutral-600 dark:text-neutral-400">
         {cell.brand ? `${cell.brand} ` : ""}

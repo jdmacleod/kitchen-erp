@@ -35,19 +35,27 @@ const offer = (over: Partial<Offer>): Offer => ({
   observation_id: `obs-${Math.random()}`,
   observed_at: daysAgo(3),
   price: "4.99",
-  norm_unit_price: "0.002200",
+  norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb",
   ...over,
 });
 
 // Cheapest first, as the API sends them; the uncomparable one sorts last (G8).
-const recent = offer({ norm_unit_price: "0.002200", product_name: "Everyday flour" });
-const noDensity = offer({ product_id: hits[1].id, product_name: "Flour by the cup", brand: null, norm_unit_price: null, norm_unit: null, norm_status: "no_density", price: "3.25", qty: "2", unit: "cup" });
+const recent = offer({ norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb", product_name: "Everyday flour" });
+const noDensity = offer({ product_id: hits[1].id, product_name: "Flour by the cup", brand: null, norm_unit_price: null, display_unit_price: null, display_unit: null, norm_unit: null, norm_status: "no_density", price: "3.25", qty: "2", unit: "cup" });
+
+/** What the server shows for a price per gram: per pound, 3 places under $1 (issue 245). */
+const perPound = (perGram: string) => {
+  const lb = Number(perGram) * 453.59237;
+  return lb < 1 ? lb.toFixed(3) : lb.toFixed(2);
+};
 
 const point = (n: number, price: string): IngredientPricePoint => ({
   observation_id: `p-${n}`,
   observed_at: daysAgo(n),
   norm_unit_price: price,
   norm_unit: "g",
+  display_unit_price: perPound(price),
+  display_unit: "lb",
   is_promo: false,
   source: "shelf",
   product_id: flourProductId,
@@ -91,9 +99,9 @@ describe("the ingredient hub (UI-3.9, UI-3.10)", () => {
   it("shows the cheapest price of the last 90 days, even one the latest offers replaced", async () => {
     // The offers hold only the latest price per location; the cheaper one from 40
     // days ago is in the history, and that is the best recent price.
-    mount({ offers: [recent, noDensity], history: () => jsonResponse(200, { days: 90, points: [point(40, "0.001500"), point(3, "0.002200")], low: "0.001500", high: "0.002200" }) });
+    mount({ offers: [recent, noDensity], history: () => jsonResponse(200, { days: 90, points: [point(40, "0.001500"), point(3, "0.002200")], low: "0.001500", high: "0.002200", display_low: perPound("0.001500"), display_high: perPound("0.002200"), display_unit: "lb" }) });
     const best = await screen.findByRole("region", { name: "Best recent price" });
-    expect(await within(best).findByText("$0.0015/g")).toBeInTheDocument();
+    expect(await within(best).findByText("$0.680/lb")).toBeInTheDocument();
     expect(best.className).toMatch(/bg-green-50/);
   });
 
@@ -105,31 +113,31 @@ describe("the ingredient hub (UI-3.9, UI-3.10)", () => {
       [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
       [`GET /ingredients/${flourId}/offers`]: (call) =>
         jsonResponse(200, { items: call.query.get("min_quality") ? [] : [recent], stale_thresholds: { fresh: 14, refrigerated: 45, shelf_stable: 120 } }),
-      [`GET /ingredients/${flourId}/price-history`]: () => jsonResponse(200, { days: 90, points: [point(3, "0.002200")], low: "0.002200", high: "0.002200" }),
+      [`GET /ingredients/${flourId}/price-history`]: () => jsonResponse(200, { days: 90, points: [point(3, "0.002200")], low: "0.002200", high: "0.002200", display_low: perPound("0.002200"), display_high: perPound("0.002200"), display_unit: "lb" }),
       "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
     });
     renderApp(`/catalog/ingredients/${flourId}`);
     const user = userEvent.setup();
     const best = await screen.findByRole("region", { name: "Best recent price" });
-    await within(best).findByText("$0.0022/g");
+    await within(best).findByText("$0.998/lb");
     await user.selectOptions(screen.getByLabelText("Minimum quality"), "5");
     await waitFor(() => expect(calls.some((c) => c.query.get("min_quality") === "5")).toBe(true));
     expect(await screen.findByText(/No current prices match/)).toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Best recent price" })).getByText("$0.0022/g")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Best recent price" })).getByText("$0.998/lb")).toBeInTheDocument();
   });
 
   it("shows recorded history even when no current offer remains", async () => {
     // A deactivated location drops out of the offers; its prices stay in the history.
-    mount({ offers: [], history: () => jsonResponse(200, { days: 90, points: [point(20, "0.001800")], low: "0.001800", high: "0.001800" }) });
+    mount({ offers: [], history: () => jsonResponse(200, { days: 90, points: [point(20, "0.001800")], low: "0.001800", high: "0.001800", display_low: perPound("0.001800"), display_high: perPound("0.001800"), display_unit: "lb" }) });
     const best = await screen.findByRole("region", { name: "Best recent price" });
-    expect(await within(best).findByText("$0.0018/g")).toBeInTheDocument();
+    expect(await within(best).findByText("$0.816/lb")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "No prices yet" })).not.toBeInTheDocument();
   });
 
   it("draws the 90-day sparkline and range, and hides the line with one point (D22)", async () => {
-    mount({ offers: [recent], history: () => jsonResponse(200, { days: 90, points: [point(40, "0.002500"), point(10, "0.002000"), point(3, "0.002200")], low: "0.002000", high: "0.002600" }) });
+    mount({ offers: [recent], history: () => jsonResponse(200, { days: 90, points: [point(40, "0.002500"), point(10, "0.002000"), point(3, "0.002200")], low: "0.002000", high: "0.002600", display_low: perPound("0.002000"), display_high: perPound("0.002600"), display_unit: "lb" }) });
     const card = await screen.findByRole("region", { name: "Last 90 days" });
-    expect(await within(card).findByTestId("price-range")).toHaveTextContent("$0.002/g – $0.0026/g");
+    expect(await within(card).findByTestId("price-range")).toHaveTextContent("$0.907/lb – $1.18/lb");
     expect(within(card).getByRole("img", { name: "Cheapest price each day over the last 90 days" })).toBeInTheDocument();
     expect(within(card).getAllByRole("row")).toHaveLength(4);
     // Hover targets tile the width without overlapping, however the dates cluster.
@@ -139,9 +147,9 @@ describe("the ingredient hub (UI-3.9, UI-3.10)", () => {
   });
 
   it("says the one price without a line when there is only one", async () => {
-    mount({ offers: [recent], history: () => jsonResponse(200, { days: 90, points: [point(3, "0.002200")], low: "0.002200", high: "0.002200" }) });
+    mount({ offers: [recent], history: () => jsonResponse(200, { days: 90, points: [point(3, "0.002200")], low: "0.002200", high: "0.002200", display_low: perPound("0.002200"), display_high: perPound("0.002200"), display_unit: "lb" }) });
     const card = await screen.findByRole("region", { name: "Last 90 days" });
-    expect(await within(card).findByTestId("price-range")).toHaveTextContent("$0.0022/g");
+    expect(await within(card).findByTestId("price-range")).toHaveTextContent("$0.998/lb");
     expect(within(card).queryByRole("img")).not.toBeInTheDocument();
   });
 

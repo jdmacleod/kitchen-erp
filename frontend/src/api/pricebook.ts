@@ -20,6 +20,9 @@ export interface PricePoint {
   source: ObservationSource;
   norm_unit_price: string | null;
   norm_unit: string | null;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   norm_status: NormStatus | null;
   location_id: string;
   location_name: string;
@@ -44,6 +47,9 @@ export interface LatestPrice {
   is_promo: boolean;
   norm_unit_price: string | null;
   norm_unit: string | null;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   norm_status: NormStatus | null;
   /** Whole days as a decimal string (the API serializes every number this way). */
   age_days: string | number;
@@ -78,6 +84,9 @@ export interface Offer {
   is_promo: boolean;
   norm_unit_price: string | null;
   norm_unit: string | null;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   norm_status: NormStatus | null;
   /** Whole days as a decimal string (the API serializes every number this way). */
   age_days: string | number;
@@ -101,6 +110,9 @@ export interface CompareCell {
   is_promo: boolean;
   norm_unit_price: string;
   norm_unit: string;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   stale: boolean;
   cheapest: boolean;
   age_days?: string | number;
@@ -134,6 +146,9 @@ export interface PricePanel {
     is_promo: boolean;
     norm_unit_price: string | null;
     norm_unit: string | null;
+    /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+    display_unit_price: string | null;
+    display_unit: string | null;
     norm_status: NormStatus | null;
     product_id: string;
     product_name: string;
@@ -157,12 +172,16 @@ export interface CheapestItem {
   is_promo: boolean;
   norm_unit_price: string;
   norm_unit: string;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   stale: boolean;
 }
 
 export interface CheapestResult {
   items: CheapestItem[];
   unit: string | null;
+  display_unit: string | null;
 }
 
 export interface NeedsBridgeItem {
@@ -226,6 +245,9 @@ export interface IngredientPricePoint {
   observed_at: string;
   norm_unit_price: string;
   norm_unit: string;
+  /** As shown: per lb, oz or fl oz (or kg, L), worked out by the server (issue 245). */
+  display_unit_price: string | null;
+  display_unit: string | null;
   is_promo: boolean;
   source: string;
   product_id: string;
@@ -242,6 +264,9 @@ export interface IngredientPriceHistory {
   /** The range over every price in the window; null when there are none. */
   low: string | null;
   high: string | null;
+  display_low: string | null;
+  display_high: string | null;
+  display_unit: string | null;
 }
 
 export function useIngredientPriceHistory(ingredientId: string | undefined, days = 90) {
