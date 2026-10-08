@@ -420,6 +420,14 @@ def apply_vendor_changes(vendor: Vendor, changes: dict[str, Any]) -> None:
             setattr(vendor, field, _clean(changes[field]))
     if "notes" in changes:
         vendor.notes = changes["notes"]
+    if changes.get("fetch_policy") is not None:
+        vendor.fetch_policy = changes["fetch_policy"]
+        if vendor.fetch_policy != "server_fetch":
+            # Nothing is checked online any more, so no pause is left to show.
+            vendor.refresh_paused_until = None
+            vendor.refresh_unreachable_since = None
+            vendor.refresh_failures = 0
+            vendor.refresh_backoff_days = None
 
 
 async def set_vendor_active(db: AsyncSession, vendor_id: uuid.UUID, active: bool) -> Vendor:
