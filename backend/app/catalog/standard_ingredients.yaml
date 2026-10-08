@@ -10,33 +10,39 @@ ingredients:
   - key: 1pct-milk
     name: "1% milk"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 170872
   - key: 2pct-milk
     name: "2% milk"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 171267
   - key: acorn-squash
     name: "acorn squash"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168472
   - key: active-dry-yeast
     name: "active dry yeast"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175043
     spellings: ["dry yeast"]
   - key: agar
     name: "agar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170090
     spellings: ["agar agar"]
   - key: aioli
     name: "aioli"
     category: pantry
+    perishability: refrigerated
     unit: g
     spellings: ["garlic aioli"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -44,517 +50,610 @@ ingredients:
     name: "Aleppo pepper"
     proper_noun: true
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["aleppo chili flakes"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: alfalfa-sprouts
     name: "alfalfa sprouts"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168384
   - key: all-purpose-flour
     name: "all-purpose flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168894
     spellings: ["ap flour", "plain flour"]
   - key: almond-butter
     name: "almond butter"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168588
   - key: almond-flour
     name: "almond flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 2261420
     spellings: ["almond meal"]
   - key: almond-milk
     name: "almond milk"
     category: beverages
+    perishability: refrigerated
     unit: ml
     fdc: 174832
   - key: almond-paste
     name: "almond paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170160
     spellings: ["marzipan"]
   - key: almonds
     name: "almonds"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170567
   - key: anaheim-pepper
     name: "Anaheim pepper"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["anaheim chile"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ancho-chiles
     name: "ancho chiles"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 169396
     spellings: ["dried ancho chiles"]
   - key: anchovies
     name: "anchovies"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 174183
     spellings: ["anchovy fillets"]
   - key: andouille
     name: "andouille"
     category: meat
+    perishability: refrigerated
     unit: g
     spellings: ["andouille sausage"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: anise-seed
     name: "anise seed"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171316
     spellings: ["aniseed"]
   - key: apple
     name: "apple"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 171688
   - key: apricot
     name: "apricot"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 171697
   - key: artichoke
     name: "artichoke"
     category: produce
+    perishability: fresh
     unit: each
     fdc: 169205
     spellings: ["globe artichoke"]
   - key: artichoke-hearts
     name: "artichoke hearts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["marinated artichoke hearts", "canned artichoke hearts"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: arugula
     name: "arugula"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169387
     spellings: ["baby arugula", "rocket"]
   - key: asparagus
     name: "asparagus"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168389
   - key: avocado
     name: "avocado"
     category: produce
+    perishability: fresh
     unit: each
     fdc: 171705
   - key: avocado-oil
     name: "avocado oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 173573
   - key: baba-ghanoush
     name: "baba ghanoush"
     category: pantry
+    perishability: refrigerated
     unit: g
     spellings: ["baba ganoush", "baba ghannouj"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: baby-carrots
     name: "baby carrots"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168568
   - key: bacon
     name: "bacon"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 168277
   - key: bacon-grease
     name: "bacon grease"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 172345
     spellings: ["bacon fat", "bacon drippings"]
   - key: bagel-chips
     name: "bagel chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173150
   - key: bagels
     name: "bagels"
     category: bakery
+    perishability: fresh
     unit: each
     fdc: 174899
     spellings: ["bagel"]
   - key: baharat
     name: "baharat"
     category: spices
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: baking-powder
     name: "baking powder"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172803
   - key: baking-soda
     name: "baking soda"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175040
     spellings: ["bicarbonate of soda", "sodium bicarbonate"]
   - key: balsamic-vinegar
     name: "balsamic vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 172241
     spellings: ["balsamic"]
   - key: banana
     name: "banana"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173944
   - key: barbecue-sauce
     name: "barbecue sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174523
     spellings: ["bbq sauce"]
   - key: basil
     name: "basil"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 172232
   - key: bay-leaves
     name: "bay leaves"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170917
     spellings: ["bay leaf"]
   - key: bean-sprouts
     name: "bean sprouts"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169957
     spellings: ["mung bean sprouts"]
   - key: beef-brisket
     name: "beef brisket"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 173129
     spellings: ["brisket"]
   - key: beef-broth
     name: "beef broth"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171538
     spellings: ["beef stock"]
   - key: beef-jerky
     name: "beef jerky"
     category: meat
+    perishability: shelf_stable
     unit: g
     fdc: 167536
     spellings: ["jerky"]
   - key: beef-liver
     name: "beef liver"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169451
   - key: beef-shank
     name: "beef shank"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169441
     spellings: ["beef shin"]
   - key: beef-short-ribs
     name: "beef short ribs"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169439
     spellings: ["short ribs"]
   - key: beef-stew-meat
     name: "beef stew meat"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171206
     spellings: ["stew beef", "beef chuck"]
   - key: beef-tallow
     name: "beef tallow"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171400
     spellings: ["tallow"]
   - key: beef-tenderloin
     name: "beef tenderloin"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 2727573
     spellings: ["filet mignon", "tenderloin steak"]
   - key: beef-top-round
     name: "beef top round"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169529
   - key: beer
     name: "beer"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 168746
   - key: beet-greens
     name: "beet greens"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170375
   - key: beets
     name: "beets"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169145
     spellings: ["beetroot"]
   - key: bitter-melon
     name: "bitter melon"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168393
     spellings: ["bitter gourd", "karela"]
   - key: black-bean-sauce
     name: "black bean sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: black-olives
     name: "black olives"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169094
     spellings: ["ripe olives"]
   - key: black-pepper
     name: "black pepper"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170931
     note: "Whole peppercorns become their own entry when a recipe needs them."
   - key: black-vinegar
     name: "black vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["chinkiang vinegar", "zhenjiang vinegar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: blackberries
     name: "blackberries"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173946
   - key: blood-orange
     name: "blood orange"
     category: produce
+    perishability: refrigerated
     unit: each
     spellings: ["blood oranges"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: blue-cheese
     name: "blue cheese"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 172175
     spellings: ["bleu cheese"]
   - key: blueberries
     name: "blueberries"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 171711
   - key: bok-choy
     name: "bok choy"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170390
     spellings: ["pak choi"]
   - key: bologna
     name: "bologna"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 172013
     spellings: ["baloney"]
   - key: bonito-flakes
     name: "bonito flakes"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["katsuobushi"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: bottled-lemon-juice
     name: "bottled lemon juice"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 167748
     spellings: ["lemon juice from concentrate"]
   - key: brandy
     name: "brandy"
     category: beverages
+    perishability: shelf_stable
     unit: ml
   - key: bratwurst
     name: "bratwurst"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171622
     spellings: ["brats"]
   - key: bread-flour
     name: "bread flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168896
   - key: breadcrumbs
     name: "breadcrumbs"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174928
     spellings: ["bread crumbs", "dry breadcrumbs"]
   - key: breadsticks
     name: "breadsticks"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174929
     spellings: ["grissini"]
   - key: bresaola
     name: "bresaola"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 170604
   - key: brie
     name: "brie"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 172177
   - key: broccoli
     name: "broccoli"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170379
   - key: broccoli-rabe
     name: "broccoli rabe"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170381
     spellings: ["rapini", "broccoli raab"]
   - key: brown-rice
     name: "brown rice"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169703
   - key: brown-sugar
     name: "brown sugar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168833
   - key: brussels-sprouts
     name: "Brussels sprouts"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170383
   - key: buckwheat-flour
     name: "buckwheat flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170687
   - key: bulgur
     name: "bulgur"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170688
     spellings: ["bulgur wheat"]
   - key: burrata
     name: "burrata"
     category: dairy
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: butter-crackers
     name: "butter crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174982
     spellings: ["round crackers"]
   - key: buttermilk
     name: "buttermilk"
     category: dairy
+    perishability: refrigerated
     unit: ml
     fdc: 170874
   - key: butternut-squash
     name: "butternut squash"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169295
   - key: cabbage
     name: "cabbage"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169975
   - key: cake-flour
     name: "cake flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169723
   - key: camembert
     name: "camembert"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 172178
   - key: canadian-bacon
     name: "Canadian bacon"
     proper_noun: true
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 167869
     spellings: ["back bacon"]
   - key: canned-black-beans
     name: "canned black beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175188
   - key: canned-chickpeas
     name: "canned chickpeas"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175206
     spellings: ["canned garbanzo beans"]
   - key: canned-clams
     name: "canned clams"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 171976
   - key: canned-crab
     name: "canned crab"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 171966
     spellings: ["crab meat", "lump crab"]
   - key: canned-kidney-beans
     name: "canned kidney beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175195
   - key: canned-pinto-beans
     name: "canned pinto beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175201
   - key: canned-pumpkin
     name: "canned pumpkin"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168450
     spellings: ["pumpkin puree"]
   - key: canned-salmon
     name: "canned salmon"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 175175
   - key: canned-tomatoes
     name: "canned tomatoes"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170051
     spellings: ["tinned tomatoes"]
@@ -562,195 +661,230 @@ ingredients:
   - key: canned-tuna
     name: "canned tuna"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 173709
   - key: canned-white-beans
     name: "canned white beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175204
     spellings: ["canned cannellini beans"]
   - key: canola-oil
     name: "canola oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 172336
   - key: cantaloupe
     name: "cantaloupe"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169092
     spellings: ["muskmelon"]
   - key: capers
     name: "capers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172238
   - key: capicola
     name: "capicola"
     category: meat
+    perishability: refrigerated
     unit: g
     spellings: ["coppa", "capocollo", "gabagool"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: caraway-seed
     name: "caraway seed"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170918
     spellings: ["caraway seeds"]
   - key: cardamom
     name: "cardamom"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170919
     spellings: ["ground cardamom"]
   - key: carrot
     name: "carrot"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170393
   - key: cashews
     name: "cashews"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170571
     note: "Cashews are sold dry-roasted; the reference is that record."
   - key: catfish
     name: "catfish"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175165
   - key: cauliflower
     name: "cauliflower"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169986
   - key: cayenne
     name: "cayenne"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170932
     spellings: ["cayenne pepper"]
   - key: celeriac
     name: "celeriac"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170400
     spellings: ["celery root"]
   - key: celery
     name: "celery"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169988
   - key: celery-seed
     name: "celery seed"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170920
   - key: chayote
     name: "chayote"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170402
   - key: cheddar
     name: "cheddar"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173414
     spellings: ["cheddar cheese"]
   - key: cheese-crackers
     name: "cheese crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174975
   - key: cherries
     name: "cherries"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 171719
     spellings: ["sweet cherries"]
   - key: chia-seeds
     name: "chia seeds"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170554
   - key: chicken-breast
     name: "chicken breast"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171077
     spellings: ["boneless skinless chicken breast"]
   - key: chicken-broth
     name: "chicken broth"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174536
     spellings: ["chicken stock"]
   - key: chicken-drumstick
     name: "chicken drumstick"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 173614
   - key: chicken-fat
     name: "chicken fat"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 173564
     spellings: ["schmaltz"]
   - key: chicken-leg-quarters
     name: "chicken leg quarters"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172378
     spellings: ["chicken legs", "whole chicken legs"]
   - key: chicken-livers
     name: "chicken livers"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171060
   - key: chicken-tenders
     name: "chicken tenders"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 2646170
     spellings: ["chicken tenderloins"]
   - key: chicken-thigh
     name: "chicken thigh"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 173627
   - key: chicken-wings
     name: "chicken wings"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172390
     spellings: ["wings"]
   - key: chili-crisp
     name: "chili crisp"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["chili oil crisp", "crispy chili oil"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: chili-oil
     name: "chili oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["la you", "hot chili oil"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: chili-powder
     name: "chili powder"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171319
   - key: chili-sauce
     name: "chili sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171595
   - key: chinese-broccoli
     name: "Chinese broccoli"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169404
     spellings: ["gai lan"]
@@ -758,100 +892,118 @@ ingredients:
     name: "Chinese sausage"
     proper_noun: true
     category: meat
+    perishability: shelf_stable
     unit: g
     spellings: ["lap cheong", "lap chong"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: chives
     name: "chives"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169994
   - key: chorizo
     name: "chorizo"
     category: meat
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: chuck-roast
     name: "chuck roast"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 174056
     spellings: ["pot roast"]
   - key: cider-vinegar
     name: "apple cider vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 173469
     spellings: ["cider vinegar"]
   - key: cilantro
     name: "cilantro"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
   - key: cocktail-sauce
     name: "cocktail sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174067
   - key: cocoa-powder
     name: "cocoa powder"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169593
   - key: coconut-milk
     name: "coconut milk"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 170173
     spellings: ["canned coconut milk"]
   - key: coconut-oil
     name: "coconut oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171412
   - key: cod
     name: "cod"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174191
   - key: coffee
     name: "coffee"
     category: beverages
+    perishability: shelf_stable
     unit: g
     spellings: ["coffee beans", "ground coffee"]
     note: "USDA records only brewed coffee; the list means the beans or grounds you buy."
   - key: colby
     name: "colby"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173416
     spellings: ["colby jack"]
   - key: collard-greens
     name: "collard greens"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170406
     spellings: ["collards"]
   - key: corn-chips
     name: "corn chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167537
   - key: corn-kernels
     name: "corn kernels"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168398
     note: "Frozen kernels, the usual way loose kernels are bought; the raw record (169998) is corn on the cob's, by the ear."
   - key: corn-oil
     name: "corn oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171029
   - key: corn-on-the-cob
     name: "corn on the cob"
     category: produce
+    perishability: fresh
     unit: each
     fdc: 169998
     spellings: ["sweet corn", "ears of corn"]
@@ -859,148 +1011,175 @@ ingredients:
   - key: corn-tortilla
     name: "corn tortilla"
     category: bakery
+    perishability: refrigerated
     unit: each
     fdc: 175036
   - key: corned-beef
     name: "corned beef"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 170199
   - key: cornish-hen
     name: "Cornish hen"
     proper_noun: true
     category: meat
+    perishability: fresh
     unit: each
     fdc: 171507
     spellings: ["cornish game hen", "game hen"]
   - key: cornmeal
     name: "cornmeal"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168929
   - key: cornstarch
     name: "cornstarch"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169698
     spellings: ["cornflour", "corn starch"]
   - key: cotija
     name: "cotija"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 2647443
     spellings: ["cotija cheese"]
   - key: cottage-cheese
     name: "cottage cheese"
     category: dairy
+    perishability: fresh
     unit: g
     fdc: 172179
   - key: couscous
     name: "couscous"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169699
   - key: cranberries
     name: "cranberries"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 171722
   - key: cranberry-sauce
     name: "cranberry sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173961
   - key: crayfish
     name: "crayfish"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174206
     spellings: ["crawfish", "crawdads"]
   - key: cream-cheese
     name: "cream cheese"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173418
   - key: cream-of-tartar
     name: "cream of tartar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175041
   - key: creme-fraiche
     name: "crème fraîche"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: cremini-mushrooms
     name: "cremini mushrooms"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168434
     spellings: ["cremini", "crimini mushrooms", "baby bella mushrooms"]
   - key: crispbread
     name: "crispbread"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172739
     spellings: ["rye crispbread", "knäckebröd"]
   - key: cucumber
     name: "cucumber"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168409
   - key: cumin-seed
     name: "cumin seed"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170923
     note: "Ground cumin is a separate entry."
   - key: curry-leaves
     name: "curry leaves"
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: curry-powder
     name: "curry powder"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170924
   - key: daikon
     name: "daikon"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168451
     spellings: ["daikon radish", "mooli", "white radish"]
   - key: dandelion-greens
     name: "dandelion greens"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169226
   - key: dark-soy-sauce
     name: "dark soy sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dashi
     name: "dashi"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["dashi stock"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dates
     name: "dates"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168191
     spellings: ["medjool dates"]
   - key: deli-turkey
     name: "deli turkey"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 172941
     spellings: ["sliced turkey", "turkey lunch meat"]
   - key: delicata-squash
     name: "delicata squash"
     category: produce
+    perishability: refrigerated
     unit: g
     spellings: ["delicata"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1008,200 +1187,236 @@ ingredients:
     name: "Dijon mustard"
     proper_noun: true
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["dijon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dill-pickles
     name: "dill pickles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168558
   - key: distilled-vinegar
     name: "distilled vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 172237
     spellings: ["white vinegar"]
   - key: doenjang
     name: "doenjang"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["korean soybean paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: doubanjiang
     name: "doubanjiang"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["chili bean paste", "broad bean paste", "toban djan"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dragon-fruit
     name: "dragon fruit"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["pitaya", "pitahaya"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dried-apricots
     name: "dried apricots"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173941
   - key: dried-basil
     name: "dried basil"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171317
   - key: dried-black-beans
     name: "dried black beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173734
     spellings: ["black beans"]
   - key: dried-chickpeas
     name: "dried chickpeas"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173756
     spellings: ["chickpeas", "garbanzo beans"]
   - key: dried-chiles
     name: "dried chiles"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 168570
     spellings: ["dried chili peppers", "guajillo chiles"]
   - key: dried-cranberries
     name: "dried cranberries"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 2758976
     spellings: ["craisins"]
   - key: dried-dill
     name: "dried dill"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171322
     spellings: ["dill weed"]
   - key: dried-figs
     name: "dried figs"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 746768
   - key: dried-kidney-beans
     name: "dried kidney beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173744
     spellings: ["kidney beans", "red kidney beans"]
   - key: dried-marjoram
     name: "dried marjoram"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170928
     spellings: ["marjoram"]
   - key: dried-oregano
     name: "dried oregano"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171328
   - key: dried-parsley
     name: "dried parsley"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170930
   - key: dried-pinto-beans
     name: "dried pinto beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 175199
     spellings: ["pinto beans"]
   - key: dried-rosemary
     name: "dried rosemary"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171333
   - key: dried-shiitake-mushrooms
     name: "dried shiitake mushrooms"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168436
     spellings: ["dried shiitake"]
   - key: dried-shrimp
     name: "dried shrimp"
     category: seafood
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dried-tarragon
     name: "dried tarragon"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170937
     spellings: ["tarragon"]
   - key: dried-thyme
     name: "dried thyme"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170938
   - key: dried-white-beans
     name: "dried white beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 2644281
     spellings: ["cannellini beans", "white beans", "navy beans", "great northern beans"]
   - key: duck
     name: "duck"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172410
     spellings: ["duck breast"]
   - key: duck-eggs
     name: "duck eggs"
     category: dairy
+    perishability: refrigerated
     unit: each
     fdc: 172189
   - key: dukkah
     name: "dukkah"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["duqqa"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dulce-de-leche
     name: "dulce de leche"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173461
   - key: egg
     name: "egg"
     category: dairy
+    perishability: refrigerated
     unit: each
     fdc: 171287
   - key: egg-noodles
     name: "egg noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169731
   - key: egg-white
     name: "egg white"
     category: dairy
+    perishability: fresh
     unit: each
     fdc: 172183
   - key: egg-yolk
     name: "egg yolk"
     category: dairy
+    perishability: fresh
     unit: each
     fdc: 172184
   - key: eggplant
     name: "eggplant"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169228
     spellings: ["aubergine"]
   - key: enchilada-sauce
     name: "enchilada sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174074
   - key: endive
     name: "endive"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168412
     spellings: ["belgian endive"]
@@ -1209,311 +1424,366 @@ ingredients:
     name: "English muffins"
     proper_noun: true
     category: bakery
+    perishability: fresh
     unit: each
     fdc: 174994
   - key: enoki-mushrooms
     name: "enoki mushrooms"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169382
     spellings: ["enoki"]
   - key: evaporated-milk
     name: "evaporated milk"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171276
   - key: extra-virgin-olive-oil
     name: "extra virgin olive oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 748608
     spellings: ["evoo"]
   - key: farmer-cheese
     name: "farmer cheese"
     category: dairy
+    perishability: fresh
     unit: g
     spellings: ["farmer's cheese", "pot cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fava-beans
     name: "fava beans"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 175205
     spellings: ["broad beans"]
   - key: fennel
     name: "fennel"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169385
     spellings: ["fennel bulb"]
   - key: fennel-seed
     name: "fennel seed"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171323
     spellings: ["fennel seeds"]
   - key: fermented-black-beans
     name: "fermented black beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["douchi", "salted black beans"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: feta
     name: "feta"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173420
     spellings: ["feta cheese"]
   - key: figs
     name: "figs"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173021
     spellings: ["fresh figs"]
   - key: fingerling-potatoes
     name: "fingerling potatoes"
     category: produce
+    perishability: refrigerated
     unit: g
     spellings: ["fingerlings"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fish-sauce
     name: "fish sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174531
     spellings: ["nam pla", "nuoc mam"]
   - key: five-spice-powder
     name: "five-spice powder"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["chinese five spice", "five spice"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: flank-steak
     name: "flank steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169564
   - key: flat-iron-steak
     name: "flat iron steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169536
   - key: flaxseed
     name: "flaxseed"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169414
     spellings: ["flax seeds", "ground flaxseed"]
   - key: flour-tortilla
     name: "flour tortilla"
     category: bakery
+    perishability: refrigerated
     unit: each
     fdc: 175037
   - key: fontina
     name: "fontina"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 170843
   - key: french-bread
     name: "French bread"
     proper_noun: true
     category: bakery
+    perishability: fresh
     unit: g
     fdc: 172675
     spellings: ["baguette", "sourdough bread"]
   - key: fresh-dill
     name: "fresh dill"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 172233
     spellings: ["dill"]
   - key: fresh-mint
     name: "fresh mint"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173475
     spellings: ["mint", "spearmint"]
   - key: fresh-mozzarella
     name: "fresh mozzarella"
     category: dairy
+    perishability: fresh
     unit: g
     fdc: 170845
     spellings: ["bocconcini", "ciliegine", "mozzarella balls"]
   - key: fresh-oregano
     name: "fresh oregano"
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-rosemary
     name: "fresh rosemary"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173473
     spellings: ["rosemary"]
   - key: fresh-sage
     name: "fresh sage"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["sage"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-tarragon
     name: "fresh tarragon"
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fresh-thyme
     name: "fresh thyme"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173470
   - key: fresno-chile
     name: "Fresno chile"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["fresno pepper"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: frisee
     name: "frisée"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["curly endive"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fromage-blanc
     name: "fromage blanc"
     category: dairy
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: frozen-hash-browns
     name: "frozen hash browns"
     category: frozen
+    perishability: frozen
     unit: g
     fdc: 170043
     spellings: ["hash browns", "hashbrowns", "shredded hash browns"]
   - key: frozen-mixed-vegetables
     name: "frozen mixed vegetables"
     category: frozen
+    perishability: frozen
     unit: g
     fdc: 170471
     spellings: ["mixed vegetables"]
   - key: furikake
     name: "furikake"
     category: spices
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: galangal
     name: "galangal"
     category: produce
+    perishability: refrigerated
     unit: g
     spellings: ["galangal root", "blue ginger"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: garlic
     name: "garlic"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169230
   - key: garlic-powder
     name: "garlic powder"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171325
   - key: garlic-scapes
     name: "garlic scapes"
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ghee
     name: "ghee"
     category: dairy
+    perishability: shelf_stable
     unit: g
     fdc: 173412
     spellings: ["clarified butter", "butter oil"]
   - key: gin
     name: "gin"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 174815
     note: "USDA has no gin-only record; the reference is its record for all 80-proof spirits."
   - key: ginger
     name: "ginger"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169231
   - key: glass-noodles
     name: "glass noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174258
     spellings: ["cellophane noodles", "bean thread noodles"]
   - key: goat-cheese
     name: "goat cheese"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173435
     spellings: ["chevre", "chèvre"]
   - key: goat-meat
     name: "goat meat"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 175303
     spellings: ["mutton goat"]
   - key: goat-milk
     name: "goat milk"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 171278
   - key: gochugaru
     name: "gochugaru"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["korean chili flakes", "korean red pepper flakes"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: gochujang
     name: "gochujang"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["korean chili paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: gouda
     name: "gouda"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171241
   - key: graham-crackers
     name: "graham crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174957
   - key: granola
     name: "granola"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171646
   - key: granola-bars
     name: "granola bars"
     category: pantry
+    perishability: shelf_stable
     unit: each
     fdc: 167542
   - key: granulated-sugar
     name: "granulated sugar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169655
     spellings: ["white sugar"]
   - key: grape-leaves
     name: "grape leaves"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168575
     spellings: ["vine leaves", "dolma leaves"]
   - key: grapefruit
     name: "grapefruit"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 174673
   - key: grapes
     name: "grapes"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 2346413
     spellings: ["grape"]
@@ -1522,178 +1792,210 @@ ingredients:
     name: "Greek yogurt"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171304
     spellings: ["greek yoghurt"]
   - key: green-beans
     name: "green beans"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169961
     spellings: ["string beans", "snap beans"]
   - key: green-bell-pepper
     name: "green bell pepper"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170427
   - key: green-curry-paste
     name: "green curry paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["thai green curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: green-leaf-lettuce
     name: "green leaf lettuce"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169249
     spellings: ["leaf lettuce"]
   - key: green-olives
     name: "green olives"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169096
   - key: green-peas
     name: "green peas"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170419
     spellings: ["peas"]
   - key: ground-allspice
     name: "ground allspice"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171315
     spellings: ["allspice"]
   - key: ground-beef
     name: "ground beef"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 174036
     spellings: ["hamburger meat"]
   - key: ground-chicken
     name: "ground chicken"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171116
   - key: ground-cinnamon
     name: "ground cinnamon"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171320
   - key: ground-cloves
     name: "ground cloves"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171321
   - key: ground-coriander
     name: "ground coriander"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170922
     spellings: ["coriander seed"]
   - key: ground-cumin
     name: "ground cumin"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["cumin"]
     note: "USDA records only cumin seed (see cumin seed); ground cumin is what most recipes mean by cumin."
   - key: ground-ginger
     name: "ground ginger"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170926
   - key: ground-lamb
     name: "ground lamb"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 174370
   - key: ground-mace
     name: "ground mace"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170927
     spellings: ["mace"]
   - key: ground-mustard
     name: "ground mustard"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170929
     spellings: ["mustard powder", "dry mustard"]
   - key: ground-nutmeg
     name: "ground nutmeg"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171326
   - key: ground-pork
     name: "ground pork"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 167902
   - key: ground-sage
     name: "ground sage"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170935
     spellings: ["dried sage"]
   - key: ground-turkey
     name: "ground turkey"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171505
   - key: ground-turmeric
     name: "ground turmeric"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 172231
     spellings: ["turmeric"]
   - key: ground-veal
     name: "ground veal"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 175290
   - key: gruyere
     name: "Gruyère"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171242
     spellings: ["gruyere cheese"]
   - key: guanciale
     name: "guanciale"
     category: meat
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: guava
     name: "guava"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 173044
   - key: habanero
     name: "habanero"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["habanero pepper", "habanero chile"]
     note: "USDA has no habanero record; add a reference in review if one fits."
   - key: half-and-half
     name: "half-and-half"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 171255
   - key: halibut
     name: "halibut"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174200
   - key: halloumi
     name: "halloumi"
     category: dairy
+    perishability: refrigerated
     unit: g
     spellings: ["halloumi cheese", "grilling cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ham
     name: "ham"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 169148
     spellings: ["deli ham"]
@@ -1701,85 +2003,100 @@ ingredients:
   - key: ham-hock
     name: "ham hock"
     category: meat
+    perishability: refrigerated
     unit: g
     spellings: ["smoked ham hock", "pork hock"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hamburger-buns
     name: "hamburger buns"
     category: bakery
+    perishability: fresh
     unit: each
     fdc: 172796
     spellings: ["hot dog buns", "buns"]
   - key: hanger-steak
     name: "hanger steak"
     category: meat
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: harissa
     name: "harissa"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["harissa paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: havarti
     name: "havarti"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hazelnuts
     name: "hazelnuts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170581
     spellings: ["filberts"]
   - key: hearts-of-palm
     name: "hearts of palm"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168569
   - key: heavy-cream
     name: "heavy cream"
     category: dairy
+    perishability: refrigerated
     unit: ml
     fdc: 170859
     spellings: ["heavy whipping cream", "whipping cream"]
   - key: hoisin-sauce
     name: "hoisin sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 172886
     spellings: ["hoisin"]
   - key: hominy
     name: "hominy"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169701
   - key: honey
     name: "honey"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169640
   - key: honeydew
     name: "honeydew"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169911
     spellings: ["honeydew melon"]
   - key: horseradish
     name: "horseradish"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 173472
     spellings: ["prepared horseradish"]
   - key: hot-dogs
     name: "hot dogs"
     category: meat
+    perishability: refrigerated
     unit: g
     spellings: ["frankfurters", "wieners", "franks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hot-sauce
     name: "hot sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174528
     spellings: ["pepper sauce"]
@@ -1787,49 +2104,58 @@ ingredients:
   - key: hummus
     name: "hummus"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 174289
   - key: iceberg-lettuce
     name: "iceberg lettuce"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169248
   - key: italian-bread
     name: "Italian bread"
     proper_noun: true
     category: bakery
+    perishability: fresh
     unit: g
     fdc: 174913
   - key: italian-sausage
     name: "Italian sausage"
     proper_noun: true
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171631
   - key: jackfruit
     name: "jackfruit"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 174687
   - key: jalapeno
     name: "jalapeño"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168576
   - key: jam
     name: "jam"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169641
     spellings: ["preserves"]
   - key: jicama
     name: "jicama"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170073
   - key: kabocha-squash
     name: "kabocha squash"
     category: produce
+    perishability: refrigerated
     unit: g
     spellings: ["kabocha", "japanese pumpkin"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -1837,101 +2163,119 @@ ingredients:
     name: "Kalamata olives"
     proper_noun: true
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["kalamata"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: kale
     name: "kale"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168421
     spellings: ["lacinato kale", "tuscan kale"]
   - key: kecap-manis
     name: "kecap manis"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["sweet soy sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ketchup
     name: "ketchup"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168556
     spellings: ["catsup"]
   - key: kielbasa
     name: "kielbasa"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 174577
     spellings: ["polish sausage", "kielbasy"]
   - key: kimchi
     name: "kimchi"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 170392
   - key: kiwi
     name: "kiwi"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168153
     spellings: ["kiwifruit"]
   - key: kohlrabi
     name: "kohlrabi"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168424
   - key: kombu
     name: "kombu"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168457
     spellings: ["dried kelp", "konbu"]
   - key: kumquat
     name: "kumquat"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168154
   - key: labneh
     name: "labneh"
     category: dairy
+    perishability: refrigerated
     unit: g
     spellings: ["labne", "strained yogurt cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: lamb-chops
     name: "lamb chops"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172551
     spellings: ["lamb loin chops"]
   - key: lamb-shank
     name: "lamb shank"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172513
     spellings: ["lamb shanks"]
   - key: lamb-shoulder
     name: "lamb shoulder"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172496
   - key: lard
     name: "lard"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171401
   - key: leek
     name: "leek"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169246
   - key: leg-of-lamb
     name: "leg of lamb"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 174372
   - key: lemon
     name: "lemon"
     category: produce
+    perishability: refrigerated
     unit: each
     fdc: 167746
     measures:
@@ -1941,149 +2285,176 @@ ingredients:
   - key: lemongrass
     name: "lemongrass"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168573
     spellings: ["lemon grass"]
   - key: lentils
     name: "lentils"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172420
   - key: light-corn-syrup
     name: "light corn syrup"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 168837
     spellings: ["corn syrup"]
   - key: light-cream
     name: "light cream"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 170857
     spellings: ["coffee cream", "table cream"]
   - key: lima-beans
     name: "lima beans"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168396
     note: "Fresh or frozen limas. Dried lima beans become their own entry, as \"dried lima beans\", when someone buys them."
   - key: lime
     name: "lime"
     category: produce
+    perishability: refrigerated
     unit: each
     fdc: 168155
     note: "Juice and zest are recipe notes on lime, as on lemon; bottled lime juice is lime juice."
   - key: lime-juice
     name: "lime juice"
     category: produce
+    perishability: fresh
     unit: ml
     fdc: 168156
   - key: liverwurst
     name: "liverwurst"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 173870
     spellings: ["braunschweiger", "liver sausage"]
   - key: lobster
     name: "lobster"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174208
   - key: long-beans
     name: "long beans"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169222
     spellings: ["yard-long beans", "yardlong beans", "chinese long beans"]
   - key: long-grain-white-rice
     name: "long-grain white rice"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168877
     spellings: ["white rice"]
   - key: lotus-root
     name: "lotus root"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169250
   - key: lychee
     name: "lychee"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169086
     spellings: ["litchi"]
   - key: macadamia-nuts
     name: "macadamia nuts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170178
   - key: mackerel
     name: "mackerel"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175119
   - key: makrut-lime-leaves
     name: "makrut lime leaves"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["kaffir lime leaves", "lime leaves"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mandarin-orange
     name: "mandarin orange"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169105
     spellings: ["tangerine", "clementine"]
   - key: mango
     name: "mango"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169910
   - key: maple-syrup
     name: "maple syrup"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 169661
   - key: margarine
     name: "margarine"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 172346
   - key: marinara-sauce
     name: "marinara sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171192
   - key: marshmallows
     name: "marshmallows"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167995
   - key: masa-harina
     name: "masa harina"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169694
     spellings: ["masa flour"]
   - key: mascarpone
     name: "mascarpone"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: matzo
     name: "matzo"
     category: bakery
+    perishability: shelf_stable
     unit: g
     fdc: 172740
     spellings: ["matzah", "matza"]
   - key: mayonnaise
     name: "mayonnaise"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171009
   - key: medium-grain-rice
     name: "medium-grain rice"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168879
     spellings: ["arborio rice", "calrose rice"]
@@ -2091,52 +2462,61 @@ ingredients:
     name: "Meyer lemon"
     proper_noun: true
     category: produce
+    perishability: refrigerated
     unit: each
     spellings: ["meyer lemons"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: microgreens
     name: "microgreens"
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: milk-chocolate
     name: "milk chocolate"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167587
     spellings: ["milk chocolate chips"]
   - key: mirin
     name: "mirin"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["sweet rice wine"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: miso
     name: "miso"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 172442
     spellings: ["miso paste"]
   - key: molasses
     name: "molasses"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 168820
   - key: monterey-jack
     name: "Monterey Jack"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 2647438
     spellings: ["monterey jack cheese", "jack cheese"]
   - key: mortadella
     name: "mortadella"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 174573
   - key: mozzarella
     name: "mozzarella"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171244
     spellings: ["mozzarella cheese"]
@@ -2144,178 +2524,211 @@ ingredients:
   - key: muenster
     name: "muenster"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171245
   - key: muhammara
     name: "muhammara"
     category: pantry
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mushroom
     name: "mushroom"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169251
   - key: mussels
     name: "mussels"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174216
   - key: mustard-greens
     name: "mustard greens"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169256
   - key: napa-cabbage
     name: "napa cabbage"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169979
     spellings: ["chinese cabbage"]
   - key: natto
     name: "natto"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 172443
   - key: nectarine
     name: "nectarine"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169914
   - key: neufchatel
     name: "Neufchâtel"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     spellings: ["neufchatel cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: nonfat-dry-milk
     name: "nonfat dry milk"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170877
     spellings: ["powdered milk", "milk powder"]
   - key: nori
     name: "nori"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168458
     spellings: ["seaweed sheets", "laver"]
   - key: nutritional-yeast
     name: "nutritional yeast"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["nooch"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oat-milk
     name: "oat milk"
     category: beverages
+    perishability: refrigerated
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oaxaca-cheese
     name: "Oaxaca cheese"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 2647441
     spellings: ["quesillo"]
   - key: octopus
     name: "octopus"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174218
   - key: okra
     name: "okra"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169260
   - key: olive-oil
     name: "olive oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171413
   - key: onion
     name: "onion"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170000
   - key: onion-powder
     name: "onion powder"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171327
   - key: orange
     name: "orange"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169097
   - key: orange-bell-pepper
     name: "orange bell pepper"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 2258591
     note: "Foundation record: SR Legacy has no orange sweet pepper."
   - key: oxtail
     name: "oxtail"
     category: meat
+    perishability: fresh
     unit: g
     spellings: ["oxtails"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oyster-crackers
     name: "oyster crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: oyster-mushrooms
     name: "oyster mushrooms"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168580
   - key: oyster-sauce
     name: "oyster sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174529
   - key: oysters
     name: "oysters"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 171978
   - key: palm-sugar
     name: "palm sugar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["coconut sugar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pancetta
     name: "pancetta"
     category: meat
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: paneer
     name: "paneer"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: panko
     name: "panko"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["panko breadcrumbs"]
     note: "USDA has no panko record; plain breadcrumbs (174928) is the nearest."
   - key: papaya
     name: "papaya"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169926
   - key: paprika
     name: "paprika"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171329
   - key: parmesan
     name: "parmesan"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171247
     spellings: ["parmesan cheese"]
@@ -2323,21 +2736,25 @@ ingredients:
   - key: parsley
     name: "parsley"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170416
   - key: parsnip
     name: "parsnip"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170417
   - key: passion-fruit
     name: "passion fruit"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169108
   - key: pasta
     name: "dried pasta"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169736
     spellings: ["pasta"]
@@ -2345,141 +2762,167 @@ ingredients:
   - key: pastrami
     name: "pastrami"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 170204
   - key: pea-shoots
     name: "pea shoots"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["pea tendrils", "dou miao"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: peach
     name: "peach"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169928
   - key: peanut-butter
     name: "peanut butter"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174266
   - key: peanut-oil
     name: "peanut oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171410
   - key: peanuts
     name: "peanuts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172430
   - key: pear
     name: "pear"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169118
   - key: pearl-barley
     name: "pearl barley"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170284
     spellings: ["barley"]
   - key: pearl-onions
     name: "pearl onions"
     category: produce
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pecans
     name: "pecans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170182
   - key: pecorino-romano
     name: "Pecorino Romano"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171249
     spellings: ["pecorino", "romano cheese"]
   - key: pepperoni
     name: "pepperoni"
     category: meat
+    perishability: shelf_stable
     unit: g
     fdc: 2759006
   - key: persimmon
     name: "persimmon"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169941
   - key: pesto
     name: "pesto"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 171579
     spellings: ["basil pesto", "pesto sauce"]
   - key: phyllo-dough
     name: "phyllo dough"
     category: bakery
+    perishability: frozen
     unit: g
     fdc: 172791
     spellings: ["filo", "phyllo"]
   - key: pimento
     name: "pimento"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168559
   - key: pine-nuts
     name: "pine nuts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170591
     spellings: ["pignoli"]
   - key: pineapple
     name: "pineapple"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169124
   - key: pistachios
     name: "pistachios"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170184
   - key: pita
     name: "pita"
     category: bakery
+    perishability: fresh
     unit: each
     fdc: 174915
     spellings: ["pita bread"]
   - key: pita-chips
     name: "pita chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173147
   - key: plain-yogurt
     name: "plain yogurt"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171284
     spellings: ["yogurt", "yoghurt"]
   - key: plantain
     name: "plantain"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169130
   - key: plantain-chips
     name: "plantain chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173142
     spellings: ["platanitos"]
   - key: plum
     name: "plum"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169949
   - key: poblano
     name: "poblano"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170497
     spellings: ["poblano pepper"]
@@ -2487,410 +2930,484 @@ ingredients:
   - key: pomegranate
     name: "pomegranate"
     category: produce
+    perishability: refrigerated
     unit: each
     fdc: 169134
     note: "Arils are a recipe note on pomegranate; no measure until one is confirmed on a real fruit."
   - key: pomegranate-molasses
     name: "pomegranate molasses"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["pomegranate syrup"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ponzu
     name: "ponzu"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["ponzu sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: popcorn-kernels
     name: "popcorn kernels"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["popping corn", "unpopped popcorn"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: poppy-seeds
     name: "poppy seeds"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 171330
   - key: pork-belly
     name: "pork belly"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 167812
   - key: pork-chop
     name: "pork chop"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 168238
     spellings: ["pork chops"]
   - key: pork-loin
     name: "pork loin"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 168230
   - key: pork-ribs
     name: "pork ribs"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 167853
     spellings: ["spareribs", "spare ribs", "baby back ribs"]
   - key: pork-rinds
     name: "pork rinds"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167961
     spellings: ["chicharrones", "pork cracklings"]
   - key: pork-sausage
     name: "pork sausage"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172934
   - key: pork-shoulder
     name: "pork shoulder"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 167849
     spellings: ["boston butt", "pork butt"]
   - key: pork-shoulder-steak
     name: "pork shoulder steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 168260
     spellings: ["pork blade steak"]
   - key: pork-tenderloin
     name: "pork tenderloin"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 168249
   - key: portobello-mushrooms
     name: "portobello mushrooms"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169255
     spellings: ["portobello", "portabella mushrooms"]
   - key: potato
     name: "potato"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170026
   - key: potato-chips
     name: "potato chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169677
     spellings: ["crisps"]
   - key: powdered-sugar
     name: "powdered sugar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169656
     spellings: ["confectioners sugar", "icing sugar"]
   - key: preserved-lemons
     name: "preserved lemons"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["preserved lemon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pretzels
     name: "pretzels"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167555
     spellings: ["pretzel twists", "pretzel sticks"]
   - key: prosciutto
     name: "prosciutto"
     category: meat
+    perishability: refrigerated
     unit: g
     spellings: ["prosciutto crudo", "parma ham"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: provolone
     name: "provolone"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 170850
     spellings: ["provolone cheese"]
   - key: puff-pastry
     name: "puff pastry"
     category: frozen
+    perishability: frozen
     unit: g
     fdc: 172790
   - key: puffed-rice-cakes
     name: "puffed rice cakes"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170250
   - key: pumpkin
     name: "pumpkin"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168448
   - key: pumpkin-seeds
     name: "pumpkin seeds"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170556
     spellings: ["pepitas"]
   - key: quail-eggs
     name: "quail eggs"
     category: dairy
+    perishability: refrigerated
     unit: each
     fdc: 172191
   - key: quark
     name: "quark"
     category: dairy
+    perishability: fresh
     unit: g
     spellings: ["curd cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: queso-blanco
     name: "queso blanco"
     category: dairy
+    perishability: fresh
     unit: g
     fdc: 172224
   - key: queso-fresco
     name: "queso fresco"
     category: dairy
+    perishability: fresh
     unit: g
     fdc: 2647442
   - key: queso-panela
     name: "queso panela"
     category: dairy
+    perishability: refrigerated
     unit: g
     spellings: ["panela cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: quinoa
     name: "quinoa"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168874
   - key: radicchio
     name: "radicchio"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168564
   - key: radishes
     name: "radishes"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169276
     spellings: ["radish"]
   - key: raisins
     name: "raisins"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168165
   - key: ramen-noodles
     name: "ramen noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171177
     spellings: ["ramen", "dried ramen"]
   - key: ramps
     name: "ramps"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["wild leeks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ras-el-hanout
     name: "ras el hanout"
     category: spices
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: raspberries
     name: "raspberries"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 167755
   - key: red-bell-pepper
     name: "red bell pepper"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170108
   - key: red-cabbage
     name: "red cabbage"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169977
     spellings: ["purple cabbage"]
   - key: red-chili
     name: "red chili"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170106
   - key: red-curry-paste
     name: "red curry paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["thai red curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: red-onion
     name: "red onion"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 790577
     spellings: ["purple onion"]
   - key: red-pepper-flakes
     name: "red pepper flakes"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["crushed red pepper", "chili flakes"]
     note: "USDA has no record for pepper flakes; ground cayenne (170932) is the nearest."
   - key: red-potato
     name: "red potato"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 2346402
   - key: red-wine
     name: "red wine"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 173190
   - key: red-wine-vinegar
     name: "red wine vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 172240
   - key: refried-beans
     name: "refried beans"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172438
   - key: rhubarb
     name: "rhubarb"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 167758
   - key: ribeye-steak
     name: "ribeye steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 173402
     spellings: ["rib eye", "ribeye"]
   - key: rice-crackers
     name: "rice crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173161
     spellings: ["senbei"]
   - key: rice-flour
     name: "rice flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169714
   - key: rice-noodles
     name: "rice noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169742
   - key: rice-paper
     name: "rice paper"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["spring roll wrappers"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: rice-vinegar
     name: "rice vinegar"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["rice wine vinegar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ricotta
     name: "ricotta"
     category: dairy
+    perishability: fresh
     unit: g
     fdc: 170851
     spellings: ["ricotta cheese"]
   - key: ricotta-salata
     name: "ricotta salata"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: roasted-red-peppers
     name: "roasted red peppers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168546
     spellings: ["jarred roasted peppers", "roasted peppers"]
   - key: rolled-oats
     name: "rolled oats"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173904
     spellings: ["old-fashioned oats"]
   - key: romaine-lettuce
     name: "romaine lettuce"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169247
     spellings: ["romaine", "cos lettuce"]
   - key: romesco
     name: "romesco"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["romesco sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: rum
     name: "rum"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 174817
   - key: russet-potato
     name: "russet potato"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 2346401
     spellings: ["idaho potato", "baking potato"]
   - key: rutabaga
     name: "rutabaga"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168454
     spellings: ["swede"]
   - key: rye-bread
     name: "rye bread"
     category: bakery
+    perishability: fresh
     unit: g
     fdc: 172684
   - key: safflower-oil
     name: "safflower oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171027
   - key: saffron
     name: "saffron"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170934
   - key: sake
     name: "sake"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 167723
   - key: salami
     name: "salami"
     category: meat
+    perishability: shelf_stable
     unit: g
     fdc: 174582
     spellings: ["genoa salami", "hard salami"]
   - key: salmon
     name: "salmon"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175167
   - key: salsa
     name: "salsa"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174524
   - key: salsa-verde
     name: "salsa verde"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171824
     spellings: ["green salsa"]
   - key: salt
     name: "salt"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 173468
     spellings: ["table salt"]
@@ -2898,146 +3415,172 @@ ingredients:
   - key: salt-pork
     name: "salt pork"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 168287
   - key: salted-butter
     name: "salted butter"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173410
   - key: saltines
     name: "saltines"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172746
     spellings: ["saltine crackers", "soda crackers"]
   - key: sambal-oelek
     name: "sambal oelek"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["sambal"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: sandwich-bread
     name: "white sandwich bread"
     category: bakery
+    perishability: fresh
     unit: g
     fdc: 174924
     spellings: ["white bread"]
   - key: sardines
     name: "sardines"
     category: seafood
+    perishability: shelf_stable
     unit: g
     fdc: 175139
   - key: sauerkraut
     name: "sauerkraut"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169279
   - key: savoy-cabbage
     name: "savoy cabbage"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170388
   - key: scallion
     name: "scallion"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170005
     spellings: ["green onion", "spring onion"]
   - key: scallops
     name: "scallops"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174220
   - key: sea-bass
     name: "sea bass"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175142
   - key: seaweed-snacks
     name: "seaweed snacks"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["roasted seaweed snacks"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: self-rising-flour
     name: "self-rising flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168895
     spellings: ["self-raising flour"]
   - key: semisweet-chocolate
     name: "semisweet chocolate"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167976
     spellings: ["chocolate chips", "semisweet chocolate chips"]
   - key: semolina
     name: "semolina"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169715
     spellings: ["semolina flour"]
   - key: serrano
     name: "serrano"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169395
     spellings: ["serrano pepper", "serrano chile"]
   - key: sesame-oil
     name: "sesame oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171016
   - key: sesame-seeds
     name: "sesame seeds"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170150
   - key: shallot
     name: "shallot"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170499
   - key: shaoxing-wine
     name: "Shaoxing wine"
     proper_noun: true
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 169070
     spellings: ["chinese cooking wine", "shaoxing rice wine"]
   - key: shiitake-mushrooms
     name: "shiitake mushrooms"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169242
     spellings: ["shiitake"]
   - key: shishito-peppers
     name: "shishito peppers"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["shishitos"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: short-grain-rice
     name: "short-grain rice"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168931
     spellings: ["sushi rice"]
   - key: shortening
     name: "shortening"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 173584
   - key: shredded-coconut
     name: "shredded coconut"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170577
     spellings: ["flaked coconut", "sweetened coconut"]
   - key: shrimp
     name: "shrimp"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174210
     spellings: ["prawns"]
@@ -3045,6 +3588,7 @@ ingredients:
   - key: shrimp-paste
     name: "shrimp paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["belacan", "kapi"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3052,124 +3596,146 @@ ingredients:
     name: "Sichuan peppercorns"
     proper_noun: true
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["szechuan peppercorns", "szechuan pepper"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: sirloin-steak
     name: "sirloin steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169551
     spellings: ["top sirloin"]
   - key: skim-milk
     name: "skim milk"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 171269
   - key: skirt-steak
     name: "skirt steak"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172160
   - key: skyr
     name: "skyr"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 330137
     spellings: ["icelandic yogurt"]
   - key: smoked-paprika
     name: "smoked paprika"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["pimenton"]
     note: "USDA records only plain paprika (171329); smoked paprika is a separate thing to buy."
   - key: smoked-salmon
     name: "smoked salmon"
     category: seafood
+    perishability: refrigerated
     unit: g
     fdc: 173687
     spellings: ["lox"]
   - key: smoked-sausage
     name: "smoked sausage"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 174585
   - key: snow-peas
     name: "snow peas"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170010
     spellings: ["sugar snap peas", "snap peas"]
   - key: soba-noodles
     name: "soba noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168906
     spellings: ["soba"]
   - key: soppressata
     name: "soppressata"
     category: meat
+    perishability: shelf_stable
     unit: g
     fdc: 172938
     spellings: ["sopressata"]
   - key: sour-cream
     name: "sour cream"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171257
   - key: soy-milk
     name: "soy milk"
     category: beverages
+    perishability: refrigerated
     unit: ml
     fdc: 1750337
     spellings: ["soymilk"]
   - key: soy-sauce
     name: "soy sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174277
     spellings: ["light soy sauce"]
   - key: spaghetti-squash
     name: "spaghetti squash"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169298
   - key: spanish-chorizo
     name: "Spanish chorizo"
     proper_noun: true
     category: meat
+    perishability: shelf_stable
     unit: g
     spellings: ["dry chorizo", "cured chorizo"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: speck
     name: "speck"
     category: meat
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: spelt-flour
     name: "spelt flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     note: "USDA has spelt grain but no spelt flour record."
   - key: spinach
     name: "spinach"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168462
   - key: split-peas
     name: "split peas"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172428
   - key: squid
     name: "squid"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 174223
     spellings: ["calamari"]
   - key: sriracha
     name: "sriracha"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171186
     spellings: ["sriracha sauce"]
@@ -3177,27 +3743,32 @@ ingredients:
   - key: star-anise
     name: "star anise"
     category: spices
+    perishability: shelf_stable
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: star-fruit
     name: "star fruit"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 171715
     spellings: ["carambola"]
   - key: stracciatella
     name: "stracciatella"
     category: dairy
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: strawberries
     name: "strawberries"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 167762
   - key: string-cheese
     name: "string cheese"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 329370
     spellings: ["cheese sticks"]
@@ -3205,67 +3776,79 @@ ingredients:
     name: "New York strip steak"
     proper_noun: true
     category: meat
+    perishability: fresh
     unit: g
     fdc: 2727572
     spellings: ["strip steak", "new york strip", "ny strip"]
   - key: sumac
     name: "sumac"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["ground sumac"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: summer-sausage
     name: "summer sausage"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 172940
   - key: sun-dried-tomatoes
     name: "sun-dried tomatoes"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168567
     spellings: ["sundried tomatoes"]
   - key: sunchokes
     name: "sunchokes"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169236
     spellings: ["jerusalem artichokes"]
   - key: sunflower-oil
     name: "sunflower oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 1750349
   - key: sunflower-seeds
     name: "sunflower seeds"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170562
   - key: sweet-and-sour-sauce
     name: "sweet and sour sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174066
   - key: sweet-chili-sauce
     name: "sweet chili sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["thai sweet chili sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: sweet-potato
     name: "sweet potato"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 168482
     spellings: ["yam"]
   - key: sweet-relish
     name: "sweet relish"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168561
   - key: sweetened-condensed-milk
     name: "sweetened condensed milk"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171275
     spellings: ["condensed milk"]
@@ -3273,6 +3856,7 @@ ingredients:
     name: "Swiss chard"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169991
     spellings: ["chard"]
@@ -3280,112 +3864,132 @@ ingredients:
     name: "Swiss cheese"
     proper_noun: true
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 171251
   - key: t-bone-steak
     name: "T-bone steak"
     proper_noun: true
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172118
     spellings: ["t-bone", "porterhouse", "porterhouse steak"]
   - key: tahini
     name: "tahini"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168604
     spellings: ["sesame paste"]
   - key: taleggio
     name: "taleggio"
     category: dairy
+    perishability: refrigerated
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tamari
     name: "tamari"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 174278
   - key: tamarind-paste
     name: "tamarind paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["tamarind concentrate", "tamarind pulp"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tapenade
     name: "tapenade"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["olive tapenade"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tapioca-pearls
     name: "tapioca pearls"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169717
     spellings: ["tapioca"]
   - key: taro
     name: "taro"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 169308
     spellings: ["taro root", "eddo"]
   - key: tartar-sauce
     name: "tartar sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171826
   - key: tempeh
     name: "tempeh"
     category: pantry
+    perishability: refrigerated
     unit: g
     fdc: 174272
   - key: tequila
     name: "tequila"
     category: beverages
+    perishability: shelf_stable
     unit: ml
   - key: teriyaki-sauce
     name: "teriyaki sauce"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171167
   - key: thai-basil
     name: "Thai basil"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: thai-chiles
     name: "Thai chiles"
     proper_noun: true
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["bird's eye chiles", "thai chili peppers", "birds eye chili"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tilapia
     name: "tilapia"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175176
   - key: toasted-sesame-oil
     name: "toasted sesame oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     spellings: ["dark sesame oil"]
     note: "USDA has no separate record for toasted sesame oil."
   - key: tofu
     name: "tofu"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 172449
     note: "Reference is soft tofu; firm and silken are products or their own entries."
   - key: tomatillo
     name: "tomatillo"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168566
   - key: tomato
     name: "tomato"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170457
     spellings: ["roma tomato", "plum tomato"]
@@ -3393,236 +3997,279 @@ ingredients:
   - key: tomato-paste
     name: "tomato paste"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170459
   - key: tomato-puree
     name: "tomato purée"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170460
   - key: tomato-sauce
     name: "tomato sauce"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170054
   - key: tortilla-chips
     name: "tortilla chips"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167558
   - key: toum
     name: "toum"
     category: pantry
+    perishability: refrigerated
     unit: g
     spellings: ["lebanese garlic sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: trail-mix
     name: "trail mix"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167561
   - key: tri-tip
     name: "tri-tip"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 169559
     spellings: ["tri-tip roast", "tri tip"]
   - key: trout
     name: "trout"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 173717
     spellings: ["rainbow trout"]
   - key: tteok
     name: "tteok"
     category: pantry
+    perishability: refrigerated
     unit: g
     spellings: ["korean rice cakes", "rice cake sticks", "garaetteok"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tuna-steak
     name: "tuna steak"
     category: seafood
+    perishability: fresh
     unit: g
     fdc: 175159
     spellings: ["ahi tuna", "yellowfin tuna"]
   - key: turbinado-sugar
     name: "turbinado sugar"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170674
     spellings: ["raw sugar", "demerara sugar"]
   - key: turkey-bacon
     name: "turkey bacon"
     category: meat
+    perishability: refrigerated
     unit: g
     fdc: 174592
   - key: turkey-breast
     name: "turkey breast"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171098
   - key: turkey-legs
     name: "turkey legs"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171493
     spellings: ["turkey drumsticks"]
   - key: turnip
     name: "turnip"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 170465
   - key: tzatziki
     name: "tzatziki"
     category: dairy
+    perishability: fresh
     unit: g
     spellings: ["tzatziki sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: udon-noodles
     name: "udon noodles"
     category: pantry
+    perishability: shelf_stable
     unit: g
     spellings: ["udon"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: unflavored-gelatin
     name: "unflavored gelatin"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169599
     spellings: ["gelatin", "gelatine"]
   - key: unsalted-butter
     name: "unsalted butter"
     category: dairy
+    perishability: refrigerated
     unit: g
     fdc: 173430
   - key: unsweetened-chocolate
     name: "unsweetened chocolate"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167568
     spellings: ["baking chocolate"]
   - key: vanilla-extract
     name: "vanilla extract"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 173471
   - key: veal-cutlets
     name: "veal cutlets"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 172643
     spellings: ["veal scaloppine", "veal scallopini"]
   - key: vegetable-oil
     name: "vegetable oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     note: "USDA has no record for generic vegetable oil (FNDDS \"Vegetable oil, NFS\" is code-only)."
   - key: vodka
     name: "vodka"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 174818
   - key: wakame
     name: "wakame"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170496
   - key: walnut-oil
     name: "walnut oil"
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171030
   - key: walnuts
     name: "walnuts"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 170187
   - key: water-crackers
     name: "water crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 171856
     spellings: ["table water crackers"]
   - key: watercress
     name: "watercress"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 170068
   - key: watermelon
     name: "watermelon"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 167765
   - key: wheat-crackers
     name: "wheat crackers"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 174985
     spellings: ["whole wheat crackers"]
   - key: whiskey
     name: "whiskey"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 174819
     spellings: ["whisky"]
   - key: white-chocolate
     name: "white chocolate"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 167571
     spellings: ["white chocolate chips"]
   - key: white-onion
     name: "white onion"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 1104962
   - key: white-pepper
     name: "white pepper"
     category: spices
+    perishability: shelf_stable
     unit: g
     fdc: 170933
     spellings: ["ground white pepper"]
   - key: white-wine
     name: "white wine"
     category: beverages
+    perishability: shelf_stable
     unit: ml
     fdc: 174837
     spellings: ["dry white wine"]
   - key: whole-chicken
     name: "whole chicken"
     category: meat
+    perishability: fresh
     unit: g
     fdc: 171447
     spellings: ["roasting chicken"]
   - key: whole-milk
     name: "whole milk"
     category: dairy
+    perishability: fresh
     unit: ml
     fdc: 171265
   - key: whole-wheat-bread
     name: "whole wheat bread"
     category: bakery
+    perishability: fresh
     unit: g
     fdc: 172688
     spellings: ["wheat bread"]
   - key: whole-wheat-flour
     name: "whole wheat flour"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 168893
   - key: whole-wheat-pasta
     name: "whole wheat pasta"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169738
   - key: wild-rice
     name: "wild rice"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 169726
   - key: wonton-wrappers
     name: "wonton wrappers"
     category: bakery
+    perishability: refrigerated
     unit: g
     fdc: 172802
     spellings: ["dumpling wrappers", "gyoza wrappers", "potsticker wrappers"]
@@ -3630,34 +4277,40 @@ ingredients:
     name: "Worcestershire sauce"
     proper_noun: true
     category: pantry
+    perishability: shelf_stable
     unit: ml
     fdc: 171610
     spellings: ["worcestershire"]
   - key: yellow-bell-pepper
     name: "yellow bell pepper"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169383
   - key: yellow-mustard
     name: "yellow mustard"
     category: pantry
+    perishability: shelf_stable
     unit: g
     fdc: 172234
     spellings: ["prepared mustard"]
   - key: yellow-onion
     name: "yellow onion"
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 790646
   - key: yellow-squash
     name: "yellow squash"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 168464
     spellings: ["summer squash"]
   - key: yu-choy
     name: "yu choy"
     category: produce
+    perishability: fresh
     unit: g
     spellings: ["choy sum", "yu choy sum"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
@@ -3665,18 +4318,21 @@ ingredients:
     name: "Yukon Gold potato"
     proper_noun: true
     category: produce
+    perishability: refrigerated
     unit: g
     fdc: 2346403
     spellings: ["gold potato"]
   - key: zaatar
     name: "za'atar"
     category: spices
+    perishability: shelf_stable
     unit: g
     spellings: ["zatar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: zucchini
     name: "zucchini"
     category: produce
+    perishability: fresh
     unit: g
     fdc: 169291
     spellings: ["courgette"]

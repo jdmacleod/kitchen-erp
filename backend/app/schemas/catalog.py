@@ -11,12 +11,12 @@ from app.catalog import categories
 from app.catalog.attributes import ProductKind
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import Symbology as BarcodeSymbology
+from app.catalog.perishability import Perishability
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.product_photos import PhotoSummary
 
 CanonicalUnit = Literal["g", "ml", "each"]
 BridgeSource = Literal["usda", "label", "measured", "llm", "manual"]
-Perishability = Literal["shelf_stable", "refrigerated", "fresh"]
 
 
 # --- measures ---------------------------------------------------------------
@@ -68,7 +68,8 @@ class IngredientCreate(_DensityPair):
     category: str | None = Field(default=None, max_length=100)
     canonical_unit: CanonicalUnit = "g"
     yield_pct: Decimal = Field(default=Decimal("1"), gt=0, le=1)
-    perishability: Perishability = "shelf_stable"
+    # None: the standard entry's value, or the default for the category.
+    perishability: Perishability | None = None
     notes: str | None = None
 
 

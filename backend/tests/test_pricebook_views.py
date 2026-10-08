@@ -73,7 +73,12 @@ async def test_ingredient_offers_min_quality_filter(admin_client):
         await admin_client.get(f"/api/v1/ingredients/{iid}/offers", params={"min_quality": 4})
     ).json()
     assert [o["product_id"] for o in filtered["items"]] == [good["id"]]
-    assert offers["stale_thresholds"] == {"fresh": 14, "refrigerated": 45, "shelf_stable": 120}
+    assert offers["stale_thresholds"] == {
+        "fresh": 14,
+        "refrigerated": 45,
+        "shelf_stable": 120,
+        "frozen": 120,
+    }
 
 
 async def test_compare_matrix_highlights_cheapest_and_leaves_unknown_empty(admin_client):

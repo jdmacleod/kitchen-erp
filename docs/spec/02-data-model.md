@@ -37,7 +37,7 @@ ingredient(
   canonical_unit FK unit CHECK IN (g, ml, each),
   density_g_per_ml NUMERIC(10,5)?, density_source?, density_confirmed BOOLEAN DEFAULT false,
   yield_pct NUMERIC(5,4) DEFAULT 1 CHECK (0 < yield_pct <= 1),
-  perishability CHECK IN (shelf_stable, refrigerated, fresh),
+  perishability CHECK IN (shelf_stable, refrigerated, fresh, frozen),
   notes?
 )
 
@@ -51,6 +51,17 @@ ingredient_measure(
 ```
 
 `density_source` takes the same values as `ingredient_measure.source`, and `density_confirmed` plays the role that `confirmed` plays on a measure: an accepted suggestion or a newly entered value is unconfirmed until a person confirms it as a distinct action. The same pair exists on `product` for the density override. `yield_pct` and `perishability` are not used until Phase 3 and Phase 4 respectively but are cheap to capture while an ingredient is being created, and both default sensibly.
+
+**Perishability** says how fast an ingredient spoils where it is normally kept, unopened. The values follow the USDA storage charts: the FSIS "Food Product Dating" fact sheet, the FoodSafety.gov cold food storage chart, and the food bank guides that reprint them.
+
+| Value | Meaning | Examples |
+|---|---|---|
+| `shelf_stable` | Keeps months or more at room temperature | Canned goods (high-acid 12–18 months, low-acid 2–5 years), flour, rice, pasta, dried beans, spices, oils, vinegar, unopened condiments, hard or dry sausage |
+| `refrigerated` | Kept cold, or keeps about a week or longer | Eggs (3–5 weeks), butter, hard cheese, yogurt, bacon, hot dogs and sealed lunch meat (2 weeks), cured ham, tortillas; carrots, cabbage, celery, apples, citrus, and potatoes, onions and garlic (weeks) |
+| `fresh` | Keeps a week or less | Raw poultry, ground meat and raw sausage (1–2 days), beef, pork and lamb (3–5 days), fish (1–3 days), milk (7 days), cream, soft cheese; greens, berries, mushrooms, fresh herbs, tomatoes, ripening fruit; bread |
+| `frozen` | Bought and kept frozen | Frozen vegetables and fruit, frozen fish, ice cream, puff pastry |
+
+Every standard-list entry carries a perishability. A new ingredient takes its entry's value, or for a name typed in, its category's default (produce, meat, seafood and bakery `fresh`, dairy `refrigerated`, frozen `frozen`, everything else `shelf_stable`), unless a person picks one. A defaulted value is recorded in `field_source`, so a person's later change wins (the 1F rule). `kerp ingredients perishability --plan` proposes values for the ingredients nobody has set, and `--apply` writes the ones a person approved.
 
 ### Ingredient vocabulary (1G)
 
