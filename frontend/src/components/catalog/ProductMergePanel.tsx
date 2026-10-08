@@ -53,14 +53,17 @@ export function mergeWarnings(m: ProductMerge): string[] {
  */
 export function ProductMergePanel({
   product,
+  keep = null,
   onMerged,
   onCancel,
 }: {
   product: Product;
+  /** The product to keep, already chosen (a possible duplicate's pair, 2P). */
+  keep?: Pick<SearchHit, "id" | "name" | "brand"> | null;
   onMerged: (done: ProductMerge) => void;
   onCancel: () => void;
 }) {
-  const [survivor, setSurvivor] = useState<SearchHit | null>(null);
+  const [survivor, setSurvivor] = useState<Pick<SearchHit, "id" | "name" | "brand"> | null>(keep);
   const [self, setSelf] = useState(false);
   const preview = useProductMergePreview(product.id, survivor?.id ?? null);
   const merge = useMergeProduct(product.id);

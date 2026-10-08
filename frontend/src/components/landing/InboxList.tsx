@@ -23,6 +23,7 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   usda: { label: "USDA", tone: "neutral" },
   new_product: { label: "Products", tone: "neutral" },
   product_update: { label: "Products", tone: "neutral" },
+  duplicates: { label: "Products", tone: "neutral" },
   posted_prices: { label: "Prices", tone: "neutral" },
 };
 

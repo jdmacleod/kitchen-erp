@@ -1602,6 +1602,71 @@
         "title": "DensitySuggestion",
         "type": "object"
       },
+      "DistinctIn": {
+        "additionalProperties": false,
+        "description": "\"Not the same\": the pair is never offered again, in either order.",
+        "properties": {
+          "a": {
+            "format": "uuid",
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "format": "uuid",
+            "title": "B",
+            "type": "string"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "DistinctIn",
+        "type": "object"
+      },
+      "DuplicateList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicatePairOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DuplicateList",
+        "type": "object"
+      },
+      "DuplicatePairOut": {
+        "additionalProperties": false,
+        "description": "Two active products the sameness rules call the same (2P, 03).",
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "reasons"
+        ],
+        "title": "DuplicatePairOut",
+        "type": "object"
+      },
       "ExportSummaryOut": {
         "additionalProperties": false,
         "description": "What a public vendor export would hold, before downloading it (design D12).",
@@ -2573,6 +2638,7 @@
               "usda",
               "new_product",
               "product_update",
+              "duplicates",
               "posted_prices"
             ],
             "title": "Kind",
@@ -18130,6 +18196,63 @@
         "summary": "Products Helper",
         "tags": [
           "products helper"
+        ]
+      }
+    },
+    "/api/v1/products/duplicates": {
+      "get": {
+        "description": "Pairs of active products that are likely the same product (2P, 03).",
+        "operationId": "list_duplicates_api_v1_products_duplicates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Duplicates",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/duplicates/distinct": {
+      "post": {
+        "description": "\"Not the same\": remember the pair so it is never offered again.",
+        "operationId": "mark_distinct_api_v1_products_duplicates_distinct_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DistinctIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Distinct",
+        "tags": [
+          "catalog"
         ]
       }
     },

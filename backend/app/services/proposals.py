@@ -352,7 +352,7 @@ def _proposal_facts(fields: dict[str, Any]) -> sameness.Facts:
     )
 
 
-def _product_facts(product: Product) -> sameness.Facts:
+def product_facts(product: Product) -> sameness.Facts:
     gtin = next(
         (i.value for i in product.identifiers if i.scheme == "gtin" and i.vendor_id is None), None
     )
@@ -389,7 +389,7 @@ async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dic
     mine = _proposal_facts(proposal.fields or {})
     out = []
     for product in rows:
-        verdict = sameness.compare(mine, _product_facts(product))
+        verdict = sameness.compare(mine, product_facts(product))
         out.append(
             {
                 "product_id": product.id,

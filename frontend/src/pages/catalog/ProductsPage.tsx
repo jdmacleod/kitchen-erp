@@ -17,6 +17,7 @@ import {
 import { useProductsHelper, type KnownProduct } from "../../api/proposals";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { DuplicatePairs } from "../../components/catalog/DuplicatePairs";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { CATEGORY_KEYS, ProductCategory, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
@@ -46,6 +47,8 @@ export function ProductsPage() {
   const category: CategoryKey | "none" | null = rawCategory === "none" ? "none" : isCategory(rawCategory) ? rawCategory : null;
   const includeInactive = params.get("inactive") === "1";
   const noPhoto = params.get("no_photo") === "1";
+  // Possible duplicates (2P), reached from the inbox row.
+  const showDuplicates = params.get("duplicates") === "1";
   const presetId = params.get("ingredient_id") ?? undefined;
 
   const setParam = (key: string, value: string | null) =>
@@ -140,6 +143,8 @@ export function ProductsPage() {
       <PageHeader title="Products" description="The packaged things vendors sell, each a form of one ingredient.">
         <Button onClick={() => setAdding(true)}>Add product</Button>
       </PageHeader>
+
+      {showDuplicates ? <DuplicatePairs onClose={() => setParam("duplicates", null)} /> : null}
 
       <div className="mb-4 flex flex-col gap-3">
         <label htmlFor="product-filter" className="sr-only">

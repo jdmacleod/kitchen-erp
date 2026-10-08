@@ -17,7 +17,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog import standard
+from app.catalog import sameness, standard
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
@@ -299,14 +299,20 @@ def _folded(name: str) -> str:
 
 
 async def _same_product(db: AsyncSession, name: str, ingredient_id: uuid.UUID) -> Product | None:
-    """An active product of the ingredient with the same name, ignoring case and spacing."""
+    """An active product of the ingredient with the same name key (2P): letter case,
+    spacing, trademark signs, a printed size and the product's own brand aside."""
     rows = await db.execute(
         select(Product)
         .where(Product.ingredient_id == ingredient_id, Product.active)
         .order_by(Product.created_at, Product.id)
     )
-    folded = _folded(name)
-    return next((p for p in rows.scalars() if _folded(p.name) == folded), None)
+    key = sameness.name_key(name).words
+    if not key:
+        folded = _folded(name)
+        return next((p for p in rows.scalars() if _folded(p.name) == folded), None)
+    return next(
+        (p for p in rows.scalars() if sameness.name_key(p.name, p.brand).words == key), None
+    )
 
 
 async def name_product(

@@ -191,6 +191,25 @@ async def test_a_row_naming_an_existing_product_offers_it_instead(admin_client, 
     assert len(products["items"]) == 1
 
 
+async def test_marks_and_a_printed_size_do_not_hide_an_existing_product(
+    admin_client, admin, db_session
+):
+    """Criterion 108: the naming pass compares by name key (2P)."""
+    loc = await _queue(admin_client, admin, db_session)
+    flour = (await make_ingredient(admin_client, "bread flour"))["id"]
+    existing = await admin_client.post(
+        "/api/v1/products",
+        json={"ingredient_id": flour, "name": "Riverbend\u2122 Bread Flour, 2 kg"},
+    )
+    assert existing.status_code == 201, existing.text
+    row = {"vendor_id": loc["vendor"]["id"], "raw_text_norm": "RVRBND BREAD FLR 2KG",
+           "name": "riverbend bread flour", "ingredient_id": flour}  # fmt: skip
+    r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": [row]})
+    [result] = r.json()["results"]
+    assert result["error"]["code"] == "product_exists"
+    assert result["error"]["product"]["id"] == existing.json()["id"]
+
+
 async def test_two_rows_naming_the_same_new_product_create_it_once(admin_client, admin, db_session):
     loc = await _queue(admin_client, admin, db_session)
     vendor = loc["vendor"]["id"]

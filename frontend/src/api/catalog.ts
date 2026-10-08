@@ -12,6 +12,7 @@ import {
 import type { PhotoSummary } from "./productPhotos";
 import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
+import { inboxKey } from "./inbox";
 import type { ListResponse } from "./types";
 
 // --- types ------------------------------------------------------------------
@@ -344,6 +345,7 @@ export const catalogKeys = {
     ["products", "list", { ingredientId, includeInactive }] as const,
   productSearch: (q: string) => ["products", "search", q] as const,
   product: (id: string) => ["products", "detail", id] as const,
+  duplicates: ["products", "duplicates"] as const,
   usda: (name: string) => ["usda", "suggestions", name] as const,
 };
 
@@ -682,6 +684,33 @@ export function useMergeProduct(loserId: string) {
       api<ProductMerge>(`/products/${enc(loserId)}/merge`, { method: "POST", body: { survivor_id: survivorId } }),
     // Prices, codes, photos, listings and receipt lines all move: refetch everything.
     onSuccess: () => void client.invalidateQueries(),
+  });
+}
+
+/** Two active products the sameness rules call the same (2P, 03). */
+export interface DuplicatePair {
+  a: Product;
+  b: Product;
+  reasons: string[];
+}
+
+export function useDuplicates(enabled = true) {
+  return useQuery({
+    queryKey: catalogKeys.duplicates,
+    queryFn: () => api<{ items: DuplicatePair[] }>("/products/duplicates"),
+    enabled,
+  });
+}
+
+/** "Not the same": the pair is never offered again. */
+export function useMarkDistinct() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (pair: { a: string; b: string }) => api<void>("/products/duplicates/distinct", { method: "POST", body: pair }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: catalogKeys.duplicates });
+      void client.invalidateQueries({ queryKey: inboxKey });
+    },
   });
 }
 

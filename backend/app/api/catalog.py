@@ -14,6 +14,9 @@ from app.catalog.categories import CategoryKey
 from app.schemas.catalog import (
     ConvertIn,
     ConvertOut,
+    DistinctIn,
+    DuplicateList,
+    DuplicatePairOut,
     IngredientCreate,
     IngredientList,
     IngredientOut,
@@ -31,7 +34,7 @@ from app.schemas.catalog import (
     SearchOut,
     UsdaSuggestionList,
 )
-from app.services import catalog, product_merge, proposals, resolution, usda
+from app.services import catalog, product_duplicates, product_merge, proposals, resolution, usda
 
 router = APIRouter(tags=["catalog"])
 
@@ -219,6 +222,27 @@ async def create_product(
         await resolution.match_waiting(db, user, row.id)
     row = await catalog.get_product(db, row.id)
     return await guard.commit(201, ProductOut.model_validate(row).model_dump(mode="json"))
+
+
+@router.get("/products/duplicates", response_model=DuplicateList)
+async def list_duplicates(_: CurrentUser, db: DbSession) -> DuplicateList:
+    """Pairs of active products that are likely the same product (2P, 03)."""
+    return DuplicateList(
+        items=[
+            DuplicatePairOut(
+                a=ProductOut.model_validate(d.a),
+                b=ProductOut.model_validate(d.b),
+                reasons=list(d.reasons),
+            )
+            for d in await product_duplicates.find_duplicates(db)
+        ]
+    )
+
+
+@router.post("/products/duplicates/distinct", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_distinct(payload: DistinctIn, user: CurrentUser, db: DbSession) -> None:
+    """ "Not the same": remember the pair so it is never offered again."""
+    await product_duplicates.mark_distinct(db, user, payload.a, payload.b)
 
 
 @router.get("/products/{product_id}", response_model=ProductOut)
