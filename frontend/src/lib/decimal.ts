@@ -163,3 +163,13 @@ export function formatMoney(a: string | null | undefined, minPlaces = 2, maxPlac
   const rounded = stripZeros(roundTo(a, maxPlaces), minPlaces);
   return rounded.startsWith("-") ? `-$${rounded.slice(1)}` : `$${rounded}`;
 }
+
+/**
+ * A price with what it bought, as the price records show it: "$23.12 / 2 each".
+ * One each needs no saying, so it is the price alone. A line that bought two
+ * read as one price looked twice as dear beside a price per one.
+ */
+export function moneyForQty(price: string, qty: string, unit: string): string {
+  const count = stripZeros(qty);
+  return count === "1" && unit === "each" ? formatMoney(price) : `${formatMoney(price)} / ${count} ${unit}`;
+}

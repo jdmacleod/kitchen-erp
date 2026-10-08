@@ -15,7 +15,7 @@ import { locationLabel, rememberLocation } from "../../components/purchases/Loca
 import { InlineProductCreate, productRefFromHit, type ProductRef } from "../../components/purchases/ProductPicker";
 import { StoreChip, useStoreGuess } from "../../components/purchases/StoreChip";
 import { Alert, Button, Card, Field, PageHeader, focusRing } from "../../components/ui";
-import { cmp, formatMoney, isNonNegativeDecimal, stripZeros } from "../../lib/decimal";
+import { cmp, formatMoney, isNonNegativeDecimal, moneyForQty, stripZeros } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
@@ -582,12 +582,12 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
   } else {
     // Paid means bought: a shelf price someone only saw is not what they paid.
     const paid = prices.data.points.filter((p) => p.location_id === store?.id && p.source !== "shelf").at(-1);
-    if (paid) lastPaid = `${formatMoney(paid.price)} · ${formatDate(paid.observed_at)}`;
+    if (paid) lastPaid = `${moneyForQty(paid.price, paid.qty, paid.unit)} · ${formatDate(paid.observed_at)}`;
     // Stale offers are left out: an old low price is not what the shelf costs now.
     const cheapest = prices.data.latest
       .filter((l) => l.norm_unit_price !== null && !l.stale)
       .reduce<(typeof prices.data.latest)[number] | null>((low, l) => (low === null || cmp(l.norm_unit_price!, low.norm_unit_price!) < 0 ? l : low), null);
-    if (cheapest) best = `${formatMoney(cheapest.price)} · ${cheapest.vendor_name}`;
+    if (cheapest) best = `${moneyForQty(cheapest.price, cheapest.qty, cheapest.unit)} · ${cheapest.vendor_name}`;
   }
   return (
     <Card>
