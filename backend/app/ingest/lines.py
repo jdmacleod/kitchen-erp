@@ -60,10 +60,7 @@ LINES_TASK = (
     "discounts or savings printed beneath an item, container deposits (CRV, redemption "
     "value, bottle deposit), fees (bag fee, surcharge), and the tax line(s) printed in "
     "the totals block. Exclude the store header, subtotal, total, tender, change, "
-    "loyalty summaries, and footer text. Keep raw_text exactly as printed. A weight or "
-    'count row printed just above or below an item\'s name ("2.31 lb @ 0.69/lb", '
-    '"3 @ 1.25") belongs to that item: give it as the item\'s qty, unit and '
-    "unit_price, not as a line of its own."
+    "loyalty summaries, and footer text. Keep raw_text exactly as printed."
 )
 
 # A receipt longer than this many rows is read in parts of about this size (#60).
