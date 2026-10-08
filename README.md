@@ -267,6 +267,9 @@ links reach outside the deployment, and only when switched on.
 - **Retailer exports** in the documented JSON format (see `backend/app/services/importer.py`)
   load with `docker compose exec api kerp import purchases --from /data/imports/<file>.json --as <admin email>`.
   Keep real exports under `data/imports/`, which is never committed.
+  Lines whose barcode no product has yet wait in the to-identify queue and are
+  matched when a product gains that code. Codes added before this existed are
+  caught up once with `docker compose exec api kerp match-waiting --as <admin email>`.
 - **Backup and restore**:
 
   ```bash
@@ -368,7 +371,9 @@ shows, and nothing enters your catalog until you accept it.
      asks you to say which.
    - **Accept** (or Ctrl/⌘+Enter) creates the product, or fills in the gaps on
      the existing one (values it already has are kept). It also saves the
-     page's listing, its item number, and the posted price if ticked. A barcode
+     page's listing, its item number, and the posted price if ticked. Receipt
+     lines waiting in the to-identify queue that print the product's new code
+     are matched to it then, and their prices recorded. A barcode
      that belongs to another product offers "Update {that product} instead".
      **Reject** drops the proposal; the capture record is kept.
 6. **Afterwards.** A posted price shows in the product's price records as

@@ -483,6 +483,14 @@ async def resolve_line(
         ignore=payload.ignore,
         accepted_kind=payload.accepted_kind,
     )
+    # Other queued lines with the new product's barcode resolve with it.
+    if (
+        payload.product is not None
+        and payload.product.barcode
+        and product_id is not None
+        and await resolution.match_waiting(db, user, product_id)
+    ):
+        purchase = await purchases.get_purchase(db, purchase_id)
     return await purchase_out(db, purchase)
 
 
@@ -659,8 +667,10 @@ async def cheapest(
     "/purchases/{purchase_id}/lines/{line_id}/remember-code", response_model=RememberCodeOut
 )
 async def remember_line_code(
-    purchase_id: uuid.UUID, line_id: uuid.UUID, _: CurrentUser, db: DbSession
+    purchase_id: uuid.UUID, line_id: uuid.UUID, user: CurrentUser, db: DbSession
 ) -> RememberCodeOut:
     """Remember the line's code for its product at this vendor (04, 2K)."""
     found = await resolution.remember_code(db, purchase_id, line_id)
-    return RememberCodeOut(scheme=found.scheme, value=found.value, product_id=found.product_id)  # type: ignore[arg-type]
+    out = RememberCodeOut(scheme=found.scheme, value=found.value, product_id=found.product_id)  # type: ignore[arg-type]
+    await resolution.match_waiting(db, user, out.product_id)
+    return out

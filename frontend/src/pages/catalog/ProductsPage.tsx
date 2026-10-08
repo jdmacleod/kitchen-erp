@@ -22,7 +22,7 @@ import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "..
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
-import { formatMoney } from "../../lib/decimal";
+import { moneyForQty } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -307,7 +307,7 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
             <td className="px-4 py-2 align-top">
               {p.last_paid ? (
                 <>
-                  <span className="block tabular-nums">{formatMoney(p.last_paid.price)}</span>
+                  <span className="block tabular-nums">{moneyForQty(p.last_paid.price, p.last_paid.qty, p.last_paid.unit)}</span>
                   <span className={`block ${muted}`}>
                     {p.last_paid.vendor_name} · {formatDate(p.last_paid.paid_at)}
                   </span>

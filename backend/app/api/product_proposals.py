@@ -20,7 +20,7 @@ from app.schemas.proposals import (
     ProposalOut,
     ProposalSummary,
 )
-from app.services import lookups, proposals
+from app.services import lookups, proposals, resolution
 
 router = APIRouter(tags=["product proposals"])
 
@@ -93,7 +93,12 @@ async def accept_proposal(
 ) -> ProposalOut:
     """Create or update the product, its codes, listing, photos and posted price, together."""
     data = proposals.AcceptInput(**payload.model_dump())
-    return await proposal_out(db, await proposals.accept(db, user, proposal_id, data))
+    accepted = await proposals.accept(db, user, proposal_id, data)
+    if accepted.product_id and (accepted.result or {}).get("identifiers"):
+        # Receipt lines that print the new code and wait in the queue resolve now.
+        await resolution.match_waiting(db, user, accepted.product_id)
+        accepted = await proposals.get_proposal(db, proposal_id)
+    return await proposal_out(db, accepted)
 
 
 @router.post("/product-proposals/{proposal_id}/reject", response_model=ProposalOut)
