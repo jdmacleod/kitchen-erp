@@ -805,6 +805,16 @@ async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) 
     return resolved
 
 
+async def match_all_waiting(db: AsyncSession, user: AppUser) -> tuple[int, int]:
+    """``match_waiting`` for every product with a code: a catch-up for codes added
+    before lines matched on their own. Returns (lines resolved, products checked)."""
+    products = (await db.execute(select(ProductIdentifier.product_id).distinct())).scalars().all()
+    resolved = 0
+    for product_id in products:
+        resolved += await match_waiting(db, user, product_id)
+    return resolved, len(products)
+
+
 async def queued_line_ids(
     db: AsyncSession, vendor_id: uuid.UUID, raw_text_norm: str
 ) -> list[uuid.UUID]:

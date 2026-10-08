@@ -267,6 +267,9 @@ links reach outside the deployment, and only when switched on.
 - **Retailer exports** in the documented JSON format (see `backend/app/services/importer.py`)
   load with `docker compose exec api kerp import purchases --from /data/imports/<file>.json --as <admin email>`.
   Keep real exports under `data/imports/`, which is never committed.
+  Lines whose barcode no product has yet wait in the to-identify queue and are
+  matched when a product gains that code. Codes added before this existed are
+  caught up once with `docker compose exec api kerp match-waiting --as <admin email>`.
 - **Backup and restore**:
 
   ```bash

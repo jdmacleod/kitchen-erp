@@ -10,7 +10,9 @@ from decimal import Decimal
 from pathlib import Path
 
 from app.core.db import get_sessionmaker
+from app.models import ProductIdentifier
 from app.services.importer import import_export, load_export
+from app.services.resolution import match_all_waiting
 from tests.pricebook_helpers import make_location, make_product
 
 UPC = "036000291452"
@@ -85,6 +87,19 @@ async def test_giving_a_product_its_barcode_later_resolves_waiting_lines(
     assert still["lines"][0]["resolution"] == "unmatched"
     r = await admin_client.patch(f"/api/v1/products/{rig['id']}", json={"barcode": UPC})
     assert r.status_code == 200, r.text
+    after = (await admin_client.get(f"/api/v1/purchases/{purchase['id']}")).json()
+    first = min(after["lines"], key=lambda ln: ln["seq"])
+    assert first["product"]["id"] == rig["id"] and first["observation_id"]
+
+
+async def test_the_catch_up_matches_codes_added_before(admin_client, admin, tmp_path):
+    purchase = await _imported(admin_client, admin, tmp_path)
+    rig = await make_product(admin_client, "Rigatoni", "Rigatoni 16 oz")
+    # A code added straight to the table, as codes were before lines matched on their own.
+    async with get_sessionmaker()() as db:
+        db.add(ProductIdentifier(product_id=rig["id"], scheme="gtin", value=GTIN, source="manual"))
+        await db.commit()
+        assert await match_all_waiting(db, admin) == (2, 1)
     after = (await admin_client.get(f"/api/v1/purchases/{purchase['id']}")).json()
     first = min(after["lines"], key=lambda ln: ln["seq"])
     assert first["product"]["id"] == rig["id"] and first["observation_id"]

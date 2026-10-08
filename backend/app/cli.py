@@ -796,6 +796,36 @@ def restore(src: Path = FROM_OPTION, force: bool = FORCE_OPTION) -> None:
     asyncio.run(_run())
 
 
+MATCH_AS = typer.Option(..., "--as", help="email of the user recorded as resolving the lines")
+
+
+@cli.command("match-waiting")
+def match_waiting(user_email: str = MATCH_AS) -> None:
+    """Match queued receipt lines to every product that has their code.
+
+    New codes do this as they are added; run it once for codes added before that.
+    """
+    from sqlalchemy import select
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.models import AppUser
+    from app.services.resolution import match_all_waiting
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            user = (
+                await db.execute(select(AppUser).where(AppUser.email == user_email.lower()))
+            ).scalar_one_or_none()
+            if user is None:
+                typer.echo(f"error: no user {user_email}", err=True)
+                raise typer.Exit(code=1)
+            resolved, products = await match_all_waiting(db, user)
+        await dispose_engine()
+        typer.echo(f"{resolved} queued line(s) matched across {products} product(s) with codes")
+
+    asyncio.run(_run())
+
+
 images_cli = typer.Typer(help="Product photos (1I).", no_args_is_help=True)
 cli.add_typer(images_cli, name="images")
 
