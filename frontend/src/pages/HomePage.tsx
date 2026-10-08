@@ -95,7 +95,10 @@ export function HomePage() {
   return (
     <>
       <PageHeader title={greeting()} description={<span className="inline-block min-h-5">{summary}</span>}>
-        <Button onClick={openCapture}>Capture</Button>
+        {/* Secondary: the sidebar's (and the phone tab bar's) Capture is the primary one (issue 247). */}
+        <Button variant="secondary" onClick={openCapture}>
+          Capture
+        </Button>
       </PageHeader>
 
       <div className="grid gap-8 lg:grid-cols-[1.65fr_1fr]">
