@@ -1,6 +1,6 @@
-# Keep times and best-by dates (2Q) — draft awaiting approval
+# Keep times and best-by dates (2Q)
 
-This sub-phase records how long each ingredient keeps where it is stored, and gives each purchased item a best-by date worked out from it. It is a draft: nothing here is approved for implementation until the household accepts it, as with `07-phase-3-recipes-and-costing.md`.
+This sub-phase records how long each ingredient keeps where it is stored, and gives each purchased item a best-by date worked out from it. The household approved it for implementation on 2026-10-08, as a Phase 2 sub-phase.
 
 ## Why
 
