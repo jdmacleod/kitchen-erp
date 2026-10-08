@@ -143,6 +143,56 @@ def test_a_sized_discount_stays_when_the_receipt_adds_up_as_read():
     assert _by_text(lines)["TIDEWATER BEANS 16 OZ 1.25"].line_kind == "discount"
 
 
+def test_a_product_with_its_tax_letter_read_as_a_discount_becomes_an_item():
+    lines = _passes(
+        ("FENWICK OATS 2.00", "item", "2.00"),
+        ("LANTERN BAY NOODLES 3.40 F", "discount", "3.40"),
+        total="5.40",
+    )
+    line = _by_text(lines)["LANTERN BAY NOODLES 3.40 F"]
+    assert line.line_kind == "item" and "kind_from_wording" in line.flags
+
+
+def test_a_rate_note_read_as_a_discount_counts_for_nothing():
+    for raw, rate in (("2@0,45", "0.45"), ("f 3o2 @ 1.25/02", "1.25")):
+        lines = _passes(
+            ("HARBOUR TEA 0.90 F", "item", "0.90"), (raw, "discount", rate), total="0.90"
+        )
+        note = _by_text(lines)[raw]
+        assert note.line_kind == "item" and note.line_total == 0
+        assert "rate_note" in note.flags and note.parent_seq is None
+
+
+def test_a_discount_worded_as_a_saving_is_not_a_rate_note():
+    lines = _passes(
+        ("HARBOUR TEA 2.00", "item", "2.00"), ("SAVE 2 @ 0.50", "discount", "0.50"), total="1.50"
+    )
+    assert _by_text(lines)["SAVE 2 @ 0.50"].line_kind == "discount"
+
+
+def test_a_saving_already_netted_into_the_price_counts_for_nothing_when_that_adds_up():
+    lines = _passes(
+        ("WT FENWICK PEARS 1.30 F", "item", "1.30"),
+        ("Was $ 2.10/lb YOU SAVED $ .66", "discount", "0.66"),
+        ("HARBOUR TEA 2.00", "item", "2.00"),
+        total="3.30",
+    )
+    note = _by_text(lines)["Was $ 2.10/lb YOU SAVED $ .66"]
+    assert note.line_total == 0 and "saving_already_netted" in note.flags
+
+
+def test_a_saving_the_total_needs_is_kept():
+    for total in ("2.64", "3.00"):  # adds up as read; or not even without the saving
+        lines = _passes(
+            ("WT FENWICK PEARS 1.30 F", "item", "1.30"),
+            ("Was $ 2.10/lb YOU SAVED $ .66", "discount", "0.66"),
+            ("HARBOUR TEA 2.00", "item", "2.00"),
+            total=total,
+        )
+        note = _by_text(lines)["Was $ 2.10/lb YOU SAVED $ .66"]
+        assert note.line_total == Decimal("0.66") and "saving_already_netted" not in note.flags
+
+
 def test_without_a_printed_total_a_discount_is_never_turned():
     lines = _passes(
         ("FENWICK OATS 2.00", "item", "2.00"),
@@ -430,3 +480,57 @@ def test_a_rate_that_does_not_come_to_the_amount_is_not_a_row_of_it():
     # 2 x 2.50 is not 6.00. (A bare quantity row is the quantity passes' to judge.)
     lines = _passes(("RYE LOAF", "item", "6.00"), ("2 @ $2.50", "item", "6.00"))
     assert not any("continuation_row" in line.flags for line in lines)
+
+
+# --- 5. Rows the model skipped ---------------------------------------------
+
+_SKIPPED_TEXT = """JUNIPER MARKET
+1200 W HARBOUR RD
+TEL (555) 555-0142
+FENWICK OATS 2.00 F
+LANTERN BAY NOODLES 3.40 F
+HARBOUR TEA 1.15 F
+TIDEWATER BEANS 1.25 F
+STORE #12 TERM 3
+SUBTOTAL 7.80
+TAX 0.00
+TOTAL 7.80
+VISA 7.80"""
+
+
+def _skipped(*read, total="7.80"):
+    model = _model(*read)
+    return structure.post_passes(model, _SKIPPED_TEXT, Decimal(total))
+
+
+def test_a_priced_row_the_model_left_out_is_listed():
+    passes = _skipped(
+        ("FENWICK OATS 2.00 F", "item", "2.00"),
+        ("LANTERN BAY NOODLES 3.40 F", "item", "3.40"),
+        ("TIDEWATER BEANS 1.25 F", "item", "1.25"),
+        ("TAX 0.00", "tax", "0.00"),
+    )
+    assert passes.unread_rows == ["HARBOUR TEA 1.15 F"]
+    assert len(passes.lines) == 4  # nothing is added for it
+
+
+def test_a_row_whose_decimal_point_was_lost_is_listed_by_its_tax_letter():
+    text = _SKIPPED_TEXT.replace("HARBOUR TEA 1.15 F", "HARBOUR TEA 115 F")
+    model = _model(
+        ("FENWICK OATS 2.00 F", "item", "2.00"),
+        ("LANTERN BAY NOODLES 3.40 F", "item", "3.40"),
+        ("TIDEWATER BEANS 1.25 F", "item", "1.25"),
+        ("TAX 0.00", "tax", "0.00"),
+    )
+    assert structure.post_passes(model, text, Decimal("7.80")).unread_rows == ["HARBOUR TEA 115 F"]
+
+
+def test_header_total_and_payment_rows_are_never_listed():
+    passes = _skipped(
+        ("FENWICK OATS 2.00 F", "item", "2.00"),
+        ("LANTERN BAY NOODLES 3.40 F", "item", "3.40"),
+        ("HARBOUR TEA 1.15 F", "item", "1.15"),
+        ("TIDEWATER BEANS 1.25 F", "item", "1.25"),
+        ("TAX 0.00", "tax", "0.00"),
+    )
+    assert passes.unread_rows == []

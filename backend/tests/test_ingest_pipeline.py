@@ -695,6 +695,24 @@ async def test_a_part_that_cannot_be_read_costs_only_its_own_lines(
     assert [line.raw_text for line in lines][-1] == last["lines"][-1]["raw_text"]
 
 
+async def test_a_priced_row_the_model_left_out_flags_the_purchase(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, recorded
+):
+    # #181: a row the scan prints like a purchase, which the model left out, is
+    # listed and flags the purchase; nothing is added for it.
+    fixture = load_fixture("independent_minimal")
+    answer = dict(fixture.llm_responses["lines"])
+    answer["lines"] = [line for line in answer["lines"] if "honey" not in line["raw_text"]]
+    recorded({"header": fixture.llm_responses["header"], "lines": answer})
+    _, job = await upload_fixture(admin_client, fixture)
+    await run_job(job["id"])
+    lines_out = (await stage_outputs(admin_client, job["id"]))["lines"]
+    assert lines_out["unread_rows"] == ["Local honey 12oz      9.00"]
+    purchase, lines = await _purchase_with_lines(lines_out["purchase_id"])
+    assert "rows_not_read" in purchase.flags
+    assert not any("honey" in (line.raw_text or "") for line in lines)
+
+
 async def test_a_parent_index_points_within_its_own_part(
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,

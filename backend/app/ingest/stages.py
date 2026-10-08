@@ -251,6 +251,9 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         # Some parts answered and some did not: keep what was read, and say that
         # lines are missing rather than let the receipt look complete (#60).
         purchase_flags.append("lines_partial")
+    if passes.unread_rows:
+        # Rows the scan prints like purchases that no line accounts for (#181).
+        purchase_flags.append("rows_not_read")
     lines_stage.check_prices(parsed, printed_total)
     lines_stage.flag_amounts_not_in_scan(parsed, text)
     if printed_total is not None and not appears_in(printed_total, text):
@@ -302,6 +305,8 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     if merged_rows:
         # Weight and count rows joined to their items, kept here for the record.
         output["merged_rows"] = merged_rows
+    if passes.unread_rows:
+        output["unread_rows"] = passes.unread_rows
     if part_count > 1:
         output["parts"] = part_count
         output["unread_parts"] = unread_parts

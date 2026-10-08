@@ -127,8 +127,9 @@ def parse_local_datetime(text: str | None, timezone: str, order: str = "MDY") ->
 
 
 _PRINTED_DATE = re.compile(r"(?<![\d/.-])(\d{1,4})([/.-])(\d{1,2})\2(\d{2,4})(?![\d/.-])")
+# The meridiem as printed, or as OCR garbles it: "pn", "prn" and "arn" for pm and am.
 _PRINTED_TIME = re.compile(
-    r"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*([AaPp])\.?\s*[Mm]\b\.?"
+    r"(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\s*([AaPp])\.?\s*(?:[Mm]|[Rr]?[Nn])\b\.?"
     r"|(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?(?![\d:])"
 )
 _HAS_TIME = re.compile(r"\d{1,2}:\d{2}")
@@ -175,15 +176,18 @@ def _year_from_reference(
     """One date from several that differ only in a year OCR misread.
 
     The dates must share month and day, and any times printed with them must
-    agree. When exactly one year is plausible against the reference (on or before
-    it, and not over about thirteen months older) that one is taken; when none
-    is, the month and day on or before the reference. Otherwise None.
+    agree on hour and minute (am/pm may be lost or garbled on one copy). When
+    exactly one year is plausible against the reference (on or before it, and
+    not over about thirteen months older) that one is taken; when none is, the
+    month and day on or before the reference. Otherwise None.
     """
     days = {(day.month, day.day) for day in dates}
     times = {at for at in dates.values() if at is not None}
-    if len(days) != 1 or len(times) > 1:
+    if len(days) != 1 or len({(at.hour % 12, at.minute, at.second) for at in times}) > 1:
         return None
-    at = next(iter(times), None)
+    # Times that differ only by twelve hours had am/pm lost on one copy: the
+    # afternoon reading is the one a meridiem printed.
+    at = max(times) if times else None
     plausible = [day for day in dates if reference - _PLAUSIBLE_AGE <= day <= reference]
     if len(plausible) == 1:
         return plausible[0], at

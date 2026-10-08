@@ -58,6 +58,11 @@ from app.ingest.schemas import ReceiptLines
 # continuation_row: a row printed under an item that is part of it (its multi-buy
 #   rate, its name in another script, its code) was read as a second item at the
 #   same amount; it counts for nothing (pattern 11).
+# rate_note: a row that is only an "@ rate" note, its rate read as a discount,
+#   counts for nothing (pattern 12).
+# saving_already_netted: a "you saved" note under an item printed at what was
+#   paid was subtracted again; it counts for nothing, and only when the receipt
+#   then adds up to its printed total (pattern 13).
 STRUCTURE_FLAGS = frozenset(
     {
         "qty_from_prefix",
@@ -70,6 +75,8 @@ STRUCTURE_FLAGS = frozenset(
         "points_not_money",
         "payment_row",
         "continuation_row",
+        "rate_note",
+        "saving_already_netted",
     }
 )
 
@@ -81,6 +88,8 @@ class PostPasses:
     lines: list[ParsedLine]
     merged_rows: list[str] = field(default_factory=list)  # weight/count rows joined to items
     dropped_rows: list[str] = field(default_factory=list)  # shelf-price rows (#64)
+    # Rows the scan prints like a purchase that no line accounts for (pattern 5).
+    unread_rows: list[str] = field(default_factory=list)
 
 
 def post_passes(
@@ -101,9 +110,12 @@ def post_passes(
     flag_footer_rows(parsed)
     unjoined_quantity_rows(parsed)
     tax_from_rate(parsed)
+    rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
+    savings_already_netted(parsed, printed_total, header_tax)
     payment_rows(parsed, printed_total, header_tax)
-    return PostPasses(_renumber(parsed), merged, dropped)
+    unread = rows_not_read(parsed, receipt_text, merged + dropped, printed_total)
+    return PostPasses(_renumber(parsed), merged, dropped, unread)
 
 
 # --- 1. A count printed before the name -------------------------------------
@@ -188,6 +200,8 @@ _PACK_SIZE = re.compile(
     r"(?<![\d.])\d+(?:\.\d+)?\s*(?:lbs?|oz|fl\s*oz|kg|g|ml|l|ct|pk|pack)\b", re.IGNORECASE
 )
 _NEGATIVE = re.compile(r"(?:\d-|-\s*\$?\d[\d.,]*)\s*[A-Za-z*]{0,2}\s*$")
+# An amount with a till's one-letter tax code after it, at the end of the row.
+_TAX_LETTER_END = re.compile(r"\d[.,]\d{2}\s+[A-Z]\s*$")
 
 
 def _difference(
@@ -199,10 +213,11 @@ def _difference(
 def items_read_as_discounts(
     lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
 ) -> None:
-    """A "discount" naming a product with its size becomes an item.
+    """A "discount" that names a product becomes an item.
 
-    Only with the printed total to check against: the receipt must add up more
-    closely with the line as an item than as a discount. A line printed
+    A product shows by its pack size or by the tax letter a till prints after an
+    item's amount. Only with the printed total to check against: the receipt must
+    add up more closely with the line as an item than as a discount. A line printed
     negative, or worded as a saving, stays a discount.
     """
     if printed_total is None:
@@ -213,7 +228,15 @@ def items_read_as_discounts(
         if "negative_from_text" in line.flags:
             continue  # the print showed it negative: a saving, whatever the total says
         text = line.raw_text
-        if _SAVING_WORDS.search(text) or _NEGATIVE.search(text) or not _PACK_SIZE.search(text):
+        if _SAVING_WORDS.search(text) or _NEGATIVE.search(text):
+            continue
+        # What names a product: its pack size, or the tax letter a till prints after
+        # an item's amount (read as a third decimal digit when OCR took it for one).
+        if not (
+            _PACK_SIZE.search(text)
+            or _TAX_LETTER_END.search(text)
+            or "tax_code_as_digit" in line.flags
+        ):
             continue
         if quantity_only(text) is not None:
             continue
@@ -227,6 +250,143 @@ def items_read_as_discounts(
                 line.qty, line.unit = Decimal("1"), "each"
         else:
             line.line_kind = "discount"
+
+
+# --- 12. A rate note read as a discount -------------------------------------
+
+# "@ 0.45", "@ $2.40/oz": a rate, with a comma for a decimal point too.
+_AT_RATE = re.compile(r"@\s*\$?\s*(\d*[.,]\d{1,2}|\d+)(?!\d)")
+
+
+def rate_notes_not_discounts(lines: list[ParsedLine]) -> None:
+    """A "discount" that is only an "@ rate" note counts for nothing.
+
+    A count or weight row ("3 @ 0.45", "4 oz @ 2.40/oz") that OCR garbled past
+    what merge_quantity_lines can read is sometimes read as a discount of its
+    rate. When the line's amount is the rate printed after its "@", and it uses
+    no saving wording, it is a note about the item above, not a saving: it is
+    kept as an item at zero for review, flagged ``rate_note``.
+    """
+    for line in lines:
+        if line.line_kind != "discount" or _SAVING_WORDS.search(line.raw_text):
+            continue
+        rates = [Decimal(m.group(1).replace(",", ".")) for m in _AT_RATE.finditer(line.raw_text)]
+        if line.line_total <= 0 or line.line_total not in rates:
+            continue
+        line.line_kind = "item"
+        line.line_total = Decimal("0")
+        line.parent_seq = None
+        line.qty = line.unit = line.unit_price = None
+        line.flags = [f for f in line.flags if f not in ("parent_inferred", "parent_rejected")]
+        line.flags.append("rate_note")
+
+
+# --- 13. A saving already netted into the item's price ----------------------
+
+# How a till words a saving it only reports: "YOU SAVED", "WAS $2.10".
+_SAVED_NOTE = re.compile(r"you\s*sav|\bwas\b", re.IGNORECASE)
+
+
+def savings_already_netted(
+    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
+) -> None:
+    """A "you saved" note under a net price counts for nothing, when that adds up.
+
+    Some tills print what was paid on the item's row and only report the saving
+    below it ("Was $2.10/lb YOU SAVED .66"). Subtracting that saving counts it
+    twice. Nothing on the row says which layout it is, so the receipt decides:
+    the note counts for nothing only when the lines then add up to the printed
+    total, and did not before. Flagged ``saving_already_netted``; never dropped.
+    """
+    if printed_total is None:
+        return
+    for line in lines:
+        if line.line_kind != "discount" or line.line_total <= 0:
+            continue
+        if not _SAVED_NOTE.search(line.raw_text) or "negative_from_text" in line.flags:
+            continue
+        if _difference(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
+            return  # the receipt adds up: every saving is needed
+        saving = line.line_total
+        line.line_total = Decimal("0")
+        if _difference(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
+            line.flags.append("saving_already_netted")
+        else:
+            line.line_total = saving
+
+
+# --- 5. Rows the model skipped ---------------------------------------------
+
+# A row priced like a purchase: an amount at its end with at most a tax letter or
+# two after it, or digits that lost their decimal point followed by a tax letter.
+_PRICED_ROW = re.compile(r"(?:\d+[.,]\d{2}\s*[A-Za-z*]{0,2}|(?<![\d.,])\d{3,4}\s*[A-Z])\s*$")
+_WORD = re.compile(r"[A-Za-z]{3,}")
+# Rows that are not purchases even when priced: totals, tax, payment and change,
+# the store's own details, loyalty points and savings summaries. OCR's 0 for O
+# and 1 for l are allowed in the total words.
+_NOT_A_PURCHASE = re.compile(
+    r"\b(?:sub\s*t[o0]ta[l1]|t[o0]ta[l1]|tax|ba[l1]ance|bal|change|cash|visa|master|amex|debit|credit|"
+    r"tend\w*|amount|approv\w*|account|auth|payment|paid|store|term\w*|trans\w*|tel\w*|"
+    r"phone|points?|pts|reward\w*|sav\w*|you|card)\b"
+    r"|[#%=]|\(\d{3}\)|\d{3}-\d{4}|\d:\d{2}",
+    re.IGNORECASE,
+)
+_MAX_UNREAD = 20
+
+
+def _key(text: str) -> str:
+    return re.sub(r"\W+", "", text.lower())
+
+
+def rows_not_read(
+    lines: list[ParsedLine],
+    receipt_text: str,
+    taken: list[str],
+    printed_total: Decimal | None = None,
+) -> list[str]:
+    """Rows printed like a purchase that no line accounts for (pattern 5).
+
+    The model sometimes leaves a row out, most often one whose amount OCR
+    garbled. Nothing is invented for it: the rows are only listed, so review
+    can say that some printed rows were not read. A row counts when it lies
+    between the first and last rows that were read, has a word and an amount
+    (or the digits of one, with a tax letter) at its end, is not a total, tax,
+    payment, store-detail, points or savings row, does not print an amount
+    within a tenth of the receipt's total or at least everything read (the
+    total or a payment, under a name OCR garbled), and matches no line that was
+    read or row a pass took out.
+    """
+    rows = _rows(receipt_text)
+    if not rows or not lines:
+        return []
+    keys = [_key(row) for row in rows]
+    read = [_key(text) for text in [line.raw_text for line in lines] + taken]
+    read = [k for k in read if k]
+
+    def accounted(i: int) -> bool:
+        return any(k == keys[i] or (len(k) > 6 and (k in keys[i] or keys[i] in k)) for k in read)
+
+    read_items = sum((line.line_total for line in lines if line.line_kind == "item"), Decimal(0))
+    seen = [i for i in range(len(rows)) if accounted(i)]
+    if not seen:
+        return []
+    unread: list[str] = []
+    for i in range(seen[0] + 1, seen[-1]):
+        row = rows[i]
+        if accounted(i) or not _WORD.search(row) or not _PRICED_ROW.search(row):
+            continue
+        if _NOT_A_PURCHASE.search(row) or _REGULAR_PRICE.search(row) or quantity_only(row):
+            continue
+        amount = (_amounts(row) or [None])[-1]
+        if amount is not None and (
+            amount >= read_items
+            or (printed_total and abs(amount - printed_total) * 10 <= printed_total)
+        ):
+            continue  # the total or a payment of it, under a name OCR garbled
+        unread.append(row.strip())
+        if len(unread) == _MAX_UNREAD:
+            break
+    return unread
 
 
 # --- 4. A net price with its saving subtracted again ------------------------
