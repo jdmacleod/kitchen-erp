@@ -152,6 +152,7 @@ function Review({ proposal }: { proposal: Proposal }) {
   const fields = proposal.fields;
   const readOnly = proposal.status !== "pending";
   const reading = isReading(proposal);
+  const lookAlikes = proposal.look_alikes ?? [];
   const nothingRead = !reading && Object.keys(fields).length === 0;
   const strong = proposal.match.strong ?? null;
   const strongProduct = useProduct(strong?.product_id);
@@ -379,6 +380,19 @@ function Review({ proposal }: { proposal: Proposal }) {
                 </RadioRow>
               ))}
             </div>
+            {lookAlikes.length > 0 && !readOnly ? (
+              <p data-testid="look-alikes" className={`mt-2 px-3 text-sm ${muted}`}>
+                Also waiting: {lookAlikes.length} likely the same.{" "}
+                {lookAlikes.map((a, i) => (
+                  <span key={a.id}>
+                    {i > 0 ? ", " : null}
+                    <Link to={`/catalog/products/review/${a.id}`} className={`underline ${focusRing}`}>
+                      {a.title ?? "Untitled"}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
           </fieldset>
 
           <section aria-labelledby={`${id}-summary`}>

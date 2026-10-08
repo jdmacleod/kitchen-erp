@@ -404,6 +404,82 @@ async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dic
     return out
 
 
+async def rematch_pending(db: AsyncSession, product_id: uuid.UUID | None) -> int:
+    """Recompute the matches of pending new-product proposals that might name this
+    product, after it was created or survived a merge (2P). A proposal's matches were
+    computed at capture, so a product created since was invisible to it. Only proposals
+    whose title shares an identifying word with the product's name are recomputed; a
+    recomputed strong match preselects "Update", exactly as at capture. Proposals another
+    request holds are skipped. Best-effort: a failure is logged and changes nothing,
+    since the work that triggered it is already committed. With no product, every
+    pending new-product proposal is recomputed (``kerp rematch-proposals``, once after
+    upgrading). Returns how many changed."""
+    try:
+        words: frozenset[str] | None = None
+        if product_id is not None:
+            product = await db.get(Product, product_id)
+            if product is None:
+                return 0
+            words = sameness.name_key(product.name, product.brand).words
+        rows = (
+            await db.execute(
+                select(ProductProposal)
+                .where(ProductProposal.status == "pending", ProductProposal.kind == "new_product")
+                .order_by(ProductProposal.created_at, ProductProposal.id)
+                .with_for_update(skip_locked=True)
+            )
+        ).scalars()
+        changed = 0
+        for proposal in rows:
+            facts = _proposal_facts(proposal.fields or {})
+            if words is not None and not (
+                facts.name and sameness.name_key(facts.name, facts.brand).words & words
+            ):
+                continue
+            old = proposal.match or {}
+            match = await match_catalog(db, proposal.fields or {}, proposal.listing)
+            if "model" in old:
+                match["model"] = old["model"]
+            if match != old:
+                proposal.match = match
+                changed += 1
+        await db.commit()
+        return changed
+    except Exception:
+        await db.rollback()
+        log.exception("rematch_failed", extra={"product_id": str(product_id)})
+        return 0
+
+
+async def look_alikes(
+    db: AsyncSession, among: list[ProductProposal] | None = None
+) -> dict[uuid.UUID, list[ProductProposal]]:
+    """For each pending new-product proposal, the others the sameness rules call the same
+    product (2P), so a reviewer accepts one as new and the rest as updates."""
+    if among is None:
+        among = list(
+            (
+                await db.execute(
+                    select(ProductProposal)
+                    .where(
+                        ProductProposal.status == "pending",
+                        ProductProposal.kind == "new_product",
+                    )
+                    .order_by(ProductProposal.created_at, ProductProposal.id)
+                )
+            ).scalars()
+        )
+    facts = [(p, _proposal_facts(p.fields or {})) for p in among if p.kind == "new_product"]
+    facts = [(p, f) for p, f in facts if f.name]
+    out: dict[uuid.UUID, list[ProductProposal]] = {}
+    for i, (a, fa) in enumerate(facts):
+        for b, fb in facts[i + 1 :]:
+            if sameness.compare(fa, fb).kind == "same":
+                out.setdefault(a.id, []).append(b)
+                out.setdefault(b.id, []).append(a)
+    return out
+
+
 def apply_model_pick(match: dict[str, Any], pick: str | None) -> dict[str, Any]:
     """Record the local model's pick: "new" or a shortlisted id; anything else is rejected."""
     shortlist = {c["product_id"] for c in match.get("candidates", [])}

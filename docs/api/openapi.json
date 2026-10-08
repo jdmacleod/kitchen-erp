@@ -5628,6 +5628,34 @@
         "title": "LoginOut",
         "type": "object"
       },
+      "LookAlikeOut": {
+        "additionalProperties": false,
+        "description": "Another pending proposal the sameness rules call the same product (2P).",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "LookAlikeOut",
+        "type": "object"
+      },
       "LookupQueue": {
         "additionalProperties": false,
         "properties": {
@@ -9790,6 +9818,14 @@
             ],
             "title": "Listing"
           },
+          "look_alikes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LookAlikeOut"
+            },
+            "title": "Look Alikes",
+            "type": "array"
+          },
           "lookup": {
             "anyOf": [
               {
@@ -9984,6 +10020,15 @@
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "look_alikes": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Look Alikes",
+            "type": "array"
           },
           "status": {
             "enum": [

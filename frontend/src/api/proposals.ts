@@ -110,6 +110,8 @@ export interface Proposal {
   match: ProposalMatch;
   /** The match's fuzzy candidates, ordered by verdict then similarity (2P). */
   candidates?: ReviewCandidate[];
+  /** Other pending proposals that are likely the same product (2P). */
+  look_alikes?: { id: string; title: string | null }[];
   listing: { vendor_id: string; canonical_url: string; title?: string } | null;
   vendor: ProposalVendor | null;
   price: { amount: string; qty?: string; unit?: string; is_promo?: boolean } | null;
@@ -132,6 +134,8 @@ export interface ProposalSummary {
   brand: string | null;
   channel: CaptureChannel | null;
   has_conflict: boolean;
+  /** Other pending proposals that are likely the same product (2P). */
+  look_alikes?: string[];
   created_at: string;
 }
 

@@ -36,6 +36,12 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         fields=proposal.fields,  # type: ignore[arg-type]
         match=proposal.match,
         candidates=await proposals.candidates_of(db, proposal),  # type: ignore[arg-type]
+        look_alikes=[
+            {"id": other.id, "title": merging.value(other.fields, "title")}
+            for other in (await proposals.look_alikes(db)).get(proposal.id, [])
+        ]
+        if proposal.status == "pending"
+        else [],  # type: ignore[arg-type]
         listing=proposal.listing,
         vendor=await proposals.vendor_context(db, proposal),  # type: ignore[arg-type]
         price=proposal.price,
@@ -57,6 +63,7 @@ async def list_proposals(
 ) -> ProposalList:
     """Pending proposals, oldest first, with the counts the inbox shows."""
     items = []
+    alike = await proposals.look_alikes(db)
     for p in await proposals.list_pending(db, limit):
         capture = await db.get(ProductCapture, p.capture_id) if p.capture_id else None
         items.append(
@@ -68,6 +75,7 @@ async def list_proposals(
                 brand=merging.value(p.fields, "brand"),
                 channel=capture.channel if capture else None,  # type: ignore[arg-type]
                 has_conflict=bool(merging.has_conflict(p.fields)),
+                look_alikes=[other.id for other in alike.get(p.id, [])],
                 created_at=p.created_at,
             )
         )
@@ -95,9 +103,12 @@ async def accept_proposal(
     """Create or update the product, its codes, listing, photos and posted price, together."""
     data = proposals.AcceptInput(**payload.model_dump())
     accepted = await proposals.accept(db, user, proposal_id, data)
-    if accepted.product_id and (accepted.result or {}).get("identifiers"):
-        # Receipt lines that print the new code and wait in the queue resolve now.
-        await resolution.match_waiting(db, user, accepted.product_id)
+    if accepted.product_id:
+        # Proposals clipped before this product existed now see it (2P).
+        await proposals.rematch_pending(db, accepted.product_id)
+        if (accepted.result or {}).get("identifiers"):
+            # Receipt lines that print the new code and wait in the queue resolve now.
+            await resolution.match_waiting(db, user, accepted.product_id)
         accepted = await proposals.get_proposal(db, proposal_id)
     return await proposal_out(db, accepted)
 

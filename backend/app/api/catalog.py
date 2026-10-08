@@ -31,7 +31,7 @@ from app.schemas.catalog import (
     SearchOut,
     UsdaSuggestionList,
 )
-from app.services import catalog, product_merge, resolution, usda
+from app.services import catalog, product_merge, proposals, resolution, usda
 
 router = APIRouter(tags=["catalog"])
 
@@ -213,9 +213,11 @@ async def create_product(
     if guard.replay is not None:
         return guard.replay
     row = await catalog.create_product(db, payload)
+    # Proposals clipped before this product existed now see it (2P).
+    await proposals.rematch_pending(db, row.id)
     if payload.barcode:
         await resolution.match_waiting(db, user, row.id)
-        row = await catalog.get_product(db, row.id)
+    row = await catalog.get_product(db, row.id)
     return await guard.commit(201, ProductOut.model_validate(row).model_dump(mode="json"))
 
 
@@ -261,6 +263,7 @@ async def merge_product(
     """Merge this product into ``survivor_id``: it becomes inactive, and its prices,
     codes, listings, photos and receipt wordings belong to the survivor (#179)."""
     done = await product_merge.merge(db, body.survivor_id, product_id)
+    await proposals.rematch_pending(db, body.survivor_id)
     return ProductMergeOut(**asdict(done))
 
 

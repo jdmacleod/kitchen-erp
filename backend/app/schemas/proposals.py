@@ -97,6 +97,13 @@ class MatchCandidateOut(ApiModel):
     only_there: list[str]
 
 
+class LookAlikeOut(ApiModel):
+    """Another pending proposal the sameness rules call the same product (2P)."""
+
+    id: uuid.UUID
+    title: str | None
+
+
 class ProposalOut(ApiModel):
     id: uuid.UUID
     kind: ProposalKind
@@ -107,6 +114,8 @@ class ProposalOut(ApiModel):
     match: dict[str, Any]
     # The match's fuzzy candidates, ordered by verdict then similarity (2P).
     candidates: list[MatchCandidateOut] = []
+    # Other pending proposals that are likely the same product (2P).
+    look_alikes: list[LookAlikeOut] = []
     listing: dict[str, Any] | None
     vendor: ProposalVendor | None = None
     price: dict[str, Any] | None
@@ -128,6 +137,8 @@ class ProposalSummary(ApiModel):
     brand: str | None
     channel: CaptureChannel | None
     has_conflict: bool
+    # Other pending proposals that are likely the same product (2P).
+    look_alikes: list[uuid.UUID] = []
     created_at: datetime
 
 

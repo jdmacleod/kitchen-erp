@@ -244,6 +244,14 @@ describe("product review", () => {
     for (const radio of radios) expect(radio).not.toBeChecked();
   });
 
+  it("links to look-alikes waiting in the queue (2P)", async () => {
+    mockApi(routes(proposal({ look_alikes: [{ id: nextId, title: "Strong white flour 1.5kg" }] })));
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const line = await screen.findByTestId("look-alikes");
+    expect(line).toHaveTextContent("Also waiting: 1 likely the same.");
+    expect(within(line).getByRole("link", { name: "Strong white flour 1.5kg" })).toHaveAttribute("href", `/catalog/products/review/${nextId}`);
+  });
+
   it("keeps Accept disabled with its reason while something blocks it", async () => {
     mockApi(routes(proposal()));
     renderApp(`/catalog/products/review/${proposalId}`);
