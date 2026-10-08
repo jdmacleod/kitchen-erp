@@ -16,6 +16,7 @@ from app.services.opening_hours import effective_hours
 
 VendorKind = Literal["chain", "independent", "market", "stand"]
 PriceScope = Literal["chain", "location"]
+FetchPolicy = Literal["server_fetch", "capture_only", "none"]
 OsmType = Literal["node", "way", "relation"]
 
 Lat = Annotated[Decimal, Field(ge=-90, le=90)]
@@ -97,6 +98,8 @@ class VendorUpdate(ApiModel):
     notes: str | None = None
     brand: Brand | None = None
     wikidata: Wikidata | None = None
+    # Whether the lookup helper may fetch its pages, e.g. to check posted prices (03).
+    fetch_policy: FetchPolicy | None = None
 
 
 class VendorRef(ApiModel):
@@ -115,6 +118,11 @@ class VendorOut(VendorRef):
     active: bool
     created_at: datetime
     sources: dict[str, FieldSourceOut] = Field(default_factory=dict)
+    fetch_policy: FetchPolicy = "capture_only"
+    # Listing refreshes are paused until then because its pages kept failing to
+    # load since ``refresh_unreachable_since`` (#264).
+    refresh_paused_until: datetime | None = None
+    refresh_unreachable_since: datetime | None = None
 
     @classmethod
     def from_model(cls, vendor: Vendor) -> VendorOut:
@@ -129,6 +137,9 @@ class VendorOut(VendorRef):
             active=vendor.active,
             created_at=vendor.created_at,
             sources=sources_of(vendor, ("website", "brand", "wikidata")),
+            fetch_policy=vendor.fetch_policy,
+            refresh_paused_until=vendor.refresh_paused_until,
+            refresh_unreachable_since=vendor.refresh_unreachable_since,
         )
 
 
@@ -365,3 +376,10 @@ class MapPlaceOut(ApiModel):
 
 class MapPlaceList(ApiModel):
     items: list[MapPlaceOut]
+
+
+class VendorPriceCheckOut(ApiModel):
+    """What "Check now" did: how many listings it queued, and the vendor now."""
+
+    queued: int
+    vendor: VendorOut

@@ -385,7 +385,7 @@ Other categories accept an empty object.
 - `platform`: which storefront software its pages run on.
 - `fetch_policy`: whether anything may fetch its pages.
   - `capture_only` is the default.
-  - `server_fetch` lets the lookup helper fetch them.
+  - `server_fetch` lets the lookup helper fetch them. Only these vendors' listings get scheduled refreshes (04, 2N); the vendor page calls it "Check posted prices online".
   - `none` turns capture off for that vendor.
 - `rw_layout`: where the item code and price sit in its weighed-item labels.
 - `code_position`: where its receipts print item codes.

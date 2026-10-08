@@ -21,15 +21,16 @@ import base64
 import binascii
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import anyio
 from pydantic import ValidationError
-from sqlalchemy import func, select, text
+from sqlalchemy import String, and_, cast, func, not_, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.catalog import proposals as merging
 from app.catalog.identifiers import classify_barcode
@@ -50,7 +51,7 @@ from app.models import (
     ProductProposal,
     VendorListing,
 )
-from app.models.geo import VendorLocation
+from app.models.geo import Vendor, VendorLocation
 from app.schemas.products_interchange import HelperAnswer, ListingPriceReport, PriceValue
 from app.services import media, pricebook, product_photos, proposals, vendor_pages
 
@@ -234,15 +235,47 @@ async def queue_page_images(
     return queued
 
 
+def _proposal_vendor_id(proposal: ProductProposal) -> uuid.UUID | None:
+    raw = (proposal.listing or {}).get("vendor_id")
+    try:
+        return uuid.UUID(str(raw)) if raw else None
+    except ValueError:
+        return None
+
+
+async def page_lookup_blocked(db: AsyncSession, proposal: ProductProposal) -> str | None:
+    """Why the helper may not read a clipped page for its price, or None if it may.
+
+    ``capture_only``: the store's pages are read only through the person's browser.
+    ``paused``: the store's pages keep failing and its fetches are paused (#264).
+    ``no_vendor``: the page was saved without a store.
+    """
+    vendor_id = _proposal_vendor_id(proposal)
+    if vendor_id is None:
+        return "no_vendor"
+    vendor = await db.get(Vendor, vendor_id)
+    if vendor is None:
+        return "no_vendor"
+    if vendor.fetch_policy != "server_fetch":
+        return "capture_only"
+    if vendor.refresh_paused_until is not None and vendor.refresh_paused_until > datetime.now(UTC):
+        return "paused"
+    return None
+
+
 async def queue_page_for_price(db: AsyncSession, proposal: ProductProposal) -> bool:
     """A clipped page that gave a listing but no price: the helper reads the public page.
 
     Some stores keep the product record in an inline script, which the clip window never
     sends, so an adapter run on the clip sees only the address. The helper fetches the
     page itself, without the person's cookies, and its answer joins this proposal. Asked
-    once per proposal, never for a page saved without a store. Not committed here."""
+    once per proposal, never for a page saved without a store, and only when the store
+    lets the helper fetch its pages (``server_fetch``, 03) and isn't paused: a clip from
+    a store that blocks automated fetches stays without a price. Not committed here."""
     url = (proposal.listing or {}).get("canonical_url")
     if proposal.status != "pending" or not url or proposal.price is not None:
+        return False
+    if await page_lookup_blocked(db, proposal) is not None:
         return False
     if not await helper_configured(db):
         return False
@@ -265,10 +298,20 @@ async def queue_unknown_scan(db: AsyncSession, proposal: ProductProposal, gtin: 
         db.add(LookupRequest(id=new_id(), kind="gtin", proposal_id=proposal.id, value=gtin))
 
 
+# A vendor's refreshes pause after this many unreachable answers in a row, for
+# 7 days at first, doubling each time a pause ends in another failure (#264).
+PAUSE_AFTER_FAILURES = 3
+FIRST_PAUSE_DAYS = 7
+LONGEST_PAUSE_DAYS = 56
+UNREACHABLE = "unreachable"
+
+
 async def queue_listing_refreshes(db: AsyncSession, now: datetime | None = None) -> int:
     """Queue a ``page`` request for each active listing due a refresh (2N, 2026-10-02).
 
-    Only while a products helper token exists, and at most once per listing every
+    Only while a products helper token exists, only for vendors whose
+    ``fetch_policy`` lets the helper fetch their pages (``server_fetch``, 03) and
+    whose refreshes aren't paused, and at most once per listing every
     ``LISTING_REFRESH_DAYS``; an open request for a listing is never doubled.
     """
     days = get_settings().listing_refresh_days
@@ -280,7 +323,11 @@ async def queue_listing_refreshes(db: AsyncSession, now: datetime | None = None)
             text(
                 """
                 SELECT l.id, l.product_id, l.canonical_url FROM vendor_listing l
+                JOIN vendor v ON v.id = l.vendor_id
                 WHERE l.status = 'active' AND l.product_id IS NOT NULL
+                  AND v.fetch_policy = 'server_fetch'
+                  AND (v.refresh_paused_until IS NULL
+                       OR v.refresh_paused_until <= CAST(:now AS timestamptz))
                   AND NOT EXISTS (
                       SELECT 1 FROM lookup_request r
                       WHERE r.listing_id = l.id
@@ -304,12 +351,159 @@ async def queue_listing_refreshes(db: AsyncSession, now: datetime | None = None)
     return len(due)
 
 
+async def check_vendor_now(db: AsyncSession, vendor_id: uuid.UUID) -> int:
+    """End a vendor's refresh pause and queue its listings' refreshes now ("Check now").
+
+    The vendor must let the helper fetch its pages, and a helper must be set up.
+    Listings that already have an open request aren't doubled. Returns how many
+    were queued.
+    """
+    vendor = await db.get(Vendor, vendor_id, with_for_update=True)
+    if vendor is None:
+        raise ApiError(404, "not_found", "No such vendor.")
+    if vendor.fetch_policy != "server_fetch":
+        raise ApiError(
+            409,
+            "fetch_not_allowed",
+            "Posted prices aren't checked online for this vendor. Turn it on first.",
+        )
+    if not await helper_configured(db):
+        raise ApiError(409, "no_helper", "No lookup helper is set up to check posted prices.")
+    vendor.refresh_paused_until = None
+    vendor.refresh_failures = 0
+    listings = (
+        await db.execute(
+            text(
+                """
+                SELECT l.id, l.product_id, l.canonical_url FROM vendor_listing l
+                WHERE l.vendor_id = :vendor AND l.status = 'active'
+                  AND l.product_id IS NOT NULL
+                  AND NOT EXISTS (
+                      SELECT 1 FROM lookup_request r
+                      WHERE r.listing_id = l.id AND r.status = 'open'
+                  )
+                """
+            ),
+            {"vendor": vendor.id},
+        )
+    ).all()
+    for listing_id, product_id, url in listings:
+        db.add(
+            LookupRequest(
+                id=new_id(), kind="page", product_id=product_id, listing_id=listing_id, value=url
+            )
+        )
+    await db.commit()
+    return len(listings)
+
+
+async def _note_refresh(
+    db: AsyncSession, request: LookupRequest, answer: HelperAnswer, now: datetime
+) -> None:
+    """Keep the vendor's refresh pause in step with a scheduled refresh's answer (#264).
+
+    A page read (``found``) clears any pause. An ``unreachable`` answer counts
+    towards one: after ``PAUSE_AFTER_FAILURES`` in a row the vendor pauses, for
+    longer each time a pause ends in another failure. An answer that read the
+    page but found nothing changes nothing, so a page with nothing new never
+    pauses a store.
+    """
+    if request.kind != "page" or request.listing_id is None:
+        return
+    listing = await db.get(VendorListing, request.listing_id)
+    if listing is None:
+        return
+    vendor = await db.get(Vendor, listing.vendor_id, with_for_update=True)
+    if vendor is None:
+        return
+    if answer.found:
+        vendor.refresh_failures = 0
+        vendor.refresh_unreachable_since = None
+        vendor.refresh_paused_until = None
+        vendor.refresh_backoff_days = None
+        return
+    if answer.reason != UNREACHABLE:
+        return
+    vendor.refresh_failures += 1
+    if vendor.refresh_unreachable_since is None:
+        vendor.refresh_unreachable_since = now
+    paused = vendor.refresh_paused_until is not None and vendor.refresh_paused_until > now
+    if paused or vendor.refresh_failures < PAUSE_AFTER_FAILURES:
+        return
+    days = (
+        min(vendor.refresh_backoff_days * 2, LONGEST_PAUSE_DAYS)
+        if vendor.refresh_backoff_days
+        else FIRST_PAUSE_DAYS
+    )
+    vendor.refresh_backoff_days = days
+    vendor.refresh_paused_until = now + timedelta(days=days)
+    await close_vendor_refreshes(db, vendor.id)
+
+
+async def close_vendor_refreshes(db: AsyncSession, vendor_id: uuid.UUID) -> int:
+    """Close a vendor's open listing refreshes; the caller commits.
+
+    Once a vendor's pages may not be fetched (its ``fetch_policy`` isn't
+    ``server_fetch``) or its refreshes pause, a page request already queued
+    would only send the helper to a store it shouldn't, or can't, reach. That
+    covers listing refreshes and a clip's request for its price (a proposal
+    whose listing names the vendor). Other kinds are left alone.
+    """
+    listings = select(VendorListing.id).where(VendorListing.vendor_id == vendor_id)
+    clipped = select(ProductProposal.id).where(
+        ProductProposal.listing["vendor_id"].astext == str(vendor_id)
+    )
+    result = await db.execute(
+        update(LookupRequest)
+        .where(
+            LookupRequest.status == "open",
+            LookupRequest.kind == "page",
+            or_(LookupRequest.listing_id.in_(listings), LookupRequest.proposal_id.in_(clipped)),
+        )
+        .values(status="closed")
+        .execution_options(synchronize_session=False)
+    )
+    return result.rowcount or 0
+
+
 async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
+    """What the helper is asked to answer, oldest first.
+
+    A page request is held back while its vendor's pages may not be fetched or
+    its refreshes are paused, even if it was queued before that changed: a
+    listing refresh (vendor of the listing) and a clip's request for its price
+    (vendor named by the proposal's listing).
+    """
+    now = datetime.now(UTC)
+    clip_vendor = aliased(Vendor)
+
+    def fetchable(v: Any) -> Any:
+        return and_(
+            v.fetch_policy == "server_fetch",
+            or_(v.refresh_paused_until.is_(None), v.refresh_paused_until <= now),
+        )
+
+    clip_page = and_(LookupRequest.kind == "page", LookupRequest.proposal_id.is_not(None))
     return list(
         (
             await db.execute(
                 select(LookupRequest)
-                .where(LookupRequest.status == "open")
+                .outerjoin(VendorListing, VendorListing.id == LookupRequest.listing_id)
+                .outerjoin(Vendor, Vendor.id == VendorListing.vendor_id)
+                .outerjoin(ProductProposal, ProductProposal.id == LookupRequest.proposal_id)
+                .outerjoin(
+                    clip_vendor,
+                    cast(clip_vendor.id, String) == ProductProposal.listing["vendor_id"].astext,
+                )
+                .where(
+                    LookupRequest.status == "open",
+                    or_(LookupRequest.listing_id.is_(None), fetchable(Vendor)),
+                    or_(
+                        not_(clip_page),
+                        clip_vendor.id.is_(None),
+                        fetchable(clip_vendor),
+                    ),
+                )
                 .order_by(LookupRequest.created_at, LookupRequest.id)
                 .limit(limit)
             )
@@ -513,6 +707,7 @@ async def answer(
         raise _refused("cutouts are answered with a mask")
     now = datetime.now(UTC)
     request.status, request.answered_at = "answered", now
+    await _note_refresh(db, request, parsed, now)
 
     proposal = await db.get(ProductProposal, request.proposal_id) if request.proposal_id else None
     product_id = request.product_id or (proposal.product_id if proposal else None)
@@ -540,7 +735,8 @@ async def answer(
         return "closed", proposal.id
     product = await db.get(Product, product_id) if product_id else None
     if product is None or not (candidates or photos) or not parsed.found:
-        await _record(db, request.id, token_id, body, "no_change")
+        detail = UNREACHABLE if not parsed.found and parsed.reason == UNREACHABLE else None
+        await _record(db, request.id, token_id, body, "no_change", detail)
         return "no_change", None
     fields = merging.merge(candidates)
     # A pasted page (not a scheduled refresh) brings its listing and posted price along.

@@ -401,7 +401,13 @@ async def get_vendor(db: AsyncSession, vendor_id: uuid.UUID) -> Vendor:
 
 async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[str, Any]) -> Vendor:
     vendor = await _load_vendor(db, vendor_id)
+    fetched = vendor.fetch_policy == "server_fetch"
     apply_vendor_changes(vendor, changes)
+    if fetched and vendor.fetch_policy != "server_fetch":
+        # Its pages may no longer be fetched: refreshes already queued go too (#264).
+        from app.services import lookups
+
+        await lookups.close_vendor_refreshes(db, vendor.id)
     await _commit(db)
     return await _load_vendor(db, vendor_id)
 
@@ -420,6 +426,14 @@ def apply_vendor_changes(vendor: Vendor, changes: dict[str, Any]) -> None:
             setattr(vendor, field, _clean(changes[field]))
     if "notes" in changes:
         vendor.notes = changes["notes"]
+    if changes.get("fetch_policy") is not None:
+        vendor.fetch_policy = changes["fetch_policy"]
+        if vendor.fetch_policy != "server_fetch":
+            # Nothing is checked online any more, so no pause is left to show.
+            vendor.refresh_paused_until = None
+            vendor.refresh_unreachable_since = None
+            vendor.refresh_failures = 0
+            vendor.refresh_backoff_days = None
 
 
 async def set_vendor_active(db: AsyncSession, vendor_id: uuid.UUID, active: bool) -> Vendor:

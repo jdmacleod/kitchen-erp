@@ -254,6 +254,19 @@
         "title": "Photos",
         "type": "array"
       },
+      "reason": {
+        "anyOf": [
+          {
+            "const": "unreachable",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Reason"
+      },
       "request_id": {
         "format": "uuid",
         "title": "Request Id",

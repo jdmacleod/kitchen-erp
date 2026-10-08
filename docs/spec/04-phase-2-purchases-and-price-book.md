@@ -433,7 +433,7 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
   - every unknown scanned barcode, but only if the household turns that setting on (off by default);
   - `cutout` requests for the household's photos that have no mask. These are queued automatically, because the photo never leaves the machine; the helper may read that one photo's original.
   - `image` requests for a clipped page whose images the browser could not read (another host refused it): up to four of the page's own image addresses, queued automatically when a helper exists. The helper fetches each one and answers with the photo. (Added 2026-10-05, clip quality.)
-  - a `page` request for a clip that still has a listing but no price after its extract job, queued automatically when a helper exists: some stores keep the price in a page script the clip window never sends. The helper fetches the public page without cookies, and its answer joins the pending proposal (price, and the listing follows the merged fields); a person still accepts it. Once per proposal, never for a page saved without a store. (Added 2026-10-07.)
+  - a `page` request for a clip that still has a listing but no price after its extract job, queued automatically when a helper exists: some stores keep the price in a page script the clip window never sends. The helper fetches the public page without cookies, and its answer joins the pending proposal (price, and the listing follows the merged fields); a person still accepts it. Once per proposal, never for a page saved without a store, and only for a vendor whose `fetch_policy` is `server_fetch` and whose fetches aren't paused: a clip from a `capture_only` store stays without a price, and its extract job records `page_lookup_skipped`. Such a request already queued is held back from the helper and closed like a listing refresh (below); migration 0036 closed the ones queued before. (Added 2026-10-07; limited to fetchable stores 2026-10-08.)
 
   Otherwise, page captures with an installed adapter don't use the queue.
 - **Two token scopes.**
@@ -445,8 +445,12 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
   - An answer to a rejected one is recorded and closed.
 - **Listing refreshes.** The helper may report changed posted prices. They appear as one inbox row, "4 posted prices changed", and nothing is recorded until a person accepts. A reported price equal to the listing's latest posted price, or to its latest reported change in any state, is not added, so an unchanged or already-rejected price never reaches a person again.
   - The helper learns which listings to refresh through the queue (decided 2026-10-02):
-    - while a helper token exists, the app queues a `page` request for each active listing every `LISTING_REFRESH_DAYS` (default 7; 0 turns it off);
+    - while a helper token exists, the app queues a `page` request for each active listing every `LISTING_REFRESH_DAYS` (default 7; 0 turns it off), but only at vendors whose `fetch_policy` is `server_fetch` (03), and never while the vendor's refreshes are paused (#264);
     - each such request carries its `listing_id`, so a changed price can be reported against that listing;
+    - an answer may give `reason: "unreachable"` when the page never loaded (network failures, or a store that refuses the helper). It is recorded as `no_change` with that detail. Three in a row for one vendor pause its refreshes for 7 days, doubling each time a pause ends in another failure, up to 56 days. A refresh that read the page clears the pause. An answer that found nothing without that reason never counts, so a page with nothing new never pauses a store;
+    - "Check now" on the vendor page (`POST /vendors/{id}/check-prices`) ends a pause and queues that vendor's listings at once, without doubling open requests;
+    - migration 0034 turned `server_fetch` on for the vendors whose pages the helper had already read, recorded in `field_source` so a person's later choice wins;
+    - a refresh already queued is never sent to the helper while its vendor's pages may not be fetched or its refreshes are paused, and it is closed when the vendor stops being `server_fetch` or a pause starts; migration 0035 closed the ones queued before 0034;
     - `products:read` still reads the queue and nothing else.
 
 The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
@@ -464,6 +468,7 @@ This sub-phase is built just before the helper itself.
 89. A `products:read` token reads only the lookup queue, and every other route answers 403 (route walk). A `products:suggest` token posts only answers.
 90. An answer that validates merges into its pending proposal with each field's source. An answer with an unknown field or an over-cap confidence is refused and recorded. An answer to an accepted proposal opens a Product update; one to a rejected proposal is recorded and closed.
 91. Refreshed listing prices appear as one aggregate inbox row and are recorded only for the rows a person accepts.
+91a. A vendor whose `fetch_policy` isn't `server_fetch` gets no listing refresh. Three `unreachable` answers in a row pause a vendor's refreshes, a page that was read ends the pause, and an answer that found nothing without that reason never pauses (#264).
 92. The `kitchen-erp-products/1` schema is checked by a contract test that the helper repository runs too. A `products:read` token can read the original of a photo only through an open `cutout` request for it, and a mask posted for it produces `cutout_source = tool`.
 
 ## 2O — Reading receipts with a vision transcriber (amendment, 2026-10-07)
