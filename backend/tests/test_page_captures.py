@@ -247,11 +247,44 @@ async def test_pasting_an_address_prefills_without_any_request(admin_client, sto
         "canonical_url": f"{SHOP}/p/rolled-oats-500g-77123",
         "title": "Rolled oats 500g",
         "item_number": "77123",
+        "known": None,
     }
     pasted = await admin_client.post(
         "/api/v1/product-captures", json={"channel": "paste_url", "page_url": PAGE}
     )
     assert pasted.status_code == 201 and pasted.json()["capture"]["channel"] == "paste_url"
+
+
+async def test_the_address_check_names_a_product_already_in_the_catalog(
+    admin_client, store, no_network
+):
+    """Criterion 105: a known page, or the same item number on another address, names
+    the product; an unknown page names none."""
+    pasted = await admin_client.post(
+        "/api/v1/product-captures", json={"channel": "paste_url", "page_url": PAGE}
+    )
+    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    accepted = await admin_client.post(
+        f"/api/v1/product-proposals/{pasted.json()['id']}/accept",
+        json={"action": "new", "ingredient_id": ing["id"]},
+    )
+    assert accepted.status_code == 200, accepted.text
+    product_id = accepted.json()["product_id"]
+
+    async def known(url: str):
+        r = await admin_client.post("/api/v1/product-captures/address", json={"page_url": url})
+        assert r.status_code == 200, r.text
+        return r.json()["known"]
+
+    assert await known(PAGE) == {
+        "product_id": product_id,
+        "name": "Rolled oats 500g",
+        "reason": "listing",
+    }
+    same_item = await known(f"{SHOP}/p/oats-family-size-77123")
+    assert same_item is not None and same_item["reason"] == "identifier"
+    assert await known(f"{SHOP}/p/barley-flakes-88001") is None
+    assert await known("https://other.example.test/p/rolled-oats-77123") is None
 
 
 # --- adapters and the model -----------------------------------------------------------------

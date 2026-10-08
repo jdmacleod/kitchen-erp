@@ -6,7 +6,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, ApiError, api } from "./client";
 import { catalogKeys } from "./catalog";
 import { inboxKey } from "./inbox";
-import type { PhotoRole, ProductPhoto } from "./productPhotos";
+import type { PhotoRole, PhotoSummary, ProductPhoto } from "./productPhotos";
+import type { CategoryKey } from "../components/CategoryChip";
 import type { ErrorEnvelope } from "./types";
 
 export type ProductKind = "branded" | "private_label" | "random_weight" | "loose" | "unbranded_vendor";
@@ -57,6 +58,34 @@ export interface MatchCandidate {
   score: string;
 }
 
+export type Sameness = "same" | "other_size" | "variant" | "similar";
+
+/** A fuzzy candidate as review shows it (2P): the product now, and its verdict. */
+export interface ReviewCandidate {
+  product_id: string;
+  name: string;
+  brand: string | null;
+  pack_qty: string | null;
+  pack_unit: string | null;
+  pack_count?: number | null;
+  piece_name?: string | null;
+  photo: PhotoSummary | null;
+  ingredient: { id: string; name: string; category_key?: CategoryKey | null };
+  score: string;
+  verdict: Sameness;
+  reasons: string[];
+  /** The identifying words only this proposal has, and only the product has. */
+  only_here: string[];
+  only_there: string[];
+}
+
+/** The catalog product an address already names (2P): "Already in your catalog". */
+export interface KnownProduct {
+  product_id: string;
+  name: string;
+  reason: "identifier" | "listing";
+}
+
 export interface ProposalMatch {
   strong?: { product_id: string; reason: "identifier" | "listing" | "lookup" } | null;
   candidates?: MatchCandidate[];
@@ -86,6 +115,10 @@ export interface Proposal {
   capture: { id: string; channel: CaptureChannel; source_url: string | null; captured_at: string } | null;
   fields: Partial<Record<string, ProposalField>>;
   match: ProposalMatch;
+  /** The match's fuzzy candidates, ordered by verdict then similarity (2P). */
+  candidates?: ReviewCandidate[];
+  /** Other pending proposals that are likely the same product (2P). */
+  look_alikes?: { id: string; title: string | null }[];
   listing: { vendor_id: string; canonical_url: string; title?: string } | null;
   vendor: ProposalVendor | null;
   price: { amount: string; qty?: string; unit?: string; is_promo?: boolean } | null;
@@ -108,6 +141,8 @@ export interface ProposalSummary {
   brand: string | null;
   channel: CaptureChannel | null;
   has_conflict: boolean;
+  /** Other pending proposals that are likely the same product (2P). */
+  look_alikes?: string[];
   created_at: string;
 }
 

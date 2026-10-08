@@ -55,6 +55,7 @@ from app.services import (
     naming,
     pricebook,
     pricebook_views,
+    proposals,
     purchases,
     removal,
     resolution,
@@ -593,7 +594,11 @@ async def name_products(
     payload: NameProductsIn, user: CurrentUser, db: DbSession
 ) -> NameProductsOut:
     """Create each confirmed row's product and identify its lines; each row stands alone."""
-    return NameProductsOut(results=await naming.name_products(db, user, payload.rows))
+    results = await naming.name_products(db, user, payload.rows)
+    # Proposals clipped before these products existed now see them (2P).
+    for product_id in dict.fromkeys(r["product_id"] for r in results if r.get("product_id")):
+        await proposals.rematch_pending(db, product_id)
+    return NameProductsOut(results=results)
 
 
 # --- price book views (2E) --------------------------------------------------

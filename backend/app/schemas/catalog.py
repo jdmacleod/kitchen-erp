@@ -262,6 +262,25 @@ class ProductOut(ApiModel):
     updated_at: datetime
 
 
+class DuplicatePairOut(ApiModel):
+    """Two active products the sameness rules call the same (2P, 03)."""
+
+    a: ProductOut
+    b: ProductOut
+    reasons: list[str]
+
+
+class DuplicateList(ApiModel):
+    items: list[DuplicatePairOut]
+
+
+class DistinctIn(ApiModel):
+    """ "Not the same": the pair is never offered again, in either order."""
+
+    a: uuid.UUID
+    b: uuid.UUID
+
+
 class ProductMergeIn(ApiModel):
     """Merge the product in the path into ``survivor_id``, which is kept."""
 

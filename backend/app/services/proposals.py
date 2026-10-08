@@ -27,8 +27,10 @@ from typing import Any
 from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.catalog import proposals as merging
+from app.catalog import sameness
 from app.catalog.identifiers import classify_barcode
 from app.core.errors import ApiError
 from app.core.ids import new_id
@@ -272,10 +274,10 @@ async def _identifier_owner(
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def match_catalog(
+async def strong_match(
     db: AsyncSession, fields: dict[str, Any], listing: dict[str, Any] | None
-) -> dict[str, Any]:
-    """A strong match by identifier or known listing, else up to eight fuzzy candidates."""
+) -> dict[str, str] | None:
+    """The product a GTIN, a known listing or the store's item number names, if any."""
     strong = None
     gtin = merging.value(fields, "gtin")
     if gtin and (owner := await _identifier_owner(db, "gtin", gtin)):
@@ -298,11 +300,23 @@ async def match_catalog(
             )
         ):
             strong = {"product_id": str(owner), "reason": "identifier"}
+    return strong
+
+
+async def match_catalog(
+    db: AsyncSession, fields: dict[str, Any], listing: dict[str, Any] | None
+) -> dict[str, Any]:
+    """A strong match by identifier or known listing, else up to eight fuzzy candidates."""
+    strong = await strong_match(db, fields, listing)
     # The title alone, and with the brand: a household's product often has no brand.
     title, brand = merging.value(fields, "title"), merging.value(fields, "brand")
     queries = [str(title)] if title else []
     if title and brand:
         queries.append(f"{brand} {title}")
+    # A page title carries brand and size that a catalog name usually doesn't (2P).
+    key = sameness.key_text(str(title), str(brand) if brand else None) if title else ""
+    if key and key not in (q.lower() for q in queries):
+        queries.append(key)
     best: dict[str, dict[str, Any]] = {}
     for query in queries:
         for hit in await search_products(db, query, SHORTLIST):
@@ -322,6 +336,156 @@ async def match_catalog(
         # A strong match preselects "Update"; a fuzzy one preselects nothing (criterion 74).
         "preselect": f"update:{strong['product_id']}" if strong else None,
     }
+
+
+# Likely the same first, then merely similar, then siblings: a different size or variant.
+_VERDICT_ORDER = {"same": 0, "similar": 1, "other_size": 2, "variant": 3}
+
+
+def _proposal_facts(fields: dict[str, Any]) -> sameness.Facts:
+    brand = merging.value(fields, "brand")
+    return sameness.Facts(
+        name=str(merging.value(fields, "title") or ""),
+        brand=str(brand) if brand else None,
+        pack=merging.value(fields, "pack"),
+        gtin=merging.value(fields, "gtin"),
+    )
+
+
+def product_facts(product: Product) -> sameness.Facts:
+    gtin = next(
+        (i.value for i in product.identifiers if i.scheme == "gtin" and i.vendor_id is None), None
+    )
+    pack = (
+        {"qty": format(product.pack_qty, "f"), "unit": product.pack_unit}
+        if product.pack_qty is not None and product.pack_unit
+        else None
+    )
+    return sameness.Facts(
+        name=product.name,
+        brand=product.brand,
+        pack=pack,
+        gtin=gtin,
+        ingredient_id=product.ingredient_id,
+    )
+
+
+async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dict[str, Any]]:
+    """The match's fuzzy candidates as they are now, each with its sameness verdict
+    against the proposal, ordered by verdict and then similarity (2P). Computed on read,
+    so packs and photos are current and proposals matched before 2P get verdicts too.
+    A candidate since deactivated or merged is left out."""
+    stored = (proposal.match or {}).get("candidates") or []
+    scores = {c["product_id"]: Decimal(str(c.get("score") or 0)) for c in stored}
+    if not scores:
+        return []
+    rows = (
+        await db.execute(
+            select(Product)
+            .options(selectinload(Product.ingredient), selectinload(Product.identifiers))
+            .where(Product.id.in_([uuid.UUID(i) for i in scores]), Product.active)
+        )
+    ).scalars()
+    mine = _proposal_facts(proposal.fields or {})
+    out = []
+    for product in rows:
+        verdict = sameness.compare(mine, product_facts(product))
+        out.append(
+            {
+                "product_id": product.id,
+                "name": product.name,
+                "brand": product.brand,
+                "pack_qty": product.pack_qty,
+                "pack_unit": product.pack_unit,
+                "pack_count": product.pack_count,
+                "piece_name": product.piece_name,
+                "photo": product.photo,
+                "ingredient": product.ingredient,
+                "score": scores[str(product.id)],
+                "verdict": verdict.kind,
+                "reasons": list(verdict.reasons),
+                "only_here": list(verdict.only_a),
+                "only_there": list(verdict.only_b),
+            }
+        )
+    out.sort(key=lambda c: (_VERDICT_ORDER[c["verdict"]], -c["score"], c["name"]))
+    return out
+
+
+async def rematch_pending(db: AsyncSession, product_id: uuid.UUID | None) -> int:
+    """Recompute the matches of pending new-product proposals that might name this
+    product, after it was created or survived a merge (2P). A proposal's matches were
+    computed at capture, so a product created since was invisible to it. Only proposals
+    whose title shares an identifying word with the product's name are recomputed; a
+    recomputed strong match preselects "Update", exactly as at capture. Proposals another
+    request holds are skipped. Best-effort: a failure is logged and changes nothing,
+    since the work that triggered it is already committed. With no product, every
+    pending new-product proposal is recomputed (``kerp rematch-proposals``, once after
+    upgrading). Returns how many changed."""
+    try:
+        words: frozenset[str] | None = None
+        if product_id is not None:
+            product = await db.get(Product, product_id)
+            if product is None:
+                return 0
+            words = sameness.name_key(product.name, product.brand).words
+        rows = (
+            await db.execute(
+                select(ProductProposal)
+                .where(ProductProposal.status == "pending", ProductProposal.kind == "new_product")
+                .order_by(ProductProposal.created_at, ProductProposal.id)
+                .with_for_update(skip_locked=True)
+            )
+        ).scalars()
+        changed = 0
+        for proposal in rows:
+            facts = _proposal_facts(proposal.fields or {})
+            if words is not None and not (
+                facts.name and sameness.name_key(facts.name, facts.brand).words & words
+            ):
+                continue
+            old = proposal.match or {}
+            match = await match_catalog(db, proposal.fields or {}, proposal.listing)
+            if "model" in old:
+                match["model"] = old["model"]
+            if match != old:
+                proposal.match = match
+                changed += 1
+        await db.commit()
+        return changed
+    except Exception:
+        await db.rollback()
+        log.exception("rematch_failed", extra={"product_id": str(product_id)})
+        return 0
+
+
+async def look_alikes(
+    db: AsyncSession, among: list[ProductProposal] | None = None
+) -> dict[uuid.UUID, list[ProductProposal]]:
+    """For each pending new-product proposal, the others the sameness rules call the same
+    product (2P), so a reviewer accepts one as new and the rest as updates."""
+    if among is None:
+        among = list(
+            (
+                await db.execute(
+                    select(ProductProposal)
+                    .where(
+                        ProductProposal.status == "pending",
+                        ProductProposal.kind == "new_product",
+                    )
+                    .order_by(ProductProposal.created_at, ProductProposal.id)
+                )
+            ).scalars()
+        )
+    facts = [(p, _proposal_facts(p.fields or {})) for p in among if p.kind == "new_product"]
+    facts = [(p, f) for p, f in facts if f.name]
+    out: dict[uuid.UUID, list[ProductProposal]] = {}
+    for i, (a, fa) in enumerate(facts):
+        for b, fb in facts[i + 1 :]:
+            if sameness.compare(fa, fb).kind == "same":
+                out.setdefault(a.id, []).append(b)
+                out.setdefault(b.id, []).append(a)
+    return out
 
 
 def apply_model_pick(match: dict[str, Any], pick: str | None) -> dict[str, Any]:

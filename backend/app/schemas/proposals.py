@@ -10,8 +10,9 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from app.catalog.attributes import ProductKind
-from app.schemas.base import ApiModel
-from app.schemas.product_photos import PhotoRole, ProductPhotoOut
+from app.schemas.base import ApiModel, DecimalStr
+from app.schemas.catalog import IngredientSummary
+from app.schemas.product_photos import PhotoRole, PhotoSummary, ProductPhotoOut
 
 ProposalStatus = Literal["pending", "accepted", "rejected", "superseded"]
 ProposalKind = Literal["new_product", "product_update"]
@@ -75,6 +76,34 @@ class LookupState(ApiModel):
     answered_at: datetime | None
 
 
+class MatchCandidateOut(ApiModel):
+    """A fuzzy candidate as review shows it (2P): the product as it is now, and the
+    sameness verdict against this proposal. A verdict labels; it never preselects."""
+
+    product_id: uuid.UUID
+    name: str
+    brand: str | None
+    pack_qty: DecimalStr | None
+    pack_unit: str | None
+    pack_count: int | None = None
+    piece_name: str | None = None
+    photo: PhotoSummary | None = None
+    ingredient: IngredientSummary
+    score: DecimalStr
+    verdict: Literal["same", "other_size", "variant", "similar"]
+    reasons: list[str]
+    # The identifying words only this proposal has, and only the product has.
+    only_here: list[str]
+    only_there: list[str]
+
+
+class LookAlikeOut(ApiModel):
+    """Another pending proposal the sameness rules call the same product (2P)."""
+
+    id: uuid.UUID
+    title: str | None
+
+
 class ProposalOut(ApiModel):
     id: uuid.UUID
     kind: ProposalKind
@@ -83,6 +112,10 @@ class ProposalOut(ApiModel):
     capture: CaptureOut | None
     fields: dict[str, ProposalFieldOut]
     match: dict[str, Any]
+    # The match's fuzzy candidates, ordered by verdict then similarity (2P).
+    candidates: list[MatchCandidateOut] = []
+    # Other pending proposals that are likely the same product (2P).
+    look_alikes: list[LookAlikeOut] = []
     listing: dict[str, Any] | None
     vendor: ProposalVendor | None = None
     price: dict[str, Any] | None
@@ -104,6 +137,8 @@ class ProposalSummary(ApiModel):
     brand: str | None
     channel: CaptureChannel | None
     has_conflict: bool
+    # Other pending proposals that are likely the same product (2P).
+    look_alikes: list[uuid.UUID] = []
     created_at: datetime
 
 

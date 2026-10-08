@@ -843,6 +843,25 @@ def restore(src: Path = FROM_OPTION, force: bool = FORCE_OPTION) -> None:
 MATCH_AS = typer.Option(..., "--as", help="email of the user recorded as resolving the lines")
 
 
+@cli.command("rematch-proposals")
+def rematch_proposals() -> None:
+    """Recompute the catalog matches of every pending new-product proposal (2P).
+
+    Creating or merging a product does this for the proposals it may concern; run it
+    once after upgrading, for proposals clipped before that.
+    """
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.proposals import rematch_pending
+
+    async def _run() -> int:
+        async with get_sessionmaker()() as db:
+            changed = await rematch_pending(db, None)
+        await dispose_engine()
+        return changed
+
+    typer.echo(f"{asyncio.run(_run())} pending proposal(s) gained or lost a match")
+
+
 @cli.command("match-waiting")
 def match_waiting(user_email: str = MATCH_AS) -> None:
     """Match queued receipt lines to every product that has their code.

@@ -291,6 +291,30 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
         return display(ident.scheme, ident.value) if ident else None
 
 
+class ProductDistinctPair(Base):
+    """ "Not the same" on a possible duplicate (2P, 03): never offered again. A decision,
+    not a fact; the pair is stored in id order so either order finds it."""
+
+    __tablename__ = "product_distinct_pair"
+    __table_args__ = (
+        CheckConstraint("product_a < product_b", name="ck_product_distinct_pair_order"),
+        Index("ix_product_distinct_pair_b", "product_b"),
+    )
+
+    product_a: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", ondelete="CASCADE"), primary_key=True
+    )
+    product_b: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", ondelete="CASCADE"), primary_key=True
+    )
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id")
+    )
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ProductIdentifier(UUIDPrimaryKey, Base):
     """One code a product is known by (03, 1H). Vendor-scoped schemes carry a vendor."""
 

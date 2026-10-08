@@ -77,6 +77,30 @@ describe("the clip window", () => {
     expect(posted[0].body).toMatchObject({ page_url: PAGE, channel: "clip", vendor_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c10" });
   });
 
+  it("says when the page is already in the catalog, and still saves (2P)", async () => {
+    const productId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c20";
+    mockApi(
+      routes({
+        "POST /product-captures/address": () =>
+          jsonResponse(200, {
+            vendor: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c10", name: "Juniper Market" },
+            canonical_url: PAGE,
+            title: "Rolled oats 500g",
+            item_number: "77123",
+            known: { product_id: productId, name: "Rolled oats", reason: "listing" },
+          }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp("/capture/clip");
+    await waitFor(() => expect(opener.postMessage).toHaveBeenCalled());
+    deliver({ type: "kerp-clip", payload: clip }, opener);
+    expect(await screen.findByText(/Already in your catalog:/)).toHaveTextContent("Already in your catalog: Rolled oats. Saving opens an update to it.");
+    expect(screen.getByRole("link", { name: "Rolled oats" })).toHaveAttribute("href", `/catalog/products/${productId}`);
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/Saved ·/)).toBeInTheDocument();
+  });
+
   it("ignores a message from any window but its opener", async () => {
     mockApi(routes());
     renderApp("/capture/clip");

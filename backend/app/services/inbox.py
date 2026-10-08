@@ -48,6 +48,7 @@ from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
     lookups,
     pricebook,
+    product_duplicates,
     proposals,
     purchases,
     resolution,
@@ -404,6 +405,23 @@ async def _product_updates(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _duplicates(db: AsyncSession) -> list[InboxItem]:
+    pairs = await product_duplicates.find_duplicates(db)
+    if not pairs:
+        return []
+    noun = "possible duplicate product" if len(pairs) == 1 else "possible duplicate products"
+    return [
+        InboxItem(
+            kind="duplicates",
+            title=f"{len(pairs)} {noun}",
+            detail="The same thing entered twice, it seems. Merge them or say they differ.",
+            action_label="Review",
+            action_route="/catalog/products?duplicates=1",
+            created_at=min(max(d.a.created_at, d.b.created_at) for d in pairs),
+        )
+    ]
+
+
 async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
     changes = await lookups.pending_price_changes(db)
     if not changes:
@@ -471,6 +489,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("usda", _usda),
     ("new_product", _new_products),
     ("product_update", _product_updates),
+    ("duplicates", _duplicates),
     ("posted_prices", _posted_prices),
 ]
 

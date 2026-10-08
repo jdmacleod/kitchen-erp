@@ -187,6 +187,16 @@
             ],
             "title": "Item Number"
           },
+          "known": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnownProduct"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "title": {
             "anyOf": [
               {
@@ -1592,6 +1602,71 @@
         "title": "DensitySuggestion",
         "type": "object"
       },
+      "DistinctIn": {
+        "additionalProperties": false,
+        "description": "\"Not the same\": the pair is never offered again, in either order.",
+        "properties": {
+          "a": {
+            "format": "uuid",
+            "title": "A",
+            "type": "string"
+          },
+          "b": {
+            "format": "uuid",
+            "title": "B",
+            "type": "string"
+          }
+        },
+        "required": [
+          "a",
+          "b"
+        ],
+        "title": "DistinctIn",
+        "type": "object"
+      },
+      "DuplicateList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicatePairOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "DuplicateList",
+        "type": "object"
+      },
+      "DuplicatePairOut": {
+        "additionalProperties": false,
+        "description": "Two active products the sameness rules call the same (2P, 03).",
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "b": {
+            "$ref": "#/components/schemas/ProductOut"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "reasons"
+        ],
+        "title": "DuplicatePairOut",
+        "type": "object"
+      },
       "ExportSummaryOut": {
         "additionalProperties": false,
         "description": "What a public vendor export would hold, before downloading it (design D12).",
@@ -2563,6 +2638,7 @@
               "usda",
               "new_product",
               "product_update",
+              "duplicates",
               "posted_prices"
             ],
             "title": "Kind",
@@ -3927,6 +4003,36 @@
           "effective_opening_hours"
         ],
         "title": "IsOpenOut",
+        "type": "object"
+      },
+      "KnownProduct": {
+        "additionalProperties": false,
+        "description": "The catalog product an address already names (2P): \"Already in your catalog\".",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "identifier",
+              "listing"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "reason"
+        ],
+        "title": "KnownProduct",
         "type": "object"
       },
       "LastPaid": {
@@ -5637,6 +5743,34 @@
         "title": "LoginOut",
         "type": "object"
       },
+      "LookAlikeOut": {
+        "additionalProperties": false,
+        "description": "Another pending proposal the sameness rules call the same product (2P).",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "LookAlikeOut",
+        "type": "object"
+      },
       "LookupQueue": {
         "additionalProperties": false,
         "properties": {
@@ -5892,6 +6026,139 @@
           "distance_m"
         ],
         "title": "MapPlaceOut",
+        "type": "object"
+      },
+      "MatchCandidateOut": {
+        "additionalProperties": false,
+        "description": "A fuzzy candidate as review shows it (2P): the product as it is now, and the\nsameness verdict against this proposal. A verdict labels; it never preselects.",
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "ingredient": {
+            "$ref": "#/components/schemas/IngredientSummary"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "only_here": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Only Here",
+            "type": "array"
+          },
+          "only_there": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Only There",
+            "type": "array"
+          },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          },
+          "photo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "same",
+              "other_size",
+              "variant",
+              "similar"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "name",
+          "brand",
+          "pack_qty",
+          "pack_unit",
+          "ingredient",
+          "score",
+          "verdict",
+          "reasons",
+          "only_here",
+          "only_there"
+        ],
+        "title": "MatchCandidateOut",
         "type": "object"
       },
       "MeasureCreate": {
@@ -9592,6 +9859,14 @@
       "ProposalOut": {
         "additionalProperties": false,
         "properties": {
+          "candidates": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/MatchCandidateOut"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
           "capture": {
             "anyOf": [
               {
@@ -9657,6 +9932,14 @@
               }
             ],
             "title": "Listing"
+          },
+          "look_alikes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/LookAlikeOut"
+            },
+            "title": "Look Alikes",
+            "type": "array"
           },
           "lookup": {
             "anyOf": [
@@ -9852,6 +10135,15 @@
             ],
             "title": "Kind",
             "type": "string"
+          },
+          "look_alikes": {
+            "default": [],
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Look Alikes",
+            "type": "array"
           },
           "status": {
             "enum": [
@@ -18016,6 +18308,63 @@
         "summary": "Products Helper",
         "tags": [
           "products helper"
+        ]
+      }
+    },
+    "/api/v1/products/duplicates": {
+      "get": {
+        "description": "Pairs of active products that are likely the same product (2P, 03).",
+        "operationId": "list_duplicates_api_v1_products_duplicates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DuplicateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Duplicates",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/duplicates/distinct": {
+      "post": {
+        "description": "\"Not the same\": remember the pair so it is never offered again.",
+        "operationId": "mark_distinct_api_v1_products_duplicates_distinct_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DistinctIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Mark Distinct",
+        "tags": [
+          "catalog"
         ]
       }
     },

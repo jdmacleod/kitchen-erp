@@ -30,7 +30,14 @@ from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
 from app.ingest.errors import IngestError, ModelUnavailable
-from app.models import AppUser, ProductCapture, ProductImage, ProductJob, ProductProposal
+from app.models import (
+    AppUser,
+    Product,
+    ProductCapture,
+    ProductImage,
+    ProductJob,
+    ProductProposal,
+)
 from app.models.geo import Vendor
 from app.services import lookups, plugins, product_photos, proposals, vendor_pages
 from app.services.product_photos import PhotoUpload
@@ -98,20 +105,31 @@ class AddressPreview:
     canonical_url: str
     title: str | None
     item_number: str | None
+    # The catalog product this page, its item number or its barcode already names (2P).
+    known: dict[str, Any] | None = None
 
 
 async def preview(db: AsyncSession, page_url: str) -> AddressPreview:
-    """What an address alone says: its vendor, title and item number. No request is made."""
+    """What an address alone says: its vendor, title and item number, and the catalog
+    product it already names (2P). No request is made."""
     try:
         canonical, _ = canonical_url(page_url)
     except ValueError:
         raise ApiError(422, "invalid_url", "That is not a web address.") from None
     fields = merging.merge(ladder.from_address(page_url).candidates)
+    vendor = await match_vendor(db, page_url)
+    listing = {"vendor_id": str(vendor.id), "canonical_url": canonical} if vendor else None
+    known = None
+    if strong := await proposals.strong_match(db, fields, listing):
+        product = await db.get(Product, uuid.UUID(strong["product_id"]))
+        if product is not None and product.active:
+            known = {"product_id": product.id, "name": product.name, "reason": strong["reason"]}
     return AddressPreview(
-        vendor=await match_vendor(db, page_url),
+        vendor=vendor,
         canonical_url=canonical,
         title=merging.value(fields, "title"),
         item_number=merging.value(fields, "item_number"),
+        known=known,
     )
 
 

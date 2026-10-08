@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { api, errorMessage, isApiError } from "../../api/client";
-import { formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
+import { formatPack, formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
 import { ROLE_LABELS, type PhotoRole, type ProductPhoto } from "../../api/productPhotos";
 import {
   CHANNEL_WORDS,
@@ -24,8 +24,10 @@ import {
   type ProductKind,
   type Proposal,
   type ProposalField,
+  type ReviewCandidate,
 } from "../../api/proposals";
 import { Badge } from "../../components/catalog/fields";
+import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { SegmentedControl } from "../../components/SegmentedControl";
@@ -150,6 +152,7 @@ function Review({ proposal }: { proposal: Proposal }) {
   const fields = proposal.fields;
   const readOnly = proposal.status !== "pending";
   const reading = isReading(proposal);
+  const lookAlikes = proposal.look_alikes ?? [];
   const nothingRead = !reading && Object.keys(fields).length === 0;
   const strong = proposal.match.strong ?? null;
   const strongProduct = useProduct(strong?.product_id);
@@ -353,11 +356,43 @@ function Review({ proposal }: { proposal: Proposal }) {
             <div className="flex flex-col gap-1">
               {matchOptions(proposal, strongProduct.data?.name).map((o) => (
                 <RadioRow key={o.value} name={`${id}-match`} checked={match === o.value} onChange={() => setMatch(o.value)}>
-                  {o.label}
-                  {o.note ? <span className={`ml-2 text-xs ${muted}`}>{o.note}</span> : null}
+                  <span className="flex min-w-0 items-center gap-3">
+                    {o.candidate ? <ProductThumb name={o.candidate.name} photo={o.candidate.photo} categoryKey={o.candidate.ingredient.category_key} /> : null}
+                    <span className="flex min-w-0 flex-col">
+                      <span>
+                        {o.label}
+                        {o.pack ? (
+                          <>
+                            {" "}
+                            <span className={muted}>· {o.pack}</span>
+                          </>
+                        ) : null}
+                      </span>
+                      {/* The space keeps the note a separate phrase in the radio's name. */}
+                      {o.note ? (
+                        <>
+                          {" "}
+                          <span className={`text-xs ${muted}`}>{o.note}</span>
+                        </>
+                      ) : null}
+                    </span>
+                  </span>
                 </RadioRow>
               ))}
             </div>
+            {lookAlikes.length > 0 && !readOnly ? (
+              <p data-testid="look-alikes" className={`mt-2 px-3 text-sm ${muted}`}>
+                Also waiting: {lookAlikes.length} likely the same.{" "}
+                {lookAlikes.map((a, i) => (
+                  <span key={a.id}>
+                    {i > 0 ? ", " : null}
+                    <Link to={`/catalog/products/review/${a.id}`} className={`underline ${focusRing}`}>
+                      {a.title ?? "Untitled"}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            ) : null}
           </fieldset>
 
           <section aria-labelledby={`${id}-summary`}>
@@ -619,13 +654,51 @@ const STRONG_NOTES: Record<NonNullable<Proposal["match"]["strong"]>["reason"], s
   lookup: "Looked up for this product",
 };
 
-function matchOptions(proposal: Proposal, strongName: string | undefined) {
-  const out: { value: string; label: string; note?: string }[] = [];
+/** What a candidate's verdict says beside it (2P). A note informs; it never preselects. */
+export function verdictNote(c: ReviewCandidate): string {
+  switch (c.verdict) {
+    case "same":
+      return "Likely the same product";
+    case "other_size": {
+      const pack = formatPack(c.pack_qty, c.pack_unit);
+      return pack ? `Different size (${pack})` : "Different size";
+    }
+    case "variant": {
+      if (c.reasons.includes("gtin")) return "Different variant (another barcode)";
+      const theirs = c.only_there.join(" ");
+      const mine = c.only_here.join(" ");
+      const words = theirs && mine ? `${theirs}, not ${mine}` : theirs || `not ${mine}`;
+      return `Different variant (${words})`;
+    }
+    default:
+      return c.reasons.includes("brand") ? "Same name, another brand" : "Similar name";
+  }
+}
+
+interface MatchOption {
+  value: string;
+  label: string;
+  note?: string;
+  pack?: string;
+  candidate?: ReviewCandidate;
+}
+
+function matchOptions(proposal: Proposal, strongName: string | undefined): MatchOption[] {
+  const out: MatchOption[] = [];
   const strong = proposal.match.strong;
   if (strong) out.push({ value: `update:${strong.product_id}`, label: `Update ${strongName ?? "the matching product"}`, note: STRONG_NOTES[strong.reason] });
-  for (const c of proposal.match.candidates ?? []) {
-    if (c.product_id === strong?.product_id) continue;
-    out.push({ value: `update:${c.product_id}`, label: `Update ${c.name}${c.brand ? ` (${c.brand})` : ""}`, note: "Similar name" });
+  const label = (c: { name: string; brand: string | null }) => `Update ${c.name}${c.brand ? ` (${c.brand})` : ""}`;
+  if (proposal.candidates) {
+    for (const c of proposal.candidates) {
+      if (c.product_id === strong?.product_id) continue;
+      const pack = formatPack(c.pack_qty, c.pack_unit, c.pack_count, c.piece_name);
+      out.push({ value: `update:${c.product_id}`, label: label(c), note: verdictNote(c), pack: pack || undefined, candidate: c });
+    }
+  } else {
+    for (const c of proposal.match.candidates ?? []) {
+      if (c.product_id === strong?.product_id) continue;
+      out.push({ value: `update:${c.product_id}`, label: label(c), note: "Similar name" });
+    }
   }
   out.push({ value: "new", label: "Create new product" });
   return out;

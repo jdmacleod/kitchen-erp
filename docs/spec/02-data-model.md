@@ -126,6 +126,18 @@ product(
 
 Merging a duplicate product into the one to keep (#179) never touches its price observations, which are facts. The duplicate becomes inactive with `merged_into` naming the survivor, and the price views report its observations under the survivor, normalized against the survivor's pack and density. Its identifiers, vendor listings, photos, receipt aliases, receipt lines, pending update proposals and open lookups are re-pointed to the survivor in the same transaction; the survivor's own fields are not changed. Merges stay one level deep: merging A into B re-points anything already merged into A, and a merged product can't be a survivor or be reactivated.
 
+```
+product_distinct_pair            -- "Not the same" on a possible duplicate (03, 2026-10-08)
+  product_a FK product,
+  product_b FK product,
+  decided_by FK user,
+  decided_at timestamptz,
+  PRIMARY KEY (product_a, product_b),
+  CHECK (product_a < product_b)
+```
+
+A remembered decision, not a fact: the runtime role may insert and delete rows. The pair is stored in id order so either order of the same two products finds it.
+
 A brandless product tied to a vendor is how unbranded produce keeps its identity: the strawberries from one stand are a different product from a supermarket's, with their own quality rating and price history, while both fulfil the ingredient strawberries. The density override exists because density sometimes varies by brand enough to matter, kosher salt being the standard example.
 
 `product.barcode` was moved into `product_identifier` by 1H and dropped; the API keeps a `barcode` field that reads and writes the product's earliest `gtin` or `other` identifier (03, 1H).
