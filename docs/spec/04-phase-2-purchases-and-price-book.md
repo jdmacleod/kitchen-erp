@@ -518,6 +518,8 @@ A catalog of a few hundred products from several vendors collects two kinds of n
   - *similar*: anything else.
 - Two different GTINs are never *the same product*.
 
+**Finding candidates.** A page's title usually carries the brand and size that a catalog name leaves out ("Fernhill Plum Jam, 8 oz" against "Plum Jam"), and trigram search over the whole title finds nothing. Matching therefore also searches the title's identifying words, its name key in printed order, beside the title alone and with the brand.
+
 **On the review page.** Each fuzzy candidate carries its verdict, its pack and its main photo. Candidates are ordered *the same product*, then *similar*, then *a different size*, then *a different variant*, by similarity within each group. The note beside a candidate says "Likely the same product", "Different size (8 oz)", "Different variant (red, not white)" or "Similar name". A verdict never preselects anything: criterion 74 stands, and "Create new product" stays the default when only fuzzy candidates exist. A title that says nothing about the product ("Product details", "Product") already counts as no title (#176).
 
 **Matches are kept current.** A proposal's matches are computed when it is captured, so a product created afterwards was invisible to it. Creating a product (by accepting a proposal as new, or from the Add product form) and merging one recompute the matches of pending proposals whose titles resemble that product's name. A recomputed strong match preselects "Update", exactly as at capture. Pending proposals that the rules call *the same product* as one another are listed on each other's review pages ("Also waiting: 2 likely the same"), so a reviewer accepts one as new and the others as updates.
@@ -527,7 +529,7 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 ### Acceptance criteria
 
 100. The sameness rules are symmetric; a printed size never changes a name key; *the same product* never holds for two different GTINs or two packs of different dimensions. Each verdict is covered by invented pairs, and the suite contains no household product names.
-101. A proposal whose title matches a product of the same words and a disagreeing pack shows that product as "Different size", ordered after any *same* or *similar* candidate, and preselects nothing.
+101. A proposal titled with brand and size ("Fernhill Plum Jam, 8 oz") finds a product named without them ("Plum Jam") as a candidate. A proposal whose title matches a product of the same words and a disagreeing pack shows that product as "Different size", ordered after any *same* or *similar* candidate, and preselects nothing. Verdicts are worked out when the proposal is read, so a proposal matched before 2P shows them too.
 102. A proposal whose candidate is *the same product* shows "Likely the same product" first and still preselects nothing; "Create new product" stays chosen.
 103. A proposal captured before a matching product was created gains that product as a candidate when it is created, and gains a strong match and "Update" preselected when the new product shares its GTIN or listing. A merge does the same for the survivor.
 104. Two pending proposals that are *the same product* each list the other.
