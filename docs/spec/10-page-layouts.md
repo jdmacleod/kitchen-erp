@@ -14,11 +14,11 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 
 ## Home (Home: unified inbox · Home: first run · Home: inbox loading, empty, error)
 
-- **Header:** a time-of-day greeting without a name ("Good afternoon") and a one-line summary, "3 things need you" or "Nothing needs you" (G12).
+- **Header:** a time-of-day greeting without a name ("Good afternoon") and a one-line summary, "3 things need you" or "Nothing needs you" (G12). Its Capture button is secondary: the sidebar's Capture, or the phone tab bar's, is the one primary action (issue 247).
 - **Reading line:** when receipts, product pages or product photos are being read, one line sits above Needs you: "Reading 2 receipts and 1 product page…". It turns squash, "This is taking longer than usual · Check System", when reading has stalled (G1, D21, PD7).
 - **Layout:** two columns, roughly 1.65 : 1.
 - **Left, Needs you:** one card of inbox rows, oldest first.
-  - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button.
+  - Each row is a three-column grid: a kind badge, the title with a one-line explanation, and a soft action button. The badge column is as wide as the widest badge shown, with no fixed slot (UI-6.1, issue 247).
   - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).
   - A footer line explains what the inbox is.
@@ -37,7 +37,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 
 - **Header:** "Purchases", with secondary "Scan a receipt" and primary "New purchase" (UI-2.14).
 - **Filter:** a status segmented control: All, Drafts (with a count), Reviewed, Committed. Newest first.
-  - All excludes voided purchases, and the page description adds "Removed purchases are under Voided".
+  - All excludes voided purchases. Only when voided purchases exist does the page description add "Removed purchases are under Show voided." (issue 247).
   - When voided purchases exist, a link under the list, "Show voided ({n})", sets `?status=voided`. The count uses the first page, like Drafts, capped as "50+". That view offers "Back to all".
 - **Table:** Date, Where, From (Receipt / By hand), Lines, Total and Status.
   - A draft without a location reads "Location needed" in squash.
@@ -75,6 +75,8 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 
 **Remove purchase, at the foot of the purchase page.**
 - A quiet section after the lines, headed "Remove this purchase". The header keeps Edit and Reopen on committed purchases, and review keeps Commit in its sticky bar.
+- **A committed purchase's header line (issue 247)** says what its actions do. A purchase entered by hand: "Edit corrects it here and records again any price that changes. Reopen sends it back to review before you commit it again." Others: "Reopen sends it back to review, where you can correct its lines and commit it again." Its Status reads the badge, then how it came in: "Committed · entered by hand", "· read from a receipt" or "· imported".
+- **Touch targets (issue 246):** the summary's location link and each line's product link have a 44px hit area below `lg`.
 - The line under the heading depends on `removal.outcome`:
   - void: "It's in the price book, so its {n} price(s) will be voided. You can restore it afterwards."
   - delete: "Nothing from it reached the price book, so it will be deleted, along with its receipt photo." Without a photo, the sentence ends at "deleted."
@@ -208,11 +210,11 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - **Search:** a 48px field matching name, brand, ingredient or barcode. It searches on the server (`GET /api/v1/products?q=`, D12).
 - **Filters:** "All" plus category filter chips in category colours, filtered on the server by `category_key` (D12), and, at the right, a "Needs a photo" checkbox (products with no main photo, `no_photo=true`, #184) and a "Show inactive" checkbox.
 - **Table card:**
-  - Columns: Product (a 40px photo or placeholder, then name over brand; PD5), Ingredient (name and category chip), Pack, Quality, and Last paid (price over vendor and date).
+  - Columns: Product (a 40px photo or placeholder, then name over brand; PD5), Ingredient (name, then a chip naming its group as the filter chips do, with the ingredient's own category word beside it when it differs, "Pantry · Dry goods"; issue 247), Pack, Quality, and Last paid (price over vendor and date).
   - Quality shows walnut stars with an accessible label (T13b), or "—" when unrated.
   - Rows are ordered by name.
   - Last paid comes from committed purchases (T16).
-- **States (G11):** a filtered-empty list reads "No products match 'oat' in Dairy · Clear filters"; a truly empty list reads "Add your first product".
+- **States (G11):** a filtered-empty list reads "No products match 'oat' in Dairy · Clear filters"; the No category filter alone with nothing in it reads "Every product has a category"; a truly empty list reads "Add your first product".
 
 **Add product drawer.**
 - **Fields, in order:**

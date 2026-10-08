@@ -83,7 +83,13 @@ export function PurchasesPage() {
 
   return (
     <>
-      <PageHeader title="Purchases" description="Everything you've bought, newest first. Drafts wait for you to finish them. Removed purchases are under Voided.">
+      <PageHeader
+        title="Purchases"
+        description={
+          // Mention removed purchases only when there is a link to them (issue 247).
+          `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
+        }
+      >
         <div className="flex flex-wrap gap-2">
           <Link to="/shop/receipts" className={secondaryLinkClass}>
             Scan a receipt

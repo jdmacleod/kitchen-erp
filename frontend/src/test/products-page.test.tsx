@@ -56,7 +56,7 @@ describe("the Products page (UI-3.4)", () => {
     expect(within(first).getByRole("img", { name: "4 of 5 stars" })).toBeInTheDocument();
     expect(first).toHaveTextContent("$6.49");
     expect(first).toHaveTextContent("Pier Stand · Sep 20, 2026");
-    expect(within(first).getByText("pantry")).toHaveClass("cat-pantry");
+    expect(within(first).getByText("Pantry")).toHaveClass("cat-pantry");
     expect(within(second).getByLabelText("Unrated")).toBeInTheDocument();
     expect(within(second).getByLabelText("Never paid")).toBeInTheDocument();
   });

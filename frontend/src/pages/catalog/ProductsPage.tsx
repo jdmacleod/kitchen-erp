@@ -18,7 +18,7 @@ import { useProductsHelper } from "../../api/proposals";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
-import { CATEGORY_KEYS, CategoryChip, categoryClass, type CategoryKey } from "../../components/CategoryChip";
+import { CATEGORY_KEYS, ProductCategory, categoryClass, type CategoryKey } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
@@ -29,6 +29,7 @@ import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit, ProductForm, emptyProductValues, validateProductValues, type ProductFormValues } from "./ProductForm";
 
 const categoryLabel = (key: CategoryKey) => key[0].toUpperCase() + key.slice(1);
+
 const isCategory = (value: string | null): value is CategoryKey => CATEGORY_KEYS.includes(value as CategoryKey);
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -231,7 +232,12 @@ export function ProductsPage() {
       ) : items.length === 0 ? (
         filtered ? (
           <EmptyState
-            title={`No products match${q ? ` ‘${q}’` : ""}${category === "none" ? " without a category" : category ? ` in ${categoryLabel(category)}` : ""}${noPhoto ? " that need a photo" : ""}`}
+            title={
+              // The No category filter alone, with nothing in it, is good news (issue 247).
+              category === "none" && !q && !noPhoto
+                ? "Every product has a category"
+                : `No products match${q ? ` ‘${q}’` : ""}${category === "none" ? " without a category" : category ? ` in ${categoryLabel(category)}` : ""}${noPhoto ? " that need a photo" : ""}`
+            }
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
@@ -298,7 +304,7 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
             </td>
             <td className="px-4 py-2 align-top">
               <span className="block">{p.ingredient.name}</span>
-              <CategoryChip category={p.ingredient.category} categoryKey={p.ingredient.category_key} />
+              <ProductCategory category={p.ingredient.category} categoryKey={p.ingredient.category_key} />
             </td>
             <td className="px-4 py-2 align-top tabular-nums">{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) || "—"}</td>
             <td className="px-4 py-2 align-top">

@@ -35,7 +35,7 @@ function Row({ item, phoneHidden }: { item: InboxItem; phoneHidden: boolean }) {
   return (
     <li
       data-testid="inbox-item"
-      className={`grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-t border-neutral-200 py-3 first:border-t-0 sm:grid-cols-[7rem_1fr_auto] dark:border-neutral-800 ${
+      className={`grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2 border-t border-neutral-200 py-3 first:border-t-0 sm:col-span-3 sm:grid-cols-subgrid dark:border-neutral-800 ${
         phoneHidden ? "max-lg:hidden" : ""
       }`}
     >
@@ -118,7 +118,8 @@ export function InboxList() {
   const more = items.length - PHONE_ROWS;
   return (
     <Card>
-      <ul aria-label="Needs you">
+      {/* One column for the kind badges, as wide as the widest one shown: no fixed slot (UI-6.1, issue 247). */}
+      <ul aria-label="Needs you" className="sm:grid sm:grid-cols-[max-content_1fr_auto] sm:gap-x-3">
         {items.map((item, i) => (
           <Row key={`${item.kind}-${item.action_route}-${item.created_at}`} item={item} phoneHidden={!expanded && i >= PHONE_ROWS} />
         ))}

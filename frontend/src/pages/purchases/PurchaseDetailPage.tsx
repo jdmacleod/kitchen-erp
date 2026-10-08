@@ -21,7 +21,7 @@ import { Badge } from "../../components/catalog/fields";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
 import { RemovedLinesCaption, RemovePurchase, RestorePurchase } from "../../components/purchases/RemovePurchase";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
-import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing } from "../../components/ui";
+import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -113,7 +113,7 @@ export function PurchaseDetailPage() {
         <PageHeader title={title}>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
-            <span className="text-sm text-neutral-600 dark:text-neutral-400">{sourceLabel[p.source]}</span>
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">· {howEntered(p.source)}</span>
             <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
               All purchases
             </Link>
@@ -183,7 +183,7 @@ function CommittedPurchase({
   const voided = p.status === "voided";
   return (
     <>
-      <PageHeader title={title}>
+      <PageHeader title={title} description={voided ? undefined : committedDescription(p.source)}>
         <div className="flex flex-wrap gap-2">
           {!voided && p.source === "manual" ? (
             <Button variant="secondary" onClick={onEdit}>
@@ -209,7 +209,7 @@ function CommittedPurchase({
             <Item label="Location">
               {p.vendor_location ? (
                 <>
-                  <Link to={`/catalog/vendors/${p.vendor_location.vendor.id}`} className={`rounded underline ${focusRing}`}>
+                  <Link to={`/catalog/vendors/${p.vendor_location.vendor.id}`} className={`${tapTarget} rounded underline ${focusRing}`}>
                     {p.vendor_location.vendor.name}
                   </Link>
                   {p.vendor_location.name !== p.vendor_location.vendor.name ? ` — ${p.vendor_location.name}` : ""}
@@ -220,7 +220,7 @@ function CommittedPurchase({
             </Item>
             <Item label="Purchased">{formatDateTime(p.purchased_at)}</Item>
             <Item label="Status">
-              <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge> <span>{sourceLabel[p.source]}</span>
+              <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge> <span>· {howEntered(p.source)}</span>
             </Item>
             <Item label="Total">{p.total !== null ? formatMoney(p.total) : "—"}</Item>
             <Item label="Computed total">{p.computed_total !== null ? formatMoney(p.computed_total) : "—"}</Item>
@@ -297,7 +297,7 @@ function LineRow({ line, voided = false }: { line: PurchaseLine; voided?: boolea
       <td className="py-2 pr-3">
         {line.product ? (
           <>
-            <Link to={`/catalog/products/${line.product.id}`} className={`rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+            <Link to={`/catalog/products/${line.product.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
               {productTitle(line.product)}
             </Link>
             {formatPack(line.product.pack_qty, line.product.pack_unit) ? (
@@ -388,4 +388,19 @@ function EditPurchase({ purchase, onDone }: { purchase: Purchase; onDone: () => 
       </Button>
     </PurchaseForm>
   );
+}
+
+/** How a purchase came in, said plainly beside its status ("Committed · entered by hand", issue 247). */
+function howEntered(source: Purchase["source"]): string {
+  if (source === "manual") return "entered by hand";
+  if (source === "receipt") return "read from a receipt";
+  if (source === "import") return "imported";
+  return sourceLabel[source].toLowerCase();
+}
+
+/** The header's one line for a committed purchase: what Edit and Reopen each do (issue 247). */
+function committedDescription(source: Purchase["source"]): string {
+  return source === "manual"
+    ? "Edit corrects it here and records again any price that changes. Reopen sends it back to review before you commit it again."
+    : "Reopen sends it back to review, where you can correct its lines and commit it again.";
 }

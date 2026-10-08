@@ -40,3 +40,21 @@ export function CategoryChip({ category, categoryKey, className = "" }: Props) {
   if (!label) return null;
   return <span className={`${categoryClass(categoryKey)} cat-chip ${className}`.trim()}>{label}</span>;
 }
+
+/**
+ * A row's category as the filter chips name it (issue 247): the group from the
+ * backend's category_key, with the ingredient's own wording beside it when that
+ * says something more ("Pantry · Dry goods"). Without a group, the wording alone.
+ */
+export function ProductCategory({ category, categoryKey }: { category: string | null; categoryKey: CategoryKey | null }) {
+  const own = category?.trim() || null;
+  if (!categoryKey) return <CategoryChip category={own} categoryKey={null} />;
+  const group = categoryKey[0].toUpperCase() + categoryKey.slice(1);
+  const extra = own && own.toLowerCase() !== categoryKey ? own : null;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-1.5">
+      <CategoryChip category={group} categoryKey={categoryKey} />
+      {extra ? <span className="text-sm text-neutral-600 dark:text-neutral-400">{extra}</span> : null}
+    </span>
+  );
+}

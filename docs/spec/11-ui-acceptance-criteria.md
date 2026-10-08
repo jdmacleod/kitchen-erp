@@ -121,6 +121,7 @@ Added 2026-10-01 with sub-phases 1H, 1I and 2K–2N (`03`, `04`); layouts and co
 - **UI-6.8** A cutout sits on the card surface with `--shadow-cutout` in both themes, and a product without a photo shows the category-letter placeholder (PD14, PD15).
 - **UI-6.9** The product page's Photos card offers "Use as main photo", "Hide", "Show hidden (n)", "Cutout | Original" when a cutout exists, and the attribution caption; the Labels card shows each label's read text (PD4, PD16).
 - **UI-6.10** The Products table leads each row with a 40px photo or placeholder (PD5).
+- **UI-6.10a** Each Products row names its ingredient's group as the category filter chips do, from `category_key`, with the ingredient's own category word beside it when that differs (issue 247).
 - **UI-6.11** Capture offers four modes; "Photograph a product" sends up to four photos as one proposal and confirms with the Notice (PD11, PD12).
 - **UI-6.12** The reading line counts product work in one sentence and turns squash when stalled; an overdue lookup gets its own line; neither counts in the badge (PD7).
 - **UI-6.13** "Look this up online" is absent without a products helper, and shows its waiting, overdue and answered states with one (PD8).
