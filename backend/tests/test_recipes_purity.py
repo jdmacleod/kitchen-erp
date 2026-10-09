@@ -59,16 +59,48 @@ def called_names(tree: ast.Module) -> set[str]:
     return names
 
 
+# The one module allowed to touch the filesystem: the 3A indexer reads a git tree
+# through dulwich (07 §3A). Widened here deliberately, and checked on its own below.
+IO_MODULES = {"repo.py"}
+IO_MODULE_ALLOWED = (
+    "dulwich",
+    "os",
+    "pathlib",
+    "contextlib",
+    "app.recipes",
+    "collections",
+    "typing",
+)
+
+
 def test_recipes_package_imports_no_io() -> None:
     files = sorted(RECIPES_DIR.rglob("*.py"))
     assert files
     assert any(file.parent.name == "cooklang" for file in files)
     for file in files:
+        if file.parent == RECIPES_DIR and file.name in IO_MODULES:
+            continue
         tree = ast.parse(file.read_text(encoding="utf-8"))
         for name in imported_modules(tree):
             assert not name.startswith(FORBIDDEN_PREFIXES), f"{file.name} imports {name}"
             assert name.startswith(ALLOWED_DOTTED) or "." not in name, f"{file.name} imports {name}"
         assert not called_names(tree) & FORBIDDEN_CALLS, f"{file.name} calls I/O or code execution"
+
+
+def test_repo_module_reads_git_and_nothing_else() -> None:
+    """`repo.py` may use dulwich and the filesystem, never the database, network or a shell."""
+    for name in sorted(IO_MODULES):
+        file = RECIPES_DIR / name
+        assert file.exists(), name
+        tree = ast.parse(file.read_text(encoding="utf-8"))
+        for imported in imported_modules(tree):
+            assert imported.startswith(IO_MODULE_ALLOWED) or "." not in imported, (
+                f"{name} imports {imported}"
+            )
+            assert not imported.startswith(
+                ("subprocess", "socket", "sqlalchemy", "app.services", "app.api")
+            ), f"{name} imports {imported}"
+        assert not called_names(tree) & {"exec", "eval", "compile", "__import__"}, name
 
 
 def test_yaml_is_only_ever_loaded_safely() -> None:

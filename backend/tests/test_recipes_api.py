@@ -118,7 +118,8 @@ async def test_relink_confirms_a_proposal_and_delete_needs_a_missing_recipe(
     other_id = by_path["index_other.cook"]["id"]
 
     # Not missing: neither removable nor relinkable.
-    assert (await admin_client.delete(f"/api/v1/recipes/{old_id}")).status_code == 409
+    removed = await admin_client.delete(f"/api/v1/recipes/{old_id}")
+    assert removed.status_code == 409
     r = await admin_client.post(f"/api/v1/recipes/{old_id}/relink", json={"target_id": other_id})
     assert r.status_code == 409 and r.json()["error"]["code"] == "not_missing"
 
@@ -165,9 +166,11 @@ async def test_delete_removes_a_missing_recipe(
     recipes_repo.remove("index_a.cook")
     await admin_client.post("/api/v1/recipes/rescan")
     assert (await admin_client.get(f"/api/v1/recipes/{item['id']}")).json()["status"] == "missing"
-    assert (await admin_client.delete(f"/api/v1/recipes/{item['id']}")).status_code == 204
+    removed = await admin_client.delete(f"/api/v1/recipes/{item['id']}")
+    assert removed.status_code == 204
     assert (await admin_client.get(f"/api/v1/recipes/{item['id']}")).status_code == 404
-    assert (await admin_client.delete(f"/api/v1/recipes/{item['id']}")).status_code == 404
+    removed_again = await admin_client.delete(f"/api/v1/recipes/{item['id']}")
+    assert removed_again.status_code == 404
     assert (await admin_client.get("/api/v1/recipes/status")).json()["total"] == 1
 
 
