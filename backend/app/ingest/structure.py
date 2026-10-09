@@ -63,6 +63,12 @@ from app.ingest.schemas import ReceiptLines
 # saving_already_netted: a "you saved" note under an item printed at what was
 #   paid was subtracted again; it counts for nothing, and only when the receipt
 #   then adds up to its printed total (pattern 13).
+# deposit_rate_row: a deposit's own rate row ("4 @ $0.05") read as a second
+#   deposit counts for nothing (pattern 14).
+# deposit_total: a line that totals the deposits already read counts for
+#   nothing (pattern 14).
+# qty_from_text: an item takes the count or weight printed on the row beneath
+#   it, which the model left out (pattern 15).
 STRUCTURE_FLAGS = frozenset(
     {
         "qty_from_prefix",
@@ -77,6 +83,9 @@ STRUCTURE_FLAGS = frozenset(
         "continuation_row",
         "rate_note",
         "saving_already_netted",
+        "deposit_rate_row",
+        "deposit_total",
+        "qty_from_text",
     }
 )
 
@@ -105,11 +114,13 @@ def post_passes(
     quantity_prefix(parsed)
     continuation_rows(parsed, printed_total, header_tax)
     regular_price_from_text(parsed, receipt_text)
+    quantity_from_text(parsed, receipt_text)
     savings_printed_negative(parsed, receipt_text)
     points_not_money(parsed)
     flag_footer_rows(parsed)
     unjoined_quantity_rows(parsed)
     tax_from_rate(parsed)
+    deposit_rows(parsed)
     rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
     savings_already_netted(parsed, printed_total, header_tax)
@@ -618,26 +629,32 @@ _PAYMENT = re.compile(
     re.IGNORECASE,
 )
 _ACTIVATED = re.compile(r"activat", re.IGNORECASE)
+_TAX_WORD = re.compile(r"\btax\b", re.IGNORECASE)
 
 
 def payment_rows(
     lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
 ) -> None:
-    """A payment read as an item counts for nothing, when the receipt agrees.
+    """A payment read as an item, a tax or a fee counts for nothing, when the
+    receipt agrees.
 
     Tender, gift-card and balance rows printed below the total are how the
     receipt was paid, not what was bought. Read as items, they added the total
-    again. Worded as a payment and never as a purchased card, each such item
-    goes to zero only when the receipt then adds up more closely to its printed
-    total; without one, nothing changes. The row is kept for review.
+    again; a receipt with no tax line had its "balance to pay" read as the tax,
+    and its total counted twice. Worded as a payment, never as a purchased card,
+    and, for a tax or fee, never as a tax, each such line goes to zero only when
+    the receipt then adds up more closely to its printed total; without one,
+    nothing changes. The row is kept for review.
     """
     if printed_total is None:
         return
     for line in lines:
-        if line.line_kind != "item" or line.line_total <= 0:
+        if line.line_kind not in ("item", "tax", "fee") or line.line_total <= 0:
             continue
         text = line.raw_text
         if not _PAYMENT.search(text) or _ACTIVATED.search(text):
+            continue
+        if line.line_kind != "item" and _TAX_WORD.search(text):
             continue
         before = _difference(lines, printed_total, header_tax)
         amount = line.line_total
@@ -747,15 +764,108 @@ def continuation_rows(
                 other.parent_seq = head.seq
 
 
+# --- 14. A deposit's rate row, and the deposits' total ------------------------
+
+_TOTAL_WORD = re.compile(r"\btotal\b", re.IGNORECASE)
+
+
+def deposit_rows(lines: list[ParsedLine]) -> None:
+    """A deposit's rate row, and a line that totals the deposits, count for nothing.
+
+    A till can print a container deposit beneath its item, then the deposit's
+    rate on a row of its own, and sum the deposits again near the tax::
+
+        T WINE 4 PACK            5.99
+        T Bottle Deposit         0.20
+          4 @ 0.05
+        ...
+        Total Bottle Deposit     0.20
+
+    Read row by row, each became a deposit, and the receipt charged the deposit
+    three times. A rate row with no name in it, printed just under a deposit and
+    coming to that deposit's amount, is that deposit's. A deposit worded as a
+    total, whose amount is the sum of the other deposits, is that sum. The
+    printed amounts prove both, so no printed total is needed. Each row is kept
+    for review at zero.
+    """
+    for i, line in enumerate(lines):
+        if line.line_kind != "deposit" or line.line_total <= 0 or i == 0:
+            continue
+        above = lines[i - 1]
+        if (
+            above.line_kind == "deposit"
+            and above.line_total == line.line_total
+            and _multi_buy(line.raw_text, line.line_total) is not None
+        ):
+            line.line_total = Decimal("0")
+            line.unit_price = None
+            line.flags.append("deposit_rate_row")
+    live = [line for line in lines if line.line_kind == "deposit" and line.line_total > 0]
+    for line in live:
+        if not _TOTAL_WORD.search(line.raw_text):
+            continue
+        others = [o for o in live if o is not line and "deposit_total" not in o.flags]
+        if others and sum((o.line_total for o in others), Decimal("0")) == line.line_total:
+            line.line_total = Decimal("0")
+            line.unit_price = None
+            line.parent_seq = None
+            line.flags.append("deposit_total")
+
+
+# --- 15. A count or weight row the model left out ----------------------------
+
+
+def quantity_from_text(lines: list[ParsedLine], receipt_text: str) -> None:
+    """An item takes the count or weight printed beneath it, when the model
+    left that row out.
+
+    merge_quantity_lines joins a quantity row to its item when the model reads
+    the row. When the model leaves it out, the item stays at a quantity of one.
+    The receipt text still has the row: if the row printed just beneath the
+    item's own row holds only a quantity at a rate, prints no amount of its own,
+    comes to the item's amount, and no line read it, the item takes that
+    quantity and rate. The amount is never changed.
+    """
+    rows = _rows(receipt_text)
+    if not rows:
+        return
+    read = {" ".join(line.raw_text.split()).lower() for line in lines}
+    for line in lines:
+        if line.line_kind != "item" or line.line_total <= 0:
+            continue
+        if line.qty not in (None, Decimal("1")) or any(
+            f in QTY_FLAGS and f != "qty_assumed" for f in line.flags
+        ):
+            continue
+        at = [i for i, row in enumerate(rows) if _same_row(row, line.raw_text)]
+        if len(at) != 1 or at[0] + 1 >= len(rows):
+            continue
+        below = rows[at[0] + 1]
+        printed = quantity_only(below)
+        if (
+            printed is None
+            or printed.amount is not None
+            or " ".join(below.split()).lower() in read
+            or not printed.comes_to(line.line_total)
+        ):
+            continue
+        line.qty, line.unit, line.unit_price = printed.qty, printed.unit, printed.rate
+        line.flags = [f for f in line.flags if f != "qty_assumed"] + ["qty_from_text"]
+        if printed.unit_misread:
+            line.flags.append("unit_misread")
+
+
 __all__ = [
     "STRUCTURE_FLAGS",
     "PostPasses",
     "flag_footer_rows",
     "continuation_rows",
+    "deposit_rows",
     "items_read_as_discounts",
     "payment_rows",
     "points_not_money",
     "post_passes",
+    "quantity_from_text",
     "quantity_prefix",
     "regular_price_from_text",
     "savings_printed_negative",

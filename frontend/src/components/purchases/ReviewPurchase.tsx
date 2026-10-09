@@ -746,7 +746,7 @@ export function needsYou(line: PurchaseLine): boolean {
 }
 
 /** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row", "continuation_row", "rate_note", "saving_already_netted"];
+const PRICE_FLAGS = ["decimal_missing", "exceeds_total", "tax_code_as_digit", "no_amount_printed", "regular_price_from_text", "tax_from_rate", "not_in_scan", "points_not_money", "payment_row", "continuation_row", "rate_note", "saving_already_netted", "deposit_rate_row", "deposit_total"];
 
 /** A line whose amount, or whether it is a line at all, is in doubt: shown first on a receipt held for a careful look. */
 function suspectLine(line: PurchaseLine): boolean {
@@ -800,6 +800,11 @@ const FLAG_LABELS: Record<string, string> = {
   // A rate note ("2 @ 0.45") read as a discount; a saving the price already had.
   rate_note: "a rate note, not a saving",
   saving_already_netted: "saving already in the price",
+  // A deposit's rate row, or the line totalling the deposits, read as more deposit.
+  deposit_rate_row: "the deposit's rate, already counted",
+  deposit_total: "the deposits' total, already counted",
+  // A count or weight printed beneath the item that the reader left out.
+  qty_from_text: "quantity from below",
   // Issue 121: the amount is printed nowhere in the scan's text.
   not_in_scan: "not on the scan",
   // An imported line whose quantity the export never gave: no price is recorded.

@@ -534,3 +534,103 @@ def test_header_total_and_payment_rows_are_never_listed():
         ("TAX 0.00", "tax", "0.00"),
     )
     assert passes.unread_rows == []
+
+
+# --- 10, again. A balance read as the tax -------------------------------------
+
+
+def test_a_balance_read_as_the_tax_counts_for_nothing():
+    # A receipt with no tax line: the model took the balance due for one.
+    lines = _passes(
+        ("WILLOW CRACKERS 3.40", "item", "3.40"),
+        ("FERN BREAD 5.60", "item", "5.60"),
+        ("Balance to pay 9.00", "tax", "9.00"),
+        total="9.00",
+    )
+    balance = _by_text(lines)["Balance to pay 9.00"]
+    assert (balance.line_total, "payment_row" in balance.flags) == (Decimal("0"), True)
+
+
+def test_a_tax_line_is_never_taken_for_a_payment():
+    # "TAX PAID" names a payment word, but it is the tax and the total needs it.
+    lines = _passes(
+        ("WILLOW CRACKERS 3.40", "item", "3.40"),
+        ("TAX PAID 0.30", "tax", "0.30"),
+        total="3.70",
+    )
+    assert _by_text(lines)["TAX PAID 0.30"].line_total == Decimal("0.30")
+
+
+# --- 14. A deposit's rate row, and the deposits' total ------------------------
+
+
+def test_a_deposit_rate_row_and_the_deposit_total_count_for_nothing():
+    lines = _passes(
+        ("T MARSH CIDER 6 PK 8.49", "item", "8.49"),
+        ("T Can Deposit 0.30", "deposit", "0.30", 0),
+        ("6 @ 0.05", "deposit", "0.30", 0),
+        ("HARBOR TONIC 2.19", "item", "2.19"),
+        ("T Can Deposit 0.05", "deposit", "0.05", 3),
+        ("Total Can Deposit 0.35", "deposit", "0.35"),
+        total="11.03",
+    )
+    by = _by_text(lines)
+    assert by["6 @ 0.05"].line_total == Decimal("0")
+    assert "deposit_rate_row" in by["6 @ 0.05"].flags
+    assert by["Total Can Deposit 0.35"].line_total == Decimal("0")
+    assert "deposit_total" in by["Total Can Deposit 0.35"].flags
+    assert sum(line.line_total for line in lines if line.line_kind == "deposit") == Decimal("0.35")
+
+
+def test_deposits_the_arithmetic_does_not_prove_are_left_as_read():
+    lines = _passes(
+        ("T MARSH CIDER 6 PK 8.49", "item", "8.49"),
+        ("T Can Deposit 0.30", "deposit", "0.30", 0),
+        ("4 @ 0.05", "deposit", "0.20", 0),  # comes to another amount
+        ("Total Can Deposit 0.60", "deposit", "0.60"),  # not the sum of the others
+    )
+    assert [line.line_total for line in lines if line.line_kind == "deposit"] == [
+        Decimal("0.30"),
+        Decimal("0.20"),
+        Decimal("0.60"),
+    ]
+
+
+def test_a_lone_deposit_total_is_the_deposit():
+    # With no other deposit read, the total line is the only record of it.
+    (_, deposit) = _passes(
+        ("T MARSH CIDER 6 PK 8.49", "item", "8.49"),
+        ("Total Can Deposit 0.30", "deposit", "0.30"),
+    )
+    assert deposit.line_total == Decimal("0.30")
+
+
+# --- 15. A count row the model left out --------------------------------------
+
+_COUNT_TEXT = """\
+HEATH PLUMS EACH 2.37
+3 @ 0.79
+
+COPPER JAM 4.10
+2 @ 1.99
+"""
+
+
+def test_an_item_takes_the_count_printed_beneath_it():
+    lines = _passes(
+        ("HEATH PLUMS EACH 2.37", "item", "2.37", None, "1"),
+        ("COPPER JAM 4.10", "item", "4.10", None, "1"),
+        text=_COUNT_TEXT,
+    )
+    by = _by_text(lines)
+    plums = by["HEATH PLUMS EACH 2.37"]
+    assert (plums.qty, plums.unit, plums.unit_price, plums.line_total) == (
+        Decimal("3"),
+        "each",
+        Decimal("0.79"),
+        Decimal("2.37"),
+    )
+    assert "qty_from_text" in plums.flags
+    # 2 @ 1.99 is 3.98, not the jam's 4.10: left as read.
+    jam = by["COPPER JAM 4.10"]
+    assert (jam.qty, jam.flags) == (Decimal("1"), [])

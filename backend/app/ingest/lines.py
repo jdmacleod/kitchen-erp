@@ -137,11 +137,14 @@ LOOSE_WEIGHT_PATTERN = re.compile(
 #   to an item with certainty; review offers to merge it.
 # qty_from_prefix: the count was printed before the name ("3 QTY ...", #181).
 # unit_misread: the weight's "lb" was garbled by OCR and read as pounds.
+# qty_from_text: the count or weight printed beneath the item, which the model
+#   left out, was read from the receipt text (app.ingest.structure).
 QTY_FLAGS = frozenset(
     {
         "unit_misread",
         "qty_inferred",
         "qty_from_prefix",
+        "qty_from_text",
         "qty_corrected",
         "qty_assumed",
         "qty_from_line_above",
@@ -385,6 +388,8 @@ def attach_parents(model_lines: list[ReceiptLine], parsed: list[ParsedLine]) -> 
 #   letter; it was cut back to the cents (see _tax_code_read_as_digit).
 # no_amount_printed, regular_price_from_text, tax_from_rate: a line-structure pass
 #   set the amount from the printed arithmetic (app.ingest.structure, #181).
+# deposit_rate_row, deposit_total: a deposit's own rate row, or the line totalling
+#   the deposits, was read as another deposit and set to zero (app.ingest.structure).
 # not_in_scan: the amount is printed nowhere in the OCR text (#121). OCR drops
 #   prices, and the reader fills the gap with a number from elsewhere.
 PRICE_FLAGS = frozenset(
@@ -399,6 +404,8 @@ PRICE_FLAGS = frozenset(
         "points_not_money",
         "payment_row",
         "continuation_row",
+        "deposit_rate_row",
+        "deposit_total",
     }
 )
 
