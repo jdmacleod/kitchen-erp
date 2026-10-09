@@ -1,0 +1,56 @@
+# Preparation words (07, 3C; VS2): how a cook treats an ingredient, not which
+# ingredient it is. The prep tier strips these from the start and end of a
+# recipe name and offers the remainder, carrying the stripped words as the
+# line's note. One lowercase word per line; "#" starts a comment. A word here
+# must never appear in form_words.txt. See README.md.
+
+# cutting
+minced
+chopped
+diced
+sliced
+grated
+shredded
+crushed
+cubed
+julienned
+halved
+quartered
+torn
+crumbled
+mashed
+# preparing
+peeled
+trimmed
+washed
+rinsed
+drained
+pitted
+seeded
+deseeded
+cored
+zested
+juiced
+beaten
+sifted
+softened
+melted
+cooked
+# degree
+finely
+roughly
+coarsely
+thinly
+thickly
+lightly
+# condition of the piece bought
+fresh
+large
+small
+medium
+ripe
+cold
+warm
+chilled
+# joins two preparations: "peeled and diced carrots"
+and

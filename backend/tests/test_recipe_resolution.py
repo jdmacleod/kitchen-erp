@@ -171,9 +171,11 @@ async def test_the_queue_groups_names_most_used_first_with_proposals(
     [proposal] = [p for p in items["olive oil"]["proposals"] if p["tier"] == "standard"]
     assert proposal["ingredient_id"] is None and proposal["standard_key"] == "olive-oil"
     assert proposal["name"] == "olive oil"
-    # Similar tier: a trigram match is a suggestion, never applied (VC3).
-    similar = [p for p in items["fresh basil"]["proposals"] if p["tier"] == "similar"]
-    assert [p["ingredient_id"] for p in similar] == [basil["id"]]
+    # One proposal per target: the similar tier's Basil (a trigram match, never
+    # applied, VC3) and the prep tier's are the ingredient the standard tier
+    # already offered, so nothing is listed twice (package 5; test_recipe_cascade
+    # covers each later tier on its own).
+    assert [p["tier"] for p in items["fresh basil"]["proposals"]] == ["standard"]
     assert all(len(i["proposals"]) <= 3 for i in body["items"])
     assert items["lemon juice"]["proposals"] == []
     # The queue is the inbox row (UI-7.2), one row however many names wait.

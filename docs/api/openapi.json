@@ -12010,10 +12010,66 @@
         "title": "RenameIn",
         "type": "object"
       },
+      "ResolveAskIn": {
+        "additionalProperties": false,
+        "description": "Ask the later tiers, the local model included, about one queued name.",
+        "properties": {
+          "name_norm": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name Norm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_norm"
+        ],
+        "title": "ResolveAskIn",
+        "type": "object"
+      },
+      "ResolveAskOut": {
+        "additionalProperties": false,
+        "properties": {
+          "model_asked": {
+            "title": "Model Asked",
+            "type": "boolean"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ResolveProposal"
+            },
+            "title": "Proposals",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name_norm",
+          "proposals",
+          "model_asked"
+        ],
+        "title": "ResolveAskOut",
+        "type": "object"
+      },
       "ResolveDecisionIn": {
         "additionalProperties": false,
-        "description": "Exactly one of: an ingredient, a new ingredient to create, or ignore.",
+        "description": "Exactly one of: an ingredient, a new ingredient to create, or ignore.\n\n``note`` is the prep tier's stripped words, sent back from its proposal:\nthey are prepended to each affected line's note (\"minced; for the sauce\").\n``fdc_id`` is the USDA tier's food, sent back with ``ingredient``: the new\ningredient gets it as its preferred reference, so the USDA review page then\noffers its densities and measures.",
         "properties": {
+          "fdc_id": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Id"
+          },
           "ignore": {
             "default": false,
             "title": "Ignore",
@@ -12046,6 +12102,18 @@
             "minLength": 1,
             "title": "Name Norm",
             "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
           }
         },
         "required": [
@@ -12150,7 +12218,7 @@
       },
       "ResolveProposal": {
         "additionalProperties": false,
-        "description": "One suggestion for an unmatched name, badged by the cascade tier that made it.\n\n``standard``: an exact standard-list entry; ``ingredient_id`` is the catalog\ningredient already made from it, or null when choosing it creates one\n(``standard_key``). ``similar``: a ranked trigram match, never auto-applied.",
+        "description": "One suggestion for an unmatched name, badged by the cascade tier that made it.\n\n``standard``: an exact standard-list entry; ``ingredient_id`` is the catalog\ningredient already made from it, or null when choosing it creates one\n(``standard_key``). ``similar``: a ranked trigram match, never auto-applied.\n``prep``: the name without its prep words found an ingredient or a standard\nentry exactly; ``note`` holds the stripped words, which the decision sends\nback so they move into each line's note. ``usda``: a FoodData Central food\nto create an ingredient from (``fdc_id``, sent back with the new\ningredient). ``model``: the local model's pick from a shortlist, always one\nof the catalog's or the standard list's names.",
         "properties": {
           "category": {
             "anyOf": [
@@ -12162,6 +12230,28 @@
               }
             ],
             "title": "Category"
+          },
+          "fdc_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Description"
+          },
+          "fdc_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Id"
           },
           "ingredient_id": {
             "anyOf": [
@@ -12190,6 +12280,17 @@
             "title": "Name",
             "type": "string"
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
           "standard_key": {
             "anyOf": [
               {
@@ -12204,7 +12305,10 @@
           "tier": {
             "enum": [
               "standard",
-              "similar"
+              "similar",
+              "prep",
+              "usda",
+              "model"
             ],
             "title": "Tier",
             "type": "string"
@@ -21417,6 +21521,48 @@
           }
         },
         "summary": "Resolve Decide",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/resolve/ask": {
+      "post": {
+        "description": "The cascade for one queued name, the local model included; suggestions only.",
+        "operationId": "resolve_ask_api_v1_recipes_resolve_ask_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveAskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveAskOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Ask",
         "tags": [
           "recipes"
         ]

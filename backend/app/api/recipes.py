@@ -20,6 +20,8 @@ from app.schemas.recipes import (
     RecipesStatus,
     RecipeStatus,
     RelinkIn,
+    ResolveAskIn,
+    ResolveAskOut,
     ResolveDecisionIn,
     ResolveDecisionOut,
     ResolveQueueOut,
@@ -63,6 +65,12 @@ async def resolve_decide(
 ) -> ResolveDecisionOut:
     """One decision for a name: an ingredient, a new one, or not an ingredient."""
     return await recipe_resolution.decide(db, user, payload)
+
+
+@router.post("/recipes/resolve/ask", response_model=ResolveAskOut)
+async def resolve_ask(payload: ResolveAskIn, _: CurrentUser, db: DbSession) -> ResolveAskOut:
+    """The cascade for one queued name, the local model included; suggestions only."""
+    return await recipe_resolution.ask(db, payload.name_norm)
 
 
 @router.get("/recipes/{recipe_id}", response_model=RecipeOut)

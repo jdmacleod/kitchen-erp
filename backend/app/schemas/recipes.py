@@ -127,7 +127,9 @@ class RelinkIn(ApiModel):
 
 # --- 3C: the resolve queue, decisions and pins -------------------------------------
 
-ProposalTier = Literal["standard", "similar"]
+# The cascade's tiers in order (07, 3C; VS2). The page badges each proposal by
+# its tier; a model's guess gets the squash outline (UI-7.16).
+ProposalTier = Literal["standard", "similar", "prep", "usda", "model"]
 
 
 class ResolveProposal(ApiModel):
@@ -136,6 +138,12 @@ class ResolveProposal(ApiModel):
     ``standard``: an exact standard-list entry; ``ingredient_id`` is the catalog
     ingredient already made from it, or null when choosing it creates one
     (``standard_key``). ``similar``: a ranked trigram match, never auto-applied.
+    ``prep``: the name without its prep words found an ingredient or a standard
+    entry exactly; ``note`` holds the stripped words, which the decision sends
+    back so they move into each line's note. ``usda``: a FoodData Central food
+    to create an ingredient from (``fdc_id``, sent back with the new
+    ingredient). ``model``: the local model's pick from a shortlist, always one
+    of the catalog's or the standard list's names.
     """
 
     tier: ProposalTier
@@ -144,6 +152,9 @@ class ResolveProposal(ApiModel):
     standard_key: str | None = None
     category: str | None = None
     matched_spelling: str | None = None
+    note: str | None = None
+    fdc_id: int | None = None
+    fdc_description: str | None = None
 
 
 class ResolveRecipe(ApiModel):
@@ -169,19 +180,46 @@ class ResolveQueueOut(ApiModel):
 
 
 class ResolveDecisionIn(ApiModel):
-    """Exactly one of: an ingredient, a new ingredient to create, or ignore."""
+    """Exactly one of: an ingredient, a new ingredient to create, or ignore.
+
+    ``note`` is the prep tier's stripped words, sent back from its proposal:
+    they are prepended to each affected line's note ("minced; for the sauce").
+    ``fdc_id`` is the USDA tier's food, sent back with ``ingredient``: the new
+    ingredient gets it as its preferred reference, so the USDA review page then
+    offers its densities and measures.
+    """
 
     name_norm: str = Field(min_length=1, max_length=500)
     ingredient_id: uuid.UUID | None = None
     ingredient: IngredientCreate | None = None
     ignore: bool = False
+    note: str | None = Field(default=None, max_length=200)
+    fdc_id: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def _one_choice(self) -> ResolveDecisionIn:
         chosen = sum((self.ingredient_id is not None, self.ingredient is not None, self.ignore))
         if chosen != 1:
             raise ValueError("give exactly one of ingredient_id, ingredient or ignore")
+        if self.note is not None:
+            self.note = " ".join(self.note.split()) or None
+        if self.note is not None and self.ignore:
+            raise ValueError("a note goes with an ingredient, not with ignore")
+        if self.fdc_id is not None and self.ingredient is None:
+            raise ValueError("fdc_id goes with a new ingredient")
         return self
+
+
+class ResolveAskIn(ApiModel):
+    """Ask the later tiers, the local model included, about one queued name."""
+
+    name_norm: str = Field(min_length=1, max_length=500)
+
+
+class ResolveAskOut(ApiModel):
+    name_norm: str
+    proposals: list[ResolveProposal]
+    model_asked: bool  # False when no model is configured or the earlier tiers left no room
 
 
 class ResolveDecisionOut(ApiModel):
