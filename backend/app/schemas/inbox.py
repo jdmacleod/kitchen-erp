@@ -18,6 +18,7 @@ InboxKind = Literal[
     "product_update",
     "duplicates",
     "posted_prices",
+    "recipe",
 ]
 
 

@@ -21,6 +21,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     new_product      pending new-product proposals (2L)             one aggregate row
     product_update   pending product-update proposals (2N)          one aggregate row
     posted_prices    refreshed posted prices awaiting a person (2N) one aggregate row
+    recipe           recipe_resolution.queue_counts: recipe names    one aggregate row
+                     that resolve to no ingredient (07, 3C)
 
 Receipts, product photos and product pages still being read are not items: they
 come back as ``reading`` so Home can show one line above the list.
@@ -51,6 +53,7 @@ from app.services import (
     product_duplicates,
     proposals,
     purchases,
+    recipe_resolution,
     resolution,
     upload_batches,
     usda_review,
@@ -439,6 +442,26 @@ async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _recipes(db: AsyncSession) -> list[InboxItem]:
+    # The same count the resolve page shows (07, 3C; UI-7.2): one row however
+    # many names wait, like the identify row, which is untouched (criterion 18).
+    names, recipes, oldest = await recipe_resolution.queue_counts(db)
+    if not names or oldest is None:
+        return []
+    noun = "recipe name" if names == 1 else "recipe names"
+    where = "1 recipe" if recipes == 1 else f"{recipes} recipes"
+    return [
+        InboxItem(
+            kind="recipe",
+            title=f"{names} {noun} to resolve",
+            detail=f"In {where}. Say once which ingredient each name means.",
+            action_label="Resolve",
+            action_route="/cook/recipes/resolve",
+            created_at=oldest,
+        )
+    ]
+
+
 def _earliest(*moments: datetime | None) -> datetime | None:
     present = [m for m in moments if m is not None]
     return min(present) if present else None
@@ -491,6 +514,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("product_update", _product_updates),
     ("duplicates", _duplicates),
     ("posted_prices", _posted_prices),
+    ("recipe", _recipes),
 ]
 
 

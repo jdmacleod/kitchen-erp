@@ -9,10 +9,11 @@ Nothing here writes under the mount.
 Titles, servings, front matter and the ``recipe_ingredient`` rows come from the
 Cooklang parser (3B). A file that stops parsing keeps its last good rows and is
 marked ``parse_error`` with the new hash (criterion 4), so it is not parsed
-again until it changes. Resolution against ingredients and aliases is 3C's: every
-row is written ``unmatched`` here, and ``negligible`` is decided from the
-quantity alone (none, or text such as "a handful"); the configurable list of
-negligible names is 3C's as well.
+again until it changes. Every row is written ``unmatched`` here with
+``negligible`` decided from the quantity alone (none, or text such as "a
+handful"); the scan then hands every unmatched row to the 3C lookup
+(``recipe_resolution.resolve_unmatched``), which settles names, the negligible
+list and ignored names in the same transaction.
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.catalog.names import normalize_name
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
-from app.models import Recipe, RecipeIngredient
+from app.models import Ingredient, Recipe, RecipeIngredient
 from app.recipes import index
 from app.recipes.cooklang import (
     ParseError,
@@ -52,6 +53,7 @@ from app.schemas.recipes import (
     ScanOut,
     StatusCounts,
 )
+from app.services import recipe_resolution
 
 Parsed = ParsedRecipe | ParseError
 
@@ -157,7 +159,7 @@ def _ingredient_rows(parsed: ParsedRecipe) -> list[RecipeIngredient]:
                 # measure label such as "clove" stays in unit_text for 3C).
                 unit=ref.unit if isinstance(ref.unit, str) else None,
                 note=ref.note,
-                # 3C adds the configurable negligible-name list ("salt", "water").
+                # The negligible-name list is applied by the 3C lookup after the scan.
                 negligible=quantity.kind in ("none", "text"),
                 resolution="unmatched",
                 ingredient_id=None,
@@ -403,6 +405,8 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
         for origin, path, why in relinks:
             by_id[origin].relink_candidate_id = created[path].id
             by_id[origin].relink_reason = why
+    # Rows just rebuilt and rows that waited, in one pass (3C, criterion 14).
+    await recipe_resolution.resolve_unmatched(db, settings)
     await db.commit()
     _last_scan["at"] = now
     return ScanOut(
@@ -471,23 +475,40 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
                 reason=row.relink_reason or "",
             )
     lines = (
-        await db.execute(
-            select(RecipeIngredient)
-            .where(RecipeIngredient.recipe_id == row.id)
-            .order_by(RecipeIngredient.seq)
+        (
+            await db.execute(
+                select(RecipeIngredient)
+                .where(RecipeIngredient.recipe_id == row.id)
+                .order_by(RecipeIngredient.seq)
+            )
         )
-    ).scalars()
-    # Column by column: the row's `ingredients` relationship is not loaded, and
-    # reading it here would lazy-load outside the session's greenlet.
+        .scalars()
+        .all()
+    )
+    ingredient_ids = {line.ingredient_id for line in lines if line.ingredient_id is not None}
+    names: dict[uuid.UUID, str] = {}
+    if ingredient_ids:
+        found = await db.execute(
+            select(Ingredient.id, Ingredient.name).where(Ingredient.id.in_(ingredient_ids))
+        )
+        names = dict(found.tuples())
+    # Column by column: the row's `ingredients` and `pins` relationships are not
+    # loaded, and reading them here would lazy-load outside the session's greenlet.
     columns = {
         name: getattr(row, name)
         for name in RecipeOut.model_fields
-        if name not in ("relink", "ingredients")
+        if name not in ("relink", "ingredients", "pins")
     }
     return RecipeOut(
         **columns,
         relink=relink,
-        ingredients=[RecipeIngredientOut.model_validate(line) for line in lines],
+        ingredients=[
+            RecipeIngredientOut.model_validate(line).model_copy(
+                update={"ingredient_name": names.get(line.ingredient_id)}
+            )
+            for line in lines
+        ],
+        pins=await recipe_resolution.pins_out(db, row.id),
     )
 
 

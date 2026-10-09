@@ -35,6 +35,7 @@ from app.models import (
     ProductProposal,
     PurchaseLine,
     ReceiptAlias,
+    RecipePin,
     UnitRow,
     VendorListing,
 )
@@ -238,6 +239,9 @@ async def _merge_in_session(
     # 3. Work still waiting on the loser: update proposals and open lookups.
     await db.execute(_repoint(ProductProposal, ProductProposal.status == "pending"))
     await db.execute(_repoint(LookupRequest, LookupRequest.status == "open"))
+    # 3b. Recipe lines pinned to the loser (07, 3C, "Merges repoint recipe rows");
+    #     recipe_cost_line joins this list with 3D.
+    await db.execute(_repoint(RecipePin))
     # 4. Photos.
     photos = await _move_photos(db, survivor, loser)
     # 5. The loser leaves, naming the survivor.
