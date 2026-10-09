@@ -1284,7 +1284,8 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
     // warning (the server clears it only when it is sent).
     const confirmsFlaggedPrice = line.flags.some((f) => PRICE_FLAGS.includes(f));
     if (total.trim() !== "" && (confirmsFlaggedPrice || !sameAmount(total.trim(), line.line_total))) {
-      if (!isNonNegativeDecimal(total)) return setInvalid("Line total must be a number.");
+      const problem = totalProblem(kind, total);
+      if (problem) return setInvalid(problem);
       input.line_total = total.trim();
     }
     if (kind !== line.line_kind) input.line_kind = kind;
@@ -1333,6 +1334,18 @@ function LineEditor({ line, busy, onPatch, onCancel }: { line: PurchaseLine; bus
   );
 }
 
+/**
+ * What is wrong with a typed line total, or null. A saving is printed negative
+ * ("-3.75") and may be typed that way on a discount line; the server subtracts a
+ * discount by its size, whatever its sign. Every other kind is zero or more.
+ */
+function totalProblem(kind: string, total: string): string | null {
+  if (total.trim() === "") return "A line total is required.";
+  if (!isDecimal(total)) return "Line total must be a number.";
+  if (kind !== "discount" && !isNonNegativeDecimal(total)) return "Only a discount can be negative. For a saving, choose the discount kind.";
+  return null;
+}
+
 function AddLineForm({ itemLines, busy, onAdd }: { itemLines: PurchaseLine[]; busy: boolean; onAdd: (input: LineAddInput) => void }) {
   const [rawText, setRawText] = useState("");
   const [kind, setKind] = useState<string>("item");
@@ -1343,7 +1356,8 @@ function AddLineForm({ itemLines, busy, onAdd }: { itemLines: PurchaseLine[]; bu
   const [invalid, setInvalid] = useState<string | null>(null);
 
   const add = () => {
-    if (total.trim() === "" || !isNonNegativeDecimal(total)) return setInvalid("A line total is required.");
+    const problem = totalProblem(kind, total);
+    if (problem) return setInvalid(problem);
     if (qty.trim() !== "" && !isPositiveDecimal(qty)) return setInvalid("Quantity must be a positive number.");
     setInvalid(null);
     const input: LineAddInput = { line_kind: kind, line_total: total.trim() };
