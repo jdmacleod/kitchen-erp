@@ -38,6 +38,7 @@ def expected_migration_head() -> str | None:
 # phase adds its row here with the migration that introduces it.
 FEATURE_MIGRATIONS: tuple[tuple[str, str], ...] = (
     ("catalog", "0003"),
+    ("cook", "0042"),
     ("shop", "0005"),
 )
 

@@ -114,6 +114,11 @@ class Settings(BaseSettings):
     # derived/ is rebuildable with `kerp images rebuild`.
     media_path: str = "/data/media"
     recipes_path: str = "/data/recipes"  # read-only mount of the cooklang-recipes checkout
+    # How often the idle worker scans the mount for changed .cook files (07, 3A),
+    # and how long a file must have been unmodified before it is read: a bind
+    # mount under Docker on macOS can report modification times late.
+    recipes_scan_seconds: int = 30
+    recipes_settle_seconds: int = 2
 
     household_timezone: str = "America/Los_Angeles"
     # The order the household's tills print dates in, for a receipt date the model

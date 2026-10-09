@@ -24,7 +24,7 @@ from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
-from app.services import lookups, naming, product_jobs, resolution
+from app.services import lookups, naming, product_jobs, recipes, resolution
 
 log = get_logger(__name__)
 
@@ -116,6 +116,7 @@ async def run(poll_seconds: float = 5.0) -> None:
     log.info("worker started", extra={"poll_seconds": poll_seconds, "worker": me, "ranker": ranker})
     sessionmaker = get_sessionmaker()
     last_refresh = float("-inf")
+    last_scan = float("-inf")
     while not stop.is_set():
         try:
             async with sessionmaker() as db:
@@ -141,6 +142,18 @@ async def run(poll_seconds: float = 5.0) -> None:
                     log.info("listing refreshes queued", extra={"count": queued})
             except Exception as exc:
                 log.error("listing refresh error", extra=loop_error_fields(exc))
+        # Idle: every RECIPES_SCAN_SECONDS, bring the recipe index up to date with
+        # the mount (07, 3A). A missing mount makes the scan a no-op.
+        scan_seconds = get_settings().recipes_scan_seconds
+        if scan_seconds > 0 and loop.time() - last_scan >= scan_seconds:
+            last_scan = loop.time()
+            try:
+                async with sessionmaker() as db:
+                    result = await recipes.scan(db)
+                if result.mounted and result.changed:
+                    log.info("recipes scanned", extra=result.model_dump(mode="json"))
+            except Exception as exc:
+                log.error("recipe scan error", extra=loop_error_fields(exc))
         try:
             await asyncio.wait_for(stop.wait(), timeout=poll_seconds)
         except TimeoutError:

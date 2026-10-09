@@ -32,11 +32,14 @@ on both; 3D depends on 3C; 3E depends on everything before it.
   `/data/recipes` in `api` and `worker`. The Compose default is
   `./data/recipes`, so a fresh clone creates nothing outside itself;
   `.env.example` shows `RECIPES_PATH=../cooklang-recipes` for a household whose
-  repository sits beside this one (Phase 3 review, 2026-10-09). "No repository"
-  means the directory is missing, empty, or holds no `.cook` files: the recipes
-  area reports that state and nothing else is affected. A directory with no
-  `.git` is a repository with no commits: every file is dirty and `head_commit`
-  is null.
+  repository sits beside this one (Phase 3 review, 2026-10-09). A `.git`
+  directory counts as a repository. "No repository" means the directory is
+  missing, or holds neither `.cook` files nor a `.git` entry: the recipes area
+  reports that state and nothing else is affected. A directory with `.git` but
+  no `.cook` files is a repository with no recipes: the scan runs and every
+  indexed recipe becomes `missing` (package 2, 2026-10-09). A directory with
+  `.cook` files and no `.git` is a repository with no commits: every file is
+  dirty and `head_commit` is null.
 
   Public example recipes ship in a tracked top-level `examples/recipes/`
   directory (`examples/` leaves room for other domains later). `make
@@ -223,8 +226,9 @@ that no file under it changes across a full scan.
 8. A scan against a read-only mount changes no file, takes no git lock, and never
    spawns a `git` process (verified by a test that fails on `subprocess` use in
    `app/recipes/`).
-9. With no repository mounted (the directory missing, empty, or without `.cook`
-   files), the recipes area reports that state and every other endpoint works.
+9. With no repository mounted (the directory missing, or holding neither `.cook`
+   files nor a `.git` entry; package 2, 2026-10-09), the recipes area reports
+   that state and every other endpoint works.
 
 ## 3B — Cooklang parsing
 

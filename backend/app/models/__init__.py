@@ -31,6 +31,7 @@ from app.models.purchases import (
     UploadBatch,
     UploadBatchReceipt,
 )
+from app.models.recipes import Recipe, RecipeIngredient, RecipeNameIgnore, RecipePin
 from app.models.units import UnitRow
 
 # Geography models (Phase 1D) register with Base on import.
@@ -67,6 +68,10 @@ __all__ = [
     "PriceObservationVoid",
     "Purchase",
     "PurchaseLine",
+    "Recipe",
+    "RecipeIngredient",
+    "RecipeNameIgnore",
+    "RecipePin",
     "ReceiptAlias",
     "ReceiptDocument",
     "Product",

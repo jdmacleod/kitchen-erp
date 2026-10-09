@@ -11284,6 +11284,274 @@
         "title": "RecentPrice",
         "type": "object"
       },
+      "RecipeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RecipeList",
+        "type": "object"
+      },
+      "RecipeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "dirty": {
+            "title": "Dirty",
+            "type": "boolean"
+          },
+          "front_matter": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Front Matter"
+          },
+          "head_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Commit"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_indexed_at": {
+            "format": "date-time",
+            "title": "Last Indexed At",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "parse_error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parse Error Message"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "relink": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RelinkProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
+          },
+          "servings_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings Text"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "title",
+          "status",
+          "dirty",
+          "content_hash",
+          "last_indexed_at",
+          "servings",
+          "servings_text",
+          "head_commit",
+          "parse_error_message",
+          "front_matter",
+          "last_seen_at",
+          "notes"
+        ],
+        "title": "RecipeOut",
+        "type": "object"
+      },
+      "RecipeSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "dirty": {
+            "title": "Dirty",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_indexed_at": {
+            "format": "date-time",
+            "title": "Last Indexed At",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "title",
+          "status",
+          "dirty",
+          "content_hash",
+          "last_indexed_at"
+        ],
+        "title": "RecipeSummary",
+        "type": "object"
+      },
+      "RecipesStatus": {
+        "additionalProperties": false,
+        "description": "Whether a repository is mounted, what the index holds, and when it last ran.",
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/StatusCounts"
+          },
+          "head_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Commit"
+          },
+          "last_scan_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Scan At"
+          },
+          "mount": {
+            "enum": [
+              "mounted",
+              "missing",
+              "empty",
+              "no_cook_files"
+            ],
+            "title": "Mount",
+            "type": "string"
+          },
+          "mounted": {
+            "title": "Mounted",
+            "type": "boolean"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mount",
+          "mounted",
+          "head_commit",
+          "counts",
+          "total",
+          "last_scan_at"
+        ],
+        "title": "RecipesStatus",
+        "type": "object"
+      },
       "RecomputeOut": {
         "additionalProperties": false,
         "properties": {
@@ -11296,6 +11564,52 @@
           "recomputed"
         ],
         "title": "RecomputeOut",
+        "type": "object"
+      },
+      "RelinkIn": {
+        "additionalProperties": false,
+        "properties": {
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id"
+        ],
+        "title": "RelinkIn",
+        "type": "object"
+      },
+      "RelinkProposal": {
+        "additionalProperties": false,
+        "description": "The new file the indexer believes a missing recipe became (3A, step 3).",
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_id",
+          "path",
+          "title",
+          "reason"
+        ],
+        "title": "RelinkProposal",
         "type": "object"
       },
       "RememberCodeOut": {
@@ -11508,6 +11822,62 @@
           }
         },
         "title": "RwLayoutEntry",
+        "type": "object"
+      },
+      "ScanOut": {
+        "additionalProperties": false,
+        "description": "What one scan changed.",
+        "properties": {
+          "created": {
+            "title": "Created",
+            "type": "integer"
+          },
+          "files": {
+            "title": "Files",
+            "type": "integer"
+          },
+          "missing": {
+            "title": "Missing",
+            "type": "integer"
+          },
+          "mounted": {
+            "title": "Mounted",
+            "type": "boolean"
+          },
+          "moved": {
+            "title": "Moved",
+            "type": "integer"
+          },
+          "proposals": {
+            "title": "Proposals",
+            "type": "integer"
+          },
+          "scanned_at": {
+            "format": "date-time",
+            "title": "Scanned At",
+            "type": "string"
+          },
+          "settling": {
+            "title": "Settling",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "Updated",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mounted",
+          "scanned_at",
+          "files",
+          "settling",
+          "created",
+          "updated",
+          "moved",
+          "missing",
+          "proposals"
+        ],
+        "title": "ScanOut",
         "type": "object"
       },
       "SearchHit": {
@@ -11896,6 +12266,28 @@
           "category_key"
         ],
         "title": "StandardEntryOut",
+        "type": "object"
+      },
+      "StatusCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "missing": {
+            "default": 0,
+            "title": "Missing",
+            "type": "integer"
+          },
+          "ok": {
+            "default": 0,
+            "title": "Ok",
+            "type": "integer"
+          },
+          "parse_error": {
+            "default": 0,
+            "title": "Parse Error",
+            "type": "integer"
+          }
+        },
+        "title": "StatusCounts",
         "type": "object"
       },
       "StoreCodeOfferOut": {
@@ -20348,6 +20740,249 @@
         "summary": "Get Receipt Image",
         "tags": [
           "receipts"
+        ]
+      }
+    },
+    "/api/v1/recipes": {
+      "get": {
+        "operationId": "list_recipes_api_v1_recipes_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "ok",
+                    "parse_error",
+                    "missing"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dirty",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dirty"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Recipes",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/rescan": {
+      "post": {
+        "description": "Run the scan inline and answer when it is done.",
+        "operationId": "rescan_api_v1_recipes_rescan_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Rescan",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/status": {
+      "get": {
+        "operationId": "recipes_status_api_v1_recipes_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipesStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Recipes Status",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}": {
+      "delete": {
+        "operationId": "delete_recipe_api_v1_recipes__recipe_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Recipe",
+        "tags": [
+          "recipes"
+        ]
+      },
+      "get": {
+        "operationId": "get_recipe_api_v1_recipes__recipe_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Recipe",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/relink": {
+      "post": {
+        "operationId": "relink_api_v1_recipes__recipe_id__relink_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Relink",
+        "tags": [
+          "recipes"
         ]
       }
     },
