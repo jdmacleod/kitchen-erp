@@ -329,7 +329,9 @@ Reached from the inbox at `/catalog/products/review/:id`; no nav item. Laid out 
   - **Match:** neutral radio rows, "Update {product}" (preselected on a strong match) or "Create new product".
   - **Summary:** name, brand, pack and barcode on one line. A field with alternatives or a conflict opens beneath it with its choices as radio rows, each with a neutral source badge; a model's guess carries a squash outline. Identity conflicts are squash, side by side, with no default.
   - **Ingredient:** the ingredient picker (1G).
-  - **Images:** photo tiles (08) as a radio group for the main photo, each with a role select and a Hide checkbox.
+  - **Images:** photo tiles (08) as a radio group for the main photo, each with its size in pixels, a role select and a Hide checkbox.
+    - On an update whose product has a main photo, that photo leads the group as a "Current" tile with "Keep as main photo". It stays preselected unless a photo with more pixels arrived, so a lower-resolution photo never replaces it by default. Keeping it holds it: if the main-photo rule (03) would pick an arrived photo instead, accepting pins the kept one, as "Use as main photo" does.
+    - A photo with fewer pixels than the current main photo carries the squash pill "Smaller than the current main photo".
   - **Kind:** a segmented control: Branded, Store brand, Weighed, Loose, Market stall.
   - **Price:** shown when the capture had one. "Not one of your stores" is a squash outline with a location picker and defaults to recording no price.
 - **Collapsed form:** with a strong match, no conflicts and an ingredient chosen, the page shows the summary with Accept and "Edit details".

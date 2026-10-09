@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 import { api, errorMessage, isApiError } from "../../api/client";
 import { formatPack, formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
-import { ROLE_LABELS, type PhotoRole, type ProductPhoto } from "../../api/productPhotos";
+import { ROLE_LABELS, type PhotoRole, type PhotoSummary, type ProductPhoto } from "../../api/productPhotos";
 import {
   CHANNEL_WORDS,
   KIND_LABELS,
@@ -175,7 +175,8 @@ function Review({ proposal }: { proposal: Proposal }) {
   const touch = (name: string) => setTouched((t) => new Set(t).add(name));
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const productPhotos = proposal.photos.filter((p) => p.role === "product");
-  const [mainPhoto, setMainPhoto] = useState<string | null>(productPhotos[0]?.id ?? null);
+  // The person's choice of main photo; until they make one, the default below applies.
+  const [chosenMain, setChosenMain] = useState<string | null>(null);
   const [roles, setRoles] = useState<Record<string, PhotoRole>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const brandOrCode = Boolean(fields.brand?.value || fields.gtin?.value);
@@ -203,6 +204,16 @@ function Review({ proposal }: { proposal: Proposal }) {
     if (name === "pieces") return p.pack_count ? { count: String(p.pack_count), ...(p.piece_name ? { name: p.piece_name } : {}) } : undefined;
     return undefined;
   };
+  /** The main photo of the product being updated: keeping it is a choice, and the default unless a larger photo arrives. */
+  const currentMain = isNew ? null : (targetProduct.data?.photo ?? null);
+  const smaller = (photo: PhotoSummary) => {
+    const have = pixels(currentMain);
+    const offered = pixels(photo);
+    return have !== null && offered !== null && offered < have;
+  };
+  // A choice stops applying when the match changes away from the product whose photo it was.
+  const choosable = chosenMain !== null && (chosenMain === currentMain?.id || productPhotos.some((p) => p.id === chosenMain));
+  const mainPhoto = choosable ? chosenMain : defaultMain(productPhotos, currentMain);
   const kept = (name: string) => !touched.has(name) && current(name) !== undefined;
   // Keeping what the product being updated has settles a conflict: the server writes
   // nothing of it, so only a field with no kept value and no choice is still open.
@@ -494,6 +505,7 @@ function Review({ proposal }: { proposal: Proposal }) {
             <fieldset disabled={readOnly}>
               <legend className={sectionHeading}>Images</legend>
               <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {currentMain ? <CurrentMainTile photo={currentMain} name={`${id}-main`} main={mainPhoto === currentMain.id} onMain={() => setChosenMain(currentMain.id)} /> : null}
                 {proposal.photos.map((photo) => (
                   <ReviewTile
                     key={photo.id}
@@ -501,8 +513,9 @@ function Review({ proposal }: { proposal: Proposal }) {
                     name={`${id}-main`}
                     role={roles[photo.id] ?? photo.role}
                     main={mainPhoto === photo.id}
+                    smaller={smaller(photo)}
                     hidden={hidden.has(photo.id)}
-                    onMain={() => setMainPhoto(photo.id)}
+                    onMain={() => setChosenMain(photo.id)}
                     onRole={(role) => setRoles({ ...roles, [photo.id]: role })}
                     onHidden={(h) => {
                       const next = new Set(hidden);
@@ -805,11 +818,56 @@ function EvidencePhoto({ photo }: { photo: ProductPhoto }) {
   );
 }
 
+/**
+ * The main photo preselected on review: the first product photo that arrived, or on an
+ * update, the product's current main photo unless a photo with more pixels arrived.
+ */
+function defaultMain(arrived: ProductPhoto[], current: PhotoSummary | null): string | null {
+  if (!current) return arrived[0]?.id ?? null;
+  const have = pixels(current) ?? Infinity;
+  const larger = arrived.filter((p) => (pixels(p) ?? 0) > have).sort((x, y) => (pixels(y) ?? 0) - (pixels(x) ?? 0));
+  return larger[0]?.id ?? current.id;
+}
+
+/** Width × height, or null when the photo's size isn't known yet. */
+function pixels(photo: PhotoSummary | null): number | null {
+  return photo?.width && photo.height ? photo.width * photo.height : null;
+}
+
+function PhotoSize({ photo }: { photo: PhotoSummary }) {
+  if (!photo.width || !photo.height) return null;
+  return (
+    <span className={`text-xs tabular-nums ${muted}`}>
+      {photo.width} × {photo.height} px
+    </span>
+  );
+}
+
+/** The main photo the product has now; choosing it keeps it over the photos that arrived. */
+function CurrentMainTile({ photo, name, main, onMain }: { photo: PhotoSummary; name: string; main: boolean; onMain: () => void }) {
+  return (
+    <li data-testid="review-tile" className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}>
+      {photo.urls ? (
+        <img src={photo.urls.small} alt="The product's current main photo" className="aspect-square w-full rounded-md bg-neutral-100 object-cover dark:bg-neutral-800" />
+      ) : null}
+      <span className="flex flex-wrap items-center gap-2">
+        <Badge>Current</Badge>
+        <PhotoSize photo={photo} />
+      </span>
+      <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
+        <input type="radio" name={name} checked={main} onChange={onMain} className={`size-4 ${focusRing}`} />
+        {main ? "Main photo" : "Keep as main photo"}
+      </label>
+    </li>
+  );
+}
+
 function ReviewTile({
   photo,
   name,
   role,
   main,
+  smaller,
   hidden,
   onMain,
   onRole,
@@ -819,6 +877,8 @@ function ReviewTile({
   name: string;
   role: PhotoRole;
   main: boolean;
+  /** Fewer pixels than the product's current main photo. */
+  smaller: boolean;
   hidden: boolean;
   onMain: () => void;
   onRole: (role: PhotoRole) => void;
@@ -835,6 +895,10 @@ function ReviewTile({
   return (
     <li data-testid="review-tile" className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}>
       {picture}
+      <span className="flex flex-wrap items-center gap-2">
+        <PhotoSize photo={photo} />
+        {smaller && role === "product" ? <Badge tone="warn">Smaller than the current main photo</Badge> : null}
+      </span>
       {role === "product" ? (
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
           <input type="radio" name={name} checked={main} onChange={onMain} className={`size-4 ${focusRing}`} />

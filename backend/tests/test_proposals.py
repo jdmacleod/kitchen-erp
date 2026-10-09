@@ -94,9 +94,9 @@ async def status_of(proposal_id) -> str:
         return (await proposals.get_proposal(db, proposal_id)).status
 
 
-def jpeg(colour=(30, 60, 200)) -> bytes:
+def jpeg(colour=(30, 60, 200), size=(300, 300)) -> bytes:
     out = io.BytesIO()
-    Image.new("RGB", (300, 300), colour).save(out, format="JPEG")
+    Image.new("RGB", size, colour).save(out, format="JPEG")
     return out.getvalue()
 
 
@@ -580,6 +580,40 @@ async def test_accept_applies_the_reviewers_photo_choices(admin_client, user, st
     assert photos[second]["is_main"] and photos[second]["pinned"]
     assert photos[first]["status"] == "hidden"
     assert photos[third]["role"] == "label_nutrition"
+
+
+async def test_keeping_the_main_photo_holds_it_against_a_photo_the_rule_prefers(
+    admin_client, user, store
+):
+    """The review page's "Keep the current main photo" sends the product's own main photo."""
+    holder = await make_product(admin_client, "Oats", "Porridge oats", barcode=PAGE_GTIN)
+    async with get_sessionmaker()() as db:
+        (own,) = await product_photos.add_photos(
+            db,
+            uuid.UUID(holder["id"]),
+            [PhotoUpload(jpeg((200, 30, 30), (300, 300)))],
+            source_kind="vendor_listing",
+        )
+    await work()
+    result = await capture(user, page_evidence(store))
+    async with get_sessionmaker()() as db:
+        # Your own photo outranks a store page's, so the rule alone would switch to it.
+        (arriving,) = await product_photos.add_photos(
+            db, None, [PhotoUpload(jpeg((30, 200, 30), (600, 600)))], proposal_id=result.proposal.id
+        )
+    await work()
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{result.proposal.id}/accept",
+        json={"action": "update", "product_id": holder["id"], "main_photo_id": str(own.id)},
+    )
+    assert r.status_code == 200, r.text
+    photos = {
+        p["id"]: p
+        for p in (await admin_client.get(f"/api/v1/products/{holder['id']}/photos")).json()["items"]
+    }
+    assert photos[str(own.id)]["is_main"] and photos[str(own.id)]["pinned"]
+    assert photos[str(arriving.id)]["status"] == "active"
+    assert not photos[str(arriving.id)]["is_main"]
 
 
 async def test_updating_a_product_keeps_its_pack_through_a_pack_conflict(admin_client, user, store):
