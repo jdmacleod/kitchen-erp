@@ -1,8 +1,10 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import asyncpg
 import httpx
+import pytest
 
 from app.services.pricebook import recompute_all
 from tests.pricebook_helpers import SYNTH, make_location, make_product, shelf
@@ -223,3 +225,59 @@ async def test_unknown_unit_is_422(admin_client):
         },
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "unknown_unit"
+
+
+async def test_a_second_live_observation_for_a_line_is_rejected_until_the_first_is_voided(
+    admin_client, admin, owner_conn: asyncpg.Connection
+):
+    """Criterion 9a (04, 2A): the ``kerp_one_live_observation_per_line`` trigger of 0005."""
+    loc = await make_location(admin_client, "Corner Grocer", "Corner Grocer")
+    box = await make_product(admin_client, "Rigatoni", "Rigatoni box", pack_qty="1", pack_unit="lb")
+    body = {
+        "vendor_location_id": loc["id"],
+        "purchased_at": datetime(2026, 6, 6, 17, 0, tzinfo=UTC).isoformat(),
+        "lines": [{"product_id": box["id"], "qty": "1", "unit": "each", "unit_price": "3.99"}],
+    }
+    r = await admin_client.post("/api/v1/purchases", json=body)
+    assert r.status_code == 201, r.text
+    line = r.json()["lines"][0]
+    first = line["observation_id"]
+    assert first
+
+    async def insert_another() -> uuid.UUID:
+        obs = uuid.uuid4()
+        await owner_conn.execute(
+            "INSERT INTO price_observation (id, product_id, vendor_location_id, "
+            "purchase_line_id, observed_at, price, qty, unit, is_promo, source, entered_by) "
+            "VALUES ($1, $2, $3, $4, $5, 4.25, 1, 'each', false, 'manual', $6)",
+            obs,
+            uuid.UUID(box["id"]),
+            uuid.UUID(loc["id"]),
+            uuid.UUID(line["id"]),
+            datetime(2026, 6, 6, 17, 0, tzinfo=UTC),
+            admin.id,
+        )
+        return obs
+
+    # The owner role bypasses no trigger: a second live observation for the line is refused.
+    with pytest.raises(asyncpg.UniqueViolationError, match="already has a live price observation"):
+        await insert_another()
+    live = await owner_conn.fetchval(
+        "SELECT count(*) FROM price_observation o WHERE o.purchase_line_id = $1 AND NOT EXISTS "
+        "(SELECT 1 FROM price_observation_void v WHERE v.observation_id = o.id)",
+        uuid.UUID(line["id"]),
+    )
+    assert live == 1
+
+    # Voiding the first makes room for exactly one more.
+    r = await admin_client.post(f"/api/v1/price-observations/{first}/void", json={"reason": "typo"})
+    assert r.status_code == 200 and r.json()["voided"] is True
+    second = await insert_another()
+    live_ids = await owner_conn.fetch(
+        "SELECT o.id FROM price_observation o WHERE o.purchase_line_id = $1 AND NOT EXISTS "
+        "(SELECT 1 FROM price_observation_void v WHERE v.observation_id = o.id)",
+        uuid.UUID(line["id"]),
+    )
+    assert [row["id"] for row in live_ids] == [second]
+    with pytest.raises(asyncpg.UniqueViolationError, match="already has a live price observation"):
+        await insert_another()

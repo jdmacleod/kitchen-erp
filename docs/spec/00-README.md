@@ -1,6 +1,6 @@
 # Kitchen ERP — Handoff Package, Phases 1–2
 
-This package specifies the first two phases of Kitchen ERP, a self-hosted household kitchen system covering vendors, products, purchases, price history, inventory, recipes, recipe costing, and location-aware shopping trips. It is written to be handed to Claude Code working in this repository's checkout. Phases 1 and 2 are specified to implementation depth. Phases 3–6 are described only as design notes so that early decisions do not paint later phases into a corner; they are explicitly not yet for implementation.
+This package specifies the first two phases of Kitchen ERP, a self-hosted household kitchen system covering vendors, products, purchases, price history, inventory, recipes, recipe costing, and location-aware shopping trips. It is written to be handed to Claude Code working in this repository's checkout. Phases 1 and 2 are specified to implementation depth. Phase 3 is specified in `07-phase-3-recipes-and-costing.md` (a draft, under review as of 2026-10-09). Phases 4–6 are described only as design notes so that early decisions do not paint later phases into a corner; they are explicitly not yet for implementation.
 
 ## How to use this package
 
