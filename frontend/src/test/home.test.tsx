@@ -159,6 +159,22 @@ describe("home page, set up", () => {
     expect(within(rows[1]).getByRole("link", { name: "Review lines" })).toHaveAttribute("href", "/shop/receipts/identify");
   });
 
+  it("shows recipe names to resolve as one row whose Resolve opens the resolve page (UI-7.2)", async () => {
+    mountSetUp(
+      inboxOf([
+        item({ kind: "recipe", title: "14 recipe names to resolve", detail: "In 9 recipes. Say once which ingredient each name means.", action_label: "Resolve", action_route: "/cook/recipes/resolve" }),
+      ]),
+    );
+
+    const [row] = await screen.findAllByTestId("inbox-item");
+    const badge = within(row).getByText("Recipe");
+    expect(badge.className).toMatch(/bg-neutral-200/);
+    expect(row).toHaveTextContent("14 recipe names to resolve");
+    expect(row).toHaveTextContent("In 9 recipes.");
+    expect(within(row).getByRole("link", { name: "Resolve" })).toHaveAttribute("href", "/cook/recipes/resolve");
+    expect(await within(await screen.findByRole("main")).findByText("1 thing needs you")).toBeInTheDocument();
+  });
+
   it("marks a failed read in tomato and says what went wrong (G5)", async () => {
     mountSetUp(
       inboxOf([

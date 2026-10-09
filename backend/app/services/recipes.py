@@ -491,7 +491,7 @@ async def recipe_out(db: AsyncSession, row: Recipe) -> RecipeOut:
         found = await db.execute(
             select(Ingredient.id, Ingredient.name).where(Ingredient.id.in_(ingredient_ids))
         )
-        names = dict(found.tuples())
+        names = dict(found.all())
     # Column by column: the row's `ingredients` and `pins` relationships are not
     # loaded, and reading them here would lazy-load outside the session's greenlet.
     columns = {
