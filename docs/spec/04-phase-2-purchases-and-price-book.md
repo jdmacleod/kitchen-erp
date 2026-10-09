@@ -141,7 +141,7 @@ Every price shown carries its age. A price older than `STALE_AFTER_DAYS` (defaul
 38. The product page charts history correctly for a product observed at three locations of two vendors, one of them chain-scoped, and marks promotional observations.
 39. The ingredient page's minimum-quality filter excludes lower-rated products from both the list and the per-location best price.
 40. The comparison matrix highlights the cheapest qualifying normalized price per ingredient and leaves unknown cells empty rather than showing zero.
-41. Prices older than the threshold for their ingredient's perishability are marked stale, and the matrix can exclude them.
+41. Prices older than the single `STALE_AFTER_DAYS` window (default 90), the same for every ingredient, are marked stale, and the matrix can exclude them.
 42. The "where is this cheapest" layer labels pins with normalized unit prices in a consistent unit and respects the chain price scope.
 42a. (Added 2026-10-08, issue 245.) A 1 lb pack at $2.99 reads "$2.99/lb"; a 2 oz pack at $4.00 reads "$2.00/oz"; a 16.9 fl oz bottle at $9.10 reads "$0.538/fl oz". The stored `norm_unit_price` is still per g or ml. With `UNIT_DISPLAY=metric` the same prices read "$6.59/kg", "$70.55/kg" and "$18.21/L". Every price of one ingredient in one response uses the same unit.
 43. An observation with `no_density` appears in the needs-a-bridge list; adding the density removes it and the price appears in comparisons without further action.
