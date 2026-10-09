@@ -12,7 +12,7 @@ from them.
 
 | Project | Upstream | Licence | May we borrow code? |
 |---|---|---|---|
-| cookcli | github.com/cooklang/cookcli | MIT | Yes, with attribution and the MIT notice preserved. Prefer using `cooklang` as a library dependency rather than vendoring. |
+| cookcli | github.com/cooklang/cookcli | MIT | Yes, with attribution and the MIT notice preserved. The parser is written in-house (`07`, 3B); only the canonical test suite is vendored, see below. |
 | grocy | github.com/grocy/grocy | MIT | Yes, with attribution. It is PHP, so little is directly reusable. |
 | paprika-recipes | github.com/coddingtonbear/paprika-recipes | MIT | Yes, with attribution. |
 | kitchenowl | github.com/TomBursch/kitchenowl | AGPL-3.0 | **No.** Ideas only. Any code, however small, would require relicensing this project. |
@@ -42,7 +42,9 @@ the paper or standard it implements and work from that.
 | Ollama and default text model `qwen2.5:14b` | MIT (Ollama), Apache-2.0 (Qwen2.5-14B, per the licence the Ollama registry carries) | Notices preserved. Model weights are downloaded locally, never committed. |
 | `gpt-oss:20b` (the earlier default text model, still usable) | Apache-2.0 | Same as above. |
 | `glm-ocr` (the vision transcriber, optional, off by default; 04, 2O) | MIT (model weights), Apache-2.0 (code), per the upstream repository `zai-org/GLM-OCR`; the Ollama registry carries no licence text for it | Notices preserved. Weights are downloaded by the operator onto their own model server, never committed or shipped with this project. Only the model is used, through Ollama: not the upstream pipeline, which adds PP-DocLayoutV3 (Apache-2.0). |
-| Cooklang specification and `cooklang` parser crate / bindings | MIT | Notice preserved if vendored; prefer a dependency. |
+| Cooklang specification and its canonical test suite (vendored under `backend/tests/fixtures/cooklang/` with its licence file; `07`, 3B, Phase 3 review 2026-10-09) | MIT | Notice preserved beside the vendored suite. The parser itself is written in-house; no `cooklang` crate, binding or PyPI package is a dependency. |
+| `dulwich` (reads the recipe repository's `HEAD` tree, blobs and rename history; `07`, 3A) | Apache-2.0 or GPL-2.0-or-later, dual licensed; used under Apache-2.0 | Notice preserved. Permissive under the chosen licence; the GPL option is not taken. It only reads: nothing takes a git lock or writes to the mount. |
+| Example recipes under `examples/recipes/` (`07`, prerequisites) | MIT, CC0 or Apache-2.0, per file | Each file names its source and licence when it is added, in a row here. Nothing from the household's own repository is ever added. |
 | `opening-hours-py` (OSM opening_hours parser) | MIT or Apache-2.0 | Notice preserved. Avoid `pyopening-hours`, which wraps `opening_hours.js` and is GPL-3.0. |
 
 ## Recipes

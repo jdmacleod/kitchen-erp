@@ -118,6 +118,64 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 - Its bottom padding is at least the sticky Commit bar plus the tab bar, so it scrolls fully clear.
 - Its buttons are full-width at 44px and stacked, with "Keep it" below "Remove purchase", nearest the thumb.
 
+## Cook: recipes (Cook: recipes · Recipe page · Resolve recipe names)
+
+Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a mounted repository that the application never edits, so no Cook page has a create drawer; the one primary action is "Rescan recipes", which runs the scan inline and answers when it is done. Costing is household-wide, so nothing here chooses a kitchen; Phase 4 adds that filter with the switcher.
+
+**Recipes list** (`/cook/recipes`).
+- **Header:** "Recipes", with the description "What each dish costs from the price book, and how much of that figure is known." Primary "Rescan recipes": while it runs the button reads "Rescanning…", and the Notice afterwards reads "Rescanned: 2 recipes changed." or "Rescanned. Nothing changed."
+- **Names waiting:** while recipe names are unresolved, a line above the list reads "14 recipe names to resolve · Resolve", linking to the resolve page, as the Ingredients list does for skipped rows (DV14).
+- **Controls:** a search field matching title and path; a status segmented control, All, Can't read, Missing, with counts; and a completeness control, All, Complete, Incomplete. Both are kept in the URL (`?status=`, `?completeness=`), and `/cook/costing` redirects to `?completeness=incomplete`.
+- **Table:** Recipe (the title in weight 600 over its path in a neutral caption, with its badges), Servings, Cost (consumed cost, "$12.40" or "$12.40–13.10" for a range, with per serving beneath), Basket, Known ("8 of 10 lines priced"; squash words when fewer than all), and Indexed (relative time). Rows are ordered by title.
+  - Badges always carry words: "Uncommitted" (neutral) for a dirty file, "Can't read" (tomato) for a parse error, "Missing" (squash) for a file no longer there.
+  - A provisional snapshot's figures carry the caption "provisional". A recipe with no snapshot yet reads "Not costed yet".
+- **States (G11):**
+  - No repository (the directory missing, empty, or without `.cook` files): "No recipes found. Point `RECIPES_PATH` at a Cooklang repository, or run `make seed-examples` to start with the example recipes." with Rescan recipes. It is an empty state, not an error, because the application is working as configured.
+  - Filtered-empty: "No recipes match 'soup' that can't be read · Clear filters".
+  - Error: a tomato alert "Couldn't load recipes" with Try again; never the empty state.
+
+**Recipe page** (`/cook/recipes/:id`).
+- **Breadcrumb:** Cook / Recipes.
+- **Header:** the title, with its badges; a meta line of the path in monospace, servings as written, and when it was indexed. Primary "Rescan recipes". A missing recipe adds a tomato-text secondary "Remove recipe".
+- **Layout:** two columns at 1024px and wider, the rendered recipe on the left and the cost table on the right, roughly 1 : 1.4; the cost table takes the wider column because it is the thing you came for.
+- **Rendered recipe:** the front matter as a meta block (servings, tags, source, and any other key as "key: value"), sections as h2, and the steps numbered, with ingredient references in weight 600 and their quantity, cookware and timers in neutral, and an ingredient's note in parentheses after it. It is never editable; the words say where to edit: "Edit this recipe in its file; it updates here on the next scan."
+- **Cost table:**
+  - A basis segmented control, Latest, Average (90 days) and Cheapest, kept in the URL (`?basis=`); Latest is the default. Switching changes every figure and the price each line used; a basis without a snapshot computes one, with "Costing…" on the totals until it answers.
+  - A totals strip: Consumed, Basket, Per serving, Known ("8 of 10 lines priced"), and "12% rests on unconfirmed bridges" in squash when the share is above zero. A provisional snapshot shows a neutral "Provisional" badge with the words "The file has uncommitted changes."
+  - Columns: Line (the ingredient text as written, in monospace, like a receipt's), Ingredient (the resolved ingredient as a link, or the 1G ingredient picker labelled "Choose an ingredient"), Quantity (the converted quantity per the unit-display rule, "1.5 lb", with "yield 100% assumed" as a caption when the ingredient has no yield, and "as purchased" or "edible" when the line's mode is set), Price used (the unit price per lb, oz, fl oz or each, then the product, vendor and date in a caption; "stale" in squash when older than the stale window), and Cost (the line's consumed cost, with "2 packs · $9.98" beneath for the basket).
+  - Row states, each in words: an unmapped line reads "Needs an ingredient" and its Cost is "—"; an unpriced line reads "No price yet · Log a shelf price"; an unconvertible line reads "Can't convert yet · add density", linking to the bridge editor (G8); a negligible line reads "Not costed" in neutral.
+  - **Changing an ingredient** in the picker writes a spelling for every recipe using that name. The row and the totals update without a reload and the Notice reads "Resolved 'minced garlic' as garlic in 3 recipes." A name another ingredient already has shows at the row: "'scallion' is already a spelling of green onion. Use green onion · Choose another"; nothing is written until one is pressed.
+  - **Pins:** a quiet "Pin product…" on a resolved line opens a product typeahead that offers only products of the line's ingredient; a pinned line shows the product with "Pinned · Unpin". A refused pin shows its reason at the row.
+  - **Keyboard:** every picker is a combobox; Enter chooses; after a choice focus moves to the next line that needs one, so a recipe can be resolved and pinned top to bottom. The shortcuts are listed under the table, as on receipt review.
+- **Cost history:** under the table, the committed snapshots for the current basis as a line chart by date, series from the chart palette, with provisional points drawn hollow and labelled "provisional". It hides with fewer than two points (D22).
+- **States:**
+  - Parse error: a squash alert under the header, "This file can't be read: {message} (line {n})." The last good cost table stays beneath it, headed "Showing the last version that could be read."
+  - Missing: a neutral alert, "This file is no longer in the repository. Its costs and pins are kept until you remove it." A relink proposal sits inside it: "Is it now '{title}' ({path})? · Relink · Not the same". "Remove recipe" confirms in an inline tomato panel, like Remove purchase, with focus on Cancel; afterwards the list opens with the Notice "Removed {title}."
+  - Uncommitted: the "Uncommitted" badge in the header and "Provisional" on the totals.
+  - Not costed yet: "Costing…" on the totals strip; a recipe with no priced line shows "—" totals and the row words say why.
+  - Error: a tomato alert; never an empty page.
+
+**Resolve recipe names** (`/cook/recipes/resolve`; reached from the inbox and the list's waiting line; no nav item).
+- **Header:** "Resolve recipe names", with the description "Say once which ingredient each name means. It's remembered for every recipe." A count strip below reads "14 names · in 9 recipes".
+- **Rows,** most-used first, divided lines as on the link page. Each shows the name as written (and its normalized form when it differs, in a caption), "in 3 recipes" with the titles as links (two, then "+1 more"), and then its proposals as soft buttons, up to three, each with a neutral badge naming its tier: "standard list", "without 'minced'", "USDA", "model". A model's guess carries a squash outline, as on product review. After them: the ingredient picker labelled "Choose an ingredient" (standard names allowed, which creates one on choice), and "Not an ingredient".
+- One decision applies to every recipe using the name and writes one spelling. The row leaves, focus moves to the next row's first proposal or its picker, and a polite live region says "Resolved 'minced garlic' as garlic in 3 recipes. 13 left." (DV12).
+- "Not an ingredient" records the name as ignored; the live region says "Ignored 'parchment paper'. It won't be asked about again."
+- A collision shows inside the row: "'scallion' is already a spelling of green onion. Use green onion · Choose another". "Use green onion" confirms that spelling.
+- A failed decision shows an Alert inside its row and keeps the input.
+- **Keyboard:** Tab reaches each row's proposals in order, Enter chooses the focused one, and the picker is a combobox; nothing needs a pointer.
+- **Finish:** an olive Notice, "14 resolved: 11 matched, 2 created, 1 ignored.", then "Every recipe name is resolved" with Back to Recipes.
+- **States:** "Loading…"; an error alert with Try again.
+
+**"Used in" card on the ingredient hub** (built with 3E; `07` criterion 33). In the right column under Products: the recipes whose lines resolve to this ingredient, each a link with the line's quantity as written, up to ten, then "All {n} recipes", which opens the list filtered to the ingredient. An ingredient used in no recipe has no card.
+
+**Inbox row.** Badge "Recipe", title "14 recipe names to resolve", detail "In 9 recipes", action Resolve. One row however many names wait (G6).
+
+**Phone, below 1024px.**
+- The list's rows stack: title and badges, the path caption, then cost and known on one line; the controls scroll sideways as chips.
+- The recipe page is one column: the totals strip and basis control first, then the cost table, then the rendered recipe, with "Jump to recipe" in the header.
+- At 390px each cost-table line is a block: the text as written, the ingredient or its picker, quantity and price on one line, and the cost right-aligned. The table never scrolls sideways (`07` criterion 32). Pickers and "Pin product…" are 44px.
+- Resolve rows stack the name line, the recipes line, then proposals and "Not an ingredient" as a row of 44px buttons; the count strip stays pinned under the header (DV11).
+
 ## Ingredient hub (Ingredient hub)
 
 The most important detail page; search results and inbox items land here most often.
@@ -133,7 +191,7 @@ The most important detail page; search results and inbox items land here most of
   - Sorted by unit price.
   - Prices that can't be compared yet sort last. They show the pack price and "Can't compare yet · add density", which links to the bridge editor (G8).
   - A link to Compare prices.
-- **Right column:** Products as pill links. "Used in" recipes are dormant until Phase 3.
+- **Right column:** Products as pill links, then the "Used in" recipes card once Cook is built (Phase 3 review, 2026-10-09; laid out under Cook above). With no recipe using the ingredient the card is omitted, not shown empty.
 - **Empty:** "No prices yet" with Log shelf price.
 - **Merge and link (#211):** the header's secondary actions are "Merge into…", "Link to standard name" (only while the ingredient isn't linked) and Deactivate or Activate; below 1024px they share one "More actions" sheet, as on the product page. Edit details and Log shelf price stay in the header.
   - "Merge into…" opens a card under the header with an ingredient picker labelled "Merge into", catalog only. Choosing the ingredient itself says "Choose another ingredient. This is the one you're on." Choosing another opens the link page's merge panel, with the other ingredient kept by default under its own name.
@@ -368,7 +426,7 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 
 - **Container:** a centred dialog, 640px wide, over a scrim.
 - **Input:** the search field with an Esc hint.
-- **Results:** grouped (Ingredients, Products, Vendors, then Actions), with the selected result in a neutral tint; herb is kept for actions. An action row shows its section (Shop, Catalog, Settings, Home) on the right.
+- **Results:** grouped (Ingredients, Products, Vendors, Recipes once Cook is built, then Actions), with the selected result in a neutral tint; herb is kept for actions. A recipe row shows its title with its "Uncommitted" or "Can't read" badge. An action row shows its section (Cook, Shop, Catalog, Settings, Home) on the right.
 - **Footer:** keyboard hints.
 - **States:**
   - Before typing: device recents or the hint (G15), then four common actions.

@@ -2,7 +2,7 @@
 
 The UI work is organized into four sub-phases that can be built and merged independently, in order. A sub-phase is done when every criterion in its block passes, the test suite is green, and `docker compose up` yields a working system from a clean checkout.
 
-UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was added with sub-phase 1G on 2026-09-30 and builds with it. Criteria marked **dormant** belong to a later phase and become due only when that phase is approved and built. Criteria marked **deferred** were moved out of this work on 2026-09-25 and are recorded in TODOS.md. Decision IDs in parentheses refer to that day's review record (see 08).
+UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was added with sub-phase 1G on 2026-09-30 and builds with it. UI-7 was added at the Phase 3 review on 2026-10-09 and builds with 3E (`07`). Criteria marked **dormant** belong to a later phase and become due only when that phase is approved and built. Criteria marked **deferred** were moved out of this work on 2026-09-25 and are recorded in TODOS.md. Decision IDs in parentheses refer to that day's review record (see 08).
 
 ## UI-1 — Theme and polish
 
@@ -66,7 +66,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.7** Vendors shows search, the kind segmented control, the list/map toggle in the URL, and the card grid in 10. The map view keeps pin-drop creation (T9).
 - **UI-3.8** "Find nearby" opens the OpenStreetMap adoption flow in a dialog. It is pre-set to the only kitchen when there is one; with no kitchen, it directs the user to add a kitchen first.
 - **UI-3.9** The ingredient hub shows the header, summary strip, prices by vendor and right column in 10.
-  - Cards for unbuilt phases (stock, recipes, add to list) are omitted, not shown empty.
+  - Cards for unbuilt phases (stock, add to list) are omitted, not shown empty. The "Used in" recipes card builds with Phase 3 (UI-7.14; Phase 3 review, 2026-10-09).
   - The 90-day sparkline comes from `GET /api/v1/ingredients/{id}/price-history`, and hides with fewer than two points (D22).
 - **UI-3.10** Prices by vendor are sorted by normalized unit price, and describe each vendor's pricing scope as "Same price at every location" or "Price set per location" (T15). Prices that can't be compared sort last with the pack price and a link to add a density, and are excluded from Best recent price (G8).
 - **UI-3.10a** Every unit price a page shows (Compare, the ingredient hub, a product's prices, the map's pins and panel, a new shelf price) reads per lb, oz or fl oz, or each, as the server sends it, with 2 decimal places or 3 under $1, and never per g or ml; one ingredient's prices share one unit (issue 245).
@@ -132,3 +132,27 @@ Added 2026-10-01 with sub-phases 1H, 1I and 2K–2N (`03`, `04`); layouts and co
 - **UI-6.16** The review page's Match list shows each fuzzy candidate's verdict note ("Likely the same product", "Different size (8 oz)", "Different variant (red, not white)", "Similar name"), its pack and a 40px main photo, in neutral; only the radio choice itself acts (2P).
 - **UI-6.17** A review page with look-alikes in the queue says "Also waiting: n likely the same" with links; the clip window and the Add product drawer show "Already in your catalog: {product} · Open it" as a neutral Notice that doesn't block saving (2P).
 - **UI-6.18** Needs you counts possible duplicate products in one row; the Products page's duplicates section (`?duplicates=1`) shows each pair side by side with "Keep this one" under each product (the merge panel, with that product to keep and the other merged into it) and "Not the same", and a pair disappears once decided (03).
+
+## UI-7 — Cook: recipes and costing (Phase 3)
+
+Added 2026-10-09 at the Phase 3 review with sub-phase 3E (`07`); layouts and copy are in 10 under Cook. None of these is dormant: Phase 3 is approved and they build with it.
+
+- **UI-7.1** The Cook section appears in the sidebar before Shop, and under More on phones, only when `/health` lists `cook` (migration 0042); the Phase 1–2 sections still render before `/health` answers. `/cook/recipes`, `/cook/recipes/:id` and `/cook/recipes/resolve` exist, and `/cook/costing` redirects to the list filtered to incomplete recipes.
+- **UI-7.2** Needs you shows recipe names that resolve to nothing as one row, "14 recipe names to resolve", counted once in the badge, whose Resolve opens the resolve page; a name once resolved or ignored leaves the count without a manual refresh.
+- **UI-7.3** The recipes list shows title, path, servings, consumed and basket cost (a range as "low–high"), per serving, how many lines are priced and when it was indexed, ordered by title, with its search, status and completeness controls kept in the URL and run on the server.
+- **UI-7.4** Every badge carries words: "Uncommitted" (neutral) on a dirty file, "Can't read" (tomato) on a parse error and "Missing" (squash) on a vanished file, on the list, the recipe page and search results; a provisional snapshot is labelled "provisional" on the list and "Provisional" with its reason on the recipe page.
+- **UI-7.5** With no repository (missing, empty or without `.cook` files) the list shows the no-recipes empty state naming `RECIPES_PATH` and `make seed-examples`; a filtered-empty list says what it filtered with Clear filters; a failed load shows an alert with Try again and never the empty state.
+- **UI-7.6** "Rescan recipes" is the one primary action on the list and the recipe page, reads "Rescanning…" while it runs, and ends with the Notice saying how many recipes changed.
+- **UI-7.7** The recipe page renders the file beside the cost table at 1024px and wider, with the cost table in the wider column; the rendered recipe is read-only and says to edit the file.
+- **UI-7.8** The basis control offers Latest (default), Average (90 days) and Cheapest, kept in the URL; switching changes every figure and each line's price used, and a basis without a snapshot shows "Costing…" until it has one.
+- **UI-7.9** Each cost line shows its text as written, its ingredient or the picker, the converted quantity per lb, oz, fl oz or each as the server sends it (UI-3.10a) and never per g or ml, the price used with product, vendor and date, and its cost; a price older than the stale window is marked "stale", an ingredient with no yield is marked "yield 100% assumed", and unmapped, unpriced, unconvertible and negligible lines each show their words from 10 and are never colour alone.
+- **UI-7.10** Choosing an ingredient in a line's picker writes one spelling for every recipe using that name, updates the row and the totals without a reload, and shows the Notice naming the count. A name another ingredient already has shows "'…' is already a spelling of {ingredient}. Use {ingredient} · Choose another" at the row, and nothing is written until one is chosen.
+- **UI-7.11** "Pin product…" offers only products of the line's ingredient; a pinned line shows the product with Unpin, and a refused pin shows its reason at the row.
+- **UI-7.12** A ten-line recipe can be fully resolved and pinned without a pointing device: every picker is a combobox, Enter chooses, and focus moves to the next line that needs one (`07` criterion 31).
+- **UI-7.13** The cost history chart draws committed snapshots for the current basis with provisional points hollow and labelled, hides with fewer than two points, and uses only the chart palette.
+- **UI-7.14** The ingredient hub's "Used in" card lists the recipes using the ingredient with the quantity as written, up to ten then "All {n} recipes", and is omitted when none uses it.
+- **UI-7.15** A parse error shows the message and line in a squash alert with the last good cost table beneath it; a missing recipe shows the neutral alert, any relink proposal with Relink and "Not the same", and "Remove recipe" confirmed in an inline panel with focus on Cancel, never a browser dialog.
+- **UI-7.16** The resolve page lists names most-used first with their recipes, up to three proposals each badged by tier (a model's guess in a squash outline), the ingredient picker and "Not an ingredient"; one decision applies to every recipe using the name, the row leaves, focus moves to the next row and a polite live region announces what happened and how many remain; its finish Notice gives the counts.
+- **UI-7.17** The search palette has a Recipes group after Vendors, each row showing the title with its badge, and the Actions group gains Recipes, Resolve recipe names and Rescan recipes only when `cook` is a feature.
+- **UI-7.18** On a 390px viewport the cost table reads as stacked blocks with no horizontal scroll (`07` criterion 32); below 1024px every Cook control is at least 44px, resolve rows stack with the count strip pinned, and every control has a visible focus ring and meets 4.5:1 contrast in both themes.
+- **UI-7.19** Nothing in Cook is blue except actions: badges, tier labels and selection are neutral, stale and incomplete marks are squash, "Can't read" is tomato, and the cheapest basis's figures are not coloured.
