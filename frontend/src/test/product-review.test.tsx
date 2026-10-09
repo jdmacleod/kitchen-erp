@@ -352,6 +352,33 @@ describe("product review", () => {
     expect(screen.getByRole("button", { name: "Accept" })).toBeEnabled();
   });
 
+  it("lets keeping what the product has settle a pack conflict on an update", async () => {
+    // The page's pack and the model's reading disagree, but the product being updated
+    // already has a pack: keeping it is an answer, and nothing of the conflict is sent.
+    const conflicted = strong();
+    conflicted.fields.pack = {
+      value: { qty: "400", unit: "ml" },
+      source: "page_data",
+      confidence: null,
+      alternatives: [{ value: { qty: "16.2", unit: "oz" }, source: "model", confidence: "0.6" }],
+      conflict: true,
+    };
+    const calls = mockApi(
+      routes(conflicted, {
+        [`POST /product-proposals/${proposalId}/accept`]: () => jsonResponse(200, { ...conflicted, status: "accepted", result: { product_id: flourProductId } }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const accept = await screen.findByRole("button", { name: "Accept" });
+    await waitFor(() => expect(accept).toBeEnabled());
+    expect(screen.queryByText("Choose a pack to accept")).not.toBeInTheDocument();
+    await user.click(accept);
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/accept"))).toBe(true));
+    const body = calls.find((c) => c.method === "POST" && c.path.endsWith("/accept"))?.body as { edits?: Record<string, unknown> };
+    expect(body.edits?.pack).toBeUndefined();
+  });
+
   it("offers to update the product that holds the barcode", async () => {
     let attempts = 0;
     const calls = mockApi(

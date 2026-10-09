@@ -961,16 +961,50 @@ async def _record_price(
     return observation.id
 
 
+def _update_target(proposal: ProductProposal, data: AcceptInput) -> uuid.UUID | None:
+    """The product an "update" accept writes to."""
+    return data.product_id or (
+        uuid.UUID(proposal.match["strong"]["product_id"])
+        if proposal.match.get("strong")
+        else proposal.product_id
+    )
+
+
+# The product attribute each field fills, for the fields an update never overwrites
+# with a value that is not the person's (see _apply_fields).
+_KEPT_ON_UPDATE = {"title": "name", "brand": "brand", "pack": "pack_qty", "pieces": "pack_count"}
+
+
+async def _blocking_conflicts(
+    db: AsyncSession, proposal: ProductProposal, data: AcceptInput
+) -> list[str]:
+    """Conflicting fields that stop this accept.
+
+    Updating a product keeps what it already has for its name, brand, pack and
+    pieces unless the person chose a value, so a conflict there is settled by
+    keeping it: nothing of the conflict is written. A barcode is added whatever the
+    product has, so its conflict always stops the accept.
+    """
+    conflicts = merging.has_conflict(proposal.fields)
+    if data.action != "update" or not conflicts:
+        return conflicts
+    target = _update_target(proposal, data)
+    product = await db.get(Product, target) if target is not None else None
+    if product is None:
+        return conflicts
+    return [
+        name
+        for name in conflicts
+        if not (name in _KEPT_ON_UPDATE and getattr(product, _KEPT_ON_UPDATE[name]))
+    ]
+
+
 async def _product_for(
     db: AsyncSession, proposal: ProductProposal, data: AcceptInput, now: datetime
 ) -> tuple[Product, bool]:
     fields = proposal.fields
     if data.action == "update":
-        target = data.product_id or (
-            uuid.UUID(proposal.match["strong"]["product_id"])
-            if proposal.match.get("strong")
-            else proposal.product_id
-        )
+        target = _update_target(proposal, data)
         if target is None:
             raise ApiError(422, "product_required", "Say which product to update.")
         product = await product_photos.lock_product(db, target)
@@ -1018,7 +1052,7 @@ async def accept(
                 raise ApiError(422, "validation_error", str(exc)) from None
             # A GTIN set here may supersede another pending proposal, like any edit.
             await write_proposal(db, proposal, fields=fields)
-        if conflicts := merging.has_conflict(proposal.fields):
+        if conflicts := await _blocking_conflicts(db, proposal, data):
             raise ApiError(
                 409,
                 "unresolved_conflict",

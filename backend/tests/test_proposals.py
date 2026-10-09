@@ -614,3 +614,27 @@ async def test_keeping_the_main_photo_holds_it_against_a_photo_the_rule_prefers(
     assert photos[str(own.id)]["is_main"] and photos[str(own.id)]["pinned"]
     assert photos[str(arriving.id)]["status"] == "active"
     assert not photos[str(arriving.id)]["is_main"]
+
+
+async def test_updating_a_product_keeps_its_pack_through_a_pack_conflict(admin_client, user, store):
+    """Keeping what the product being updated has settles a conflict on that field:
+    an update never writes a value that is not the person's over it."""
+    known = await make_product(
+        admin_client, "Oats", "Hollow Creek oats", pack_qty="1", pack_unit="lb"
+    )
+    bare = await make_product(admin_client, "Porridge oats", "Hollow Creek oats, loose")
+    guess = Candidate("pack", {"qty": "16", "unit": "oz"}, "model", Decimal("0.6"))
+    result = await capture(user, page_evidence(store, gtin_value=None, more=[guess]))
+    pid = result.proposal.id
+    assert result.proposal.fields["pack"]["conflict"] is True
+
+    # A product with no pack would take one, so the conflict still stops the accept.
+    body = {"action": "update", "product_id": bare["id"]}
+    r = await admin_client.post(f"/api/v1/product-proposals/{pid}/accept", json=body)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "unresolved_conflict"
+
+    body = {"action": "update", "product_id": known["id"]}
+    r = await admin_client.post(f"/api/v1/product-proposals/{pid}/accept", json=body)
+    assert r.status_code == 200, r.text
+    product = (await admin_client.get(f"/api/v1/products/{known['id']}")).json()
+    assert (Decimal(product["pack_qty"]), product["pack_unit"]) == (Decimal("1"), "lb")

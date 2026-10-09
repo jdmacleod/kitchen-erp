@@ -215,7 +215,9 @@ function Review({ proposal }: { proposal: Proposal }) {
   const choosable = chosenMain !== null && (chosenMain === currentMain?.id || productPhotos.some((p) => p.id === chosenMain));
   const mainPhoto = choosable ? chosenMain : defaultMain(productPhotos, currentMain);
   const kept = (name: string) => !touched.has(name) && current(name) !== undefined;
-  const conflicts = REVIEWED.filter(([name]) => fields[name]?.conflict && choices[name]?.index === null);
+  // Keeping what the product being updated has settles a conflict: the server writes
+  // nothing of it, so only a field with no kept value and no choice is still open.
+  const conflicts = REVIEWED.filter(([name]) => fields[name]?.conflict && choices[name]?.index === null && !kept(name));
   const collapsible = Boolean(strong) && match === proposal.match.preselect && conflicts.length === 0 && !nothingRead;
   const [editing, setEditing] = useState(!collapsible);
 
