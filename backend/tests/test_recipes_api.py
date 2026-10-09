@@ -80,12 +80,15 @@ async def test_rescan_lists_and_shows_recipes(
         "id",
         "path",
         "title",
+        "servings",
+        "servings_text",
         "status",
         "dirty",
         "content_hash",
         "last_indexed_at",
     }
-    assert items[0]["title"] == "index_barley_moon_stew"
+    assert items[0]["title"] == "Barley moon stew"
+    assert items[0]["servings"] == "4" and items[0]["servings_text"] == "4"
     assert [
         i["path"] for i in (await admin_client.get("/api/v1/recipes?dirty=true")).json()["items"]
     ] == ["index_scratch.cook"]
@@ -97,7 +100,9 @@ async def test_rescan_lists_and_shows_recipes(
     detail = r.json()
     assert detail["head_commit"] == recipes_repo.head()
     assert detail["dirty"] is False and detail["relink"] is None
-    assert detail["front_matter"] is None and detail["parse_error_message"] is None
+    assert detail["front_matter"] == {"title": "Barley moon stew", "servings": "4"}
+    assert detail["parse_error_message"] is None
+    assert [i["raw_name"] for i in detail["ingredients"]][:3] == ["pearl barley", "onion", "carrot"]
 
     status = (await admin_client.get("/api/v1/recipes/status")).json()
     assert status["mount"] == "mounted" and status["head_commit"] == recipes_repo.head()

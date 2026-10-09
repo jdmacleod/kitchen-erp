@@ -103,6 +103,7 @@ class RecipeIngredient(UUIDPrimaryKey, Base):
     qty_text: Mapped[str | None] = mapped_column(Text)
     unit_text: Mapped[str | None] = mapped_column(Text)
     unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
+    note: Mapped[str | None] = mapped_column(Text)  # `@name{qty}(note)`, as written (0043)
     ingredient_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("ingredient.id", ondelete="SET NULL"), index=True
     )
