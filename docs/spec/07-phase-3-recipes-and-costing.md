@@ -295,6 +295,14 @@ parent in Phase 3. A product fulfils a line when `product.ingredient_id`, after
 following `merged_into`, is the line's ingredient; nothing is satisfied
 through a parent. TODOS.md keeps the hierarchy item.
 
+**Merges repoint recipe rows (Phase 3 review, 2026-10-09).** A product merge
+repoints `recipe_pin.product_id` and `recipe_cost_line.product_id` to the
+survivor, and an ingredient merge repoints `recipe_ingredient.ingredient_id`,
+each in the same transaction as the other tables that merge repoints: the
+table lists in `services/product_merge._repoint` and the ingredient merge in
+`services/ingredient_reconcile.py` gain the three recipe tables. Snapshots of
+recipes a merge touched are recomputed.
+
 A recipe line may pin a product: `PUT /api/v1/recipes/{id}/pins/{name_norm}`
 with a product that fulfils the resolved ingredient. Pins survive re-indexing
 while the name in the file is unchanged.
