@@ -8,6 +8,13 @@ through an inflection of either (1G's ``singulars``). A name in
 and waits in the queue with proposals from the cascade, which are suggestions
 and are never applied here.
 
+The cascade (VS2) proposes in tiers, each one proposer in ``PROPOSERS``: an
+exact standard-list entry; trigram matches; the name without its prep words
+(``app/recipes/prep.py``), whose stripped words a decision moves into the
+line's note; foods from the USDA pool to create an ingredient from; and, only
+when a person asks about one name (:func:`ask`), the local model's pick from a
+shortlist it cannot leave. Three proposals per name, higher tiers first.
+
 A decision applies to every unmatched line with that name across all recipes
 (criterion 15) and writes its alias through the 1G spelling service, never the
 receipt alias writer: ``services/resolution.py`` is the receipt side and is not
@@ -516,7 +523,8 @@ async def ask(db: AsyncSession, name_norm: str, settings: Settings | None = None
     ).scalar_one()
     if not queued:
         raise ApiError(404, "not_found", "No unresolved recipe line has that name.")
-    ctx = await load_context(db, settings, ask_model=bool(get_settings().llm_model))
+    configured = bool((settings or get_settings()).llm_model)
+    ctx = await load_context(db, settings, ask_model=configured)
     proposals = await proposals_for(db, ctx, name_norm)
     asked = ctx.ask_model and sum(p.tier != "model" for p in proposals) < MAX_PROPOSALS
     return ResolveAskOut(name_norm=name_norm, proposals=proposals, model_asked=asked)
