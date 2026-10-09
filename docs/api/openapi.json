@@ -11284,6 +11284,161 @@
         "title": "RecentPrice",
         "type": "object"
       },
+      "RecipeIngredientOut": {
+        "additionalProperties": false,
+        "description": "One ingredient reference as written, in document order (3B); resolution is 3C's.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "negligible": {
+            "title": "Negligible",
+            "type": "boolean"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "qty_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty High"
+          },
+          "qty_kind": {
+            "enum": [
+              "number",
+              "range",
+              "text",
+              "none"
+            ],
+            "title": "Qty Kind",
+            "type": "string"
+          },
+          "qty_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty Text"
+          },
+          "raw_name": {
+            "title": "Raw Name",
+            "type": "string"
+          },
+          "resolution": {
+            "enum": [
+              "alias",
+              "manual",
+              "unmatched",
+              "negligible"
+            ],
+            "title": "Resolution",
+            "type": "string"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Section"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "unit_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Text"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "section",
+          "raw_name",
+          "name_norm",
+          "qty_kind",
+          "qty",
+          "qty_high",
+          "qty_text",
+          "unit_text",
+          "unit",
+          "note",
+          "negligible",
+          "resolution",
+          "ingredient_id"
+        ],
+        "title": "RecipeIngredientOut",
+        "type": "object"
+      },
       "RecipeList": {
         "additionalProperties": false,
         "properties": {
@@ -11339,6 +11494,14 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "ingredients": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecipeIngredientOut"
+            },
+            "title": "Ingredients",
+            "type": "array"
           },
           "last_indexed_at": {
             "format": "date-time",
@@ -11426,12 +11589,12 @@
           "id",
           "path",
           "title",
+          "servings",
+          "servings_text",
           "status",
           "dirty",
           "content_hash",
           "last_indexed_at",
-          "servings",
-          "servings_text",
           "head_commit",
           "parse_error_message",
           "front_matter",
@@ -11466,6 +11629,28 @@
             "title": "Path",
             "type": "string"
           },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
+          },
+          "servings_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings Text"
+          },
           "status": {
             "enum": [
               "ok",
@@ -11484,6 +11669,8 @@
           "id",
           "path",
           "title",
+          "servings",
+          "servings_text",
           "status",
           "dirty",
           "content_hash",
@@ -11848,6 +12035,10 @@
             "title": "Moved",
             "type": "integer"
           },
+          "parse_errors": {
+            "title": "Parse Errors",
+            "type": "integer"
+          },
           "proposals": {
             "title": "Proposals",
             "type": "integer"
@@ -11875,6 +12066,7 @@
           "updated",
           "moved",
           "missing",
+          "parse_errors",
           "proposals"
         ],
         "title": "ScanOut",

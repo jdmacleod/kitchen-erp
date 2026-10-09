@@ -21,6 +21,7 @@ from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.models import Recipe
 from app.recipes import index
+from app.recipes.cooklang import parse
 from app.recipes.hashing import blob_sha1
 from app.recipes.repo import open_repo
 from app.services import recipes
@@ -294,7 +295,7 @@ async def test_criterion_1_five_recipes_index_once(recipes_repo: TempRepo):  # n
     assert sorted(found) == names
     for name in names:
         row = found[name]
-        assert row.title == Path(name).stem  # package 3 replaces the stem with the front matter
+        assert row.title == parse(recipes_repo.path(name).read_text()).title
         assert row.content_hash == blob_sha1(recipes_repo.path(name).read_bytes())
         assert row.status == "ok" and not row.dirty
         assert row.head_commit == recipes_repo.head()
