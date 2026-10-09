@@ -131,8 +131,11 @@ async def test_the_parser_fixtures_index_with_their_ingredient_rows(recipes_repo
     assert berries.negligible and not oats.negligible
     for line in got:
         assert line.name_norm == line.raw_name  # plain lowercase names normalize to themselves
-        assert line.resolution == "unmatched" and line.ingredient_id is None
-        assert line.yield_mode == "auto" and line.section is None
+        assert line.ingredient_id is None and line.yield_mode == "auto" and line.section is None
+        # No ingredient exists yet, so nothing resolves; "water" is on the default
+        # negligible list (3C), the rest wait for the resolve queue.
+        expected = "negligible" if line.raw_name == "water" else "unmatched"
+        assert line.resolution == expected, line.raw_name
 
     # An unparseable unit stays NULL with its text kept; unicode fractions; `>>` front matter.
     skillet = found["thunder-pepper-skillet.cook"]
@@ -173,6 +176,7 @@ async def test_the_parser_fixtures_index_with_their_ingredient_rows(recipes_repo
     salt = got[2]
     assert salt.qty_kind == "none" and salt.qty is None and salt.qty_text is None
     assert salt.negligible and salt.unit_text is None
+    assert salt.resolution == "negligible"  # by name as well as by quantity (3C)
     assert got[6].note == "chopped" and got[6].negligible  # parsley, "a handful"
     assert got[4].note == "the peppery kind"
 
@@ -415,7 +419,7 @@ async def test_migration_0043_round_trips(owner_conn: asyncpg.Connection):
     assert not await has_note()
     run_alembic("upgrade", "head")
     assert await has_note()
-    assert await owner_conn.fetchval("SELECT version_num FROM alembic_version") == "0043"
+    assert await owner_conn.fetchval("SELECT version_num FROM alembic_version") >= "0043"
     await dispose_engine()  # pooled connections may hold plans against the old column set
 
 
@@ -458,6 +462,7 @@ async def test_the_detail_lists_ingredient_rows_with_decimals_as_strings(
         "negligible",
         "resolution",
         "ingredient_id",
+        "ingredient_name",
     }
     assert thighs["qty_kind"] == "range" and thighs["qty"] == "2" and thighs["qty_high"] == "3"
     assert thighs["note"] == "skin on" and thighs["section"] is None
@@ -467,7 +472,9 @@ async def test_the_detail_lists_ingredient_rows_with_decimals_as_strings(
     assert flakes["qty"] == "0.75" and stock["unit"] == "ml"
     for line in detail["ingredients"]:
         assert line["resolution"] == "unmatched" and line["ingredient_id"] is None
+        assert line["ingredient_name"] is None
         assert isinstance(line["qty"], str | type(None))
+    assert detail["pins"] == []
 
     bowl = (
         await admin_client.get(f"/api/v1/recipes/{items['meadow-barley-bowl.cook']['id']}")

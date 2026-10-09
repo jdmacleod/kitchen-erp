@@ -119,6 +119,11 @@ class Settings(BaseSettings):
     # mount under Docker on macOS can report modification times late.
     recipes_scan_seconds: int = 30
     recipes_settle_seconds: int = 2
+    # Recipe ingredient names that never need an ingredient or a price (07, 3C):
+    # a line naming one is negligible and is never asked about. Compared after
+    # the 1G normalizer, so "Salt" and "salt" are the same entry. As an
+    # environment variable this is a JSON list, like OCR_ADAPTERS.
+    recipes_negligible_names: list[str] = ["salt", "pepper", "water"]
 
     household_timezone: str = "America/Los_Angeles"
     # The order the household's tills print dates in, for a receipt date the model

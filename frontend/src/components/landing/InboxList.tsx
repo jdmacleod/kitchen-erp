@@ -25,6 +25,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   product_update: { label: "Products", tone: "neutral" },
   duplicates: { label: "Products", tone: "neutral" },
   posted_prices: { label: "Prices", tone: "neutral" },
+  // Recipe names that resolve to no ingredient (07, 3C; UI-7.2): one row, like Identify.
+  recipe: { label: "Recipe", tone: "neutral" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */

@@ -32,7 +32,7 @@ from app.models.base import Base, Timestamped, UUIDPrimaryKey
 
 RECIPE_STATUSES = ("ok", "parse_error", "missing")
 QTY_KINDS = ("number", "range", "text", "none")
-RESOLUTIONS = ("alias", "manual", "unmatched", "negligible")
+RESOLUTIONS = ("alias", "manual", "unmatched", "negligible", "ignored")
 YIELD_MODES = ("auto", "as_purchased", "edible")
 
 
@@ -80,7 +80,7 @@ class RecipeIngredient(UUIDPrimaryKey, Base):
             "qty_kind IN ('number', 'range', 'text', 'none')", name="ck_recipe_ingredient_qty_kind"
         ),
         CheckConstraint(
-            "resolution IN ('alias', 'manual', 'unmatched', 'negligible')",
+            "resolution IN ('alias', 'manual', 'unmatched', 'negligible', 'ignored')",
             name="ck_recipe_ingredient_resolution",
         ),
         CheckConstraint(

@@ -1,4 +1,5 @@
-"""Recipes (07, Phase 3): the indexed repository as the API shows it (3A, 3B)."""
+"""Recipes (07, Phase 3): the indexed repository as the API shows it (3A, 3B),
+and the resolve queue, decisions and pins (3C)."""
 
 from __future__ import annotations
 
@@ -6,12 +7,15 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
+from pydantic import Field, model_validator
+
 from app.schemas.base import ApiModel, DecimalStr
+from app.schemas.catalog import IngredientCreate, IngredientSummary
 
 RecipeStatus = Literal["ok", "parse_error", "missing"]
 MountState = Literal["mounted", "missing", "empty", "no_cook_files"]
 QtyKind = Literal["number", "range", "text", "none"]
-Resolution = Literal["alias", "manual", "unmatched", "negligible"]
+Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored"]
 
 
 class RecipeSummary(ApiModel):
@@ -57,6 +61,16 @@ class RecipeIngredientOut(ApiModel):
     negligible: bool
     resolution: Resolution
     ingredient_id: uuid.UUID | None
+    ingredient_name: str | None = None
+
+
+class RecipePinOut(ApiModel):
+    """A line pinned to one product (3C), by the name as normalized."""
+
+    name_norm: str
+    product_id: uuid.UUID
+    product_name: str
+    brand: str | None
 
 
 class RecipeOut(RecipeSummary):
@@ -68,6 +82,7 @@ class RecipeOut(RecipeSummary):
     relink: RelinkProposal | None = None
     # The rows of the last good parse; still there when the file stopped parsing.
     ingredients: list[RecipeIngredientOut] = []
+    pins: list[RecipePinOut] = []
 
 
 class StatusCounts(ApiModel):
@@ -108,3 +123,75 @@ class ScanOut(ApiModel):
 
 class RelinkIn(ApiModel):
     target_id: uuid.UUID
+
+
+# --- 3C: the resolve queue, decisions and pins -------------------------------------
+
+ProposalTier = Literal["standard", "similar"]
+
+
+class ResolveProposal(ApiModel):
+    """One suggestion for an unmatched name, badged by the cascade tier that made it.
+
+    ``standard``: an exact standard-list entry; ``ingredient_id`` is the catalog
+    ingredient already made from it, or null when choosing it creates one
+    (``standard_key``). ``similar``: a ranked trigram match, never auto-applied.
+    """
+
+    tier: ProposalTier
+    name: str
+    ingredient_id: uuid.UUID | None = None
+    standard_key: str | None = None
+    category: str | None = None
+    matched_spelling: str | None = None
+
+
+class ResolveRecipe(ApiModel):
+    id: uuid.UUID
+    title: str
+    path: str
+
+
+class ResolveName(ApiModel):
+    """One unmatched name across every recipe that uses it (criterion 15)."""
+
+    name_norm: str
+    raw_names: list[str]
+    recipes: list[ResolveRecipe]
+    line_count: int
+    proposals: list[ResolveProposal]
+
+
+class ResolveQueueOut(ApiModel):
+    items: list[ResolveName]
+    names: int
+    recipes: int
+
+
+class ResolveDecisionIn(ApiModel):
+    """Exactly one of: an ingredient, a new ingredient to create, or ignore."""
+
+    name_norm: str = Field(min_length=1, max_length=500)
+    ingredient_id: uuid.UUID | None = None
+    ingredient: IngredientCreate | None = None
+    ignore: bool = False
+
+    @model_validator(mode="after")
+    def _one_choice(self) -> ResolveDecisionIn:
+        chosen = sum((self.ingredient_id is not None, self.ingredient is not None, self.ignore))
+        if chosen != 1:
+            raise ValueError("give exactly one of ingredient_id, ingredient or ignore")
+        return self
+
+
+class ResolveDecisionOut(ApiModel):
+    name_norm: str
+    action: Literal["matched", "created", "ignored"]
+    ingredient: IngredientSummary | None
+    lines: int  # lines resolved by this decision, across every recipe
+    recipes: int
+    remaining: int  # names still in the queue
+
+
+class RecipePinIn(ApiModel):
+    product_id: uuid.UUID
