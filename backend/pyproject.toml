@@ -25,6 +25,7 @@ dependencies = [
     "pillow-heif>=1.8.0",
     "pmtiles>=3.8,<4",
     "zxing-cpp>=2.3",
+    "dulwich>=1.2.17",
 ]
 
 [project.scripts]

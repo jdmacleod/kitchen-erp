@@ -130,7 +130,7 @@ class IngredientMeasure(UUIDPrimaryKey, Timestamped, Base):
 
 
 ALIAS_KINDS = ("synonym", "inflection", "legacy")
-ALIAS_SOURCES = ("standard", "generated", "rename", "merge", "manual", "import")
+ALIAS_SOURCES = ("standard", "generated", "rename", "merge", "manual", "import", "recipe")
 
 
 class IngredientAlias(UUIDPrimaryKey, Timestamped, Base):
@@ -142,7 +142,7 @@ class IngredientAlias(UUIDPrimaryKey, Timestamped, Base):
             "kind IN ('synonym', 'inflection', 'legacy')", name="ck_ingredient_alias_kind"
         ),
         CheckConstraint(
-            "source IN ('standard', 'generated', 'rename', 'merge', 'manual', 'import')",
+            "source IN ('standard', 'generated', 'rename', 'merge', 'manual', 'import', 'recipe')",
             name="ck_ingredient_alias_source",
         ),
         UniqueConstraint("name_norm", name="uq_ingredient_alias_name_norm"),

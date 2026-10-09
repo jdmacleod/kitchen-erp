@@ -11,7 +11,7 @@ async def test_downgrade_and_upgrade_round_trip(owner_conn: asyncpg.Connection):
         r["tablename"]
         for r in await owner_conn.fetch("SELECT tablename FROM pg_tables WHERE schemaname='public'")
     }
-    assert not ({"app_user", "api_token", "session", "idempotency_key"} & tables)
+    assert not ({"app_user", "api_token", "session", "idempotency_key", "recipe"} & tables)
     exts = {r["extname"] for r in await owner_conn.fetch("SELECT extname FROM pg_extension")}
     assert "pg_trgm" not in exts
     run_alembic("upgrade", "head")
@@ -20,6 +20,7 @@ async def test_downgrade_and_upgrade_round_trip(owner_conn: asyncpg.Connection):
         for r in await owner_conn.fetch("SELECT tablename FROM pg_tables WHERE schemaname='public'")
     }
     assert {"app_user", "api_token", "session", "idempotency_key"} <= tables
+    assert {"recipe", "recipe_ingredient", "recipe_name_ignore", "recipe_pin"} <= tables
     # Pooled connections hold statements prepared against the old tables; a
     # later test reusing one would fail with a stale plan.
     from app.core.db import dispose_engine, get_sessionmaker
