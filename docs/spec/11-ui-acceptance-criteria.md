@@ -132,6 +132,7 @@ Added 2026-10-01 with sub-phases 1H, 1I and 2K–2N (`03`, `04`); layouts and co
 - **UI-6.16** The review page's Match list shows each fuzzy candidate's verdict note ("Likely the same product", "Different size (8 oz)", "Different variant (red, not white)", "Similar name"), its pack and a 40px main photo, in neutral; only the radio choice itself acts (2P).
 - **UI-6.17** A review page with look-alikes in the queue says "Also waiting: n likely the same" with links; the clip window and the Add product drawer show "Already in your catalog: {product} · Open it" as a neutral Notice that doesn't block saving (2P).
 - **UI-6.18** Needs you counts possible duplicate products in one row; the Products page's duplicates section (`?duplicates=1`) shows each pair side by side with "Keep this one" under each product (the merge panel, with that product to keep and the other merged into it) and "Not the same", and a pair disappears once decided (03).
+- **UI-6.19** On an update, the review page's Images group offers the product's current main photo as a "Current" tile ("Keep as main photo") beside the photos that arrived, and every tile shows its size in pixels. A photo with fewer pixels than the current main photo carries the squash pill "Smaller than the current main photo". The current photo stays preselected unless a photo with more pixels arrived, and keeping it holds it as the main photo after accepting (10).
 
 ## UI-7 — Cook: recipes and costing (Phase 3)
 

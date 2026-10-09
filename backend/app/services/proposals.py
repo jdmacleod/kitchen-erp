@@ -865,6 +865,21 @@ async def _attach_photos(
     return attached
 
 
+async def _keep_main(db: AsyncSession, product: Product, image_id: uuid.UUID) -> None:
+    """Pin the main photo the reviewer chose to keep, so an arriving photo doesn't replace it."""
+    await db.execute(
+        update(ProductImage)
+        .where(ProductImage.product_id == product.id, ProductImage.pinned)
+        .values(pinned=False, pinned_at=None)
+    )
+    await db.execute(
+        update(ProductImage)
+        .where(ProductImage.id == image_id)
+        .values(pinned=True, pinned_at=datetime.now(UTC))
+    )
+    await product_photos.reselect(db, product)
+
+
 async def _upsert_listing(
     db: AsyncSession, proposal: ProductProposal, product: Product, now: datetime
 ) -> VendorListing | None:
@@ -1030,8 +1045,12 @@ async def accept(
             listing.vendor_id,  # type: ignore[union-attr]
         ):
             identifiers.append(str(sku))
+        # Naming the main photo the product already has keeps it, whatever arrives.
+        kept = data.main_photo_id if data.main_photo_id == product.primary_image_id else None
         attached = await _attach_photos(db, proposal, product, data)
         await product_photos.reselect(db, product)
+        if kept is not None and product.primary_image_id != kept:
+            await _keep_main(db, product, kept)
         observation_id = await _record_price(db, proposal, product, listing, data, user)
         proposal.status = "accepted"
         proposal.product_id = product.id

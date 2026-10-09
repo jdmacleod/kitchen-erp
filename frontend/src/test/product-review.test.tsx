@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ProductPhoto } from "../api/productPhotos";
 import { photographProduct, type Proposal } from "../api/proposals";
 import { parsePieces } from "../pages/catalog/ProductReviewPage";
 import { readingSentence } from "../api/inbox";
@@ -67,6 +68,31 @@ function routes(p: Proposal, extra: Record<string, (c: RecordedCall) => Response
 }
 
 afterEach(() => vi.unstubAllGlobals());
+
+const media = (n: number) => ({ small: `/api/v1/media/${n}/160`, medium: `/api/v1/media/${n}/480`, large: `/api/v1/media/${n}/1200`, cutout_medium: null, cutout_large: null });
+
+function arrivedPhoto(id: string, size: number): ProductPhoto {
+  return {
+    id,
+    product_id: null,
+    width: size,
+    height: size,
+    has_cutout: false,
+    urls: media(size),
+    role: "product",
+    status: "candidate",
+    source_kind: "vendor_listing",
+    source_url: null,
+    attribution: null,
+    cutout_source: null,
+    pinned: false,
+    is_stock_suspect: false,
+    ocr_text: null,
+    captured_at: null,
+    created_at: "2026-09-30T10:00:00Z",
+    is_main: false,
+  };
+}
 
 describe("product review", () => {
   it("collapses a strong match to its summary and accepts with Ctrl+Enter, then opens the next", async () => {
@@ -250,6 +276,50 @@ describe("product review", () => {
     const line = await screen.findByTestId("look-alikes");
     expect(line).toHaveTextContent("Also waiting: 1 likely the same.");
     expect(within(line).getByRole("link", { name: "Strong white flour 1.5kg" })).toHaveAttribute("href", `/catalog/products/review/${nextId}`);
+  });
+
+  it("keeps the product's larger main photo over a smaller one that arrived, and flags the smaller one", async () => {
+    const currentId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c01";
+    const smallId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c02";
+    const withPhoto = { ...flourProduct, photo: { id: currentId, width: 500, height: 500, has_cutout: false, urls: media(500) } };
+    const update = (photos: ProductPhoto[]) => ({ ...strong(), photos });
+    const calls = mockApi(
+      routes(update([arrivedPhoto(smallId, 200)]), {
+        [`GET /products/${flourProductId}`]: () => jsonResponse(200, withPhoto),
+        [`POST /product-proposals/${proposalId}/accept`]: () => jsonResponse(200, { ...strong(), status: "accepted", result: { product_id: flourProductId } }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+
+    const images = await screen.findByRole("group", { name: "Images" });
+    await within(images).findByText("Current");
+    const [current, arrived] = within(images).getAllByTestId("review-tile");
+    expect(within(current).getByText("Current")).toBeInTheDocument();
+    expect(within(current).getByText("500 × 500 px")).toBeInTheDocument();
+    expect(within(current).getByRole("radio", { name: "Main photo" })).toBeChecked();
+    expect(within(arrived).getByText("200 × 200 px")).toBeInTheDocument();
+    expect(within(arrived).getByText("Smaller than the current main photo")).toBeInTheDocument();
+    expect(within(arrived).getByRole("radio", { name: "Use as main photo" })).not.toBeChecked();
+
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
+    expect((calls.find((c) => c.path.endsWith("/accept"))!.body as { main_photo_id?: string }).main_photo_id).toBe(currentId);
+  });
+
+  it("preselects a larger photo that arrived over the product's main photo", async () => {
+    const currentId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c01";
+    const largeId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c03";
+    const withPhoto = { ...flourProduct, photo: { id: currentId, width: 200, height: 200, has_cutout: false, urls: media(200) } };
+    mockApi(routes({ ...strong(), photos: [arrivedPhoto(largeId, 800)] }, { [`GET /products/${flourProductId}`]: () => jsonResponse(200, withPhoto) }));
+    renderApp(`/catalog/products/review/${proposalId}`);
+
+    const images = await screen.findByRole("group", { name: "Images" });
+    await within(images).findByText("Current");
+    const [current, arrived] = within(images).getAllByTestId("review-tile");
+    expect(within(current).getByRole("radio", { name: "Keep as main photo" })).not.toBeChecked();
+    expect(within(arrived).getByRole("radio", { name: "Main photo" })).toBeChecked();
+    expect(within(arrived).queryByText("Smaller than the current main photo")).not.toBeInTheDocument();
   });
 
   it("keeps Accept disabled with its reason while something blocks it", async () => {
