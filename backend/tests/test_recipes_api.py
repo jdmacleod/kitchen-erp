@@ -86,6 +86,7 @@ async def test_rescan_lists_and_shows_recipes(
         "dirty",
         "content_hash",
         "last_indexed_at",
+        "cost",
     }
     assert items[0]["title"] == "Barley moon stew"
     assert items[0]["servings"] == "4" and items[0]["servings_text"] == "4"
