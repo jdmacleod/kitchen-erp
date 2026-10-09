@@ -737,6 +737,18 @@ async def test_a_priced_row_the_model_left_out_flags_the_purchase(
     assert "rows_not_read" in purchase.flags
     assert not any("honey" in (line.raw_text or "") for line in lines)
 
+    # Committing is the reviewer's answer: the prompt does not stay on the record.
+    pid = lines_out["purchase_id"]
+    if purchase.vendor_location_id is None:
+        place = await make_location(admin_client, "Juniper Corner", HOME_A)
+        r = await admin_client.patch(
+            f"/api/v1/purchases/{pid}", json={"vendor_location_id": place["id"]}
+        )
+        assert r.status_code == 200, r.text
+    committed = await admin_client.post(f"/api/v1/purchases/{pid}/commit")
+    assert committed.status_code == 200, committed.text
+    assert "rows_not_read" not in committed.json()["flags"]
+
 
 async def test_a_parent_index_points_within_its_own_part(
     admin_client: httpx.AsyncClient,
