@@ -41,18 +41,6 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 4 approval, trip plans
 
-### Decide whether recipe costing is per kitchen
-
-**What:** Settle whether recipe costing is household-wide (the UI addendum) or restricted to a kitchen's locations (the Phase 3 draft).
-
-**Why:** The two documents disagree, and whichever is built second has to change.
-
-**Context:** Left to the Phase 3 approval by the UI addendum review on 2026-09-25 (ruling T8). The recipes line was removed from the addendum's scoping table so only the Phase 3 draft speaks to it.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P2
-**Depends on:** Phase 3 review
-
 ### Flag a second photo of the same receipt
 
 **What:** After a receipt is read, flag it in review when a committed or draft purchase at the same location has the same date and total ("possible duplicate"), with Remove one step away.
@@ -131,11 +119,11 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Recipes name ingredients at different levels ("cheese", "parmesan"), and substitution and cost rollups want the chain.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. Decide with the Phase 3 costing rules.
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VC6). Doc 12 rule 6 proposed it, but satisfying through parents changes what price comparison (`ingredient_offer`) and costing mean. Sub-phase 1G ships flat ingredients, and a `parent_id` can be added later without reshaping anything. The Phase 3 review (2026-10-09) kept ingredients flat for costing: a product fulfils a recipe line only when its ingredient, after `merged_into`, is the line's.
 
 **Effort:** M (human) / S (CC)
 **Priority:** P3
-**Depends on:** Phase 3 approval
+**Depends on:** Deferred past Phase 3 (review 2026-10-09); a recipe or comparison that needs the chain
 
 ### The full name-matching cascade for recipe text
 
@@ -143,11 +131,11 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 draft is amended to carry it. FoodOn references and the USDA attribute table (common and scientific names) moved here too (outside-voice card O8): nothing in 1G reads them, and the FoodOn licensing entry waits with them.
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 review (2026-10-09) fixed the order in `07`, 3C: exact name or spelling, inflection, exact standard-list entry, prep-word stripping, USDA pool, local model; only the first two resolve without a person. FoodOn references and the USDA attribute table (common and scientific names) moved here too (outside-voice card O8): nothing in 1G reads them, and the FoodOn licensing entry waits with them.
 
 **Effort:** L (human) / M (CC)
 **Priority:** P3
-**Depends on:** Phase 3 approval, sub-phase 1G
+**Depends on:** Phase 3 approved 2026-10-09; built in sub-phase 3C
 
 ### Choosing one USDA density per ingredient
 
@@ -155,11 +143,11 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Today each portion is its own suggestion and a person picks one.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS5). It only pays off once recipe notes exist to choose between descriptors.
+**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS5). It only pays off once recipe notes exist to choose between descriptors; the Phase 3 review (2026-10-09) left it out of Phase 3, which parses notes but does not read them for conversions.
 
 **Effort:** S (human) / S (CC)
 **Priority:** P3
-**Depends on:** Phase 3 approval
+**Depends on:** Deferred past Phase 3 (review 2026-10-09); recipes whose notes need it
 
 ### Stock photos for produce and counter items, by ingredient
 
@@ -173,20 +161,9 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** A design for ingredient-level photos and their attribution
 
-## Operations
-
-### A fresh clone creates an empty ../cooklang-recipes
-
-**What:** Stop Compose's default `RECIPES_PATH=../cooklang-recipes` bind mount from creating a directory beside a fresh clone.
-
-**Why:** `make up` on a new checkout leaves an empty `cooklang-recipes/` next to the repository, outside anything the user chose. Nothing reads the mount until Phase 3.
-
-**Context:** Found in the fresh-install DX pass on 2026-09-27. The options are to default to `./data/recipes`, or to add the mount only once Phase 3 is approved. Either one changes the default for existing deployments that rely on the sibling path.
-
-**Effort:** S (human) / S (CC)
-**Priority:** P3
-**Depends on:** Phase 3 approval, or a decision on the default
-
 ## Completed
 
 - **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).
+- **Decide whether recipe costing is per kitchen**: household-wide; `recipe_cost_snapshot` carries no kitchen, and Phase 4 adds a per-kitchen filter with the kitchen switcher (Phase 3 review, 2026-10-09; `07`, 3D).
+- **A fresh clone creates an empty ../cooklang-recipes**: the Compose default becomes `./data/recipes`, and `.env.example` shows `RECIPES_PATH=../cooklang-recipes` for a sibling repository; a missing, empty or `.cook`-less directory is "no repository", and a directory without `.git` is a repository with no commits (Phase 3 review, 2026-10-09; `07`, prerequisites).
+- **Public example recipes**: a tracked `examples/recipes/` directory of permissively licensed public Cooklang recipes, copied into `data/recipes/` by `make seed-examples` and mounted directly by the demo and e2e stacks; each is credited in `docs/licensing.md` as it is added (2026-10-09; `07`, prerequisites).
