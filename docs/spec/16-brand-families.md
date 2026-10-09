@@ -1,6 +1,6 @@
 # Store brands and brand families (2R)
 
-This sub-phase teaches Kitchen ERP which brands are a store's own, whose they are, and where they fit on that store's price ladder. It is a draft for the household's review and is not approved for implementation.
+This sub-phase teaches Kitchen ERP which brands are a store's own, whose they are, and where they fit on that store's price ladder. The household approved it for implementation on 2026-10-09, as a Phase 2 sub-phase (PR #290).
 
 ## Why
 
