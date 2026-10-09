@@ -5,7 +5,8 @@ Location matching combines five kinds of evidence, each computed with bound
 parameters (merchant text never reaches SQL as a fragment):
 
 * an exact match between a location's ``receipt_identifiers`` and the store
-  identifier the model read, or a token in the OCR text (weight 1.0);
+  identifier the model read, or a token of three or more characters in the OCR
+  text (weight 1.0);
 * proximity of the document's ``capture_geo`` to a location, within
   ``INGEST_LOCATION_RADIUS_M`` (weight 0.7);
 * trigram similarity between the printed merchant name and vendor names, at
@@ -328,6 +329,13 @@ class LocationMatch:
         }
 
 
+# A store number found only as a token of the OCR text, not read as the store
+# number by the model, counts when it has at least this many characters. A one- or
+# two-character number is too common to place a receipt: a footer's lane or
+# register ("7 51 0102") put one store's receipts at another vendor's store 51.
+MIN_TEXT_IDENTIFIER = 3
+
+
 def identifier_in_text(identifier: str, text: str) -> bool:
     pattern = r"(?<![A-Za-z0-9])" + re.escape(identifier) + r"(?![A-Za-z0-9])"
     return re.search(pattern, text, flags=re.IGNORECASE) is not None
@@ -376,7 +384,9 @@ async def match_location(
             ident = identifier.strip()
             if not ident:
                 continue
-            if (wanted and ident.lower() == wanted) or identifier_in_text(ident, receipt_text):
+            if (wanted and ident.lower() == wanted) or (
+                len(ident) >= MIN_TEXT_IDENTIFIER and identifier_in_text(ident, receipt_text)
+            ):
                 candidate(location).identifier = ident
                 break
 

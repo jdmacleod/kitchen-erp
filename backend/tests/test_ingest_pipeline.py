@@ -633,6 +633,31 @@ async def test_chain_matched_by_proximity_without_identifier(
     assert purchase.vendor_location_id == uuid.UUID(north_id)
 
 
+async def test_a_short_store_number_in_the_text_places_nothing(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    recorded,
+):
+    """A two-digit store number of another vendor appears in the OCR text as a
+    count, lane or register number: it is no evidence for that store."""
+    vendor = await make_vendor(admin_client, "Kestrel Grocers", kind="chain", price_scope="chain")
+    kestrel = await make_location(
+        admin_client,
+        "Kestrel Grocers Dunmore",
+        HOME_B,
+        vendor_id=vendor["id"],
+        receipt_identifiers=["12"],
+    )
+    fixture = load_fixture("supermarket_produce_crv")
+    recorded(fixture)
+    _, job = await upload_fixture(admin_client, fixture)
+    final = await run_job(job["id"])
+    location = (await stage_outputs(admin_client, job["id"]))["header"]["location"]
+    assert kestrel["id"] not in {c["vendor_location_id"] for c in location["candidates"]}
+    purchase, _ = await _purchase_with_lines(str(final.purchase_id))
+    assert purchase.vendor_location_id != uuid.UUID(kestrel["id"])
+
+
 async def test_ambiguous_chain_stays_unmatched_with_ranked_candidates(
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,
