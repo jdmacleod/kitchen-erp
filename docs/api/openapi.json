@@ -2636,7 +2636,8 @@
               "new_product",
               "product_update",
               "duplicates",
-              "posted_prices"
+              "posted_prices",
+              "recipe"
             ],
             "title": "Kind",
             "type": "string"
@@ -11305,6 +11306,17 @@
             ],
             "title": "Ingredient Id"
           },
+          "ingredient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Name"
+          },
           "name_norm": {
             "title": "Name Norm",
             "type": "string"
@@ -11376,7 +11388,8 @@
               "alias",
               "manual",
               "unmatched",
-              "negligible"
+              "negligible",
+              "ignored"
             ],
             "title": "Resolution",
             "type": "string"
@@ -11539,6 +11552,14 @@
             "title": "Path",
             "type": "string"
           },
+          "pins": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/RecipePinOut"
+            },
+            "title": "Pins",
+            "type": "array"
+          },
           "relink": {
             "anyOf": [
               {
@@ -11602,6 +11623,59 @@
           "notes"
         ],
         "title": "RecipeOut",
+        "type": "object"
+      },
+      "RecipePinIn": {
+        "additionalProperties": false,
+        "properties": {
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id"
+        ],
+        "title": "RecipePinIn",
+        "type": "object"
+      },
+      "RecipePinOut": {
+        "additionalProperties": false,
+        "description": "A line pinned to one product (3C), by the name as normalized.",
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_norm",
+          "product_id",
+          "product_name",
+          "brand"
+        ],
+        "title": "RecipePinOut",
         "type": "object"
       },
       "RecipeSummary": {
@@ -11934,6 +12008,265 @@
           "name"
         ],
         "title": "RenameIn",
+        "type": "object"
+      },
+      "ResolveDecisionIn": {
+        "additionalProperties": false,
+        "description": "Exactly one of: an ingredient, a new ingredient to create, or ignore.",
+        "properties": {
+          "ignore": {
+            "default": false,
+            "title": "Ignore",
+            "type": "boolean"
+          },
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientCreate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "name_norm": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name Norm",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_norm"
+        ],
+        "title": "ResolveDecisionIn",
+        "type": "object"
+      },
+      "ResolveDecisionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "matched",
+              "created",
+              "ignored"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "recipes": {
+            "title": "Recipes",
+            "type": "integer"
+          },
+          "remaining": {
+            "title": "Remaining",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name_norm",
+          "action",
+          "ingredient",
+          "lines",
+          "recipes",
+          "remaining"
+        ],
+        "title": "ResolveDecisionOut",
+        "type": "object"
+      },
+      "ResolveName": {
+        "additionalProperties": false,
+        "description": "One unmatched name across every recipe that uses it (criterion 15).",
+        "properties": {
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ResolveProposal"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "raw_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Raw Names",
+            "type": "array"
+          },
+          "recipes": {
+            "items": {
+              "$ref": "#/components/schemas/ResolveRecipe"
+            },
+            "title": "Recipes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name_norm",
+          "raw_names",
+          "recipes",
+          "line_count",
+          "proposals"
+        ],
+        "title": "ResolveName",
+        "type": "object"
+      },
+      "ResolveProposal": {
+        "additionalProperties": false,
+        "description": "One suggestion for an unmatched name, badged by the cascade tier that made it.\n\n``standard``: an exact standard-list entry; ``ingredient_id`` is the catalog\ningredient already made from it, or null when choosing it creates one\n(``standard_key``). ``similar``: a ranked trigram match, never auto-applied.",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "matched_spelling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Spelling"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "standard_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Standard Key"
+          },
+          "tier": {
+            "enum": [
+              "standard",
+              "similar"
+            ],
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tier",
+          "name"
+        ],
+        "title": "ResolveProposal",
+        "type": "object"
+      },
+      "ResolveQueueOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ResolveName"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "names": {
+            "title": "Names",
+            "type": "integer"
+          },
+          "recipes": {
+            "title": "Recipes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "names",
+          "recipes"
+        ],
+        "title": "ResolveQueueOut",
+        "type": "object"
+      },
+      "ResolveRecipe": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path"
+        ],
+        "title": "ResolveRecipe",
         "type": "object"
       },
       "RowError": {
@@ -21027,6 +21360,68 @@
         ]
       }
     },
+    "/api/v1/recipes/resolve": {
+      "get": {
+        "description": "Unmatched names grouped by normalized name, most-used first, with proposals.",
+        "operationId": "resolve_queue_api_v1_recipes_resolve_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveQueueOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Resolve Queue",
+        "tags": [
+          "recipes"
+        ]
+      },
+      "post": {
+        "description": "One decision for a name: an ingredient, a new one, or not an ingredient.",
+        "operationId": "resolve_decide_api_v1_recipes_resolve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveDecisionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve Decide",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
     "/api/v1/recipes/status": {
       "get": {
         "operationId": "recipes_status_api_v1_recipes_status_get",
@@ -21120,6 +21515,111 @@
           }
         },
         "summary": "Get Recipe",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/pins/{name_norm}": {
+      "delete": {
+        "operationId": "delete_pin_api_v1_recipes__recipe_id__pins__name_norm__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name_norm",
+            "required": true,
+            "schema": {
+              "title": "Name Norm",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Pin",
+        "tags": [
+          "recipes"
+        ]
+      },
+      "put": {
+        "operationId": "set_pin_api_v1_recipes__recipe_id__pins__name_norm__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name_norm",
+            "required": true,
+            "schema": {
+              "title": "Name Norm",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipePinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Pin",
         "tags": [
           "recipes"
         ]

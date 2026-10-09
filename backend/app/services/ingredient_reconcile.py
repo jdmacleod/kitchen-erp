@@ -45,6 +45,7 @@ from app.models.catalog import (
     Product,
 )
 from app.models.purchases import PriceNorm, PriceObservation
+from app.models.recipes import RecipeIngredient
 from app.services import pricebook
 from app.services.catalog import apply_standard_entry
 from app.services.spellings import add_generated_spellings, add_spelling
@@ -445,6 +446,13 @@ async def _merge_in_session(
         update(IngredientAlias)
         .where(IngredientAlias.ingredient_id == loser.id)
         .values(ingredient_id=survivor.id)
+    )
+    # Recipe lines resolved to the loser (07, 3C, "Merges repoint recipe rows").
+    await db.execute(
+        update(RecipeIngredient)
+        .where(RecipeIngredient.ingredient_id == loser.id)
+        .values(ingredient_id=survivor.id)
+        .execution_options(synchronize_session=False)
     )
     await _drop_own_spelling(db, survivor.id, target_name)
     ref_of = IngredientRef.ingredient_id
