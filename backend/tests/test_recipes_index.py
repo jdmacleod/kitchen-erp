@@ -375,17 +375,35 @@ async def test_a_vanished_file_is_missing_and_its_row_kept(recipes_repo: TempRep
     assert (await rows())["index_a.cook"].status == "ok"
 
 
-async def test_removing_the_last_recipe_reports_no_cook_files_and_touches_no_row(
+async def test_removing_the_last_recipe_in_a_repository_marks_it_missing(
     recipes_repo: TempRepo,  # noqa: F811
 ):
+    """A ``.git`` directory counts as a repository (package 2, 2026-10-09)."""
     recipes_repo.write("index_a.cook", "Stir @oats{50%g}.\n")
     await run_scan()
     recipes_repo.remove("index_a.cook")
     result = await run_scan()
+    assert result.mounted and result.files == 0 and result.missing == 1
+    async with get_sessionmaker()() as db:
+        status = await recipes.status(db)
+    assert status.mount == "mounted" and status.counts.missing == 1
+
+
+async def test_an_emptied_directory_without_git_touches_no_row(recipes_dir: TempRepo):  # noqa: F811
+    """No ``.git`` and no ``.cook`` files is no repository: rows are left as they are."""
+    recipes_dir.write("index_a.cook", "Stir @oats{50%g}.\n")
+    await run_scan()
+    recipes_dir.remove("index_a.cook")
+    result = await run_scan()
     assert not result.mounted and result.missing == 0
     async with get_sessionmaker()() as db:
         status = await recipes.status(db)
-    assert status.mount == "no_cook_files" and status.counts.ok == 1
+    assert status.mount == "empty" and status.counts.ok == 1
+    recipes_dir.write("notes.txt", "not a recipe\n")
+    async with get_sessionmaker()() as db:
+        assert (await recipes.status(db)).mount == "no_cook_files"
+    assert not (await run_scan()).mounted
+    assert (await rows())["index_a.cook"].status == "ok"
 
 
 async def test_criterion_5_a_pure_move_keeps_the_id(recipes_repo: TempRepo):  # noqa: F811

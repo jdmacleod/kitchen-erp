@@ -51,7 +51,14 @@ class Mount:
 
 
 def inspect_mount(settings: Settings | None = None) -> Mount:
-    """The mount's state and its ``.cook`` files, never descending into ``.git``."""
+    """The mount's state and its ``.cook`` files, never descending into ``.git``.
+
+    A ``.git`` entry counts as a repository (package 2, 2026-10-09): a repository
+    with no ``.cook`` files is mounted and has no recipes, so the scan runs and
+    every indexed recipe becomes missing. "No repository" is a directory that is
+    missing, or that holds neither ``.cook`` files nor ``.git``: ``empty`` when it
+    holds nothing at all, ``no_cook_files`` when it holds other things.
+    """
     settings = settings or get_settings()
     root = Path(settings.recipes_path)
     if not root.is_dir():
@@ -64,11 +71,9 @@ def inspect_mount(settings: Settings | None = None) -> Mount:
         for name in sorted(filenames):
             if name.endswith(".cook") and not name.startswith("."):
                 files.append(Path(dirpath) / name)
-    if not any_entry:
-        return Mount(root, "empty", [])
-    if not files:
-        return Mount(root, "no_cook_files", [])
-    return Mount(root, "mounted", files)
+    if files or (root / ".git").exists():
+        return Mount(root, "mounted", files)
+    return Mount(root, "empty" if not any_entry else "no_cook_files", [])
 
 
 def _title_for(path: str) -> str:
