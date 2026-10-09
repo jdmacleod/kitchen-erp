@@ -641,6 +641,10 @@ async def _emit_for_line(
     )
 
 
+# Purchase flags that only ask a reviewer to look, answered by committing.
+ANSWERED_BY_COMMIT = frozenset({"rows_not_read"})
+
+
 def _resolved_item(line: PurchaseLine) -> bool:
     return (
         line.line_kind == "item"
@@ -704,6 +708,10 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
             await pricebook.void(db, current.id, "line no longer resolved on recommit", user)
     await best_by.refresh(db, purchase)
     purchase.status = "committed"
+    # "Rows the reader skipped" is a prompt for review. Committing is the person
+    # saying the lines are right, so the prompt is answered and does not follow the
+    # purchase into its record.
+    purchase.flags = [f for f in purchase.flags if f not in ANSWERED_BY_COMMIT]
     # The receipt's job is finished too; left at needs_review, the Receipts page
     # kept offering "ready to review" for a purchase already in the price book.
     await db.execute(
