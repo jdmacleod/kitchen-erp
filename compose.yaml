@@ -42,6 +42,8 @@ services:
       RECEIPTS_PATH: /data/receipts
       MEDIA_PATH: /data/media
       RECIPES_PATH: /data/recipes
+      RECIPES_SCAN_SECONDS: ${RECIPES_SCAN_SECONDS:-30}
+      RECIPES_SETTLE_SECONDS: ${RECIPES_SETTLE_SECONDS:-2}
       HOUSEHOLD_TIMEZONE: ${HOUSEHOLD_TIMEZONE:-America/Los_Angeles}
       RECEIPT_DATE_ORDER: ${RECEIPT_DATE_ORDER:-MDY}
       CURRENCY: ${CURRENCY:-USD}
@@ -68,7 +70,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
       - ./data:/data
-      - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
+      - ${RECIPES_PATH:-./data/recipes}:/data/recipes:ro
       - ./data/plugins:/plugins:ro   # private retailer adapters (04, 2M); empty is fine
       - ./docs:/srv/docs:ro   # the checked-in capture contract, for the drift test
     depends_on:
@@ -89,7 +91,7 @@ services:
     environment: *app-env
     volumes:
       - ./data:/data
-      - ${RECIPES_PATH:-../cooklang-recipes}:/data/recipes:ro
+      - ${RECIPES_PATH:-./data/recipes}:/data/recipes:ro
       - ./data/plugins:/plugins:ro   # private retailer adapters (04, 2M); empty is fine
     depends_on:
       db:
