@@ -189,6 +189,12 @@ def _fold(expr):
     return func.translate(func.lower(expr), _ACCENTED, _PLAIN)
 
 
+def _word_start(word: str) -> str:
+    """A pattern for ``word`` at a word start: first, or after a non-alphanumeric."""
+    literal_word = "".join(c if c.isalnum() else "\\" + c for c in word)
+    return "(^|[^a-z0-9])" + literal_word
+
+
 def _fold_text(text: str) -> str:
     return text.lower().translate(str.maketrans(_ACCENTED, _PLAIN))
 
@@ -207,8 +213,8 @@ async def list_purchases(
 ) -> tuple[list[Purchase], str | None]:
     """Purchases, newest bought first unless sorted otherwise (spec 10, Shop: purchases).
 
-    ``q`` keeps purchases where every word appears in the store's name, the
-    location's name, or a line's receipt text or product name. Sorting by store
+    ``q`` keeps purchases where every word starts a word in the store's or
+    location's name, or on one line, in its receipt text or product name. Sorting by store
     or total falls back to newest first for ties. The cursor carries the sort
     value, the purchase date and the id, so the order holds across pages.
     """
@@ -225,25 +231,27 @@ async def list_purchases(
         stmt = stmt.where(Purchase.status != "voided")
     if source is not None:
         stmt = stmt.where(Purchase.source == source)
-    for word in _fold_text(q or "").split():
-        pattern = "%" + word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    words = _fold_text(q or "").split()
+    if words:
+        # A word matches at the start of a word ("sage" never finds "sausage"),
+        # and the words a store doesn't hold must all be on one line (spec 10).
+        store = _fold(func.coalesce(vendor.name, "") + " " + func.coalesce(location.name, ""))
         line_product = aliased(Product)
-        in_lines = exists(
+        line = _fold(
+            func.coalesce(PurchaseLine.raw_text, "") + " " + func.coalesce(line_product.name, "")
+        )
+        starts = [_word_start(w) for w in words]
+        on_one_line = exists(
             select(literal(1))
             .select_from(PurchaseLine)
             .outerjoin(line_product, line_product.id == PurchaseLine.product_id)
             .where(
                 PurchaseLine.purchase_id == Purchase.id,
                 PurchaseLine.removed_at.is_(None),
-                or_(
-                    _fold(PurchaseLine.raw_text).like(pattern),
-                    _fold(line_product.name).like(pattern),
-                ),
+                *(or_(store.regexp_match(r), line.regexp_match(r)) for r in starts),
             )
         )
-        stmt = stmt.where(
-            or_(_fold(vendor.name).like(pattern), _fold(location.name).like(pattern), in_lines)
-        )
+        stmt = stmt.where(or_(and_(*(store.regexp_match(r) for r in starts)), on_one_line))
 
     key = None
     if sort == "where":

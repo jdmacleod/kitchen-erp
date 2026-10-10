@@ -270,3 +270,25 @@ async def test_purchases_find_and_sort(admin_client):
     assert r.status_code == 400 and r.json()["error"]["code"] == "bad_cursor"
     r = await admin_client.get("/api/v1/purchases", params={"sort": "lines"})
     assert r.status_code == 422
+
+    # A word matches at a word start, and the item words share one line.
+    sausage = await make_product(admin_client, "Sausage", "Pork sausage")
+    sage = await make_product(admin_client, "Sage", "Fresh sage")
+    await _bought(admin_client, pier, sausage, (2026, 3, 1), "6.00", "f5")
+    f = await _bought(admin_client, pier, sage, (2026, 2, 1), "2.00", "f6")
+    assert ids(await _all_pages(admin_client, q="sage")) == [f]  # not the sausage
+    assert ids(await _all_pages(admin_client, q="fresh sage")) == [f]
+    assert ids(await _all_pages(admin_client, q="pier sage")) == [f]
+    body = {
+        "vendor_location_id": pier["id"],
+        "purchased_at": datetime(2026, 1, 1, 17, 0, tzinfo=UTC).isoformat(),
+        "lines": [
+            {"product_id": honey["id"], "qty": "1", "unit": "each", "line_total": "5"},
+            {"product_id": sage["id"], "qty": "1", "unit": "each", "line_total": "2"},
+        ],
+    }
+    r = await admin_client.post("/api/v1/purchases", json=body, headers={"Idempotency-Key": "f7"})
+    g = r.json()["id"]
+    # Honey and sage on different lines of one purchase don't make a match.
+    assert ids(await _all_pages(admin_client, q="honey sage")) == []
+    assert ids(await _all_pages(admin_client, q="sage")) == [f, g]
