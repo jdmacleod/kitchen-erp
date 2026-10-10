@@ -708,7 +708,7 @@ function matchOptions(proposal: Proposal, strongName: string | undefined): Match
     for (const c of proposal.candidates) {
       if (c.product_id === strong?.product_id) continue;
       const pack = formatPack(c.pack_qty, c.pack_unit, c.pack_count, c.piece_name);
-      out.push({ value: `update:${c.product_id}`, label: label(c), note: verdictNote(c), pack: pack || undefined, candidate: c });
+      out.push({ value: `update:${c.product_id}`, label: label(c), note: [verdictNote(c), c.brand_note].filter(Boolean).join(" · "), pack: pack || undefined, candidate: c });
     }
   } else {
     for (const c of proposal.match.candidates ?? []) {

@@ -522,3 +522,33 @@ describe("store brands in review (2R)", () => {
     expect(within(kind).getByRole("button", { name: "Branded" })).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+describe("store-brand notes in review (2R-2)", () => {
+  it("adds another store family's own brand to the candidate's note", async () => {
+    const ingredient = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b40", name: "Flour", category_key: null };
+    const candidates = [
+      {
+        product_id: otherProductId,
+        name: "Strong white flour",
+        brand: "Brightwater Basics",
+        pack_qty: "1.5",
+        pack_unit: "kg",
+        pack_count: null,
+        piece_name: null,
+        photo: null,
+        ingredient,
+        score: "0.9",
+        verdict: "similar" as const,
+        reasons: ["brand"],
+        only_here: [],
+        only_there: [],
+        brand_note: "Brightwater Basics is Brightwater Grocers' own brand",
+      },
+    ];
+    const stored = candidates.map(({ product_id, name, brand, score }) => ({ product_id, name, brand, score }));
+    mockApi(routes(proposal({ match: { strong: null, candidates: stored, preselect: null }, candidates })));
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const match = await screen.findByRole("group", { name: "Match" });
+    expect(within(match).getAllByRole("radio")[0]).toHaveAccessibleName(/Same name, another brand · Brightwater Basics is Brightwater Grocers' own brand/);
+  });
+});

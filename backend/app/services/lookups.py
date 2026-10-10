@@ -53,7 +53,7 @@ from app.models import (
 )
 from app.models.geo import Vendor, VendorLocation
 from app.schemas.products_interchange import HelperAnswer, ListingPriceReport, PriceValue
-from app.services import media, pricebook, product_photos, proposals, vendor_pages
+from app.services import brands, media, pricebook, product_photos, proposals, vendor_pages
 
 HELPER_SCOPES = ("products:read", "products:suggest")
 
@@ -633,8 +633,14 @@ async def _has_listing(db: AsyncSession, product_id: uuid.UUID, listing: dict[st
     return found.first() is not None
 
 
-def _changes_product(product: Product, candidates: list[merging.Candidate]) -> bool:
-    """Whether an answer would change a product the household already has."""
+def _changes_product(
+    product: Product,
+    candidates: list[merging.Candidate],
+    brand_ids: dict[str, uuid.UUID | None] | None = None,
+) -> bool:
+    """Whether an answer would change a product the household already has. A brand
+    spelled differently but naming the product's own brand row is no change (2R-2);
+    `brand_ids` maps each candidate brand to the row it names."""
     current = {
         "title": product.name,
         "brand": product.brand,
@@ -652,6 +658,12 @@ def _changes_product(product: Product, candidates: list[merging.Candidate]) -> b
             continue
         if c.field in current and current[c.field] in (None, ""):
             return True
+        if (
+            c.field == "brand"
+            and product.brand_id is not None
+            and (brand_ids or {}).get(str(c.value)) == product.brand_id
+        ):
+            continue
         if c.field in current and current[c.field] != c.value and c.field != "title":
             return True
     return False
@@ -745,7 +757,12 @@ async def answer(
         listing = await vendor_pages.listing_for_page(db, request.value, fields)
         if listing is not None and await _has_listing(db, product.id, listing):
             listing = None
-    if not _changes_product(product, candidates) and not photos and listing is None:
+    brand_ids = {
+        str(c.value): (found.id if (found := await brands.find_brand(db, str(c.value))) else None)
+        for c in candidates
+        if c.field == "brand" and c.value
+    }
+    if not _changes_product(product, candidates, brand_ids) and not photos and listing is None:
         await _record(db, request.id, token_id, body, "no_change")
         return "no_change", None
     # A late answer about a product the household already has (PR7).
