@@ -81,6 +81,7 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 - **UI-3.19** A voided purchase offers "Restore purchase" at its foot, confirmed in the page with focus on Cancel. Restoring turns the page into review with the Notice "Restored. Commit it to put its prices back in the price book.", and a purchase whose receipt was read again says so with no button (#210).
 - **UI-3.20** An ingredient's page offers "Merge into…" and, until it is linked, "Link to standard name", both through the link page's merge panel (preview first, focus on Cancel). A merged ingredient's page names and links the ingredient it was merged into, and offers neither merge, link nor reactivation (#211).
 - **UI-3.21** A draft whose receipt the image transcriber could not read (`ocr_fallback`, 04 2O) says "Read from the text scan: the image reader wasn't available." in a quiet neutral line under the header, and nothing else about review changes.
+- **UI-3.22** (draft, #292) Purchases has a "Find a store or item" field and sortable Date, Where and Total headings, both kept in the URL. A search for an item word lists each purchase that bought it once; sorting holds across "Load more"; the sorted heading has `aria-sort`; below 1024px a "Sort by" select gives the same orders; a search with no results shows "No purchases match" with Clear search, not the empty list.
 
 ## UI-4 — Phone and tablet
 
