@@ -20,6 +20,7 @@ import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/P
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit, ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
@@ -143,6 +144,7 @@ function ProductDetail({ product }: { product: Product }) {
             </Link>{" "}
             <CategoryChip category={product.ingredient.category} categoryKey={product.ingredient.category_key} />
           </span>
+          <StoreBrandBadge brand={product.house_brand} />
           <span aria-hidden="true">·</span>
           <span>
             Created <time dateTime={product.created_at}>{formatDateTime(product.created_at)}</time>

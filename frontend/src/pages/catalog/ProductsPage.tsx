@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { api, errorMessage } from "../../api/client";
+import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import {
   formatPack,
   ingredientSummary,
@@ -304,6 +305,11 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
                     </>
                   )}
                   {p.brand ? <span className={`block ${muted}`}>{p.brand}</span> : null}
+                  {p.house_brand ? (
+                    <span className="mt-0.5 block">
+                      <StoreBrandBadge brand={p.house_brand} compact />
+                    </span>
+                  ) : null}
                 </div>
               </div>
             </td>
