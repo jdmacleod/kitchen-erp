@@ -35,8 +35,9 @@ quantity, the negligible list, or a name marked not an ingredient),
 ``unmapped`` (no ingredient), ``unconvertible`` (``convert`` failed, with its
 code), ``unpriced`` (nothing qualifies), ``priced``.
 
-Recompute triggers (hash, alias, pin, bridge and price changes) are package
-6b's; ``recompute_recipe`` and ``recompute_all`` are the entry points they call.
+The recompute triggers (hash, alias, pin, bridge and price changes) live in
+``services/recipe_cost_triggers``; ``recompute_recipe_core`` is the entry point
+they call inside a caller's transaction, ``recompute_all`` the CLI's.
 """
 
 from __future__ import annotations
@@ -405,12 +406,15 @@ async def compute_snapshot(
     """Cost the recipe as it is indexed now and upsert the snapshot and its lines."""
     window = effective_window(basis, window_days)
     now = datetime.now(UTC)
+    # Read from the database, not the identity map: a trigger runs after a bulk
+    # UPDATE (a decision, a merge) that the session's loaded rows do not reflect.
     lines = (
         (
             await db.execute(
                 select(RecipeIngredient)
                 .where(RecipeIngredient.recipe_id == recipe.id)
                 .order_by(RecipeIngredient.seq)
+                .execution_options(populate_existing=True)
             )
         )
         .scalars()
@@ -515,7 +519,7 @@ async def compute_snapshot(
     return snapshot
 
 
-# --- recompute entry points (called by package 6b's triggers and the CLI) ---------------
+# --- recompute entry points (called by the triggers and the CLI) ------------------------
 
 
 async def snapshot_keys(
@@ -538,16 +542,23 @@ async def snapshot_keys(
     return keys
 
 
-async def recompute_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> int:
-    """Recompute every snapshot key the recipe has (``latest`` at least). Commits."""
+async def recompute_recipe_core(db: AsyncSession, recipe_id: uuid.UUID) -> int:
+    """Recompute every snapshot key the recipe has (``latest`` at least). Flushes,
+    never commits, so a trigger can make it part of the caller's transaction."""
     recipe = await db.get(Recipe, recipe_id)
     if recipe is None:
         return 0
     keys = await snapshot_keys(db, recipe_id)
     for basis, window, quality in keys:
         await compute_snapshot(db, recipe, basis, window, quality, commit=False)
-    await db.commit()
     return len(keys)
+
+
+async def recompute_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> int:
+    """The same, committed."""
+    n = await recompute_recipe_core(db, recipe_id)
+    await db.commit()
+    return n
 
 
 async def recompute_all(db: AsyncSession) -> int:

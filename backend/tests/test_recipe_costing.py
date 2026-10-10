@@ -519,7 +519,9 @@ async def test_27a_posted_uncommitted_voided_and_inactive_prices_never_cost_a_li
 # --- 26: truncate and recompute-costs reproduces every figure --------------------------------
 
 
-_SKIP = {"id", "snapshot_id", "computed_at"}
+# head_commit is HEAD when the snapshot was computed, not a figure: the scan's
+# trigger computed one recipe's snapshot a commit before the other's.
+_SKIP = {"id", "snapshot_id", "computed_at", "head_commit"}
 
 
 async def _rows(conn: asyncpg.Connection) -> tuple[list[dict], list[dict]]:
@@ -641,14 +643,13 @@ async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(
     recipes_repo: TempRepo,  # noqa: F811
 ):
     await porridge_pantry(admin_client)
+    # The scan's trigger (6b) gives every indexed recipe its default ``latest``
+    # snapshot, so the list carries a cost from the moment the file is indexed.
     recipe = await indexed(admin_client, recipes_repo, "harbor-porridge.cook", PORRIDGE)
-    assert recipe["cost"] is None, "not costed yet"
+    computed_at = recipe["cost"]["computed_at"]
     await cost(admin_client, recipe["id"], basis="cheapest")
-    assert (await recipe_by_path(admin_client, "harbor-porridge.cook"))["cost"] is None, (
-        "only the default latest basis feeds the list"
-    )
-    await cost(admin_client, recipe["id"])
     listed = (await recipe_by_path(admin_client, "harbor-porridge.cook"))["cost"]
+    assert listed["computed_at"] == computed_at, "only the default latest basis feeds the list"
     assert listed == {
         "consumed_cost": "3.3000",
         "consumed_cost_high": "3.3000",
@@ -660,11 +661,13 @@ async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(
         "provisional": False,
         "computed_at": listed["computed_at"],
     }
-    # An edit changes the hash: the old snapshot no longer speaks for the file.
+    # An edit changes the hash: the old snapshot no longer speaks for the file,
+    # and the scan's trigger (6b) costs the new content, provisionally.
     recipes_repo.edit("harbor-porridge.cook", "\nFinish with @dates{2}.\n")
     await rescan(admin_client)
     edited = await recipe_by_path(admin_client, "harbor-porridge.cook")
-    assert edited["dirty"] is True and edited["cost"] is None
+    assert edited["dirty"] is True and edited["cost"]["provisional"] is True
+    assert edited["cost"]["consumed_cost"] == "3.8000"  # two more dates at $0.25
 
 
 async def test_history_lists_committed_snapshots_only(
@@ -695,11 +698,15 @@ async def test_history_lists_committed_snapshots_only(
         "lines_priced": 1,
         "lines_total": 1,
     }
-    # Committed, the new version joins the history at its own hash.
+    # Committed, the new version joins the history at its own hash (criterion 24,
+    # tested end to end in test_recipe_cost_triggers).
     recipes_repo.commit("more barley")
     await rescan(admin_client)
     committed = await cost(admin_client, recipe["id"])
-    assert committed["provisional"] is True, "the flag clears on the scan in package 6b"
+    assert committed["provisional"] is False
+    assert committed["id"] == dirty["id"], "the flag cleared on the snapshot already there"
+    history = (await admin_client.get(f"/api/v1/recipes/{recipe['id']}/cost/history")).json()
+    assert [h["id"] for h in history["items"]] == [first["id"], dirty["id"]]
     r = await admin_client.get(
         f"/api/v1/recipes/{recipe['id']}/cost/history", params={"basis": "cheapest"}
     )

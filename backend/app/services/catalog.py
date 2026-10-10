@@ -51,7 +51,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services import best_by, brands
+from app.services import best_by, brands, recipe_cost_triggers
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
@@ -693,6 +693,8 @@ async def confirm_density(db: AsyncSession, ingredient_id: uuid.UUID) -> Ingredi
         raise ApiError(409, "no_density", "The ingredient has no density to confirm.")
     ingredient.density_confirmed = True
     await db.commit()
+    # Nothing to renormalize, but a snapshot's unconfirmed share rests on this flag.
+    await recipe_cost_triggers.after_ingredient_bridge_changed(db, ingredient_id, commit=True)
     return await get_ingredient(db, ingredient_id)
 
 
@@ -754,6 +756,9 @@ async def confirm_measure(db: AsyncSession, measure_id: uuid.UUID) -> Ingredient
     measure.confirmed = True
     await db.commit()
     await db.refresh(measure)
+    await recipe_cost_triggers.after_ingredient_bridge_changed(
+        db, measure.ingredient_id, commit=True
+    )
     return measure
 
 

@@ -13,7 +13,10 @@ again until it changes. Every row is written ``unmatched`` here with
 ``negligible`` decided from the quantity alone (none, or text such as "a
 handful"); the scan then hands every unmatched row to the 3C lookup
 (``recipe_resolution.resolve_unmatched``), which settles names, the negligible
-list and ignored names in the same transaction.
+list and ignored names in the same transaction. Cost snapshots (3D) follow in
+that transaction too: a recipe whose content changed, or whose waiting lines
+the lookup settled, is recomputed, and one committed unchanged only loses its
+provisional flag (``recipe_cost_triggers``).
 """
 
 from __future__ import annotations
@@ -53,7 +56,7 @@ from app.schemas.recipes import (
     ScanOut,
     StatusCounts,
 )
-from app.services import recipe_cost_views, recipe_resolution
+from app.services import recipe_cost_triggers, recipe_cost_views, recipe_resolution
 
 Parsed = ParsedRecipe | ParseError
 
@@ -369,25 +372,45 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
         by_id = {row.id: row for row in rows}
         created: dict[str, Recipe] = {}
         relinks: list[tuple[uuid.UUID, str, str]] = []
+        # What the scan means for cost snapshots (3D): a changed hash is a
+        # recompute; an unchanged hash whose dirty flag flipped only moves the
+        # provisional flag (criterion 24).
+        changed: set[uuid.UUID] = set()
+        committed: list[Recipe] = []
+        uncommitted: list[Recipe] = []
+
+        def _note_dirty(row: Recipe, was_dirty: bool) -> None:
+            if was_dirty and not row.dirty:
+                committed.append(row)
+            elif row.dirty and not was_dirty:
+                uncommitted.append(row)
 
         for action in plan.actions:
             match action:
                 case index.Seen(recipe_id=rid):
-                    _mark_present(by_id[rid], repo, now)
+                    row = by_id[rid]
+                    was_dirty = row.dirty
+                    _mark_present(row, repo, now)
+                    _note_dirty(row, was_dirty)
                 case index.Update(recipe_id=rid, path=path, content_hash=h):
                     row = by_id[rid]
                     if not await _reindex(db, row, h, parsed[path], now):
                         parse_errors += 1
                     _mark_present(row, repo, now)
+                    changed.add(rid)
                 case index.Move(recipe_id=rid, path=new_path, content_hash=h):
                     row = by_id[rid]
                     row.path = new_path
+                    was_dirty = row.dirty
                     if row.content_hash != h:
                         if not await _reindex(db, row, h, parsed[new_path], now):
                             parse_errors += 1
+                        changed.add(rid)
                     elif not _has_front_matter_title(row):
                         row.title = _title_for(new_path)  # the stem stood in; it moved
                     _mark_present(row, repo, now)
+                    if rid not in changed:
+                        _note_dirty(row, was_dirty)
                 case index.Missing(recipe_id=rid):
                     by_id[rid].status = "missing"
         # A new path never carries a row, and a moved row never takes a path that
@@ -402,11 +425,21 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
             if create.relink_of is not None and create.relink_reason is not None:
                 relinks.append((create.relink_of, create.path, create.relink_reason))
         await db.flush()
+        changed.update(row.id for row in created.values())
         for origin, path, why in relinks:
             by_id[origin].relink_candidate_id = created[path].id
             by_id[origin].relink_reason = why
     # Rows just rebuilt and rows that waited, in one pass (3C, criterion 14).
+    waiting = await recipe_cost_triggers.unmatched_lines(db)
     await recipe_resolution.resolve_unmatched(db, settings)
+    # Snapshots: recipes whose content changed, and recipes whose waiting lines
+    # the lookup settled, once each, after the lines are resolved (3D).
+    changed |= await recipe_cost_triggers.settled_recipes(db, waiting)
+    await recipe_cost_triggers.after_recipes_changed(db, changed)
+    for row in committed:
+        await recipe_cost_triggers.mark_committed(db, row)
+    for row in uncommitted:
+        await recipe_cost_triggers.mark_provisional(db, row)
     await db.commit()
     _last_scan["at"] = now
     return ScanOut(
@@ -597,6 +630,9 @@ async def relink(db: AsyncSession, recipe_id: uuid.UUID, target_id: uuid.UUID) -
     row.status = "parse_error" if carried["parse_error_message"] else "ok"
     row.relink_candidate_id = None
     row.relink_reason = None
+    await db.flush()
+    # The recipe's content is the new file's now; its history at the old hash stays.
+    await recipe_cost_triggers.after_recipe_changed(db, row.id)
     await db.commit()
     await db.refresh(row)
     return row
