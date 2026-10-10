@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import Field
 
 from app.schemas.base import ApiModel, DecimalStr
+
+# Which brands an offer list keeps (16, 2R-3): all, store brands, or national ones.
+BrandScope = Literal["all", "store", "national"]
 
 
 class HistoryPoint(ApiModel):
@@ -97,6 +100,10 @@ class Offer(ApiModel):
     product_id: uuid.UUID
     product_name: str
     brand: str | None
+    # A store's own brand (16, 2R-3): its tier and family; false for national or unknown.
+    brand_tier: str | None = None
+    brand_family_name: str | None = None
+    is_store_brand: bool = False
     quality_rating: int | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
@@ -133,12 +140,18 @@ class CompareIn(ApiModel):
     exclude_promo: bool = False
     # Also count posted web prices (2L); they are out of comparison by default.
     include_posted: bool = False
+    # Keep all offers, only store brands, or only national and unknown brands (2R-3).
+    brand_scope: BrandScope = "all"
 
 
 class CompareCell(ApiModel):
     product_id: uuid.UUID
     product_name: str
     brand: str | None
+    # A store's own brand (16, 2R-3): its tier and family; false for national or unknown.
+    brand_tier: str | None = None
+    brand_family_name: str | None = None
+    is_store_brand: bool = False
     quality_rating: int | None
     location_id: uuid.UUID
     location_name: str

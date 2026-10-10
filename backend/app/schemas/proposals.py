@@ -12,6 +12,7 @@ from pydantic import Field
 from app.catalog.attributes import ProductKind
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import HouseBrandOut, IngredientSummary
+from app.schemas.geo import BrandFamilyRef
 from app.schemas.product_photos import PhotoRole, PhotoSummary, ProductPhotoOut
 
 ProposalStatus = Literal["pending", "accepted", "rejected", "superseded"]
@@ -128,6 +129,9 @@ class ProposalOut(ApiModel):
     lookup: LookupState | None = None
     # The store brand the proposed brand names (16, 2R): review starts it as a store brand.
     house_brand: HouseBrandOut | None = None
+    # With no house brand, the families whose own-brand barcode prefix the proposed GTIN
+    # starts with (2R-3): review offers a store brand for a person to confirm.
+    barcode_families: list[BrandFamilyRef] = []
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime

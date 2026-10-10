@@ -7,6 +7,7 @@ import { formatMoney, stripZeros } from "../../lib/decimal";
 import { focusRing } from "../ui";
 import { PriceAge, PromoBadge, QualityText, formatUnitPrice } from "./PriceAge";
 import { PriceFilters } from "./PriceFilters";
+import { whose } from "../catalog/StoreBrandBadge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -34,7 +35,7 @@ export function IngredientOffers({
         <h2 id="prices-by-vendor" className="font-display text-lg">
           Prices by vendor
         </h2>
-        <PriceFilters id="offers" value={filters} onChange={onFilters} />
+        <PriceFilters id="offers" value={filters} onChange={onFilters} brands />
       </div>
       {offers.length === 0 ? (
         <p className={`text-sm ${muted}`}>No current prices match. Recent ones are in the history above.</p>
@@ -84,6 +85,11 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
       <span className={`block text-xs ${muted}`}>
         {formatPack(o.pack_qty, o.pack_unit) ? `${formatPack(o.pack_qty, o.pack_unit)} · ` : ""}
         <QualityText rating={o.quality_rating} />
+        {o.is_store_brand ? (
+          <span title={o.brand_family_name ? `${whose(o.brand_family_name)} own brand` : undefined}>
+            {" · "}Store brand{o.brand_tier ? `, ${o.brand_tier}` : ""}
+          </span>
+        ) : null}
       </span>
     </>
   );

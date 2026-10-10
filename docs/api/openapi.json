@@ -1275,6 +1275,28 @@
             ],
             "title": "Brand"
           },
+          "brand_family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Family Name"
+          },
+          "brand_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Tier"
+          },
           "cheapest": {
             "title": "Cheapest",
             "type": "boolean"
@@ -1303,6 +1325,11 @@
           },
           "is_promo": {
             "title": "Is Promo",
+            "type": "boolean"
+          },
+          "is_store_brand": {
+            "default": false,
+            "title": "Is Store Brand",
             "type": "boolean"
           },
           "location_id": {
@@ -1378,6 +1405,16 @@
       "CompareIn": {
         "additionalProperties": false,
         "properties": {
+          "brand_scope": {
+            "default": "all",
+            "enum": [
+              "all",
+              "store",
+              "national"
+            ],
+            "title": "Brand Scope",
+            "type": "string"
+          },
           "exclude_promo": {
             "default": false,
             "title": "Exclude Promo",
@@ -8289,6 +8326,28 @@
             ],
             "title": "Brand"
           },
+          "brand_family_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Family Name"
+          },
+          "brand_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Tier"
+          },
           "display_unit": {
             "anyOf": [
               {
@@ -8313,6 +8372,11 @@
           },
           "is_promo": {
             "title": "Is Promo",
+            "type": "boolean"
+          },
+          "is_store_brand": {
+            "default": false,
+            "title": "Is Store Brand",
             "type": "boolean"
           },
           "location_id": {
@@ -10820,6 +10884,14 @@
       "ProposalOut": {
         "additionalProperties": false,
         "properties": {
+          "barcode_families": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/BrandFamilyRef"
+            },
+            "title": "Barcode Families",
+            "type": "array"
+          },
           "candidates": {
             "default": [],
             "items": {
@@ -18292,6 +18364,23 @@
               "description": "also count posted web prices (2L)",
               "title": "Include Posted",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "all offers, store brands only, or national only (2R)",
+            "in": "query",
+            "name": "brand_scope",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "all offers, store brands only, or national only (2R)",
+              "enum": [
+                "all",
+                "store",
+                "national"
+              ],
+              "title": "Brand Scope",
+              "type": "string"
             }
           }
         ],

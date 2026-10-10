@@ -168,6 +168,33 @@ describe("ingredient offers", () => {
   });
 });
 
+describe("store brands on offers (2R-3)", () => {
+  it("marks a store brand with its tier and sends the brand filter", async () => {
+    const own = { ...offers[0], is_store_brand: true, brand_tier: "standard", brand_family_name: "Larkspur Markets" };
+    const calls = mockApi({
+      ...baseRoutes(),
+      [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
+      [`GET /ingredients/${flourId}/offers`]: (call: RecordedCall) => {
+        const scope = call.query.get("brand_scope");
+        const items = scope === "national" ? [offers[1]] : scope === "store" ? [own] : [own, offers[1]];
+        return jsonResponse(200, { items, stale_after_days: 90 });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/ingredients/${flourId}`);
+    const table = await screen.findByRole("table", { name: "Prices by vendor" });
+    const rows = within(table).getAllByTestId("offer");
+    expect(rows[0]).toHaveTextContent("Store brand, standard");
+    expect(rows[1]).not.toHaveTextContent("Store brand");
+    const offersCalls = () => calls.filter((c) => c.path.startsWith(`/ingredients/${flourId}/offers`));
+    expect(offersCalls().at(-1)?.query.has("brand_scope")).toBe(false);
+
+    await user.selectOptions(screen.getByLabelText("Brands"), "national");
+    await waitFor(() => expect(offersCalls().at(-1)?.query.get("brand_scope")).toBe("national"));
+    await waitFor(() => expect(within(screen.getByRole("table", { name: "Prices by vendor" })).getAllByTestId("offer")).toHaveLength(1));
+  });
+});
+
 describe("needs a bridge", () => {
   it("links each failed normalization to where it is fixed", async () => {
     const items: NeedsBridgeItem[] = [

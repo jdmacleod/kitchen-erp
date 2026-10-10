@@ -17,11 +17,19 @@ from decimal import Decimal
 from typing import Literal
 from urllib.parse import urlsplit
 
-from sqlalchemy import select
+from sqlalchemy import literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.brand_names import leading_keys, name_key
-from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner, BrandFamilyCarries
+from app.models.brands import (
+    Brand,
+    BrandAlias,
+    BrandFamily,
+    BrandFamilyBanner,
+    BrandFamilyCarries,
+    Gs1Prefix,
+    Gs1PrefixFamily,
+)
 from app.models.catalog import Product
 from app.models.geo import Vendor
 from app.services.interchange import write_unless_edited
@@ -193,3 +201,22 @@ def rank_with_family(
         if (hit := flagged.get(uuid.UUID(e[id_key]))) is not None:
             e["brand_note"] = hit.note()
     return sorted(entries, key=lambda e: -effective(e))
+
+
+# --- barcode prefixes (2R-3) -------------------------------------------------------
+
+
+async def families_by_barcode(db: AsyncSession, gtin14: str | None) -> list[BrandFamily]:
+    """The families whose own-brand barcode prefix `gtin14` starts with. Evidence for a
+    family, never against: an empty list says nothing."""
+    if not gtin14 or not gtin14.isdigit() or len(gtin14) != 14:
+        return []
+    body = gtin14[1:]  # the 13-digit form the prefixes are written in
+    rows = await db.execute(
+        select(BrandFamily)
+        .join(Gs1PrefixFamily, Gs1PrefixFamily.family_id == BrandFamily.id)
+        .join(Gs1Prefix, Gs1Prefix.id == Gs1PrefixFamily.prefix_id)
+        .where(literal(body).like(Gs1Prefix.prefix + "%"))
+        .order_by(BrandFamily.name)
+    )
+    return list(rows.scalars().unique())

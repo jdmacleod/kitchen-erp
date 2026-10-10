@@ -132,6 +132,8 @@ export interface Proposal {
   lookup?: { status: "open" | "answered" | "closed"; created_at: string; answered_at: string | null } | null;
   /** The store brand the proposed brand names (2R); review starts it as a store brand. */
   house_brand?: HouseBrand | null;
+  /** With no house brand: the families whose own-brand barcode prefix the code starts with (2R-3). */
+  barcode_families?: { id: string; key: string; name: string; kind: string }[];
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;
