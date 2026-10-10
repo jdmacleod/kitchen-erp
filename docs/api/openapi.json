@@ -634,6 +634,218 @@
         "title": "BatchReceiptOut",
         "type": "object"
       },
+      "BodyCookware": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "t": {
+            "const": "cookware",
+            "title": "T",
+            "type": "string"
+          }
+        },
+        "required": [
+          "t",
+          "name"
+        ],
+        "title": "BodyCookware",
+        "type": "object"
+      },
+      "BodyIngredient": {
+        "additionalProperties": false,
+        "description": "An ingredient reference; ``seq`` is its ``recipe_ingredient`` row, from 1.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "t": {
+            "const": "ingredient",
+            "title": "T",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "t",
+          "name",
+          "seq"
+        ],
+        "title": "BodyIngredient",
+        "type": "object"
+      },
+      "BodySection": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "steps": {
+            "items": {
+              "items": {
+                "discriminator": {
+                  "mapping": {
+                    "cookware": "#/components/schemas/BodyCookware",
+                    "ingredient": "#/components/schemas/BodyIngredient",
+                    "text": "#/components/schemas/BodyText",
+                    "timer": "#/components/schemas/BodyTimer"
+                  },
+                  "propertyName": "t"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/BodyText"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BodyIngredient"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BodyCookware"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BodyTimer"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "steps"
+        ],
+        "title": "BodySection",
+        "type": "object"
+      },
+      "BodyText": {
+        "additionalProperties": false,
+        "properties": {
+          "t": {
+            "const": "text",
+            "title": "T",
+            "type": "string"
+          },
+          "v": {
+            "title": "V",
+            "type": "string"
+          }
+        },
+        "required": [
+          "t",
+          "v"
+        ],
+        "title": "BodyText",
+        "type": "object"
+      },
+      "BodyTimer": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "t": {
+            "const": "timer",
+            "title": "T",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "t"
+        ],
+        "title": "BodyTimer",
+        "type": "object"
+      },
       "Body_add_mask_api_v1_product_photos__image_id__mask_post": {
         "properties": {
           "mask": {
@@ -4472,6 +4684,80 @@
           "vendor_name"
         ],
         "title": "IngredientPricePoint",
+        "type": "object"
+      },
+      "IngredientRecipeUse": {
+        "additionalProperties": false,
+        "description": "One recipe using an ingredient, with each line's quantity as written.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "quantities": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Quantities",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "path",
+          "status",
+          "quantities"
+        ],
+        "title": "IngredientRecipeUse",
+        "type": "object"
+      },
+      "IngredientRecipesOut": {
+        "additionalProperties": false,
+        "description": "The hub's \"Used in\" card (criterion 33): ordered by title, with the count.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngredientRecipeUse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "IngredientRecipesOut",
         "type": "object"
       },
       "IngredientRef": {
@@ -12537,6 +12823,20 @@
       "RecipeOut": {
         "additionalProperties": false,
         "properties": {
+          "body": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BodySection"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body"
+          },
           "content_hash": {
             "title": "Content Hash",
             "type": "string"
@@ -13320,6 +13620,11 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "model_configured": {
+            "default": false,
+            "title": "Model Configured",
+            "type": "boolean"
           },
           "names": {
             "title": "Names",
@@ -18379,6 +18684,50 @@
         ]
       }
     },
+    "/api/v1/ingredients/{ingredient_id}/recipes": {
+      "get": {
+        "description": "Recipes whose lines resolve to the ingredient (through merges), by title (criterion 33).",
+        "operationId": "ingredient_recipes_api_v1_ingredients__ingredient_id__recipes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientRecipesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredient Recipes",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
     "/api/v1/ingredients/{ingredient_id}/rename": {
       "post": {
         "description": "Take a typed name. 409 merge_needed when another ingredient has it.",
@@ -23128,6 +23477,50 @@
           }
         },
         "summary": "Relink",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/relink/dismiss": {
+      "post": {
+        "description": "\"Not the same\": the proposal goes and that candidate is never proposed again.",
+        "operationId": "dismiss_relink_api_v1_recipes__recipe_id__relink_dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Relink",
         "tags": [
           "recipes"
         ]
