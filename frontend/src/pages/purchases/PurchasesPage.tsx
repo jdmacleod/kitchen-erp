@@ -417,6 +417,11 @@ function SortHeading({
   align?: "right";
 }) {
   const active = column === sort;
+  const arrow = (
+    <span aria-hidden="true" className="w-3 text-center">
+      {active ? (dir === "asc" ? "↑" : "↓") : ""}
+    </span>
+  );
   return (
     <th className={`py-1 pr-3 ${align === "right" ? "text-right" : ""}`} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
       <button
@@ -424,10 +429,10 @@ function SortHeading({
         onClick={() => onSort(column)}
         className={`inline-flex min-h-9 items-center gap-1 rounded font-semibold hover:text-neutral-900 dark:hover:text-neutral-100 ${active ? "text-neutral-900 dark:text-neutral-100" : ""} ${focusRing}`}
       >
+        {/* The arrow sits on the side away from the column's edge, so a right-aligned label lines up with its numbers. */}
+        {align === "right" ? arrow : null}
         {label}
-        <span aria-hidden="true" className="w-3 text-center">
-          {active ? (dir === "asc" ? "↑" : "↓") : ""}
-        </span>
+        {align === "right" ? null : arrow}
       </button>
     </th>
   );
