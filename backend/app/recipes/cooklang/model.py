@@ -58,6 +58,12 @@ class IngredientRef:
     note: str | None = None
     optional: bool = False
     line: int = field(default=0, compare=False)
+    # Where the token sits on its line, as 0-based [start, end) column offsets:
+    # `span` covers the whole `@…` token (marker, name, braces and note) and
+    # `name_span` the name within it. Excluded from equality like `line`; a host
+    # tool that rewrites a name (`kerp recipes conform`) edits exactly these bytes.
+    span: tuple[int, int] = field(default=(0, 0), compare=False)
+    name_span: tuple[int, int] = field(default=(0, 0), compare=False)
 
 
 @dataclass(frozen=True, slots=True)

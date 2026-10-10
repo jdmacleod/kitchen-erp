@@ -11,7 +11,7 @@ from pydantic import Field
 
 from app.catalog.attributes import ProductKind
 from app.schemas.base import ApiModel, DecimalStr
-from app.schemas.catalog import IngredientSummary
+from app.schemas.catalog import HouseBrandOut, IngredientSummary
 from app.schemas.product_photos import PhotoRole, PhotoSummary, ProductPhotoOut
 
 ProposalStatus = Literal["pending", "accepted", "rejected", "superseded"]
@@ -124,6 +124,8 @@ class ProposalOut(ApiModel):
     reading: ProposalReading | None = None
     # The latest "Look this up online" request, for its asked / overdue / answered state.
     lookup: LookupState | None = None
+    # The store brand the proposed brand names (16, 2R): review starts it as a store brand.
+    house_brand: HouseBrandOut | None = None
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime

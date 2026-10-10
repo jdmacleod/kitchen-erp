@@ -491,3 +491,34 @@ describe("the reading line and Capture", () => {
     expect(within(sheet).getByRole("link", { name: /Photograph a product/ })).toHaveAttribute("href", "/catalog/products/photograph");
   });
 });
+
+describe("store brands in review (2R)", () => {
+  it("starts a store's own brand as a store brand", async () => {
+    const p = proposal({
+      house_brand: {
+        key: "larkspur/select",
+        name: "Larkfield",
+        tier: "standard",
+        current: true,
+        family: { key: "larkspur", name: "Larkspur Markets", kind: "retailer" },
+      },
+    });
+    mockApi(routes(p));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await screen.findByTestId("review-summary");
+    await user.click(screen.getByRole("radio", { name: "Create new product" }));
+    const kind = screen.getByRole("group", { name: "Kind" });
+    expect(within(kind).getByRole("button", { name: "Store brand" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("starts any other branded product as branded", async () => {
+    mockApi(routes(proposal()));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await screen.findByTestId("review-summary");
+    await user.click(screen.getByRole("radio", { name: "Create new product" }));
+    const kind = screen.getByRole("group", { name: "Kind" });
+    expect(within(kind).getByRole("button", { name: "Branded" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
