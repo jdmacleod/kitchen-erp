@@ -41,3 +41,22 @@ export function formatTime(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return iso;
   return timeOnly.format(d);
 }
+
+/**
+ * A moment as a distance from now, for "indexed 3 hours ago": minutes under an
+ * hour, hours under a day, days under a month, then the date. Display only.
+ */
+export function formatRelative(iso: string | null | undefined, now: number = Date.now()): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const seconds = Math.max(0, Math.floor((now - then) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 31) return `${days} ${days === 1 ? "day" : "days"} ago`;
+  return dateOnly.format(new Date(then));
+}
