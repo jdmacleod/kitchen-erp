@@ -497,7 +497,9 @@ async def _merge_in_session(
     loser.merged_into = survivor.id
     loser.reconcile_state = "not_applicable"
     await db.flush()
-    # 6. Every price of the survivor, renormalized in this transaction.
+    # 6. Every price of the survivor, renormalized in this transaction. The price
+    #    book hands the change on to recipe costing (3D), which recomputes every
+    #    recipe with a line of the survivor: the loser's lines are its by now.
     db.expire_all()
     await pricebook.recompute_for_ingredient(
         db, survivor_id, canonical_unit_changed=True, commit=False

@@ -35,11 +35,12 @@ from app.models import (
     ProductProposal,
     PurchaseLine,
     ReceiptAlias,
+    RecipeCostLine,
     RecipePin,
     UnitRow,
     VendorListing,
 )
-from app.services import pricebook
+from app.services import pricebook, recipe_cost_triggers
 from app.services.product_photos import reselect
 
 
@@ -223,6 +224,10 @@ async def _merge_in_session(
             .execution_options(synchronize_session=False)
         )
 
+    # 0. The recipes whose rows this repoints, named before it does (3D).
+    touched = await recipe_cost_triggers.recipes_of_product(
+        db, loser.id, other_ingredient=loser.ingredient_id != survivor.ingredient_id
+    )
     # 1. Anything already merged into the loser now names the survivor (one level).
     await db.execute(
         update(Product)
@@ -239,9 +244,10 @@ async def _merge_in_session(
     # 3. Work still waiting on the loser: update proposals and open lookups.
     await db.execute(_repoint(ProductProposal, ProductProposal.status == "pending"))
     await db.execute(_repoint(LookupRequest, LookupRequest.status == "open"))
-    # 3b. Recipe lines pinned to the loser (07, 3C, "Merges repoint recipe rows");
-    #     recipe_cost_line joins this list with 3D.
+    # 3b. Recipe lines pinned to the loser and cost lines that used it (07, 3C,
+    #     "Merges repoint recipe rows").
     await db.execute(_repoint(RecipePin))
+    await db.execute(_repoint(RecipeCostLine))
     # 4. Photos.
     photos = await _move_photos(db, survivor, loser)
     # 5. The loser leaves, naming the survivor.
@@ -249,8 +255,11 @@ async def _merge_in_session(
     loser.merged_into = survivor.id
     await db.flush()
     # 6. The loser's prices, renormalized as the survivor's, in this transaction.
+    #    That recomputes the snapshots of the survivor's ingredient's recipes; the
+    #    loser's recipes are named directly, for when its ingredient differed.
     db.expire_all()
     await pricebook.recompute_for_product_core(db, survivor_id)
+    await recipe_cost_triggers.after_merge(db, touched)
     after = await _failing(db, survivor_id)
     compare_unit = await _compare_unit(db, survivor_id)
     other_prices, other_units = await _other_dimension(db, loser_id, compare_unit)

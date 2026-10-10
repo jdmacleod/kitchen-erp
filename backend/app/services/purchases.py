@@ -26,7 +26,7 @@ from app.models import (
 )
 from app.models.geo import Vendor, VendorLocation
 from app.schemas.purchases import LineIn, ManualPurchaseIn
-from app.services import best_by, pricebook
+from app.services import best_by, pricebook, recipe_cost_triggers
 from app.services.pagination import decode_keyset, encode_keyset
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
@@ -480,6 +480,7 @@ async def create_manual(db: AsyncSession, user: AppUser, payload: ManualPurchase
     for line in purchase.lines:
         await _emit(db, purchase, line, user)
     await best_by.refresh(db, purchase)
+    await recipe_cost_triggers.after_purchase_changed(db, purchase.id)
     await db.commit()
     return await get_purchase(db, purchase.id)
 
@@ -566,6 +567,7 @@ async def update_manual(
     for line in to_emit:
         await _emit(db, purchase, line, user)
     await best_by.refresh(db, purchase, repointed=repointed)
+    await recipe_cost_triggers.after_purchase_changed(db, purchase.id)
     await db.commit()
     return await get_purchase(db, purchase_id)
 

@@ -70,7 +70,7 @@ from app.schemas.recipes import (
     ResolveQueueOut,
     ResolveRecipe,
 )
-from app.services import usda
+from app.services import recipe_cost_triggers, usda
 from app.services.catalog import (
     IngredientIndex,
     ingredient_index,
@@ -655,6 +655,7 @@ async def decide(db: AsyncSession, user: AppUser, payload: ResolveDecisionIn) ->
     lines, recipes = waiting
     if not lines:
         raise ApiError(404, "not_found", "No unresolved recipe line has that name.")
+    pending = await recipe_cost_triggers.unmatched_lines(db)
     unmatched = (
         update(RecipeIngredient)
         .where(RecipeIngredient.name_norm == name_norm, RecipeIngredient.resolution == "unmatched")
@@ -695,6 +696,9 @@ async def decide(db: AsyncSession, user: AppUser, payload: ResolveDecisionIn) ->
             )
         await db.execute(unmatched.values(**values))
     await resolve_unmatched(db)
+    # Cost snapshots of the recipes whose lines this settled, the decided name's
+    # and any the re-run lookup caught (3D).
+    await recipe_cost_triggers.after_lines_settled(db, pending)
     remaining, _, _ = await queue_counts(db)
     await db.commit()
     if ingredient is not None:
@@ -809,6 +813,8 @@ async def set_pin(
         db.add(RecipePin(recipe_id=recipe.id, name_norm=name_norm, product_id=product.id))
     else:
         pin.product_id = product.id
+    await db.flush()
+    await recipe_cost_triggers.after_pin_changed(db, recipe.id)
     await db.commit()
     await db.refresh(recipe)
     return recipe
@@ -826,4 +832,6 @@ async def delete_pin(db: AsyncSession, recipe_id: uuid.UUID, name_norm: str) -> 
     if pin is None:
         raise ApiError(404, "not_found", "No pin on that line.")
     await db.delete(pin)
+    await db.flush()
+    await recipe_cost_triggers.after_pin_changed(db, recipe.id)
     await db.commit()

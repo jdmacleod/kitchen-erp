@@ -36,7 +36,7 @@ from app.models import (
     ReceiptAlias,
 )
 from app.models.geo import Vendor, VendorLocation
-from app.services import best_by, pricebook
+from app.services import best_by, pricebook, recipe_cost_triggers
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
 from app.services.purchases import ensure_not_voided, get_purchase, live_observations
@@ -719,6 +719,9 @@ async def commit_purchase(db: AsyncSession, user: AppUser, purchase_id: uuid.UUI
         .where(IngestJob.purchase_id == purchase.id, IngestJob.status == "needs_review")
         .values(status="done", stage="committed")
     )
+    await db.flush()
+    # Its prices qualify for recipe costing from here (3D, criterion 27a).
+    await recipe_cost_triggers.after_purchase_changed(db, purchase.id)
     await db.commit()
     return await get_purchase(db, purchase_id)
 
@@ -728,6 +731,8 @@ async def reopen_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
     if purchase.status != "committed":
         raise ApiError(409, "not_committed", "Only a committed purchase can be reopened.")
     purchase.status = "reviewed"
+    await db.flush()
+    await recipe_cost_triggers.after_purchase_changed(db, purchase.id)  # its prices stop qualifying
     await db.commit()
     return await get_purchase(db, purchase_id)
 
