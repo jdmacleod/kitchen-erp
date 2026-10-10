@@ -1,5 +1,13 @@
 from app.models.base import Base
-from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner, BrandFamilyCarries
+from app.models.brands import (
+    Brand,
+    BrandAlias,
+    BrandFamily,
+    BrandFamilyBanner,
+    BrandFamilyCarries,
+    Gs1Prefix,
+    Gs1PrefixFamily,
+)
 from app.models.catalog import (
     FdcBranded,
     FdcFood,
@@ -60,6 +68,8 @@ __all__ = [
     "BrandFamily",
     "BrandFamilyBanner",
     "BrandFamilyCarries",
+    "Gs1Prefix",
+    "Gs1PrefixFamily",
     "FdcBranded",
     "FdcFood",
     "FdcRelease",

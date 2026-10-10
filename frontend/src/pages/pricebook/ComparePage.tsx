@@ -45,7 +45,7 @@ export function ComparePage() {
                 ))}
               </ul>
             ) : null}
-            <PriceFilters id="compare" value={filters} onChange={setFilters} />
+            <PriceFilters id="compare" value={filters} onChange={setFilters} brands />
           </div>
         </Card>
 
@@ -127,6 +127,7 @@ function CellView({ cell }: { cell: CompareCell }) {
         {cell.product_name}
         {cell.quality_rating !== null ? ` · ${cell.quality_rating}/5` : ""}
         {cell.is_promo ? " · sale" : ""}
+        {cell.is_store_brand ? ` · store brand${cell.brand_tier ? `, ${cell.brand_tier}` : ""}` : ""}
       </span>
       <span className="text-xs">
         <PriceAge observedAt={cell.observed_at} ageDays={cell.age_days} stale={cell.stale} />

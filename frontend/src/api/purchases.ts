@@ -85,6 +85,8 @@ export interface Suggestion {
   ignore: boolean;
   label: string;
   score: string;
+  /** "X is Y's own brand" when it is another store family's brand (2R-2). */
+  brand_note?: string;
 }
 
 export const LINE_KINDS = ["item", "discount", "deposit", "tax", "fee"] as const;

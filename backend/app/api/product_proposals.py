@@ -11,6 +11,7 @@ from app.api.deps import CurrentUser, DbSession
 from app.catalog import proposals as merging
 from app.models import ProductCapture, ProductProposal
 from app.schemas.catalog import HouseBrandOut
+from app.schemas.geo import BrandFamilyRef
 from app.schemas.product_photos import ProductPhotoOut
 from app.schemas.proposals import (
     AcceptIn,
@@ -52,7 +53,8 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         jobs=[ProductJobOut.model_validate(j) for j in await proposals.jobs_of(db, proposal)],
         reading=await proposals.reading_of(db, proposal),  # type: ignore[arg-type]
         lookup=await lookups.request_for_proposal(db, proposal.id),  # type: ignore[arg-type]
-        house_brand=await _house_brand(db, proposal),
+        house_brand=(house := await _house_brand(db, proposal)),
+        barcode_families=[] if house else await _barcode_families(db, proposal),
         decided_at=proposal.decided_at,
         result=proposal.result,
         created_at=proposal.created_at,
@@ -63,6 +65,12 @@ async def _house_brand(db: AsyncSession, proposal: ProductProposal) -> HouseBran
     brand = merging.value(proposal.fields, "brand")
     found = await brands.find_brand(db, str(brand)) if brand else None
     return HouseBrandOut.model_validate(found) if found else None
+
+
+async def _barcode_families(db: AsyncSession, proposal: ProductProposal) -> list[BrandFamilyRef]:
+    gtin = merging.value(proposal.fields, "gtin")
+    found = await brands.families_by_barcode(db, str(gtin) if gtin else None)
+    return [BrandFamilyRef.model_validate(f) for f in found]
 
 
 @router.get("/product-proposals", response_model=ProposalList)

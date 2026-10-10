@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.schemas.pricebook_views import BrandScope
 from app.services import unit_display
 
 
@@ -35,6 +36,9 @@ _CELL_KEYS = (
     "product_id",
     "product_name",
     "brand",
+    "brand_tier",
+    "brand_family_name",
+    "is_store_brand",
     "quality_rating",
     "location_id",
     "location_name",
@@ -193,12 +197,17 @@ async def ingredient_offers(
     exclude_stale: bool = False,
     exclude_promo: bool = False,
     include_posted: bool = False,
+    brand_scope: BrandScope = "all",
 ) -> list[dict[str, Any]]:
+    """An ingredient's latest offers, cheapest first. `brand_scope` keeps all, only
+    store brands, or only national and unknown brands (16, 2R-3)."""
     view = _view("offer_latest_regular" if exclude_promo else "offer_latest", include_posted)
     rows = await db.execute(
         text(
             f"""
             SELECT ol.product_id, p.name AS product_name, p.brand, p.quality_rating,
+                   b.tier AS brand_tier, bf.name AS brand_family_name,
+                   (b.id IS NOT NULL) AS is_store_brand,
                    p.pack_qty, p.pack_unit,
                    ol.applies_to_location_id AS location_id, vl.name AS location_name,
                    v.id AS vendor_id, v.name AS vendor_name, v.price_scope,
@@ -213,13 +222,17 @@ async def ingredient_offers(
             JOIN ingredient i ON i.id = p.ingredient_id
             JOIN vendor_location vl ON vl.id = ol.applies_to_location_id
             JOIN vendor v ON v.id = vl.vendor_id
+            LEFT JOIN brand b ON b.id = p.brand_id
+            LEFT JOIN brand_family bf ON bf.id = b.family_id
             WHERE p.ingredient_id = CAST(:iid AS uuid)
               AND (CAST(:min_quality AS integer) IS NULL OR coalesce(p.quality_rating, 0) >=
                   CAST(:min_quality AS integer))
+              AND (CAST(:brand_scope AS text) = 'all'
+                   OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
             ORDER BY (ol.norm_unit_price IS NULL), ol.norm_unit_price, ol.observed_at DESC
             """
         ),
-        _params(iid=ingredient_id, min_quality=min_quality),
+        _params(iid=ingredient_id, min_quality=min_quality, brand_scope=brand_scope),
     )
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
     out = [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
@@ -236,6 +249,7 @@ async def compare(
     exclude_stale: bool = False,
     exclude_promo: bool = False,
     include_posted: bool = False,
+    brand_scope: BrandScope = "all",
 ) -> dict[str, Any]:
     """Vendors as columns, ingredients as rows, best qualifying normalized price per cell."""
     if not ingredient_ids:
@@ -248,6 +262,8 @@ async def compare(
                 SELECT p.ingredient_id, i.name AS ingredient_name, i.canonical_unit,
                        v.id AS vendor_id, v.name AS vendor_name,
                        ol.product_id, p.name AS product_name, p.brand, p.quality_rating,
+                       b.tier AS brand_tier, bf.name AS brand_family_name,
+                   (b.id IS NOT NULL) AS is_store_brand,
                        ol.applies_to_location_id AS location_id, vl.name AS location_name,
                        ol.observation_id, ol.observed_at, ol.is_promo,
                        ol.norm_unit_price, ol.norm_unit,
@@ -258,7 +274,11 @@ async def compare(
                 JOIN ingredient i ON i.id = p.ingredient_id
                 JOIN vendor_location vl ON vl.id = ol.applies_to_location_id
                 JOIN vendor v ON v.id = vl.vendor_id
+                LEFT JOIN brand b ON b.id = p.brand_id
+                LEFT JOIN brand_family bf ON bf.id = b.family_id
                 WHERE p.ingredient_id = ANY(CAST(:ids AS uuid[])) AND ol.norm_unit_price IS NOT NULL
+                  AND (CAST(:brand_scope AS text) = 'all'
+                       OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
                   AND (CAST(:min_quality AS integer) IS NULL OR coalesce(p.quality_rating, 0) >=
                       CAST(:min_quality AS integer))
                   AND (NOT CAST(:exclude_stale AS boolean) OR NOT (
@@ -270,7 +290,12 @@ async def compare(
             ORDER BY ingredient_id, vendor_id, norm_unit_price, observed_at DESC
             """
         ),
-        _params(ids=list(ingredient_ids), min_quality=min_quality, exclude_stale=exclude_stale),
+        _params(
+            ids=list(ingredient_ids),
+            min_quality=min_quality,
+            exclude_stale=exclude_stale,
+            brand_scope=brand_scope,
+        ),
     )
     masses = await unit_display.mass_units(db, ingredient_ids)
     cells = [

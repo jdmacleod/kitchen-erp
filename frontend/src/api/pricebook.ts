@@ -66,6 +66,10 @@ export interface Offer {
   product_id: string;
   product_name: string;
   brand: string | null;
+  /** A store's own brand (2R-3): its tier and family; false for national or unknown. */
+  is_store_brand?: boolean;
+  brand_tier?: string | null;
+  brand_family_name?: string | null;
   quality_rating: number | null;
   pack_qty: string | null;
   pack_unit: string | null;
@@ -100,6 +104,10 @@ export interface CompareCell {
   product_id: string;
   product_name: string;
   brand: string | null;
+  /** A store's own brand (2R-3): its tier and family; false for national or unknown. */
+  is_store_brand?: boolean;
+  brand_tier?: string | null;
+  brand_family_name?: string | null;
   quality_rating: number | null;
   location_id: string;
   location_name: string;
@@ -190,10 +198,15 @@ export interface NeedsBridgeItem {
   latest_observed_at: string;
 }
 
+/** Which brands an offer list keeps (2R-3). */
+export type BrandScope = "all" | "store" | "national";
+
 export interface PriceFilters {
   min_quality?: number | "";
   exclude_stale?: boolean;
   exclude_promo?: boolean;
+  /** Offers and compare only; the cheapest-price read ignores it. */
+  brand_scope?: BrandScope;
 }
 
 export interface CompareInput extends PriceFilters {
@@ -230,6 +243,7 @@ export function useIngredientOffers(ingredientId: string | undefined, filters: P
           min_quality: filters.min_quality,
           exclude_stale: filters.exclude_stale,
           exclude_promo: filters.exclude_promo,
+          brand_scope: filters.brand_scope && filters.brand_scope !== "all" ? filters.brand_scope : undefined,
         })}`,
       ),
     enabled: Boolean(ingredientId),
@@ -284,6 +298,7 @@ export function useCompare(input: CompareInput) {
       if (input.min_quality) body.min_quality = input.min_quality;
       if (input.exclude_stale) body.exclude_stale = true;
       if (input.exclude_promo) body.exclude_promo = true;
+      if (input.brand_scope && input.brand_scope !== "all") body.brand_scope = input.brand_scope;
       return api<CompareResult>("/price-book/compare", { method: "POST", body });
     },
     enabled: input.ingredient_ids.length > 0,

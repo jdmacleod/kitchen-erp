@@ -159,8 +159,8 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
   - **Keyboard:** every picker is a combobox; Enter chooses; after a choice focus moves to the next line that needs one, so a recipe can be resolved and pinned top to bottom. The shortcuts are listed under the table, as on receipt review.
 - **Cost history:** under the table, the committed snapshots for the current basis as a line chart by date, series from the chart palette, with provisional points drawn hollow and labelled "provisional". It hides with fewer than two points (D22).
 - **States:**
-  - Parse error: a squash alert under the header, "This file can't be read: {message} (line {n})." The last good cost table stays beneath it, headed "Showing the last version that could be read."
-  - Missing: a neutral alert, "This file is no longer in the repository. Its costs and pins are kept until you remove it." A relink proposal sits inside it: "Is it now '{title}' ({path})? · Relink · Not the same". "Remove recipe" confirms in an inline tomato panel, like Remove purchase, with focus on Cancel; afterwards the list opens with the Notice "Removed {title}."
+  - Parse error: a squash alert under the header, "This file can't be read: {message}." (the message carries the line and column; package 8, 2026-10-10). The last good cost table stays beneath it, headed "Showing the last version that could be read."
+  - Missing: a neutral alert, "This file is no longer in the repository. Its costs and pins are kept until you remove it." A relink proposal sits inside it: "Is it now '{title}' ({path})? · Relink · Not the same". "Not the same" posts to `POST /api/v1/recipes/{id}/relink/dismiss`, which clears the proposal and remembers the file's path, so no later scan proposes it for this recipe again (package 8, 2026-10-10). "Remove recipe" confirms in an inline tomato panel, like Remove purchase, with focus on Cancel; afterwards the list opens with the Notice "Removed {title}."
   - Uncommitted: the "Uncommitted" badge in the header and "Provisional" on the totals.
   - Not costed yet: "Costing…" on the totals strip; a recipe with no priced line shows "—" totals and the row words say why.
   - Error: a tomato alert; never an empty page.
@@ -176,7 +176,7 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
 - **Finish:** an olive Notice, "14 resolved: 11 matched, 2 created, 1 ignored.", then "Every recipe name is resolved" with Back to Recipes.
 - **States:** "Loading…"; an error alert with Try again.
 
-**"Used in" card on the ingredient hub** (built with 3E; `07` criterion 33). In the right column under Products: the recipes whose lines resolve to this ingredient, each a link with the line's quantity as written, up to ten, then "All {n} recipes", which opens the list filtered to the ingredient. An ingredient used in no recipe has no card.
+**"Used in" card on the ingredient hub** (built with 3E; `07` criterion 33). In the right column under Products: the recipes whose lines resolve to this ingredient (`GET /api/v1/ingredients/{id}/recipes`), each a link with the line's quantity as written, up to ten, then "All {n} recipes", which shows the rest in the card (the recipes list has no ingredient filter; package 8, 2026-10-10). An ingredient used in no recipe has no card.
 
 **Inbox row.** Badge "Recipe", title "14 recipe names to resolve", detail "In 9 recipes", action Resolve. One row however many names wait (G6).
 

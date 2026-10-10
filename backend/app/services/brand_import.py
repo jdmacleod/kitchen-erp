@@ -18,7 +18,15 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.brand_names import name_key
-from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner, BrandFamilyCarries
+from app.models.brands import (
+    Brand,
+    BrandAlias,
+    BrandFamily,
+    BrandFamilyBanner,
+    BrandFamilyCarries,
+    Gs1Prefix,
+    Gs1PrefixFamily,
+)
 from app.models.catalog import Product
 from app.models.geo import Vendor
 from app.schemas.brand_interchange import (
@@ -176,6 +184,7 @@ async def run(
                     continue
                 db.add(BrandFamilyCarries(family_id=family.id, brand_id=target.id))
         await db.flush()
+        await _prefixes(db, file, refused)
 
         listed = {e.key for e in file.families} | set(by_key)
         here = [f.key for f in (await db.execute(select(BrandFamily))).scalars()]
@@ -201,6 +210,30 @@ async def run(
     except Exception:
         await db.rollback()
         raise
+
+
+async def _prefixes(db: AsyncSession, file: BrandFile, refused: list[Refusal]) -> None:
+    """Barcode prefixes are the dataset's own: each import replaces them all (2R-3)."""
+    await db.execute(delete(Gs1Prefix))
+    families = {f.key: f.id for f in (await db.execute(select(BrandFamily))).scalars()}
+    seen: set[str] = set()
+    for entry in file.families:
+        for p in entry.gs1_prefixes:
+            if p.prefix in seen:
+                refused.append(Refusal(key=entry.key, reason=f"prefix {p.prefix} is listed twice"))
+                continue
+            seen.add(p.prefix)
+            row = Gs1Prefix(id=uuid.uuid4(), prefix=p.prefix)
+            db.add(row)
+            await db.flush()
+            for key in dict.fromkeys([entry.key, *p.also]):
+                if key not in families:
+                    refused.append(
+                        Refusal(key=entry.key, reason=f"prefix {p.prefix}: no family {key!r}")
+                    )
+                    continue
+                db.add(Gs1PrefixFamily(prefix_id=row.id, family_id=families[key]))
+    await db.flush()
 
 
 async def _link_vendors(

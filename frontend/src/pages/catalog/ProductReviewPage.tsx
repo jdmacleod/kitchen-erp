@@ -37,6 +37,7 @@ import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
+import { whose } from "../../components/catalog/StoreBrandBadge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const sectionHeading = "font-display mb-2 text-lg";
@@ -181,7 +182,10 @@ function Review({ proposal }: { proposal: Proposal }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const brandOrCode = Boolean(fields.brand?.value || fields.gtin?.value);
   // A store's own brand starts as a store brand (2R); the person can still change it.
-  const [kind, setKind] = useState<ProductKind>(proposal.house_brand ? "private_label" : brandOrCode ? "branded" : "loose");
+  // A barcode under a store family's own prefix suggests a store brand too (2R-3); the
+  // hint below the kind says so, and the person confirms or changes it.
+  const byBarcode = !proposal.house_brand && (proposal.barcode_families?.length ?? 0) > 0;
+  const [kind, setKind] = useState<ProductKind>(proposal.house_brand || byBarcode ? "private_label" : brandOrCode ? "branded" : "loose");
   const vendor = proposal.vendor;
   const [recordPrice, setRecordPrice] = useState(Boolean(proposal.price && vendor?.suggested_location_id));
   const [location, setLocation] = useState<string | null>(vendor?.suggested_location_id ?? null);
@@ -536,6 +540,11 @@ function Review({ proposal }: { proposal: Proposal }) {
                 Kind
               </h2>
               <SegmentedControl label="Kind" options={KIND_OPTIONS} value={kind} onChange={setKind} />
+              {byBarcode ? (
+                <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400" data-testid="barcode-family-hint">
+                  The barcode starts with {proposal.barcode_families!.map((f) => whose(f.name)).join(" or ")} own-brand prefix. Check the package.
+                </p>
+              ) : null}
             </section>
           ) : null}
 
@@ -708,7 +717,7 @@ function matchOptions(proposal: Proposal, strongName: string | undefined): Match
     for (const c of proposal.candidates) {
       if (c.product_id === strong?.product_id) continue;
       const pack = formatPack(c.pack_qty, c.pack_unit, c.pack_count, c.piece_name);
-      out.push({ value: `update:${c.product_id}`, label: label(c), note: verdictNote(c), pack: pack || undefined, candidate: c });
+      out.push({ value: `update:${c.product_id}`, label: label(c), note: [verdictNote(c), c.brand_note].filter(Boolean).join(" · "), pack: pack || undefined, candidate: c });
     }
   } else {
     for (const c of proposal.match.candidates ?? []) {

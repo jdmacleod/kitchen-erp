@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
@@ -71,6 +71,49 @@ class RecipePinOut(ApiModel):
     brand: str | None
 
 
+# --- the rendered body (package 8) -------------------------------------------------------
+#
+# The parsed file as the recipe page renders it: sections of steps of items, in
+# the order written. Quantities are text ("2", "1–2", "a handful"), never floats.
+
+
+class BodyText(ApiModel):
+    t: Literal["text"]
+    v: str
+
+
+class BodyIngredient(ApiModel):
+    """An ingredient reference; ``seq`` is its ``recipe_ingredient`` row, from 1."""
+
+    t: Literal["ingredient"]
+    name: str
+    qty: str | None = None
+    unit: str | None = None
+    note: str | None = None
+    seq: int
+
+
+class BodyCookware(ApiModel):
+    t: Literal["cookware"]
+    name: str
+    qty: str | None = None
+
+
+class BodyTimer(ApiModel):
+    t: Literal["timer"]
+    name: str | None = None
+    qty: str | None = None
+    unit: str | None = None
+
+
+BodyItem = Annotated[BodyText | BodyIngredient | BodyCookware | BodyTimer, Field(discriminator="t")]
+
+
+class BodySection(ApiModel):
+    name: str | None
+    steps: list[list[BodyItem]]
+
+
 class RecipeOut(RecipeSummary):
     head_commit: str | None
     parse_error_message: str | None
@@ -81,6 +124,25 @@ class RecipeOut(RecipeSummary):
     # The rows of the last good parse; still there when the file stopped parsing.
     ingredients: list[RecipeIngredientOut] = []
     pins: list[RecipePinOut] = []
+    # The last good parse's steps (0047); null for a recipe indexed before it.
+    body: list[BodySection] | None = None
+
+
+class IngredientRecipeUse(ApiModel):
+    """One recipe using an ingredient, with each line's quantity as written."""
+
+    id: uuid.UUID
+    title: str
+    path: str
+    status: RecipeStatus
+    quantities: list[str | None]
+
+
+class IngredientRecipesOut(ApiModel):
+    """The hub's "Used in" card (criterion 33): ordered by title, with the count."""
+
+    items: list[IngredientRecipeUse]
+    total: int
 
 
 class StatusCounts(ApiModel):
@@ -175,6 +237,8 @@ class ResolveQueueOut(ApiModel):
     items: list[ResolveName]
     names: int
     recipes: int
+    # Whether "Ask the model" can do anything: a local model is configured (UI-7.16).
+    model_configured: bool = False
 
 
 class ResolveDecisionIn(ApiModel):

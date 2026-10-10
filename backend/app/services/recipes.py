@@ -56,7 +56,7 @@ from app.schemas.recipes import (
     ScanOut,
     StatusCounts,
 )
-from app.services import recipe_cost_triggers, recipe_cost_views, recipe_resolution
+from app.services import recipe_cost_triggers, recipe_cost_views, recipe_pages, recipe_resolution
 
 Parsed = ParsedRecipe | ParseError
 
@@ -284,6 +284,7 @@ def _apply_good_parse(row: Recipe, parsed: ParsedRecipe) -> None:
     row.servings = parsed.servings
     row.servings_text = parsed.servings_text
     row.front_matter = dict(parsed.front_matter)
+    row.body = recipe_pages.serialize_body(parsed)  # the steps, for the rendered recipe (0047)
     row.status = "ok"
     row.parse_error_message = None
 
@@ -435,6 +436,8 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
         await db.flush()
         changed.update(row.id for row in created.values())
         for origin, path, why in relinks:
+            if recipe_pages.is_dismissed(by_id[origin], path):
+                continue  # "Not the same" was said about this file (package 8)
             by_id[origin].relink_candidate_id = created[path].id
             by_id[origin].relink_reason = why
     # Rows just rebuilt and rows that waited, in one pass (3C, criterion 14).
@@ -611,6 +614,7 @@ async def relink(db: AsyncSession, recipe_id: uuid.UUID, target_id: uuid.UUID) -
             "dirty",
             "parse_error_message",
             "front_matter",
+            "body",
             "last_indexed_at",
             "last_seen_at",
         )

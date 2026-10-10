@@ -522,3 +522,47 @@ describe("store brands in review (2R)", () => {
     expect(within(kind).getByRole("button", { name: "Branded" })).toHaveAttribute("aria-pressed", "true");
   });
 });
+
+describe("store-brand notes in review (2R-2)", () => {
+  it("adds another store family's own brand to the candidate's note", async () => {
+    const ingredient = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b40", name: "Flour", category_key: null };
+    const candidates = [
+      {
+        product_id: otherProductId,
+        name: "Strong white flour",
+        brand: "Brightwater Basics",
+        pack_qty: "1.5",
+        pack_unit: "kg",
+        pack_count: null,
+        piece_name: null,
+        photo: null,
+        ingredient,
+        score: "0.9",
+        verdict: "similar" as const,
+        reasons: ["brand"],
+        only_here: [],
+        only_there: [],
+        brand_note: "Brightwater Basics is Brightwater Grocers' own brand",
+      },
+    ];
+    const stored = candidates.map(({ product_id, name, brand, score }) => ({ product_id, name, brand, score }));
+    mockApi(routes(proposal({ match: { strong: null, candidates: stored, preselect: null }, candidates })));
+    renderApp(`/catalog/products/review/${proposalId}`);
+    const match = await screen.findByRole("group", { name: "Match" });
+    expect(within(match).getAllByRole("radio")[0]).toHaveAccessibleName(/Same name, another brand · Brightwater Basics is Brightwater Grocers' own brand/);
+  });
+});
+
+describe("a store-brand barcode in review (2R-3)", () => {
+  it("starts a store brand and says whose prefix the barcode has", async () => {
+    const p = proposal({ barcode_families: [{ id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01", key: "larkspur", name: "Larkspur Markets", kind: "retailer" }] });
+    mockApi(routes(p));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await screen.findByTestId("review-summary");
+    await user.click(screen.getByRole("radio", { name: "Create new product" }));
+    const kind = screen.getByRole("group", { name: "Kind" });
+    expect(within(kind).getByRole("button", { name: "Store brand" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("barcode-family-hint")).toHaveTextContent("Larkspur Markets' own-brand prefix");
+  });
+});

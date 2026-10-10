@@ -329,7 +329,13 @@ async def match_catalog(
             seen = best.get(entry["product_id"])
             if seen is None or Decimal(seen["score"]) < Decimal(entry["score"]):
                 best[entry["product_id"]] = entry
-    candidates = sorted(best.values(), key=lambda c: -Decimal(c["score"]))[:SHORTLIST]
+    vendor_id = (listing or {}).get("vendor_id")
+    flagged = await brands.out_of_family(
+        db, [uuid.UUID(k) for k in best], uuid.UUID(str(vendor_id)) if vendor_id else None
+    )
+    # Another family's store brand ranks lower and says why; it is never removed (2R-2).
+    candidates = brands.rank_with_family(list(best.values()), flagged, id_key="product_id")
+    candidates = candidates[:SHORTLIST]
     return {
         "strong": strong,
         "candidates": candidates,
@@ -342,14 +348,21 @@ async def match_catalog(
 _VERDICT_ORDER = {"same": 0, "similar": 1, "other_size": 2, "variant": 3}
 
 
-def _proposal_facts(fields: dict[str, Any]) -> sameness.Facts:
+def _proposal_facts(fields: dict[str, Any], brand_id: uuid.UUID | None = None) -> sameness.Facts:
     brand = merging.value(fields, "brand")
     return sameness.Facts(
         name=str(merging.value(fields, "title") or ""),
         brand=str(brand) if brand else None,
         pack=merging.value(fields, "pack"),
         gtin=merging.value(fields, "gtin"),
+        brand_id=brand_id,
     )
+
+
+async def _proposal_brand_id(db: AsyncSession, fields: dict[str, Any]) -> uuid.UUID | None:
+    brand = merging.value(fields, "brand")
+    found = await brands.find_brand(db, str(brand)) if brand else None
+    return found.id if found else None
 
 
 def product_facts(product: Product) -> sameness.Facts:
@@ -367,6 +380,7 @@ def product_facts(product: Product) -> sameness.Facts:
         pack=pack,
         gtin=gtin,
         ingredient_id=product.ingredient_id,
+        brand_id=product.brand_id,
     )
 
 
@@ -386,7 +400,9 @@ async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dic
             .where(Product.id.in_([uuid.UUID(i) for i in scores]), Product.active)
         )
     ).scalars()
-    mine = _proposal_facts(proposal.fields or {})
+    mine = _proposal_facts(
+        proposal.fields or {}, await _proposal_brand_id(db, proposal.fields or {})
+    )
     out = []
     for product in rows:
         verdict = sameness.compare(mine, product_facts(product))
@@ -408,7 +424,20 @@ async def candidates_of(db: AsyncSession, proposal: ProductProposal) -> list[dic
                 "only_there": list(verdict.only_b),
             }
         )
-    out.sort(key=lambda c: (_VERDICT_ORDER[c["verdict"]], -c["score"], c["name"]))
+    # Another family's store brand ranks lower within its verdict and says why (2R-2).
+    vendor_id = (proposal.listing or {}).get("vendor_id")
+    flagged = await brands.out_of_family(
+        db, [c["product_id"] for c in out], uuid.UUID(str(vendor_id)) if vendor_id else None
+    )
+    for c in out:
+        if (hit := flagged.get(c["product_id"])) is not None:
+            c["brand_note"] = hit.note()
+            c["score_rank"] = c["score"] - brands.OUT_OF_FAMILY_PENALTY
+        else:
+            c["score_rank"] = c["score"]
+    out.sort(key=lambda c: (_VERDICT_ORDER[c["verdict"]], -c["score_rank"], c["name"]))
+    for c in out:
+        del c["score_rank"]
     return out
 
 

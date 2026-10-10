@@ -12,6 +12,7 @@ from pydantic import Field
 from app.catalog.attributes import ProductKind
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import HouseBrandOut, IngredientSummary
+from app.schemas.geo import BrandFamilyRef
 from app.schemas.product_photos import PhotoRole, PhotoSummary, ProductPhotoOut
 
 ProposalStatus = Literal["pending", "accepted", "rejected", "superseded"]
@@ -91,6 +92,8 @@ class MatchCandidateOut(ApiModel):
     ingredient: IngredientSummary
     score: DecimalStr
     verdict: Literal["same", "other_size", "variant", "similar"]
+    # "X is Y's own brand" when it is another store family's brand (16, 2R-2).
+    brand_note: str | None = None
     reasons: list[str]
     # The identifying words only this proposal has, and only the product has.
     only_here: list[str]
@@ -126,6 +129,9 @@ class ProposalOut(ApiModel):
     lookup: LookupState | None = None
     # The store brand the proposed brand names (16, 2R): review starts it as a store brand.
     house_brand: HouseBrandOut | None = None
+    # With no house brand, the families whose own-brand barcode prefix the proposed GTIN
+    # starts with (2R-3): review offers a store brand for a person to confirm.
+    barcode_families: list[BrandFamilyRef] = []
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime
