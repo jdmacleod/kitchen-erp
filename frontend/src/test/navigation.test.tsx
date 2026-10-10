@@ -64,12 +64,14 @@ describe("navigation sections (UI-2.1, UI-2.2)", () => {
     await waitFor(() => expect(screen.getAllByTestId("health-status")[0]).toHaveTextContent("failed"));
   });
 
-  it("lets features add sections in their fixed place, never remove them", () => {
-    const later: NavSection = { key: "cook", label: "Cook", to: "/cook/recipes", prefix: "/cook", feature: "cook", items: [] };
-    const sections = [MAIN_SECTIONS[0], later, MAIN_SECTIONS[1]];
-    expect(visibleSections(sections, undefined).map((s) => s.key)).toEqual(["home", "shop"]);
-    expect(visibleSections(sections, []).map((s) => s.key)).toEqual(["home", "shop"]);
-    expect(visibleSections(sections, ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+  it("lets features add sections in their fixed place, never remove them (UI-7.1)", () => {
+    // Cook sits between Home and Shop and appears only with the `cook` feature.
+    expect(MAIN_SECTIONS.map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+    expect(visibleSections(MAIN_SECTIONS, undefined).map((s) => s.key)).toEqual(["home", "shop"]);
+    expect(visibleSections(MAIN_SECTIONS, []).map((s) => s.key)).toEqual(["home", "shop"]);
+    expect(visibleSections(MAIN_SECTIONS, ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+    const later: NavSection = { key: "stock", label: "Stock", to: "/stock", prefix: "/stock", feature: "stock", items: [] };
+    expect(visibleSections([...MAIN_SECTIONS, later], ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
     expect(visibleSections(FOOTER_SECTIONS, []).map((s) => s.key)).toEqual(["catalog", "settings"]);
     expect([...DEFAULT_FEATURES]).toEqual(["catalog", "shop"]);
   });
@@ -127,6 +129,7 @@ describe("redirects from the retired paths (UI-2.3)", () => {
 
   it("opens a section's first page from the section's own path", () => {
     expect(SECTION_ROOTS).toEqual([
+      { from: "/cook", to: "/cook/recipes" },
       { from: "/shop", to: "/shop/purchases" },
       { from: "/catalog", to: "/catalog/ingredients" },
       { from: "/settings", to: "/settings/kitchens" },

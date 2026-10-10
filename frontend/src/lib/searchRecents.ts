@@ -2,7 +2,7 @@ import type { SearchResult } from "../api/search";
 
 const KEY = "kerp.searchRecents";
 export const RECENT_LIMIT = 5;
-const KINDS = new Set(["ingredient", "product", "vendor"]);
+const KINDS = new Set(["ingredient", "product", "vendor", "recipe"]);
 
 /**
  * One remembered result, checked field by field. Local storage is this device's,
