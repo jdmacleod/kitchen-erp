@@ -165,7 +165,8 @@ async def test_a_scan_never_proposes_a_dismissed_path_again(
     # planner would propose it again, and the scan drops that proposal.
     recipes_repo.remove("index_pea_soup_two.cook")
     assert (await rescan(admin_client))["missing"] == 1
-    assert (await admin_client.delete(f"/api/v1/recipes/{new_id}")).status_code == 204
+    removed = await admin_client.delete(f"/api/v1/recipes/{new_id}")
+    assert removed.status_code == 204
     recipes_repo.write("index_pea_soup_two.cook", "Simmer @peas{300%g}.\nAdd @mint{some}.\n")
     result = await rescan(admin_client)
     assert result["created"] == 1 and result["proposals"] == 1
@@ -173,7 +174,7 @@ async def test_a_scan_never_proposes_a_dismissed_path_again(
 
     # A new file at another path is still proposed.
     recipes_repo.write("index_pea_soup_three.cook", "Simmer @peas{300%g}.\nAdd @dill{some}.\n")
-    result = await rescan(admin_client)
+    await rescan(admin_client)
     fresh = (await detail(admin_client, old_id))["relink"]
     assert fresh is not None and fresh["path"] == "index_pea_soup_three.cook"
 
