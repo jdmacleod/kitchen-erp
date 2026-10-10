@@ -68,6 +68,8 @@ services:
     environment: *e2e-env
     volumes: !override
       - e2e-data:/data
+      # The example recipes (MIT): what recipes.spec.ts indexes and costs.
+      - ./examples/recipes:/data/recipes:ro
       - ./docs:/srv/docs:ro
     ports: !override
       - "127.0.0.1:${E2E_API_PORT:-8002}:8000"
@@ -76,6 +78,7 @@ services:
     environment: *e2e-env
     volumes: !override
       - e2e-data:/data
+      - ./examples/recipes:/data/recipes:ro
 
   web:
     volumes: !override
