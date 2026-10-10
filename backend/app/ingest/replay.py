@@ -1,8 +1,9 @@
 """Recorded model responses for deterministic, offline tests.
 
 :class:`RecordedTransport` stands in for the Ollama server. It reads the JSON
-schema title of each request (``ReceiptHeader``, ``ReceiptLines``, ``ProductRank``
-or ``LineNaming``) to pick the stage (``header``, ``lines``, ``rank``, ``naming``)
+schema title of each request (``ReceiptHeader``, ``ReceiptLines``, ``ProductRank``,
+``LineNaming`` or ``RecipeNameSuggestions``) to pick the stage (``header``, ``lines``,
+``rank``, ``naming``, ``recipe_names``)
 and answers from a fixture's ``llm_responses`` map. A value may be a single object or a list
 of objects consumed in order (the last one repeats), so a test can script
 "invalid, then valid". Strings are sent verbatim, which lets a fixture record
@@ -33,6 +34,7 @@ STAGE_BY_SCHEMA_TITLE = {
     "ReceiptLines": "lines",
     "ProductRank": "rank",
     "LineNaming": "naming",
+    "RecipeNameSuggestions": "recipe_names",
 }
 
 
