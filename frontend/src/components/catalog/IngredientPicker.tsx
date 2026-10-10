@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 import { errorMessage } from "../../api/client";
 import {
   useIngredientSearch,
@@ -93,6 +93,11 @@ interface IngredientPickerProps {
   onTextChange?: (text: string) => void;
   /** A receipt line: ingredients it names outright are offered in one click (#88). */
   suggestFrom?: string;
+  /** Visually hide the label (it still names the combobox for assistive tech). */
+  hideLabel?: boolean;
+  /** The combobox's input, so a page can move focus to the next line that needs one (UI-7.12). */
+  inputRef?: RefObject<HTMLInputElement | null>;
+  autoFocus?: boolean;
 }
 
 /**
@@ -115,6 +120,9 @@ export function IngredientPicker({
   hint,
   onTextChange,
   suggestFrom = "",
+  hideLabel = false,
+  inputRef,
+  autoFocus,
 }: IngredientPickerProps) {
   const [text, setTextState] = useState("");
   const setText = (next: string) => {
@@ -155,7 +163,7 @@ export function IngredientPicker({
           : null;
     return (
       <div className="flex flex-col gap-1">
-        <span className={labelClass} id={`${id}-label`}>
+        <span className={hideLabel ? "sr-only" : labelClass} id={`${id}-label`}>
           {label}
         </span>
         <div
@@ -226,6 +234,9 @@ export function IngredientPicker({
     <Combobox<Option>
       id={id}
       label={label}
+      hideLabel={hideLabel}
+      inputRef={inputRef}
+      autoFocus={autoFocus}
       placeholder="Type to search ingredients"
       hint={hint}
       listLabel="Ingredients"

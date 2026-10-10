@@ -213,15 +213,21 @@ const emptyForm = {
   notes: "",
 };
 
-function AddIngredientDrawer({
+/**
+ * The create drawer (10, Ingredients). Also opened from the Cook pickers when a
+ * typed name matches nothing (UI-7.16), with that name filled in.
+ */
+export function AddIngredientDrawer({
   onClose,
   onCreated,
+  initialName = "",
 }: {
   onClose: () => void;
   onCreated: (ingredient: Ingredient, notice: NoticeData) => void;
+  initialName?: string;
 }) {
   const create = useCreateIngredient();
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState({ ...emptyForm, name: initialName });
   const [queued, setQueued] = useState<QueuedMeasure[]>([]);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [addingMeasures, setAddingMeasures] = useState(false);
@@ -291,7 +297,7 @@ function AddIngredientDrawer({
 
   const busy = create.isPending || addingMeasures;
 
-  const dirty = JSON.stringify(form) !== JSON.stringify(emptyForm) || queued.length > 0;
+  const dirty = JSON.stringify(form) !== JSON.stringify({ ...emptyForm, name: initialName }) || queued.length > 0;
 
   return (
     <Drawer
