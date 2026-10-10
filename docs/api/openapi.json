@@ -1550,6 +1550,640 @@
         "title": "ConvertToManualOut",
         "type": "object"
       },
+      "CostCompleteness": {
+        "additionalProperties": false,
+        "properties": {
+          "lines_negligible": {
+            "title": "Lines Negligible",
+            "type": "integer"
+          },
+          "lines_priced": {
+            "title": "Lines Priced",
+            "type": "integer"
+          },
+          "lines_total": {
+            "title": "Lines Total",
+            "type": "integer"
+          },
+          "lines_unconvertible": {
+            "title": "Lines Unconvertible",
+            "type": "integer"
+          },
+          "lines_unmapped": {
+            "title": "Lines Unmapped",
+            "type": "integer"
+          },
+          "lines_unpriced": {
+            "title": "Lines Unpriced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines_total",
+          "lines_priced",
+          "lines_unpriced",
+          "lines_unconvertible",
+          "lines_unmapped",
+          "lines_negligible"
+        ],
+        "title": "CostCompleteness",
+        "type": "object"
+      },
+      "CostHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "head_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Commit"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lines_priced": {
+            "title": "Lines Priced",
+            "type": "integer"
+          },
+          "lines_total": {
+            "title": "Lines Total",
+            "type": "integer"
+          },
+          "min_quality": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quality"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Days"
+          }
+        },
+        "required": [
+          "id",
+          "content_hash",
+          "head_commit",
+          "computed_at",
+          "window_days",
+          "min_quality",
+          "totals",
+          "lines_priced",
+          "lines_total"
+        ],
+        "title": "CostHistoryItem",
+        "type": "object"
+      },
+      "CostHistoryOut": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "enum": [
+              "latest",
+              "average",
+              "cheapest"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CostHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "basis",
+          "items"
+        ],
+        "title": "CostHistoryOut",
+        "type": "object"
+      },
+      "CostLineOut": {
+        "additionalProperties": false,
+        "properties": {
+          "basket_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost"
+          },
+          "basket_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost High"
+          },
+          "bridge_confirmed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridge Confirmed"
+          },
+          "bridge_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bridge Kind"
+          },
+          "consumed_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost"
+          },
+          "consumed_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost High"
+          },
+          "failure_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line": {
+            "$ref": "#/components/schemas/RecipeIngredientOut"
+          },
+          "packs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packs"
+          },
+          "packs_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packs High"
+          },
+          "pinned": {
+            "title": "Pinned",
+            "type": "boolean"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostPriceUsed"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CostQuantity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "priced",
+              "unpriced",
+              "unconvertible",
+              "unmapped",
+              "negligible"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "yield_applied": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yield Applied"
+          },
+          "yield_assumed": {
+            "title": "Yield Assumed",
+            "type": "boolean"
+          },
+          "yield_mode": {
+            "enum": [
+              "auto",
+              "as_purchased",
+              "edible"
+            ],
+            "title": "Yield Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "line",
+          "yield_mode",
+          "pinned",
+          "status",
+          "failure_code",
+          "quantity",
+          "yield_applied",
+          "yield_assumed",
+          "bridge_kind",
+          "bridge_confirmed",
+          "price",
+          "consumed_cost",
+          "consumed_cost_high",
+          "basket_cost",
+          "basket_cost_high",
+          "packs",
+          "packs_high"
+        ],
+        "title": "CostLineOut",
+        "type": "object"
+      },
+      "CostPriceUsed": {
+        "additionalProperties": false,
+        "description": "The unit price a line was costed at, shown per lb, oz, fl oz or each (UI-3.10a).\n\nFor the ``average`` basis the price is the window's mean and the product,\nlocation and date are those of the latest price in the window.",
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          },
+          "display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit Price"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "location_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Name"
+          },
+          "norm_unit": {
+            "title": "Norm Unit",
+            "type": "string"
+          },
+          "norm_unit_price": {
+            "title": "Norm Unit Price",
+            "type": "string"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "observed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed At"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "product_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Name"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "norm_unit_price",
+          "norm_unit",
+          "display_unit_price",
+          "display_unit",
+          "product_id",
+          "product_name",
+          "brand",
+          "vendor_id",
+          "vendor_name",
+          "location_id",
+          "location_name",
+          "observation_id",
+          "observed_at",
+          "stale"
+        ],
+        "title": "CostPriceUsed",
+        "type": "object"
+      },
+      "CostQuantity": {
+        "additionalProperties": false,
+        "description": "The line's as-purchased quantity in the canonical unit and as displayed.",
+        "properties": {
+          "canonical_qty": {
+            "title": "Canonical Qty",
+            "type": "string"
+          },
+          "canonical_qty_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Qty High"
+          },
+          "canonical_unit": {
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "display_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Qty"
+          },
+          "display_qty_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Qty High"
+          },
+          "display_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Unit"
+          }
+        },
+        "required": [
+          "canonical_qty",
+          "canonical_qty_high",
+          "canonical_unit",
+          "display_qty",
+          "display_qty_high",
+          "display_unit"
+        ],
+        "title": "CostQuantity",
+        "type": "object"
+      },
+      "CostTotals": {
+        "additionalProperties": false,
+        "properties": {
+          "basket_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost"
+          },
+          "basket_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost High"
+          },
+          "consumed_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost"
+          },
+          "consumed_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost High"
+          },
+          "per_serving": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Serving"
+          }
+        },
+        "required": [
+          "consumed_cost",
+          "consumed_cost_high",
+          "basket_cost",
+          "basket_cost_high",
+          "per_serving"
+        ],
+        "title": "CostTotals",
+        "type": "object"
+      },
       "DensityOfferOut": {
         "additionalProperties": false,
         "properties": {
@@ -11285,6 +11919,206 @@
         "title": "RecentPrice",
         "type": "object"
       },
+      "RecipeCostOut": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "enum": [
+              "latest",
+              "average",
+              "cheapest"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "completeness": {
+            "$ref": "#/components/schemas/CostCompleteness"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "head_commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Head Commit"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/CostLineOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "min_quality": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quality"
+          },
+          "provisional": {
+            "title": "Provisional",
+            "type": "boolean"
+          },
+          "recipe_id": {
+            "format": "uuid",
+            "title": "Recipe Id",
+            "type": "string"
+          },
+          "stale_after_days": {
+            "title": "Stale After Days",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          },
+          "unconfirmed_share": {
+            "title": "Unconfirmed Share",
+            "type": "string"
+          },
+          "window_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Days"
+          }
+        },
+        "required": [
+          "id",
+          "recipe_id",
+          "basis",
+          "window_days",
+          "min_quality",
+          "content_hash",
+          "head_commit",
+          "provisional",
+          "computed_at",
+          "stale_after_days",
+          "totals",
+          "completeness",
+          "unconfirmed_share",
+          "lines"
+        ],
+        "title": "RecipeCostOut",
+        "type": "object"
+      },
+      "RecipeCostSummary": {
+        "additionalProperties": false,
+        "description": "The latest-basis snapshot of a recipe's current content, for the list.",
+        "properties": {
+          "basket_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost"
+          },
+          "basket_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basket Cost High"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "consumed_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost"
+          },
+          "consumed_cost_high": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Consumed Cost High"
+          },
+          "lines_priced": {
+            "title": "Lines Priced",
+            "type": "integer"
+          },
+          "lines_total": {
+            "title": "Lines Total",
+            "type": "integer"
+          },
+          "per_serving": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Serving"
+          },
+          "provisional": {
+            "title": "Provisional",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consumed_cost",
+          "consumed_cost_high",
+          "basket_cost",
+          "basket_cost_high",
+          "per_serving",
+          "lines_priced",
+          "lines_total",
+          "provisional",
+          "computed_at"
+        ],
+        "title": "RecipeCostSummary",
+        "type": "object"
+      },
       "RecipeIngredientOut": {
         "additionalProperties": false,
         "description": "One ingredient reference as written, in document order (3B); resolution is 3C's.",
@@ -11457,7 +12291,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/RecipeSummary"
+              "$ref": "#/components/schemas/RecipeListItem"
             },
             "title": "Items",
             "type": "array"
@@ -11467,6 +12301,91 @@
           "items"
         ],
         "title": "RecipeList",
+        "type": "object"
+      },
+      "RecipeListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "content_hash": {
+            "title": "Content Hash",
+            "type": "string"
+          },
+          "cost": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeCostSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dirty": {
+            "title": "Dirty",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_indexed_at": {
+            "format": "date-time",
+            "title": "Last Indexed At",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "servings": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings"
+          },
+          "servings_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Servings Text"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "parse_error",
+              "missing"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "title",
+          "servings",
+          "servings_text",
+          "status",
+          "dirty",
+          "content_hash",
+          "last_indexed_at"
+        ],
+        "title": "RecipeListItem",
         "type": "object"
       },
       "RecipeOut": {
@@ -11676,81 +12595,6 @@
           "brand"
         ],
         "title": "RecipePinOut",
-        "type": "object"
-      },
-      "RecipeSummary": {
-        "additionalProperties": false,
-        "properties": {
-          "content_hash": {
-            "title": "Content Hash",
-            "type": "string"
-          },
-          "dirty": {
-            "title": "Dirty",
-            "type": "boolean"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "last_indexed_at": {
-            "format": "date-time",
-            "title": "Last Indexed At",
-            "type": "string"
-          },
-          "path": {
-            "title": "Path",
-            "type": "string"
-          },
-          "servings": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Servings"
-          },
-          "servings_text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Servings Text"
-          },
-          "status": {
-            "enum": [
-              "ok",
-              "parse_error",
-              "missing"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "path",
-          "title",
-          "servings",
-          "servings_text",
-          "status",
-          "dirty",
-          "content_hash",
-          "last_indexed_at"
-        ],
-        "title": "RecipeSummary",
         "type": "object"
       },
       "RecipesStatus": {
@@ -21661,6 +22505,160 @@
           }
         },
         "summary": "Get Recipe",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/cost": {
+      "get": {
+        "description": "The recipe's cost under a basis, computed now when its current content has none.\n\n``window_days`` applies to ``average`` only and defaults to the stale window.",
+        "operationId": "get_cost_api_v1_recipes__recipe_id__cost_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "default": "latest",
+              "enum": [
+                "latest",
+                "average",
+                "cheapest"
+              ],
+              "title": "Basis",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "window_days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 3650,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Window Days"
+            }
+          },
+          {
+            "in": "query",
+            "name": "min_quality",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 5,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Min Quality"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeCostOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cost",
+        "tags": [
+          "recipes"
+        ]
+      }
+    },
+    "/api/v1/recipes/{recipe_id}/cost/history": {
+      "get": {
+        "description": "Committed (non-provisional) snapshots under a basis, oldest first.",
+        "operationId": "get_cost_history_api_v1_recipes__recipe_id__cost_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "default": "latest",
+              "enum": [
+                "latest",
+                "average",
+                "cheapest"
+              ],
+              "title": "Basis",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CostHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cost History",
         "tags": [
           "recipes"
         ]

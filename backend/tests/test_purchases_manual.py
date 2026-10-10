@@ -171,3 +171,34 @@ async def test_unknown_product_or_location_is_404(admin_client):
     body["lines"][0]["product_id"] = str(uuid.uuid4())
     posted = await admin_client.post("/api/v1/purchases", json=body)
     assert posted.status_code == 404
+
+
+async def test_purchases_list_newest_bought_first_across_pages(admin_client):
+    """Spec 10, Shop: purchases: newest first means by purchase date, not entry order.
+
+    Old receipts entered after newer shopping (an import, a scanned backlog) must
+    not jump ahead, and the order must hold across page boundaries.
+    """
+    loc, berries, _, _ = await setup(admin_client)
+    entered = [(2026, 6, 6), (2026, 3, 1), (2026, 8, 20), (2026, 3, 1), (2025, 12, 31)]
+    for i, (y, m, d) in enumerate(entered):
+        body = {
+            "vendor_location_id": loc["id"],
+            "purchased_at": datetime(y, m, d, 17, 0, tzinfo=UTC).isoformat(),
+            "lines": [{"product_id": berries["id"], "qty": "1", "unit": "lb", "line_total": "4"}],
+        }
+        r = await admin_client.post(
+            "/api/v1/purchases", json=body, headers={"Idempotency-Key": f"o{i}"}
+        )
+        assert r.status_code == 201, r.text
+    seen, cursor = [], None
+    while True:
+        params = {"limit": 2} | ({"cursor": cursor} if cursor else {})
+        page = (await admin_client.get("/api/v1/purchases", params=params)).json()
+        seen += [p["purchased_at"][:10] for p in page["items"]]
+        cursor = page["next_cursor"]
+        if not cursor:
+            break
+    assert seen == ["2026-08-20", "2026-06-06", "2026-03-01", "2026-03-01", "2025-12-31"]
+    r = await admin_client.get("/api/v1/purchases", params={"cursor": "bm90LWEtY3Vyc29y"})
+    assert r.status_code == 400 and r.json()["error"]["code"] == "bad_cursor"

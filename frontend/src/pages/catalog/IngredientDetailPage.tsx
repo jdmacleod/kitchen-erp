@@ -6,10 +6,12 @@ import {
   PERISHABILITIES,
   catalogErrorMessage,
   formatPack,
-  isPositiveDecimal,
+  fractionToPercent,
+  isYieldPercent,
   KEEP_PLACES,
   keepTimesHint,
   keepTimesText,
+  percentToFraction,
   perishabilityHint,
   perishabilityLabel,
   productTitle,
@@ -106,7 +108,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
       {trimDecimal(ingredient.yield_pct) !== "1" ? (
         <>
           <span aria-hidden="true">·</span>
-          <span>yield {trimDecimal(ingredient.yield_pct)}</span>
+          <span>yield {fractionToPercent(ingredient.yield_pct)}%</span>
         </>
       ) : null}
       {ingredient.active ? null : <Badge tone="warn">inactive</Badge>}
@@ -237,7 +239,7 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
     name: ingredient.name,
     category: ingredient.category ?? "",
     canonical_unit: ingredient.canonical_unit as CanonicalUnit,
-    yield_pct: ingredient.yield_pct,
+    yield_percent: fractionToPercent(ingredient.yield_pct),
     perishability: ingredient.perishability as Perishability,
     keep_room_days: dayText(ingredient.keep_room_days),
     keep_fridge_days: dayText(ingredient.keep_fridge_days),
@@ -253,8 +255,8 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
       setInvalid("A name is required.");
       return;
     }
-    if (!isPositiveDecimal(form.yield_pct)) {
-      setInvalid("Yield must be a positive fraction such as 0.85.");
+    if (!isYieldPercent(form.yield_percent)) {
+      setInvalid("Yield is a percentage above 0 and up to 100, such as 85.");
       return;
     }
     if (KEEP_PLACES.some(({ key }) => form[key].trim() !== "" && !/^\d{1,4}$/.test(form[key].trim()))) {
@@ -270,7 +272,8 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
     if (form.name.trim() !== ingredient.name) input.name = form.name.trim();
     if ((form.category.trim() || null) !== ingredient.category) input.category = form.category.trim() || null;
     if (form.canonical_unit !== ingredient.canonical_unit) input.canonical_unit = form.canonical_unit;
-    if (form.yield_pct.trim() !== ingredient.yield_pct) input.yield_pct = form.yield_pct.trim();
+    const yieldFraction = percentToFraction(form.yield_percent);
+    if (yieldFraction !== trimDecimal(ingredient.yield_pct)) input.yield_pct = yieldFraction;
     if (form.perishability !== ingredient.perishability) input.perishability = form.perishability;
     if ((form.notes.trim() || null) !== ingredient.notes) input.notes = form.notes.trim() || null;
     if (Object.keys(input).length === 0) {
@@ -307,12 +310,12 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             id="edit-yield"
-            label="Yield (fraction)"
+            label="Yield (%)"
             inputMode="decimal"
             autoComplete="off"
-            value={form.yield_pct}
-            onChange={(e) => set("yield_pct", e.target.value)}
-            hint="Usable part after trimming, between 0 and 1."
+            value={form.yield_percent}
+            onChange={(e) => set("yield_percent", e.target.value)}
+            hint="Usable share of what you buy, after trimming. Recipe costs gross up weights and volumes by it; 100 means no loss."
           />
           <SelectField
             id="edit-perishability"

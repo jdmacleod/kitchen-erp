@@ -1,5 +1,5 @@
 """Recipes (07, Phase 3): the indexed repository, its status, rescans and relinks
-(3A); the resolve queue, decisions and pins (3C).
+(3A); the resolve queue, decisions and pins (3C); cost snapshots (3D).
 
 Every route takes a session or a full-access token; no API token scope reaches
 recipes (07, "Data model additions"), which ``CurrentUser`` enforces.
@@ -14,6 +14,9 @@ from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.recipes import (
+    CostBasis,
+    CostHistoryOut,
+    RecipeCostOut,
     RecipeList,
     RecipeOut,
     RecipePinIn,
@@ -27,7 +30,7 @@ from app.schemas.recipes import (
     ResolveQueueOut,
     ScanOut,
 )
-from app.services import recipe_resolution, recipes
+from app.services import recipe_cost_views, recipe_costing, recipe_resolution, recipes
 
 router = APIRouter(tags=["recipes"])
 
@@ -76,6 +79,37 @@ async def resolve_ask(payload: ResolveAskIn, _: CurrentUser, db: DbSession) -> R
 @router.get("/recipes/{recipe_id}", response_model=RecipeOut)
 async def get_recipe(recipe_id: uuid.UUID, _: CurrentUser, db: DbSession) -> RecipeOut:
     return await recipes.recipe_out(db, await recipes.get_recipe(db, recipe_id))
+
+
+@router.get("/recipes/{recipe_id}/cost", response_model=RecipeCostOut)
+async def get_cost(
+    recipe_id: uuid.UUID,
+    _: CurrentUser,
+    db: DbSession,
+    basis: CostBasis = "latest",
+    window_days: Annotated[int | None, Query(ge=1, le=3650)] = None,
+    min_quality: Annotated[int | None, Query(ge=1, le=5)] = None,
+) -> RecipeCostOut:
+    """The recipe's cost under a basis, computed now when its current content has none.
+
+    ``window_days`` applies to ``average`` only and defaults to the stale window.
+    """
+    recipe = await recipes.get_recipe(db, recipe_id)
+    snapshot = await recipe_costing.find_snapshot(db, recipe, basis, window_days, min_quality)
+    if snapshot is None:
+        snapshot = await recipe_costing.compute_snapshot(
+            db, recipe, basis, window_days, min_quality
+        )
+    return await recipe_cost_views.cost_out(db, snapshot)
+
+
+@router.get("/recipes/{recipe_id}/cost/history", response_model=CostHistoryOut)
+async def get_cost_history(
+    recipe_id: uuid.UUID, _: CurrentUser, db: DbSession, basis: CostBasis = "latest"
+) -> CostHistoryOut:
+    """Committed (non-provisional) snapshots under a basis, oldest first."""
+    recipe = await recipes.get_recipe(db, recipe_id)
+    return await recipe_cost_views.history_out(db, recipe, basis)
 
 
 @router.post("/recipes/{recipe_id}/relink", response_model=RecipeOut)
