@@ -320,6 +320,14 @@ async def test_a_new_shelf_price_and_its_void_recompute_the_recipes_the_product_
         "consumed_cost"
     ] == "0.8000"
 
+    # Rebuilding the whole price book renormalizes every price, so the snapshots
+    # that rest on them follow, with the same figures.
+    before = await computed_at(owner_conn, bowl["id"])
+    r = await admin_client.post("/api/v1/price-book/recompute")
+    assert r.status_code == 200, r.text
+    assert await computed_at(owner_conn, bowl["id"]) > before
+    assert (await cost(admin_client, bowl["id"]))["totals"]["consumed_cost"] == "0.8000"
+
 
 async def test_a_purchase_prices_a_line_when_committed_and_stops_when_reopened(
     admin_client: httpx.AsyncClient,

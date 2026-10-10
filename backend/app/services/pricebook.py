@@ -113,6 +113,9 @@ async def normalize_core(db: AsyncSession, observation_ids: list[uuid.UUID]) -> 
 async def normalize(db: AsyncSession, observation_ids: list[uuid.UUID]) -> int:
     """Recompute price_norm for the given observations. Commits."""
     count = await normalize_core(db, observation_ids)
+    # The snapshots that used these prices follow them (3D); a full rebuild
+    # (``recompute_all``) reaches every recipe with a priced line.
+    await recipe_cost_triggers.after_prices_changed(db, observation_ids)
     await db.commit()
     return count
 

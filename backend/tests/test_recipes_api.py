@@ -224,12 +224,13 @@ async def test_list_filters_run_on_the_server(
     assert await titles({"q": "100%"}) == []  # a typed % is not a wildcard
     assert await titles({"q": "zz qx"}) == []
 
-    # Nothing is costed yet, so every recipe is incomplete and none complete.
-    assert len(await titles({"completeness": "incomplete"})) == 6
-    assert await titles({"completeness": "complete"}) == []
+    # The scan costs every recipe it indexes (3D, package 6b). Nothing is priced,
+    # so the five fixtures are incomplete; the recipe with no lines is complete.
+    assert len(await titles({"completeness": "incomplete"})) == 5
+    assert await titles({"completeness": "complete"}) == ["Zenith soup"]
     assert (await admin_client.get("/api/v1/recipes?completeness=half")).status_code == 422
 
-    # Costing the recipe with no lines makes it the one complete recipe.
+    # Its snapshot says so line by line.
     zenith = next(
         i
         for i in (await admin_client.get("/api/v1/recipes")).json()["items"]
