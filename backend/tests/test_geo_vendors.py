@@ -30,6 +30,7 @@ async def test_create_get_patch(admin_client: httpx.AsyncClient):
         "fetch_policy",
         "refresh_paused_until",
         "refresh_unreachable_since",
+        "brand_family",
     }
     assert created["fetch_policy"] == "capture_only"
     assert created["refresh_paused_until"] is None

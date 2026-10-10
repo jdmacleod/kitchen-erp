@@ -51,7 +51,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services import best_by
+from app.services import best_by, brands
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
@@ -1024,9 +1024,16 @@ async def _set_barcode(
 
 
 def _kind_from_evidence(
-    brand: str | None, barcode: str | None, exclusive_vendor_id: uuid.UUID | None
+    brand: str | None,
+    barcode: str | None,
+    exclusive_vendor_id: uuid.UUID | None,
+    *,
+    house_brand: bool = False,
 ) -> str:
-    """The kind a product starts with when none is given (03, 1H)."""
+    """The kind a product starts with when none is given (03, 1H). A brand the brand
+    dataset lists is some store's own, which beats a market stall (16, 2R)."""
+    if house_brand:
+        return "private_label"
     if exclusive_vendor_id is not None:
         return "unbranded_vendor"
     if (brand or "").strip() or barcode:
@@ -1062,7 +1069,12 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             pack_count=payload.pack_count,
             piece_name=_piece_name(payload.piece_name),
             kind=payload.kind
-            or _kind_from_evidence(payload.brand, payload.barcode, payload.exclusive_vendor_id),
+            or _kind_from_evidence(
+                payload.brand,
+                payload.barcode,
+                payload.exclusive_vendor_id,
+                house_brand=await brands.is_house_brand(db, payload.brand),
+            ),
             attributes=_attributes(ingredient, payload.attributes),
             quality_rating=payload.quality_rating,
             exclusive_vendor_id=payload.exclusive_vendor_id,
@@ -1073,6 +1085,7 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
         )
         product.identifiers = []
         await _check_pieces(db, product)
+        await brands.link_product(db, product)
         db.add(product)
         await _set_barcode(db, product, payload.barcode, payload.barcode_symbology)
         await db.commit()
@@ -1176,6 +1189,8 @@ async def update_product(
         if value is None and key in {"name", "kind"}:
             continue
         setattr(product, key, value)
+    if "brand" in data:
+        await brands.link_product(db, product)
     bridge_changed = bool(
         {
             "pack_qty",

@@ -124,9 +124,14 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     refresh_paused_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     refresh_backoff_days: Mapped[int | None] = mapped_column(SmallInteger)
     rw_layout: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # Whose house brands this vendor's stores sell (2R); see app.services.brands.
+    brand_family_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("brand_family.id", ondelete="SET NULL"), index=True
+    )
     code_position: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
 
     locations: Mapped[list[VendorLocation]] = relationship(back_populates="vendor")
+    brand_family: Mapped[Any] = relationship("BrandFamily", lazy="selectin", viewonly=True)
 
 
 class VendorLocation(UUIDPrimaryKey, Timestamped, Base):

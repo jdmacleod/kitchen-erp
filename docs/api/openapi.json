@@ -876,6 +876,60 @@
         "title": "Body_upload_receipt_api_v1_receipts_post",
         "type": "object"
       },
+      "BrandFamilyRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "kind"
+        ],
+        "title": "BrandFamilyRef",
+        "type": "object"
+      },
+      "BrandFamilySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind"
+        ],
+        "title": "BrandFamilySummary",
+        "type": "object"
+      },
       "CaptureOut": {
         "additionalProperties": false,
         "properties": {
@@ -2970,6 +3024,51 @@
           }
         },
         "title": "HomeBaseUpdate",
+        "type": "object"
+      },
+      "HouseBrandOut": {
+        "additionalProperties": false,
+        "description": "The store brand a product's brand names (16, 2R): whose it is and its tier.",
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "family": {
+            "$ref": "#/components/schemas/BrandFamilySummary"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replaced_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaced By Name"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "tier",
+          "current",
+          "family"
+        ],
+        "title": "HouseBrandOut",
         "type": "object"
       },
       "HouseholdLocation": {
@@ -9497,6 +9596,16 @@
             ],
             "title": "Exclusive Vendor Id"
           },
+          "house_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseBrandOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -9854,6 +9963,16 @@
               }
             ],
             "title": "Exclusive Vendor Id"
+          },
+          "house_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseBrandOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -13495,6 +13614,22 @@
       "SearchResult": {
         "additionalProperties": false,
         "properties": {
+          "badge": {
+            "anyOf": [
+              {
+                "enum": [
+                  "uncommitted",
+                  "parse_error",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Badge"
+          },
           "category_key": {
             "anyOf": [
               {
@@ -13537,7 +13672,8 @@
             "enum": [
               "ingredient",
               "product",
-              "vendor"
+              "vendor",
+              "recipe"
             ],
             "title": "Kind",
             "type": "string"
@@ -13563,7 +13699,7 @@
       },
       "SearchResults": {
         "additionalProperties": false,
-        "description": "Grouped by type. The palette shows ingredients first and hides empty groups.",
+        "description": "Grouped by type. The palette shows ingredients first, recipes after vendors\n(UI-7.17), and hides empty groups.",
         "properties": {
           "ingredients": {
             "items": {
@@ -13577,6 +13713,14 @@
               "$ref": "#/components/schemas/SearchResult"
             },
             "title": "Products",
+            "type": "array"
+          },
+          "recipes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "title": "Recipes",
             "type": "array"
           },
           "vendors": {
@@ -15114,6 +15258,16 @@
             ],
             "title": "Brand"
           },
+          "brand_family": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandFamilyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -16032,6 +16186,16 @@
             ],
             "title": "Brand"
           },
+          "brand_family": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandFamilyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -16212,6 +16376,18 @@
               }
             ],
             "title": "Brand"
+          },
+          "brand_family_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Family Id"
           },
           "fetch_policy": {
             "anyOf": [
@@ -22264,6 +22440,7 @@
     },
     "/api/v1/recipes": {
       "get": {
+        "description": "Ordered by title; every filter runs here, not in the browser (UI-7.3).",
         "operationId": "list_recipes_api_v1_recipes_get",
         "parameters": [
           {
@@ -22301,6 +22478,45 @@
                 }
               ],
               "title": "Dirty"
+            }
+          },
+          {
+            "description": "title or path",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "title or path",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "completeness",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "complete",
+                    "incomplete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completeness"
             }
           }
         ],
