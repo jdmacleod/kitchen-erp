@@ -249,3 +249,30 @@ async def test_list_filters_run_on_the_server(
     assert await titles({"completeness": "complete"}) == ["Zenith soup"]
     assert "Zenith soup" not in await titles({"completeness": "incomplete"})
     assert await titles({"completeness": "incomplete", "q": "zenith"}) == []
+
+
+async def test_two_scans_at_once_do_not_collide(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """The worker's scan and the Rescan button can start together on a fresh index.
+
+    Without the advisory lock both read no rows and insert the same paths, and
+    one fails on the unique path index with a 500 (package 10, found by the
+    browser suite). With it, the second waits and finds everything already there.
+    """
+    import asyncio
+
+    from app.core.db import get_sessionmaker
+    from app.services import recipes
+
+    recipes_repo.seed_fixtures()
+    recipes_repo.commit("five")
+
+    async def one() -> int:
+        async with get_sessionmaker()() as db:
+            return (await recipes.scan(db)).created
+
+    created = await asyncio.gather(one(), one())
+    assert sorted(created) == [0, 5]
+    assert len((await admin_client.get("/api/v1/recipes")).json()["items"]) == 5
