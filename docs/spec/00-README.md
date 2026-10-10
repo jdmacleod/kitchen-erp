@@ -28,6 +28,7 @@ Where this package records a decision, treat it as settled unless implementation
 | `12-ingredient-vocabulary.md` | Record of the ingredient-vocabulary handoff (USDA FoodData Central, naming rules, profiling findings), folded into 02, 03 (§1G), 07, 10 and 11 on 2026-09-30 |
 | `13-product-ingestion-and-photos.md` | Record of the product-ingestion handoff (identifiers, listings, photos, proposals, the products helper), folded into 01–04 (1H, 1I, 2K–2N) and 08–11 on 2026-10-01 |
 | `15-keep-times-and-best-by-dates.md` | Sub-phase 2Q: keep times per ingredient and an inferred best-by date on each purchase line, from the USDA and UC storage charts; approved 2026-10-08 |
+| `16-brand-families.md` | Sub-phase 2R: store brands and the families of stores that sell them, imported from the kitchen-erp-brands dataset; labels, kind, out-of-family matching and tiers on offers; approved 2026-10-09 |
 | `assets/tier-a-ingredients.csv` | Draft source for the 1G standard list; untracked (`*.csv` is gitignored), superseded by `backend/app/catalog/standard_ingredients.yaml` |
 
 ## Roadmap
