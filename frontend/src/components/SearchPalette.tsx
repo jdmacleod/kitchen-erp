@@ -7,6 +7,7 @@ import { availableActions, commonActions, matchActions, type PaletteAction } fro
 import { readRecents, rememberRecent } from "../lib/searchRecents";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { CategoryChip } from "./CategoryChip";
+import { RecipeBadge } from "./cook/RecipeBadges";
 import { Dialog } from "./Dialog";
 import { Button, focusRing } from "./ui";
 
@@ -14,6 +15,7 @@ const GROUPS: { key: keyof SearchResults; label: string }[] = [
   { key: "ingredients", label: "Ingredients" },
   { key: "products", label: "Products" },
   { key: "vendors", label: "Vendors" },
+  { key: "recipes", label: "Recipes" },
 ];
 
 const muted = "text-sm text-neutral-600 dark:text-neutral-400";
@@ -22,6 +24,7 @@ type PaletteItem = SearchResult | PaletteAction;
 
 /** Where an action or page lives, shown beside it. */
 function section(route: string): string {
+  if (route.startsWith("/cook")) return "Cook";
   if (route.startsWith("/shop")) return "Shop";
   if (route.startsWith("/catalog")) return "Catalog";
   if (route.startsWith("/settings")) return "Settings";
@@ -125,7 +128,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           enterKeyHint="search"
           autoComplete="off"
           role="combobox"
-          aria-label="Search ingredients, products, vendors and actions"
+          aria-label="Search ingredients, products, vendors, recipes and actions"
           aria-expanded={showResults}
           aria-controls={`${ids}-listbox`}
           aria-autocomplete="list"
@@ -195,6 +198,11 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
                         <span className={`shrink-0 ${muted}`}>{section(r.route)}</span>
                       ) : r.kind === "ingredient" ? (
                         <CategoryChip category={r.detail} categoryKey={r.category_key} />
+                      ) : r.kind === "recipe" ? (
+                        // The title with its badge in words (UI-7.17); the path is the hover title.
+                        <span className="flex min-w-0 shrink-0 items-center gap-2">
+                          {r.badge ? <RecipeBadge badge={r.badge} /> : null}
+                        </span>
                       ) : r.detail ? (
                         <span className={`min-w-0 truncate ${muted}`}>{r.detail}</span>
                       ) : null}

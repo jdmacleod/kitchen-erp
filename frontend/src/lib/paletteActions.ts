@@ -36,8 +36,12 @@ export const PALETTE_ACTIONS: PaletteAction[] = [
   action("add-product", "Add product", "/catalog/products?new=1", ["new", "create", "product"], { feature: "catalog" }),
   action("add-ingredient", "Add ingredient", "/catalog/ingredients?new=1", ["new", "create", "ingredient"], { feature: "catalog" }),
   action("add-vendor", "Add vendor", "/catalog/vendors?new=1", ["new", "create", "store", "shop", "market"], { feature: "catalog" }),
+  // "Rescan recipes" carries `?rescan=1`, which the list consumes and runs (UI-7.17).
+  action("rescan-recipes", "Rescan recipes", "/cook/recipes?rescan=1", ["scan", "refresh", "index", "cook", "repository"], { feature: "cook" }),
   // Pages to go to.
   action("home", "Home", "/", ["inbox", "needs you", "start"]),
+  action("recipes", "Recipes", "/cook/recipes", ["cook", "costing", "dishes", "cooklang"], { feature: "cook" }),
+  action("resolve-recipes", "Resolve recipe names", "/cook/recipes/resolve", ["cook", "unmatched", "names", "ingredients"], { feature: "cook" }),
   action("purchases", "Purchases", "/shop/purchases", ["shopping", "history", "drafts"], { feature: "shop" }),
   action("receipts", "Receipts", "/shop/receipts", ["uploads", "batches", "jobs"], { feature: "shop" }),
   action("to-identify", "Products to identify", "/shop/receipts/identify", ["unmatched", "name", "naming", "lines"], { feature: "shop" }),

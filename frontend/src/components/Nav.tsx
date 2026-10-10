@@ -26,6 +26,15 @@ export interface NavSection {
 /** The body of the sidebar, in the order of docs/spec/09 (Sections). */
 export const MAIN_SECTIONS: NavSection[] = [
   { key: "home", label: "Home", to: "/", items: [] },
+  // Cook sits before Shop (09, Sections) and appears once migration 0042 is applied (UI-7.1).
+  {
+    key: "cook",
+    label: "Cook",
+    to: "/cook/recipes",
+    prefix: "/cook",
+    feature: "cook",
+    items: [{ to: "/cook/recipes", label: "Recipes" }],
+  },
   {
     key: "shop",
     label: "Shop",
