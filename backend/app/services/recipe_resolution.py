@@ -8,6 +8,13 @@ through an inflection of either (1G's ``singulars``). A name in
 and waits in the queue with proposals from the cascade, which are suggestions
 and are never applied here.
 
+The cascade (VS2) proposes in tiers, each one proposer in ``PROPOSERS``: an
+exact standard-list entry; trigram matches; the name without its prep words
+(``app/recipes/prep.py``), whose stripped words a decision moves into the
+line's note; foods from the USDA pool to create an ingredient from; and, only
+when a person asks about one name (:func:`ask`), the local model's pick from a
+shortlist it cannot leave. Three proposals per name, higher tiers first.
+
 A decision applies to every unmatched line with that name across all recipes
 (criterion 15) and writes its alias through the 1G spelling service, never the
 receipt alias writer: ``services/resolution.py`` is the receipt side and is not
@@ -26,16 +33,20 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import distinct, func, select, update
+from sqlalchemy import Text, case, distinct, func, literal, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog import standard
 from app.catalog.names import normalize_name, singulars
 from app.catalog.standard_match import match_entry
 from app.core.config import Settings, get_settings
 from app.core.errors import ApiError
 from app.core.ids import new_id
+from app.core.logging import get_logger
+from app.ingest.errors import IngestError
+from app.ingest.llm import suggest_recipe_names
 from app.models import (
     AppUser,
     Ingredient,
@@ -46,9 +57,12 @@ from app.models import (
     RecipeNameIgnore,
     RecipePin,
 )
+from app.models.catalog import FdcFood
+from app.recipes.prep import strip_prep
 from app.schemas.catalog import IngredientCreate, IngredientSummary
 from app.schemas.recipes import (
     RecipePinOut,
+    ResolveAskOut,
     ResolveDecisionIn,
     ResolveDecisionOut,
     ResolveName,
@@ -56,15 +70,20 @@ from app.schemas.recipes import (
     ResolveQueueOut,
     ResolveRecipe,
 )
+from app.services import usda
 from app.services.catalog import (
     IngredientIndex,
     ingredient_index,
     new_ingredient,
     search_ingredients,
+    set_preferred_fdc,
 )
 from app.services.spellings import add_spelling
 
+log = get_logger(__name__)
+
 MAX_PROPOSALS = 3
+USDA_PROPOSALS = 2  # per name, from the USDA pool
 RAW_NAME_SAMPLES = 5
 
 # A line the queue shows and counts: unmatched, not negligible, and of a recipe
@@ -83,11 +102,17 @@ _QUEUED = (
 
 @dataclass(frozen=True)
 class Context:
-    """Everything one lookup pass reads, loaded once for however many lines."""
+    """Everything one lookup pass reads, loaded once for however many lines.
+
+    ``ask_model`` lets the cascade's model tier call the local model. The queue
+    listing never does (a model call per queued name would take minutes);
+    :func:`ask` does, for one name a person asked about.
+    """
 
     index: IngredientIndex
     negligible: frozenset[str]
     ignored: frozenset[str]
+    ask_model: bool = False
 
 
 def negligible_names(settings: Settings | None = None) -> frozenset[str]:
@@ -97,12 +122,15 @@ def negligible_names(settings: Settings | None = None) -> frozenset[str]:
     )
 
 
-async def load_context(db: AsyncSession, settings: Settings | None = None) -> Context:
+async def load_context(
+    db: AsyncSession, settings: Settings | None = None, *, ask_model: bool = False
+) -> Context:
     ignored = (await db.execute(select(RecipeNameIgnore.name_norm))).scalars().all()
     return Context(
         index=await ingredient_index(db),
         negligible=negligible_names(settings),
         ignored=frozenset(ignored),
+        ask_model=ask_model,
     )
 
 
@@ -241,27 +269,192 @@ async def _similar_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[
     ]
 
 
-# The cascade in order (07 §3C, VS2). Package 5 adds its later tiers here, each
-# as one more proposer: prep-word stripping (which also carries the stripped
-# word for the note), the USDA pool, then the local model, whose JSON is
-# accepted only when it validates against the expected Pydantic model. Nothing
-# else changes: proposals_for walks the list and keeps the first MAX_PROPOSALS.
-PROPOSERS: list[Proposer] = [_standard_tier, _similar_tier]
+async def _prep_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
+    """The name without its prep words, looked up exactly; the stripped words ride as the note.
+
+    "minced garlic" offers garlic with the note "minced"; form words are never
+    stripped (``app/recipes/data``), so "ground cumin" offers nothing here. The
+    remainder is tried as an exact name, spelling or inflection, then as an
+    exact standard-list entry. A remainder that is negligible or ignored offers
+    nothing: there is no ingredient to point the line at.
+    """
+    stripped = strip_prep(name_norm)
+    if stripped is None:
+        return []
+    remainder = stripped.remainder
+    if remainder in ctx.negligible or remainder in ctx.ignored:
+        return []
+    hit = lookup(ctx, remainder)
+    if hit is not None:
+        return [
+            ResolveProposal(
+                tier="prep",
+                name=hit.name,
+                ingredient_id=hit.id,
+                category=hit.category,
+                note=stripped.note,
+            )
+        ]
+    return [
+        proposal.model_copy(update={"tier": "prep", "note": stripped.note})
+        for proposal in await _standard_tier(db, ctx, remainder)
+    ]
+
+
+async def _usda_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
+    """Foods from the USDA pool (``fdc_food``) to create an ingredient from.
+
+    Ranked as ``kerp ingredients usda-candidates`` ranks them: Foundation and
+    SR Legacy foods resembling the name, the ones USDA's own survey recipes use
+    most first. The name without its prep words is what is searched and what the
+    new ingredient would be called; the stripped words ride as the note.
+    """
+    stripped = strip_prep(name_norm)
+    text = stripped.remainder if stripped is not None else name_norm
+    foods = await usda.candidates(db, text, limit=USDA_PROPOSALS)
+    return [
+        ResolveProposal(
+            tier="usda",
+            name=text,
+            fdc_id=food.fdc_id,
+            fdc_description=food.description,
+            note=stripped.note if stripped is not None else None,
+        )
+        for food in foods
+    ]
+
+
+@dataclass(frozen=True)
+class _Candidate:
+    """One shortlist entry the model may choose: a catalog ingredient or a standard entry."""
+
+    label: str
+    name: str
+    ingredient_id: uuid.UUID | None = None
+    standard_key: str | None = None
+    category: str | None = None
+
+
+def _trigrams(text: str) -> frozenset[str]:
+    """pg_trgm's trigrams of a lowercase phrase, so the standard list ranks like the search."""
+    out: set[str] = set()
+    for word in text.split():
+        padded = f"  {word} "
+        out.update(padded[i : i + 3] for i in range(len(padded) - 2))
+    return frozenset(out)
+
+
+def trigram_similarity(a: str, b: str) -> float:
+    ta, tb = _trigrams(a), _trigrams(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
+
+async def _shortlist(db: AsyncSession, ctx: Context, name_norm: str) -> list[_Candidate]:
+    """Catalog ingredients nearest the name, then standard entries nearest by trigram."""
+    size = get_settings().llm_shortlist_size
+    out: list[_Candidate] = []
+    labels: set[str] = set()
+    for hit in await search_ingredients(db, name_norm, limit=size):
+        if hit.id is None or hit.name.casefold() in labels:
+            continue
+        labels.add(hit.name.casefold())
+        out.append(_Candidate(hit.name, hit.name, ingredient_id=hit.id, category=hit.category))
+    scored: list[tuple[float, standard.StandardEntry]] = []
+    for entry in standard.standard_list().ingredients:
+        if entry.key in ctx.index.taken_keys or entry.name.lower() in ctx.index.taken_names:
+            continue  # the catalog has it: offered above as that ingredient, or not at all
+        best = max(
+            trigram_similarity(name_norm, normalize_name(form))
+            for form in (entry.name, *entry.spellings)
+        )
+        if best > 0:
+            scored.append((best, entry))
+    scored.sort(key=lambda t: (-t[0], t[1].name.casefold()))
+    for _, entry in scored[:size]:
+        if entry.name.casefold() in labels:
+            continue
+        labels.add(entry.name.casefold())
+        out.append(
+            _Candidate(entry.name, entry.name, standard_key=entry.key, category=entry.category)
+        )
+    return out
+
+
+async def _model_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
+    """The local model's pick, at most two, from a shortlist it cannot leave.
+
+    Only when the context asks for it and a model is configured (``LLM_MODEL``).
+    The reply counts only when it validates against the schema built from the
+    shortlist (non-negotiable 7); anything else, and an unreachable or slow
+    server, is no suggestion at all. Never applied (VC3).
+    """
+    if not ctx.ask_model or not get_settings().llm_model:
+        return []
+    shortlist = await _shortlist(db, ctx, name_norm)
+    if not shortlist:
+        return []
+    try:
+        labels = await suggest_recipe_names(name_norm, [c.label for c in shortlist])
+    except IngestError as exc:
+        log.info("recipe name model gave no suggestion", extra={"code": exc.code})
+        return []
+    by_label = {c.label: c for c in shortlist}
+    return [
+        ResolveProposal(
+            tier="model",
+            name=by_label[label].name,
+            ingredient_id=by_label[label].ingredient_id,
+            standard_key=by_label[label].standard_key,
+            category=by_label[label].category,
+        )
+        for label in labels
+        if label in by_label
+    ]
+
+
+# The cascade in order (07 §3C, VS2): each tier is one proposer, and every
+# proposal carries its tier so the page can badge it (UI-7.16). The first two
+# steps of the lookup (an exact name or spelling, an inflection) are the only
+# ones that resolve a line; everything here only proposes (VC3).
+PROPOSERS: list[Proposer] = [_standard_tier, _similar_tier, _prep_tier, _usda_tier, _model_tier]
+TIER_ORDER = ("standard", "similar", "prep", "usda", "model")
+
+
+def _target(proposal: ResolveProposal) -> tuple[str, str]:
+    """What choosing the proposal does: use this ingredient, create this entry, or this food."""
+    if proposal.ingredient_id is not None:
+        return ("ingredient", str(proposal.ingredient_id))
+    if proposal.standard_key is not None:
+        return ("standard", proposal.standard_key)
+    return ("fdc", str(proposal.fdc_id))
 
 
 async def proposals_for(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
+    """At most MAX_PROPOSALS per name, higher tiers first, one per target.
+
+    A later tier's proposal for a target an earlier one already offered is
+    dropped, except that a prep proposal takes the place of a similar one for
+    the same ingredient: the exact hit on the stripped name is the stronger
+    claim, and it carries the note. The model is asked last, and only when the
+    other tiers left room under the cap.
+    """
     out: list[ResolveProposal] = []
-    seen: set[tuple[uuid.UUID | None, str | None]] = set()
+    at: dict[tuple[str, str], int] = {}
     for propose in PROPOSERS:
+        if propose is _model_tier and len(out) >= MAX_PROPOSALS:
+            break
         for proposal in await propose(db, ctx, name_norm):
-            key = (proposal.ingredient_id, proposal.standard_key)
-            if key in seen:
+            key = _target(proposal)
+            if key in at:
+                held = out[at[key]]
+                if proposal.tier == "prep" and held.tier == "similar":
+                    out[at[key]] = proposal
                 continue
-            seen.add(key)
+            at[key] = len(out)
             out.append(proposal)
-            if len(out) == MAX_PROPOSALS:
-                return out
-    return out
+    return out[:MAX_PROPOSALS]
 
 
 @dataclass
@@ -309,6 +502,32 @@ async def queue(db: AsyncSession, settings: Settings | None = None) -> ResolveQu
         )
     touched = {recipe_id for group in groups.values() for recipe_id in group.recipes}
     return ResolveQueueOut(items=items, names=len(items), recipes=len(touched))
+
+
+async def ask(db: AsyncSession, name_norm: str, settings: Settings | None = None) -> ResolveAskOut:
+    """The cascade for one queued name with the model tier allowed to run.
+
+    The queue listing leaves the model out, because a call per name would hold
+    the page for minutes; a person asks about one name at a time. The answer is
+    the same capped, ordered list the queue shows, with the model's picks where
+    the earlier tiers left room. Nothing is applied (VC3).
+    """
+    name_norm = name_norm.strip()
+    queued = (
+        await db.execute(
+            select(func.count())
+            .select_from(RecipeIngredient)
+            .join(Recipe, Recipe.id == RecipeIngredient.recipe_id)
+            .where(RecipeIngredient.name_norm == name_norm, *_QUEUED)
+        )
+    ).scalar_one()
+    if not queued:
+        raise ApiError(404, "not_found", "No unresolved recipe line has that name.")
+    configured = bool((settings or get_settings()).llm_model)
+    ctx = await load_context(db, settings, ask_model=configured)
+    proposals = await proposals_for(db, ctx, name_norm)
+    asked = ctx.ask_model and sum(p.tier != "model" for p in proposals) < MAX_PROPOSALS
+    return ResolveAskOut(name_norm=name_norm, proposals=proposals, model_asked=asked)
 
 
 # --- decisions -------------------------------------------------------------------------
@@ -453,13 +672,28 @@ async def decide(db: AsyncSession, user: AppUser, payload: ResolveDecisionIn) ->
     else:
         if payload.ingredient is not None:
             action = "created"
+            if payload.fdc_id is not None and await db.get(FdcFood, payload.fdc_id) is None:
+                raise ApiError(422, "unknown_fdc_id", "No loaded USDA food has that id.")
             ingredient = await _create(db, payload.ingredient)
+            if payload.fdc_id is not None:
+                await set_preferred_fdc(db, ingredient.id, payload.fdc_id)
         else:
             action = "matched"
             assert payload.ingredient_id is not None  # the schema requires one choice
             ingredient = await _chosen(db, payload.ingredient_id)
         await _learn(db, ingredient, name_norm)
-        await db.execute(unmatched.values(resolution="manual", ingredient_id=ingredient.id))
+        values: dict = {"resolution": "manual", "ingredient_id": ingredient.id}
+        if payload.note:
+            # The prep tier's stripped words go in front of whatever the line said:
+            # "minced; for the sauce", or just "minced" (the 1G conform rule).
+            values["note"] = case(
+                (
+                    or_(RecipeIngredient.note.is_(None), RecipeIngredient.note == ""),
+                    literal(payload.note, type_=Text),
+                ),
+                else_=literal(f"{payload.note}; ", type_=Text) + RecipeIngredient.note,
+            )
+        await db.execute(unmatched.values(**values))
     await resolve_unmatched(db)
     remaining, _, _ = await queue_counts(db)
     await db.commit()

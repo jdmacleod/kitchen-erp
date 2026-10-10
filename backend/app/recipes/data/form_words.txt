@@ -1,0 +1,49 @@
+# Form words (07, 3C; VS2): part of what is bought, so they change which
+# ingredient a name means. The prep tier never strips these: "ground cumin" is
+# not cumin, "unsalted butter" is not butter. One lowercase word per line; "#"
+# starts a comment. A word here must never appear in prep_words.txt. See
+# README.md.
+
+ground
+dried
+dry
+powder
+powdered
+canned
+tinned
+toasted
+roasted
+smoked
+cured
+pickled
+fermented
+frozen
+raw
+whole
+salted
+unsalted
+sweetened
+unsweetened
+condensed
+evaporated
+instant
+flaked
+flakes
+baby
+sweet
+light
+dark
+virgin
+fine
+coarse
+boneless
+skinless
+bone-in
+skin-on
+low-fat
+full-fat
+nonfat
+reduced-fat
+low-sodium
+reduced-sodium
+gluten-free
