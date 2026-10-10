@@ -876,6 +876,60 @@
         "title": "Body_upload_receipt_api_v1_receipts_post",
         "type": "object"
       },
+      "BrandFamilyRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "kind"
+        ],
+        "title": "BrandFamilyRef",
+        "type": "object"
+      },
+      "BrandFamilySummary": {
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "kind"
+        ],
+        "title": "BrandFamilySummary",
+        "type": "object"
+      },
       "CaptureOut": {
         "additionalProperties": false,
         "properties": {
@@ -2336,6 +2390,51 @@
           }
         },
         "title": "HomeBaseUpdate",
+        "type": "object"
+      },
+      "HouseBrandOut": {
+        "additionalProperties": false,
+        "description": "The store brand a product's brand names (16, 2R): whose it is and its tier.",
+        "properties": {
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "family": {
+            "$ref": "#/components/schemas/BrandFamilySummary"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "replaced_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaced By Name"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "tier",
+          "current",
+          "family"
+        ],
+        "title": "HouseBrandOut",
         "type": "object"
       },
       "HouseholdLocation": {
@@ -8863,6 +8962,16 @@
             ],
             "title": "Exclusive Vendor Id"
           },
+          "house_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseBrandOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -9220,6 +9329,16 @@
               }
             ],
             "title": "Exclusive Vendor Id"
+          },
+          "house_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseBrandOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -14166,6 +14285,16 @@
             ],
             "title": "Brand"
           },
+          "brand_family": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandFamilyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -15084,6 +15213,16 @@
             ],
             "title": "Brand"
           },
+          "brand_family": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandFamilyRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -15264,6 +15403,18 @@
               }
             ],
             "title": "Brand"
+          },
+          "brand_family_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Family Id"
           },
           "fetch_policy": {
             "anyOf": [

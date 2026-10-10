@@ -248,6 +248,21 @@ links reach outside the deployment, and only when switched on.
   ingredient. Run it without `--dry-run` once the report looks right. See
   spec 03 §1G.
 
+- **Store brands.** A `kitchen-erp-brands/1` bundle (ODbL) lists families of
+  stores, their own brands with tiers, and wholesale labels. Importing one
+  links each vendor to its family and each product to its brand, and a product
+  whose brand is a store's own becomes a store brand:
+
+  ```bash
+  docker compose exec api kerp import brands --from /data/exports/kitchen-erp-brands.json --dry-run
+  docker compose exec api kerp products brand-families --plan /data/exports/brand-kinds.json
+  docker compose exec api kerp products brand-families --apply /data/exports/brand-kinds.json
+  ```
+
+  Import never deletes a family or brand and never overwrites a field you
+  edited. The catch-up lists products saved before the import whose brand is a
+  store's own; keep the rows you want changed, then apply. See spec 16 (2R).
+
 - **Suggestions from an enrichment tool.** A tool that fills in missing store
   facts works through the API with a token made under Settings → API tokens as
   "Read and suggest vendor facts". That token can read the public vendor file

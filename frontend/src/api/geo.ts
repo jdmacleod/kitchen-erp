@@ -71,6 +71,8 @@ export interface Vendor extends VendorRef {
   /** Posted-price checks are paused until then: its pages kept failing to load (issue 264). */
   refresh_paused_until: string | null;
   refresh_unreachable_since: string | null;
+  /** Whose house brands its stores sell (2R); null when unknown. */
+  brand_family?: { id: string; key: string; name: string; kind: string } | null;
 }
 
 export type FetchPolicy = "server_fetch" | "capture_only" | "none";
