@@ -286,3 +286,47 @@ async def test_the_catch_up_links_and_changes_only_approved_kinds(admin_client):
     got_b = (await admin_client.get(f"/api/v1/products/{b['id']}")).json()
     assert got_a["kind"] == "private_label" and got_b["kind"] == "branded"
     assert got_b["house_brand"]["key"] == "meadowline/hearthside"  # linked either way
+
+
+# --- 2R-1b: the vendor picker and review ---------------------------------------
+
+
+async def test_brand_families_are_listed_by_name(admin_client):
+    await run()
+    r = await admin_client.get("/api/v1/brand-families")
+    assert r.status_code == 200
+    assert [f["key"] for f in r.json()["items"]] == ["larkspur", "meadowline"]
+
+
+async def test_a_person_sets_a_vendors_family(admin_client):
+    await run()
+    v = await vendor(admin_client, "Corner Shop")
+    families = (await admin_client.get("/api/v1/brand-families")).json()["items"]
+    larkspur_id = next(f["id"] for f in families if f["key"] == "larkspur")
+    r = await admin_client.patch(
+        f"/api/v1/vendors/{v['id']}", json={"brand_family_id": larkspur_id}
+    )
+    assert r.json()["brand_family"]["key"] == "larkspur"
+    assert "brand_family_id" not in r.json()["sources"]  # a person's choice, not a source's
+    missing = "00000000-0000-4000-8000-000000000000"
+    r = await admin_client.patch(f"/api/v1/vendors/{v['id']}", json={"brand_family_id": missing})
+    assert r.status_code == 404
+
+
+async def test_a_proposal_names_its_house_brand(admin_client):
+    from app.models import ProductProposal
+
+    await run()
+
+    def field(value: str) -> dict:
+        return {"value": value, "source": "page_data", "alternatives": []}
+
+    async with get_sessionmaker()() as db:
+        own = ProductProposal(fields={"title": field("Oats"), "brand": field("LARKSPUR SELECT")})
+        national = ProductProposal(fields={"title": field("Oats"), "brand": field("Juniper Mills")})
+        db.add_all([own, national])
+        await db.commit()
+    got = (await admin_client.get(f"/api/v1/product-proposals/{own.id}")).json()
+    assert got["house_brand"]["key"] == "larkspur/select"
+    got = (await admin_client.get(f"/api/v1/product-proposals/{national.id}")).json()
+    assert got["house_brand"] is None

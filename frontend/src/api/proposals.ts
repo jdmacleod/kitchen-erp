@@ -4,7 +4,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE, ApiError, api } from "./client";
-import { catalogKeys } from "./catalog";
+import { catalogKeys, type HouseBrand } from "./catalog";
 import { inboxKey } from "./inbox";
 import type { PhotoRole, PhotoSummary, ProductPhoto } from "./productPhotos";
 import type { CategoryKey } from "../components/CategoryChip";
@@ -128,6 +128,8 @@ export interface Proposal {
   reading?: { path: "barcode" | "vision" | "ocr_text" | "unread" | "page"; error: string | null } | null;
   /** The latest "Look this up online" request (2N). */
   lookup?: { status: "open" | "answered" | "closed"; created_at: string; answered_at: string | null } | null;
+  /** The store brand the proposed brand names (2R); review starts it as a store brand. */
+  house_brand?: HouseBrand | null;
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;

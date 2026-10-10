@@ -876,6 +876,23 @@
         "title": "Body_upload_receipt_api_v1_receipts_post",
         "type": "object"
       },
+      "BrandFamilyList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BrandFamilyRef"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BrandFamilyList",
+        "type": "object"
+      },
       "BrandFamilyRef": {
         "additionalProperties": false,
         "properties": {
@@ -10834,6 +10851,16 @@
             "title": "Fields",
             "type": "object"
           },
+          "house_brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HouseBrandOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -16885,6 +16912,28 @@
         "summary": "Lookup Barcode",
         "tags": [
           "product captures"
+        ]
+      }
+    },
+    "/api/v1/brand-families": {
+      "get": {
+        "description": "Every imported family, by name; retailers are the ones a vendor can belong to.",
+        "operationId": "list_brand_families_api_v1_brand_families_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandFamilyList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Brand Families",
+        "tags": [
+          "brands"
         ]
       }
     },

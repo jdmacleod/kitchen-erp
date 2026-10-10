@@ -180,7 +180,8 @@ function Review({ proposal }: { proposal: Proposal }) {
   const [roles, setRoles] = useState<Record<string, PhotoRole>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const brandOrCode = Boolean(fields.brand?.value || fields.gtin?.value);
-  const [kind, setKind] = useState<ProductKind>(brandOrCode ? "branded" : "loose");
+  // A store's own brand starts as a store brand (2R); the person can still change it.
+  const [kind, setKind] = useState<ProductKind>(proposal.house_brand ? "private_label" : brandOrCode ? "branded" : "loose");
   const vendor = proposal.vendor;
   const [recordPrice, setRecordPrice] = useState(Boolean(proposal.price && vendor?.suggested_location_id));
   const [location, setLocation] = useState<string | null>(vendor?.suggested_location_id ?? null);

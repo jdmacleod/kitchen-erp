@@ -72,7 +72,7 @@ export interface Vendor extends VendorRef {
   refresh_paused_until: string | null;
   refresh_unreachable_since: string | null;
   /** Whose house brands its stores sell (2R); null when unknown. */
-  brand_family?: { id: string; key: string; name: string; kind: string } | null;
+  brand_family?: BrandFamily | null;
 }
 
 export type FetchPolicy = "server_fetch" | "capture_only" | "none";
@@ -178,6 +178,16 @@ export interface VendorUpdateInput {
   website?: string | null;
   notes?: string | null;
   fetch_policy?: FetchPolicy;
+  /** Whose house brands its stores sell (2R); null clears a wrong link. */
+  brand_family_id?: string | null;
+}
+
+/** A family of stores that sells the same house brands, as imported (2R). */
+export interface BrandFamily {
+  id: string;
+  key: string;
+  name: string;
+  kind: "retailer" | "wholesaler" | "cooperative";
 }
 
 export interface VendorInline {
@@ -373,6 +383,16 @@ export function useUpdateVendor(id: string) {
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
       invalidateLocations(client);
     },
+  });
+}
+
+/** Every imported brand family, by name: the choices for a vendor's family (2R). */
+export function useBrandFamilies(enabled = true) {
+  return useQuery({
+    queryKey: ["brand-families"],
+    queryFn: () => api<{ items: BrandFamily[] }>("/brand-families"),
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }
 

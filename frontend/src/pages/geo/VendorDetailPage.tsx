@@ -17,6 +17,7 @@ import {
   shareState,
   useUnlinkOsm,
   useUpdateLocation,
+  useBrandFamilies,
   useUpdateVendor,
   useVendor,
   vendorKindLabel,
@@ -107,6 +108,12 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
               <a href={vendor.website} rel="noreferrer noopener" target="_blank" className={`rounded underline ${focusRing}`}>
                 website
               </a>
+            </>
+          ) : null}
+          {vendor.brand_family ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <span data-testid="vendor-brand-family">Sells {vendor.brand_family.name} brands</span>
             </>
           ) : null}
           {vendor.active ? <Badge tone="good">active</Badge> : <Badge tone="warn">inactive</Badge>}
@@ -207,7 +214,10 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
     price_scope: vendor.price_scope as PriceScope,
     website: vendor.website ?? "",
     notes: vendor.notes ?? "",
+    brand_family_id: vendor.brand_family?.id ?? "",
   });
+  const families = useBrandFamilies();
+  const retailers = (families.data?.items ?? []).filter((f) => f.kind === "retailer");
   const [invalid, setInvalid] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -224,6 +234,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
     if (form.price_scope !== vendor.price_scope) input.price_scope = form.price_scope;
     if ((form.website.trim() || null) !== vendor.website) input.website = form.website.trim() || null;
     if ((form.notes.trim() || null) !== vendor.notes) input.notes = form.notes.trim() || null;
+    if ((form.brand_family_id || null) !== (vendor.brand_family?.id ?? null)) input.brand_family_id = form.brand_family_id || null;
     if (Object.keys(input).length === 0) {
       onDone();
       return;
@@ -243,6 +254,22 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
         <RadioGroup name="edit-vendor-kind" legend="Kind" options={VENDOR_KINDS.map((k) => ({ value: k, label: vendorKindLabel[k] }))} value={form.kind} onChange={(v) => set("kind", v)} />
         <RadioGroup name="edit-vendor-scope" legend="Price scope" options={PRICE_SCOPES.map((s) => ({ value: s, label: priceScopeLabel[s] }))} value={form.price_scope} onChange={(v) => set("price_scope", v)} />
         <Field id="edit-vendor-website" label="Website" type="url" autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} />
+        {retailers.length > 0 || vendor.brand_family ? (
+          <SelectField
+            id="edit-vendor-brand-family"
+            label="Store brands"
+            hint="Whose own brands this store sells. Matched from the brand list when it's imported; your choice is kept."
+            value={form.brand_family_id}
+            onChange={(e) => set("brand_family_id", e.target.value)}
+          >
+            <option value="">None or not known</option>
+            {retailers.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </SelectField>
+        ) : null}
         <TextAreaField id="edit-vendor-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={update.isPending}>

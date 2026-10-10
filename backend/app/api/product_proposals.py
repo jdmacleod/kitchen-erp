@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, DbSession
 from app.catalog import proposals as merging
 from app.models import ProductCapture, ProductProposal
+from app.schemas.catalog import HouseBrandOut
 from app.schemas.product_photos import ProductPhotoOut
 from app.schemas.proposals import (
     AcceptIn,
@@ -20,7 +21,7 @@ from app.schemas.proposals import (
     ProposalOut,
     ProposalSummary,
 )
-from app.services import lookups, proposals, resolution
+from app.services import brands, lookups, proposals, resolution
 
 router = APIRouter(tags=["product proposals"])
 
@@ -51,10 +52,17 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         jobs=[ProductJobOut.model_validate(j) for j in await proposals.jobs_of(db, proposal)],
         reading=await proposals.reading_of(db, proposal),  # type: ignore[arg-type]
         lookup=await lookups.request_for_proposal(db, proposal.id),  # type: ignore[arg-type]
+        house_brand=await _house_brand(db, proposal),
         decided_at=proposal.decided_at,
         result=proposal.result,
         created_at=proposal.created_at,
     )
+
+
+async def _house_brand(db: AsyncSession, proposal: ProductProposal) -> HouseBrandOut | None:
+    brand = merging.value(proposal.fields, "brand")
+    found = await brands.find_brand(db, str(brand)) if brand else None
+    return HouseBrandOut.model_validate(found) if found else None
 
 
 @router.get("/product-proposals", response_model=ProposalList)
