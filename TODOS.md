@@ -125,17 +125,31 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Deferred past Phase 3 (review 2026-10-09); a recipe or comparison that needs the chain
 
-### The full name-matching cascade for recipe text
+### USDA attribute names and FoodOn identifiers for the usda tier
 
-**What:** Prep-word stripping ("minced garlic" → garlic + note), USDA-pool proposals for unknown names, and the Ollama tier, as the handoff described (`12`, and 07's 1G amendments).
+**What:** Let the cascade's usda tier (`07`, 3C) find a food by its common or scientific name, and carry a FoodOn identifier on an ingredient's reference.
 
-**Why:** Recipe lines carry prep words and names no alias knows yet. Typed names in 1G don't, because a person is already choosing.
+**Why:** The USDA pool is searched by description only, so a name the description does not contain finds nothing, and a reference has no cross-vocabulary identifier.
 
-**Context:** Deferred by the ingredient-vocabulary CEO review on 2026-09-30 (board card VS2) to Phase 3 sub-phase 3C. Close matches stay suggestions and never apply themselves (VC3). The Phase 3 review (2026-10-09) fixed the order in `07`, 3C: exact name or spelling, inflection, exact standard-list entry, prep-word stripping, USDA pool, local model; only the first two resolve without a person. FoodOn references and the USDA attribute table (common and scientific names) moved here too (outside-voice card O8): nothing in 1G reads them, and the FoodOn licensing entry waits with them.
+**Context:** The 1G amendments in `07` (VS2) expected both to arrive with 3C; the Phase 3 build (2026-10-10) shipped neither. The USDA import (`services/usda.py`) loads no attribute table. What it takes: an `fdc_food_attribute` table (fdc_id, attribute type, name), the importer reading `food_attribute*.csv` when present in the FoodData Central download, a trigram index on the name, and `usda.candidates` searching attribute names beside descriptions. FoodOn needs a data file, an entry in `docs/licensing.md` and an identifier column on the ingredient reference; the licensing entry waits until something reads FoodOn. The usda tier, like `kerp ingredients usda-candidates`, searches Foundation and SR Legacy foods only.
 
-**Effort:** L (human) / M (CC)
+**Effort:** M (human) / S (CC)
 **Priority:** P3
-**Depends on:** Phase 3 approved 2026-10-09; built in sub-phase 3C
+**Depends on:** A recipe name the usda tier misses that an attribute name would find
+
+## Recipes
+
+### Cooklang recipe references
+
+**What:** Parse `@./Shared/Vinaigrette{50%ml}` as a reference to another recipe in the repository, cost it from that recipe's snapshot scaled to the quantity, and show it as a link on the recipe page.
+
+**Why:** Cooklang's references let a sauce or a stock be written once; today the parser reads one as an ingredient named `./Shared/Vinaigrette`, which goes to the resolve queue as an unmatched name.
+
+**Context:** Noted in `07`, 3B at the Phase 3 build (2026-10-10). The example recipes in `examples/recipes/` avoid references (their README says which were replaced). Needs a reference kind on `recipe_ingredient` pointing at the other recipe, the resolver skipping references, costing that follows the referenced snapshot and reports the line incomplete when that recipe is, and a cycle guard.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** A household recipe that uses a reference
 
 ### Choosing one USDA density per ingredient
 
@@ -166,4 +180,5 @@ Design: `docs/designs/vision-receipt-reading.md`.
 - **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).
 - **Decide whether recipe costing is per kitchen**: household-wide; `recipe_cost_snapshot` carries no kitchen, and Phase 4 adds a per-kitchen filter with the kitchen switcher (Phase 3 review, 2026-10-09; `07`, 3D).
 - **A fresh clone creates an empty ../cooklang-recipes**: the Compose default becomes `./data/recipes`, and `.env.example` shows `RECIPES_PATH=../cooklang-recipes` for a sibling repository; a missing, empty or `.cook`-less directory is "no repository", and a directory without `.git` is a repository with no commits (Phase 3 review, 2026-10-09; `07`, prerequisites).
+- **The full name-matching cascade for recipe text**: built in sub-phase 3C (2026-10-10): exact name or spelling, inflection, exact standard-list entry, prep-word stripping, USDA pool, then the local model on an explicit "Ask the model"; only the first two resolve without a person. The USDA attribute table and FoodOn identifiers that were to come with it did not; they are their own item under Ingredients.
 - **Public example recipes**: a tracked `examples/recipes/` directory of permissively licensed public Cooklang recipes, copied into `data/recipes/` by `make seed-examples` and mounted directly by the demo and e2e stacks; each is credited in `docs/licensing.md` as it is added (2026-10-09; `07`, prerequisites).
