@@ -100,6 +100,15 @@ class VendorUpdate(ApiModel):
     wikidata: Wikidata | None = None
     # Whether the lookup helper may fetch its pages, e.g. to check posted prices (03).
     fetch_policy: FetchPolicy | None = None
+    # Whose house brands its stores sell (16, 2R); null clears a wrong link.
+    brand_family_id: uuid.UUID | None = None
+
+
+class BrandFamilyRef(ApiModel):
+    id: uuid.UUID
+    key: str
+    name: str
+    kind: str
 
 
 class VendorRef(ApiModel):
@@ -123,6 +132,7 @@ class VendorOut(VendorRef):
     # load since ``refresh_unreachable_since`` (#264).
     refresh_paused_until: datetime | None = None
     refresh_unreachable_since: datetime | None = None
+    brand_family: BrandFamilyRef | None = None
 
     @classmethod
     def from_model(cls, vendor: Vendor) -> VendorOut:
@@ -136,10 +146,13 @@ class VendorOut(VendorRef):
             notes=vendor.notes,
             active=vendor.active,
             created_at=vendor.created_at,
-            sources=sources_of(vendor, ("website", "brand", "wikidata")),
+            sources=sources_of(vendor, ("website", "brand", "wikidata", "brand_family_id")),
             fetch_policy=vendor.fetch_policy,
             refresh_paused_until=vendor.refresh_paused_until,
             refresh_unreachable_since=vendor.refresh_unreachable_since,
+            brand_family=(
+                BrandFamilyRef.model_validate(vendor.brand_family) if vendor.brand_family else None
+            ),
         )
 
 

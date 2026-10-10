@@ -733,6 +733,94 @@ def import_vendors(
     )
 
 
+BRAND_FILE = typer.Option(..., "--from", help="A kitchen-erp-brands/1 bundle, YAML or JSON.")
+
+
+@import_cli.command("brands")
+def import_brands(
+    src: Path = BRAND_FILE,
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Report what would change; write nothing."
+    ),
+) -> None:
+    """Import store brands and their families (spec 16, 2R). A field someone edited is
+    kept; a family or brand the file no longer lists is reported, never deleted."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.core.errors import ApiError
+    from app.services import brand_import
+
+    fmt = "json" if src.suffix.lower() == ".json" else "yaml"
+
+    async def _run():
+        async with get_sessionmaker()() as db:
+            report = await brand_import.run(db, src.read_bytes(), fmt=fmt, dry_run=dry_run)
+        await dispose_engine()
+        return report
+
+    try:
+        report = asyncio.run(_run())
+    except ApiError as exc:
+        typer.echo(f"{exc.message}", err=True)
+        raise typer.Exit(2) from exc
+    for r in report.refused:
+        typer.echo(f"  refused: {r.key}: {r.reason}")
+    for key in report.missing:
+        typer.echo(f"  no longer in the file, kept: {key}")
+    for v in report.vendors_needing_you:
+        typer.echo(f"  needs you: vendor {v.vendor!r}: {v.reason}")
+    for v in report.vendors_linked:
+        typer.echo(f"  linked: {v.vendor} -> {v.family} (by {v.matched_by})")
+    c = report.counts
+    verb = "would change" if dry_run else "changed"
+    typer.echo(
+        f"{verb}: {c.families_created} families and {c.brands_created} brands created, "
+        f"{c.families_updated} families and {c.brands_updated} brands updated, "
+        f"{c.unchanged} unchanged, {c.kept} edited fields kept, "
+        f"{report.products_linked} products linked"
+    )
+
+
+products_cli = typer.Typer(help="Product maintenance.", no_args_is_help=True)
+cli.add_typer(products_cli, name="products")
+
+
+@products_cli.command("brand-families")
+def products_brand_families(
+    plan_out: Path | None = PLAN_OUT, apply_from: Path | None = APPLY_FROM
+) -> None:
+    """Catch up store brands: list products whose brand is a store's own (--plan), then
+    link every product's brand and set the approved kinds to store brand (--apply).
+
+    --apply takes the plan's JSON list, edited to keep only the rows to change.
+    """
+    import json
+
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services import brand_catchup as catchup
+
+    if (plan_out is None) == (apply_from is None):
+        typer.echo("error: give exactly one of --plan or --apply", err=True)
+        raise typer.Exit(code=2)
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            if plan_out is not None:
+                rows = await catchup.plan(db)
+                plan_out.write_text(json.dumps(rows, indent=1) + "\n")
+                moving = sum(1 for r in rows if r["proposed"] != r["current"])
+                typer.echo(f"{len(rows)} store-brand product(s), {moving} would change: {plan_out}")
+            else:
+                decisions = json.loads(apply_from.read_text())  # type: ignore[union-attr]
+                counts = await catchup.apply(db, decisions)
+                typer.echo(
+                    f"linked {counts['linked']}, changed {counts['changed']}, "
+                    f"unchanged {counts['unchanged']}, missing {counts['missing']}"
+                )
+        await dispose_engine()
+
+    asyncio.run(_run())
+
+
 @export_cli.command("ingredients")
 def export_ingredients(
     fmt: str = typer.Option("json", "--format", help="json or yaml"),
