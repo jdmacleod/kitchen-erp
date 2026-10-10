@@ -19,7 +19,7 @@ The grammar, as this parser reads it:
 from __future__ import annotations
 
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from decimal import Decimal
 
 from app.recipes.cooklang.frontmatter import (
@@ -287,7 +287,8 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
                 return ParseError(f"note on `@{name}` is never closed", line_number, end + 1)
             note = line[end + 1 : note_close].strip() or None
             end = note_close + 1
-        return _build(marker, name or None, body, note, optional, line_number), end
+        item = _build(marker, name or None, body, note, optional, line_number)
+        return _place(item, at, end, j, j + len(name)), end
 
     # Single-word form: name characters, allowing a joiner between two of them.
     k = j
@@ -299,7 +300,14 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
     name = line[j:k]
     if not name:
         return None
-    return _build(marker, name, "", None, optional, line_number), k
+    return _place(_build(marker, name, "", None, optional, line_number), at, k, j, k), k
+
+
+def _place(item: Item, start: int, end: int, name_start: int, name_end: int) -> Item:
+    """An ingredient with its token and name spans recorded; other items unchanged."""
+    if not isinstance(item, IngredientRef):
+        return item
+    return replace(item, span=(start, end), name_span=(name_start, name_end))
 
 
 def _find_brace(line: str, start: int) -> int | None:
