@@ -36,9 +36,19 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 ## Shop: purchases (Shop: purchases)
 
 - **Header:** "Purchases", with secondary "Scan a receipt" and primary "New purchase" (UI-2.14).
-- **Filter:** a status segmented control: All, Drafts (with a count), Reviewed, Committed. Newest first.
+- **Filter:** a status segmented control: All, Drafts (with a count), Reviewed, Committed. Newest first by purchase date, not by when a purchase was entered (#291).
   - All excludes voided purchases. Only when voided purchases exist does the page description add "Removed purchases are under Show voided." (issue 247).
   - When voided purchases exist, a link under the list, "Show voided ({n})", sets `?status=voided`. The count uses the first page, like Drafts, capped as "50+". That view offers "Back to all".
+- **Find:** a search field, "Find a store or item", beside the status control (#292, approved 2026-10-09).
+  - It matches the store's name and location, and the receipt text or product name of any line, so "blueberries" finds every trip that bought them. Amounts are not matched, and there is no date-range filter: sorting by Date covers that (2026-10-09). Matching is on the server (`GET /api/v1/purchases?q=`), case- and accent-insensitive, and a purchase appears once however many lines match.
+  - It combines with the status control and with Show voided, and is kept in the URL (`?q=`). Typing waits 300 ms before asking.
+  - With a search, the description line reads "{n} purchases match" (capped "50+" like the Drafts count), and the filtered-empty state says "No purchases match “{q}”" with Clear search, distinct from the empty list (UI-3.11).
+- **Sort:** the Date, Where and Total headings are sort buttons (#292).
+  - Date sorts by when the purchase was made, newest first by default; Where by store, then location, A to Z; Total by the purchase total, largest first on first click. A second click reverses. Ties fall back to newest first.
+  - The sorted heading carries `aria-sort` and an arrow; the others show none. The choice is kept in the URL (`?sort=date|where|total&dir=asc|desc`); the default, date descending, is left out of the URL.
+  - Sorting is on the server with a keyset cursor on (sort value, id), so the order holds across "Load more". From, Lines and Status are not sortable: the status control already covers status.
+  - Reading rows (receipts still being read) show above the list only in the default order with no search, since they have no date or total yet.
+  - Below 1024px, where the table is a list, a "Sort by" select offers Newest, Oldest, Store A–Z, Largest total and Smallest total.
 - **Table:** Date, Where, From (Receipt / By hand), Lines, Total and Status.
   - A draft without a location reads "Location needed" in squash.
   - Receipts being read appear as rows with a Reading pill (G1).

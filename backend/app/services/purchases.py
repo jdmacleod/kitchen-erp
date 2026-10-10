@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -9,9 +10,9 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Context, Decimal
 from typing import Literal
 
-from sqlalchemy import func, select, tuple_
+from sqlalchemy import and_, exists, func, literal, or_, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import aliased, joinedload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
 
 from app.core.errors import ApiError
@@ -23,7 +24,7 @@ from app.models import (
     Purchase,
     PurchaseLine,
 )
-from app.models.geo import VendorLocation
+from app.models.geo import Vendor, VendorLocation
 from app.schemas.purchases import LineIn, ManualPurchaseIn
 from app.services import best_by, pricebook
 from app.services.pagination import decode_keyset, encode_keyset
@@ -176,22 +177,45 @@ def ensure_not_voided(purchase: Purchase) -> None:
         raise ApiError(409, "voided", "This purchase was removed, so it can't be changed.")
 
 
+PurchaseSort = Literal["date", "where", "total"]
+SortDir = Literal["asc", "desc"]
+
+# Accented letters folded to plain ones, so "jalapeno" finds "Jalapeño" (spec 10).
+_ACCENTED = "áàâäãåāéèêëēíìîïīóòôöõøōúùûüūñçýÿ"
+_PLAIN = "aaaaaaaeeeeeiiiiiooooooouuuuuncyy"
+
+
+def _fold(expr):
+    return func.translate(func.lower(expr), _ACCENTED, _PLAIN)
+
+
+def _fold_text(text: str) -> str:
+    return text.lower().translate(str.maketrans(_ACCENTED, _PLAIN))
+
+
 async def list_purchases(
     db: AsyncSession,
     *,
     vendor_location_id: uuid.UUID | None = None,
     status: str | None = None,
     source: str | None = None,
+    q: str | None = None,
+    sort: PurchaseSort = "date",
+    direction: SortDir = "desc",
     limit: int = 50,
     cursor: str | None = None,
 ) -> tuple[list[Purchase], str | None]:
-    # Newest purchase first, by when it was bought, not when it was entered: an
-    # import or a batch of old receipts must not jump ahead of later shopping.
-    stmt = (
-        _purchase_query()
-        .order_by(Purchase.purchased_at.desc(), Purchase.id.desc())
-        .limit(limit + 1)
-    )
+    """Purchases, newest bought first unless sorted otherwise (spec 10, Shop: purchases).
+
+    ``q`` keeps purchases where every word appears in the store's name, the
+    location's name, or a line's receipt text or product name. Sorting by store
+    or total falls back to newest first for ties. The cursor carries the sort
+    value, the purchase date and the id, so the order holds across pages.
+    """
+    location = aliased(VendorLocation)
+    vendor = aliased(Vendor)
+    stmt = _purchase_query().outerjoin(location, location.id == Purchase.vendor_location_id)
+    stmt = stmt.outerjoin(vendor, vendor.id == location.vendor_id)
     if vendor_location_id is not None:
         stmt = stmt.where(Purchase.vendor_location_id == vendor_location_id)
     if status is not None:
@@ -201,17 +225,85 @@ async def list_purchases(
         stmt = stmt.where(Purchase.status != "voided")
     if source is not None:
         stmt = stmt.where(Purchase.source == source)
-    before = decode_keyset(cursor)
-    if before is not None:
-        try:
-            when = datetime.fromisoformat(before[0])
-        except ValueError as exc:
-            raise ApiError(400, "bad_cursor", "The cursor is not valid.") from exc
-        stmt = stmt.where(tuple_(Purchase.purchased_at, Purchase.id) < (when, before[1]))
-    rows = list((await db.execute(stmt)).unique().scalars())
-    last = rows[limit - 1] if len(rows) > limit else None
-    next_cursor = encode_keyset(last.purchased_at.isoformat(), last.id) if last else None
+    for word in _fold_text(q or "").split():
+        pattern = "%" + word.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+        line_product = aliased(Product)
+        in_lines = exists(
+            select(literal(1))
+            .select_from(PurchaseLine)
+            .outerjoin(line_product, line_product.id == PurchaseLine.product_id)
+            .where(
+                PurchaseLine.purchase_id == Purchase.id,
+                PurchaseLine.removed_at.is_(None),
+                or_(
+                    _fold(PurchaseLine.raw_text).like(pattern),
+                    _fold(line_product.name).like(pattern),
+                ),
+            )
+        )
+        stmt = stmt.where(
+            or_(_fold(vendor.name).like(pattern), _fold(location.name).like(pattern), in_lines)
+        )
+
+    key = None
+    if sort == "where":
+        key = _fold(func.coalesce(vendor.name, "") + " " + func.coalesce(location.name, ""))
+    elif sort == "total":
+        key = Purchase.total
+    newest = (Purchase.purchased_at.desc(), Purchase.id.desc())
+    if key is None:
+        if direction == "asc":
+            stmt = stmt.order_by(Purchase.purchased_at.asc(), Purchase.id.asc())
+        else:
+            stmt = stmt.order_by(*newest)
+    else:
+        stmt = stmt.order_by(key.asc() if direction == "asc" else key.desc(), *newest)
+
+    after = _decode_list_cursor(cursor, sort)
+    if after is not None:
+        value, when, last_id = after
+        by_date = tuple_(Purchase.purchased_at, Purchase.id)
+        if key is None:
+            stmt = stmt.where(
+                by_date > (when, last_id) if direction == "asc" else by_date < (when, last_id)
+            )
+        else:
+            past = key > value if direction == "asc" else key < value
+            stmt = stmt.where(or_(past, and_(key == value, by_date < (when, last_id))))
+    rows = list((await db.execute(stmt.limit(limit + 1))).unique().scalars())
+    next_cursor = None
+    if len(rows) > limit:
+        last = rows[limit - 1]
+        value = None
+        if sort == "where":
+            loc = last.vendor_location
+            value = _fold_text(f"{loc.vendor.name if loc else ''} {loc.name if loc else ''}")
+        elif sort == "total":
+            value = str(last.total)
+        next_cursor = encode_keyset(
+            json.dumps([sort, value, last.purchased_at.isoformat()]), last.id
+        )
     return rows[:limit], next_cursor
+
+
+def _decode_list_cursor(cursor: str | None, sort: str):
+    """(sort value, purchase date, id) from a list cursor made for the same sort."""
+    found = decode_keyset(cursor)
+    if found is None:
+        return None
+    raw, last_id = found
+    try:
+        made_for, value, when = json.loads(raw)
+        if made_for != sort:
+            raise ValueError("another sort")
+        when = datetime.fromisoformat(when)
+        if sort == "total":
+            value = Decimal(value)
+        elif sort == "where" and not isinstance(value, str):
+            raise ValueError("where value")
+    except (ValueError, TypeError, ArithmeticError) as exc:
+        raise ApiError(400, "bad_cursor", "The cursor is not valid.") from exc
+    return value, when, last_id
 
 
 async def live_observations(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, uuid.UUID]:

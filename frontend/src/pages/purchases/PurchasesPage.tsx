@@ -3,13 +3,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { jobInFlight, useIngestJobs, type IngestJob } from "../../api/ingest";
-import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseStatus } from "../../api/purchases";
+import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseSort, type PurchaseStatus, type SortDir } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
 import { TrustBadge } from "../../components/purchases/TrustBadge";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
+import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -21,6 +22,18 @@ function fromLabel(p: Purchase): string {
   if (p.source === "manual") return "By hand";
   return sourceLabel[p.source];
 }
+
+const SORTS: PurchaseSort[] = ["date", "where", "total"];
+/** The first click on a heading: newest, A to Z, largest (spec 10). */
+const FIRST_DIR: Record<PurchaseSort, SortDir> = { date: "desc", where: "asc", total: "desc" };
+/** The phone's "Sort by" choices, each a sort and a direction. */
+const SORT_CHOICES: { value: string; label: string }[] = [
+  { value: "date:desc", label: "Newest" },
+  { value: "date:asc", label: "Oldest" },
+  { value: "where:asc", label: "Store A–Z" },
+  { value: "total:desc", label: "Largest total" },
+  { value: "total:asc", label: "Smallest total" },
+];
 
 /** "3", or "50+" when there is a further page. */
 function countLabel(n: number, more: boolean): string {
@@ -38,12 +51,53 @@ export function PurchasesPage() {
   // segments stay the four statuses a person works with.
   const [params, setParams] = useSearchParams();
   const voidedView = params.get("status") === "voided";
+  const setParam = (changes: Record<string, string | null>) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(changes)) {
+          if (value) next.set(key, value);
+          else next.delete(key);
+        }
+        return next;
+      },
+      { replace: true },
+    );
   const showAll = () => {
     setFilter("all");
-    setParams({}, { replace: true });
+    setParam({ status: null });
+  };
+  // Find and sort (spec 10, issue 292), kept in the URL; the default order is left out of it.
+  const q = params.get("q")?.trim() ?? "";
+  const rawSort = params.get("sort");
+  const sort: PurchaseSort = SORTS.includes(rawSort as PurchaseSort) ? (rawSort as PurchaseSort) : "date";
+  const rawDir = params.get("dir");
+  const dir: SortDir = rawDir === "asc" || rawDir === "desc" ? rawDir : FIRST_DIR[sort];
+  const defaultOrder = sort === "date" && dir === "desc";
+  const setOrder = (next: PurchaseSort, nextDir: SortDir) =>
+    setParam(next === "date" && nextDir === "desc" ? { sort: null, dir: null } : { sort: next, dir: nextDir });
+  const onHeading = (column: PurchaseSort) =>
+    setOrder(column, column === sort ? (dir === "asc" ? "desc" : "asc") : FIRST_DIR[column]);
+  const [text, setText] = useState(q);
+  // The field follows ?q= when it changes from outside (Back, a link); the URL
+  // takes only text the debounce has settled on (the Products pattern).
+  const [seenQ, setSeenQ] = useState(q);
+  if (q !== seenQ) {
+    setSeenQ(q);
+    setText(q);
+  }
+  const debounced = useDebouncedValue(text, 300);
+  useEffect(() => {
+    if (debounced === text && debounced.trim() !== q) setParam({ q: debounced.trim() || null });
+    // Only the typed text drives the URL; q changing on its own (Back) is read above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced]);
+  const clearSearch = () => {
+    setText("");
+    setParam({ q: null });
   };
   const status = voidedView ? "voided" : filter === "all" ? "" : filter;
-  const purchases = usePurchases({ status });
+  const purchases = usePurchases({ status, q: q || undefined, sort: defaultOrder ? undefined : sort, dir: defaultOrder ? undefined : dir });
   const items = purchases.data?.pages.flatMap((p) => p.items) ?? [];
   // The Drafts count, from the first page of drafts.
   const drafts = usePurchases({ status: "draft" });
@@ -61,7 +115,8 @@ export function PurchasesPage() {
   const inFlight = [...(pendingJobs.data ?? []), ...(runningJobs.data ?? [])].filter(jobInFlight);
   // A job that has already made its draft is listed as that draft.
   const readingJobs = inFlight.filter((j) => !j.purchase_id).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
-  const showsReading = !voidedView && (filter === "all" || filter === "draft");
+  // Being read has no date or total yet: those rows lead only the default, unsearched order.
+  const showsReading = !voidedView && (filter === "all" || filter === "draft") && defaultOrder && !q;
   const reading = showsReading ? readingJobs : [];
   // Could not check: never claim there is nothing being read (CLAUDE.md: an
   // error is never an empty state).
@@ -86,8 +141,10 @@ export function PurchasesPage() {
       <PageHeader
         title="Purchases"
         description={
-          // Mention removed purchases only when there is a link to them (issue 247).
-          `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
+          q && purchases.data
+            ? `${countLabel(items.length, Boolean(purchases.hasNextPage))} ${items.length === 1 && !purchases.hasNextPage ? "purchase matches" : "purchases match"} “${q}”.`
+            : // Mention removed purchases only when there is a link to them (issue 247).
+              `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -135,6 +192,42 @@ export function PurchasesPage() {
             />
           )}
         </div>
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <label htmlFor="purchase-find" className="sr-only">
+            Find a store or item
+          </label>
+          <input
+            id="purchase-find"
+            type="text"
+            enterKeyHint="search"
+            autoComplete="off"
+            maxLength={200}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Find a store or item"
+            className={`min-h-12 min-w-0 flex-1 basis-64 rounded-lg border border-neutral-300 bg-white px-4 text-base dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+          />
+          {!wide ? (
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-neutral-600 dark:text-neutral-400">Sort by</span>
+              <select
+                id="purchase-sort"
+                value={`${sort}:${dir}`}
+                onChange={(e) => {
+                  const [nextSort, nextDir] = e.target.value.split(":") as [PurchaseSort, SortDir];
+                  setOrder(nextSort, nextDir);
+                }}
+                className={`min-h-11 rounded-md border border-neutral-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+              >
+                {SORT_CHOICES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
 
         {purchases.isPending ? (
           <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -144,6 +237,17 @@ export function PurchasesPage() {
           <Alert tone="error">{errorMessage(purchases.error)}</Alert>
         ) : items.length === 0 && reading.length === 0 && jobsFailed ? (
           <JobsFailed onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])} />
+        ) : items.length === 0 && reading.length === 0 && q ? (
+          <EmptyState
+            title={`No purchases match “${q}”`}
+            action={
+              <Button variant="secondary" onClick={clearSearch}>
+                Clear search
+              </Button>
+            }
+          >
+            Try a store, a location or another word from a receipt.
+          </EmptyState>
         ) : items.length === 0 && reading.length === 0 && status ? (
           // Filtered-empty and truly empty say different things (G11).
           <EmptyState
@@ -184,11 +288,11 @@ export function PurchasesPage() {
               <table className="w-full text-sm" aria-label="Purchases">
                 <thead>
                   <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
-                    <th className="py-2 pr-3">Date</th>
-                    <th className="py-2 pr-3">Where</th>
+                    <SortHeading column="date" label="Date" sort={sort} dir={dir} onSort={onHeading} />
+                    <SortHeading column="where" label="Where" sort={sort} dir={dir} onSort={onHeading} />
                     <th className="py-2 pr-3">From</th>
                     <th className="py-2 pr-3 text-right">Lines</th>
-                    <th className="py-2 pr-3 text-right">Total</th>
+                    <SortHeading column="total" label="Total" sort={sort} dir={dir} onSort={onHeading} align="right" />
                     <th className="py-2">Status</th>
                   </tr>
                 </thead>
@@ -285,7 +389,7 @@ export function PurchasesPage() {
         )}
         {!voidedView && (voidedCount || voided.isError) ? (
           <p className="mt-3 text-sm">
-            <Link to="?status=voided" className={`${tapTarget} rounded underline ${focusRing}`}>
+            <Link to={`?${new URLSearchParams([...params.entries(), ["status", "voided"]]).toString()}`} className={`${tapTarget} rounded underline ${focusRing}`}>
               {/* Without a count when it couldn't be checked: the way in stays. */}
               {voidedCount ? `Show voided (${voidedCount})` : "Show voided"}
             </Link>
@@ -293,6 +397,44 @@ export function PurchasesPage() {
         ) : null}
       </Card>
     </>
+  );
+}
+
+/** A heading that sorts the list; the sorted one says which way (aria-sort). */
+function SortHeading({
+  column,
+  label,
+  sort,
+  dir,
+  onSort,
+  align,
+}: {
+  column: PurchaseSort;
+  label: string;
+  sort: PurchaseSort;
+  dir: SortDir;
+  onSort: (column: PurchaseSort) => void;
+  align?: "right";
+}) {
+  const active = column === sort;
+  const arrow = (
+    <span aria-hidden="true" className="w-3 text-center">
+      {active ? (dir === "asc" ? "↑" : "↓") : ""}
+    </span>
+  );
+  return (
+    <th className={`py-1 pr-3 ${align === "right" ? "text-right" : ""}`} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex min-h-9 items-center gap-1 rounded font-semibold hover:text-neutral-900 dark:hover:text-neutral-100 ${active ? "text-neutral-900 dark:text-neutral-100" : ""} ${focusRing}`}
+      >
+        {/* The arrow sits on the side away from the column's edge, so a right-aligned label lines up with its numbers. */}
+        {align === "right" ? arrow : null}
+        {label}
+        {align === "right" ? null : arrow}
+      </button>
+    </th>
   );
 }
 

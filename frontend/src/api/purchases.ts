@@ -243,9 +243,16 @@ export interface PurchaseInput {
   lines: PurchaseLineInput[];
 }
 
+export type PurchaseSort = "date" | "where" | "total";
+export type SortDir = "asc" | "desc";
+
 export interface PurchaseFilters {
   vendor_location_id?: string;
   status?: PurchaseStatus | "";
+  /** Words that must each appear in the store, location, or a line's text or product (spec 10). */
+  q?: string;
+  sort?: PurchaseSort;
+  dir?: SortDir;
 }
 
 /** Exactly one of product_id, ignore, or product. */
@@ -434,13 +441,25 @@ export function usePurchases(filters: PurchaseFilters, limit = 50) {
         `/purchases${qs({
           vendor_location_id: filters.vendor_location_id,
           status: filters.status,
+          q: filters.q,
+          sort: filters.sort,
+          dir: filters.dir,
           limit,
           cursor: pageParam,
         })}`,
       ),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.next_cursor ?? undefined,
+    // A new search or order keeps the rows on screen until its answer arrives,
+    // so typing in the find field doesn't flash "Loading…" (spec 10, issue 292).
+    placeholderData: (previous, query) =>
+      query && sameStatus(query.queryKey, filters) ? previous : undefined,
   });
+}
+
+function sameStatus(key: readonly unknown[], filters: PurchaseFilters): boolean {
+  const before = key[2] as PurchaseFilters | undefined;
+  return (before?.status ?? "") === (filters.status ?? "") && before?.vendor_location_id === filters.vendor_location_id;
 }
 
 /**

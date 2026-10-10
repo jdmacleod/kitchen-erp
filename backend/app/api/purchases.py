@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
@@ -363,6 +364,9 @@ async def list_purchases(
     vendor_location_id: uuid.UUID | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     source: str | None = None,
+    q: str | None = Query(default=None, max_length=200),
+    sort: purchases.PurchaseSort = "date",
+    direction: Annotated[purchases.SortDir, Query(alias="dir")] = "desc",
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
 ) -> PurchaseList:
@@ -371,6 +375,9 @@ async def list_purchases(
         vendor_location_id=vendor_location_id,
         status=status_filter,
         source=source,
+        q=q,
+        sort=sort,
+        direction=direction,
         limit=limit,
         cursor=cursor,
     )
