@@ -4,8 +4,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cmp, formatMoney, stripZeros } from "../lib/decimal";
-import { qs } from "./catalog";
+import { catalogKeys, qs, type IngredientCreateInput, type IngredientSummary } from "./catalog";
 import { api } from "./client";
+import { inboxKey } from "./inbox";
 
 // --- types ------------------------------------------------------------------
 
@@ -116,6 +117,21 @@ export interface RecipePin {
   brand: string | null;
 }
 
+/**
+ * The parsed file as the rendered recipe shows it (package 8): sections of steps
+ * of items in the order written. Quantities are text ("2", "1–2", "a handful").
+ */
+export type BodyItem =
+  | { t: "text"; v: string }
+  | { t: "ingredient"; name: string; qty: string | null; unit: string | null; note: string | null; seq: number }
+  | { t: "cookware"; name: string; qty: string | null }
+  | { t: "timer"; name: string | null; qty: string | null; unit: string | null };
+
+export interface BodySection {
+  name: string | null;
+  steps: BodyItem[][];
+}
+
 export interface Recipe extends RecipeSummary {
   head_commit: string | null;
   parse_error_message: string | null;
@@ -126,6 +142,90 @@ export interface Recipe extends RecipeSummary {
   /** The rows of the last good parse; still there when the file stopped parsing. */
   ingredients: RecipeIngredient[];
   pins: RecipePin[];
+  /** The last good parse's steps; null for a recipe indexed before migration 0047. */
+  body: BodySection[] | null;
+}
+
+// --- 3C: the resolve queue, decisions and pins ------------------------------------
+
+/** The cascade's tiers (07, 3C; VS2). A model's guess carries the squash outline (UI-7.16). */
+export type ProposalTier = "standard" | "similar" | "prep" | "usda" | "model";
+
+export interface ResolveProposal {
+  tier: ProposalTier;
+  name: string;
+  ingredient_id: string | null;
+  standard_key: string | null;
+  category: string | null;
+  matched_spelling: string | null;
+  /** The prep tier's stripped words, sent back with the decision. */
+  note: string | null;
+  /** The USDA tier's food, sent back with a new ingredient. */
+  fdc_id: number | null;
+  fdc_description: string | null;
+}
+
+export interface ResolveRecipeRef {
+  id: string;
+  title: string;
+  path: string;
+}
+
+/** One unmatched name across every recipe that uses it (criterion 15). */
+export interface ResolveName {
+  name_norm: string;
+  raw_names: string[];
+  recipes: ResolveRecipeRef[];
+  line_count: number;
+  proposals: ResolveProposal[];
+}
+
+export interface ResolveQueue {
+  items: ResolveName[];
+  names: number;
+  recipes: number;
+  model_configured: boolean;
+}
+
+/** Exactly one of an ingredient, a new ingredient, or ignore (schemas.ResolveDecisionIn). */
+export interface ResolveDecisionInput {
+  name_norm: string;
+  ingredient_id?: string;
+  ingredient?: IngredientCreateInput;
+  ignore?: boolean;
+  note?: string;
+  fdc_id?: number;
+}
+
+export interface ResolveDecision {
+  name_norm: string;
+  action: "matched" | "created" | "ignored";
+  ingredient: IngredientSummary | null;
+  /** Lines resolved by this decision, across every recipe. */
+  lines: number;
+  recipes: number;
+  /** Names still in the queue. */
+  remaining: number;
+}
+
+export interface ResolveAsk {
+  name_norm: string;
+  proposals: ResolveProposal[];
+  model_asked: boolean;
+}
+
+/** One recipe using an ingredient, with each line's quantity as written (UI-7.14). */
+export interface IngredientRecipeUse {
+  id: string;
+  title: string;
+  path: string;
+  status: RecipeStatus;
+  quantities: (string | null)[];
+}
+
+export interface IngredientRecipes {
+  items: IngredientRecipeUse[];
+  total: number;
 }
 
 /** The unit price a line was costed at, per lb, oz, fl oz or each as the server shows it (UI-3.10a). */
@@ -238,6 +338,8 @@ export const recipeKeys = {
   recipe: (id: string) => ["recipes", "recipe", id] as const,
   cost: (id: string, basis: CostBasis) => ["recipes", "cost", id, basis] as const,
   history: (id: string, basis: CostBasis) => ["recipes", "history", id, basis] as const,
+  resolve: ["recipes", "resolve"] as const,
+  usedIn: (ingredientId: string) => ["recipes", "used-in", ingredientId] as const,
 };
 
 export interface RecipeListFilters {
@@ -290,7 +392,75 @@ export function useRecipeCostHistory(id: string | undefined, basis: CostBasis, e
   });
 }
 
+/** The unmatched names, most-used first, with their recipes and proposals (UI-7.16). */
+export function useResolveQueue() {
+  return useQuery({
+    queryKey: recipeKeys.resolve,
+    queryFn: () => api<ResolveQueue>("/recipes/resolve"),
+  });
+}
+
+/** The recipes whose lines resolve to an ingredient, for the hub's "Used in" card. */
+export function useIngredientRecipes(ingredientId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: recipeKeys.usedIn(ingredientId ?? ""),
+    queryFn: () => api<IngredientRecipes>(`/ingredients/${ingredientId}/recipes`),
+    enabled: ingredientId !== undefined && enabled,
+  });
+}
+
 // --- mutations ----------------------------------------------------------------
+
+/**
+ * One decision for a name: an ingredient, a new one, or not an ingredient. It
+ * applies to every recipe using the name and writes one spelling (criterion 15),
+ * so every recipe query, the inbox's count and the ingredient caches refresh.
+ */
+export function useDecideName() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ResolveDecisionInput) => api<ResolveDecision>("/recipes/resolve", { method: "POST", body: input }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: recipeKeys.all });
+      void client.invalidateQueries({ queryKey: inboxKey });
+      void client.invalidateQueries({ queryKey: catalogKeys.ingredients });
+    },
+  });
+}
+
+/** Ask the cascade, the local model included, about one queued name. Suggestions only. */
+export function useAskModel() {
+  return useMutation({
+    mutationFn: (name_norm: string) => api<ResolveAsk>("/recipes/resolve/ask", { method: "POST", body: { name_norm } }),
+  });
+}
+
+/** Pin a line's name to a product of its ingredient (UI-7.11). */
+export function useSetPin(recipeId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ nameNorm, productId }: { nameNorm: string; productId: string }) =>
+      api<Recipe>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, { method: "PUT", body: { product_id: productId } }),
+    onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
+  });
+}
+
+export function useDeletePin(recipeId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (nameNorm: string) => api<void>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, { method: "DELETE" }),
+    onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
+  });
+}
+
+/** "Not the same": the proposal goes and that file is never proposed for this recipe again. */
+export function useDismissRelink(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<Recipe>(`/recipes/${id}/relink/dismiss`, { method: "POST" }),
+    onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
+  });
+}
 
 /** Run the scan inline; every recipe query is refreshed when it answers (UI-7.6). */
 export function useRescanRecipes() {
@@ -326,6 +496,50 @@ export function rescanSentence(scan: ScanOut): string {
   const changed = scan.created + scan.updated + scan.moved + scan.missing;
   if (changed === 0) return "Rescanned. Nothing changed.";
   return `Rescanned: ${changed} ${changed === 1 ? "recipe" : "recipes"} changed.`;
+}
+
+/** The badge words for a proposal's tier: "standard list", "without 'minced'", "USDA", "model". */
+export function tierLabel(p: Pick<ResolveProposal, "tier" | "note">): string {
+  switch (p.tier) {
+    case "standard":
+      return "standard list";
+    case "similar":
+      return "similar";
+    case "prep":
+      return p.note ? `without '${p.note}'` : "without prep words";
+    case "usda":
+      return "USDA";
+    case "model":
+      return "model";
+  }
+}
+
+/** The request a proposal makes when chosen: an existing ingredient, or one to create from it. */
+export function decisionFromProposal(nameNorm: string, p: ResolveProposal): ResolveDecisionInput {
+  const input: ResolveDecisionInput = { name_norm: nameNorm };
+  if (p.note) input.note = p.note;
+  if (p.ingredient_id) {
+    input.ingredient_id = p.ingredient_id;
+    return input;
+  }
+  const ingredient: IngredientCreateInput = { name: p.name };
+  if (p.standard_key) ingredient.standard_key = p.standard_key;
+  else if (p.category) ingredient.category = p.category;
+  input.ingredient = ingredient;
+  if (p.fdc_id) input.fdc_id = p.fdc_id;
+  return input;
+}
+
+/**
+ * "Resolved 'minced garlic' as garlic in 3 recipes." (10, Changing an ingredient);
+ * when the lines outnumber the recipes, "…: 4 lines in 3 recipes."
+ */
+export function resolvedSentence(rawName: string, decision: ResolveDecision): string {
+  const recipes = `${decision.recipes} ${decision.recipes === 1 ? "recipe" : "recipes"}`;
+  if (decision.action === "ignored") return `Ignored '${rawName}'. It won't be asked about again.`;
+  const name = decision.ingredient?.name ?? rawName;
+  if (decision.lines > decision.recipes) return `Resolved '${rawName}' as ${name}: ${decision.lines} lines in ${recipes}.`;
+  return `Resolved '${rawName}' as ${name} in ${recipes}.`;
 }
 
 /** "8 of 10 lines priced". */
