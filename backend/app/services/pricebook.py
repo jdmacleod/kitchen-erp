@@ -2,6 +2,11 @@
 
 Rounding rule (the only one in the price book): arithmetic in a 28-digit Decimal
 context; the normalized unit price is quantized to six places, ROUND_HALF_EVEN.
+
+Recipe cost snapshots (07, 3D) are derived from these prices, so the paths that
+change what qualifies, or how a price normalizes, hand the change on to
+``recipe_cost_triggers`` in the same transaction; with no recipe indexed those
+calls are one empty query each.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from app.models import (
     Product,
 )
 from app.models.units import UnitRow
+from app.services import recipe_cost_triggers
 from app.services.pagination import decode_cursor, encode_cursor
 from app.services.units import build_context
 from app.units import CanonicalQty, ConversionFailure, convert
@@ -154,7 +160,13 @@ async def recompute_for_ingredient(
             | (PriceNorm.bridge_kind != "none")
         )
     ids = await _dependents(db, where)
-    return await (normalize(db, ids) if commit else normalize_core(db, ids))
+    n = await normalize_core(db, ids)
+    # Recipe lines of the ingredient crossed the same bridge, whichever product
+    # priced them (3D, criterion 25); the snapshots follow the prices.
+    await recipe_cost_triggers.after_ingredient_bridge_changed(db, ingredient_id)
+    if commit:
+        await db.commit()
+    return n
 
 
 async def recompute_for_product(db: AsyncSession, product_id: uuid.UUID) -> int:
@@ -176,7 +188,9 @@ async def recompute_for_product_core(db: AsyncSession, product_id: uuid.UUID) ->
         | (PriceNorm.bridge_kind != "none")
         | PriceObservation.unit.in_(counts)
     )
-    return await normalize_core(db, await _dependents(db, where))
+    n = await normalize_core(db, await _dependents(db, where))
+    await recipe_cost_triggers.after_product_bridge_changed(db, product_id)
+    return n
 
 
 # --- observations -----------------------------------------------------------
@@ -258,6 +272,12 @@ async def observe(
         raise ApiError(409, "conflict", "The observation could not be saved.") from exc
     db.add(await _norm_row(db, observation))
     await db.flush()
+    if purchase_line_id is None:
+        # A shelf, manual or posted price qualifies on its own, so the recipes it
+        # may cost are recomputed now. A purchase line's price qualifies with its
+        # purchase, whose commit, recommit or reopen fires the trigger once for
+        # every line (``recipe_cost_triggers.after_purchase_changed``).
+        await recipe_cost_triggers.after_prices_changed(db, [observation.id])
     return await get_observation(db, observation.id)
 
 
@@ -272,6 +292,7 @@ async def void(
     # Flushed, not committed: a recommit voids and then re-emits, and a failure
     # in between must roll the void back with it. The caller commits.
     await db.flush()
+    await recipe_cost_triggers.after_prices_changed(db, [observation.id])
     return await get_observation(db, observation_id)
 
 
