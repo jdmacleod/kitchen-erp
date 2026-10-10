@@ -832,6 +832,40 @@ export function productTitle(p: { brand: string | null; name: string }): string 
   return name === fold(brand) || name.startsWith(`${fold(brand)} `) ? p.name : `${brand} ${p.name}`;
 }
 
+/** Drop leading zeros before a digit: "085" → "85", "00.5" → "0.5". */
+function trimLeadingZeros(value: string): string {
+  return value.replace(/^0+(?=\d)/, "");
+}
+
+/** A stored yield fraction as the percentage the form shows: "0.85" → "85", "1" → "100". Text arithmetic, no floats. */
+export function fractionToPercent(fraction: string): string {
+  const t = fraction.trim();
+  if (!/^\d+(\.\d+)?$/.test(t)) return t;
+  const [whole, frac = ""] = t.split(".");
+  const digits = `${whole}${frac.padEnd(2, "0")}`;
+  const cut = whole.length + 2;
+  const rest = digits.slice(cut);
+  const shifted = rest ? `${digits.slice(0, cut)}.${rest}` : digits.slice(0, cut);
+  return trimDecimal(trimLeadingZeros(shifted));
+}
+
+/** A typed yield percentage as the fraction the API stores: "85" → "0.85", "87.5" → "0.875", "100" → "1". */
+export function percentToFraction(percent: string): string {
+  const t = percent.trim();
+  if (!/^\d*\.?\d*$/.test(t) || t === "" || t === ".") return t;
+  const [whole = "", frac = ""] = t.split(".");
+  const padded = whole.padStart(3, "0");
+  const shifted = `${padded.slice(0, -2)}.${padded.slice(-2)}${frac}`;
+  return trimDecimal(trimLeadingZeros(shifted));
+}
+
+/** True when a yield percentage is above 0 and at most 100. */
+export function isYieldPercent(text: string): boolean {
+  if (!isPositiveDecimal(text)) return false;
+  const [whole, frac = ""] = percentToFraction(text).split(".");
+  return whole === "0" || (whole === "1" && !/[1-9]/.test(frac));
+}
+
 /** True for a positive decimal such as "0.5", "12", or "1.". */
 export function isPositiveDecimal(text: string): boolean {
   const t = text.trim();
