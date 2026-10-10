@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.schemas.pricebook_views import (
+    BrandScope,
     CheapestOut,
     CompareIn,
     CompareOut,
@@ -665,6 +666,9 @@ async def ingredient_offers(
     exclude_stale: bool = False,
     exclude_promo: bool = False,
     include_posted: bool = Query(default=False, description="also count posted web prices (2L)"),
+    brand_scope: Annotated[
+        BrandScope, Query(description="all offers, store brands only, or national only (2R)")
+    ] = "all",
 ) -> OfferList:
     await catalog.get_ingredient(db, ingredient_id)
     items = await pricebook_views.ingredient_offers(
@@ -674,6 +678,7 @@ async def ingredient_offers(
         exclude_stale=exclude_stale,
         exclude_promo=exclude_promo,
         include_posted=include_posted,
+        brand_scope=brand_scope,
     )
     return OfferList(items=items, stale_after_days=pricebook_views.stale_after_days())
 
@@ -687,6 +692,7 @@ async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareO
         exclude_stale=payload.exclude_stale,
         exclude_promo=payload.exclude_promo,
         include_posted=payload.include_posted,
+        brand_scope=payload.brand_scope,
     )
     return CompareOut(**result, stale_after_days=pricebook_views.stale_after_days())
 

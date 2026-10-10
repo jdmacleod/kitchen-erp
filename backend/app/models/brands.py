@@ -150,3 +150,32 @@ class BrandFamilyCarries(Base):
     brand_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("brand.id", ondelete="CASCADE"), primary_key=True
     )
+
+
+class Gs1Prefix(UUIDPrimaryKey, Base):
+    """The start of the 13-digit barcode a family's own brands are printed under (2R-3).
+
+    Evidence for a family, never against: a store brand is often packed under its
+    maker's own prefix. Owned by the dataset; each import replaces them all.
+    """
+
+    __tablename__ = "gs1_prefix"
+    __table_args__ = (
+        UniqueConstraint("prefix", name="uq_gs1_prefix"),
+        CheckConstraint("prefix ~ '^[0-9]{6,12}$'", name="ck_gs1_prefix_digits"),
+    )
+
+    prefix: Mapped[str] = mapped_column(String(12), nullable=False)
+
+
+class Gs1PrefixFamily(Base):
+    """A family a prefix belongs to; a prefix two families share has two rows."""
+
+    __tablename__ = "gs1_prefix_family"
+
+    prefix_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("gs1_prefix.id", ondelete="CASCADE"), primary_key=True
+    )
+    family_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("brand_family.id", ondelete="CASCADE"), primary_key=True
+    )
