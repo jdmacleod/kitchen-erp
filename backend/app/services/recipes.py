@@ -46,14 +46,14 @@ from app.recipes.repo import RepoView, open_repo
 from app.schemas.recipes import (
     MountState,
     RecipeIngredientOut,
+    RecipeListItem,
     RecipeOut,
     RecipesStatus,
-    RecipeSummary,
     RelinkProposal,
     ScanOut,
     StatusCounts,
 )
-from app.services import recipe_resolution
+from app.services import recipe_cost_views, recipe_resolution
 
 Parsed = ParsedRecipe | ParseError
 
@@ -446,14 +446,19 @@ async def status(db: AsyncSession, settings: Settings | None = None) -> RecipesS
 
 async def list_recipes(
     db: AsyncSession, *, status: str | None = None, dirty: bool | None = None
-) -> list[RecipeSummary]:
+) -> list[RecipeListItem]:
+    """Every recipe with its default ``latest`` cost when its current content has one (3D)."""
     stmt = select(Recipe).order_by(Recipe.path)
     if status is not None:
         stmt = stmt.where(Recipe.status == status)
     if dirty is not None:
         stmt = stmt.where(Recipe.dirty.is_(dirty))
     rows = (await db.execute(stmt)).scalars().all()
-    return [RecipeSummary.model_validate(row) for row in rows]
+    costs = await recipe_cost_views.summaries(db, list(rows))
+    return [
+        RecipeListItem.model_validate(row).model_copy(update={"cost": costs.get(row.id)})
+        for row in rows
+    ]
 
 
 async def get_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> Recipe:

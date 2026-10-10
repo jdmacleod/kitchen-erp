@@ -30,10 +30,6 @@ class RecipeSummary(ApiModel):
     last_indexed_at: datetime
 
 
-class RecipeList(ApiModel):
-    items: list[RecipeSummary]
-
-
 class RelinkProposal(ApiModel):
     """The new file the indexer believes a missing recipe became (3A, step 3)."""
 
@@ -195,3 +191,138 @@ class ResolveDecisionOut(ApiModel):
 
 class RecipePinIn(ApiModel):
     product_id: uuid.UUID
+
+
+# --- 3D: cost snapshots ------------------------------------------------------------------
+
+CostBasis = Literal["latest", "average", "cheapest"]
+CostLineStatus = Literal["priced", "unpriced", "unconvertible", "unmapped", "negligible"]
+YieldMode = Literal["auto", "as_purchased", "edible"]
+
+
+class CostPriceUsed(ApiModel):
+    """The unit price a line was costed at, shown per lb, oz, fl oz or each (UI-3.10a).
+
+    For the ``average`` basis the price is the window's mean and the product,
+    location and date are those of the latest price in the window.
+    """
+
+    norm_unit_price: DecimalStr
+    norm_unit: str
+    display_unit_price: DecimalStr | None
+    display_unit: str | None
+    product_id: uuid.UUID | None
+    product_name: str | None
+    brand: str | None
+    vendor_id: uuid.UUID | None
+    vendor_name: str | None
+    location_id: uuid.UUID | None
+    location_name: str | None
+    observation_id: uuid.UUID | None
+    observed_at: datetime | None
+    stale: bool
+
+
+class CostQuantity(ApiModel):
+    """The line's as-purchased quantity in the canonical unit and as displayed."""
+
+    canonical_qty: DecimalStr
+    canonical_qty_high: DecimalStr | None
+    canonical_unit: str
+    display_qty: DecimalStr | None
+    display_qty_high: DecimalStr | None
+    display_unit: str | None
+
+
+class CostLineOut(ApiModel):
+    id: uuid.UUID
+    line: RecipeIngredientOut
+    yield_mode: YieldMode
+    pinned: bool
+    status: CostLineStatus
+    failure_code: str | None
+    quantity: CostQuantity | None
+    yield_applied: DecimalStr | None
+    yield_assumed: bool  # grossed up at 100% because the ingredient has no yield yet
+    bridge_kind: str | None
+    bridge_confirmed: bool | None
+    price: CostPriceUsed | None
+    consumed_cost: DecimalStr | None
+    consumed_cost_high: DecimalStr | None
+    basket_cost: DecimalStr | None
+    basket_cost_high: DecimalStr | None
+    packs: DecimalStr | None
+    packs_high: DecimalStr | None
+
+
+class CostTotals(ApiModel):
+    consumed_cost: DecimalStr | None
+    consumed_cost_high: DecimalStr | None
+    basket_cost: DecimalStr | None
+    basket_cost_high: DecimalStr | None
+    per_serving: DecimalStr | None
+
+
+class CostCompleteness(ApiModel):
+    lines_total: int
+    lines_priced: int
+    lines_unpriced: int
+    lines_unconvertible: int
+    lines_unmapped: int
+    lines_negligible: int
+
+
+class RecipeCostOut(ApiModel):
+    id: uuid.UUID
+    recipe_id: uuid.UUID
+    basis: CostBasis
+    window_days: int | None
+    min_quality: int | None
+    content_hash: str
+    head_commit: str | None
+    provisional: bool
+    computed_at: datetime
+    stale_after_days: int
+    totals: CostTotals
+    completeness: CostCompleteness
+    unconfirmed_share: DecimalStr
+    lines: list[CostLineOut]
+
+
+class CostHistoryItem(ApiModel):
+    id: uuid.UUID
+    content_hash: str
+    head_commit: str | None
+    computed_at: datetime
+    window_days: int | None
+    min_quality: int | None
+    totals: CostTotals
+    lines_priced: int
+    lines_total: int
+
+
+class CostHistoryOut(ApiModel):
+    basis: CostBasis
+    items: list[CostHistoryItem]
+
+
+class RecipeCostSummary(ApiModel):
+    """The latest-basis snapshot of a recipe's current content, for the list."""
+
+    consumed_cost: DecimalStr | None
+    consumed_cost_high: DecimalStr | None
+    basket_cost: DecimalStr | None
+    basket_cost_high: DecimalStr | None
+    per_serving: DecimalStr | None
+    lines_priced: int
+    lines_total: int
+    provisional: bool
+    computed_at: datetime
+
+
+class RecipeListItem(RecipeSummary):
+    cost: RecipeCostSummary | None = None
+
+
+class RecipeList(ApiModel):
+    items: list[RecipeListItem]

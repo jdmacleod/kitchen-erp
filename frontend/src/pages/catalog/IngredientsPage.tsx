@@ -9,6 +9,8 @@ import {
   addMeasure,
   catalogErrorMessage,
   isPositiveDecimal,
+  isYieldPercent,
+  percentToFraction,
   perishabilityHint,
   perishabilityLabel,
   useCreateIngredient,
@@ -239,8 +241,8 @@ function AddIngredientDrawer({
       setInvalid("Density must be a positive number of grams per millilitre.");
       return;
     }
-    if (form.yield_pct.trim() && !isPositiveDecimal(form.yield_pct)) {
-      setInvalid("Yield must be a positive fraction such as 0.85.");
+    if (form.yield_pct.trim() && !isYieldPercent(form.yield_pct)) {
+      setInvalid("Yield is a percentage above 0 and up to 100, such as 85.");
       return;
     }
     setInvalid(null);
@@ -251,7 +253,7 @@ function AddIngredientDrawer({
       input.density_g_per_ml = form.density.trim();
       input.density_source = form.density_source;
     }
-    if (form.yield_pct.trim()) input.yield_pct = form.yield_pct.trim();
+    if (form.yield_pct.trim()) input.yield_pct = percentToFraction(form.yield_pct);
     if (form.perishability) input.perishability = form.perishability;
     if (form.notes.trim()) input.notes = form.notes.trim();
 
@@ -384,13 +386,13 @@ function AddIngredientDrawer({
             </SelectField>
             <Field
               id="new-ingredient-yield"
-              label="Yield (fraction)"
+              label="Yield (%)"
               inputMode="decimal"
               autoComplete="off"
-              placeholder="1"
+              placeholder="100"
               value={form.yield_pct}
               onChange={(e) => set("yield_pct", e.target.value)}
-              hint="Usable part after trimming, between 0 and 1."
+              hint="Usable share of what you buy, after trimming; 100 means no loss."
             />
             <SelectField
               id="new-ingredient-perishability"
