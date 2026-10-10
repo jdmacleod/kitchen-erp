@@ -127,6 +127,9 @@ class Facts:
     pack: dict[str, Any] | None = None
     gtin: str | None = None
     ingredient_id: uuid.UUID | None = None
+    # The brand row the brand names, when the brand dataset knows it (16, 2R-2): two
+    # spellings of one brand are one brand.
+    brand_id: uuid.UUID | None = None
 
 
 @dataclass(frozen=True)
@@ -206,7 +209,10 @@ def compare(a: Facts, b: Facts) -> Verdict:
         return Verdict("other_size", ("pack",))
     if a.gtin and b.gtin and a.gtin != b.gtin:
         return Verdict("variant", ("gtin",))
-    if _brand(a) and _brand(b) and _brand(a) != _brand(b):
+    if a.brand_id and b.brand_id:
+        if a.brand_id != b.brand_id:
+            return Verdict("similar", ("brand",))
+    elif _brand(a) and _brand(b) and _brand(a) != _brand(b):
         return Verdict("similar", ("brand",))
     if a.ingredient_id and b.ingredient_id and a.ingredient_id != b.ingredient_id:
         return Verdict("same", ("words", "ingredient"))

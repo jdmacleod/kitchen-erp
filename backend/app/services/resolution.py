@@ -36,7 +36,7 @@ from app.models import (
     ReceiptAlias,
 )
 from app.models.geo import Vendor, VendorLocation
-from app.services import best_by, pricebook
+from app.services import best_by, brands, pricebook
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
 from app.services.purchases import ensure_not_voided, get_purchase, live_observations
@@ -351,7 +351,9 @@ async def fuzzy_aliases(db: AsyncSession, vendor_id: uuid.UUID, norm: str) -> li
 # --- the ladder -------------------------------------------------------------
 
 
-async def _shortlist(db: AsyncSession, line: PurchaseLine, norm: str) -> list[dict[str, Any]]:
+async def _shortlist(
+    db: AsyncSession, line: PurchaseLine, norm: str, vendor_id: uuid.UUID | None = None
+) -> list[dict[str, Any]]:
     hits = await search_products(db, norm, get_settings().llm_shortlist_size)
     out: list[dict[str, Any]] = []
     factor = get_settings().price_plausibility_factor
@@ -377,7 +379,15 @@ async def _shortlist(db: AsyncSession, line: PurchaseLine, norm: str) -> list[di
                 "score": str(hit.score),
             }
         )
-    return out
+    # Another family's store brand ranks lower and says why; never removed (2R-2).
+    flagged = await brands.out_of_family(db, [uuid.UUID(e["id"]) for e in out], vendor_id)
+    return brands.rank_with_family(out, flagged, id_key="id")
+
+
+def _note(shortlist: list[dict[str, Any]], product_id: str) -> dict[str, str]:
+    """The shortlist entry's out-of-family note, carried onto its suggestion (2R-2)."""
+    entry = next((c for c in shortlist if c["id"] == product_id), None)
+    return {"brand_note": entry["brand_note"]} if entry and "brand_note" in entry else {}
 
 
 async def _by_code(
@@ -481,7 +491,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
     # 5. With no model, or no usable answer, the shortlist's best hits are offered
     #    as similar names, never resolved on their own.
     if not suggestions and norm:
-        shortlist = await _shortlist(db, line, norm)
+        shortlist = await _shortlist(db, line, norm, vendor_id)
         record["shortlist"] = [c["id"] for c in shortlist]
         if shortlist and _ranker is not None:
             try:
@@ -499,6 +509,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
                         "ignore": False,
                         "label": next(c["name"] for c in shortlist if c["id"] == str(pid)),
                         "score": str(answer.get("confidence") or ""),
+                        **_note(shortlist, str(pid)),
                     }
                 )
             elif pid is not None:
@@ -511,6 +522,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
                     "ignore": False,
                     "label": c["name"],
                     "score": c["score"],
+                    **_note(shortlist, c["id"]),
                 }
                 for c in shortlist[:SIMILAR_LIMIT]
             )

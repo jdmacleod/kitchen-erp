@@ -1013,7 +1013,10 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
                     s === top ? "border-neutral-400 bg-neutral-100 font-medium dark:border-neutral-600 dark:bg-neutral-800" : "border-neutral-300 dark:border-neutral-700"
                   }`}
                 >
-                  <span className="min-w-0">{s.ignore ? "Ignore this line" : s.label}</span>
+                  <span className="min-w-0">
+                    {s.ignore ? "Ignore this line" : s.label}
+                    {s.brand_note ? <span className="block text-xs font-normal text-neutral-600 dark:text-neutral-400">{s.brand_note}</span> : null}
+                  </span>
                   <span className="flex shrink-0 items-center gap-1 text-xs text-neutral-600 dark:text-neutral-400">
                     <Badge>{kindLabel(s)}</Badge>
                     <span className="tabular-nums">{s.score}</span>
@@ -1024,6 +1027,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
               <li key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`} className="flex flex-wrap items-center gap-1 text-xs">
                 <span className={s === top ? "font-medium" : ""}>{s.ignore ? "Ignore this line" : s.label}</span>
                 <Badge>{kindLabel(s)}</Badge>
+                {s.brand_note ? <span className="text-neutral-600 dark:text-neutral-400">{s.brand_note}</span> : null}
                 <span className="text-neutral-600 dark:text-neutral-400 tabular-nums">{s.score}</span>
                 <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
                   {s === top ? "Accept (Enter)" : "Accept"}
