@@ -142,7 +142,7 @@ export interface Recipe extends RecipeSummary {
   /** The rows of the last good parse; still there when the file stopped parsing. */
   ingredients: RecipeIngredient[];
   pins: RecipePin[];
-  /** The last good parse's steps; null for a recipe indexed before migration 0047. */
+  /** The last good parse's steps; null for a recipe indexed before migration 0048. */
   body: BodySection[] | null;
 }
 

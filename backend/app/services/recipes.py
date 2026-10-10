@@ -282,7 +282,7 @@ def _apply_good_parse(row: Recipe, parsed: ParsedRecipe) -> None:
     row.servings = parsed.servings
     row.servings_text = parsed.servings_text
     row.front_matter = dict(parsed.front_matter)
-    row.body = recipe_pages.serialize_body(parsed)  # the steps, for the rendered recipe (0047)
+    row.body = recipe_pages.serialize_body(parsed)  # the steps, for the rendered recipe (0048)
     row.status = "ok"
     row.parse_error_message = None
 
