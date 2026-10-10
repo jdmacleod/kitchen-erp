@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from decimal import ROUND_HALF_EVEN, Context, Decimal
 from typing import Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.orm.attributes import set_committed_value
@@ -26,7 +26,7 @@ from app.models import (
 from app.models.geo import VendorLocation
 from app.schemas.purchases import LineIn, ManualPurchaseIn
 from app.services import best_by, pricebook
-from app.services.pagination import decode_cursor, encode_cursor
+from app.services.pagination import decode_keyset, encode_keyset
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 _FOUR = Decimal("0.0001")
@@ -185,7 +185,13 @@ async def list_purchases(
     limit: int = 50,
     cursor: str | None = None,
 ) -> tuple[list[Purchase], str | None]:
-    stmt = _purchase_query().order_by(Purchase.id.desc()).limit(limit + 1)
+    # Newest purchase first, by when it was bought, not when it was entered: an
+    # import or a batch of old receipts must not jump ahead of later shopping.
+    stmt = (
+        _purchase_query()
+        .order_by(Purchase.purchased_at.desc(), Purchase.id.desc())
+        .limit(limit + 1)
+    )
     if vendor_location_id is not None:
         stmt = stmt.where(Purchase.vendor_location_id == vendor_location_id)
     if status is not None:
@@ -195,11 +201,16 @@ async def list_purchases(
         stmt = stmt.where(Purchase.status != "voided")
     if source is not None:
         stmt = stmt.where(Purchase.source == source)
-    before = decode_cursor(cursor)
+    before = decode_keyset(cursor)
     if before is not None:
-        stmt = stmt.where(Purchase.id < before)
+        try:
+            when = datetime.fromisoformat(before[0])
+        except ValueError as exc:
+            raise ApiError(400, "bad_cursor", "The cursor is not valid.") from exc
+        stmt = stmt.where(tuple_(Purchase.purchased_at, Purchase.id) < (when, before[1]))
     rows = list((await db.execute(stmt)).unique().scalars())
-    next_cursor = encode_cursor(rows[limit - 1].id) if len(rows) > limit else None
+    last = rows[limit - 1] if len(rows) > limit else None
+    next_cursor = encode_keyset(last.purchased_at.isoformat(), last.id) if last else None
     return rows[:limit], next_cursor
 
 
