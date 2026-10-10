@@ -18,6 +18,11 @@ const PAGES = [
   { name: "Ingredients", path: "/catalog/ingredients" },
   { name: "Vendors", path: "/catalog/vendors" },
   { name: "Purchases", path: "/shop/purchases" },
+  // The Cook pages (UI-7.18): the list, the resolve queue, and one recipe page,
+  // which recipes.spec.ts reaches by id; here the list's first row is followed.
+  { name: "Recipes", path: "/cook/recipes" },
+  { name: "Resolve recipe names", path: "/cook/recipes/resolve" },
+  { name: "Recipe page", path: "/cook/recipes", follow: "recipe-row" },
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {
@@ -28,9 +33,19 @@ for (const scheme of ["light", "dark"] as const) {
       await login(page);
     });
 
-    for (const { name, path } of PAGES) {
+    for (const entry of PAGES) {
+      const { name, path } = entry;
+      const follow = "follow" in entry ? entry.follow : undefined;
       test(`${name} passes axe colour contrast`, async ({ page }) => {
+        if (follow) {
+          // The example recipes are mounted on the e2e stack; one scan indexes them.
+          expect((await page.request.post("/api/v1/recipes/rescan")).status()).toBe(200);
+        }
         await page.goto(path);
+        if (follow) {
+          await page.getByTestId(follow).first().getByRole("link").first().click();
+          await expect(page.getByRole("table", { name: "Cost by line" })).toBeVisible();
+        }
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
         const failures = results.violations.flatMap((v) =>
