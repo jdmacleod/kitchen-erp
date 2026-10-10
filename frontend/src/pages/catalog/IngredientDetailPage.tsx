@@ -29,6 +29,7 @@ import { BridgeEditor } from "../../components/catalog/BridgeEditor";
 import { CategoryField } from "../../components/catalog/CategoryField";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
 import { TestBench } from "../../components/catalog/TestBench";
+import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
 import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
 import { useIngredientOffers, useIngredientPriceHistory, type PriceFilters as PriceFiltersValue } from "../../api/pricebook";
@@ -219,7 +220,10 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
               />
             ) : null}
           </div>
-          <IngredientProducts ingredient={ingredient} />
+          <div className="flex min-w-0 flex-col gap-6">
+            <IngredientProducts ingredient={ingredient} />
+            <UsedInRecipes ingredientId={ingredient.id} />
+          </div>
         </div>
 
         <BridgeEditor ingredient={ingredient} />

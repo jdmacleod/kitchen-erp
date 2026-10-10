@@ -1,6 +1,7 @@
 // Invented recipes for the Cook tests (07, Fixtures): no real dish, vendor or price.
 
-import type { CostHistory, CostLine, Recipe, RecipeCost, RecipeIngredient, RecipeListItem, RecipesStatus, ScanOut } from "../api/recipes";
+import type { ProductListItem } from "../api/catalog";
+import type { BodySection, CostHistory, CostLine, Recipe, RecipeCost, RecipeIngredient, RecipeListItem, RecipesStatus, ResolveName, ResolveProposal, ResolveQueue, ScanOut } from "../api/recipes";
 
 export const cookHealth = { status: "ok", features: ["catalog", "shop", "cook"] };
 export const quietInbox = { items: [], reading: { count: 0, oldest_at: null, stalled: false } };
@@ -131,6 +132,7 @@ export const stewRecipe: Recipe = {
   relink: null,
   ingredients: stewLines,
   pins: [],
+  body: null,
 };
 
 function costLine(line: RecipeIngredient, over: Partial<CostLine>): CostLine {
@@ -203,6 +205,106 @@ export function stewCost(over: Partial<RecipeCost> = {}): RecipeCost {
     ...over,
   };
 }
+
+/** The stew's steps as the index keeps them (package 8). */
+export const stewBody: BodySection[] = [
+  {
+    name: null,
+    steps: [
+      [
+        { t: "text", v: "Rinse the " },
+        { t: "ingredient", name: "pearl barley", qty: "1", unit: "cup", note: "rinsed", seq: 1 },
+        { t: "text", v: " and soften the " },
+        { t: "ingredient", name: "onion", qty: "1", unit: null, note: null, seq: 2 },
+        { t: "text", v: " in a " },
+        { t: "cookware", name: "stock pot", qty: null },
+        { t: "text", v: "." },
+      ],
+    ],
+  },
+  {
+    name: "Broth",
+    steps: [
+      [
+        { t: "text", v: "Add " },
+        { t: "ingredient", name: "mystery root", qty: "a handful", unit: null, note: null, seq: 3 },
+        { t: "text", v: ", " },
+        { t: "ingredient", name: "dried kelp", qty: "3", unit: "sheets", note: null, seq: 4 },
+        { t: "text", v: " and " },
+        { t: "ingredient", name: "ground fennel", qty: "1–2", unit: "tsp", note: null, seq: 5 },
+        { t: "text", v: "; simmer for " },
+        { t: "timer", name: null, qty: "40", unit: "minutes" },
+        { t: "text", v: "." },
+      ],
+      [
+        { t: "text", v: "Season with " },
+        { t: "ingredient", name: "salt", qty: null, unit: null, note: null, seq: 6 },
+        { t: "text", v: "." },
+      ],
+    ],
+  },
+];
+
+/** A product of pearl barley, for the pin picker. */
+export const barleyProduct: ProductListItem = {
+  id: "p-barley-1",
+  ingredient: { id: "i-pearl-barley", name: "pearl barley", canonical_unit: "g", active: true, category: "pantry", category_key: "pantry" },
+  brand: "Moonfield",
+  name: "pearl barley 1 lb",
+  pack_qty: "1",
+  pack_unit: "lb",
+  barcode: null,
+  quality_rating: null,
+  exclusive_vendor_id: null,
+  density_override: null,
+  density_override_source: null,
+  density_override_confirmed: false,
+  active: true,
+  notes: null,
+  created_at: "2026-03-02T00:00:00Z",
+  updated_at: "2026-03-02T00:00:00Z",
+  last_paid: null,
+};
+
+export function proposal(over: Partial<ResolveProposal> & { tier: ResolveProposal["tier"]; name: string }): ResolveProposal {
+  return { ingredient_id: null, standard_key: null, category: null, matched_spelling: null, note: null, fdc_id: null, fdc_description: null, ...over };
+}
+
+const ref = (r: RecipeListItem) => ({ id: r.id, title: r.title, path: r.path });
+
+/** Three unmatched names, most-used first (UI-7.16). */
+export const mincedGarlic: ResolveName = {
+  name_norm: "minced garlic",
+  raw_names: ["minced garlic", "Minced Garlic"],
+  recipes: [ref(barleyStew), ref(cometCrumble), ref(harborFlatbread)],
+  line_count: 4,
+  proposals: [
+    proposal({ tier: "prep", name: "garlic", ingredient_id: "i-garlic", note: "minced" }),
+    proposal({ tier: "standard", name: "garlic", standard_key: "garlic", category: "produce" }),
+    proposal({ tier: "model", name: "garlic powder", ingredient_id: "i-garlic-powder" }),
+    proposal({ tier: "usda", name: "Garlic, raw", fdc_id: 11215, fdc_description: "Garlic, raw" }),
+  ],
+};
+
+export const mysteryRoot: ResolveName = {
+  name_norm: "mystery root",
+  raw_names: ["mystery root"],
+  recipes: [ref(barleyStew)],
+  line_count: 2,
+  proposals: [proposal({ tier: "similar", name: "celery root", ingredient_id: "i-celery-root" })],
+};
+
+export const parchment: ResolveName = {
+  name_norm: "parchment paper",
+  raw_names: ["parchment paper"],
+  recipes: [ref(cometCrumble)],
+  line_count: 1,
+  proposals: [],
+};
+
+export const resolveQueue: ResolveQueue = { items: [mincedGarlic, mysteryRoot, parchment], names: 3, recipes: 3, model_configured: true };
+
+export const emptyQueue: ResolveQueue = { items: [], names: 0, recipes: 0, model_configured: false };
 
 export const emptyHistory: CostHistory = { basis: "latest", items: [] };
 

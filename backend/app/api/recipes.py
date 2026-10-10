@@ -13,10 +13,12 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import CurrentUser, DbSession
+from app.core.config import get_settings
 from app.schemas.recipes import (
     Completeness,
     CostBasis,
     CostHistoryOut,
+    IngredientRecipesOut,
     RecipeCostOut,
     RecipeList,
     RecipeOut,
@@ -31,7 +33,13 @@ from app.schemas.recipes import (
     ResolveQueueOut,
     ScanOut,
 )
-from app.services import recipe_cost_views, recipe_costing, recipe_resolution, recipes
+from app.services import (
+    recipe_cost_views,
+    recipe_costing,
+    recipe_pages,
+    recipe_resolution,
+    recipes,
+)
 
 router = APIRouter(tags=["recipes"])
 
@@ -67,7 +75,9 @@ async def rescan(_: CurrentUser, db: DbSession) -> ScanOut:
 @router.get("/recipes/resolve", response_model=ResolveQueueOut)
 async def resolve_queue(_: CurrentUser, db: DbSession) -> ResolveQueueOut:
     """Unmatched names grouped by normalized name, most-used first, with proposals."""
-    return await recipe_resolution.queue(db)
+    out = await recipe_resolution.queue(db)
+    out.model_configured = bool(get_settings().llm_model)
+    return out
 
 
 @router.post("/recipes/resolve", response_model=ResolveDecisionOut)
@@ -126,6 +136,21 @@ async def relink(
 ) -> RecipeOut:
     row = await recipes.relink(db, recipe_id, payload.target_id)
     return await recipes.recipe_out(db, row)
+
+
+@router.post("/recipes/{recipe_id}/relink/dismiss", response_model=RecipeOut)
+async def dismiss_relink(recipe_id: uuid.UUID, _: CurrentUser, db: DbSession) -> RecipeOut:
+    """ "Not the same": the proposal goes and that candidate is never proposed again."""
+    row = await recipe_pages.dismiss_relink(db, recipe_id)
+    return await recipes.recipe_out(db, row)
+
+
+@router.get("/ingredients/{ingredient_id}/recipes", response_model=IngredientRecipesOut)
+async def ingredient_recipes(
+    ingredient_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> IngredientRecipesOut:
+    """Recipes whose lines resolve to the ingredient (through merges), by title (criterion 33)."""
+    return await recipe_pages.recipes_using(db, ingredient_id)
 
 
 @router.put("/recipes/{recipe_id}/pins/{name_norm}", response_model=RecipeOut)
