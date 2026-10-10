@@ -13641,6 +13641,22 @@
       "SearchResult": {
         "additionalProperties": false,
         "properties": {
+          "badge": {
+            "anyOf": [
+              {
+                "enum": [
+                  "uncommitted",
+                  "parse_error",
+                  "missing"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Badge"
+          },
           "category_key": {
             "anyOf": [
               {
@@ -13683,7 +13699,8 @@
             "enum": [
               "ingredient",
               "product",
-              "vendor"
+              "vendor",
+              "recipe"
             ],
             "title": "Kind",
             "type": "string"
@@ -13709,7 +13726,7 @@
       },
       "SearchResults": {
         "additionalProperties": false,
-        "description": "Grouped by type. The palette shows ingredients first and hides empty groups.",
+        "description": "Grouped by type. The palette shows ingredients first, recipes after vendors\n(UI-7.17), and hides empty groups.",
         "properties": {
           "ingredients": {
             "items": {
@@ -13723,6 +13740,14 @@
               "$ref": "#/components/schemas/SearchResult"
             },
             "title": "Products",
+            "type": "array"
+          },
+          "recipes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SearchResult"
+            },
+            "title": "Recipes",
             "type": "array"
           },
           "vendors": {
@@ -22464,6 +22489,7 @@
     },
     "/api/v1/recipes": {
       "get": {
+        "description": "Ordered by title; every filter runs here, not in the browser (UI-7.3).",
         "operationId": "list_recipes_api_v1_recipes_get",
         "parameters": [
           {
@@ -22501,6 +22527,45 @@
                 }
               ],
               "title": "Dirty"
+            }
+          },
+          {
+            "description": "title or path",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "title or path",
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "completeness",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "complete",
+                    "incomplete"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completeness"
             }
           }
         ],

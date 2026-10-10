@@ -13,6 +13,9 @@ import { PostedPricesPage } from "./pages/catalog/PostedPricesPage";
 import { ProductReviewPage } from "./pages/catalog/ProductReviewPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
+import { RecipeDetailPage } from "./pages/cook/RecipeDetailPage";
+import { RecipesPage } from "./pages/cook/RecipesPage";
+import { ResolveRecipesPage } from "./pages/cook/ResolveRecipesPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
@@ -51,6 +54,8 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
   { from: "/map", to: "/catalog/vendors", query: { view: "map" } },
   { from: "/price-book/needs-bridge", to: "/catalog/bridges" },
   { from: "/settings/home-bases", to: "/settings/kitchens" },
+  // Reserved as a page, became a filter (09, Routes; UI-7.1).
+  { from: "/cook/costing", to: "/cook/recipes", query: { completeness: "incomplete" } },
 ];
 
 /**
@@ -76,6 +81,11 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route index element={<HomePage />} />
+
+            {/* Cook (07, 3E). The resolve page is reached from the inbox, not the nav. */}
+            <Route path="/cook/recipes" element={<RecipesPage />} />
+            <Route path="/cook/recipes/resolve" element={<ResolveRecipesPage />} />
+            <Route path="/cook/recipes/:id" element={<RecipeDetailPage />} />
 
             {/* Shop */}
             <Route path="/shop/purchases" element={<PurchasesPage />} />

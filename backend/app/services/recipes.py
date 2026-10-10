@@ -445,20 +445,47 @@ async def status(db: AsyncSession, settings: Settings | None = None) -> RecipesS
 
 
 async def list_recipes(
-    db: AsyncSession, *, status: str | None = None, dirty: bool | None = None
+    db: AsyncSession,
+    *,
+    status: str | None = None,
+    dirty: bool | None = None,
+    q: str | None = None,
+    completeness: str | None = None,
 ) -> list[RecipeListItem]:
-    """Every recipe with its default ``latest`` cost when its current content has one (3D)."""
-    stmt = select(Recipe).order_by(Recipe.path)
+    """Every recipe with its default ``latest`` cost when its current content has one (3D).
+
+    Ordered by title, then path (UI-7.3). ``q`` matches the title or the path, case
+    folded. ``completeness`` keeps recipes whose current cost has every line priced
+    (``complete``) or not (``incomplete``: some line unpriced, or no snapshot yet).
+    """
+    stmt = select(Recipe).order_by(func.lower(Recipe.title), Recipe.path)
     if status is not None:
         stmt = stmt.where(Recipe.status == status)
     if dirty is not None:
         stmt = stmt.where(Recipe.dirty.is_(dirty))
+    if q:
+        needle = f"%{_escape_like(q.strip())}%"
+        stmt = stmt.where(
+            Recipe.title.ilike(needle, escape="\\") | Recipe.path.ilike(needle, escape="\\")
+        )
     rows = (await db.execute(stmt)).scalars().all()
     costs = await recipe_cost_views.summaries(db, list(rows))
-    return [
+    items = [
         RecipeListItem.model_validate(row).model_copy(update={"cost": costs.get(row.id)})
         for row in rows
     ]
+    if completeness == "complete":
+        items = [
+            i for i in items if i.cost is not None and i.cost.lines_priced == i.cost.lines_total
+        ]
+    elif completeness == "incomplete":
+        items = [i for i in items if i.cost is None or i.cost.lines_priced < i.cost.lines_total]
+    return items
+
+
+def _escape_like(text: str) -> str:
+    """Escape the LIKE metacharacters so a typed ``%`` or ``_`` matches itself."""
+    return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 async def get_recipe(db: AsyncSession, recipe_id: uuid.UUID) -> Recipe:

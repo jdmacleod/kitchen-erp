@@ -75,7 +75,9 @@ async def test_rescan_lists_and_shows_recipes(
 
     r = await admin_client.get("/api/v1/recipes")
     items = r.json()["items"]
-    assert [i["path"] for i in items] == sorted([*names, "index_scratch.cook"])
+    # Ordered by title, not path (UI-7.3): the untitled scratch file sorts by its fallback title.
+    assert sorted(i["path"] for i in items) == sorted([*names, "index_scratch.cook"])
+    assert [i["title"] for i in items] == sorted((i["title"] for i in items), key=str.lower)
     assert set(items[0]) == {
         "id",
         "path",
@@ -197,3 +199,52 @@ async def test_an_alias_may_come_from_a_recipe(owner_conn: asyncpg.Connection):
         "ck_ingredient_alias_source",
     )
     assert "'recipe'" in definition
+
+
+async def test_list_filters_run_on_the_server(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """UI-7.3: search on title or path, and completeness, are the API's filters."""
+    recipes_repo.seed_fixtures()
+    # No ingredient marks: nothing to price, so its cost is complete once computed.
+    recipes_repo.write(
+        "drafts/zenith_soup.cook", ">> title: Zenith soup\nBoil the water and wait.\n"
+    )
+    recipes_repo.commit("six")
+    assert (await admin_client.post("/api/v1/recipes/rescan")).status_code == 200
+
+    async def titles(params: dict) -> list[str]:
+        r = await admin_client.get("/api/v1/recipes", params=params)
+        assert r.status_code == 200, r.text
+        return [i["title"] for i in r.json()["items"]]
+
+    assert await titles({"q": "LENTIL"}) == ["Lantern lentils"]  # case folded, on the title
+    assert await titles({"q": "drafts/"}) == ["Zenith soup"]  # or on the path
+    assert await titles({"q": "100%"}) == []  # a typed % is not a wildcard
+    assert await titles({"q": "zz qx"}) == []
+
+    # Nothing is costed yet, so every recipe is incomplete and none complete.
+    assert len(await titles({"completeness": "incomplete"})) == 6
+    assert await titles({"completeness": "complete"}) == []
+    assert (await admin_client.get("/api/v1/recipes?completeness=half")).status_code == 422
+
+    # Costing the recipe with no lines makes it the one complete recipe.
+    zenith = next(
+        i
+        for i in (await admin_client.get("/api/v1/recipes")).json()["items"]
+        if i["title"] == "Zenith soup"
+    )
+    cost = await admin_client.get(f"/api/v1/recipes/{zenith['id']}/cost")
+    assert cost.status_code == 200, cost.text
+    assert cost.json()["completeness"] == {
+        "lines_total": 0,
+        "lines_priced": 0,
+        "lines_unpriced": 0,
+        "lines_unconvertible": 0,
+        "lines_unmapped": 0,
+        "lines_negligible": 0,
+    }
+    assert await titles({"completeness": "complete"}) == ["Zenith soup"]
+    assert "Zenith soup" not in await titles({"completeness": "incomplete"})
+    assert await titles({"completeness": "incomplete", "q": "zenith"}) == []
