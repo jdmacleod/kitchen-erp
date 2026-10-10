@@ -77,6 +77,8 @@ export interface ReviewCandidate {
   /** The identifying words only this proposal has, and only the product has. */
   only_here: string[];
   only_there: string[];
+  /** "X is Y's own brand" when it is another store family's brand (2R-2). */
+  brand_note?: string | null;
 }
 
 /** The catalog product an address already names (2P): "Already in your catalog". */

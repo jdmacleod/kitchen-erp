@@ -6976,6 +6976,17 @@
             ],
             "title": "Brand"
           },
+          "brand_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Note"
+          },
           "ingredient": {
             "$ref": "#/components/schemas/IngredientSummary"
           },

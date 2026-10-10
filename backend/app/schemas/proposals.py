@@ -91,6 +91,8 @@ class MatchCandidateOut(ApiModel):
     ingredient: IngredientSummary
     score: DecimalStr
     verdict: Literal["same", "other_size", "variant", "similar"]
+    # "X is Y's own brand" when it is another store family's brand (16, 2R-2).
+    brand_note: str | None = None
     reasons: list[str]
     # The identifying words only this proposal has, and only the product has.
     only_here: list[str]

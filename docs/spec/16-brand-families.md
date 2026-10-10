@@ -87,7 +87,7 @@ A product with a barcode and no house brand stays `branded`. A barcode whose pre
 
 **Out of family.** When the vendor of a receipt line or capture has a family, a candidate product whose brand belongs to a different retailer family:
 
-- ranks below every in-family and national candidate of the same score, in `match_catalog` (`services/proposals.py`) and the receipt line shortlist (`services/resolution.py`);
+- ranks as if its similarity were 0.15 lower (`brands.OUT_OF_FAMILY_PENALTY`), in `match_catalog` and review's candidates (`services/proposals.py`) and the receipt line shortlist (`services/resolution.py`), so a close in-family or national match comes first while a clearly better match still leads;
 - carries `brand_note: "out_of_family"`, shown as "{brand} is {family}'s own brand";
 - is never removed. A person can still choose it: stores resell, and the dataset can be stale.
 
@@ -122,7 +122,7 @@ R3. An alias that collides with another brand's is refused by line, and the rest
 R4. A vendor links to its family by Wikidata id, by website domain or by an unambiguous name, in that order, and an ambiguous name links nothing and is reported.
 R5. "LARKSPUR SELECT", "Larkspur Select®" and "Larkspur Select" link to one brand; a title containing the name links nothing.
 R6. A product whose brand links to a retailer family is `private_label`, also when it has an exclusive vendor; a product with only a barcode and no house brand is `branded`; a kind a person chose is never changed.
-R7. On a receipt from a vendor in one family, another retailer family's store brand appears in the shortlist below in-family and national candidates of the same score, with its note; a wholesale label appears with no note.
+R7. On a receipt or capture from a vendor in one family, another retailer family's store brand appears in the shortlist ranked as if 0.15 less similar, with its note; a wholesale label, or one the vendor's family carries, appears with no note.
 R8. Two products with differently spelled brands that link to one brand compare as the same brand; a retired brand and its replacement do not.
 R9. A respelled brand from the helper opens no "Product update" when both spellings link to one brand.
 R10. An ingredient's offers show each store brand's tier and family, and the store-brand and national filters each show only their rows.
