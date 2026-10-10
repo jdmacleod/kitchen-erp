@@ -13,6 +13,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -20,7 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.brand_names import leading_keys, name_key
-from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner
+from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner, BrandFamilyCarries
 from app.models.catalog import Product
 from app.models.geo import Vendor
 from app.services.interchange import write_unless_edited
@@ -130,3 +131,65 @@ async def link_vendor(
             stored=str,
         )
     return match
+
+
+# --- out of family (2R-2) --------------------------------------------------------
+
+# How far an out-of-family store brand drops in a shortlist: it ranks as if its
+# similarity were this much lower, so a close in-family or national match comes first
+# but a clearly better one still leads. It is never removed.
+OUT_OF_FAMILY_PENALTY = Decimal("0.15")
+
+
+@dataclass(frozen=True)
+class OutOfFamily:
+    brand: str
+    family: str
+
+    def note(self) -> str:
+        whose = f"{self.family}'" if self.family.endswith("s") else f"{self.family}'s"
+        return f"{self.brand} is {whose} own brand"
+
+
+async def out_of_family(
+    db: AsyncSession, product_ids: list[uuid.UUID], vendor_id: uuid.UUID | None
+) -> dict[uuid.UUID, OutOfFamily]:
+    """The products among `product_ids` whose brand is another retailer family's own,
+    for a line or page from `vendor_id`'s stores. Empty when the vendor has no family.
+    A wholesale label, or one the vendor's family carries, is never out of family."""
+    if vendor_id is None or not product_ids:
+        return {}
+    family_id = (
+        await db.execute(select(Vendor.brand_family_id).where(Vendor.id == vendor_id))
+    ).scalar_one_or_none()
+    if family_id is None:
+        return {}
+    carried = select(BrandFamilyCarries.brand_id).where(BrandFamilyCarries.family_id == family_id)
+    rows = await db.execute(
+        select(Product.id, Brand.name, BrandFamily.name)
+        .join(Brand, Brand.id == Product.brand_id)
+        .join(BrandFamily, BrandFamily.id == Brand.family_id)
+        .where(
+            Product.id.in_(product_ids),
+            BrandFamily.kind == "retailer",
+            BrandFamily.id != family_id,
+            Brand.id.not_in(carried),
+        )
+    )
+    return {pid: OutOfFamily(brand, family) for pid, brand, family in rows.all()}
+
+
+def rank_with_family(
+    entries: list[dict], flagged: dict[uuid.UUID, OutOfFamily], *, id_key: str
+) -> list[dict]:
+    """`entries` (each with a string `score`) ordered by score, an out-of-family one
+    ranked as if its score were `OUT_OF_FAMILY_PENALTY` lower and given a `brand_note`."""
+
+    def effective(e: dict) -> Decimal:
+        score = Decimal(str(e.get("score") or 0))
+        return score - OUT_OF_FAMILY_PENALTY if uuid.UUID(e[id_key]) in flagged else score
+
+    for e in entries:
+        if (hit := flagged.get(uuid.UUID(e[id_key]))) is not None:
+            e["brand_note"] = hit.note()
+    return sorted(entries, key=lambda e: -effective(e))
