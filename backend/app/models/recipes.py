@@ -20,6 +20,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
@@ -144,3 +145,107 @@ class RecipePin(UUIDPrimaryKey, Timestamped, Base):
     )
 
     recipe: Mapped[Recipe] = relationship(back_populates="pins")
+
+
+# --- 3D: cost snapshots, derived and rebuildable like price_norm ---------------------
+
+COST_BASES = ("latest", "average", "cheapest")
+COST_LINE_STATUSES = ("priced", "unpriced", "unconvertible", "unmapped", "negligible")
+
+
+class RecipeCostSnapshot(UUIDPrimaryKey, Base):
+    """One costing of a recipe at one content hash under one basis (3D).
+
+    The key ``(recipe_id, content_hash, basis, window_days, min_quality)`` is a
+    unique index with ``NULLS NOT DISTINCT`` (migration 0045), so a recompute
+    replaces the snapshot in place and history holds one row per content version.
+    """
+
+    __tablename__ = "recipe_cost_snapshot"
+    __table_args__ = (
+        CheckConstraint(
+            "basis IN ('latest', 'average', 'cheapest')", name="ck_recipe_cost_snapshot_basis"
+        ),
+        CheckConstraint(
+            "window_days IS NULL OR window_days > 0", name="ck_recipe_cost_snapshot_window"
+        ),
+        # The unique key is NULLS NOT DISTINCT, created in migration 0045.
+    )
+
+    recipe_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="CASCADE"), nullable=False
+    )
+    content_hash: Mapped[str] = mapped_column(String(40), nullable=False)
+    head_commit: Mapped[str | None] = mapped_column(String(40))
+    provisional: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    basis: Mapped[str] = mapped_column(String(16), nullable=False)
+    window_days: Mapped[int | None] = mapped_column(Integer)
+    min_quality: Mapped[int | None] = mapped_column(SmallInteger)
+    consumed_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    consumed_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    basket_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    basket_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    per_serving: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    lines_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines_priced: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines_unpriced: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines_unconvertible: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines_unmapped: Mapped[int] = mapped_column(Integer, nullable=False)
+    lines_negligible: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Fraction of consumed cost resting on unconfirmed bridges.
+    unconfirmed_share: Mapped[Decimal] = mapped_column(Numeric(5, 4), nullable=False)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    lines: Mapped[list[RecipeCostLine]] = relationship(
+        back_populates="snapshot", cascade="all, delete-orphan"
+    )
+
+
+class RecipeCostLine(UUIDPrimaryKey, Base):
+    """One recipe ingredient as costed in a snapshot.
+
+    Quantities and costs are the as-purchased figures; ``*_high`` is set only
+    for a range quantity. ``yield_applied`` is the yield the quantity was
+    grossed up by, null when the line was taken as purchased.
+    """
+
+    __tablename__ = "recipe_cost_line"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('priced', 'unpriced', 'unconvertible', 'unmapped', 'negligible')",
+            name="ck_recipe_cost_line_status",
+        ),
+        UniqueConstraint("snapshot_id", "recipe_ingredient_id", name="uq_recipe_cost_line"),
+    )
+
+    snapshot_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("recipe_cost_snapshot.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    recipe_ingredient_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("recipe_ingredient.id", ondelete="CASCADE"), nullable=False
+    )
+    status: Mapped[str] = mapped_column(String(16), nullable=False)
+    canonical_qty: Mapped[Decimal | None] = mapped_column(Numeric)
+    canonical_qty_high: Mapped[Decimal | None] = mapped_column(Numeric)
+    canonical_unit: Mapped[str | None] = mapped_column(String(16))
+    yield_applied: Mapped[Decimal | None] = mapped_column(Numeric(5, 4))
+    product_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("product.id", ondelete="SET NULL"), index=True
+    )
+    observation_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("price_observation.id", ondelete="SET NULL"), index=True
+    )
+    norm_unit_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
+    consumed_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    consumed_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    basket_cost: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    basket_cost_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    packs: Mapped[Decimal | None] = mapped_column(Numeric)
+    packs_high: Mapped[Decimal | None] = mapped_column(Numeric)
+    bridge_kind: Mapped[str | None] = mapped_column(String(20))
+    bridge_confirmed: Mapped[bool | None] = mapped_column(Boolean)
+    failure_code: Mapped[str | None] = mapped_column(String(20))
+
+    snapshot: Mapped[RecipeCostSnapshot] = relationship(back_populates="lines")

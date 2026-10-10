@@ -820,6 +820,21 @@ def recompute_norms() -> None:
     asyncio.run(_run())
 
 
+@cli.command("recompute-costs")
+def recompute_costs() -> None:
+    """Truncate the recipe cost tables and rebuild every recipe's latest snapshot (07, 3D)."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.recipe_costing import recompute_all
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            n = await recompute_all(db)
+        await dispose_engine()
+        typer.echo(f"recomputed costs for {n} recipes")
+
+    asyncio.run(_run())
+
+
 OUT_OPTION = typer.Option(..., "--out", file_okay=False, resolve_path=True)
 FROM_OPTION = typer.Option(..., "--from", exists=True, file_okay=False, resolve_path=True)
 FORCE_OPTION = typer.Option(False, "--force", help="overwrite a non-empty database")
