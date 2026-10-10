@@ -13,6 +13,8 @@ from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import IngredientCreate, IngredientSummary
 
 RecipeStatus = Literal["ok", "parse_error", "missing"]
+# Whether every line of the current cost is priced; a recipe with no snapshot is incomplete.
+Completeness = Literal["complete", "incomplete"]
 MountState = Literal["mounted", "missing", "empty", "no_cook_files"]
 QtyKind = Literal["number", "range", "text", "none"]
 Resolution = Literal["alias", "manual", "unmatched", "negligible", "ignored"]

@@ -5,6 +5,9 @@ import pytest
 
 from tests.catalog_helpers import make_ingredient, make_product, seed_units_via_service
 from tests.pricebook_helpers import make_location
+from tests.recipes_helpers import TempRepo, recipes_repo  # noqa: F401
+
+EMPTY = {"ingredients": [], "products": [], "vendors": [], "recipes": []}
 
 # GS1 prefix 2 is for restricted circulation, so no retail product carries it.
 BARCODE = "200000000424"
@@ -24,7 +27,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
     await make_ingredient(admin_client, "Paprika", category="spice")
 
     body = await _search(admin_client, "basil")
-    assert list(body) == ["ingredients", "products", "vendors"]
+    assert list(body) == ["ingredients", "products", "vendors", "recipes"]
     assert body["ingredients"] == [
         {
             "kind": "ingredient",
@@ -33,6 +36,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "detail": "Herbs",
             "route": f"/catalog/ingredients/{basil['id']}",
             "category_key": "produce",
+            "badge": None,
         }
     ]
     assert body["products"] == [
@@ -43,6 +47,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "detail": "Leafwise · Basil",
             "route": f"/catalog/products/{product['id']}",
             "category_key": "produce",
+            "badge": None,
         }
     ]
     assert body["vendors"] == [
@@ -53,8 +58,10 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "detail": "Stand",
             "route": f"/catalog/vendors/{stand['vendor']['id']}",
             "category_key": None,
+            "badge": None,
         }
     ]
+    assert body["recipes"] == []
 
 
 async def test_a_barcode_matches_its_product_exactly_and_first(admin_client, db_session):
@@ -81,9 +88,34 @@ async def test_each_group_is_capped_and_inactive_items_are_left_out(admin_client
     assert gone["id"] not in {i["id"] for i in body["ingredients"]}
 
 
-async def test_nothing_found_is_three_empty_groups(admin_client):
-    assert await _search(admin_client, "   ") == {"ingredients": [], "products": [], "vendors": []}
-    assert await _search(admin_client, "zzqx") == {"ingredients": [], "products": [], "vendors": []}
+async def test_nothing_found_is_four_empty_groups(admin_client):
+    assert await _search(admin_client, "   ") == EMPTY
+    assert await _search(admin_client, "zzqx") == EMPTY
+
+
+async def test_recipes_match_title_or_path_and_carry_their_badge(
+    admin_client,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """UI-7.17: a Recipes group after Vendors, each row with its badge in words."""
+    recipes_repo.seed_fixtures()
+    recipes_repo.commit("five")
+    recipes_repo.write(
+        "drafts/moon_pie.cook", ">> title: Moon pie\nMix @flour{1%cup}.\n"
+    )  # untracked
+    r = await admin_client.post("/api/v1/recipes/rescan")
+    assert r.status_code == 200, r.text
+
+    body = await _search(admin_client, "moon")
+    assert [(x["label"], x["detail"], x["badge"]) for x in body["recipes"]] == [
+        ("Barley moon stew", "index_barley_moon_stew.cook", None),
+        ("Moon pie", "drafts/moon_pie.cook", "uncommitted"),
+    ]
+    row = body["recipes"][0]
+    assert row["kind"] == "recipe" and row["route"] == f"/cook/recipes/{row['id']}"
+    assert row["category_key"] is None
+    # The path matches too, as the recipes list's own search does.
+    assert [x["label"] for x in (await _search(admin_client, "drafts/"))["recipes"]] == ["Moon pie"]
 
 
 @pytest.mark.parametrize("q", ["", "x" * 201])

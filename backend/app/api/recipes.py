@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.recipes import (
+    Completeness,
     CostBasis,
     CostHistoryOut,
     RecipeCostOut,
@@ -39,8 +40,15 @@ async def list_recipes(
     db: DbSession,
     status_: Annotated[RecipeStatus | None, Query(alias="status")] = None,
     dirty: bool | None = None,
+    q: Annotated[str | None, Query(max_length=200, description="title or path")] = None,
+    completeness: Completeness | None = None,
 ) -> RecipeList:
-    return RecipeList(items=await recipes.list_recipes(db, status=status_, dirty=dirty))
+    """Ordered by title; every filter runs here, not in the browser (UI-7.3)."""
+    return RecipeList(
+        items=await recipes.list_recipes(
+            db, status=status_, dirty=dirty, q=q, completeness=completeness
+        )
+    )
 
 
 @router.get("/recipes/status", response_model=RecipesStatus)
