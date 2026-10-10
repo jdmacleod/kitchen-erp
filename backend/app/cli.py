@@ -13,6 +13,7 @@ import typer
 from alembic.config import Config
 
 from alembic import command, util
+from app.cli_recipes import recipes_cli
 from app.core.config import DEV_VERSION, UNKNOWN_COMMIT
 from app.core.logging import configure_logging
 
@@ -25,6 +26,7 @@ import_cli = typer.Typer(
 cli.add_typer(import_cli, name="import")
 receipts_cli = typer.Typer(help="Stored receipt files.", no_args_is_help=True)
 cli.add_typer(receipts_cli, name="receipts")
+cli.add_typer(recipes_cli, name="recipes")  # `kerp recipes …` lives in app/cli_recipes.py
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
