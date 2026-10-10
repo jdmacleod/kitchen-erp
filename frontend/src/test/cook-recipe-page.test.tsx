@@ -74,7 +74,9 @@ describe("the recipe page (UI-7.7, UI-7.9)", () => {
 
     expect(root).toHaveAttribute("data-status", "unmapped");
     expect(root).toHaveTextContent("a handful mystery root");
-    expect(within(root).getAllByText("Needs an ingredient")).toHaveLength(2);
+    // The ingredient cell is the picker (UI-7.10); the price cell keeps the words.
+    expect(within(root).getByRole("combobox", { name: "Choose an ingredient" })).toBeInTheDocument();
+    expect(within(root).getAllByText("Needs an ingredient")).toHaveLength(1);
     expect(within(root).getAllByText("—").length).toBeGreaterThan(0);
 
     expect(kelp).toHaveTextContent("No price yet ·");
@@ -196,14 +198,20 @@ describe("parse errors and missing files (UI-7.15)", () => {
   });
 
   it("offers Relink and Not the same on a missing recipe's proposal", async () => {
-    mount({
-      "GET /recipes/r-barley": () =>
-        jsonResponse(200, {
-          ...stewRecipe,
-          status: "missing",
-          relink: { target_id: "r-new", path: "soups/barley_stew_v2.cook", title: "Barley moon stew (v2)", reason: "same title" },
-        }),
+    let dismissed = false;
+    const missing = () => ({
+      ...stewRecipe,
+      status: "missing",
+      relink: dismissed ? null : { target_id: "r-new", path: "soups/barley_stew_v2.cook", title: "Barley moon stew (v2)", reason: "same title" },
+    });
+    const calls = mount({
+      "GET /recipes/r-barley": () => jsonResponse(200, missing()),
       "POST /recipes/r-barley/relink": () => jsonResponse(200, { ...stewRecipe, id: "r-barley", path: "soups/barley_stew_v2.cook" }),
+      // "Not the same" dismisses on the server, so no later scan proposes that file again.
+      "POST /recipes/r-barley/relink/dismiss": () => {
+        dismissed = true;
+        return jsonResponse(200, missing());
+      },
     });
     const main = await screen.findByRole("main");
     const alert = await within(main).findByText("This file is no longer in the repository. Its costs and pins are kept until you remove it.");
@@ -212,7 +220,9 @@ describe("parse errors and missing files (UI-7.15)", () => {
     expect(proposal).toHaveTextContent("Is it now ‘Barley moon stew (v2)’ (soups/barley_stew_v2.cook)?");
     const user = userEvent.setup();
     await user.click(within(proposal).getByRole("button", { name: "Not the same" }));
-    expect(within(main).queryByTestId("relink-proposal")).not.toBeInTheDocument();
+    await waitFor(() => expect(within(main).queryByTestId("relink-proposal")).not.toBeInTheDocument());
+    expect(calls.some((c) => c.method === "POST" && c.path === "/recipes/r-barley/relink/dismiss")).toBe(true);
+    expect(calls.some((c) => c.method === "POST" && c.path === "/recipes/r-barley/relink")).toBe(false);
   });
 
   it("relinks on confirm", async () => {

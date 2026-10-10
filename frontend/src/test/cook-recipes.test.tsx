@@ -53,9 +53,9 @@ describe("the Cook section (UI-7.1)", () => {
   });
 
   it("keeps the resolve route for the inbox row's link", async () => {
-    mount({}, "/cook/recipes/resolve");
+    mount({ "GET /recipes/resolve": () => jsonResponse(200, { items: [], names: 0, recipes: 0, model_configured: false }) }, "/cook/recipes/resolve");
     expect(await screen.findByRole("heading", { name: "Resolve recipe names" })).toBeInTheDocument();
-    expect(within((await screen.findByRole("main"))).getByText("Coming with the next update.")).toBeInTheDocument();
+    expect(await within((await screen.findByRole("main"))).findByText("Every recipe name is resolved")).toBeInTheDocument();
   });
 });
 

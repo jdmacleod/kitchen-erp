@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import {
@@ -7,6 +6,7 @@ import {
   servingsText,
   useRecipe,
   useRecipeCost,
+  useDismissRelink,
   useRecipeCostHistory,
   useRelinkRecipe,
   type CostBasis,
@@ -177,7 +177,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
           ) : (
             <>
               <CostTotals cost={cost.data} costing={cost.isPending} />
-              {cost.data ? <CostTable cost={cost.data} /> : null}
+              {cost.data ? <CostTable cost={cost.data} recipe={recipe} /> : null}
               {history.isError ? <Alert tone="error">Couldn&apos;t load the cost history: {errorMessage(history.error)}</Alert> : <SnapshotChart points={points} />}
             </>
           )}
@@ -189,13 +189,15 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
 
 /**
  * The missing recipe's neutral alert with its relink proposal (10, States; UI-7.15).
- * "Not the same" puts the proposal away for this visit; a later scan may make another.
+ * "Not the same" dismisses the proposal on the server, so no later scan proposes
+ * that file for this recipe again (package 8).
  */
 function MissingAlert({ recipe }: { recipe: Recipe }) {
   const relink = useRelinkRecipe(recipe.id);
+  const dismiss = useDismissRelink(recipe.id);
   const notice = useNotice();
-  const [dismissed, setDismissed] = useState<string | null>(null);
-  const proposal = recipe.relink && recipe.relink.target_id !== dismissed ? recipe.relink : null;
+  const proposal = recipe.relink;
+  const busy = relink.isPending || dismiss.isPending;
   return (
     <Alert tone="info" className="mb-4">
       <span className="flex flex-col gap-2">
@@ -207,7 +209,7 @@ function MissingAlert({ recipe }: { recipe: Recipe }) {
             </span>
             <Button
               variant="secondary"
-              disabled={relink.isPending}
+              disabled={busy}
               onClick={() =>
                 relink.mutate(proposal.target_id, {
                   onSuccess: () => notice.show({ tone: "success", message: `Relinked to ${proposal.title}.` }),
@@ -217,8 +219,12 @@ function MissingAlert({ recipe }: { recipe: Recipe }) {
             >
               {relink.isPending ? "Relinking…" : "Relink"}
             </Button>
-            <Button variant="ghost" disabled={relink.isPending} onClick={() => setDismissed(proposal.target_id)}>
-              Not the same
+            <Button
+              variant="ghost"
+              disabled={busy}
+              onClick={() => dismiss.mutate(undefined, { onError: (e) => notice.show({ tone: "error", message: `Couldn't dismiss the proposal: ${errorMessage(e)}` }) })}
+            >
+              {dismiss.isPending ? "Dismissing…" : "Not the same"}
             </Button>
           </span>
         ) : null}
