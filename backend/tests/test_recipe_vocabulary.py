@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import time
 import uuid
@@ -309,10 +310,13 @@ def test_lint_strict_fails_on_a_file_that_does_not_parse(catalog: Context, tmp_p
 
 
 def test_conform_refuses_to_run_without_a_path(catalog: Context) -> None:
+    # Rich colours and wraps the usage box in CI, so strip the escapes and don't
+    # rely on the option's dashes staying next to its name.
+    plain = re.compile(r"\x1b\[[0-9;]*m")
     code, out = run("conform")
-    assert code == 2 and "--path" in out
+    assert code == 2 and "path" in plain.sub("", out)
     code, out = run("conform", "--apply")
-    assert code == 2 and "--path" in out
+    assert code == 2 and "path" in plain.sub("", out)
 
 
 def test_conform_prints_a_diff_and_changes_nothing_without_apply(
