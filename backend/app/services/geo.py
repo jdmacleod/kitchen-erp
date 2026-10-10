@@ -166,7 +166,8 @@ def sources_of(obj: Vendor | VendorLocation, names: tuple[str, ...]) -> dict[str
             continue
         record = (obj.field_source or {}).get(name)
         if isinstance(record, dict) and "imported" in record:
-            if record["imported"] == current:
+            # An id is recorded as text (JSON); compare it so.
+            if record["imported"] == (str(current) if isinstance(current, uuid.UUID) else current):
                 out[name] = {k: record.get(k) for k in ("source", "ref", "checked_at")}
         elif (
             isinstance(obj, VendorLocation)
@@ -344,6 +345,9 @@ async def create_vendor_row(
     )
     db.add(vendor)
     await _flush(db)
+    from app.services import brands
+
+    await brands.link_vendor(db, vendor)
     return vendor
 
 
@@ -403,6 +407,19 @@ async def update_vendor(db: AsyncSession, vendor_id: uuid.UUID, changes: dict[st
     vendor = await _load_vendor(db, vendor_id)
     fetched = vendor.fetch_policy == "server_fetch"
     apply_vendor_changes(vendor, changes)
+    if "brand_family_id" in changes:
+        # A person's choice: it differs from what linking last wrote, so it is kept (2R).
+        from app.models.brands import BrandFamily
+
+        family_id = changes["brand_family_id"]
+        if family_id is not None and await db.get(BrandFamily, family_id) is None:
+            await db.rollback()
+            raise ApiError(404, "not_found", "No such brand family.")
+        vendor.brand_family_id = family_id
+    elif {"name", "website", "brand", "wikidata"} & set(changes):
+        from app.services import brands
+
+        await brands.link_vendor(db, vendor)
     if fetched and vendor.fetch_policy != "server_fetch":
         # Its pages may no longer be fetched: refreshes already queued go too (#264).
         from app.services import lookups

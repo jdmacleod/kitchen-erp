@@ -249,6 +249,23 @@ class ProductUpdate(ApiModel):
         return self
 
 
+class BrandFamilySummary(ApiModel):
+    key: str
+    name: str
+    kind: str
+
+
+class HouseBrandOut(ApiModel):
+    """The store brand a product's brand names (16, 2R): whose it is and its tier."""
+
+    key: str
+    name: str
+    tier: str
+    current: bool
+    replaced_by_name: str | None = None
+    family: BrandFamilySummary
+
+
 class ProductOut(ApiModel):
     id: uuid.UUID
     ingredient: IngredientSummary
@@ -272,6 +289,8 @@ class ProductOut(ApiModel):
     merged_into: uuid.UUID | None = None
     # The main photo (1I); None shows the category placeholder.
     photo: PhotoSummary | None = None
+    # A store's own brand, or None for a national or unknown one (2R).
+    house_brand: HouseBrandOut | None = None
     created_at: datetime
     updated_at: datetime
 

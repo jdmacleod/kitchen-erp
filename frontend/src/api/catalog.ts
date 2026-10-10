@@ -151,8 +151,29 @@ export interface Product {
   merged_into?: string | null;
   /** The main photo (1I); null shows the category placeholder. */
   photo?: PhotoSummary | null;
+  /** A store's own brand, or null for a national or unknown one (2R). */
+  house_brand?: HouseBrand | null;
   created_at: string;
   updated_at: string;
+}
+
+export type BrandTier =
+  | "value"
+  | "standard"
+  | "premium"
+  | "organic"
+  | "natural"
+  | "prepared"
+  | "specialty";
+
+/** The store brand a product's brand names: whose it is and its tier (2R). */
+export interface HouseBrand {
+  key: string;
+  name: string;
+  tier: BrandTier;
+  current: boolean;
+  replaced_by_name?: string | null;
+  family: { key: string; name: string; kind: "retailer" | "wholesaler" | "cooperative" };
 }
 
 /** The latest committed purchase of a product (T16): what was paid, where and when. */

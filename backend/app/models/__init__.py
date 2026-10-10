@@ -1,4 +1,5 @@
 from app.models.base import Base
+from app.models.brands import Brand, BrandAlias, BrandFamily, BrandFamilyBanner, BrandFamilyCarries
 from app.models.catalog import (
     FdcBranded,
     FdcFood,
@@ -54,6 +55,11 @@ __all__ = [
     "ApiToken",
     "AppUser",
     "Base",
+    "Brand",
+    "BrandAlias",
+    "BrandFamily",
+    "BrandFamilyBanner",
+    "BrandFamilyCarries",
     "FdcBranded",
     "FdcFood",
     "FdcRelease",

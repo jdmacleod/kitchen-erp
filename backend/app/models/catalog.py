@@ -242,6 +242,11 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
         UUID(as_uuid=True), ForeignKey("ingredient.id"), nullable=False, index=True
     )
     brand: Mapped[str | None] = mapped_column(String(200))
+    # The brand row `brand` names, when the brand dataset knows it (2R); the text
+    # stays as printed. Set by app.services.brands, never by the API directly.
+    brand_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("brand.id", ondelete="SET NULL"), index=True
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     pack_qty: Mapped[Decimal | None] = mapped_column(Numeric)
     pack_unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
@@ -272,6 +277,8 @@ class Product(UUIDPrimaryKey, Timestamped, Base):
     )
 
     ingredient: Mapped[Ingredient] = relationship(back_populates="products")
+    # The store brand `brand_id` points at, with its family (2R).
+    house_brand: Mapped[Any] = relationship("Brand", lazy="selectin")
     # The main photo, loaded with the product so a list can show it.
     photo: Mapped[ProductImage | None] = relationship(
         "ProductImage",

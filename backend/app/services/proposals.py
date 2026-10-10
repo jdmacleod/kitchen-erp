@@ -48,7 +48,7 @@ from app.models import (
     VendorListing,
 )
 from app.models.geo import Vendor, VendorLocation, point_expr
-from app.services import pricebook, product_photos
+from app.services import brands, pricebook, product_photos
 from app.services.catalog import search_products
 
 log = get_logger(__name__)
@@ -1009,6 +1009,7 @@ async def _product_for(
             raise ApiError(422, "product_required", "Say which product to update.")
         product = await product_photos.lock_product(db, target)
         if await _apply_fields(product, fields, overwrite=False, now=now):
+            await brands.link_product(db, product)
             await db.flush()
             # The pack or its pieces changed: what was recorded is priced again.
             await pricebook.recompute_for_product_core(db, product.id)
@@ -1027,14 +1028,23 @@ async def _product_for(
         ingredient_id=data.ingredient_id,
         name=name,
         brand=str(brand).strip() if brand else None,
-        kind=data.kind or ("branded" if (brand or gtin) else "loose"),
+        kind=data.kind or await _kind(db, brand, gtin),
         attributes={},
         field_source={},
     )
     db.add(product)
     await _apply_fields(product, fields, overwrite=True, now=now)
+    await brands.link_product(db, product)
     await db.flush()
     return product, True
+
+
+async def _kind(db: AsyncSession, brand: Any, gtin: Any) -> str:
+    """A new product's kind when the person chose none: a store's own brand (16, 2R),
+    then branded for a brand or barcode, else loose."""
+    if await brands.is_house_brand(db, str(brand) if brand else None):
+        return "private_label"
+    return "branded" if (brand or gtin) else "loose"
 
 
 async def accept(
