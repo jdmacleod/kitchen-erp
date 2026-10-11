@@ -63,10 +63,10 @@ class Recipe(UUIDPrimaryKey, Timestamped, Base):
         UUID(as_uuid=True), ForeignKey("recipe.id", ondelete="SET NULL")
     )
     relink_reason: Mapped[str | None] = mapped_column(Text)
-    # Paths of candidates a person refused with "Not the same" (0047): a new
+    # Paths of candidates a person refused with "Not the same" (0048): a new
     # file at one of them is never proposed again.
     relink_dismissed_paths: Mapped[list[str] | None] = mapped_column(JSONB)
-    # The parsed file as plain JSON for the rendered recipe (0047): sections of
+    # The parsed file as plain JSON for the rendered recipe (0048): sections of
     # steps of items, decimals as strings. Derived like the ingredient rows, and
     # kept like them when the file stops parsing.
     body: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
