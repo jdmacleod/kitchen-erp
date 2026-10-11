@@ -9,6 +9,10 @@ files are read from the path given, or, for the two read-only commands, from the
 configured recipes mount. ``conform`` always needs an explicit ``--path`` and
 never commits: the running application never writes to the mount, and `git`
 is a person's job.
+
+A fourth command, ``rescan``, runs one scan of the configured mount now, as
+``POST /api/v1/recipes/rescan`` does, for the operator who has just run
+``make seed-examples`` and does not want to wait for the worker (package 10).
 """
 
 from __future__ import annotations
@@ -153,3 +157,26 @@ def conform(path: Path = REQUIRED_PATH_OPTION, apply: bool = APPLY_OPTION) -> No
     for rel in written:
         typer.echo(f"  {rel}")
     typer.echo("Nothing was committed: read `git diff` in the repository and commit it yourself.")
+
+
+@recipes_cli.command("rescan")
+def rescan() -> None:
+    """Scan the configured recipes mount now and say what changed (07, 3A)."""
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.recipes import scan
+
+    async def _run():
+        async with get_sessionmaker()() as db:
+            out = await scan(db)
+        await dispose_engine()
+        return out
+
+    out = asyncio.run(_run())
+    if not out.mounted:
+        typer.echo("No recipes directory is mounted: nothing to scan.")
+        return
+    typer.echo(
+        f"Scanned {_plural(out.files, 'file')}: {out.created} new, {out.updated} changed, "
+        f"{out.moved} moved, {out.missing} missing, "
+        f"{_plural(out.parse_errors, 'parse error')}, {out.settling} still settling."
+    )

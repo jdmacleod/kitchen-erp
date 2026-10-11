@@ -28,7 +28,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.names import normalize_name
@@ -63,6 +63,8 @@ Parsed = ParsedRecipe | ParseError
 # When this process last finished a scan. The worker and the api scan in
 # separate processes, so status() also looks at the rows themselves.
 _last_scan: dict[str, datetime | None] = {"at": None}
+# The advisory-lock key that serializes scans (one per database; arbitrary but fixed).
+SCAN_LOCK_KEY = 0x6B65_7270_7263  # "kerprc"
 
 
 @dataclass(frozen=True)
@@ -350,6 +352,12 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
             proposals=0,
         )
 
+    # One scan at a time. The worker's periodic scan and the Rescan button (or two
+    # browser tabs) otherwise read the same empty index and both insert the same
+    # paths, and the loser answers 500 with an IntegrityError. The lock lives for
+    # this transaction, so the waiter starts after the first scan's commit and
+    # reads its rows (package 10, found by the browser suite).
+    await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": SCAN_LOCK_KEY})
     rows = list((await db.execute(select(Recipe))).scalars())
     known = {row.path: row.content_hash for row in rows}
     files, parsed = _list_files(mount, time.time(), settings.recipes_settle_seconds, known)

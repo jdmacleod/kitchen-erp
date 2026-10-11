@@ -33,6 +33,19 @@ up:  ## Start the stack with build identity baked in, then migrate (use this, no
 down:  ## Stop the stack (and Ollama, if started with the llm profile); data is kept
 	docker compose --profile llm down
 
+# The example recipes (examples/recipes, MIT) copied into the default mount so a
+# fresh deployment has something to cost. Only the host writes to data/recipes:
+# the containers mount it read-only. A `.git` there means a real repository,
+# which this never touches. The worker's next scan (RECIPES_SCAN_SECONDS) picks
+# the files up; `kerp recipes rescan` or POST /api/v1/recipes/rescan does it now.
+seed-examples:  ## Copy the example recipes into data/recipes (never over a repository)
+	@if [ -e data/recipes/.git ]; then \
+		echo "data/recipes is a git repository; not touching it. Point RECIPES_PATH elsewhere or copy examples/recipes/ yourself." >&2; exit 1; fi
+	@mkdir -p data/recipes
+	@cp -R examples/recipes/. data/recipes/
+	@echo "Copied $$(find examples/recipes -name '*.cook' | wc -l | tr -d ' ') example recipes into data/recipes/."
+	@echo "The worker indexes them on its next scan; to index them now: docker compose exec api kerp recipes rescan"
+
 check-compose-env:  ## Every documented setting must reach a container
 	$(PY) -m tools.check_compose_env
 

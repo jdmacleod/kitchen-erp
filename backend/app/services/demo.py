@@ -30,7 +30,7 @@ from app.models.identity import AppUser
 from app.models.purchases import Purchase
 from app.schemas.catalog import IngredientCreate, ProductCreate
 from app.schemas.purchases import LineIn, ManualPurchaseIn
-from app.services import catalog, geo, identity, pricebook, purchases
+from app.services import catalog, geo, identity, pricebook, purchases, spellings
 
 # One fixed seed and one fixed end date: the demo database is a pure function of
 # this module, so screenshots taken from it differ only when the UI differs.
@@ -265,6 +265,92 @@ CATALOG: list[tuple[str, str, str, str | None, str, list[Sku]]] = [
             ("Salt Flat", "Flaked sea salt", "250", "g", "4.60"),
         ],
     ),
+    # A handful more so the example recipes (examples/recipes, package 10) cost
+    # something on the demo stack. Prices are invented like every other figure here.
+    (
+        "Mozzarella",
+        "Dairy",
+        "g",
+        None,
+        "refrigerated",
+        [
+            ("Marsh Dairy", "Fresh mozzarella ball", "200", "g", "3.25"),
+        ],
+    ),
+    (
+        "Basil",
+        "Produce",
+        "g",
+        None,
+        "fresh",
+        [
+            (None, "Basil bunch", "30", "g", "2.10"),
+        ],
+    ),
+    (
+        "Garlic",
+        "Produce",
+        "g",
+        None,
+        "fresh",
+        [
+            (None, "Garlic, loose", "250", "g", "1.80"),
+        ],
+    ),
+    (
+        "Potatoes",
+        "Produce",
+        "g",
+        None,
+        "fresh",
+        [
+            (None, "Potatoes, loose", "2", "kg", "3.20"),
+        ],
+    ),
+    (
+        "Beetroot",
+        "Produce",
+        "g",
+        None,
+        "fresh",
+        [
+            (None, "Beetroot bunch", "500", "g", "2.40"),
+        ],
+    ),
+    (
+        "Sugar",
+        "Dry goods",
+        "g",
+        None,
+        "shelf_stable",
+        [
+            ("Harrow Pantry", "Granulated sugar", "1", "kg", "1.75"),
+        ],
+    ),
+    (
+        "Lemons",
+        "Produce",
+        "each",
+        None,
+        "fresh",
+        [
+            (None, "Lemons", "4", "each", "2.20"),
+        ],
+    ),
+]
+
+# Spellings the example recipes use for ingredients the catalog names otherwise,
+# so their lines resolve on the demo stack without a visit to the resolve page.
+# (spelling as written in a recipe, catalog ingredient name)
+SPELLINGS: list[tuple[str, str]] = [
+    ("milk", "Whole milk"),
+    ("flour", "Bread flour"),
+    ("butter", "Unsalted butter"),
+    ("egg", "Eggs"),
+    ("onion", "Yellow onions"),
+    ("parmesan cheese", "Parmesan"),
+    ("extra virgin olive oil", "Olive oil"),
+    ("lemon", "Lemons"),
 ]
 
 
@@ -292,6 +378,7 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
         "vendors": 0,
         "locations": 0,
         "ingredients": 0,
+        "spellings": 0,
         "products": 0,
         "purchases": 0,
         "observations": 0,
@@ -342,6 +429,7 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
                 counts["locations"] += 1
 
     products: list[tuple[Any, Decimal]] = []
+    ingredients_by_name: dict[str, Any] = {}
     for name, category, canonical, density, perish, skus in CATALOG:
         ingredient = await catalog.create_ingredient(
             db,
@@ -371,6 +459,12 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
             )
             products.append((product, Decimal(price)))
             counts["products"] += 1
+        ingredients_by_name[name] = ingredient
+
+    for text, ingredient_name in SPELLINGS:
+        alias = await spellings.add_spelling(db, ingredients_by_name[ingredient_name].id, text)
+        if alias is not None:
+            counts["spellings"] += 1
 
     # A shop every few days across the period, so the price history has shape and
     # the same product is seen at more than one vendor. Times are generated first

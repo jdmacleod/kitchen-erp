@@ -45,6 +45,7 @@ the paper or standard it implements and work from that.
 | Cooklang specification and its canonical test suite (vendored under `backend/tests/fixtures/cooklang/` with its licence file; `07`, 3B, Phase 3 review 2026-10-09) | MIT | Notice preserved beside the vendored suite. The parser itself is written in-house; no `cooklang` crate, binding or PyPI package is a dependency. |
 | `dulwich` (reads the recipe repository's `HEAD` tree, blobs and rename history; `07`, 3A) | Apache-2.0 or GPL-2.0-or-later, dual licensed; used under Apache-2.0 | Notice preserved. Permissive under the chosen licence; the GPL option is not taken. It only reads: nothing takes a git lock or writes to the mount. |
 | Example recipes under `examples/recipes/` (`07`, prerequisites) | MIT, CC0 or Apache-2.0, per file | Each file names its source and licence when it is added, in a row here. Nothing from the household's own repository is ever added. |
+| The fifteen example recipes added with Phase 3 package 10 (2026-10-10), from three public Cooklang repositories: `cooklang/cookcli` (its `seed/` directory), `LiHRaM/cooklang-recipes` and `Gunde/recipes` | MIT, all three | Their licence texts are kept under `examples/LICENSES/`, and `examples/recipes/README.md` names each file's source repository and the commit it was taken at. Only files the upstream sourced to cooklang.org or wrote itself were taken; where a file transcribed a commercial recipe, the instruction prose was rewritten in our own words and the third-party URL dropped, since a bare ingredient list is not copyrightable but its wording is. Files naming a person as author were left out. |
 | `opening-hours-py` (OSM opening_hours parser) | MIT or Apache-2.0 | Notice preserved. Avoid `pyopening-hours`, which wraps `opening_hours.js` and is GPL-3.0. |
 
 ## Recipes
@@ -73,8 +74,9 @@ words and the original credited in a required `source` field, which that
 repository's checker enforces. Attribution is not a licence; rewriting is what
 makes it lawful.
 
-This repository must never embed recipe files; it indexes them by path and commit
-from a mounted read-only checkout.
+This repository must never embed the household's recipe files; it indexes them by
+path and commit from a mounted read-only checkout. The only recipes tracked here
+are the public, MIT-licensed examples under `examples/recipes/`, credited above.
 
 ## Dependencies
 

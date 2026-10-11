@@ -23,6 +23,11 @@ derived and can be rebuilt at any time.
 
 ![The purchase list, and a single purchase with its line items and their observations](docs/screenshots/purchases.png)
 
+Recipes are Cooklang files in a mounted repository, and each one is costed from
+those prices, line by line, under the basis you choose:
+
+![A recipe page: the rendered recipe beside its cost table, with the price each line used and the totals above](docs/screenshots/recipe-cost.png)
+
 Every screenshot above is the synthetic demo household, not anyone's real data.
 You can run exactly that yourself — see **Try it first** below.
 
@@ -39,7 +44,7 @@ volume, no database, and no port with a real deployment.
 
 ```bash
 make demo-up      # web on http://127.0.0.1:8081
-make demo-seed    # 14 ingredients, 4 vendors, ~8 months of purchases
+make demo-seed    # 21 ingredients, 4 vendors, ~8 months of purchases
 make demo-down    # and its volumes are gone
 ```
 
@@ -108,6 +113,26 @@ and the lines stage gets `LLM_LINES_SECONDS_PER_LINE` (3) more per line of recei
 text, because it writes every line out: a 25-line receipt took 95 s on a 20B
 model on a LAN host. Raise the base for a larger model or a busier host; a job
 that runs out says `model_timeout`, which names the setting.
+
+## Trying recipes with the examples
+
+The Cook section indexes a directory of Cooklang `.cook` files mounted read-only
+at `/data/recipes` (`RECIPES_PATH`, default `./data/recipes`) and costs each one
+from the price book. With no repository of your own yet:
+
+```bash
+make seed-examples                              # copies examples/recipes/ into data/recipes/
+docker compose exec api kerp recipes rescan     # or wait for the worker's next scan
+```
+
+The fifteen examples are public, MIT-licensed Cooklang recipes (pancakes, a
+risotto, a green curry, a pizza and its dough, breads, a soup, a sorbet); their
+sources and what was changed are in `examples/recipes/README.md`. The copy never
+overwrites a `data/recipes/.git` directory, so a real repository there is left
+alone. Recipes then appear under Cook, each line's ingredient name is matched to
+your catalog or waits on the resolve page, and the cost table shows what the price
+book knows. The demo stack (`make demo-up`) mounts the examples directly and its
+seed adds the ingredients they use, so it shows costed recipes without this step.
 
 ## Optional reference data
 

@@ -96,3 +96,52 @@ test("capture the README screenshots", async ({ page }) => {
   await expect(page).toHaveURL(/\/purchases\/[0-9a-f-]{36}$/);
   await shot(page, "purchase-detail");
 });
+
+/**
+ * The Cook pages, at desktop width and at 390px (UI-7.18). The demo stack
+ * mounts examples/recipes, so a rescan indexes the fifteen example recipes; the
+ * seed's spellings let most of the risotto's lines cost from the price book.
+ */
+test("capture the Cook screenshots", async ({ page }) => {
+  await signIn(page);
+  await assertDemoData(page);
+
+  const scanned = await page.request.post("/api/v1/recipes/rescan");
+  expect(scanned.status()).toBe(200);
+
+  const cookPages: Array<[string, () => Promise<void>]> = [
+    [
+      "recipes",
+      async () => {
+        await page.goto("/cook/recipes");
+        await expect(page.getByTestId("recipe-row").first()).toBeVisible();
+      },
+    ],
+    [
+      "recipe-cost",
+      async () => {
+        await page.goto("/cook/recipes");
+        await page.getByRole("link", { name: "Risotto alla Milanese" }).click();
+        await expect(page.getByRole("table", { name: "Cost by line" })).toBeVisible();
+      },
+    ],
+    [
+      "recipes-resolve",
+      async () => {
+        await page.goto("/cook/recipes/resolve");
+        await expect(page.getByRole("heading", { level: 1, name: "Resolve recipe names" })).toBeVisible();
+      },
+    ],
+  ];
+
+  for (const [name, open] of cookPages) {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await open();
+    await shot(page, name);
+    // The phone layout: stacked rows and cost-table blocks, no sideways scroll.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open();
+    await shot(page, `${name}-phone`);
+  }
+  await page.setViewportSize({ width: 1280, height: 800 });
+});
