@@ -1,7 +1,8 @@
 # 07 — Phase 3: Recipes and Costing
 
-**Status: approved 2026-10-09 (Phase 3 review); amendments from that review are
-marked inline.**
+**Status: approved 2026-10-09 (Phase 3 review); built 2026-10-10. Amendments
+from the review and notes from the build are marked inline; the acceptance audit
+is `docs/phase-3-acceptance.md`.**
 
 Phase 3 makes the price book answer the question it exists for: what does this
 dish cost, and how much of that figure can be trusted. Recipes are Cooklang files
@@ -138,12 +139,20 @@ recipe_cost_snapshot(                          -- household-wide (Phase 3 review
 recipe_cost_line(                              -- one per recipe_ingredient at snapshot time
   id, snapshot_id FK, recipe_ingredient_id FK,
   status CHECK IN (priced, unpriced, unconvertible, unmapped, negligible),
-  canonical_qty NUMERIC?, canonical_unit?, yield_applied NUMERIC(5,4)?,
+  canonical_qty NUMERIC?, canonical_qty_high NUMERIC?,   -- _high columns: Phase 3 build, 2026-10-10
+  canonical_unit?, yield_applied NUMERIC(5,4)?,
   product_id FK?, observation_id FK?, norm_unit_price NUMERIC(14,6)?,
-  consumed_cost NUMERIC(12,4)?, basket_cost NUMERIC(12,4)?, packs NUMERIC?,
+  consumed_cost NUMERIC(12,4)?, consumed_cost_high NUMERIC(12,4)?,
+  basket_cost NUMERIC(12,4)?, basket_cost_high NUMERIC(12,4)?,
+  packs NUMERIC?, packs_high NUMERIC?,
   bridge_kind?, bridge_confirmed BOOLEAN?, failure_code?
 )
 ```
+
+A range quantity gives a low and a high per line as well as per snapshot, so
+`recipe_cost_line` carries `canonical_qty_high`, `consumed_cost_high`,
+`basket_cost_high` and `packs_high`, null for a single number (Phase 3 build,
+2026-10-10).
 
 `recipe.path` is the working identity; the rename procedure in 3A moves rows
 rather than creating new ones. `recipe_cost_snapshot` and `recipe_cost_line`
@@ -176,7 +185,9 @@ default 30) in the worker and on demand through `POST /api/v1/recipes/rescan`.
 There is no cron: the worker's idle timer, which already runs the listing
 refresh, runs the scan every `RECIPES_SCAN_SECONDS`, and a rescan request runs
 the same scan inline in `api` and answers when it is done (Phase 3 review,
-2026-10-09). A scan lists files with their modification times, skips any file
+2026-10-09). The scan serializes on a `pg_advisory_xact_lock`, so a rescan
+requested while the worker's scan is running waits for it rather than
+colliding with it (Phase 3 build, 2026-10-10). A scan lists files with their modification times, skips any file
 modified within the last `RECIPES_SETTLE_SECONDS` (default 2), computes the
 blob hash of each remaining file, and re-indexes only those whose hash differs
 from the stored one. The settle window stays a setting because a bind mount
@@ -241,7 +252,11 @@ quantity, unit text, and note (`@name{qty}(note)`). Timers may be anonymous
 (`~{3%minutes}`). Quantities parse to number, range, or text without loss;
 `1/2`, `1 1/2`, `¾`, `2½`, `2-3`, `2 to 3`, and `some` are all covered (Phase 3
 review, 2026-10-09). The unit text is passed to the 1B unit parser; a measure
-label such as `clove` is kept as text for 3C.
+label such as `clove` is kept as text for 3C. A Cooklang recipe reference
+(`@./Shared/Vinaigrette{50%ml}`) is parsed as an ingredient named
+`./Shared/Vinaigrette`; supporting references is a follow-up (TODOS.md,
+"Cooklang recipe references"), and the example recipes avoid them (Phase 3
+build, 2026-10-10).
 
 The library is validated against the Cooklang canonical test suite, vendored
 with its licence, and with property tests: parsing a rendered recipe reproduces
@@ -283,7 +298,11 @@ ingredient or creating one from it); prep-word stripping; the USDA pool; then
 the local model, whose JSON is accepted only if it validates against the
 expected model, and whose tests carry the opt-in `llm` marker. Each tier's
 proposals are suggestions on the resolve page and in the typeahead; the
-1G amendments below give the tiers' rules.
+1G amendments below give the tiers' rules. The model tier runs only on an
+explicit per-name request, `POST /api/v1/recipes/resolve/ask` ("Ask the model"
+on a resolve row), never while listing the queue or in the typeahead, because
+one local-model call per queued name would hold the page for minutes (Phase 3
+build, 2026-10-10).
 
 **Writing the decision (Phase 3 review, 2026-10-09).** A recipe decision writes
 its alias through the 1G spelling service (`services/spellings.py`,
@@ -418,7 +437,9 @@ message and line. Relink proposals appear on `missing` recipes. Unmapped
 recipe names reach the person through the Home inbox's one recipe row, which
 opens the resolve page; the to-identify page stays for receipt lines. The
 ingredient hub's "Used in" card, listing the recipes whose lines resolve to
-the ingredient, is built here (Phase 3 review, 2026-10-09).
+the ingredient, is built here (Phase 3 review, 2026-10-09); the recipes list
+has no ingredient filter, so the card's "All {n} recipes" expands the card in
+place rather than opening the list (Phase 3 build, 2026-10-10; `10`).
 
 The Cook section's routes, layouts and UI criteria are in `09`, `10` and `11`
 (UI-7), written at the Phase 3 review (2026-10-09). The `features` list on
@@ -469,8 +490,13 @@ VS2 and VC6 entries carry that review's rulings.
   expected model, tested under the opt-in `llm` marker. Only the first two
   resolve a line without a person (VC3); every later tier is a proposal that
   goes to review. FoodOn identifiers and the USDA attribute table (common and
-  scientific names) arrive with this work; the FoodOn licensing entry waits
-  until something reads FoodOn.
+  scientific names) were to arrive with this work; they did not (Phase 3
+  build, 2026-10-10): the USDA import loads no attribute table, and both move
+  to TODOS.md as one item ("USDA attribute names and FoodOn identifiers for
+  the usda tier"), with the FoodOn licensing entry still waiting until
+  something reads FoodOn. The usda tier searches Foundation and SR Legacy
+  foods only, as `kerp ingredients usda-candidates` does (Phase 3 build,
+  2026-10-10).
 - **Hierarchy (VC6; Phase 3 review, 2026-10-09).** Deferred past Phase 3.
   Ingredients stay flat; a product fulfils a line only when its ingredient,
   after `merged_into`, is the line's ingredient. Parent ingredients (cheese →

@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { login } from "./helpers";
 
 /**
- * The Cook section (07, 3E; UI-7.3–7.9, 7.18) against the example recipes.
+ * The Cook section (07, 3E; UI-7.3–7.9, 7.16, 7.18) against the example recipes.
  *
  * The e2e stack mounts examples/recipes read-only at /data/recipes
  * (compose.e2e.yaml; CI exports RECIPES_PATH to the same directory), so the
@@ -115,4 +115,105 @@ test("the cost table reads without horizontal scroll at 390px", async ({ page },
   expect(tableWidth, "the cost table is wider than the viewport").toBeLessThanOrEqual(390);
   // Each line is a block at this width: no column headers are rendered.
   await expect(page.getByRole("columnheader", { name: "Price used" })).toBeHidden();
+});
+
+/**
+ * The resolve page (07 criterion 28; UI-7.16). One decision for a name applies
+ * to every recipe using it, so this runs in one project only: every project
+ * shares the backend, and two of them deciding the same name at once would race.
+ * Names other specs rely on staying unresolved are left alone.
+ */
+const LEAVE_UNRESOLVED = new Set(["arborio rice", "water"]);
+
+test("resolving a name on the resolve page writes the spelling and the recipe page shows the ingredient", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "one decision per name across the shared backend");
+  await login(page);
+  await indexExamples(page);
+  await page.goto("/cook/recipes/resolve");
+  await expect(page.getByRole("heading", { level: 1, name: "Resolve recipe names" })).toBeVisible();
+
+  // The first group not reserved by another spec: most-used first, with its recipes as links.
+  const rows = page.getByTestId("resolve-row");
+  await expect(rows.first()).toBeVisible();
+  const names = await rows.evaluateAll((els) => els.map((el) => el.getAttribute("data-resolve-row") ?? ""));
+  const name = names.find((n) => !LEAVE_UNRESOLVED.has(n));
+  expect(name, "a queued name no other spec relies on").toBeTruthy();
+  const row = page.locator(`[data-resolve-row="${name}"]`);
+  await expect(row).toContainText(/in \d+ recipes?:/);
+  const recipeLink = row.getByRole("link").first();
+  const recipeHref = await recipeLink.getAttribute("href");
+  expect(recipeHref).toMatch(/^\/cook\/recipes\/[0-9a-f-]{36}$/);
+  const before = names.length;
+
+  // Choose through the picker. The e2e catalog starts empty, so the option is the
+  // standard-list entry (created on choice) or, failing that, "Create new ingredient".
+  const picker = row.getByRole("combobox", { name: "Choose an ingredient" });
+  await picker.fill(name!);
+  const options = page.getByRole("listbox", { name: "Ingredients" }).getByRole("option");
+  await expect(options.first()).toBeVisible();
+  // The option whose name is exactly this one (the list also ranks longer
+  // standard names that start with it), never the first that merely begins with it.
+  const named = options.filter({ has: page.locator("span.font-medium", { hasText: new RegExp(`^${name}$`, "i") }) });
+  if ((await named.count()) > 0) {
+    await named.first().click();
+  } else {
+    await options.filter({ hasText: "Create new ingredient" }).first().click();
+    const drawer = page.getByRole("form", { name: "Add ingredient" });
+    await expect(drawer.getByLabel("Name")).toHaveValue(name!);
+    await page.getByRole("button", { name: "Add ingredient" }).click();
+  }
+
+  // The group leaves (a new ingredient's own name may settle another waiting
+  // name too), the count strip follows the rows, and the Notice names the count.
+  await expect(row).toHaveCount(0);
+  const counts = page.getByTestId("resolve-counts");
+  await expect.poll(async () => (await rows.count()) < before).toBe(true);
+  await expect.poll(async () => (await counts.textContent())?.startsWith(`${await rows.count()} name`)).toBe(true);
+  await expect(page.getByTestId("notice")).toContainText(new RegExp(`Resolved '${name}' as .+ in \\d+ recipes?\\. \\d+ left\\.`, "i"));
+
+  // That recipe's page shows the ingredient on the line, in words.
+  // The decision recomputed every recipe using the name; the page costs the rest inline.
+  await page.goto(recipeHref!);
+  await expect(page.getByTestId("cost-totals")).not.toContainText("Costing…", { timeout: 30_000 });
+  const table = page.getByRole("table", { name: "Cost by line" });
+  await expect(table).toBeVisible();
+  // The row whose ingredient cell links the ingredient by that exact name.
+  const line = table.getByTestId("cost-row").filter({ has: page.getByRole("link", { name: new RegExp(`^${name}$`, "i") }) }).first();
+  await expect(line).toBeVisible();
+  await expect(line).toContainText(name!);
+  await expect(line).not.toContainText("Needs an ingredient");
+  await expect(line).not.toHaveAttribute("data-status", "unmapped");
+});
+
+test("resolve rows stack at 390px with the count strip pinned", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "phone", "UI-7.18 is about the 390px viewport");
+  await login(page);
+  await indexExamples(page);
+  await page.goto("/cook/recipes/resolve");
+  const rows = page.getByTestId("resolve-row");
+  await expect(rows.first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+
+  expect(page.viewportSize()?.width).toBe(390);
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth, "the resolve page scrolls sideways").toBeLessThanOrEqual(390);
+
+  // Every row fits the device width, and its controls are 44px targets.
+  for (const box of await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width))) {
+    expect(box).toBeLessThanOrEqual(390);
+  }
+  const first = rows.first();
+  for (const control of [first.getByRole("combobox", { name: "Choose an ingredient" }), first.getByRole("button", { name: "Not an ingredient" })]) {
+    const box = await control.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  // The count strip is pinned: scrolled down, it is still at the top of the viewport.
+  const counts = page.getByTestId("resolve-counts");
+  await expect(counts).toHaveCSS("position", "sticky");
+  await page.mouse.wheel(0, 1200);
+  await expect(counts).toBeInViewport();
+  const top = (await counts.boundingBox())?.y ?? -1;
+  expect(top).toBeGreaterThanOrEqual(0);
+  expect(top).toBeLessThan(60);
 });
