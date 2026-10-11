@@ -124,7 +124,7 @@ class RecipeOut(RecipeSummary):
     # The rows of the last good parse; still there when the file stopped parsing.
     ingredients: list[RecipeIngredientOut] = []
     pins: list[RecipePinOut] = []
-    # The last good parse's steps (0047); null for a recipe indexed before it.
+    # The last good parse's steps (0048); null for a recipe indexed before it.
     body: list[BodySection] | None = None
 
 

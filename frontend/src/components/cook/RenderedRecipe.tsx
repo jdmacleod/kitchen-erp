@@ -28,7 +28,7 @@ export function sections(lines: RecipeIngredient[]): { title: string | null; lin
  * sections as h2, and the steps numbered, with ingredient references in weight
  * 600 and their quantity, cookware and timers in neutral, and an ingredient's
  * note in parentheses. A recipe indexed before the body was kept (migration
- * 0047) shows its ingredient lines by section instead, until the next scan.
+ * 0048) shows its ingredient lines by section instead, until the next scan.
  * Read-only: the words say where to edit.
  */
 export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) {

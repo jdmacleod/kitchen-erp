@@ -13,8 +13,8 @@ appears in the index, so the path is the thing that can recur, not the row.
 
 Downgrade drops both columns.
 
-Revision ID: 0047
-Revises: 0046
+Revision ID: 0048
+Revises: 0047
 Create Date: 2026-10-10
 """
 
@@ -25,8 +25,8 @@ from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
-revision = "0047"
-down_revision = "0046"
+revision = "0048"
+down_revision = "0047"
 branch_labels = None
 depends_on = None
 
