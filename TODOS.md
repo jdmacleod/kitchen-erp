@@ -17,30 +17,6 @@ source is named so it can be traced back.
 **Priority:** P3
 **Depends on:** Phase 6 approval, or a decision to do it in the web app first
 
-### Kitchen switcher and per-user current kitchen
-
-**What:** A current-kitchen switcher persisted per user on the server, kitchen tags on kitchen-scoped panels, and an explicit `home_base_id` on scoped endpoints (the addendum's UI-2.4 to 2.7).
-
-**Why:** Shopping lists, trips and stock are tied to one kitchen, and the household has two.
-
-**Context:** Deferred by the UI addendum review on 2026-09-25 (ruling S3). In Phases 1 and 2 almost nothing is kitchen-scoped. Find-nearby keeps its kitchen picker, and Capture's no-geolocation fallback uses the remembered last location. Needs a preference table, a migration and an endpoint.
-
-**Effort:** M (human) / S (CC)
-**Priority:** P2
-**Depends on:** Phase 4 (shopping lists) approval
-
-### At-the-store screen
-
-**What:** The single-stop trip screen with in-aisle price edits and "Done here · record purchase" (the addendum's UI-4.8).
-
-**Why:** It closes the loop between a trip's predicted cost and what was actually paid.
-
-**Context:** Marked dormant by the UI addendum review on 2026-09-25 (ruling T4). The layout stays in the page-layouts spec as a Phase 4 design brief.
-
-**Effort:** L (human) / M (CC)
-**Priority:** P3
-**Depends on:** Phase 4 approval, trip plans
-
 ### Flag a second photo of the same receipt
 
 **What:** After a receipt is read, flag it in review when a committed or draft purchase at the same location has the same date and total ("possible duplicate"), with Remove one step away.
@@ -182,3 +158,5 @@ Design: `docs/designs/vision-receipt-reading.md`.
 - **A fresh clone creates an empty ../cooklang-recipes**: the Compose default becomes `./data/recipes`, and `.env.example` shows `RECIPES_PATH=../cooklang-recipes` for a sibling repository; a missing, empty or `.cook`-less directory is "no repository", and a directory without `.git` is a repository with no commits (Phase 3 review, 2026-10-09; `07`, prerequisites).
 - **The full name-matching cascade for recipe text**: built in sub-phase 3C (2026-10-10): exact name or spelling, inflection, exact standard-list entry, prep-word stripping, USDA pool, then the local model on an explicit "Ask the model"; only the first two resolve without a person. The USDA attribute table and FoodOn identifiers that were to come with it did not; they are their own item under Ingredients.
 - **Public example recipes**: a tracked `examples/recipes/` directory of permissively licensed public Cooklang recipes, copied into `data/recipes/` by `make seed-examples` and mounted directly by the demo and e2e stacks; each is credited in `docs/licensing.md` as it is added (2026-10-09; `07`, prerequisites).
+- **Kitchen switcher and per-user current kitchen**: a per-user server setting, the switcher in the sidebar footer and the More sheet, kitchen tags on scoped panels and an explicit `home_base_id` on scoped endpoints; deferred on 2026-09-25 (S3), specified in `17` on 2026-10-12 (Phase 4 review, L3 and L7; UI-2.4 to UI-2.7), built in 4A.
+- **At-the-store screen**: one stop of a chosen trip plan with in-aisle price edits, "Get here" and "Done here · record purchase", which writes one purchase linked to the plan; dormant since 2026-09-25 (T4), specified in `17` on 2026-10-12 (Phase 4 review, S1; UI-4.8, UI-8.17 and UI-8.18), built in 4C.

@@ -89,15 +89,15 @@ UI-1 through UI-4 apply to the pages that exist today (Phases 1–2). UI-5 was a
 
 ## UI-4 — Phone and tablet
 
-- **UI-4.1** Below 1024px the sidebar is replaced by the five-tab bar in 09, with Capture raised in the centre and the second tab labelled "Purchases" (G19, T18), or "List" once `plan` is a feature (UI-8.11).
+- **UI-4.1** Below 1024px the sidebar is replaced by the five-tab bar in 09, with Capture raised in the centre and the second tab labelled "Purchases" (G19, T18), or "List" once `plan` is a feature (UI-8.10).
 - **UI-4.2** All interactive elements on phone and tablet layouts are at least 44×44px. Layouts work from 360px to 1023px wide with no horizontal scroll, which e2e checks at 360, 375, 390 and 1000px, comparing against the configured viewport width.
 - **UI-4.3** The phone Home shows the wordmark, the top three inbox items with "See all" expanding in place, and recent purchases (G13, G6).
 - **UI-4.4** Capture opens as a bottom sheet with the four modes and the detected or last-used store, labelled as in UI-2.10.
 - **UI-4.5** Log a shelf price accepts a barcode or a product name, lists the last five products logged at the store before typing, and shows the matched product, the price field, the on-sale toggle, last paid here and best known (G3). Camera scanning is *deferred* to Phase 6 (S1).
 - **UI-4.6** The shelf price field opens a decimal keypad. Save and "Save and scan another" are anchored in the bottom thumb zone and behave as 10 specifies (G4).
 - **UI-4.7** An unknown barcode offers to create the product with the barcode pre-filled, then returns to price entry.
-- **UI-4.8** The at-the-store screen, dormant since 2026-09-25 (T4), builds with 4C (`17`; Phase 4 review, 2026-10-12, S1): one stop of a chosen plan at `/plan/trips/:id/stop/:seq`, laid out in 10. An edited price is held on the stop item; "Done here" creates one committed purchase linked to the trip plan with a line and an observation per checked item (flagged `planned_price` when the price was not edited), and records a shelf price observation only for a price edited but not bought. The details are UI-8.15.
-- **UI-4.9** The More tab lists Shop's other pages, Catalog and Settings, plus Cook and Stock once they are built; with Plan built it starts with the kitchen switcher (with two or more kitchens) and also lists Trips, Compare prices and Purchases (UI-8.11).
+- **UI-4.8** The at-the-store screen, dormant since 2026-09-25 (T4), builds with 4C (`17`; Phase 4 review, 2026-10-12, S1): one stop of a chosen plan at `/plan/trips/:id/stop/:seq`, laid out in 10. An edited price is held on the stop item; "Done here" creates one committed purchase linked to the trip plan with a line and an observation per checked item (flagged `planned_price` when the price was not edited), and records a shelf price observation only for a price edited but not bought. The details are UI-8.17 and UI-8.18.
+- **UI-4.9** The More tab lists Shop's other pages, Catalog and Settings, plus Cook and Stock once they are built; with Plan built it starts with the kitchen switcher (with two or more kitchens) and also lists Trips, Compare prices and Purchases (UI-8.10).
 - **UI-4.10** Receipt review on phone shows one line per card, "Needs you" lines first, with 44px suggestion buttons and Commit anchored in the thumb zone (G18).
 
 ## UI-5 — Ingredient vocabulary (1G)
