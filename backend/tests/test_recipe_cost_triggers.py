@@ -542,3 +542,35 @@ async def test_a_failing_recompute_is_logged_and_the_change_still_lands(
     )
     assert r.status_code == 200, r.text
     assert (await cost(admin_client, bowl["id"]))["totals"]["consumed_cost"] == "0.6000"
+
+
+# --- a recipe indexed before it could be costed ------------------------------------------------
+
+
+# Regression: ISSUE-001 — recipes indexed before costing was deployed listed "Not costed yet"
+# Found by /qa on 2026-10-12
+# Report: .gstack/qa-reports/qa-report-localhost-2026-10-12.md
+async def test_the_scan_costs_a_recipe_that_has_no_snapshot_and_leaves_costed_ones_alone(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+    owner_conn: asyncpg.Connection,
+):
+    await barley_bag(admin_client, await market(admin_client))
+    bowl = await indexed(admin_client, recipes_repo, "harbor-bowl.cook", BOWL)
+    soup = await indexed(admin_client, recipes_repo, "harbor-soup.cook", SOUP)
+    soup_at = await computed_at(owner_conn, soup["id"])
+    # The bowl was indexed by a build without costing: no snapshot, unchanged since.
+    await owner_conn.execute(
+        "DELETE FROM recipe_cost_snapshot WHERE recipe_id = $1", uuid.UUID(bowl["id"])
+    )
+    assert (await recipe_by_path(admin_client, "harbor-bowl.cook"))["cost"] is None
+
+    await rescan(admin_client)
+    listed = await recipe_by_path(admin_client, "harbor-bowl.cook")
+    assert listed["cost"] is not None and listed["cost"]["consumed_cost"] == "0.8000"
+    assert await computed_at(owner_conn, soup["id"]) == soup_at, "a costed recipe is not redone"
+
+    # Once costed, the next scan has nothing to do for it.
+    bowl_at = await computed_at(owner_conn, bowl["id"])
+    await rescan(admin_client)
+    assert await computed_at(owner_conn, bowl["id"]) == bowl_at

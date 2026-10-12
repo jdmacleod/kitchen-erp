@@ -443,9 +443,11 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
     # Rows just rebuilt and rows that waited, in one pass (3C, criterion 14).
     waiting = await recipe_cost_triggers.unmatched_lines(db)
     await recipe_resolution.resolve_unmatched(db, settings)
-    # Snapshots: recipes whose content changed, and recipes whose waiting lines
-    # the lookup settled, once each, after the lines are resolved (3D).
+    # Snapshots: recipes whose content changed, recipes whose waiting lines the
+    # lookup settled, and recipes with none yet, once each, after the lines are
+    # resolved (3D).
     changed |= await recipe_cost_triggers.settled_recipes(db, waiting)
+    changed |= await recipe_cost_triggers.uncosted_recipes(db)
     await recipe_cost_triggers.after_recipes_changed(db, changed)
     for row in committed:
         await recipe_cost_triggers.mark_committed(db, row)
