@@ -93,6 +93,73 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "7.25",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "SMOKED TROUT           7.25 S",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "9.00",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "Regular Price          9.00",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "1.75",
+          "parent_index": 0,
+          "qty": null,
+          "raw_text": "Card Savings           1.75-",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "2.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "OAT MILK 1L            2.49 S",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "3.19",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "Regular Price          3.19",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "0.70",
+          "parent_index": 3,
+          "qty": null,
+          "raw_text": "Card Savings           0.70-",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "4.25",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "RYE BREAD              4.25",
+          "unit": "each",
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "13.99",

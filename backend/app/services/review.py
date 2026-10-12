@@ -374,7 +374,29 @@ async def replace_lines(
     """
     purchase = await get_purchase(db, purchase_id, lock=True)
     _editable(purchase)
-    rows = payload.lines
+    await apply_rows(db, user, purchase, payload.lines)
+    await db.commit()
+    return await get_purchase(db, purchase_id)
+
+
+class ReadRow(LineRow):
+    """A row as a reading wrote it (04, 2S): its printed rate and flags come too.
+
+    Internal to the re-read; the API's rows never carry these.
+    """
+
+    unit_price: Decimal | None = None
+    flags: list[str] = []
+
+
+async def apply_rows(
+    db: AsyncSession, user: AppUser, purchase, rows: list[LineRow]
+) -> list[PurchaseLine]:
+    """The lines of a locked, editable purchase made to read as ``rows``, in order.
+
+    Flushes but does not commit. Returns the lines in the order of ``rows``.
+    """
+    purchase_id = purchase.id
     _check_rows(purchase, rows)
     await _check_units(db, rows)
 
@@ -403,6 +425,9 @@ async def replace_lines(
                 flags=[],
                 suggestions=[],
             )
+            if isinstance(row, ReadRow):
+                line.unit_price = row.unit_price
+                line.flags = list(row.flags)
             seq += 1
             purchase.lines.append(line)
             if line.line_kind == "item" and text:
@@ -410,6 +435,9 @@ async def replace_lines(
         else:
             line = saved[row.id]
             text_changed, needs_resolving = _apply_row(line, row)
+            if isinstance(row, ReadRow):
+                line.unit_price = row.unit_price
+                line.flags = list(row.flags)
             if line.resolved_by is not None and line.line_kind == "item":
                 # A person chose this line's product (or to ignore it): keep the
                 # choice, and learn it under the wording as now corrected.
@@ -434,8 +462,7 @@ async def replace_lines(
     purchase.flags = _rechecked_total(purchase)
     await db.flush()
     await _renumber(db, purchase_id, [line.id for line in ordered])
-    await db.commit()
-    return await get_purchase(db, purchase_id)
+    return ordered
 
 
 async def _renumber(db: AsyncSession, purchase_id: uuid.UUID, order: list[uuid.UUID]) -> None:

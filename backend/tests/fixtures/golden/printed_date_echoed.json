@@ -53,6 +53,28 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "3.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "OAT MILK 1L            3.49",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "4.25",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "RYE BREAD              4.25",
+          "unit": "each",
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "7.74",

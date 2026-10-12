@@ -32,15 +32,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, job_id_var
+from app.ingest import assess, parsers, readers
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
-from app.ingest import parsers, readers, structure
 from app.ingest.errors import IngestError, RetryableError
 from app.ingest.llm import CLIENT_VERSION, LlmClient
 from app.ingest.ocr import run_ocr
 from app.ingest.paths import document_path
 from app.ingest.schemas import ReceiptLines
-from app.ingest.witness import appears_in
 from app.models import IngestJob, IngestStageResult, ReceiptDocument
 from app.services import resolution
 
@@ -233,36 +232,16 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         unread_parts, part_count = reading.unread_parts, reading.part_count
     printed_total = _decimal(header.get("total"))
     header_tax = _decimal(header.get("tax"))
-    passes = (
-        structure.PostPasses([])
-        if result is None
-        else structure.post_passes(result, text, printed_total, header_tax)
-    )
-    parsed, merged_rows, informational = passes.lines, passes.merged_rows, passes.dropped_rows
 
     purchase_flags: list[str] = []
     if (ctx.latest_output("ocr") or {}).get("fallback"):
         purchase_flags.append("ocr_fallback")
     if not header.get("parsed", False):
         purchase_flags.append("header_unparsed")
-    if result is None:
-        purchase_flags.append("lines_unparsed")
-    elif unread_parts:
-        # Some parts answered and some did not: keep what was read, and say that
-        # lines are missing rather than let the receipt look complete (#60).
-        purchase_flags.append("lines_partial")
-    if passes.unread_rows:
-        # Rows the scan prints like purchases that no line accounts for (#181).
-        purchase_flags.append("rows_not_read")
-    lines_stage.check_prices(parsed, printed_total)
-    lines_stage.flag_amounts_not_in_scan(parsed, text)
-    if printed_total is not None and not appears_in(printed_total, text):
-        purchase_flags.append("total_not_in_scan")
-    reconciliation = lines_stage.reconcile(parsed, printed_total, header_tax)
-    if reconciliation["mismatch"]:
-        purchase_flags.append("reconcile_mismatch")
-        if lines_stage.restoring_decimals_reconciles(parsed, printed_total, header_tax):
-            purchase_flags.append("decimals_restore_total")
+    assessed = assess.assess(result, text, printed_total, header_tax, unread_parts=unread_parts)
+    passes, parsed, reconciliation = assessed.passes, assessed.lines, assessed.reconciliation
+    merged_rows, informational = passes.merged_rows, passes.dropped_rows
+    purchase_flags.extend(assessed.flags)
 
     purchased_at = None
     if header.get("purchased_at"):
@@ -299,6 +278,10 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     }
     if reason is not None:
         output["reason"] = reason
+    if result is not None:
+        # The reader's own answer, before any pass, so the passes can be run again
+        # over it without asking the model (04, 2S).
+        output["read_lines"] = result.model_dump(mode="json")
     if informational:
         # Shelf-price rows taken out of the lines, kept here for the record.
         output["dropped_rows"] = informational

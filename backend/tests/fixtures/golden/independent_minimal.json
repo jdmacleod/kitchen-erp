@@ -89,6 +89,55 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "6.50",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "Sourdough loaf        6.50",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "9.00",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "Local honey 12oz      9.00",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "5.75",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "Butter 1lb            5.75",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "3.06",
+          "parent_index": null,
+          "qty": "2.04",
+          "raw_text": "Apples 2.04 lb @ 1.50/lb   3.06",
+          "unit": "lb",
+          "unit_price": "1.50"
+        },
+        {
+          "line_kind": "fee",
+          "line_total": "0.10",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "Bag fee               0.10",
+          "unit": null,
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "24.41",

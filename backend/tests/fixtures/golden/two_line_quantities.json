@@ -88,6 +88,73 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "10.81",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "2.71 lb @ 3.99 /lb",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "10.81",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "WT BROCCOLI CROWNS      10.81 F",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "3.95",
+          "parent_index": 1,
+          "qty": null,
+          "raw_text": "5 @ 0.79",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "3.95",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "AVOCADO                  3.95 F",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.59",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "BANANAS",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.59",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "2.31 lb @ 0.69/lb      1.59 F",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "3.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "OAT MILK 1L              3.49 F",
+          "unit": "each",
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "19.84",

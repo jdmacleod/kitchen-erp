@@ -125,6 +125,82 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "3.29",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "WHL MLK GAL          3.29",
+          "unit": "EA",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "2.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "EGGS LG 12CT         2.49",
+          "unit": "EA",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "6.84",
+          "parent_index": null,
+          "qty": "1.96",
+          "raw_text": "BNLS CHKN BRST       6.84 1.96 lb @ 3.49/lb",
+          "unit": "LB",
+          "unit_price": "3.49"
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.58",
+          "parent_index": null,
+          "qty": "2",
+          "raw_text": "BLK BNS 15OZ  2 @ 0.79   1.58",
+          "unit": "EA",
+          "unit_price": "0.79"
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "TORT FLR 10CT        1.99",
+          "unit": "EA",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "2.07",
+          "parent_index": null,
+          "qty": "3",
+          "raw_text": "AVOCADO HASS  3 @ 0.69  2.07",
+          "unit": "EA",
+          "unit_price": "0.69"
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "DISH SOAP            1.49 T",
+          "unit": "EA",
+          "unit_price": null
+        },
+        {
+          "line_kind": "tax",
+          "line_total": "0.12",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "TAX                  0.12",
+          "unit": null,
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "19.87",
