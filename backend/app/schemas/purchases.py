@@ -207,6 +207,19 @@ class RemovalOut(ApiModel):
     blocked: Literal["still_reading"] | None = None
 
 
+class OpenRereadRef(ApiModel):
+    id: uuid.UUID
+    status: Literal["pending", "running", "ready"]
+
+
+class RereadState(ApiModel):
+    """What "Re-read lines" can offer on a receipt purchase (04, 2S)."""
+
+    # Whether the latest reading kept the reader's answer, so Re-check can run.
+    can_recheck: bool
+    open: OpenRereadRef | None = None
+
+
 class PurchaseOut(ApiModel):
     id: uuid.UUID
     vendor_location: PurchaseLocationRef | None
@@ -245,6 +258,8 @@ class PurchaseOut(ApiModel):
     # null in lists, which never show them. Null on a voided purchase.
     removal: RemovalOut | None = None
     removed_line_count: int | None = None
+    # On a single receipt purchase that is not voided; null otherwise (04, 2S).
+    reread: RereadState | None = None
 
 
 class StoreCodeOfferOut(ApiModel):

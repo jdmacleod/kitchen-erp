@@ -17,7 +17,7 @@ from decimal import Decimal
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -117,6 +117,30 @@ def make_proposal(
     if unread_parts:
         proposal["unread_parts"] = list(unread_parts)
     return proposal
+
+
+async def state(db: AsyncSession, purchase: Purchase) -> dict[str, Any] | None:
+    """What Re-read lines can offer: Re-check when the answer was kept, and any open one."""
+    if purchase.source != "receipt" or purchase.status == "voided":
+        return None
+    kept = (
+        await db.execute(
+            text(
+                "SELECT r.output ? 'read_lines' FROM ingest_stage_result r "
+                "JOIN ingest_job j ON j.id = r.job_id "
+                "WHERE j.purchase_id = :purchase AND r.stage = 'lines' "
+                "ORDER BY r.created_at DESC, r.id DESC LIMIT 1"
+            ),
+            {"purchase": purchase.id},
+        )
+    ).scalar_one_or_none()
+    if kept is None:
+        return None  # never read: nothing to re-read
+    found = await _open(db, purchase.id)
+    return {
+        "can_recheck": bool(kept),
+        "open": None if found is None else {"id": found.id, "status": found.status},
+    }
 
 
 async def _open(db: AsyncSession, purchase_id: uuid.UUID) -> LineReread | None:

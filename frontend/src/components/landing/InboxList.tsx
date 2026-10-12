@@ -23,6 +23,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   usda: { label: "USDA", tone: "neutral" },
   new_product: { label: "Products", tone: "neutral" },
   product_update: { label: "Products", tone: "neutral" },
+  // Receipts whose re-read would change their lines (04, 2S).
+  reread: { label: "Re-read", tone: "neutral" },
   duplicates: { label: "Products", tone: "neutral" },
   posted_prices: { label: "Prices", tone: "neutral" },
   // Recipe names that resolve to no ingredient (07, 3C; UI-7.2): one row, like Identify.

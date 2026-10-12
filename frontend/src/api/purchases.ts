@@ -200,6 +200,14 @@ export interface Purchase {
   /** On a single purchase only; null in lists and on a voided purchase. */
   removal?: Removal | null;
   removed_line_count?: number | null;
+  /** What "Re-read lines" can offer (04, 2S); null in lists, on a voided or non-receipt purchase. */
+  reread?: RereadState | null;
+}
+
+export interface RereadState {
+  /** The latest reading kept the reader's answer, so "Re-check the lines" can run. */
+  can_recheck: boolean;
+  open: { id: string; status: "pending" | "running" | "ready" } | null;
 }
 
 export interface RemovedPurchase {
