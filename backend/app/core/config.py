@@ -7,7 +7,10 @@ from decimal import Decimal
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.services import travel_tables
 
 # Build identity sentinels. An image built without the args genuinely does not
 # know what it is, so it says so rather than guessing. Named here because three
@@ -151,6 +154,49 @@ class Settings(BaseSettings):
     # A price older than this many days is marked stale (shown, never expired).
     # How fast a food spoils says nothing about how fast its price moves.
     stale_after_days: int = 90
+
+    # Drive times (17, 4B). ROUTING_URL is an OSRM table service, reached only
+    # when set: empty means every leg is an estimate, marked so, and the planner
+    # plans regardless (P2, P3). ROUTING_BBOX is host-only (`make routing-prepare`)
+    # and deliberately not a setting here.
+    routing_url: str = ""
+    routing_timeout_s: float = 5.0
+    # An estimate is haversine × the road factor at the speed of the distance's
+    # band; the tables are parsed by app.services.travel_tables and validated below.
+    plan_estimate_road_factor: Decimal = Decimal("1.3")
+    plan_estimate_speed_bands: str = "3:30,15:40,:60"
+    # Free-flow understates the household's traffic: hour bands in
+    # household_timezone and the factor applied inside each, 1.0 outside.
+    plan_traffic_multipliers: str = "weekday=06-10:1.35,10-15:1.15,15-20:1.45;weekend=09-19:1.15"
+    # The household's value of an hour, which the planner trades against money
+    # (P4); a plan may override it.
+    plan_value_of_time_per_hour: Decimal = Decimal("20.00")
+
+    @field_validator("plan_estimate_road_factor", "plan_value_of_time_per_hour")
+    @classmethod
+    def _positive(cls, value: Decimal, info: ValidationInfo) -> Decimal:
+        if not value.is_finite() or value <= 0:
+            raise ValueError(f"{info.field_name} must be a positive number")
+        return value
+
+    @field_validator("plan_estimate_speed_bands")
+    @classmethod
+    def _speed_bands(cls, value: str) -> str:
+        travel_tables.speed_bands(value)  # raises ValueError with the reason
+        return value
+
+    @field_validator("plan_traffic_multipliers")
+    @classmethod
+    def _multipliers(cls, value: str) -> str:
+        travel_tables.multipliers(value)
+        return value
+
+    @field_validator("routing_timeout_s")
+    @classmethod
+    def _timeout(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("routing_timeout_s must be positive")
+        return value
 
     session_ttl_days: int = 30
     idempotency_ttl_hours: int = 24

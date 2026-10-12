@@ -25,7 +25,13 @@ from app.models.catalog import (
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.lookups import ListingPriceChange, LookupAnswer, LookupRequest
 from app.models.photos import ProductImage, ProductJob, ProductStageResult
-from app.models.plan import ShoppingList, ShoppingListItem, ShoppingListItemQty, UserSetting
+from app.models.plan import (
+    ShoppingList,
+    ShoppingListItem,
+    ShoppingListItemQty,
+    TravelLeg,
+    UserSetting,
+)
 from app.models.proposals import ProductCapture, ProductProposal
 from app.models.purchases import (
     IngestJob,
@@ -116,6 +122,7 @@ __all__ = [
     "ShoppingList",
     "ShoppingListItem",
     "ShoppingListItemQty",
+    "TravelLeg",
     "UnitRow",
     "UserSetting",
 ]

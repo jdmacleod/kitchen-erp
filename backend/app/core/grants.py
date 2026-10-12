@@ -39,8 +39,9 @@ DECISION_ONLY = {
 }
 
 # Derived data the runtime role may empty wholesale before a rebuild (0005;
-# the recipe cost tables since 0045, for `kerp recompute-costs`).
-TRUNCATABLE = ("price_norm", "recipe_cost_snapshot", "recipe_cost_line")
+# the recipe cost tables since 0045, for `kerp recompute-costs`; drive-time legs
+# since 0052, for `kerp travel-legs recompute --all`).
+TRUNCATABLE = ("price_norm", "recipe_cost_snapshot", "recipe_cost_line", "travel_leg")
 
 
 def statements() -> tuple[str, ...]:
