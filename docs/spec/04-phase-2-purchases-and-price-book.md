@@ -545,6 +545,55 @@ A catalog of a few hundred products from several vendors collects two kinds of n
 106. A product saved with a trademark sign, a curly apostrophe, a long dash or a non-breaking space in its name or brand is stored without it, by every path that saves one; an inch mark is kept. Tidying is idempotent, and migration 0041 restores the originals on downgrade.
 107. A brandless name ending in a ", Brand" segment, a lost inch mark ("10" against '10"'), a count against a weight, and as many ounces as fluid ounces each leave a pair *the same product*; a ", Spicy" ending, being a distinguishing word, does not.
 
+## 2S — Re-reading a receipt's lines (amendment, 2026-10-12, #272)
+
+A receipt keeps the lines it was first read with. Retry runs only a failed job, and an upload of the same file is `already_seen`, so a fix to the line passes or a better model helps only receipts uploaded after it. 2S lets a person re-read the lines of any receipt purchase, draft or committed, and see what would change before anything does.
+
+**What the lines stage keeps from now on.** Its output gains `read_lines`: the validated `ReceiptLines` the vendor parser or the model returned, before any deterministic pass (`app.ingest.structure.post_passes`). Results written before this amendment do not have it.
+
+**Two ways to re-read.**
+- **Re-check the lines** re-runs today's passes, reconciliation and line flags over the stored `read_lines` and the stored receipt text. It makes no model call and answers in the request. It is offered only when the latest reading has `read_lines`; otherwise the API refuses with 409 `not_stored`.
+- **Read again** asks the reader afresh over the stored receipt text, through the worker, exactly as the lines stage would (vendor parser first, then the model under the stage's deadline and part splitting). It is the only way to re-read a receipt read before this amendment. An unreachable model server leaves it waiting and retrying as an ingest job does (2O); an answer that never validates ends it `failed` with the stage's reason. The receipt text is not read again: OCR and the header are as they were.
+
+Both use the purchase's own total and tax, as a person may have corrected them, not the header stage's. Neither changes the header, the location, or the date.
+
+**The proposal.** A re-read never writes lines. It produces a proposal: the new reading compared with the purchase's lines.
+- **Matching.** The purchase's present lines and the new lines are aligned in receipt order by normalized text and kind. Equal runs pair up; inside a run that differs, lines pair in order while their kinds agree. A paired line whose quantity, unit, unit price, line total, kind, attachment or wording differs is *changed*; an unpaired new line is *added*; an unpaired present line is *removed*.
+- **What a person did stays.** The reader's last applied reading is the latest `lines` stage result. A present line is the person's when it differs from what that reading wrote for its id, or no reading wrote it (a person added it). The person's lines are kept exactly, and the new line paired with one is dropped. A line the reading wrote that a person removed (2H) or that no longer exists stays gone: a new line pairing with it is not added back. The proposal lists both under "Kept as you left them".
+- **Products stay with their lines.** A paired line keeps its id, product and resolution, whoever decided them. A line that stops being an item loses its product, as the constraint requires.
+- **Before and after.** The proposal carries the reconciliation and the line-reading flags (`reconcile_mismatch`, `decimals_restore_total`, `rows_not_read`, `lines_partial`, `total_not_in_scan` and the per-line price flags) as they are and as they would be. Other purchase flags are untouched.
+- **Nothing to change.** A proposal with no changed, added or removed line ends as `no_changes` and says "Today's reading matches these lines."
+- **Untrusted.** The new reading is model or parser output validated against `ReceiptLines`, as the lines stage takes it. The proposal stores values, never markup, and the page renders them as text.
+
+**Applying.**
+- One open re-read per purchase: requesting another while one is pending, running or ready is refused with 409 `reread_open`. A voided purchase cannot be re-read (409 `voided`).
+- The proposal records the purchase's status and a fingerprint of its lines (ids and update times) when made. Applying after either has changed is refused with 409 `reread_stale`; the page offers to re-check or read again.
+- On a draft, applying sends the merged lines through the same path as "Correct the lines" (`PUT /purchases/{id}/lines`, #182): paired lines keep their ids, so their products and decisions survive; removed lines go as Delete removes them (2H); added lines and lines whose wording changed are resolved again. The purchase's line-reading flags become the proposal's "after" set, and a `lines` stage result is appended with the applied lines and `reread_id`, so the next re-read compares against it.
+- On a committed purchase, applying first reopens it (status `reviewed`, as Reopen does), then applies as on a draft. Its prices change only when a person commits again, under the existing recommit rule: an unchanged line keeps its observation, a changed one is voided ("line changed on recommit") and recorded again, and a removed one is voided.
+- Discarding closes the proposal (`dismissed`) and changes nothing.
+
+**Many at once.** `kerp receipts reread [--since DATE] [--mode check|read]` makes a proposal for every receipt purchase that is not voided and has no open re-read, oldest first; `check` (the default) skips receipts without `read_lines` and says how many. Proposals with no changes close on their own, so only receipts that would change reach the inbox. `read` queues them through the worker one at a time.
+
+**Inbox.** Ready proposals with changes are one aggregate row, "3 re-read receipts to review", whose action opens the oldest. Pending and running re-reads count in the reading line as receipts being read.
+
+**API.**
+- `POST /purchases/{id}/rereads` with `{"mode": "check" | "read"}` returns 201 and the re-read: `check` already `ready` or `no_changes`, `read` `pending`.
+- `GET /purchases/{id}/rereads/latest` and `GET /rereads/{id}` return its `status` (`pending`, `running`, `ready`, `no_changes`, `failed`, `applied`, `dismissed`), `mode`, `reason` when failed, and when ready the proposal: `changes` (each `{action: changed | added | removed | kept, line_id?, before?, after?, why?}`, in receipt order) and `before`/`after` reconciliation and flags.
+- `POST /rereads/{id}/apply` and `POST /rereads/{id}/dismiss`. All of them take the same sign-in as the other purchase endpoints.
+
+**Out of scope.** Reading the scan again (OCR) or the header; applying a proposal without a person; choosing only some of a proposal's changes (a person applies it, then corrects what they disagree with); re-reading a manual or imported purchase.
+
+### Acceptance criteria
+
+108. A receipt read after this amendment stores `read_lines` in its `lines` stage result, and Re-check on it makes no model call (the recorded transport sees none).
+109. With a post-pass changed between the first reading and the re-check, Re-check on a fixture draft proposes exactly the lines today's lines stage would write for it, with the reconciliation before and after.
+110. Re-check on a reading without `read_lines` is refused with 409 `not_stored`; Read again on it queues a re-read that the worker answers through the recorded model, and an unreachable model server leaves it pending, never failed.
+111. A line a person edited, a line a person added, and a line a person removed are each listed as kept and are exactly as the person left them after applying; a paired untouched line keeps its id and its product.
+112. A proposal with no differences ends `no_changes`; one made before the lines change is refused with 409 `reread_stale` when applied; a second request while one is open is refused with 409 `reread_open`.
+113. Applying to a draft changes its lines as "Correct the lines" would for the same rows, sets the proposal's line-reading flags, and appends a `lines` stage result naming the re-read; header fields are unchanged.
+114. Applying to a committed purchase reopens it and emits or voids nothing; recommitting voids and records again only the observations of lines that changed or were removed.
+115. `kerp receipts reread --mode check` makes proposals only for receipts that would change, closes the rest as `no_changes`, counts the receipts it skipped for want of `read_lines`, and the inbox shows one aggregate row for the ready ones.
+
 ## Out of scope for Phase 2
 
 The native capture app itself, barcode lookup against external databases (the optional products helper does it outside this application, 2N), vendor-specific deterministic parsers, vision models reading a receipt's structure, header or lines from its image (2O only transcribes it; 2J allows measuring the rest), any integration with a finance system beyond storing an opaque reference, shopping lists, recipes, and inventory.
