@@ -169,7 +169,7 @@ async def test_health_lists_the_migrated_sections_when_authenticated(
     admin_client: httpx.AsyncClient,
 ):
     body = (await admin_client.get("/api/v1/health")).json()
-    assert body["features"] == ["catalog", "cook", "shop"]
+    assert body["features"] == ["catalog", "cook", "plan", "shop"]
 
 
 async def test_health_public_hides_the_features(client: httpx.AsyncClient):
@@ -183,6 +183,7 @@ async def test_features_follow_the_database_revision_not_the_build():
     assert features("0004") == ["catalog"]
     assert features("0007") == ["catalog", "shop"]
     assert features("0042") == ["catalog", "cook", "shop"]
+    assert features("0050") == ["catalog", "cook", "plan", "shop"]
     # No revision, or one this build does not know: nothing rather than a guess.
     assert features(None) == []
     assert features("9999") == []
@@ -200,7 +201,7 @@ async def test_features_survive_a_failing_health_check(
     monkeypatch.setattr(health_service, "check_database", db_down)
     r = await admin_client.get("/api/v1/health")
     assert r.status_code == 503
-    assert r.json()["features"] == ["catalog", "cook", "shop"]
+    assert r.json()["features"] == ["catalog", "cook", "plan", "shop"]
 
 
 def test_migration_scripts_are_read_once():
