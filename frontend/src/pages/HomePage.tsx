@@ -2,10 +2,12 @@ import { errorMessage } from "../api/client";
 import { useLocations } from "../api/geo";
 import { useInbox } from "../api/inbox";
 import { useRecentCommittedPurchases } from "../api/purchases";
+import { usePlanFeature } from "../api/shoppingList";
 import { useChrome } from "../components/chrome";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
 import { RecentPurchases } from "../components/landing/RecentPurchases";
+import { ShoppingListPanel } from "../components/landing/ShoppingListPanel";
 import { Alert, Button, PageHeader } from "../components/ui";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -43,6 +45,7 @@ export function HomePage() {
   const inbox = useInbox();
   const summary = useInboxSummary();
   const { openCapture } = useChrome();
+  const plan = usePlanFeature();
 
   const pending = locations.isPending || recent.isPending;
   const failed = locations.isError || recent.isError;
@@ -109,7 +112,9 @@ export function HomePage() {
           <ReadingLine />
           <InboxList />
         </section>
-        <div>
+        <div className="flex flex-col gap-8">
+          {/* The "{kitchen} list" panel sits above Recent purchases once Plan is built; desktop only (L5). */}
+          {plan ? <ShoppingListPanel /> : null}
           {failed ? (
             <Alert tone="error">{errorMessage(locations.error ?? recent.error)}</Alert>
           ) : (

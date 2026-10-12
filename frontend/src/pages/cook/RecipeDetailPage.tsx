@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import { useLocations } from "../../api/geo";
@@ -22,6 +22,8 @@ import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
 import { RescanButton } from "../../components/cook/RescanButton";
 import { SnapshotChart, snapshotPoints } from "../../components/cook/SnapshotChart";
 import { useNotice } from "../../components/Notice";
+import { usePlanFeature } from "../../api/shoppingList";
+import { AddRecipeToListPanel } from "../../components/plan/AddToListPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatRelative } from "../../lib/format";
@@ -136,6 +138,10 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const locationIds = useMemo(() => (scoped && locations.data ? new Set(locations.data.map((l) => l.id)) : null), [scoped, locations.data]);
   const outside = locationIds && cost.data ? cost.data.lines.filter((l) => l.price?.location_id && !locationIds.has(l.price.location_id)).length : 0;
 
+  // "Add to list" with a Scale field once Plan is built (10; UI-8.4).
+  const plan = usePlanFeature();
+  const [addingToList, setAddingToList] = useState(false);
+
   const servings = servingsText(recipe);
   const meta = (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -170,6 +176,11 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
             Jump to recipe
           </a>
           {recipe.status === "missing" ? <RemoveRecipe recipe={recipe} /> : null}
+          {plan && recipe.status !== "missing" ? (
+            <Button variant="secondary" onClick={() => setAddingToList((v) => !v)} aria-expanded={addingToList}>
+              Add to list
+            </Button>
+          ) : null}
           <RescanButton />
         </div>
       </PageHeader>
@@ -180,6 +191,11 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
         </Alert>
       ) : null}
       {recipe.status === "missing" ? <MissingAlert recipe={recipe} /> : null}
+      {addingToList ? (
+        <div className="mb-4">
+          <AddRecipeToListPanel recipe={recipe} onClose={() => setAddingToList(false)} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_1.4fr] lg:items-start">
         <div className="order-2 min-w-0 lg:order-1">
