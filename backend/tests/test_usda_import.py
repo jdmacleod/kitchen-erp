@@ -202,3 +202,47 @@ async def test_candidates_list_raw_siblings_and_text_matches(db_session, tmp_pat
     assert uncooked_text("Beans, black, mature seeds, cooked, boiled, without salt") == (
         "beans black mature seeds"
     )
+
+
+# Regression: ISSUE-002 — the resolve page waited ~12 s: candidates() read every USDA food per name
+# Found by /qa on 2026-10-12
+# Report: .gstack/qa-reports/qa-report-localhost-2026-10-12.md
+async def test_text_candidates_keep_the_weak_matches_and_the_session_threshold(db_session):
+    from sqlalchemy import event, text
+    from sqlalchemy.dialects import postgresql
+
+    from app.services.usda import candidates
+
+    db_session.add_all(
+        [
+            FdcFood(fdc_id=9101, data_type="sr_legacy_food", description="Spices, oregano, dried"),
+            FdcFood(fdc_id=9102, data_type="branded_food", description="Spices, oregano, dried"),
+        ]
+    )
+    await db_session.flush()
+    similarity = await db_session.scalar(
+        select(func.similarity("spices, oregano, dried", "fresh oregano"))
+    )
+    assert 0.2 < similarity < 0.3, "the fixture must sit between the two thresholds"
+    before = await db_session.scalar(text("SELECT show_limit()"))
+    statements = []
+
+    def capture(state):
+        if state.is_select:
+            statements.append(state.statement)
+
+    event.listen(db_session.sync_session, "do_orm_execute", capture)
+    try:
+        assert [f.fdc_id for f in await candidates(db_session, "fresh oregano")] == [9101]
+    finally:
+        event.remove(db_session.sync_session, "do_orm_execute", capture)
+    assert await db_session.scalar(text("SELECT show_limit()")) == before
+
+    # The trigram index can answer the search; a filter it cannot use reads every food.
+    compiled = statements[-1].compile(
+        dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}
+    )
+    sql = str(compiled).replace("%%", "%")  # the dialect doubles % for pyformat
+    await db_session.execute(text("SET LOCAL enable_seqscan = off"))
+    plan = "\n".join((await db_session.execute(text(f"EXPLAIN {sql}"))).scalars())
+    assert "ix_fdc_food_description_trgm" in plan, plan
