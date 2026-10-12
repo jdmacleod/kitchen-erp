@@ -66,7 +66,7 @@ export function IngredientOffers({
             ? `Prices older than ${staleThreshold} days are marked stale.`
             : null}
         </span>
-        <Link to="/shop/compare" className={`inline-flex min-h-11 items-center lg:min-h-0 rounded text-sm font-medium underline ${focusRing}`}>
+        <Link to="/plan/compare" className={`inline-flex min-h-11 items-center lg:min-h-0 rounded text-sm font-medium underline ${focusRing}`}>
           Compare prices
         </Link>
       </p>
