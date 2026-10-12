@@ -35,13 +35,14 @@ describe("Home's list panel (UI-8.9)", () => {
   it("shows the count, the five oldest unchecked items with amounts, Open list, and hides below lg", async () => {
     mount({ "GET /plan/list": () => jsonResponse(200, list({ unchecked: [chickpeas, ...six] })) });
     const panel = await screen.findByTestId("shopping-list-panel");
-    expect(await within(panel).findByRole("heading", { name: "Harbour flat list · 7 to get" })).toBeInTheDocument();
+    expect(await within(panel).findByRole("heading", { name: /^Harbour flat list · 7 to get/ })).toBeInTheDocument();
     const rows = within(panel).getAllByTestId("panel-item");
     expect(rows).toHaveLength(5);
     expect(rows[0]).toHaveTextContent("dried chickpeas");
     expect(rows[0]).toHaveTextContent("2 lb · 1 cup");
     expect(panel).toHaveTextContent("and 2 more");
     expect(within(panel).getByRole("link", { name: "Open list" })).toHaveAttribute("href", "/plan/list");
+    expect(within(panel).getByTestId("kitchen-tag")).toHaveTextContent("Harbour flat");
     expect(panel.className).toContain("hidden");
     expect(panel.className).toContain("lg:block");
     // Above Recent purchases.
@@ -65,7 +66,7 @@ describe("Home's list panel (UI-8.9)", () => {
   it("says Nothing on the list for a kitchen with nothing to get", async () => {
     mount({ "GET /plan/list": () => jsonResponse(200, list({ unchecked: [], checked: [] })) });
     const panel = await screen.findByTestId("shopping-list-panel");
-    expect(await within(panel).findByRole("heading", { name: "Harbour flat list · 0 to get" })).toBeInTheDocument();
+    expect(await within(panel).findByRole("heading", { name: /^Harbour flat list · 0 to get/ })).toBeInTheDocument();
     expect(panel).toHaveTextContent("Nothing on the list.");
     expect(within(panel).getByRole("combobox", { name: "What do you need?" })).toBeInTheDocument();
   });

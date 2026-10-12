@@ -1,14 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useHomeBases } from "./geo";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import { qs, type IngredientSummary } from "./catalog";
-import { useHealth, useMe } from "./queries";
+import { useMe } from "./queries";
 import type { ListResponse } from "./types";
 
 /**
  * The shopping list (docs/spec/17, 4A). Amounts cross the wire as strings and
  * come back as (amount, unit) pairs; an item names an ingredient or a product,
- * never both. Every kitchen-scoped call carries `home_base_id` explicitly (09).
+ * never both. Every kitchen-scoped call carries `home_base_id` explicitly (09);
+ * the kitchen itself comes from `lib/kitchen.ts`.
  */
 
 export type ListStatus = "open" | "archived";
@@ -137,85 +137,20 @@ export interface ArchiveOut {
   list: ShoppingList;
 }
 
-export interface Settings {
-  current_home_base_id: string | null;
-  /** The only kitchen when there is exactly one, for the fallback chain. */
-  suggested_home_base_id: string | null;
-}
-
 /** The name an item shows: the ingredient's, or the product's. */
 export function itemName(item: ShoppingItem): string {
   return item.kind === "product" ? (item.product?.name ?? "Product") : (item.ingredient?.name ?? "Ingredient");
-}
-
-/** Whether `plan` is among the built features, so Plan's panels and actions may show. */
-export function usePlanFeature(): boolean {
-  const health = useHealth();
-  return health.data?.features?.includes("plan") ?? false;
 }
 
 // --- keys ---------------------------------------------------------------------------
 
 export const listKeys = {
   all: ["plan"] as const,
-  settings: ["me", "settings"] as const,
   list: (homeBaseId: string, listId?: string | null) => ["plan", "list", homeBaseId, listId ?? "open"] as const,
   lists: (homeBaseId: string) => ["plan", "lists", homeBaseId] as const,
 };
 
-// --- the current kitchen ------------------------------------------------------------
-
-export function useSettings() {
-  return useQuery({
-    queryKey: listKeys.settings,
-    queryFn: () => api<Settings>("/me/settings"),
-    staleTime: 60_000,
-  });
-}
-
-/**
- * The kitchen this client sends on scoped calls: the server setting, else the
- * only kitchen when there is one (17, 4A).
- *
- * TODO(package 2): a shim. Package 2's `lib/kitchen.ts` `useCurrentKitchen()`
- * adds the remembered location and the first-by-name fallback and writes the
- * fallback back; merge this into it and delete this one when it lands.
- */
-export function useCurrentKitchenId(): { id: string | null; isPending: boolean; isError: boolean; error: unknown; refetch: () => void } {
-  const settings = useSettings();
-  const id = settings.data ? (settings.data.current_home_base_id ?? settings.data.suggested_home_base_id) : null;
-  return { id, isPending: settings.isPending, isError: settings.isError, error: settings.error, refetch: () => void settings.refetch() };
-}
-
-export interface CurrentKitchen {
-  id: string | null;
-  /** Null until the kitchens have loaded, or when there is no kitchen. */
-  name: string | null;
-  isPending: boolean;
-  isError: boolean;
-  error: unknown;
-  refetch: () => void;
-}
-
-/** The current kitchen with its name, for tags, titles and notices. Same shim as above. */
-export function useCurrentKitchen(): CurrentKitchen {
-  const current = useCurrentKitchenId();
-  const kitchens = useHomeBases();
-  const name = current.id ? (kitchens.data?.find((k) => k.id === current.id)?.name ?? null) : null;
-  return {
-    id: current.id,
-    name,
-    isPending: current.isPending || (current.id !== null && kitchens.isPending),
-    isError: current.isError || kitchens.isError,
-    error: current.error ?? kitchens.error,
-    refetch: () => {
-      current.refetch();
-      void kitchens.refetch();
-    },
-  };
-}
-
-// --- the list -------------------------------------------------------------------------
+// --- the list ---------------------------------------------------------------------
 
 /**
  * The kitchen's open list, or one of its lists by id. Refetched every 15 seconds

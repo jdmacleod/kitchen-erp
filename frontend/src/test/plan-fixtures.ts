@@ -1,7 +1,8 @@
 // Synthetic shopping-list records (17, 4A). Kitchens, people and items are
 // invented; ids are fixed v7-shaped UUIDs.
 import type { IngredientSummary } from "../api/catalog";
-import type { ListSummary, Settings, ShoppingItem, ShoppingList, UserBrief } from "../api/shoppingList";
+import type { Settings } from "../api/settings";
+import type { ListSummary, ShoppingItem, ShoppingList, UserBrief } from "../api/shoppingList";
 import { homeBase, homeBaseId } from "./geo-fixtures";
 import { adminUser, memberUser } from "./helpers";
 

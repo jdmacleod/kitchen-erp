@@ -1,15 +1,17 @@
 import { useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { itemName, listKeys, useArchivedLists, useArchiveList, useCurrentKitchen, useShoppingList, type ShoppingItem, type ShoppingList } from "../../api/shoppingList";
+import { itemName, listKeys, useArchivedLists, useArchiveList, useShoppingList, type ShoppingItem, type ShoppingList } from "../../api/shoppingList";
 import { Badge, Disclosure } from "../../components/catalog/fields";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { useNotice } from "../../components/Notice";
 import { AddFromRecipeDrawer, fromRecipeSentence } from "../../components/plan/AddFromRecipeDrawer";
 import { AddItemRow } from "../../components/plan/AddItemRow";
+import { KitchenTag } from "../../components/plan/KitchenTag";
 import { ListItemRow } from "../../components/plan/ListItemRow";
 import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatDate } from "../../lib/format";
+import { useCurrentKitchen } from "../../lib/kitchen";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -19,24 +21,17 @@ const DESCRIPTION = "What this kitchen needs next. Anyone can add, claim and che
 /**
  * The shopping list (`/plan/list`; 10, Plan: Shopping list; UI-8.2–8.6, 8.11).
  * One open list per kitchen is the page; an archived one is read-only at
- * `?list_id=`. The kitchen comes from the current-kitchen setting and is sent
- * on every call, never inferred by the server (09).
+ * `?list_id=`. The kitchen comes from `lib/kitchen.ts` and is sent on every
+ * call, never inferred by the server (09).
  */
 export function ListPage() {
   const kitchen = useCurrentKitchen();
   const [params] = useSearchParams();
   const listId = params.get("list_id");
-  usePageTitle(kitchen.name ? `${kitchen.name} list` : "List");
+  const kitchenName = kitchen.current?.name ?? null;
+  usePageTitle(kitchenName ? `${kitchenName} list` : "List");
 
-  if (kitchen.isError) {
-    return (
-      <>
-        <PageHeader title="List" description={DESCRIPTION} />
-        <RetryAlert message={`Couldn't load the list: ${errorMessage(kitchen.error)}`} onRetry={kitchen.refetch} />
-      </>
-    );
-  }
-  if (kitchen.isPending) {
+  if (!kitchen.ready) {
     return (
       <>
         <PageHeader title="List" description={DESCRIPTION} />
@@ -44,7 +39,7 @@ export function ListPage() {
       </>
     );
   }
-  if (!kitchen.id) {
+  if (!kitchen.currentId) {
     return (
       <>
         <PageHeader title="List" description={DESCRIPTION} />
@@ -61,7 +56,7 @@ export function ListPage() {
       </>
     );
   }
-  return <ListView key={`${kitchen.id}:${listId ?? ""}`} homeBaseId={kitchen.id} kitchenName={kitchen.name ?? "Kitchen"} listId={listId} />;
+  return <ListView key={`${kitchen.currentId}:${listId ?? ""}`} homeBaseId={kitchen.currentId} kitchenName={kitchenName ?? "Kitchen"} listId={listId} />;
 }
 
 function RetryAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -124,13 +119,13 @@ function ListView({ homeBaseId, kitchenName, listId }: { homeBaseId: string; kit
       <div className="max-lg:sticky max-lg:top-0 max-lg:z-10 max-lg:-mx-4 max-lg:bg-neutral-50 max-lg:px-4 max-lg:pt-2 dark:max-lg:bg-neutral-950">
         <PageHeader
           title={title}
-          description={
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span>{DESCRIPTION}</span>
-              <Badge>{name}</Badge>
+          tag={
+            <span className="flex flex-wrap items-center gap-2">
+              <KitchenTag name={name} />
               {archived ? <Badge>Archived</Badge> : null}
             </span>
           }
+          description={DESCRIPTION}
         >
           {archived ? (
             <Link to="/plan/list" className={secondaryLinkClass}>

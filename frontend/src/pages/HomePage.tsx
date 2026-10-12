@@ -2,7 +2,7 @@ import { errorMessage } from "../api/client";
 import { useLocations } from "../api/geo";
 import { useInbox } from "../api/inbox";
 import { useRecentCommittedPurchases } from "../api/purchases";
-import { usePlanFeature } from "../api/shoppingList";
+import { usePlanBuilt } from "../lib/kitchen";
 import { useChrome } from "../components/chrome";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
@@ -45,7 +45,7 @@ export function HomePage() {
   const inbox = useInbox();
   const summary = useInboxSummary();
   const { openCapture } = useChrome();
-  const plan = usePlanFeature();
+  const plan = usePlanBuilt();
 
   const pending = locations.isPending || recent.isPending;
   const failed = locations.isError || recent.isError;

@@ -9,7 +9,7 @@ import { createQueryClient } from "../lib/queryClient";
 import { ListPage } from "../pages/plan/ListPage";
 import { flour, ingredientMatch, units } from "./catalog-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, type RecordedCall, type RouteHandler } from "./helpers";
-import { archivedList, archivedListId, archivedSummary, bayLeaves, chickpeas, kitchen, kitchenId, list, me, noKitchenSettings, oatMilk, settings } from "./plan-fixtures";
+import { archivedList, archivedListId, archivedSummary, bayLeaves, chickpeas, kitchen, kitchenId, list, me, noKitchenSettings, oatMilk, planHealth, settings } from "./plan-fixtures";
 import { recipeList } from "./recipe-fixtures";
 
 /**
@@ -21,6 +21,7 @@ import { recipeList } from "./recipe-fixtures";
 function baseRoutes(): Record<string, RouteHandler> {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
+    "GET /health": () => jsonResponse(200, planHealth),
     "GET /me/settings": () => jsonResponse(200, settings),
     "GET /home-bases": () => jsonResponse(200, { items: [kitchen] }),
     "GET /plan/list": () => jsonResponse(200, list()),
@@ -77,7 +78,8 @@ const notice = () => screen.findByTestId("notice");
 describe("the list page: groups and rows (UI-8.2, UI-8.3, UI-8.5)", () => {
   it("heads the page with the kitchen, groups To get and Checked, and shows pairs as written", async () => {
     const calls = mount();
-    expect(await screen.findByRole("heading", { level: 1, name: "Harbour flat list" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: /^Harbour flat list/ })).toBeInTheDocument();
+    expect(screen.getByTestId("kitchen-tag")).toHaveTextContent("Harbour flat");
     expect(screen.getByText("What this kitchen needs next. Anyone can add, claim and check.")).toBeInTheDocument();
     expect(calls.find((c) => c.path.startsWith("/plan/list?"))?.query.get("home_base_id")).toBe(kitchenId);
 
@@ -341,7 +343,7 @@ describe("the list page: states and the phone (G11, UI-8.11)", () => {
   });
 
   it("sends to Settings → Kitchens when there is no kitchen, and asks for no list", async () => {
-    const calls = mount({ "GET /me/settings": () => jsonResponse(200, noKitchenSettings) });
+    const calls = mount({ "GET /me/settings": () => jsonResponse(200, noKitchenSettings), "GET /home-bases": () => jsonResponse(200, { items: [] }) });
     const empty = await screen.findByRole("region", { name: "No kitchen yet" });
     expect(within(empty).getByRole("link", { name: "Settings → Kitchens" })).toHaveAttribute("href", "/settings/kitchens");
     expect(calls.some((c) => c.path.startsWith("/plan/list"))).toBe(false);

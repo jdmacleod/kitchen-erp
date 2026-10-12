@@ -39,7 +39,7 @@ import { CategoryChip } from "../../components/CategoryChip";
 import { IngredientPageActions, MergedInto, type IngredientPageMode } from "../../components/catalog/IngredientPageActions";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
-import { usePlanFeature } from "../../api/shoppingList";
+import { usePlanBuilt } from "../../lib/kitchen";
 import { AddIngredientToListPanel } from "../../components/plan/AddToListPanel";
 
 export function IngredientDetailPage() {
@@ -125,7 +125,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const wide = useMediaQuery(LG_QUERY);
   const merged = ingredient.merged_into !== null;
   // "Add to list" is the hub's secondary action once Plan is built (10; UI-8.4).
-  const plan = usePlanFeature();
+  const plan = usePlanBuilt();
   const [addingToList, setAddingToList] = useState(false);
   const actions: MoreAction[] = merged
     ? []

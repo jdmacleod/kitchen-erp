@@ -1,12 +1,13 @@
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
-import { itemName, useCurrentKitchen, useShoppingList } from "../../api/shoppingList";
-import { Badge } from "../catalog/fields";
+import { itemName, useShoppingList } from "../../api/shoppingList";
 import { useNotice } from "../Notice";
 import { AddItemRow } from "../plan/AddItemRow";
 import { formatAmounts } from "../plan/amounts";
 import { ClaimChip } from "../plan/ClaimChip";
+import { KitchenTag } from "../plan/KitchenTag";
 import { Alert, focusRing, tapTarget } from "../ui";
+import { useCurrentKitchen } from "../../lib/kitchen";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -18,26 +19,26 @@ const muted = "text-neutral-600 dark:text-neutral-400";
  */
 export function ShoppingListPanel() {
   const kitchen = useCurrentKitchen();
-  const list = useShoppingList(kitchen.id);
+  const list = useShoppingList(kitchen.currentId);
   const notice = useNotice();
-  if (kitchen.isPending || !kitchen.id) return null;
-  const name = list.data?.home_base_name ?? kitchen.name ?? "Kitchen";
+  if (!kitchen.ready || !kitchen.currentId) return null;
+  const name = list.data?.home_base_name ?? kitchen.current?.name ?? "Kitchen";
   const unchecked = list.data?.unchecked ?? [];
   const count = unchecked.length;
 
   return (
     <section aria-labelledby="shopping-list-panel" className="hidden lg:block" data-testid="shopping-list-panel">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="shopping-list-panel" className="font-display text-lg">
-          {name} list{list.data ? ` · ${count} to get` : ""}
+        <h2 id="shopping-list-panel" className="flex flex-wrap items-center gap-x-3 gap-y-1 font-display text-lg">
+          <span>
+            {name} list{list.data ? ` · ${count} to get` : ""}
+          </span>
+          <KitchenTag name={name} />
         </h2>
         <Link to="/plan/list" className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}>
           Open list
         </Link>
       </div>
-      <p className="mt-1">
-        <Badge>{name}</Badge>
-      </p>
       {list.isError ? (
         <Alert tone="error" className="mt-2">
           Couldn&apos;t load the list: {errorMessage(list.error)}
@@ -64,7 +65,7 @@ export function ShoppingListPanel() {
         </ul>
       )}
       <div className="mt-3">
-        <AddItemRow homeBaseId={kitchen.id} compact onAdded={(item) => notice.show({ tone: "success", message: `Added ${itemName(item)} to the ${name} list.`, action: { label: "Open list", to: "/plan/list" } })} />
+        <AddItemRow homeBaseId={kitchen.currentId} compact onAdded={(item) => notice.show({ tone: "success", message: `Added ${itemName(item)} to the ${name} list.`, action: { label: "Open list", to: "/plan/list" } })} />
       </div>
     </section>
   );

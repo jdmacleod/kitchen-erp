@@ -54,7 +54,7 @@ describe("Add to list on the ingredient hub (UI-8.4)", () => {
     await within(main).findByRole("heading", { level: 1, name: "all-purpose flour" });
     await user.click(within(main).getByRole("button", { name: "Add to list" }));
     const panel = within(main).getByRole("form", { name: "Add to list" });
-    expect(panel).toHaveTextContent("Adding to the Harbour flat list.");
+    expect(panel).toHaveTextContent("Adding to the Kitchen: Harbour flat list.");
     await user.type(within(panel).getByLabelText("Amount"), "2");
     await user.selectOptions(within(panel).getByLabelText("Unit"), "lb");
     await user.click(within(panel).getByRole("checkbox", { name: "Deferrable" }));
@@ -88,7 +88,7 @@ describe("Add to list on the recipe page (UI-8.4, UI-8.5)", () => {
     await within(main).findByRole("heading", { level: 1, name: "Barley moon stew" });
     await user.click(within(main).getByRole("button", { name: "Add to list" }));
     const panel = within(main).getByRole("form", { name: "Add to list" });
-    expect(panel).toHaveTextContent("Adding to the Harbour flat list.");
+    expect(panel).toHaveTextContent("Adding to the Kitchen: Harbour flat list.");
     const scale = within(panel).getByLabelText("Scale");
     expect(scale).toHaveValue("1");
     await user.clear(scale);

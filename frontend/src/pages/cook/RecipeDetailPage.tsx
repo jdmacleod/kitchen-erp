@@ -22,12 +22,11 @@ import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
 import { RescanButton } from "../../components/cook/RescanButton";
 import { SnapshotChart, snapshotPoints } from "../../components/cook/SnapshotChart";
 import { useNotice } from "../../components/Notice";
-import { usePlanFeature } from "../../api/shoppingList";
 import { AddRecipeToListPanel } from "../../components/plan/AddToListPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatRelative } from "../../lib/format";
-import { useCurrentKitchen } from "../../lib/kitchen";
+import { useCurrentKitchen, usePlanBuilt } from "../../lib/kitchen";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -139,7 +138,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const outside = locationIds && cost.data ? cost.data.lines.filter((l) => l.price?.location_id && !locationIds.has(l.price.location_id)).length : 0;
 
   // "Add to list" with a Scale field once Plan is built (10; UI-8.4).
-  const plan = usePlanFeature();
+  const plan = usePlanBuilt();
   const [addingToList, setAddingToList] = useState(false);
 
   const servings = servingsText(recipe);
