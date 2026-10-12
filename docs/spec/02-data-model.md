@@ -327,9 +327,21 @@ ingest_stage_result(                          -- append-only
   id, job_id FK, stage, adapter, adapter_version,
   output JSONB, duration_ms, created_at
 )
+
+line_reread(                                  -- a proposal to re-read a receipt's lines (04, 2S)
+  id, purchase_id FK ON DELETE CASCADE,
+  mode CHECK IN (check, read),
+  status CHECK IN (pending, running, ready, no_changes, failed, applied, dismissed),
+  proposal JSONB?,                            -- changes, and before/after reconciliation and flags
+  purchase_status, lines_fingerprint,         -- as they were when the proposal was made
+  reason?, attempts INT, next_attempt_at?, locked_at?, locked_by?,
+  requested_by FK app_user, decided_by FK app_user?, decided_at?,
+  created_at, updated_at
+)
+-- at most one open (pending, running or ready) per purchase: a partial unique index
 ```
 
-`receipt_document` changes only when its file's metadata is removed (#221): on a revived upload, or by `kerp receipts strip-metadata`, which change `sha256`, `upload_sha256`, `image_path`, `mime` and `bytes` together. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one. A receipt uploaded again in a later batch keeps its one job and gains a second `upload_batch_receipt` row, so each batch can say what became of its files.
+`receipt_document` changes only when its file's metadata is removed (#221): on a revived upload, or by `kerp receipts strip-metadata`, which change `sha256`, `upload_sha256`, `image_path`, `mime` and `bytes` together. Re-running a stage appends a new `ingest_stage_result`; the latest result per stage is the effective one. The `lines` result also keeps `read_lines`, the reader's answer before the deterministic passes, and a re-read that is applied appends a `lines` result of its own (2S). `line_reread` is ordinary mutable state: its proposal is derived and can be made again. A receipt uploaded again in a later batch keeps its one job and gains a second `upload_batch_receipt` row, so each batch can say what became of its files.
 
 ### Purchases
 

@@ -70,6 +70,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - The keyboard shortcuts are listed under the table.
   - A line that fails to save shows its error inline and keeps the input.
   - **Correct the lines (#182):** a secondary "Correct the lines" beside the line count swaps the list for one editable table, a row per line: number, receipt text, quantity, unit, line total and kind, with "Add below" and "Delete" on each row and "Add a row at the top" above it. Tab moves between cells; Enter in a cell adds a row below and puts the cursor in its receipt text. Above the rows, "Lines add up to $X; the receipt says $Y." updates as you type and ends "Adds up." in olive, "Off by $Z.", or, past the careful-look share, "Off by $Z: still a careful look." on a squash ground. A discount or deposit keeps the item it was attached to while that row is still an item, otherwise it attaches to the nearest item above. "Save lines" sends everything at once and the Notice says "Lines saved: n lines."; an empty new row is dropped, and a row without a line total is named ("Row 3: a line total is required.") and nothing is sent. Cancel or Escape with typed changes asks "Discard your corrections? What you typed will be lost." with focus on Keep editing. While the table is open, Commit is disabled with "Save or cancel your corrections before committing." and the single-key shortcuts are off. Below 1024px each row stacks its labelled fields in a bordered block, two to a row, with the receipt text full width.
+- **Re-read the lines (04, 2S, #272):** a secondary "Re-read lines" beside the line count, on drafts and on committed receipt purchases, opens a small panel with two choices. "Re-check the lines" ("Runs today's line rules again. Instant, no model.") is shown only when the reading kept the reader's answer; "Read again" ("Asks the model to read the receipt text again. Takes a few minutes.") always is. Choosing one goes to the re-read page. While a re-read is open the button reads "Re-read in progress" or "Re-read ready" and goes there.
 - **After commit (G9):** the page stays and turns Committed, with the Notice "Committed. n prices added to the price book." If other drafts remain, "Next draft" becomes the primary action.
 - **Held for a careful look (#121):** a squash alert above everything: "This receipt needs a careful look", then "Lines add up to $41.20; the receipt says $12.85." and how many flagged lines are shown first. It replaces the ordinary mismatch line. Lines with a price flag (`not_in_scan` among them) or footer text come first at every width, and the first of them is current. Commit works as on any draft. On Purchases the status badge reads "Careful look" in squash in place of Draft.
 - **Read from the text scan (04, 2O):** when the image transcriber was configured but could not read this receipt (`ocr_fallback`), a quiet neutral line under the header says "Read from the text scan: the image reader wasn't available." It is information, not a warning: the lines are reviewed as usual, and it is not shown once the purchase is committed.
@@ -78,6 +79,20 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - "Needs you" lines come first.
   - Commit is anchored in the thumb zone.
   - The keyboard shortcuts are hidden.
+
+## Re-read the lines (04, 2S, #272)
+
+Route `/shop/purchases/{id}/reread`.
+- **Breadcrumb:** Shop / Purchases / Receipt, {date}.
+- **Header:** title "Re-read lines", description "What today's reading would change. Nothing changes until you apply it." Primary "Apply changes"; secondary "Discard".
+- **Waiting (Read again):** "Reading the receipt again…" with the reading line's progress; the page updates on its own when the proposal is ready. Failed: a tomato Alert with the reason and "Try again".
+- **Summary:** "Adds up now." in olive, or "Off by $Z now (was $W).", then counts: "4 changed, 1 added, 2 removed, 3 kept as you left them."
+- **Changes**, in receipt order, one row each: the receipt text in monospace; Changed shows each field that moves, before struck through in neutral and after beside it; Added and Removed are labelled in words, not only by colour; Kept rows say why ("You edited this line", "You added this line", "You removed this line") and are quiet.
+- **Committed purchases:** a neutral line above the changes: "Applying reopens this purchase. Its prices change when you commit it again."
+- **No changes:** the page says "Today's reading matches these lines." with "Back to the receipt".
+- **Stale (409 `reread_stale`):** "The lines changed since this re-read. Re-check or read again to see what would change now." with both actions.
+- **After applying:** back on the purchase page with the Notice "Re-read applied: 4 lines changed." (committed: "…Commit to update its prices."). After discarding: the Notice "Re-read discarded."
+- **Phone:** each change is a card with the receipt text full width and before/after stacked; Apply is anchored in the thumb zone.
 
 ## Removing lines and purchases (#72, #74)
 
