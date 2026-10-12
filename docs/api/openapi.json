@@ -228,6 +228,60 @@
         "title": "AddressPreviewOut",
         "type": "object"
       },
+      "AmountIn": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "unit": {
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "amount",
+          "unit"
+        ],
+        "title": "AmountIn",
+        "type": "object"
+      },
+      "AmountOut": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "amount",
+          "unit"
+        ],
+        "title": "AmountOut",
+        "type": "object"
+      },
       "AnswerOut": {
         "additionalProperties": false,
         "properties": {
@@ -386,6 +440,43 @@
           "revoked_at"
         ],
         "title": "ApiTokenOut",
+        "type": "object"
+      },
+      "ArchiveIn": {
+        "additionalProperties": false,
+        "properties": {
+          "carry_over": {
+            "default": true,
+            "title": "Carry Over",
+            "type": "boolean"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "home_base_id"
+        ],
+        "title": "ArchiveIn",
+        "type": "object"
+      },
+      "ArchiveOut": {
+        "additionalProperties": false,
+        "properties": {
+          "archived": {
+            "$ref": "#/components/schemas/ListOut"
+          },
+          "list": {
+            "$ref": "#/components/schemas/ListOut"
+          }
+        },
+        "required": [
+          "archived",
+          "list"
+        ],
+        "title": "ArchiveOut",
         "type": "object"
       },
       "BarcodeLookupIn": {
@@ -2859,6 +2950,73 @@
         "title": "FileSource",
         "type": "object"
       },
+      "FromRecipeIn": {
+        "additionalProperties": false,
+        "properties": {
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "recipe_id": {
+            "format": "uuid",
+            "title": "Recipe Id",
+            "type": "string"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Scale"
+          }
+        },
+        "required": [
+          "home_base_id",
+          "recipe_id"
+        ],
+        "title": "FromRecipeIn",
+        "type": "object"
+      },
+      "FromRecipeOut": {
+        "additionalProperties": false,
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "list": {
+            "$ref": "#/components/schemas/ListOut"
+          },
+          "merged": {
+            "title": "Merged",
+            "type": "integer"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedLine"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "list",
+          "added",
+          "merged",
+          "skipped"
+        ],
+        "title": "FromRecipeOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5163,6 +5321,372 @@
         "title": "IsOpenOut",
         "type": "object"
       },
+      "ItemCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "added_from": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "ingredient",
+              "recipe",
+              "stock"
+            ],
+            "title": "Added From",
+            "type": "string"
+          },
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/AmountIn"
+            },
+            "maxItems": 20,
+            "title": "Amounts",
+            "type": "array"
+          },
+          "deferrable": {
+            "default": false,
+            "title": "Deferrable",
+            "type": "boolean"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
+          "kind": {
+            "enum": [
+              "ingredient",
+              "product"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "min_quality": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quality"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          }
+        },
+        "required": [
+          "home_base_id",
+          "kind"
+        ],
+        "title": "ItemCreate",
+        "type": "object"
+      },
+      "ItemOut": {
+        "additionalProperties": false,
+        "properties": {
+          "added_by": {
+            "$ref": "#/components/schemas/UserBrief"
+          },
+          "added_from": {
+            "enum": [
+              "manual",
+              "ingredient",
+              "recipe",
+              "stock"
+            ],
+            "title": "Added From",
+            "type": "string"
+          },
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/AmountOut"
+            },
+            "title": "Amounts",
+            "type": "array"
+          },
+          "carried_from_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carried From Item Id"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "checked_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "claimed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claimed At"
+          },
+          "claimed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "deferrable": {
+            "title": "Deferrable",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingredient": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngredientSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "ingredient",
+              "product"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "list_id": {
+            "format": "uuid",
+            "title": "List Id",
+            "type": "string"
+          },
+          "min_quality": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quality"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recipe_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "list_id",
+          "kind",
+          "ingredient",
+          "product",
+          "amounts",
+          "min_quality",
+          "note",
+          "deferrable",
+          "added_by",
+          "added_from",
+          "recipe_id",
+          "carried_from_item_id",
+          "claimed_by",
+          "claimed_at",
+          "checked_by",
+          "checked_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ItemOut",
+        "type": "object"
+      },
+      "ItemPatch": {
+        "additionalProperties": false,
+        "description": "Edits the stated fields; ``updated_at`` is required and must be the value\nthe client last saw (409 ``stale_item`` otherwise).",
+        "properties": {
+          "amounts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AmountIn"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amounts"
+          },
+          "deferrable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deferrable"
+          },
+          "min_quality": {
+            "anyOf": [
+              {
+                "maximum": 5.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Quality"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "updated_at"
+        ],
+        "title": "ItemPatch",
+        "type": "object"
+      },
       "KnownProduct": {
         "additionalProperties": false,
         "description": "The catalog product an address already names (2P): \"Already in your catalog\".",
@@ -6762,6 +7286,152 @@
           "name"
         ],
         "title": "LinkedLocationRef",
+        "type": "object"
+      },
+      "ListOut": {
+        "additionalProperties": false,
+        "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "checked": {
+            "items": {
+              "$ref": "#/components/schemas/ItemOut"
+            },
+            "title": "Checked",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "home_base_name": {
+            "title": "Home Base Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unchecked": {
+            "items": {
+              "$ref": "#/components/schemas/ItemOut"
+            },
+            "title": "Unchecked",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "home_base_id",
+          "home_base_name",
+          "status",
+          "created_at",
+          "archived_at",
+          "unchecked",
+          "checked"
+        ],
+        "title": "ListOut",
+        "type": "object"
+      },
+      "ListSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "archived_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archived At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_count": {
+            "title": "Item Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "unchecked_count": {
+            "title": "Unchecked Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "home_base_id",
+          "status",
+          "created_at",
+          "archived_at",
+          "item_count",
+          "unchecked_count"
+        ],
+        "title": "ListSummary",
+        "type": "object"
+      },
+      "ListsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ListSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ListsOut",
         "type": "object"
       },
       "LocationChoice": {
@@ -9566,6 +10236,97 @@
           "added"
         ],
         "title": "PricesReported",
+        "type": "object"
+      },
+      "ProductBrief": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingredient_id": {
+            "format": "uuid",
+            "title": "Ingredient Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pack_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Count"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          },
+          "piece_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Piece Name"
+          },
+          "quality_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality Rating"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "ingredient_id",
+          "pack_qty",
+          "pack_unit",
+          "pack_count",
+          "piece_name",
+          "quality_rating",
+          "active"
+        ],
+        "title": "ProductBrief",
         "type": "object"
       },
       "ProductCreate": {
@@ -14154,6 +14915,84 @@
         "title": "SearchResults",
         "type": "object"
       },
+      "SettingsIn": {
+        "additionalProperties": false,
+        "properties": {
+          "current_home_base_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Home Base Id"
+          }
+        },
+        "required": [
+          "current_home_base_id"
+        ],
+        "title": "SettingsIn",
+        "type": "object"
+      },
+      "SettingsOut": {
+        "additionalProperties": false,
+        "description": "``current_home_base_id`` is what the client sends on kitchen-scoped calls;\n``suggested_home_base_id`` is the only kitchen when there is exactly one, for\nthe client's fallback chain when the setting is empty.",
+        "properties": {
+          "current_home_base_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Home Base Id"
+          },
+          "suggested_home_base_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Home Base Id"
+          }
+        },
+        "required": [
+          "current_home_base_id",
+          "suggested_home_base_id"
+        ],
+        "title": "SettingsOut",
+        "type": "object"
+      },
+      "SkippedLine": {
+        "additionalProperties": false,
+        "properties": {
+          "raw_name": {
+            "title": "Raw Name",
+            "type": "string"
+          },
+          "reason": {
+            "const": "unmatched",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "raw_name",
+          "reason"
+        ],
+        "title": "SkippedLine",
+        "type": "object"
+      },
       "StageResultOut": {
         "additionalProperties": false,
         "properties": {
@@ -15108,6 +15947,26 @@
           "loaded"
         ],
         "title": "UsdaSuggestionList",
+        "type": "object"
+      },
+      "UserBrief": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "UserBrief",
         "type": "object"
       },
       "UserCreate": {
@@ -19330,6 +20189,67 @@
         ]
       }
     },
+    "/api/v1/me/settings": {
+      "get": {
+        "operationId": "get_settings_api_v1_me_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Settings",
+        "tags": [
+          "plan"
+        ]
+      },
+      "put": {
+        "description": "Persist the current kitchen; a kitchen that does not exist is a 422.",
+        "operationId": "put_settings_api_v1_me_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Settings",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
     "/api/v1/measures/{measure_id}": {
       "delete": {
         "operationId": "delete_measure_api_v1_measures__measure_id__delete",
@@ -19646,6 +20566,521 @@
         "tags": [
           "geo",
           "osm"
+        ]
+      }
+    },
+    "/api/v1/plan/list": {
+      "get": {
+        "description": "The kitchen's open list, created on first read; or one of its lists by id.",
+        "operationId": "get_list_api_v1_plan_list_get",
+        "parameters": [
+          {
+            "description": "the kitchen; never inferred",
+            "in": "query",
+            "name": "home_base_id",
+            "required": true,
+            "schema": {
+              "description": "the kitchen; never inferred",
+              "format": "uuid",
+              "title": "Home Base Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "an archived list to read",
+            "in": "query",
+            "name": "list_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "an archived list to read",
+              "title": "List Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get List",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/archive": {
+      "post": {
+        "description": "\"Start a fresh list\": archive the open list and open the next, carrying\nunchecked items forward unless ``carry_over`` is false.",
+        "operationId": "archive_api_v1_plan_list_archive_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/items": {
+      "post": {
+        "operationId": "add_item_api_v1_plan_list_items_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Item",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/items/from-recipe": {
+      "post": {
+        "description": "Add a recipe's lines, scaled; convertible amounts aggregate, the rest keep their unit.",
+        "operationId": "add_from_recipe_api_v1_plan_list_items_from_recipe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FromRecipeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FromRecipeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add From Recipe",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/items/{item_id}": {
+      "delete": {
+        "operationId": "delete_item_api_v1_plan_list_items__item_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Item",
+        "tags": [
+          "plan"
+        ]
+      },
+      "patch": {
+        "description": "Edit amounts, note, deferrable or min_quality; a stale ``updated_at`` is a 409.",
+        "operationId": "patch_item_api_v1_plan_list_items__item_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Item",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/items/{item_id}/check": {
+      "delete": {
+        "operationId": "uncheck_item_api_v1_plan_list_items__item_id__check_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Uncheck Item",
+        "tags": [
+          "plan"
+        ]
+      },
+      "post": {
+        "description": "Check off: sets who and when and clears the claim; a retried tap is a 200.",
+        "operationId": "check_item_api_v1_plan_list_items__item_id__check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Item",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/list/items/{item_id}/claim": {
+      "delete": {
+        "operationId": "unclaim_item_api_v1_plan_list_items__item_id__claim_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Unclaim Item",
+        "tags": [
+          "plan"
+        ]
+      },
+      "post": {
+        "description": "A soft claim: records who is getting it; anyone may still check it off.",
+        "operationId": "claim_item_api_v1_plan_list_items__item_id__claim_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Claim Item",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/lists": {
+      "get": {
+        "description": "The kitchen's lists, newest first; archived ones unless ``status`` says otherwise.",
+        "operationId": "get_lists_api_v1_plan_lists_get",
+        "parameters": [
+          {
+            "description": "the kitchen; never inferred",
+            "in": "query",
+            "name": "home_base_id",
+            "required": true,
+            "schema": {
+              "description": "the kitchen; never inferred",
+              "format": "uuid",
+              "title": "Home Base Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "archived"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "archived",
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Lists",
+        "tags": [
+          "plan"
         ]
       }
     },

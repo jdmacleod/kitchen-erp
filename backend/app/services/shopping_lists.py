@@ -109,14 +109,13 @@ async def open_list(db: AsyncSession, home_base_id: uuid.UUID) -> ShoppingList:
         return found
     try:
         async with db.begin_nested():
-            created = ShoppingList(home_base_id=home_base_id, status="open")
-            db.add(created)
+            db.add(ShoppingList(home_base_id=home_base_id, status="open"))
             await db.flush()
     except IntegrityError:
-        pass
+        pass  # the other first read won; its row is committed, or will be
     else:
         await db.commit()
-        return created
+    # Re-read either way, so the row comes with its kitchen loaded.
     found = (await db.execute(stmt)).scalar_one_or_none()
     if found is None:  # pragma: no cover - the winner's row is committed by now
         raise ApiError(409, "list_changed", "The list changed under you; reload.")
@@ -238,22 +237,29 @@ def _check_units(pairs: list[AmountIn], units: Mapping[str, Unit]) -> list[Pair]
     return out
 
 
+def _tidy(value: Decimal) -> Decimal:
+    """The same number without trailing zeros (and never in exponent form)."""
+    if value == value.to_integral_value():
+        return value.quantize(Decimal(1))
+    return value.normalize()
+
+
 def _merge_pairs(item: ShoppingListItem, pairs: list[Pair]) -> None:
     """Fold pairs into the item: same unit adds up, another unit is its own row."""
     next_seq = max((a.seq for a in item.amounts), default=0) + 1
     for amount, unit in pairs:
         row = next((a for a in item.amounts if a.unit == unit), None)
         if row is not None:
-            row.amount = row.amount + amount
+            row.amount = _tidy(row.amount + amount)
         else:
-            item.amounts.append(ShoppingListItemQty(seq=next_seq, amount=amount, unit=unit))
+            item.amounts.append(ShoppingListItemQty(seq=next_seq, amount=_tidy(amount), unit=unit))
             next_seq += 1
 
 
 def _replace_pairs(item: ShoppingListItem, pairs: list[Pair]) -> None:
     item.amounts.clear()
     for seq, (amount, unit) in enumerate(pairs, start=1):
-        item.amounts.append(ShoppingListItemQty(seq=seq, amount=amount, unit=unit))
+        item.amounts.append(ShoppingListItemQty(seq=seq, amount=_tidy(amount), unit=unit))
 
 
 # --- items --------------------------------------------------------------------------------
@@ -314,7 +320,10 @@ async def update_item(
     if "min_quality" in fields and payload.min_quality is not None and item.kind == "product":
         raise ApiError(422, "min_quality_on_product", "min_quality applies to ingredient items.")
     if "amounts" in fields and payload.amounts is not None:
-        _replace_pairs(item, _check_units(payload.amounts, await load_units(db)))
+        pairs = _check_units(payload.amounts, await load_units(db))
+        item.amounts.clear()
+        await db.flush()  # the old rows go before the new ones take their seq
+        _replace_pairs(item, pairs)
     if "note" in fields:
         item.note = payload.note
     if "deferrable" in fields and payload.deferrable is not None:
@@ -492,7 +501,10 @@ async def add_from_recipe(
     added = merged = 0
     skipped: list[SkippedLine] = []
     for line in lines:
-        if line.negligible or line.resolution in ("negligible", "ignored"):
+        # Negligible by name (salt, water) or not an ingredient: not on the list.
+        # The indexer also flags a text or absent quantity ``negligible``; such a
+        # line still adds its item, with the text as the note (17, 4A).
+        if line.resolution in ("negligible", "ignored"):
             continue
         product = None
         pin = pins.get(line.name_norm)
@@ -515,6 +527,7 @@ async def add_from_recipe(
                 added_by=user.id,
                 added_from="recipe",
                 recipe_id=recipe_id,
+                amounts=[],  # initialised, so a later merge never lazy-loads it
             )
             db.add(item)
             existing[key] = item
