@@ -20,14 +20,14 @@ Reference data (ingredients, products, vendors) is the foundation under the loop
 |---|---|---|---|
 | Home | now | — | Unified inbox plus summaries; the first-run checklist until the first committed purchase (T11). |
 | Cook | 3 (approved 2026-10-09) | Recipes | One sub-page: the recipes list carries the costing figures and filters, and the resolve page is reached from the inbox (07, 3E). Shown once migration 0042 is applied. |
-| Plan | 4 | Shopping list, Trip planner, Compare prices | Dormant until Phase 4 is approved. |
-| Shop | 2 (exists) | Purchases, Receipts, Shelf prices, Compare prices | Compare lives here until Phase 4 moves it to Plan (D7). |
+| Plan | 4 (approved 2026-10-12) | Shopping list, Trips, Compare prices | Shown once migration 0050, the 4A migration, is applied (17; Phase 4 review, 2026-10-12). Compare prices moves here from Shop with 4A (D7, L4). |
+| Shop | 2 (exists) | Purchases, Receipts, Shelf prices, Compare prices | Compare lives here until 4A moves it to Plan (D7, L4); `/shop/compare` then redirects. |
 | Stock | 5 | Pantry, Par levels | Dormant until Phase 5 is approved. |
 | Catalog | 1 (exists) | Ingredients, Products, Vendors | Footer entry. The ingredient detail page is the hub. Vendors has a list/map toggle (T9). |
 | Settings | exists | Kitchens, Users, API tokens, Capture, System | System holds health detail and "log out everywhere" (T10). |
 
-**Phase gating.** The sidebar shows only sections whose phase is built. Today those are Home, Shop and Catalog, plus Settings; Cook joins them, before Shop, once the Phase 3 migration is applied (Phase 3 review, 2026-10-09).
-- **Source:** the authenticated `GET /api/v1/health` response carries a `features` list derived from the migration head (S4). It carries that list even when the response status is 503. The list is `catalog` (0003), `shop` (0005) and `cook` (0042, the migration that creates the recipe tables).
+**Phase gating.** The sidebar shows only sections whose phase is built. Today those are Home, Shop and Catalog, plus Settings; Cook joins them, before Shop, once the Phase 3 migration is applied (Phase 3 review, 2026-10-09), and Plan joins between Cook and Shop once the 4A migration is applied (Phase 4 review, 2026-10-12), so the order is Home, Cook, Plan, Shop.
+- **Source:** the authenticated `GET /api/v1/health` response carries a `features` list derived from the migration head (S4). It carries that list even when the response status is 503. The list is `catalog` (0003), `shop` (0005), `cook` (0042, the migration that creates the recipe tables) and `plan` (0050, the 4A migration that creates the shopping-list tables; 17).
 - **While loading (D11):** the navigation renders the Phase 1–2 sections at once, and also while `/health` is pending or failing. `features` can only add sections, never remove them. A section added later takes its fixed place in the order above.
 - **No placeholders:** empty sections are never shown.
 
@@ -46,7 +46,7 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/shop/receipts` | `/receipts` |
 | `/shop/receipts/identify` | `/to-identify` (reached from the inbox; no nav item, T6) |
 | `/shop/shelf-prices` | `/prices/new` |
-| `/shop/compare` | `/compare` (D7; moves to `/plan/compare` in Phase 4) |
+| `/shop/compare` | `/compare` (D7); itself a redirect to `/plan/compare` once 4A is built |
 | `/catalog/ingredients`, `/catalog/ingredients/:id` | `/ingredients`, `/ingredients/:id` |
 | `/catalog/ingredients/link` | new in 1G (reached from the inbox and the Ingredients list; no nav item) |
 | `/catalog/products`, `/catalog/products/:id` | `/products`, `/products/:id` |
@@ -62,8 +62,12 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/cook/recipes`, `/cook/recipes/:id` | new in Phase 3 (07, 3E; Phase 3 review, 2026-10-09): the recipes list and the recipe page |
 | `/cook/recipes/resolve` | new in Phase 3: the recipe-names inbox row's Resolve (no nav item) |
 | `/cook/costing` | redirects to `/cook/recipes?completeness=incomplete`, the list filtered to recipes whose cost is not yet complete; it was reserved as a page and became a filter |
+| `/plan/list` | new in 4A (17; Phase 4 review, 2026-10-12): the kitchen's open list; `?list_id=` opens an archived one |
+| `/plan/trips`, `/plan/trips/:id` | new in 4B: the trips list and the trip page with its three variants |
+| `/plan/trips/:id/stop/:seq` | new in 4C: the at-the-store screen for one stop of the chosen variant (no nav item) |
+| `/plan/compare` | `/shop/compare` and `/compare` (D7, L4; both redirect with their parameters, built with 4A) |
 
-Dormant routes, built with their phase: `/plan/list`, `/plan/trips`, `/plan/trips/:id`, `/plan/compare` (Phase 4); `/stock/pantry`, `/stock/par` (Phase 5).
+Dormant routes, built with their phase: `/stock/pantry`, `/stock/par` (Phase 5).
 
 The vendor map is the Vendors page's map view (T9). It keeps every current map function, including dropping a pin to create a vendor and its location in one act. That is the only way to create a location, and it is the first step of the first-run path (issue #15). The Phase 4 trip planner reuses the same map component.
 
@@ -74,7 +78,7 @@ The sidebar, top to bottom:
 1. The wordmark "Kitchen ERP" in Fraunces.
 2. **Search** (⌘K / Ctrl+K) and **Capture** side by side.
 3. Sections. Only the active section expands to show its sub-pages. Home shows the inbox count badge.
-4. Footer: Catalog, Settings, the signed-in user, and the build line with its status dot.
+4. Footer: Catalog, Settings, the current kitchen (the switcher, shown only with two or more kitchens; built with 4A, Phase 4 review, 2026-10-12, L7), the signed-in user, and the build line with its status dot.
 
 "New purchase" is not a nav item; it lives under Capture and as the primary action on Shop pages.
 
@@ -83,17 +87,20 @@ The sidebar, top to bottom:
 - It stays hidden until the first inbox response arrives.
 - On an inbox error it shows a neutral "!" labelled "Couldn't check what needs you" (D6).
 
-## Kitchen scoping (deferred)
+## Kitchen scoping (Phase 4, approved 2026-10-12)
 
-The kitchen switcher and the per-user current-kitchen preference are deferred to Phase 4 (S3; see TODOS.md). In Phases 1 and 2, the only kitchen-scoped features take an explicit kitchen chosen in context:
-- Find nearby, which is OpenStreetMap adoption. It is pre-set to the only kitchen when there is one.
-- Choosing the nearest kitchen when creating a location.
+The kitchen switcher and the per-user current-kitchen preference were deferred on 2026-09-25 (S3) and return with sub-phase 4A (17; Phase 4 review, 2026-10-12, L3 and L7). The current kitchen is a per-user server setting (`GET`/`PUT /api/v1/me/settings`), so it follows a person across devices; the client sends it on scoped calls and never relies on the server to remember it. The switcher is a neutral chip in the sidebar footer, above the signed-in user, and the top row of the More sheet on phones; it is shown only with two or more kitchens, and the palette offers "Switch to <kitchen>" for each other kitchen. The List tab's header names the kitchen.
 
-Kitchen scoping is designed when the switcher returns. Two rules stand now:
-- Scoped endpoints take an explicit `home_base_id`; the server never infers scope from a hidden session value.
-- Switching kitchens never hides price data recorded at the other kitchen's vendors.
+What is scoped (L3):
+- Shopping lists and trip plans belong to a kitchen and take an explicit `home_base_id`. Each kitchen-scoped panel carries the kitchen's name as a neutral tag.
+- Compare prices and the recipe cost table get an optional kitchen filter, off by default, which restricts prices to that kitchen's vendor locations. The per-kitchen cost view is computed on demand and never snapshotted; `recipe_cost_snapshot` stays household-wide (`07`, 3D).
+- Find nearby keeps its own kitchen picker, pre-set to the current kitchen; choosing the nearest kitchen when creating a location is unchanged; Capture's no-geolocation fallback keeps the remembered location.
 
-Recipe costing is household-wide: every qualifying price counts, whichever kitchen's vendors recorded it (Phase 3 review, 2026-10-09, settling T8). Phase 4 adds a per-kitchen filter to the cost table with the kitchen switcher.
+Everything else stays household-wide. Two rules stand:
+- Scoped endpoints take an explicit `home_base_id`; the server never infers scope from a hidden session value. `GET /plan/list` without one is a 422.
+- Switching kitchens never hides price data recorded at the other kitchen's vendors: purchases, observations, offers and costing are household-wide, and switching changes no figure on a page without the filter.
+
+Recipe costing is household-wide: every qualifying price counts, whichever kitchen's vendors recorded it (Phase 3 review, 2026-10-09, settling T8); the Phase 4 filter is the one exception, and it is explicit.
 
 ## Search
 
@@ -102,7 +109,7 @@ A command palette opened by the Search button or ⌘K, and the Search tab on pho
 - It searches ingredients, products (including exact barcode), vendors and, once Cook is built, recipes through one endpoint, `GET /api/v1/search?q=`. `q` is 1–200 characters, and the endpoint returns typed results with a display label and route. It reuses the existing trigram ranking.
 - Results are grouped by type, ingredients first, keyboard-navigable, and open the item's page. A group with no hits is hidden. Recipes are a group of their own, after Vendors, matched on title and path, each row showing the title with its dirty or parse-error badge (Phase 3 review, 2026-10-09).
 - Before typing, it shows the last five opened results remembered on this device in localStorage (G15), or the hint "Type a product, ingredient, vendor or barcode." Storage failures degrade quietly to the hint.
-- Actions and pages are searchable too (UI-2.9): things to do ("New purchase", "Log a shelf price", "Add product") and pages to go to ("Compare prices", "Needs a bridge", Settings pages), matched in the app by name and synonyms and shown as an Actions group after the search groups. Only actions whose section is built appear, from the same `features` list the navigation uses, and admin pages appear only to admins. An "Add …" action opens its page with `?new=1`, which opens the create drawer and is then removed from the address. Actions are never remembered as recents. Before typing, four common actions follow the recents or the hint. "Switch to <kitchen>" waits for the kitchen switcher (Phase 4). With Cook built, the pages "Recipes" and "Resolve recipe names" and the action "Rescan recipes" join the Actions group.
+- Actions and pages are searchable too (UI-2.9): things to do ("New purchase", "Log a shelf price", "Add product") and pages to go to ("Compare prices", "Needs a bridge", Settings pages), matched in the app by name and synonyms and shown as an Actions group after the search groups. Only actions whose section is built appear, from the same `features` list the navigation uses, and admin pages appear only to admins. An "Add …" action opens its page with `?new=1`, which opens the create drawer and is then removed from the address. Actions are never remembered as recents. Before typing, four common actions follow the recents or the hint. With Cook built, the pages "Recipes" and "Resolve recipe names" and the action "Rescan recipes" join the Actions group. With Plan built (`plan` in `features`; Phase 4 review, 2026-10-12), "Switch to <kitchen>" for each other kitchen, the pages "Shopping list" and "Trips", the action "Plan a trip" join it, and "Compare prices" opens `/plan/compare`.
 
 ## Capture
 
@@ -150,6 +157,8 @@ API (T5): `GET /api/v1/inbox`.
 
 The separate "Needs a bridge" and "To identify" nav items are removed; their pages remain, reached from inbox actions.
 
+Phase 4 adds no inbox kind (17; Phase 4 review, 2026-10-12): a list, a claim, a plan or a stop is work a person chose, not something the system could not finish, so nothing in Plan feeds Needs you.
+
 ## Phone and tablet
 
 Below the `lg` breakpoint (1024px), the sidebar is replaced by a bottom tab bar (G19):
@@ -157,9 +166,9 @@ Below the `lg` breakpoint (1024px), the sidebar is replaced by a bottom tab bar 
 | Tab | Contains |
 |---|---|
 | Home | Wordmark, inbox, recent purchases (G13) |
-| Purchases | Shop → Purchases. Renamed "List" when Phase 4 adds shopping lists (T18). |
+| Purchases → List | Shop → Purchases until `plan` is a feature; then "List", Plan → Shopping list, with the kitchen's name in its header (T18; Phase 4 review, 2026-10-12, L6 and L7), and Purchases moves under More. |
 | Capture (centre, raised) | The capture sheet |
 | Search | The search palette as a full screen |
-| More | Cook (once built), Shop's other pages, Catalog, Settings; Stock once built |
+| More | The kitchen switcher at the top of the sheet, with two or more kitchens (L7); then Cook (once built), Plan's other pages (Trips, Compare prices) and Purchases once Plan is built, Shop's other pages, Catalog, Settings; Stock once built |
 
 Sit-down tasks (recipes, pantry management, catalog editing) live under More. In-store tasks are one thumb away. Only the shell (app shell, navigation, tab bar) changes at `lg`; page layouts keep their own breakpoints.
