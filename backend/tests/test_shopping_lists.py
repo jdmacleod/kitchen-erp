@@ -294,7 +294,8 @@ async def test_add_patch_and_remove_an_item(admin_client: httpx.AsyncClient, kit
     r = await admin_client.delete(f"{ITEMS}/{item['id']}")
     assert r.status_code == 204
     assert (await get_list(admin_client, kitchen))["unchecked"] == []
-    assert (await admin_client.delete(f"{ITEMS}/{item['id']}")).status_code == 404
+    gone = await admin_client.delete(f"{ITEMS}/{item['id']}")
+    assert gone.status_code == 404
     assert (
         await admin_client.patch(f"{ITEMS}/{item['id']}", json={"updated_at": item["updated_at"]})
     ).status_code == 404
@@ -394,8 +395,10 @@ async def test_claim_shows_the_name_and_a_check_by_another_user_clears_it(
     assert (
         r.status_code == 200 and r.json()["checked_at"] is None and r.json()["checked_by"] is None
     )
-    assert (await admin_client.delete(f"{ITEMS}/{item['id']}/check")).status_code == 200
-    assert (await admin_client.delete(f"{ITEMS}/{item['id']}/claim")).status_code == 200
+    uncheck_again = await admin_client.delete(f"{ITEMS}/{item['id']}/check")
+    assert uncheck_again.status_code == 200
+    unclaim_again = await admin_client.delete(f"{ITEMS}/{item['id']}/claim")
+    assert unclaim_again.status_code == 200
     # A later claim replaces the earlier one: it is only a display.
     await admin_client.post(f"{ITEMS}/{item['id']}/claim")
     r = await member_client.post(f"{ITEMS}/{item['id']}/claim")
