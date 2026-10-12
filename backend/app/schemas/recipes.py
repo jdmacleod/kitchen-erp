@@ -386,6 +386,9 @@ class RecipeCostOut(ApiModel):
     head_commit: str | None
     provisional: bool
     computed_at: datetime
+    # The kitchen whose locations' prices alone were counted (17, 4A, L3): set
+    # only on the on-demand view, which is never snapshotted; null otherwise.
+    home_base_id: uuid.UUID | None = None
     stale_after_days: int
     totals: CostTotals
     completeness: CostCompleteness

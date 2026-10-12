@@ -1728,6 +1728,18 @@
             "title": "Exclude Stale",
             "type": "boolean"
           },
+          "home_base_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Base Id"
+          },
           "include_posted": {
             "default": false,
             "title": "Include Posted",
@@ -13244,6 +13256,18 @@
               }
             ],
             "title": "Head Commit"
+          },
+          "home_base_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Base Id"
           },
           "id": {
             "format": "uuid",
@@ -25260,7 +25284,7 @@
     },
     "/api/v1/recipes/{recipe_id}/cost": {
       "get": {
-        "description": "The recipe's cost under a basis, computed now when its current content has none.\n\n``window_days`` applies to ``average`` only and defaults to the stale window.",
+        "description": "The recipe's cost under a basis, computed now when its current content has none.\n\n``window_days`` applies to ``average`` only and defaults to the stale window.\n``home_base_id`` asks for the per-kitchen view (17, 4A, L3): prices at that\nkitchen's locations only, computed on demand and never snapshotted, so the\nstored snapshot and the history stand; an unknown kitchen is a 422.",
         "operationId": "get_cost_api_v1_recipes__recipe_id__cost_get",
         "parameters": [
           {
@@ -25322,6 +25346,23 @@
                 }
               ],
               "title": "Min Quality"
+            }
+          },
+          {
+            "in": "query",
+            "name": "home_base_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Home Base Id"
             }
           }
         ],

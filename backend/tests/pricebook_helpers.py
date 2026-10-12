@@ -16,8 +16,9 @@ async def make_location(
     price_scope: str = "location",
     coords=SYNTH[0],
     vendor_id: str | None = None,
+    **extra,
 ) -> dict:
-    body = {"name": name, "lat": coords[0], "lon": coords[1]}
+    body = {"name": name, "lat": coords[0], "lon": coords[1], **extra}
     if vendor_id:
         body["vendor_id"] = vendor_id
     else:

@@ -142,6 +142,8 @@ class CompareIn(ApiModel):
     include_posted: bool = False
     # Keep all offers, only store brands, or only national and unknown brands (2R-3).
     brand_scope: BrandScope = "all"
+    # Only prices at this kitchen's locations (17, 4A, L3); unset, every kitchen's.
+    home_base_id: uuid.UUID | None = None
 
 
 class CompareCell(ApiModel):

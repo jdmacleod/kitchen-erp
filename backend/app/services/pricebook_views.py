@@ -250,8 +250,13 @@ async def compare(
     exclude_promo: bool = False,
     include_posted: bool = False,
     brand_scope: BrandScope = "all",
+    home_base_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
-    """Vendors as columns, ingredients as rows, best qualifying normalized price per cell."""
+    """Vendors as columns, ingredients as rows, best qualifying normalized price per cell.
+
+    ``home_base_id`` restricts the offers to prices applying at that kitchen's
+    locations (17, 4A, ruling L3); unset, every location counts, as before.
+    """
     if not ingredient_ids:
         return {"vendors": [], "rows": []}
     view = _view("offer_latest_regular" if exclude_promo else "offer_latest", include_posted)
@@ -284,6 +289,8 @@ async def compare(
                   AND (NOT CAST(:exclude_stale AS boolean) OR NOT (
                         (CAST(:now AS timestamptz) - ol.observed_at)
                             > make_interval(days => {_STALE_SQL})))
+                  AND (CAST(:home_base_id AS uuid) IS NULL
+                       OR vl.home_base_id = CAST(:home_base_id AS uuid))
             )
             SELECT DISTINCT ON (ingredient_id, vendor_id) *
             FROM offers
@@ -295,6 +302,7 @@ async def compare(
             min_quality=min_quality,
             exclude_stale=exclude_stale,
             brand_scope=brand_scope,
+            home_base_id=home_base_id,
         ),
     )
     masses = await unit_display.mass_units(db, ingredient_ids)
