@@ -11,6 +11,7 @@ from app.api import (
     ingredient_link,
     lookups,
     media,
+    plan,
     product_captures,
     product_photos,
     product_proposals,
@@ -36,6 +37,7 @@ router.include_router(brands.router)
 router.include_router(purchases.router)
 router.include_router(receipts.router)
 router.include_router(recipes.router)
+router.include_router(plan.router)
 router.include_router(inbox.router)
 router.include_router(search.router)
 router.include_router(vendor_suggestions.router)

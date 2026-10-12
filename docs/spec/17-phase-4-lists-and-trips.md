@@ -165,10 +165,16 @@ product item for the pinned product; any other resolved line adds an ingredient
 item with `added_from = recipe`. Quantities aggregate with `convert` in the
 ingredient's context: a quantity that converts merges into the one canonical
 amount row of an existing item for the same ingredient; a `ConversionFailure`
-keeps the quantity as its own (amount, unit) row, as `06` settled; a range
-takes its high; a text or absent quantity adds the item with the text as its
-note and no amount row. Unmapped lines are skipped and counted in the response,
-which links to the resolve page. The same recipe added twice merges.
+keeps the quantity as its own (amount, unit) row, as `06` settled, unless its
+unit is a measure label rather than a unit code (`sprigs`, `cloves`), when the
+quantity joins the item's note instead, because `shopping_list_item_qty.unit`
+is a foreign key to `unit.code` (package 1, 2026-10-12); a range takes its
+high; a text or absent quantity adds the item with the text as its note and no
+amount row. Unmapped lines are skipped and counted in the response, which links
+to the resolve page. A second add of a recipe that still has unchecked items on
+the open list changes nothing and says so (`already_on_list`), unless the call
+sends `replace: true`, which removes that recipe's unchecked items first and
+adds the lines again at the new scale (package 1, 2026-10-12).
 
 **The switcher and the tag.** The sidebar footer in `components/Nav.tsx` gains
 the current kitchen above the user line, a neutral chip with a menu of the
