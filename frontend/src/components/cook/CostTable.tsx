@@ -91,7 +91,7 @@ const columns = "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_m
  * (criterion 31). At 390px each line is a block and the table never scrolls
  * sideways (UI-7.18).
  */
-export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }) {
+export function CostTable({ cost, recipe, locationIds = null }: { cost: RecipeCost; recipe: Recipe; locationIds?: ReadonlySet<string> | null }) {
   const table = useRef<HTMLDivElement>(null);
   const pins = new Map(recipe.pins.map((p) => [p.name_norm, p]));
 
@@ -135,7 +135,15 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
         </div>
         <div role="rowgroup" className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {cost.lines.map((line) => (
-            <CostRow key={line.id} line={line} staleAfterDays={cost.stale_after_days} recipeId={recipe.id} pin={pins.get(line.line.name_norm) ?? null} focusNext={focusNext} />
+            <CostRow
+              key={line.id}
+              line={line}
+              staleAfterDays={cost.stale_after_days}
+              recipeId={recipe.id}
+              pin={pins.get(line.line.name_norm) ?? null}
+              focusNext={focusNext}
+              elsewhere={locationIds !== null && line.price?.location_id !== null && line.price?.location_id !== undefined && !locationIds.has(line.price.location_id)}
+            />
           ))}
         </div>
       </div>
@@ -152,9 +160,11 @@ interface RowProps {
   recipeId: string;
   pin: RecipePin | null;
   focusNext: (lineId: string, selector: string) => void;
+  /** With the kitchen filter on: the price used is at another kitchen's store (17, 4A). */
+  elsewhere?: boolean;
 }
 
-function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
+function CostRow({ line, staleAfterDays, recipeId, pin, focusNext, elsewhere = false }: RowProps) {
   const ingredient = line.line;
   const price = line.price;
   const packs = line.packs && !isZero(line.packs) ? `${stripZeros(line.packs)}${line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : ""} ${line.packs === "1" ? "pack" : "packs"}` : null;
@@ -210,6 +220,11 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
             <span className={`block text-xs ${muted}`}>
               {[price.product_name, price.vendor_name ?? price.location_name, price.observed_at ? formatDate(price.observed_at) : null].filter(Boolean).join(" · ")}
             </span>
+            {elsewhere ? (
+              <span className={`block text-xs ${squash}`} data-testid="priced-elsewhere">
+                at another kitchen&apos;s store
+              </span>
+            ) : null}
           </>
         ) : (
           <RowWords line={line} />
