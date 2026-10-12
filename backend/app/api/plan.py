@@ -98,7 +98,9 @@ async def add_from_recipe(
     if guard.replay is not None:
         return guard.replay
     lst = await shopping_lists.open_list(db, payload.home_base_id)
-    out = await shopping_lists.add_from_recipe(db, lst, user, payload.recipe_id, payload.scale)
+    out = await shopping_lists.add_from_recipe(
+        db, lst, user, payload.recipe_id, payload.scale, payload.replace
+    )
     return await guard.commit(200, out.model_dump(mode="json"))
 
 

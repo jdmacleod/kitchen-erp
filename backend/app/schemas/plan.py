@@ -170,6 +170,8 @@ class FromRecipeIn(ApiModel):
     home_base_id: uuid.UUID
     recipe_id: uuid.UUID
     scale: Annotated[Decimal, Field(gt=0, le=100)] = Decimal(1)
+    # Remove the recipe's unchecked items first and add its lines again at this scale.
+    replace: bool = False
 
 
 class SkippedLine(ApiModel):
@@ -182,6 +184,10 @@ class FromRecipeOut(ApiModel):
     added: int  # items created
     merged: int  # lines folded into an item already on the list
     skipped: list[SkippedLine]
+    # The recipe already had unchecked items on the list and nothing was changed
+    # (criterion 4: "again, nothing changes"); ``existing_items`` counts them.
+    already_on_list: bool
+    existing_items: int
 
 
 class ArchiveIn(ApiModel):

@@ -459,19 +459,36 @@ async def add_from_recipe(
     user: AppUser,
     recipe_id: uuid.UUID,
     scale: Decimal = Decimal(1),
+    replace: bool = False,
 ) -> FromRecipeOut:
     """Add the recipe's non-negligible lines, scaled; see ``line_quantity`` for amounts.
 
     A pinned line adds a product item for the pinned product; any other resolved
     line adds an ingredient item. A line whose target is already on the open
     list, unchecked, folds into that item. Unmatched names are skipped and
-    reported.
+    reported. A recipe that still has unchecked items on the list is not added
+    again: nothing changes and the response says so, unless ``replace`` removes
+    those items first and adds the lines again at this scale.
     """
     if lst.status != "open":
         raise ApiError(409, "list_archived", "This list is archived.")
     recipe = await db.get(Recipe, recipe_id)
     if recipe is None:
         raise ApiError(404, "not_found", "No such recipe.")
+    own = [i for i in await _items(db, lst.id) if i.recipe_id == recipe_id and i.checked_at is None]
+    if own and not replace:
+        return FromRecipeOut(
+            list=await list_out(db, lst),
+            added=0,
+            merged=0,
+            skipped=[],
+            already_on_list=True,
+            existing_items=len(own),
+        )
+    for item in own:
+        await db.delete(item)
+    if own:
+        await db.flush()
     lines = (
         await db.execute(
             select(RecipeIngredient)
@@ -537,7 +554,14 @@ async def add_from_recipe(
         _merge_pairs(item, quantity.pairs)
         _append_note(item, quantity.note)
     await db.commit()
-    return FromRecipeOut(list=await list_out(db, lst), added=added, merged=merged, skipped=skipped)
+    return FromRecipeOut(
+        list=await list_out(db, lst),
+        added=added,
+        merged=merged,
+        skipped=skipped,
+        already_on_list=False,
+        existing_items=len(own),
+    )
 
 
 # --- archiving --------------------------------------------------------------------------------

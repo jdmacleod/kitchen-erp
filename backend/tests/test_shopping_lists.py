@@ -90,10 +90,12 @@ async def indexed(client: httpx.AsyncClient, repo: TempRepo, path: str, text: st
     return {i["path"]: i for i in (await client.get("/api/v1/recipes")).json()["items"]}[path]
 
 
-async def from_recipe(client: httpx.AsyncClient, kitchen: dict, recipe_id: str, scale="1") -> dict:
+async def from_recipe(
+    client: httpx.AsyncClient, kitchen: dict, recipe_id: str, scale="1", **extra
+) -> dict:
     r = await client.post(
         f"{ITEMS}/from-recipe",
-        json={"home_base_id": kitchen["id"], "recipe_id": recipe_id, "scale": scale},
+        json={"home_base_id": kitchen["id"], "recipe_id": recipe_id, "scale": scale, **extra},
     )
     assert r.status_code == 200, r.text
     return r.json()
@@ -450,6 +452,7 @@ async def test_a_recipe_at_scale_2_aggregates_as_06_settled(
     out = await from_recipe(admin_client, kitchen, recipe["id"], scale="2")
     assert out["skipped"] == [{"raw_name": "dragon root", "reason": "unmatched"}]
     assert out["added"] == 4 and out["merged"] == 4  # barley ×3 more, thyme ×1 more
+    assert out["already_on_list"] is False and out["existing_items"] == 0
     items = {
         (i["kind"], (i["ingredient"] or i["product"])["name"]): i for i in out["list"]["unchecked"]
     }
@@ -477,14 +480,37 @@ async def test_a_recipe_at_scale_2_aggregates_as_06_settled(
     assert amounts(cumin) == [("2", "tsp")]
     assert ("ingredient", "Salt") not in items  # negligible by name: not on the list
 
-    # Again: the same items, folded in once more; nothing new appears.
+    # Again: nothing changes; the response says the recipe is already on the list.
     again = await from_recipe(admin_client, kitchen, recipe["id"], scale="2")
-    assert again["added"] == 0 and again["merged"] == 8
-    assert len(again["list"]["unchecked"]) == 4
-    barley = next(i for i in again["list"]["unchecked"] if i["id"] == barley["id"])
-    assert amounts(barley) == [(format((grams * 2).normalize(), "f"), "g"), ("8", "each")]
-    thyme = next(i for i in again["list"]["unchecked"] if i["id"] == thyme["id"])
-    assert thyme["note"] == "a few sprigs; 4 sprigs"
+    assert again["already_on_list"] is True and again["existing_items"] == 4
+    assert again["added"] == 0 and again["merged"] == 0 and again["skipped"] == []
+    assert again["list"]["unchecked"] == out["list"]["unchecked"]
+
+    # Replace: the recipe's unchecked items go and come back at the new scale.
+    before = {i["id"] for i in out["list"]["unchecked"]}
+    replaced = await from_recipe(admin_client, kitchen, recipe["id"], scale="1", replace=True)
+    assert replaced["already_on_list"] is False and replaced["existing_items"] == 4
+    assert replaced["added"] == 4 and replaced["merged"] == 4
+    items = {
+        (i["kind"], (i["ingredient"] or i["product"])["name"]): i
+        for i in replaced["list"]["unchecked"]
+    }
+    assert len(items) == 4 and not ({i["id"] for i in items.values()} & before)
+    assert amounts(items[("ingredient", "Barley")]) == [
+        (format((grams / 2).normalize(), "f"), "g"),
+        ("2", "each"),
+    ]
+    assert amounts(items[("product", "Dates box")]) == [("4", "each")]
+    assert items[("ingredient", "Thyme")]["note"] == "a few sprigs; 2 sprigs"
+    # A checked item of the recipe is done with: it neither blocks nor is replaced.
+    barley_id = items[("ingredient", "Barley")]["id"]
+    await admin_client.post(f"{ITEMS}/{barley_id}/check")
+    for other in items.values():
+        if other["id"] != barley_id:
+            await admin_client.post(f"{ITEMS}/{other['id']}/check")
+    once_more = await from_recipe(admin_client, kitchen, recipe["id"], scale="1")
+    assert once_more["already_on_list"] is False and once_more["added"] == 4
+    assert len(once_more["list"]["checked"]) == 4
 
 
 async def test_a_recipe_merges_into_an_item_already_on_the_list(

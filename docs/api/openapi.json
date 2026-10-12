@@ -2963,6 +2963,11 @@
             "title": "Recipe Id",
             "type": "string"
           },
+          "replace": {
+            "default": false,
+            "title": "Replace",
+            "type": "boolean"
+          },
           "scale": {
             "anyOf": [
               {
@@ -2993,6 +2998,14 @@
             "title": "Added",
             "type": "integer"
           },
+          "already_on_list": {
+            "title": "Already On List",
+            "type": "boolean"
+          },
+          "existing_items": {
+            "title": "Existing Items",
+            "type": "integer"
+          },
           "list": {
             "$ref": "#/components/schemas/ListOut"
           },
@@ -3012,7 +3025,9 @@
           "list",
           "added",
           "merged",
-          "skipped"
+          "skipped",
+          "already_on_list",
+          "existing_items"
         ],
         "title": "FromRecipeOut",
         "type": "object"
