@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type RefObject } from "react";
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { productTitle, type IngredientSummary, type SearchHit } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { useAddItem, type ItemCreateInput, type ShoppingItem } from "../../api/shoppingList";
@@ -42,7 +42,14 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
   const [noteOpen, setNoteOpen] = useState(false);
   const [note, setNote] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
+  const [focusTick, setFocusTick] = useState(0);
   const formId = compact ? "add-list-item-compact" : "add-list-item";
+
+  // After an add the picker remounts empty; focus goes back into it once it has,
+  // so the next item can be typed at once (UI-8.3).
+  useEffect(() => {
+    if (focusTick > 0) ref.current?.focus();
+  }, [focusTick, ref]);
 
   const reset = () => {
     setTarget(null);
@@ -51,12 +58,10 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
     setMinQuality("");
     setNote("");
     setInvalid(null);
-    // Focus stays in the picker so the next item can be typed at once.
-    queueMicrotask(() => ref.current?.focus());
+    setFocusTick((t) => t + 1);
   };
 
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submit = (target: Target | null) => {
     if (!target) {
       setInvalid(byProduct ? "Choose a product." : "Choose an ingredient.");
       return;
@@ -85,13 +90,24 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
       },
     });
   };
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    submit(target);
+  };
 
+  // Choosing a name is the whole entry in the one-field form, so it adds at once;
+  // in the full row, focus moves on to the amount so Enter there adds.
+  const chosen = (next: Target) => {
+    setTarget(next);
+    if (compact) submit(next);
+    else queueMicrotask(() => document.getElementById(`${formId}-amount-0`)?.focus());
+  };
   const onIngredient = (choice: IngredientChoice | null) => {
     if (!choice) return setTarget(null);
     if (choice.kind !== "existing") return;
-    setTarget({ kind: "ingredient", id: choice.ingredient.id, ingredient: choice.ingredient });
+    chosen({ kind: "ingredient", id: choice.ingredient.id, ingredient: choice.ingredient });
   };
-  const onProduct = (hit: SearchHit) => setTarget({ kind: "product", id: hit.id, name: productTitle(hit) });
+  const onProduct = (hit: SearchHit) => chosen({ kind: "product", id: hit.id, name: productTitle(hit) });
 
   const pickerValue: IngredientChoice | null = target?.kind === "ingredient" ? { kind: "existing", ingredient: target.ingredient } : null;
 

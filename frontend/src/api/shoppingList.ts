@@ -309,11 +309,18 @@ interface CheckVars {
   listKey: ReturnType<typeof listKeys.list>;
 }
 
+export interface ToggleCallbacks {
+  onSuccess?: (item: ShoppingItem) => void;
+  onError?: (e: unknown) => void;
+}
+
 /**
  * Check or uncheck, moving the row between the groups at once and putting it
- * back if the server refuses; the list is refetched either way.
+ * back if the server refuses; the list is refetched either way. The callbacks
+ * are hook options, not `mutate` options: the row that asked unmounts as it
+ * moves, and TanStack Query drops a `mutate` callback with its observer.
  */
-function useToggleCheck(checked: boolean) {
+function useToggleCheck(checked: boolean, callbacks: ToggleCallbacks = {}) {
   const client = useQueryClient();
   const me = useMe();
   return useMutation({
@@ -338,19 +345,21 @@ function useToggleCheck(checked: boolean) {
       }
       return { previous };
     },
-    onError: (_e, { listKey }, context) => {
+    onSuccess: (item) => callbacks.onSuccess?.(item),
+    onError: (e, { listKey }, context) => {
       if (context?.previous) client.setQueryData(listKey, context.previous);
+      callbacks.onError?.(e);
     },
     onSettled: () => void client.invalidateQueries({ queryKey: listKeys.all }),
   });
 }
 
-export function useCheckItem() {
-  return useToggleCheck(true);
+export function useCheckItem(callbacks?: ToggleCallbacks) {
+  return useToggleCheck(true, callbacks);
 }
 
-export function useUncheckItem() {
-  return useToggleCheck(false);
+export function useUncheckItem(callbacks?: ToggleCallbacks) {
+  return useToggleCheck(false, callbacks);
 }
 
 export function useArchiveList() {

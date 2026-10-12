@@ -34,8 +34,9 @@ interface ListItemRowProps {
  */
 export function ListItemRow({ item, listKey, readOnly = false, onToggled, onError, onNotice }: ListItemRowProps) {
   const me = useMe();
-  const check = useCheckItem();
-  const uncheck = useUncheckItem();
+  // Hook-level callbacks: this row unmounts as it moves to the other group.
+  const check = useCheckItem({ onSuccess: (saved) => onToggled?.(saved, true), onError });
+  const uncheck = useUncheckItem({ onSuccess: (saved) => onToggled?.(saved, false), onError });
   const remove = useDeleteItem();
   const [more, setMore] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -48,9 +49,8 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
 
   const toggle = () => {
     const vars = { id: item.id, listKey };
-    const options = { onSuccess: () => onToggled?.(item, !checked), onError };
-    if (checked) uncheck.mutate(vars, options);
-    else check.mutate(vars, options);
+    if (checked) uncheck.mutate(vars);
+    else check.mutate(vars);
   };
 
   const doRemove = () => {
