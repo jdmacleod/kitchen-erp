@@ -12,20 +12,24 @@ from __future__ import annotations
 import hashlib
 import time
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.errors import ApiError
+from app.core.logging import get_logger
 from app.ingest import assess
 from app.ingest import reread as proposal_of
+from app.ingest.errors import IngestError, RetryableError
+from app.ingest.llm import LlmClient
 from app.ingest.schemas import ReceiptLines
-from app.ingest.stages import latest_results
+from app.ingest.stages import backoff_seconds, latest_results, read_receipt_lines, receipt_vendor
 from app.models import (
     AppUser,
     IngestJob,
@@ -38,6 +42,8 @@ from app.models.purchases import REREAD_OPEN
 from app.services import recipe_cost_triggers
 from app.services.purchases import ensure_not_voided, get_purchase
 from app.services.review import ReadRow, apply_rows
+
+log = get_logger(__name__)
 
 ADAPTER = "reread"
 ADAPTER_VERSION = "1"
@@ -354,3 +360,160 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
     _decided(reread, user, "applied")
     await db.commit()
     return reread
+
+
+async def request_many(
+    db: AsyncSession, user: AppUser, mode: str, *, since: datetime | None = None
+) -> dict[str, int]:
+    """A re-read for every receipt purchase not voided and with none open, oldest first.
+
+    ``kerp receipts reread``. Re-checks with nothing to change close as
+    ``no_changes``, so only receipts that would change reach the inbox.
+    """
+    stmt = (
+        select(Purchase.id)
+        .join(IngestJob, IngestJob.purchase_id == Purchase.id)
+        .where(Purchase.source == "receipt", Purchase.status != "voided")
+        .order_by(Purchase.purchased_at, Purchase.id)
+    )
+    if since is not None:
+        stmt = stmt.where(Purchase.purchased_at >= since)
+    ids = list((await db.execute(stmt)).scalars())
+    counts = {"ready": 0, "no_changes": 0, "pending": 0, "not_stored": 0, "already_open": 0}
+    for purchase_id in ids:
+        try:
+            made = await request(db, user, purchase_id, mode)
+        except ApiError as exc:
+            await db.rollback()
+            if exc.code == "not_stored":
+                counts["not_stored"] += 1
+            elif exc.code == "reread_open":
+                counts["already_open"] += 1
+            else:
+                raise
+            continue
+        counts[made.status] += 1
+    return counts
+
+
+# --- Read again, in the worker ------------------------------------------------------
+
+
+async def claim_read(db: AsyncSession, locked_by: str) -> LineReread | None:
+    """Lock and mark one Read again as running; None when none is due.
+
+    As a receipt job is claimed: pending and due, or running past the lock
+    timeout (a worker that stopped mid-read).
+    """
+    now = datetime.now(UTC)
+    stale = now - timedelta(seconds=get_settings().ingest_lock_timeout_seconds)
+    reread = (
+        await db.execute(
+            select(LineReread)
+            .where(
+                LineReread.mode == "read",
+                or_(
+                    (LineReread.status == "pending")
+                    & or_(LineReread.next_attempt_at.is_(None), LineReread.next_attempt_at <= now),
+                    (LineReread.status == "running") & (LineReread.locked_at < stale),
+                ),
+            )
+            .order_by(LineReread.next_attempt_at.nulls_first(), LineReread.created_at)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )
+    ).scalar_one_or_none()
+    if reread is None:
+        await db.rollback()
+        return None
+    reread.status = "running"
+    reread.locked_at = now
+    reread.locked_by = locked_by
+    await db.commit()
+    return reread
+
+
+def _unlock(reread: LineReread) -> None:
+    reread.locked_at = None
+    reread.locked_by = None
+
+
+async def _read(db: AsyncSession, reread: LineReread, llm: LlmClient) -> None:
+    """Read the receipt's text again and make the proposal, or say why not."""
+    purchase = await get_purchase(db, reread.purchase_id)
+    if purchase.status == "voided":
+        raise IngestError(code="voided")
+    job = await _job(db, purchase)
+    results = await latest_results(db, job.id)
+    text = ((results["ocr"].output if "ocr" in results else None) or {}).get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise IngestError(code="no_ocr_text")
+    header = (results["header"].output if "header" in results else None) or {}
+    vendor_id, vendor_name = receipt_vendor(header)
+    lines_read = await read_receipt_lines(llm, text, vendor_id, vendor_name)
+    if lines_read.result is None:
+        # The reader already tried as often as the stage would: say why, and stop.
+        reread.status = "failed"
+        reread.reason = lines_read.reason or "invalid_model_output"
+        reread.attempts += 1
+        return
+    lines_output = results["lines"].output if "lines" in results else None
+    proposal = make_proposal(
+        purchase, lines_output, text, lines_read.result, unread_parts=lines_read.unread_parts
+    )
+    proposal["reader"] = {
+        "parser": lines_read.parser,
+        "parser_version": lines_read.parser_version,
+        "model_attempts": lines_read.attempts,
+    }
+    # The proposal is made against the lines as they are now, so that is what a
+    # later change is measured from.
+    reread.proposal = proposal
+    reread.purchase_status = purchase.status
+    reread.lines_fingerprint = fingerprint(purchase)
+    reread.status = "ready" if proposal_of.has_changes(proposal) else "no_changes"
+    reread.reason = None
+
+
+async def run_read_once(db: AsyncSession, *, locked_by: str, llm: LlmClient | None = None) -> bool:
+    """Claim and answer one Read again. False when none was due.
+
+    An unreachable model server leaves it pending, retried with the receipt
+    jobs' backoff and never failed for it (2O). Any other failure is retried up
+    to INGEST_MAX_ATTEMPTS, then the re-read ends ``failed`` with its code.
+    """
+    reread = await claim_read(db, locked_by)
+    if reread is None:
+        return False
+    reread_id = reread.id
+    settings = get_settings()
+    try:
+        await _read(db, reread, llm or LlmClient())
+    except Exception as exc:
+        await db.rollback()
+        reread = await db.get(LineReread, reread_id, populate_existing=True)
+        assert reread is not None
+        code = exc.code if isinstance(exc, IngestError) else "unexpected_error"
+        retryable = isinstance(exc, RetryableError)
+        reread.attempts += 1
+        _unlock(reread)
+        if not retryable and (reread.attempts >= settings.ingest_max_attempts or code == "voided"):
+            reread.status = "failed"
+            reread.reason = code
+            reread.next_attempt_at = None
+        else:
+            reread.status = "pending"
+            reread.reason = code
+            reread.next_attempt_at = datetime.now(UTC) + timedelta(
+                seconds=backoff_seconds(reread.attempts)
+            )
+        await db.commit()
+        log.warning(
+            "reread attempt failed",
+            extra={"error": code, "attempts": reread.attempts, "status": reread.status},
+        )
+        return True
+    _unlock(reread)
+    await db.commit()
+    log.info("reread answered", extra={"status": reread.status, "reason": reread.reason})
+    return True
