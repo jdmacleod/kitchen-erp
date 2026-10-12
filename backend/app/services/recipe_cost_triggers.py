@@ -38,7 +38,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Collection, Iterable
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -231,6 +231,24 @@ async def settled_recipes(db: AsyncSession, before: Collection[uuid.UUID]) -> se
         return set(rows.scalars())
 
     return await _find(db, "lines_settled", find)
+
+
+async def uncosted_recipes(db: AsyncSession) -> set[uuid.UUID]:
+    """The recipes with no ``latest`` snapshot of their current content: indexed
+    before costing existed, so no trigger has reached them since. The scan costs
+    them once; after that they have one and drop out."""
+
+    async def find() -> set[uuid.UUID]:
+        current = exists().where(
+            RecipeCostSnapshot.recipe_id == Recipe.id,
+            RecipeCostSnapshot.content_hash == Recipe.content_hash,
+            RecipeCostSnapshot.basis == "latest",
+            RecipeCostSnapshot.window_days.is_(None),
+            RecipeCostSnapshot.min_quality.is_(None),
+        )
+        return set((await db.execute(select(Recipe.id).where(~current))).scalars())
+
+    return await _find(db, "uncosted", find)
 
 
 async def after_lines_settled(

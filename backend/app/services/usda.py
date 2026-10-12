@@ -457,6 +457,10 @@ def uncooked_text(description: str) -> str:
     return " ".join(p.strip() for p in text.split(",") if p.strip())
 
 
+# The weakest resemblance a text search for USDA candidates still offers.
+TEXT_SIMILARITY = 0.2
+
+
 async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcFood]:
     """USDA foods a person might pick as an ingredient's reference.
 
@@ -487,7 +491,22 @@ async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcF
         sim = func.similarity(lowered, q)
         stmt = (
             select(FdcFood)
-            .where(core, or_(lowered.op("%")(q), sim > 0.2))
+            .where(core, lowered.op("%")(q), sim > TEXT_SIMILARITY)
             .order_by((sim + func.least(func.ln(1 + FdcFood.fndds_uses), 6) / 30).desc())
         )
+        # ``%`` is what the trigram index answers, at pg_trgm's threshold; lowered to
+        # ours for this one query, so the search reads the index rather than every
+        # food (the resolve page asks once per name). Transaction-local, so a
+        # rollback restores it too.
+        prior = str(await db.scalar(text("SELECT show_limit()")))
+        await _trigram_threshold(db, str(TEXT_SIMILARITY))
+        found = list((await db.execute(stmt.limit(limit))).scalars())
+        await _trigram_threshold(db, prior)
+        return found
     return list((await db.execute(stmt.limit(limit))).scalars())
+
+
+async def _trigram_threshold(db: AsyncSession, value: str) -> None:
+    await db.execute(
+        text("SELECT set_config('pg_trgm.similarity_threshold', :v, true)"), {"v": value}
+    )

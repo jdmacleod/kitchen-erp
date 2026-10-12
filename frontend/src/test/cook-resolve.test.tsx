@@ -48,6 +48,23 @@ const decisions = (calls: RecordedCall[]) => calls.filter((c) => c.method === "P
 const notice = () => screen.findByTestId("notice");
 
 describe("the resolve page (UI-7.16)", () => {
+  // Regression: ISSUE-003 — two USDA proposals rendered as identical chips, both named as the recipe wrote it
+  // Found by /qa on 2026-10-12
+  // Report: .gstack/qa-reports/qa-report-localhost-2026-10-12.md
+  it("names the USDA food on each USDA proposal, so two of them can be told apart", async () => {
+    const twoFoods = {
+      ...mysteryRoot,
+      proposals: [
+        proposal({ tier: "usda", name: "mystery root", fdc_id: 9101, fdc_description: "Mystery root, raw" }),
+        proposal({ tier: "usda", name: "mystery root", fdc_id: 9102, fdc_description: "Mystery root, dried" }),
+      ],
+    };
+    mount({}, { ...resolveQueue, items: [twoFoods] });
+    const [row] = await rows();
+    const proposals = within(within(row).getByRole("group", { name: "Proposals for mystery root" })).getAllByRole("button").filter((b) => b.hasAttribute("data-proposal"));
+    expect(proposals.map((b) => b.textContent)).toEqual(["mystery root Mystery root, raw USDA", "mystery root Mystery root, dried USDA"]);
+  });
+
   it("lists names most-used first with their recipes, three proposals badged by tier, the picker and Not an ingredient", async () => {
     mount();
     const main = await screen.findByRole("main");
