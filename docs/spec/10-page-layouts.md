@@ -22,7 +22,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).
   - A footer line explains what the inbox is.
-- **Right column:** Recent purchases. The Shopping list panel is dormant until Phase 4.
+- **Right column:** Recent purchases, with the "{kitchen} list" panel above it once Plan is built (Phase 4 review, 2026-10-12, L5; laid out under Plan below). The panel is desktop only.
 - **States:**
   - Loading: skeleton rows, with the badge hidden.
   - Empty: "Nothing needs you", a sentence of context, and a link to Capture.
@@ -186,12 +186,60 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
 - At 390px each cost-table line is a block: the text as written, the ingredient or its picker, quantity and price on one line, and the cost right-aligned. The table never scrolls sideways (`07` criterion 32). Pickers and "Pin product…" are 44px.
 - Resolve rows stack the name line, the recipes line, then proposals and "Not an ingredient" as a row of 44px buttons; the count strip stays pinned under the header (DV11).
 
+## Plan: lists and trips (Plan: list · Plan: trips · Plan: trip · Plan: at the store)
+
+Written at the Phase 4 review (2026-10-12) for `17`. Plan is the household's weekly loop between Cook and Shop: a shared list per kitchen (4A), a trip planned from it (4B), and the stops of a chosen plan worked through in the aisle (4C). Every page here is kitchen-scoped and carries the kitchen's name as a neutral tag; nothing else in the app does. Nothing in Plan is blue except actions; stale and estimated marks are squash; the cheapest variant's figures are not coloured. Each block is marked with the sub-phase that builds it.
+
+**The kitchen switcher (4A; Phase 4 review, 2026-10-12, L3 and L7).**
+- **Sidebar:** in the footer, above the signed-in user: a neutral chip reading the current kitchen's name with a small chevron. It is a menu button; the menu lists every kitchen with a check beside the current one, and choosing one writes the server setting and refetches the scoped panels on screen. It is shown only with two or more kitchens; with one, nothing is there and no page carries a tag.
+- **More sheet (phone):** the same chip as the first row of the More sheet, full width at 44px, with the kitchens as a radio list that opens in place. The List tab's header names the kitchen, so the current one is visible without opening More.
+- **Palette:** "Switch to {kitchen}" for each other kitchen in the Actions group, section "Plan".
+- **The tag:** a neutral pill naming the kitchen, placed after a page or panel title; on the list page, the Home panel, the trips list and the trip page. Household-wide pages (Purchases, Compare without its filter, the catalog) never show one.
+- **Compare prices** (now `/plan/compare`; `/shop/compare` and `/compare` redirect with their parameters): the header gains "Kitchen: All · {name}" as a segmented control, All by default and kept in the URL (`?home_base_id=`); with a kitchen chosen, only prices at that kitchen's locations are shown and the tag appears. The recipe page's cost table gains the same control beside its basis control, computed on demand and never snapshotted.
+
+**Shopping list** (`/plan/list`; 4A).
+- **Header:** "{Kitchen} list" as the h1 (the kitchen tag is the title itself here), the description "What this kitchen needs next. Anyone can add, claim and check." and the primary action "Add item", which puts focus in the inline add row rather than opening a drawer, since adding is the page's whole work. Secondary: "Add from recipe" (a drawer) and "Start a fresh list".
+- **Inline add:** a row at the top of the unchecked group: the 1G ingredient picker labelled "What do you need?", which also matches products by name and barcode (an exact product match adds a product item); an optional amount and unit (the unit select offers the ingredient's dimension first); "Add". Enter adds and keeps focus in the picker, so a list can be typed through. Chips under the picker: "Deferrable" and "Minimum quality" (stars; ingredient items only), both off by default; a note field opens from "Add a note".
+- **Items, in two groups:** "To get ({n})" then "Checked ({n})", divided lines, never cards. A row shows: a 28px check circle at the left with a 44px hit area; the name (the ingredient, or the product with its brand and pack in a caption); the amounts as written, each (amount, unit) pair in its own figure ("2 lb · 1 bunch"), shown per lb, oz or fl oz as the unit-display rule says, never summed across units that do not convert; a "deferrable" caption and the minimum quality as walnut stars when set; "from {recipe}" as a caption on recipe items; a claim chip; and the note. Unchecked items are oldest first; checked items newest first, with who checked them and when in a caption, and "Uncheck".
+  - **Claim chip:** a neutral pill, "{name} is getting it", on a claimed row; "I'll get it" is a quiet secondary action on an unclaimed row, and the claimant sees "Unclaim". Anyone may check a claimed item; the check clears the chip (L2).
+  - **Check:** the circle ticks, the row moves to the Checked group, and a polite live region says "Checked {item}. {n} to get." The page refetches every 15 seconds while visible, so two phones see each other's checks; a mutation that answers `409 stale_item` shows "Changed by {name} · Reload" at the row.
+  - **Edit:** a row's name opens an inline editor for amounts, note, deferrable and minimum quality, with Save and Cancel; Delete (tomato text) asks inline for an item that was claimed by someone else.
+- **"Add from recipe" drawer:** a recipe typeahead, a Scale field (default the recipe's servings, as "4 servings · ×1"), then a preview: "{n} lines will be added; {k} merge into items already on the list; {u} unmapped lines are skipped · Resolve them". Lines whose quantities cannot combine are shown as separate (amount, unit) pairs, as they will appear. "Add to list" is the footer action; the drawer follows the unsaved-input rule once a recipe is chosen. The Notice afterwards reads "Added {n} items from {recipe}." Adding the same recipe again merges and says so.
+- **"Start a fresh list":** confirms inline under the header, never in a dialog: "Archive this list and start a new one? {n} unchecked items carry over." with a "Carry unchecked items over" checkbox (on) and the buttons "Start a fresh list" and Cancel, focus on Cancel. Afterwards the new list opens with the Notice "Started a fresh list · Open the old one". The archived list is read-only at `/plan/list?list_id=`, headed "{Kitchen} list · archived {date}" with a neutral "Archived" badge and "Back to the current list"; carried items read "Carried to the current list" (L8).
+- **States (G11):** empty: "Nothing on the list. Add what you need, or add a recipe's ingredients." with the add row focused; an archived list that was empty says so; error: a tomato alert "Couldn't load the list" with Try again, never the empty state; loading: skeleton rows.
+
+**Home list panel** (4A; desktop only, L5). In Home's right column above Recent purchases, a card headed "{Kitchen} list" with the unchecked count in its title ("{Kitchen} list · 7 to get"): the five oldest unchecked items with their amounts and claim chips, a one-field inline add (the ingredient picker and Add; Enter adds), and "Open list" as the card's one action. A kitchen with nothing to get reads "Nothing on the list" with the add field. The panel is not on the phone Home.
+
+**"Add to list" on an ingredient and a recipe** (4A). The ingredient hub's header gains "Add to list" as a secondary action (no longer dormant): it opens a small inline panel under the header with amount, unit and "Deferrable", and "Add" confirms through the Notice "Added {ingredient} to the {kitchen} list · Open list". The recipe page's header gains "Add to list" with the same panel plus the Scale field and the preview sentence from the drawer. Both name the current kitchen in the panel, so a person at the wrong kitchen sees it before adding.
+
+**Trips** (`/plan/trips`; 4B).
+- **Header:** "Trips", with the description "Where to shop for the list, in what order, and what the alternatives cost." Primary "Plan a trip" opens the inputs in a right-side drawer.
+- **Drawer, "Plan a trip":** Starting from (a place select, default the kitchen), Ending at (default the start), When (date and time, default the next hour), Value of your time (per hour, pre-filled from the household setting with the hint "What an hour of driving and shopping is worth to you"), Stops at most (1–4, default 3), and a collapsed "More": mileage rate and minutes per stop. Footer: Cancel and "Plan". The drawer follows the unsaved-input rule. An empty list refuses with "Nothing on the list to plan for" and a link to it.
+- **List:** rows newest first: the planned time, the status badge (Planned neutral, Underway neutral, Done olive, Abandoned neutral), the chosen variant's stores in order or "Not chosen yet", its cost and minutes, and after a trip "predicted ${x} · actual ${y}". Each row opens the trip page.
+- **States:** empty: "No trips yet. Plan one from the {kitchen} list." with Plan a trip; error: a tomato alert with Try again.
+
+**Trip page** (`/plan/trips/:id`; 4B, with 4C's actuals).
+- **Breadcrumb:** Plan / Trips. **Header:** "Trip, {planned time}" with the status badge and the kitchen tag; a meta line of the start and end places, the value of time and the stop limit. Primary: "Choose" lives on the variant cards until one is chosen; afterwards the primary is "Replan", which makes a new plan from the same inputs and the list as it is now (P1), and "Abandon" is a quiet tomato-text secondary that confirms inline.
+- **Three variant cards side by side** (stacked below 1024px), headed Fastest, Cheapest and Balanced, each with: item cost, driving and shopping minutes, mileage when a rate was given, and the total; the marginal trade against Balanced stated in both currencies, "$3.20 more, 14 minutes less" or "the same as Balanced"; the stores in order with their subtotals; and a "Choose" button. "estimated" in squash on a card with any estimated leg, with the hint "Drive times are estimates: the routing engine wasn't available." Once chosen, the other two cards fold to their headline figures behind "Show the other plans" and the chosen card reads "Chosen {time}". The Cheapest card's heading carries an olive "cheapest" badge with its word, as olive marks the cheapest price elsewhere; the figures themselves are tabular and never coloured.
+- **Stops:** for the chosen variant (or Balanced until one is chosen), each stop as a section: "Stop {seq} · {store}", the leg before it ("{n} min · {km} km · arrive {time}", "estimated" in squash where the leg was), the overhead minutes, each item with its product, packs and line cost ("stale" in squash on an old price), the subtotal, "Navigate" (opens the phone's maps application in a new tab) and, once chosen, "Open this stop" to the at-the-store screen. After a stop is done: "Done {time} · predicted ${x} · actual ${y}" and a link to the purchase; the header's meta line sums predicted beside actual for the whole trip.
+- **Annotations:** under the cards, a neutral list, one sentence each with its item or store named: a forced stop ("Only {store} sells {product}"), a defer suggestion ("Leaving {item} for next time saves $4.10 and 22 minutes"), a stale dependence ("$12 of Cheapest rests on prices older than 90 days; it's still cheapest without them" or "…and wouldn't be"), an unsourceable item ("No store near {kitchen} has a price for {item}" with the reason), unknown hours, a store left out for its hours, and estimated legs. Stale, estimated and unsourceable sentences carry a squash mark and their words; nothing is colour alone.
+- **Map:** the vendors map component (`MapView`, T9) with the kitchen pin, numbered walnut stop pins and straight segments between them in order; the selected stop's pin is herb. It is a picture of the plan, not a route.
+- **States:** "Planning…" with skeleton cards while variants compute; a plan whose list emptied before choosing says so; a 409 on a second Choose refreshes into the chosen view; error: a tomato alert with Try again.
+
+**At the store** (`/plan/trips/:id/stop/:seq`; 4C). Laid out under Phone below, since it is a phone screen first; on desktop it renders in one centred column of the same layout.
+
+**Phone, below 1024px.**
+- The List tab opens `/plan/list` with the kitchen's name in its header (L7); the add row sits under the header and the picker opens the keyboard; rows stack the name line, then amounts and chips, with the 28px circle at the left and "I'll get it" as a 44px button; the Checked group is folded with its count. "Add from recipe" is a full-screen sheet; "Start a fresh list" is under a "More actions" sheet with the archived lists.
+- Trips rows stack the time and status, then the stores line, then the figures. The Plan drawer is a full-screen sheet with 44px fields.
+- The trip page stacks the three cards, Balanced first, each full width with its "Choose" at 44px; the stops follow; the map comes last at a fixed height; at 390px nothing scrolls sideways (`17` criterion 20).
+- Every Plan control is at least 44px with a visible focus ring and 4.5:1 contrast in both themes.
+
 ## Ingredient hub (Ingredient hub)
 
 The most important detail page; search results and inbox items land here most often.
 
 - **Breadcrumb:** Catalog / Ingredients.
-- **Header:** the ingredient name with its category chip, and a meta line of canonical unit and perishability. "Inventory tier" is omitted until Phase 5 (T16). "Log shelf price" is the primary action; "Add to list" is dormant until Phase 4.
+- **Header:** the ingredient name with its category chip, and a meta line of canonical unit and perishability. "Inventory tier" is omitted until Phase 5 (T16). "Log shelf price" is the primary action; "Add to list" is a secondary action once Plan is built (Phase 4 review, 2026-10-12; laid out under Plan), and omitted before.
 - **Summary strip:**
   - **Best recent price:** the lowest normalized unit price in the last 90 days, shown per lb, oz or fl oz as 08 describes, with product, vendor and date, on an olive-tinted card, because olive marks the cheapest price. Prices that can't be compared are excluded (G8).
   - **Last 90 days:** a sparkline and the min–max range across vendors, from `GET /api/v1/ingredients/{id}/price-history?days=90` (D22). The sparkline hides with fewer than two points.
@@ -451,7 +499,7 @@ As specified in 09. Visual details:
 - Oat background with a `neutral-200` right border.
 - The active section is an herb-tinted pill in weight 600; the active sub-page is a warm-white pill.
 - Count badges are squash.
-- There is no kitchen switcher until Phase 4 (S3).
+- The kitchen switcher sits in the footer above the signed-in user once Plan is built, shown only with two or more kitchens (S3; Phase 4 review, 2026-10-12, L7; laid out under Plan).
 
 ## Phone
 
@@ -463,9 +511,9 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 - The "Kitchen ERP" wordmark top left, where the kitchen pill used to be (G13), and the avatar top right.
 - The greeting title.
 - The top three inbox items as 64px tappable rows, with "See all" expanding the list in place (G6).
-- Recent purchases (three rows) in place of the list summary card.
+- Recent purchases (three rows) in place of the list summary card. They stay once Plan is built: the phone Home gets no list panel, since the List tab is one tap away (Phase 4 review, 2026-10-12, L5).
 
-**Purchases (Phone: purchases).** A drafts banner ("2 drafts to finish") above the purchase list; each row shows where, the date and line count, the total and a status pill.
+**Purchases (Phone: purchases).** A drafts banner ("2 drafts to finish") above the purchase list; each row shows where, the date and line count, the total and a status pill. Once `plan` is a feature the second tab is List, and Purchases is reached from More with the same layout (L6).
 
 **Capture sheet (Phone: capture sheet).**
 - A bottom sheet over a scrim with a drag handle and the title "Capture".
@@ -497,10 +545,21 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 - **Unknown barcode:** offer to create the product with the barcode pre-filled, in the same flow.
 - **Lookup states:** pending shows a spinner in the field; an error shows inline with Retry.
 
-**At the store (Phone: at the store).** Dormant until Phase 4 (T4; see TODOS.md). This screen is one stop of a trip plan:
+**At the store (Phone: at the store).** The brief from 2026-09-25 (T4), built with 4C (17; Phase 4 review, 2026-10-12). This screen is one stop of a chosen trip plan, at `/plan/trips/:id/stop/:seq`, reached from the trip page's stop and from "Next stop":
 - **Header:** "Stop 1 of 2 · {kitchen} list", the store name, basket progress and the estimated cost here.
 - **"Get here" list:** 28px check circles. Each row's price is a 44px button, and editing it records a shelf price observation; edited prices show a neutral tint.
 - **"Cheaper at stop 2":** lists deferred items, with a "Get here" override.
 - **Footer:** an anchored "Done here · record purchase" button creates a purchase linked to the trip plan.
+
+The 4C layout, with the brief's semantics made exact (S1):
+- **Header:** a back link to the trip, "Stop {seq} of {n} · {kitchen} list" as the h1, the store name and address line, then a progress strip: "{checked} of {m} in the basket" and "About ${x} here", which re-sums as prices are edited and items checked. A stop already done shows "Done {time} · {n} lines recorded" with a link to its purchase and no controls.
+- **This stop's items** ("Get here"): one row per item planned here, oldest first, with a 28px check circle at the left (44px hit area), the item's name and the amounts as written ("2 lb · 1 bunch"), the planned packs ("2 packs of 16 oz"), the product in a caption, and the price as a 44px button at the right. A claimed item shows its claim chip. "stale" in squash marks a planned price older than the stale window.
+  - **Editing a price** opens a row beneath: price, quantity and unit, with a decimal keypad, Save and Cancel. A saved edit tints the row neutral and reads "edited"; the plan's figure stays visible as a caption ("planned $4.29"). Editing records nothing by itself: what it records is decided by "Done here".
+  - **Checking** ticks the circle and moves the row to the foot of the group under a thin rule; unchecking moves it back. The ticks are held on this screen and become the list's checks when "Done here" records them, so a tap that fails to reach the server loses nothing.
+- **"Cheaper at stop {m}":** the items assigned to later stops that this location could also fill, each with the difference ("+$0.80 here") and a 44px "Get here" button, which moves the item into this stop's group at this location's price (or the edited one) and marks it `got_here`. An item this location cannot fill is not listed.
+- **Footer (thumb reach):** an anchored 56px "Done here · record purchase". It confirms inline, never in a browser dialog: "Record {n} items at {store} for ${total}? Prices you edited but didn't buy are saved as shelf prices." with Record and "Not yet", focus on "Not yet". With nothing checked it reads "Done here · nothing bought" and asks "Move on without buying anything here?".
+- **After "Done here":** the Notice reads "Recorded {n} lines at {store} · Open the purchase" and, while stops remain, "Next stop: {store}" is the primary action; after the last, "Back to the trip", where predicted sits beside actual. A line bought at the planned, unedited price is flagged `planned_price` in the purchase; a price edited but not bought becomes one shelf observation (S1).
+- **States:** "Loading…"; a plan with no chosen variant says "Choose a plan first" with a link to the trip; a 409 on a done stop refreshes into the done view; a failed "Done here" shows an Alert in the confirmation panel and keeps the checks.
+- Every control is at least 44px, the check circle 28px, and the whole screen works at 360px with no horizontal scroll.
 
 These phone screens are also the design brief for the Phase 6 native capture app.
