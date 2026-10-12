@@ -336,7 +336,7 @@ export const recipeKeys = {
   list: (filters: RecipeListFilters) => ["recipes", "list", filters] as const,
   status: ["recipes", "status"] as const,
   recipe: (id: string) => ["recipes", "recipe", id] as const,
-  cost: (id: string, basis: CostBasis) => ["recipes", "cost", id, basis] as const,
+  cost: (id: string, basis: CostBasis, homeBaseId = "") => ["recipes", "cost", id, basis, homeBaseId] as const,
   history: (id: string, basis: CostBasis) => ["recipes", "history", id, basis] as const,
   resolve: ["recipes", "resolve"] as const,
   usedIn: (ingredientId: string) => ["recipes", "used-in", ingredientId] as const,
@@ -375,10 +375,15 @@ export function useRecipe(id: string | undefined) {
  * The recipe's cost under a basis. A basis without a snapshot is computed on the
  * server inside this call, which is why the page says "Costing…" while it is pending.
  */
-export function useRecipeCost(id: string | undefined, basis: CostBasis, enabled = true) {
+/**
+ * The recipe's cost under a basis. With `homeBaseId`, the kitchen filter (17, 4A;
+ * UI-8.8): prices restricted to that kitchen's locations, computed on demand and
+ * never snapshotted.
+ */
+export function useRecipeCost(id: string | undefined, basis: CostBasis, enabled = true, homeBaseId = "") {
   return useQuery({
-    queryKey: recipeKeys.cost(id ?? "", basis),
-    queryFn: () => api<RecipeCost>(`/recipes/${id}/cost${qs({ basis })}`),
+    queryKey: recipeKeys.cost(id ?? "", basis, homeBaseId),
+    queryFn: () => api<RecipeCost>(`/recipes/${id}/cost${qs({ basis, home_base_id: homeBaseId })}`),
     enabled: id !== undefined && enabled,
   });
 }

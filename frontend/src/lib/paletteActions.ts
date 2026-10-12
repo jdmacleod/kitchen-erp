@@ -1,3 +1,4 @@
+import type { HomeBase } from "../api/geo";
 import { DEFAULT_FEATURES } from "../components/Nav";
 
 /**
@@ -16,6 +17,10 @@ export interface PaletteAction {
   /** The `/health` feature that builds it, as in the navigation; none means always built. */
   feature?: string;
   adminOnly?: boolean;
+  /** Shown beside the label; worked out from the route when absent. */
+  section?: string;
+  /** "Switch to {kitchen}" (17, 4A): writes the setting instead of navigating. */
+  switchToKitchenId?: string;
 }
 
 const action = (id: string, label: string, route: string, keywords: string[], extra: Partial<PaletteAction> = {}): PaletteAction => ({
@@ -45,7 +50,9 @@ export const PALETTE_ACTIONS: PaletteAction[] = [
   action("purchases", "Purchases", "/shop/purchases", ["shopping", "history", "drafts"], { feature: "shop" }),
   action("receipts", "Receipts", "/shop/receipts", ["uploads", "batches", "jobs"], { feature: "shop" }),
   action("to-identify", "Products to identify", "/shop/receipts/identify", ["unmatched", "name", "naming", "lines"], { feature: "shop" }),
-  action("compare-prices", "Compare prices", "/shop/compare", ["cheapest", "price book", "compare"], { feature: "shop" }),
+  action("compare-prices", "Compare prices", "/plan/compare", ["cheapest", "price book", "compare"], { feature: "shop" }),
+  action("shopping-list", "Shopping list", "/plan/list", ["plan", "list", "groceries", "to get"], { feature: "plan" }),
+  action("trips", "Trips", "/plan/trips", ["plan", "trip", "stores", "route"], { feature: "plan" }),
   action("ingredients", "Ingredients", "/catalog/ingredients", ["catalog", "food"], { feature: "catalog" }),
   action("products", "Products", "/catalog/products", ["catalog", "items"], { feature: "catalog" }),
   action("vendors", "Vendors", "/catalog/vendors", ["stores", "shops", "map"], { feature: "catalog" }),
@@ -91,6 +98,16 @@ export function matchActions(query: string, actions: PaletteAction[], limit = 5)
     .sort((x, y) => x[1] - y[1])
     .slice(0, limit)
     .map(([a]) => a);
+}
+
+/**
+ * "Switch to {kitchen}" for each kitchen other than the current one (09, Search;
+ * UI-2.4). Built by the caller from the kitchens it has, once Plan is a feature.
+ */
+export function kitchenActions(kitchens: readonly HomeBase[], currentId: string | null): PaletteAction[] {
+  return kitchens
+    .filter((k) => k.id !== currentId)
+    .map((k) => action(`switch-kitchen-${k.id}`, `Switch to ${k.name}`, "", ["kitchen", "switch", "change", k.name], { section: "Plan", switchToKitchenId: k.id }));
 }
 
 /** The common actions that are built, in their fixed order. */

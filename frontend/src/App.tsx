@@ -18,6 +18,8 @@ import { RecipesPage } from "./pages/cook/RecipesPage";
 import { ResolveRecipesPage } from "./pages/cook/ResolveRecipesPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
+import { ListPage } from "./pages/plan/ListPage";
+import { TripsPage } from "./pages/plan/TripsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
 import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
 import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
@@ -44,7 +46,9 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
   { from: "/receipts", to: "/shop/receipts" },
   { from: "/to-identify", to: "/shop/receipts/identify" },
   { from: "/prices/new", to: "/shop/shelf-prices" },
-  { from: "/compare", to: "/shop/compare" },
+  // Compare moved to Plan with 4A (09, Routes; L4); both old paths carry their parameters.
+  { from: "/compare", to: "/plan/compare" },
+  { from: "/shop/compare", to: "/plan/compare" },
   { from: "/ingredients", to: "/catalog/ingredients" },
   { from: "/ingredients/:id", to: "/catalog/ingredients/:id" },
   { from: "/products", to: "/catalog/products" },
@@ -94,7 +98,11 @@ export function App() {
             <Route path="/shop/receipts" element={<ReceiptsPage />} />
             <Route path="/shop/receipts/identify" element={<ToIdentifyPage />} />
             <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />
-            <Route path="/shop/compare" element={<ComparePage />} />
+
+            {/* Plan (17, 4A). Trips and the stop screen fill in with 4B and 4C. */}
+            <Route path="/plan/list" element={<ListPage />} />
+            <Route path="/plan/trips" element={<TripsPage />} />
+            <Route path="/plan/compare" element={<ComparePage />} />
 
             {/* Catalog */}
             <Route path="/catalog/ingredients" element={<IngredientsPage />} />
