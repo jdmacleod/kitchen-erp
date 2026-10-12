@@ -8,7 +8,7 @@ import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RouteHandler } from "./helpers";
 import { receiptPurchase, receiptPurchaseId } from "./purchase-fixtures";
 
-// Spec 10, "Re-read the lines" (04, 2S, #272), and UI-3.23. Every wording is invented.
+// Spec 10, "Re-read the lines" (04, 2S, issue 272), and UI-3.23. Every wording is invented.
 
 const api = `/purchases/${receiptPurchaseId}`;
 const rereadId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fc001";

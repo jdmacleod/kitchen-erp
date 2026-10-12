@@ -3,7 +3,7 @@ import { api, isApiError } from "./client";
 import { inboxKey } from "./inbox";
 import { invalidatePurchases, purchaseKeys } from "./purchases";
 
-// Re-reading a receipt's lines (04, 2S, #272): a proposal a person applies.
+// Re-reading a receipt's lines (04, 2S, issue 272): a proposal a person applies.
 
 export type RereadMode = "check" | "read";
 export type RereadStatus = "pending" | "running" | "ready" | "no_changes" | "failed" | "applied" | "dismissed";

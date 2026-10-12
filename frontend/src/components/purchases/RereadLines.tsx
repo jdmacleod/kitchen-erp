@@ -8,7 +8,7 @@ import { Alert, Button, focusRing, secondaryLinkClass } from "../ui";
 const hintClass = "text-sm text-neutral-600 dark:text-neutral-400";
 
 /**
- * "Re-read lines" beside a receipt purchase's line count (spec 10; 04, 2S, #272).
+ * "Re-read lines" beside a receipt purchase's line count (spec 10; 04, 2S, issue 272).
  *
  * Opens a small panel with the two ways to re-read: "Re-check the lines", shown
  * only when the reading kept the reader's answer, and "Read again". Either goes
