@@ -384,7 +384,7 @@ A line's inferred `best_by` is the purchase's local date plus the ingredient's k
 
 A purchase is removed by deleting it when none of its lines ever produced an observation, and by setting `status = voided` (and voiding its live observations) otherwise; see 04, 2H.
 
-`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` keeps what migration 0030 changed so its downgrade can put it back, and goes with that downgrade.
+`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` and `normalize_v3_backup` keep what migrations 0030 and 0049 changed so their downgrades can put it back, and each goes with its downgrade.
 
 ### The price book
 
