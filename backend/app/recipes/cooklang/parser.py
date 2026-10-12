@@ -275,8 +275,8 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
         name = line[j:brace].rstrip()
         if not name and marker != "~":
             return None
-        close = line.find("}", brace + 1)
-        if close < 0:
+        close = _find_close(line, brace + 1)
+        if close is None:
             return ParseError(f"`{marker}{name}{{` is never closed", line_number, brace + 1)
         body = line[brace + 1 : close]
         end = close + 1
@@ -314,6 +314,19 @@ def _find_brace(line: str, start: int) -> int | None:
     for k in range(start, len(line)):
         char = line[k]
         if char == "{":
+            return k
+        if char in _STOP_IN_NAME or line[k : k + 2] in ("--", "[-"):
+            return None
+    return None
+
+
+def _find_close(line: str, start: int) -> int | None:
+    """The `}` closing a component's braces, or None if the body runs into the next
+    component or a comment first: `@milk{1%cup and @oats{2}` leaves milk's brace
+    unclosed rather than taking `cup and @oats{2` as its unit (#288)."""
+    for k in range(start, len(line)):
+        char = line[k]
+        if char == "}":
             return k
         if char in _STOP_IN_NAME or line[k : k + 2] in ("--", "[-"):
             return None
