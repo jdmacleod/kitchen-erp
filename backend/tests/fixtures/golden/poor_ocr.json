@@ -103,6 +103,64 @@
       "reconcile_mismatch"
     ],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "5.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "ORG WH0LE MILK 1GAL 5.99 F",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "1.00",
+          "parent_index": 0,
+          "qty": null,
+          "raw_text": "HRBV CARD SAVlNGS 1.OO-",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "9.41",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "CHKN THlGHS B/S 9.4l F",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.41",
+          "parent_index": null,
+          "qty": "2.05",
+          "raw_text": "BANANAS 2.O5 lb @ O.69/lb 1.4l",
+          "unit": "lb",
+          "unit_price": "0.69"
+        },
+        {
+          "line_kind": "item",
+          "line_total": "3.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "ITAL BRD L0AF 3.49 F",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "tax",
+          "line_total": "0.00",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "TAX O.OO",
+          "unit": null,
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "19.30",

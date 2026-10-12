@@ -18,6 +18,7 @@ from app.api import (
     purchases,
     receipts,
     recipes,
+    rereads,
     search,
     units,
     users,
@@ -35,6 +36,7 @@ router.include_router(catalog.router)
 router.include_router(geo.router)
 router.include_router(brands.router)
 router.include_router(purchases.router)
+router.include_router(rereads.router)
 router.include_router(receipts.router)
 router.include_router(recipes.router)
 router.include_router(plan.router)

@@ -119,6 +119,53 @@ class IngestJob(UUIDPrimaryKey, Timestamped, Base):
     )
 
 
+REREAD_MODES = ("check", "read")
+REREAD_STATUSES = ("pending", "running", "ready", "no_changes", "failed", "applied", "dismissed")
+REREAD_OPEN = ("pending", "running", "ready")
+
+
+class LineReread(UUIDPrimaryKey, Timestamped, Base):
+    """A proposal to re-read a receipt purchase's lines (04, 2S).
+
+    Ordinary mutable state: the proposal is derived from the purchase and a
+    reading, and can be made again. At most one is open per purchase.
+    """
+
+    __tablename__ = "line_reread"
+    __table_args__ = (
+        CheckConstraint(_in("mode", REREAD_MODES), name="ck_line_reread_mode"),
+        CheckConstraint(_in("status", REREAD_STATUSES), name="ck_line_reread_status"),
+        Index(
+            "uq_line_reread_open",
+            "purchase_id",
+            unique=True,
+            postgresql_where=text("status IN ('pending', 'running', 'ready')"),
+        ),
+    )
+
+    purchase_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("purchase.id", ondelete="CASCADE"), nullable=False
+    )
+    mode: Mapped[str] = mapped_column(String(8), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    proposal: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # The purchase as the proposal saw it: applying after either changed is stale.
+    purchase_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    lines_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    locked_by: Mapped[str | None] = mapped_column(String(100))
+    requested_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=False
+    )
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id")
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class UploadBatch(UUIDPrimaryKey, Base):
     """One upload: a receipt, or several chosen or dropped at once (issue 122)."""
 

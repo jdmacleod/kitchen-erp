@@ -115,6 +115,73 @@
     "parser_version": "10",
     "purchase_flags": [],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "14.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "E  184201 KS ALMONDS 3LB        14.99",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "7.49",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "E  552310 ORG EGGS 24CT          7.49",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "16.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "E  993004 OLIVE OIL 2L          16.99",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "3.00",
+          "parent_index": 2,
+          "qty": null,
+          "raw_text": "993004 / 3.00-",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "19.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "A  301778 PAPER TWL 12RL        19.99",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "21.44",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "E  776120 CHKN BRST 6.5LB       21.44",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "tax",
+          "line_total": "1.90",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "TAX                                1.90",
+          "unit": null,
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "79.80",

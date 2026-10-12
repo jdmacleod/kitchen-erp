@@ -13976,6 +13976,84 @@
         "title": "RecomputeOut",
         "type": "object"
       },
+      "Reconciliation": {
+        "additionalProperties": false,
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "boolean"
+          },
+          "computed_total": {
+            "title": "Computed Total",
+            "type": "string"
+          },
+          "deposits": {
+            "title": "Deposits",
+            "type": "string"
+          },
+          "difference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Difference"
+          },
+          "discounts": {
+            "title": "Discounts",
+            "type": "string"
+          },
+          "fees": {
+            "title": "Fees",
+            "type": "string"
+          },
+          "items": {
+            "title": "Items",
+            "type": "string"
+          },
+          "mismatch": {
+            "title": "Mismatch",
+            "type": "boolean"
+          },
+          "printed_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Printed Total"
+          },
+          "tax": {
+            "title": "Tax",
+            "type": "string"
+          },
+          "tax_source": {
+            "title": "Tax Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "checked",
+          "items",
+          "discounts",
+          "tax",
+          "tax_source",
+          "deposits",
+          "fees",
+          "computed_total",
+          "printed_total",
+          "difference",
+          "mismatch"
+        ],
+        "title": "Reconciliation",
+        "type": "object"
+      },
       "RelinkIn": {
         "additionalProperties": false,
         "properties": {
@@ -14157,6 +14235,369 @@
           "name"
         ],
         "title": "RenameIn",
+        "type": "object"
+      },
+      "RereadChange": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "changed",
+              "added",
+              "removed",
+              "kept"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fields"
+          },
+          "line_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line Id"
+          },
+          "reading": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadLine"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "why": {
+            "anyOf": [
+              {
+                "enum": [
+                  "edited",
+                  "added",
+                  "removed"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "title": "RereadChange",
+        "type": "object"
+      },
+      "RereadCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "added": {
+            "title": "Added",
+            "type": "integer"
+          },
+          "changed": {
+            "title": "Changed",
+            "type": "integer"
+          },
+          "kept": {
+            "title": "Kept",
+            "type": "integer"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "changed",
+          "added",
+          "removed",
+          "kept"
+        ],
+        "title": "RereadCounts",
+        "type": "object"
+      },
+      "RereadLine": {
+        "additionalProperties": false,
+        "description": "A line's values as the page shows them; amounts are decimal strings.",
+        "properties": {
+          "attached": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attached"
+          },
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "line_kind": {
+            "title": "Line Kind",
+            "type": "string"
+          },
+          "line_total": {
+            "title": "Line Total",
+            "type": "string"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "raw_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Text"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          }
+        },
+        "required": [
+          "raw_text",
+          "line_kind",
+          "qty",
+          "unit",
+          "unit_price",
+          "line_total",
+          "attached",
+          "flags"
+        ],
+        "title": "RereadLine",
+        "type": "object"
+      },
+      "RereadOut": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "check",
+              "read"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "purchase_id": {
+            "format": "uuid",
+            "title": "Purchase Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "ready",
+              "no_changes",
+              "failed",
+              "applied",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "purchase_id",
+          "mode",
+          "status",
+          "reason",
+          "proposal",
+          "created_at",
+          "decided_at"
+        ],
+        "title": "RereadOut",
+        "type": "object"
+      },
+      "RereadProposal": {
+        "additionalProperties": false,
+        "properties": {
+          "after": {
+            "$ref": "#/components/schemas/RereadSide"
+          },
+          "before": {
+            "$ref": "#/components/schemas/RereadSide"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/RereadChange"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/RereadCounts"
+          }
+        },
+        "required": [
+          "changes",
+          "counts",
+          "before",
+          "after"
+        ],
+        "title": "RereadProposal",
+        "type": "object"
+      },
+      "RereadRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "enum": [
+              "check",
+              "read"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "RereadRequest",
+        "type": "object"
+      },
+      "RereadSide": {
+        "additionalProperties": false,
+        "properties": {
+          "flags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "reconciliation": {
+            "$ref": "#/components/schemas/Reconciliation"
+          }
+        },
+        "required": [
+          "reconciliation",
+          "flags"
+        ],
+        "title": "RereadSide",
         "type": "object"
       },
       "ResolveAskIn": {
@@ -24158,6 +24599,103 @@
         ]
       }
     },
+    "/api/v1/purchases/{purchase_id}/rereads": {
+      "post": {
+        "description": "Re-check the lines now, or queue reading them again; either makes a proposal.",
+        "operationId": "request_reread_api_v1_purchases__purchase_id__rereads_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RereadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Request Reread",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/rereads/latest": {
+      "get": {
+        "operationId": "latest_reread_api_v1_purchases__purchase_id__rereads_latest_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Latest Reread",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
     "/api/v1/purchases/{purchase_id}/restore": {
       "post": {
         "description": "Bring a removed (voided) purchase back to review; committing records its prices anew.",
@@ -25073,6 +25611,136 @@
         "summary": "Dismiss Relink",
         "tags": [
           "recipes"
+        ]
+      }
+    },
+    "/api/v1/rereads/{reread_id}": {
+      "get": {
+        "operationId": "get_reread_api_v1_rereads__reread_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Reread",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/rereads/{reread_id}/apply": {
+      "post": {
+        "description": "Apply the whole proposal; a committed purchase is reopened first.",
+        "operationId": "apply_reread_api_v1_rereads__reread_id__apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Reread",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/rereads/{reread_id}/dismiss": {
+      "post": {
+        "operationId": "dismiss_reread_api_v1_rereads__reread_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "reread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Reread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RereadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Dismiss Reread",
+        "tags": [
+          "purchases"
         ]
       }
     },

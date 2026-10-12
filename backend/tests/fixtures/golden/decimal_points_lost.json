@@ -86,6 +86,46 @@
       "decimals_restore_total"
     ],
     "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "349",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "OAT MILK 1L            349",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "425",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "RYE BREAD              425",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "fee",
+          "line_total": "0.10",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "BAG FEE               0.10",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "1.65",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "EGGS DOZEN 18CT       1.65",
+          "unit": "each",
+          "unit_price": null
+        }
+      ]
+    },
     "reconciliation": {
       "checked": true,
       "computed_total": "775.75",

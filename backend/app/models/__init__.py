@@ -30,6 +30,7 @@ from app.models.proposals import ProductCapture, ProductProposal
 from app.models.purchases import (
     IngestJob,
     IngestStageResult,
+    LineReread,
     NamingSuggestion,
     PriceNorm,
     PriceObservation,
@@ -82,6 +83,7 @@ __all__ = [
     "UploadBatch",
     "UploadBatchReceipt",
     "IngestStageResult",
+    "LineReread",
     "NamingSuggestion",
     "IngredientMeasure",
     "ListingPriceChange",
