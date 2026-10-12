@@ -29,8 +29,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.identity import AppUser
 from app.models.purchases import Purchase
 from app.schemas.catalog import IngredientCreate, ProductCreate
+from app.schemas.plan import AmountIn, ItemCreate
 from app.schemas.purchases import LineIn, ManualPurchaseIn
-from app.services import catalog, geo, identity, pricebook, purchases, spellings
+from app.services import catalog, geo, identity, pricebook, purchases, shopping_lists, spellings
 
 # One fixed seed and one fixed end date: the demo database is a pure function of
 # this module, so screenshots taken from it differ only when the UI differs.
@@ -382,6 +383,7 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
         "products": 0,
         "purchases": 0,
         "observations": 0,
+        "list_items": 0,
     }
 
     admin = await _ensure_user(db, DEMO_ADMIN_EMAIL, "Demo Household", "admin")
@@ -503,7 +505,74 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
         counts["observations"] += len(lines)
 
     await pricebook.recompute_all(db)
+    counts["list_items"] = await _seed_list(
+        db, home_ids[0], admin, member, ingredients_by_name, [p for p, _ in products]
+    )
     return counts
+
+
+# What the first kitchen needs next (17, 4A): (ingredient, amount, unit, flags).
+# Invented, like everything else here; the units are seeded codes.
+LIST_ITEMS: list[tuple[str, str | None, str | None, dict[str, Any]]] = [
+    ("Whole milk", "2", "l", {}),
+    ("Bread flour", "2", "lb", {}),
+    ("Coffee beans", "12", "oz", {"min_quality": 4}),
+    ("Yellow onions", "3", "each", {"deferrable": True}),
+    ("Eggs", "12", "each", {}),
+    ("Lemons", "4", "each", {"note": "for the sorbet"}),
+    ("Basil", None, None, {}),
+]
+
+
+async def _seed_list(
+    db: AsyncSession,
+    home_base_id: Any,
+    admin: AppUser,
+    member: AppUser,
+    ingredients: dict[str, Any],
+    products: list[Any],
+) -> int:
+    """A few things on the first kitchen's open list, so the Plan pages have
+    something to show: one claimed by the second cook, one product, one checked."""
+    lst = await shopping_lists.open_list(db, home_base_id)
+    n = 0
+    for name, amount, unit, flags in LIST_ITEMS:
+        item = await shopping_lists.add_item(
+            db,
+            lst,
+            admin,
+            ItemCreate(
+                home_base_id=home_base_id,
+                kind="ingredient",
+                ingredient_id=ingredients[name].id,
+                amounts=[AmountIn(amount=Decimal(amount), unit=unit)] if amount else [],
+                **flags,
+            ),
+        )
+        n += 1
+        if name == "Eggs":
+            await shopping_lists.claim(db, item, member)
+    olive_oil = next(p for p in products if p.ingredient_id == ingredients["Olive oil"].id)
+    await shopping_lists.add_item(
+        db,
+        lst,
+        member,
+        ItemCreate(home_base_id=home_base_id, kind="product", product_id=olive_oil.id),
+    )
+    n += 1
+    butter = await shopping_lists.add_item(
+        db,
+        lst,
+        admin,
+        ItemCreate(
+            home_base_id=home_base_id,
+            kind="ingredient",
+            ingredient_id=ingredients["Unsalted butter"].id,
+            amounts=[AmountIn(amount=Decimal(1), unit="lb")],
+        ),
+    )
+    await shopping_lists.check(db, butter, admin)
+    return n + 1
 
 
 async def _ensure_user(db: AsyncSession, email: str, display_name: str, role: str) -> AppUser:
