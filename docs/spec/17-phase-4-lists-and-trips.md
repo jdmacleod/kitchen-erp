@@ -1,7 +1,6 @@
 # 17 — Phase 4: Shopping Lists and the Trip Planner
 
-**Status: draft for review, 2026-10-12. Not approved until the household accepts
-it; CLAUDE.md names Phases 1–3 as the approved scope.**
+**Status: approved 2026-10-12 (Phase 4 review); rulings are folded inline.**
 
 Phase 4 makes the price book plan a trip. It takes a kitchen's shopping list,
 the drive times between the kitchen and its shops, and the household's value of
@@ -18,8 +17,10 @@ a list belongs to a kitchen; an item is an ingredient, optionally with a minimum
 quality, or an exact product, never both; items can be deferrable; members claim
 and check off from their phones; drive times come once per pair of places from
 a self-hosted engine behind a Compose profile, multiplier first; navigation is
-the phone's; the planner is as written there. Where a point goes to the Phase 4
-review, the recommended option is the draft text and the alternative one clause.
+the phone's; the planner is as written there. The Phase 4 review (2026-10-12)
+took the draft's recommendation on every point it was asked; each is marked
+"(Phase 4 review, 2026-10-12)" where it settles the text, and the rulings are
+listed by id at the end.
 
 ## Prerequisites and decisions taken
 
@@ -32,32 +33,39 @@ review, the recommended option is the draft text and the alternative one clause.
 - **One open list per kitchen.** A kitchen has exactly one open shopping list,
   "the {kitchen} list", enforced by a partial unique index. A trip plans from
   it; items checked off at a stop leave its open section; "Start a fresh list"
-  archives it and opens the next.
+  archives it and opens the next (L3, L8).
 - **Routing is OSRM behind a `routing` Compose profile**, following the `ollama`
   service's `profiles: ["llm"]` pattern in `compose.yaml`, over a Southern
   California extract clipped to a bounding box. When `ROUTING_URL` is unset or
   the engine does not answer, legs are estimated and marked so; the planner
-  never refuses to plan because the container is off.
+  never refuses to plan because the container is off (P2, P3).
 - **Kitchen scoping follows `09`.** Scoped endpoints take an explicit
   `home_base_id`, never inferred from the session; the current kitchen is a
   per-user server setting the client sends. Switching never hides price data
   recorded at the other kitchen's vendors: purchases, observations, offers and
   costing stay household-wide, and the kitchen filter on Compare and the cost
-  table is explicit and off by default.
+  table is explicit and off by default (L3).
 - **Claims are soft.** A claim shows who is getting the item; anyone may check
-  it off, and checking clears the claim.
+  it off, and checking clears the claim (L2).
 - **Plans are derived until chosen.** `POST /plan/trips` stores all three
   variants so the choice is auditable; `choose` freezes one with its stop
-  items as the prediction 4C compares against; replanning creates a new plan.
+  items as the prediction 4C compares against; replanning creates a new plan
+  (P1).
 - **Amounts are a child table** of `numeric` with a unit foreign key, never
   JSONB (non-negotiable 1); `06` settled that aggregation keeps (amount, unit)
-  pairs when units cannot convert.
-- **Compare prices moves to `/plan/compare`** in 4A with redirects; Home gains
-  the list panel above Recent purchases; the phone tab "Purchases" becomes "List".
+  pairs when units cannot convert (L1).
+- **Compare prices moves to `/plan/compare`** in 4A with redirects (L4); Home
+  gains the list panel above Recent purchases, on desktop only (L5); the phone
+  tab "Purchases" becomes "List" (L6), and the phone kitchen switcher tops the
+  More sheet (L7).
 - **Stale means `stale_after_days`** (default 90; `pricebook_views`). **Value
   of time** is the household setting `PLAN_VALUE_OF_TIME_PER_HOUR`, default
-  `20.00`, overridable per plan. **Archiving** keeps the old list readable and
-  carries unchecked items forward by default.
+  `20.00`, overridable per plan (P4, P5). **Archiving** keeps the old list
+  readable and carries unchecked items forward by default, as new rows on the
+  new list that remember the row they came from (L8). **"Done here"** makes
+  one observation per bought line from the purchase, flagged `planned_price`
+  when the price was not edited, and a shelf observation only for a price
+  edited but not bought (S1).
 
 ## Data model additions
 
@@ -71,6 +79,7 @@ shopping_list_item(                            -- 4A; a fact a person stated
   min_quality SMALLINT?, note?, deferrable BOOLEAN DEFAULT false,   -- min_quality: ingredient items only, 1–5 as product.quality_rating
   added_by FK app_user, added_from CHECK IN (manual, ingredient, recipe, stock), recipe_id FK recipe?,   -- stock: the Phase 5 hook, no FK yet
   claimed_by FK app_user?, claimed_at?, checked_at?, checked_by FK app_user?,   -- a soft claim; cleared by a check
+  carried_from_item_id FK shopping_list_item?, -- set when archiving copied this row forward from the old list (L8)
   created_at, updated_at                       -- updated_at is the optimistic token
 )
 shopping_list_item_qty(                        -- 4A; (amount, unit) pairs, never JSONB
@@ -117,11 +126,12 @@ the `TRUNCATABLE` list in the 4B migration. `trip_plan_variant`, `_stop` and
 `_stop_item` are derived and may be recomputed only while their plan has no
 `chosen_variant_id`; once chosen they are the frozen prediction, and nothing
 rewrites them except the 4C actual columns and `done_at`. Each sub-phase ships
-one reversible migration; the `plan` feature is keyed on 4A's (0049 if `main`
-is still at 0048; check the head before merging) in
-`services/health.FEATURE_MIGRATIONS`. No inbox kind and no API-token scope is
-added; every endpoint takes a session (`api/deps.CurrentUser`), and the
-mutations a phone may retry take `Idempotency`.
+one reversible migration; the `plan` feature is keyed on 4A's (0050: `main`
+was at 0049, `normalize_v3`, when this was approved; check the head before
+merging) in `services/health.FEATURE_MIGRATIONS`. No inbox kind and no
+API-token scope is added; every endpoint takes a session
+(`api/deps.CurrentUser`), and the mutations a phone may retry take
+`Idempotency`.
 
 ## 4A — Lists and the kitchen switcher
 
@@ -172,9 +182,10 @@ the kitchen's name as a neutral tag; nothing household-wide carries one.
 Shop's other pages (T18 in `09`). Home's right column gains the "{kitchen}
 list" panel above Recent purchases: the unchecked count, the five oldest
 unchecked items with amounts, an inline ingredient typeahead, and "Open list";
-the phone Home keeps its three recent purchases since the List tab is one tap
-away (open for the Phase 4 review: a list summary row on the phone Home too).
-The ingredient hub's dormant "Add to list" becomes its secondary action, and
+the phone Home keeps its three recent purchases, with no list summary row,
+since the List tab is one tap away (Phase 4 review, 2026-10-12: the panel is
+desktop only, L5). The ingredient hub's dormant "Add to list" becomes its
+secondary action, and
 the recipe page gains "Add to list" with a scale field; both are small inline
 panels confirmed through the Notice. Compare prices moves to Plan: nav item,
 palette action and route become `/plan/compare`, `/shop/compare` redirects
@@ -224,18 +235,25 @@ finds the ones missing or estimated, and makes one OSRM call,
 with timeout `ROUTING_TIMEOUT_S` (default 5). An answered cell is stored with
 `source = osrm` and the engine version; a null cell, a timeout, a refused
 connection or an unset `ROUTING_URL` stores `source = estimate`: haversine
-times a road factor of 1.3, at 30 km/h under 3 km, 40 km/h to 15 km and 60 km/h
-beyond. An estimate is replaced when the engine next answers for that pair,
-never the reverse. Admins recompute with `POST /api/v1/geo/travel-legs/recompute`
-or `kerp travel-legs recompute`, which drop estimates; OSRM legs only with `--all`.
+times a road factor, at a speed chosen by the distance band. The factor and the
+bands are config settings beside the multiplier table (Phase 4 review,
+2026-10-12, P2): `PLAN_ESTIMATE_ROAD_FACTOR`, default `1.3`, and
+`PLAN_ESTIMATE_SPEED_BANDS`, default `3:30,15:40,:60` (an upper bound in km and
+a speed in km/h per band, the last band unbounded), so 30 km/h under 3 km,
+40 km/h to 15 km and 60 km/h beyond. An estimate is replaced when the engine
+next answers for that pair, never the reverse. Admins recompute with
+`POST /api/v1/geo/travel-legs/recompute` or `kerp travel-legs recompute`, which
+drop estimates; OSRM legs only with `--all`.
 
 **Time of day.** Free-flow understates the household's traffic. A multiplier
 table in config, `PLAN_TRAFFIC_MULTIPLIERS`, defaults to weekdays 06–10 ×1.35,
 10–15 ×1.15, 15–20 ×1.45, otherwise ×1.0, and weekends 09–19 ×1.15, otherwise
-×1.0, in `household_timezone` (open for the Phase 4 review: these defaults, and
-whether the road factor and speed bands share the setting). It applies per leg
-at projected departure and is recorded on the stop; the stored leg stays
-free-flow.
+×1.0, in `household_timezone` (Phase 4 review, 2026-10-12: these defaults
+stand, and the road factor and speed bands are their own settings, above, P2).
+It applies per leg at the leg's projected departure, and the multiplier used
+and the arrival it yields are recorded on the stop the leg reaches; the stored
+leg stays free-flow, and a variant with any estimated leg is marked
+`estimated`.
 
 **Candidates.** Active vendor locations within `PLAN_CANDIDATE_RADIUS_KM`
 (default 25) of the list's kitchen, at most 15 nearest by straight line. A
@@ -310,14 +328,18 @@ the Geofabrik Southern California extract into `data/routing/`, clips it to
 `osrm-partition` and `osrm-customize` in the pinned image; clipping first keeps
 preprocessing within a laptop's memory. `.env.example` documents the bbox
 format and leaves it unset: a real bounding box is household geography.
-`docs/licensing.md` gains OSRM (BSD-2-Clause) and the ODbL extract.
+`docs/licensing.md` gains OSRM (BSD-2-Clause, run as a container), osmium-tool
+(GPL-3.0, a host tool only, never linked) and the ODbL extract (Phase 4 review,
+2026-10-12, P3).
 
 **Screens.** `/plan/trips` lists plans; "Plan a trip" is the primary action and
 opens the inputs in a drawer. `/plan/trips/:id` shows the three variants as
-cards with cost, minutes and the marginal trade; each stop with its items and
-subtotal; the annotations as a neutral list, stale and estimated in squash;
-and `components/geo/MapView` with the kitchen pin, numbered stop pins and
-straight segments. Each stop's "Navigate" opens the phone's maps application.
+cards with cost, minutes and the marginal trade, each with "Choose" until one
+is chosen; each stop with its items and subtotal; the annotations as a neutral
+list, stale and estimated in squash; and `components/geo/MapView` with the
+kitchen pin, numbered stop pins and straight segments. Each stop's "Navigate"
+opens the phone's maps application. "Replan" makes a new plan from the same
+inputs and the list as it is now (P1). The layouts are in `10` under Plan.
 
 ### Acceptance criteria
 
@@ -326,7 +348,8 @@ straight segments. Each stop's "Navigate" opens the phone's maps application.
     are estimates and the variants read `estimated`.
 12. An OSRM answer replaces an estimated leg, never the reverse; `recompute`
     drops only estimates unless `--all`; a synthetic pair's estimate equals
-    haversine × 1.3 at the band's speed.
+    haversine × the road factor at the band's speed, with the default settings
+    and again with changed ones.
 13. On a synthetic grid of six locations and a kitchen, the three variants
     equal hand-computed figures to the cent and the second under each
     multiplier band, with the marginal trades in money and minutes.
@@ -357,7 +380,8 @@ straight segments. Each stop's "Navigate" opens the phone's maps application.
 the chosen variant: the store, "Stop {seq} of {n}", the items to get here with
 planned packs and prices, the items assigned to later stops that this location
 could also fill with the price difference ("Cheaper at stop {m}"), basket
-progress and the estimated cost here; the phone layout is `10`'s (UI-4.8).
+progress and the estimated cost here; the screen is `/plan/trips/:id/stop/:seq`
+and the phone layout is `10`'s (UI-4.8).
 `PUT …/stops/{seq}/items/{item_id}/price {price, qty, unit}` holds an edited
 price on the stop item (`actual_*`) and the row shows the neutral edited tint.
 `POST …/stops/{seq}/get-here {item_id}` moves an item from a later stop here
@@ -375,18 +399,25 @@ on the checked items and clears their claims; records `done_at` and
 `purchase_id` on the stop; moves the plan to `underway` on the first stop and
 to `done` after the last, with `finished_at`. A line taken at the planned
 price carries the line flag `planned_price`, so a reader can tell a confirmed
-price from an assumed one (open for the Phase 4 review: whether such lines
-should emit observations at all, or only the edited ones). "Done here" on a
-plan with no chosen variant, or on a stop already done, is a 409 with the
-reason; a stop with nothing checked records `done_at` and no purchase.
+price from an assumed one (Phase 4 review, 2026-10-12, S1: a bought line's
+observation comes from the purchase line whether or not its price was edited,
+flagged `planned_price` when it was not; a shelf observation is written only
+for a price edited but not bought). "Done here" on a plan with no chosen
+variant, or on a stop already done, is a 409 with the reason; a stop with
+nothing checked records `done_at` and no purchase.
 
 **After the trip.** `GET /plan/trips/{id}` reports predicted against actual
 once a stop is done: the chosen variant's item cost beside the sum of its
 linked purchases, per stop and in total. The list stays open with its unchecked
 leftovers. "Start a fresh list" (`POST /plan/list/archive {home_base_id,
-carry_over}`) archives the open list and opens a new one; with `carry_over`
-true (the default) unchecked items are copied to it, claims cleared. An
-archived list stays readable at `/plan/list?list_id=`.
+carry_over}`) archives the open list and opens a new one, in one transaction.
+With `carry_over` true (the default) each unchecked item becomes a new row on
+the new list with its kind, ingredient or product, amount rows, note,
+`deferrable`, `min_quality`, `added_from` and `recipe_id` preserved,
+`carried_from_item_id` pointing at the old row, and no claim; the old rows are
+untouched. An archived list stays readable at `/plan/list?list_id=`, with its
+checked and unchecked items as they were, and carried items say "Carried to the
+current list" (Phase 4 review, 2026-10-12, L8).
 
 ### Acceptance criteria
 
@@ -400,8 +431,10 @@ archived list stays readable at `/plan/list?list_id=`.
 25. The plan is `underway` after the first stop and `done` after the last;
     "Done here" on a stop already done, or on an unchosen plan, is a 409.
 26. The list keeps its unchecked items after the trip; "Start a fresh list"
-    archives it, carries them forward by default, and the archived list stays
-    readable; the trip page shows predicted beside actual after a stop.
+    archives it and carries them forward by default as new rows with
+    `carried_from_item_id` set, `added_from` kept and claims cleared; the
+    archived list stays readable with its rows unchanged; the trip page shows
+    predicted beside actual after a stop.
 27. Every stop-screen control is at least 44px, check circles 28px, price
     buttons 44px with the edited tint; "Done here · record purchase" is
     anchored and reachable from the keyboard.
@@ -426,25 +459,44 @@ Stock-driven items and the "use soon" list (Phase 5; `added_from = stock` is
 only a value), camera scanning and offline sync (Phase 6), traffic calibration
 from trips, Valhalla, route geometry, named extra lists, and editing recipes.
 
-## Open for the Phase 4 review
+## Rulings from the Phase 4 review (2026-10-12)
 
-Each point names the draft's recommendation; the rulings are folded here, into
-`09`–`11` (UI-8 and the Plan layouts) and into CLAUDE.md's approved scope.
+The household ruled on the review board on 2026-10-12; every card took the
+draft's recommendation, with no notes. The rulings are folded into this
+document, into `09`–`11` (the Plan layouts and UI-8) and into CLAUDE.md's
+approved scope.
 
-1. Amounts as a child table (`shopping_list_item_qty`) rather than JSONB.
-2. Plans derived until chosen: three variants stored, `choose` freezes one.
-3. The multiplier table, road factor and speed bands as config, defaults above.
-4. Soft claims: a name only, anyone may check, a check clears the claim.
-5. Kitchen scope: lists, trips and the Compare and cost-table filters take an
-   explicit `home_base_id`; everything else stays household-wide.
-6. Compare prices moves to `/plan/compare` in 4A with redirects.
-7. The Home panel: count, five items, inline add, a link; not on phone Home.
-8. The phone tab renames Purchases → List at 4A, with Purchases under More.
-9. Stale reuses `stale_after_days`; no second threshold.
-10. The OSRM extract is Geofabrik Southern California clipped by `ROUTING_BBOX`,
-    MLD, prepared by `make routing-prepare`; the bbox is never tracked.
-11. Value of time is `PLAN_VALUE_OF_TIME_PER_HOUR`, default 20.00, per plan.
-12. Archiving keeps the old list readable and carries unchecked items forward.
-
-Surfaced by the draft, beyond the plan's twelve: whether a "Done here" line at
-the planned, unedited price emits an observation (draft: yes, `planned_price`).
+- **L1** Amounts are the child table `shopping_list_item_qty` (`numeric`
+  amount, unit foreign key, `seq`), never JSONB.
+- **L2** Claims are soft: a claim shows a name, anyone may check the item, and
+  a check clears the claim.
+- **L3** Kitchen scope: lists and trips take an explicit `home_base_id`;
+  Compare and the cost table get an optional kitchen filter, off by default;
+  everything else stays household-wide, and the per-kitchen cost view is
+  computed on demand, never snapshotted.
+- **L4** Compare prices moves to `/plan/compare` in 4A, with `/shop/compare`
+  and `/compare` redirecting.
+- **L5** The Home list panel is desktop only: the count, the five oldest
+  unchecked items, inline add and "Open list"; the phone Home keeps recent
+  purchases.
+- **L6** The phone tab Purchases becomes List at 4A; Purchases goes under More
+  with Shop's other pages.
+- **L7** The phone kitchen switcher sits at the top of the More sheet, and the
+  List tab's header shows the kitchen's name.
+- **L8** Archiving keeps the old list readable and carries unchecked items
+  forward to the new list as new rows that remember where they came from.
+- **P1** Plans are derived until chosen: all three variants are stored,
+  `choose` freezes one and its stop items, and replanning creates a new plan.
+- **P2** The multiplier table, the road factor 1.3 and the 30/40/60 km/h bands
+  are config settings with the draft's defaults; a variant with an estimated
+  leg is annotated `estimated`; multipliers are applied per leg and recorded
+  on the stop each leg reaches, with its projected arrival.
+- **P3** The OSRM extract is Geofabrik Southern California clipped by
+  `ROUTING_BBOX`, which is never tracked; MLD; prepared by
+  `make routing-prepare`.
+- **P4** Value of time is `PLAN_VALUE_OF_TIME_PER_HOUR`, default `20.00`, with
+  a per-plan override.
+- **P5** Stale reuses `stale_after_days`; there is no second threshold.
+- **S1** "Done here": a bought line's observation comes from the purchase
+  line, flagged `planned_price` when unedited; a shelf observation only for a
+  price edited but not bought.
