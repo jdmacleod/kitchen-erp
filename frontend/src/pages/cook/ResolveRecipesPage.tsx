@@ -203,7 +203,14 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
             className={`gap-2 ${p.tier === "model" ? "border-amber-400 dark:border-amber-600" : ""}`}
             onClick={() => decide(decisionFromProposal(item.name_norm, p))}
           >
-            {p.name} <Badge>{tierLabel(p)}</Badge>
+            {p.name}
+            {p.tier === "usda" && p.fdc_description ? (
+              <>
+                {" "}
+                <span className={`text-xs ${muted}`}>{p.fdc_description}</span>
+              </>
+            ) : null}{" "}
+            <Badge>{tierLabel(p)}</Badge>
           </Button>
         ))}
         {askedOnce && !ask.isPending && shown.length === 0 ? <span className={`text-sm ${muted}`}>No suggestion</span> : null}
