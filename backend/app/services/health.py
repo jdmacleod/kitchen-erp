@@ -39,6 +39,7 @@ def expected_migration_head() -> str | None:
 FEATURE_MIGRATIONS: tuple[tuple[str, str], ...] = (
     ("catalog", "0003"),
     ("cook", "0042"),
+    ("plan", "0050"),
     ("shop", "0005"),
 )
 

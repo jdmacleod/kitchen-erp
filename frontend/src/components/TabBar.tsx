@@ -5,12 +5,14 @@ import { useCurrentUser } from "../auth/context";
 import { Dialog } from "./Dialog";
 import { HealthStatus } from "./HealthStatus";
 import { FOOTER_SECTIONS, InboxBadge, MAIN_SECTIONS, visibleSections } from "./Nav";
+import { KitchenSwitcherRow } from "./plan/KitchenSwitcher";
 import { Button, focusRing } from "./ui";
 
 /** Stroke icons for the tabs, drawn on a 24px grid. */
 const ICONS = {
   home: "M4 11 12 4l8 7v9h-5v-6H9v6H4v-9Z",
   purchases: "M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6m-6 4h6",
+  list: "M5 7h2m4 0h8M5 12h2m4 0h8M5 17h2m4 0h8",
   capture: "M12 5v14M5 12h14",
   search: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Zm9 2-4.35-4.35",
   more: "M5 12h.01M12 12h.01M19 12h.01",
@@ -38,16 +40,22 @@ interface TabBarProps {
   moreOpen: boolean;
 }
 
+/** The second tab: Purchases until Plan is built, then the kitchen's list (09, T18; UI-8.10). */
+export function secondTab(features: readonly string[] | undefined): { to: string; label: string; icon: string } {
+  return features?.includes("plan") ? { to: "/plan/list", label: "List", icon: ICONS.list } : { to: "/shop/purchases", label: "Purchases", icon: ICONS.purchases };
+}
+
 /**
  * The phone and tablet navigation below lg (docs/spec/09, Phone and tablet; 10, Tab
- * bar): Home, Purchases, a raised Capture, Search and More. 84px with the home
- * indicator's safe area.
+ * bar): Home, Purchases (List once Plan is built), a raised Capture, Search and
+ * More. 84px with the home indicator's safe area.
  */
 export function TabBar({ onCapture, onSearch, onMore, moreOpen }: TabBarProps) {
   const { pathname } = useLocation();
-  const onPurchases = pathname === "/shop/purchases" || pathname.startsWith("/shop/purchases/");
-  // Every page that is neither Home nor Purchases is reached through More.
-  const underMore = moreOpen || (pathname !== "/" && !onPurchases);
+  const second = secondTab(useHealth().data?.features);
+  const onSecond = pathname === second.to || pathname.startsWith(`${second.to}/`);
+  // Every page that is neither Home nor the second tab is reached through More.
+  const underMore = moreOpen || (pathname !== "/" && !onSecond);
   return (
     <nav
       aria-label="Tabs"
@@ -66,9 +74,9 @@ export function TabBar({ onCapture, onSearch, onMore, moreOpen }: TabBarProps) {
           </NavLink>
         </li>
         <li className="flex flex-1">
-          <Link to="/shop/purchases" aria-current={onPurchases ? "page" : undefined} className={tabClass(onPurchases)}>
-            <Icon d={ICONS.purchases} />
-            Purchases
+          <Link to={second.to} aria-current={onSecond ? "page" : undefined} className={tabClass(onSecond)}>
+            <Icon d={second.icon} />
+            {second.label}
           </Link>
         </li>
         <li className="flex flex-1 justify-center">
@@ -109,8 +117,9 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 /**
- * The More tab (UI-4.9): Shop's other pages, Catalog and Settings, then the
- * account and the status line. A sheet, not a route; 09 has no `/more`.
+ * The More tab (UI-4.9): the kitchen switcher with two or more kitchens, then
+ * Shop's other pages, Catalog and Settings, then the account and the status
+ * line. A sheet, not a route; 09 has no `/more`.
  */
 export function MoreSheet({ onClose }: { onClose: () => void }) {
   const titleId = useId();
@@ -125,11 +134,12 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
     onClose();
   };
 
-  // Purchases has its own tab, so Shop lists only its other pages.
+  // The second tab's page is one tap away already, so its section lists only the others.
+  const second = secondTab(features).to;
   const groups = visibleSections([...MAIN_SECTIONS, ...FOOTER_SECTIONS], features)
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) => (admin || !i.adminOnly) && i.to !== "/shop/purchases"),
+      items: s.items.filter((i) => (admin || !i.adminOnly) && i.to !== second),
     }))
     .filter((s) => s.items.length > 0);
 
@@ -147,6 +157,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
         More
       </h2>
       <nav aria-label="More" className="min-h-0 flex-1 overflow-y-auto">
+        <KitchenSwitcherRow />
         {groups.map((g) => (
           <section key={g.key} aria-labelledby={`${titleId}-${g.key}`} className="mb-3">
             <h3 id={`${titleId}-${g.key}`} className="px-3 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400">

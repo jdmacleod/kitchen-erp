@@ -308,12 +308,13 @@ function invalidateLocations(client: QueryClient) {
 
 // --- kitchens -------------------------------------------------------------
 
-export function useHomeBases() {
+export function useHomeBases(enabled = true) {
   return useQuery({
     queryKey: geoKeys.homeBases,
     queryFn: () => api<ListResponse<HomeBase>>("/home-bases"),
     select: (data) => data.items,
     staleTime: 60_000,
+    enabled,
   });
 }
 
