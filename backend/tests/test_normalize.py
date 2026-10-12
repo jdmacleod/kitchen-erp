@@ -1,10 +1,11 @@
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from app.services.normalize import NORMALIZE_VERSION
 from app.services.normalize import normalize_receipt_text as norm
 from tests.normalize_v1 import normalize_v1
+from tests.normalize_v2 import normalize_v2
 
 TABLE = [
     ("ITAL BOMBA HOT PEP", "ITAL BOMBA HOT PEP"),
@@ -45,6 +46,13 @@ TABLE = [
     # A comma that is not inside a price is punctuation, as before.
     ("SALT, FLAKED", "SALT FLAKED"),
     ("PACK 6,4", "PACK 6 4"),
+    # Version 3 (#258): clean-up of the ends repeats until nothing more comes off.
+    ("0.B-", "0"),  # the dash goes, leaving a flag at the end
+    ("CHIPS B -", "CHIPS"),
+    ("-1234 MOSS BAY KELP", "MOSS BAY KELP"),  # the dash goes, leaving a code at the start
+    ("- 1234 - 5678 KELP T -", "KELP"),
+    ("1234", "1234"),  # a lone code is the whole name
+    ("T -", "T"),  # and so is a lone flag
 ]
 
 
@@ -60,33 +68,57 @@ def test_idempotent(raw: str, _):
 
 
 def test_version_is_recorded_constant():
-    assert NORMALIZE_VERSION == "2"
+    assert NORMALIZE_VERSION == "3"
 
 
-# The differential test against version 1. Version 2 reads a comma exactly as
-# version 1 read a decimal point, and changes nothing else, so for any text:
+# The differential tests against the frozen versions. Version 2 reads a comma
+# exactly as version 1 read a decimal point, and changes nothing else, so for
+# any text:
 #   - with no comma, the versions agree;
 #   - with commas, version 2 equals version 1 run on the text with each comma
 #     made a point.
 # Both halves matter: the second alone would allow a change to text with no comma.
+# Version 3 is version 2 run until the text stops changing, so it agrees with
+# version 2 wherever version 2 was already idempotent.
 _RECEIPT_ALPHABET = st.sampled_from(list("AB TX019.,@$/-*&%'\tLBOZKGEA"))
+
+
+def _v2_until_stable(raw: str) -> str:
+    text = normalize_v2(raw)
+    while (again := normalize_v2(text)) != text:
+        text = again
+    return text
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
 def test_v2_matches_v1_without_a_comma(raw: str):
     raw = raw.replace(",", "")
-    assert norm(raw) == normalize_v1(raw)
+    assert normalize_v2(raw) == normalize_v1(raw)
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
 def test_v2_reads_a_comma_as_v1_read_a_point(raw: str):
-    assert norm(raw) == normalize_v1(raw.replace(",", "."))
+    assert normalize_v2(raw) == normalize_v1(raw.replace(",", "."))
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
-def test_v2_is_idempotent(raw: str):
+@example(raw="0.B-")
+@example(raw="-1234 KELP")
+def test_v3_is_v2_until_stable(raw: str):
+    assert norm(raw) == _v2_until_stable(raw)
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+@example(raw="0.B-")
+def test_v3_is_idempotent(raw: str):
     once = norm(raw)
     assert norm(once) == once
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+def test_v3_of_a_v2_key_is_the_v3_key(raw: str):
+    """Migration 0049 re-keys stored version 2 keys on their own, without the raw text."""
+    assert norm(normalize_v2(raw)) == norm(raw)
 
 
 @pytest.mark.parametrize(
@@ -100,7 +132,7 @@ def test_v2_is_idempotent(raw: str):
 def test_the_intended_differences_from_v1(raw: str, v1: str):
     """What version 1 left in the wording, and version 2 removes."""
     assert normalize_v1(raw) == v1
-    assert norm(raw) == norm(raw.replace(",", "."))
+    assert normalize_v2(raw) == normalize_v2(raw.replace(",", "."))
 
 
 # The text reaching this module comes from OCR or from a language model reading a

@@ -17,6 +17,14 @@ version 1 left "7 25" in the wording and split one product into two groups. No
 other output changed; tests/test_normalize.py checks that against a frozen copy
 of version 1. Migration 0030 re-keys the stored lines, aliases and suggestions.
 
+Version 3 (#258) repeats the clean-up of the ends until nothing more comes off.
+Version 2 cleaned them once, so stripping a trailing dash could leave a flag at
+the end ("0.B-" gave "0 B", which normalized again to "0"), and stripping a
+leading dash could leave an item code at the start. Version 3 gives what
+version 2 gave when run again and again until the text stopped changing, which
+for every other text is what version 2 gave once. Migration 0049 re-keys the
+stored lines, aliases and suggestions.
+
 Any edit that alters output for any input must bump NORMALIZE_VERSION, because
 `purchase_line.raw_text_norm` is stored and aliases are matched against it.
 """
@@ -25,11 +33,12 @@ from __future__ import annotations
 
 import re
 
-NORMALIZE_VERSION = "2"
+NORMALIZE_VERSION = "3"
 
 _WS = re.compile(r"\s+")
-# Leading item codes: 4+ digits, optionally with a letter prefix, possibly several.
-_LEADING_CODE = re.compile(r"^(?:[A-Z]?\d{4,}\s+)+")
+# A leading item code: 4+ digits, optionally with a letter prefix. Matched against
+# one token, so it is anchored at both ends.
+_CODE_TOKEN = re.compile(r"[A-Z]?\d{4,}")
 # Money and price-per-unit tokens: $3.99, -1.50, 3.99/LB, @ 3.99, 2 @ 1.99, 2.31 LB @ 3.99/LB,
 # and the same with a comma for the decimal point (version 2).
 #
@@ -60,15 +69,46 @@ _NON_TEXT = re.compile(r"[^A-Z0-9&/%\'\- ]+")
 # is a token question rather than a regex one, and popping tokens is linear where
 # the anchored pattern it replaces was quadratic.
 _FLAG_TOKEN = frozenset({"F", "T", "N", "B", "E", "X", "TX", "FS", "NF", "TF"})
-_DASH_AND_SPACE = "- "
+_DASH = "-"
 
 
-def _strip_trailing_flags(text: str) -> str:
-    """Drop trailing flag tokens. A lone flag is the whole name and is kept."""
-    parts = text.split(" ")
-    while len(parts) > 1 and (parts[-1] in _FLAG_TOKEN or set(parts[-1]) == {"*"}):
-        parts.pop()
-    return " ".join(parts)
+def _is_flag(token: str) -> bool:
+    return token in _FLAG_TOKEN or set(token) == {"*"}
+
+
+def _clean_ends(tokens: list[str]) -> list[str]:
+    """Drop leading item codes, trailing flags and the dashes at either end, until
+    none is left. Each removal can uncover another (a dash stripped from the last
+    token can leave a flag there), so the three are repeated rather than run once.
+
+    Leading codes go only while another token follows, and flags only while
+    another token precedes: a lone code or flag is the whole name and is kept.
+    Each pass that changes anything removes at least one character from an end,
+    so the loop is linear in the text, not quadratic.
+    """
+    start, end = 0, len(tokens)  # tokens[start:end] is the text kept so far
+    while True:
+        changed = False
+        while end - start > 1 and _CODE_TOKEN.fullmatch(tokens[start]):
+            start += 1
+            changed = True
+        while end - start > 1 and _is_flag(tokens[end - 1]):
+            end -= 1
+            changed = True
+        while start < end and not tokens[start].lstrip(_DASH):
+            start += 1
+            changed = True
+        if start < end and tokens[start].startswith(_DASH):
+            tokens[start] = tokens[start].lstrip(_DASH)
+            changed = True
+        while start < end and not tokens[end - 1].rstrip(_DASH):
+            end -= 1
+            changed = True
+        if start < end and tokens[end - 1].endswith(_DASH):
+            tokens[end - 1] = tokens[end - 1].rstrip(_DASH)
+            changed = True
+        if not changed:
+            return tokens[start:end]
 
 
 def normalize_receipt_text(raw: str) -> str:
@@ -77,11 +117,4 @@ def normalize_receipt_text(raw: str) -> str:
     text = _BARE_AT.sub(" ", text)
     text = _NON_TEXT.sub(" ", text)
     text = _WS.sub(" ", text).strip()
-    text = _LEADING_CODE.sub("", text)
-    text = _strip_trailing_flags(text)
-    # Leading and trailing runs of dashes and spaces. str.strip is linear; the
-    # pattern it replaces nested two optional whitespace matches inside a repeat,
-    # which is the shape CodeQL flagged as an inefficient regular expression.
-    text = text.strip(_DASH_AND_SPACE)
-    text = _WS.sub(" ", text).strip()
-    return text
+    return " ".join(_clean_ends(text.split(" ") if text else []))

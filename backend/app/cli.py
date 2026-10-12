@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import typer
@@ -102,7 +103,7 @@ def migrate(
     check_normalize: bool = typer.Option(
         False,
         "--check-normalize",
-        help="Only count how migration 0030 will re-key receipt wording; change nothing.",
+        help="Only count how the next re-keying migration changes receipt wording; change nothing.",
     ),
 ) -> None:
     """Apply migrations as the owner role, then seed reference units (idempotent)."""
@@ -177,8 +178,16 @@ def _check_barcodes() -> None:
     typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
 
 
+# The migrations that re-key receipt wording, oldest first, with the normalizer
+# version each moves to. A dry run reports on the first one not yet applied.
+_NORMALIZE_MIGRATIONS = (
+    ("0030", "0030_normalize_v2.py", "2"),
+    ("0049", "0049_normalize_v3.py", "3"),
+)
+
+
 def _check_normalize() -> None:
-    """Dry run of 0030's re-keying, using the migration's own frozen normalizer and plan."""
+    """Dry run of the next re-keying, using the migration's own frozen normalizer and plan."""
     import importlib.util
 
     from sqlalchemy import text
@@ -187,32 +196,45 @@ def _check_normalize() -> None:
 
     from app.core.config import get_settings
 
-    path = Path(__file__).resolve().parent.parent / "alembic/versions/0030_normalize_v2.py"
-    spec = importlib.util.spec_from_file_location("migration_0030", path)
-    assert spec is not None and spec.loader is not None
-    migration = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(migration)
+    migrations = []
+    for revision, filename, version in _NORMALIZE_MIGRATIONS:
+        path = Path(__file__).resolve().parent.parent / "alembic/versions" / filename
+        spec = importlib.util.spec_from_file_location(f"migration_{revision}", path)
+        assert spec is not None and spec.loader is not None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        migrations.append((revision, version, module))
 
-    async def _run() -> tuple[bool, list[list[dict]]]:
+    async def _run() -> tuple[tuple[str, str, Any] | None, list[list[dict]]]:
         engine = create_async_engine(get_settings().migration_database_url, poolclass=NullPool)
         try:
             async with engine.connect() as conn:
-                applied = (
-                    await conn.execute(text(f"SELECT to_regclass('{migration.BACKUP}')"))
-                ).scalar() is not None
-                rows = []
-                for sql in (migration.LINES_SQL, migration.ALIASES_SQL, migration.SUGGESTIONS_SQL):
-                    rows.append([dict(r) for r in (await conn.execute(text(sql))).mappings()])
-                return applied, rows
+                for revision, version, module in migrations:
+                    applied = (
+                        await conn.execute(text(f"SELECT to_regclass('{module.BACKUP}')"))
+                    ).scalar() is not None
+                    if applied:
+                        continue
+                    rows = []
+                    for sql in (module.LINES_SQL, module.ALIASES_SQL, module.SUGGESTIONS_SQL):
+                        rows.append([dict(r) for r in (await conn.execute(text(sql))).mappings()])
+                    return (revision, version, module), rows
+                return None, []
         finally:
             await engine.dispose()
 
-    applied, (lines, aliases, suggestions) = asyncio.run(_run())
-    if applied:
-        typer.echo("Migration 0030 has already run: receipt wording uses normalizer version 2.")
+    pending, rows = asyncio.run(_run())
+    if pending is None:
+        revision, version, _ = migrations[-1]
+        typer.echo(
+            f"Migration {revision} has already run: "
+            f"receipt wording uses normalizer version {version}."
+        )
         return
-    summary = migration.plan(lines, aliases, suggestions).summary()
-    typer.echo("Migration 0030 would re-key receipt wording (normalizer version 2):")
+    revision, version, module = pending
+    lines, aliases, suggestions = rows
+    summary = module.plan(lines, aliases, suggestions).summary()
+    typer.echo(f"Migration {revision} would re-key receipt wording (normalizer version {version}):")
     for label, n in summary.items():
         typer.echo(f"  {n:>5}  {label}")
     typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
