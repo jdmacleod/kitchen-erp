@@ -218,7 +218,8 @@ Capture's no-geolocation fallback keeps the remembered location.
 5. A claim shows the claimant; a check by another user clears it and sets
    `checked_at`; a second check is a 200 with no change.
 6. A `PATCH` with a stale `updated_at` answers `409 stale_item` with the
-   current row; the list page shows "Changed by {name} · Reload".
+   current row; the list page puts that row in place and says "Updated by
+   someone else; showing the latest." (package 4, 2026-10-12).
 7. The switcher appears only with two or more kitchens, in the sidebar footer
    and the More sheet; "Switch to {kitchen}" is in the palette; the choice
    survives a reload and a second device; the kitchen tag appears on the list
