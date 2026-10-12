@@ -1,6 +1,6 @@
 # CLAUDE.md — Kitchen ERP
 
-Kitchen ERP is a self-hosted household kitchen system: vendors, products, purchases, price history, and later recipes, costing, shopping trips, and inventory. One deployment serves one household. The full specification lives in `docs/spec/`; read `00-README.md` first, then the document for the phase you are working on. Only Phases 1, 2 and 3 are approved for implementation (`07` is the Phase 3 document), together with the UI work in `08`–`11` for the pages those phases build; UI criteria marked dormant wait for their phase. `05-later-phase-design-notes.md` is context, not a work order.
+Kitchen ERP is a self-hosted household kitchen system: vendors, products, purchases, price history, and later recipes, costing, shopping trips, and inventory. One deployment serves one household. The full specification lives in `docs/spec/`; read `00-README.md` first, then the document for the phase you are working on. Only Phases 1, 2, 3 and 4 are approved for implementation (`07` is the Phase 3 document, `17` the Phase 4 document), together with the UI work in `08`–`11` for the pages those phases build; UI criteria marked dormant wait for their phase. `05-later-phase-design-notes.md` is context, not a work order.
 
 ## Non-negotiables
 
