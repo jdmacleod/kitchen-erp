@@ -141,9 +141,13 @@ export function PurchasesPage() {
       <PageHeader
         title="Purchases"
         description={
-          q && purchases.data
+          // The count describes the search's own answer, never the rows kept on
+          // screen while it is asked for (issue 304).
+          q && purchases.data && !purchases.isPlaceholderData
             ? `${countLabel(items.length, Boolean(purchases.hasNextPage))} ${items.length === 1 && !purchases.hasNextPage ? "purchase matches" : "purchases match"} “${q}”.`
-            : // Mention removed purchases only when there is a link to them (issue 247).
+            : q
+              ? `Finding “${q}”…`
+              : // Mention removed purchases only when there is a link to them (issue 247).
               `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
         }
       >
@@ -229,7 +233,7 @@ export function PurchasesPage() {
           ) : null}
         </div>
 
-        {purchases.isPending ? (
+        {purchases.isPending || (purchases.isPlaceholderData && items.length === 0) ? (
           <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
             Loading…
           </p>

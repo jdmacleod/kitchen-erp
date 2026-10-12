@@ -1,13 +1,13 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
+import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
 import { manualPurchase } from "./purchase-fixtures";
 
 // Spec 10, Shop: purchases, and UI-3.22: find a store or item, and sort by Date,
 // Where and Total, both on the server and kept in the URL (issue 292).
 
-function routes(list: (call: RecordedCall) => Response) {
+function routes(list: RouteHandler) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -36,7 +36,7 @@ describe("purchases: find and sort (UI-3.22)", () => {
 
     await user.type(screen.getByLabelText("Find a store or item"), "blueberries");
     expect(await screen.findByText("1 purchase matches “blueberries”.")).toBeInTheDocument();
-    expect(listCalls(calls).some((c) => c.query.get("q") === "blueberries")).toBe(true);
+    await waitFor(() => expect(listCalls(calls).some((c) => c.query.get("q") === "blueberries")).toBe(true));
 
     await user.clear(screen.getByLabelText("Find a store or item"));
     await user.type(screen.getByLabelText("Find a store or item"), "kumquat");
@@ -45,6 +45,29 @@ describe("purchases: find and sort (UI-3.22)", () => {
     await user.click(within(empty).getByRole("button", { name: "Clear search" }));
     expect(await screen.findByRole("table", { name: "Purchases" })).toBeInTheDocument();
     expect(screen.getByLabelText("Find a store or item")).toHaveValue("");
+  });
+
+  it("doesn't count the rows kept on screen as the new search's matches (issue 304)", async () => {
+    let answer: (r: Response) => void = () => {};
+    mockApi(
+      routes((call) =>
+        call.query.get("q") === "blueberries"
+          ? new Promise<Response>((resolve) => {
+              answer = resolve;
+            })
+          : jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/shop/purchases");
+    await screen.findByRole("table", { name: "Purchases" });
+
+    await user.type(screen.getByLabelText("Find a store or item"), "blueberries");
+    expect(await screen.findByText("Finding “blueberries”…")).toBeInTheDocument();
+    expect(screen.queryByText(/match(es)? “blueberries”/)).toBeNull();
+    answer(jsonResponse(200, { items: [], next_cursor: null }));
+    expect(await screen.findByRole("region", { name: "No purchases match “blueberries”" })).toBeInTheDocument();
+    expect(screen.getByText("0 purchases match “blueberries”.")).toBeInTheDocument();
   });
 
   it("sorts by a heading on the server, marks it with aria-sort, and reverses on a second click", async () => {

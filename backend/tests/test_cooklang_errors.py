@@ -16,6 +16,11 @@ from app.recipes.cooklang import ParseError, Recipe, parse
         ("First step.\n\nThen @hot milk{1", 3, 15, "never closed"),
         ("Fry in #pan{ for a while", 1, 12, "never closed"),
         ("Wait ~{3%minutes", 1, 7, "never closed"),
+        # The body stops at the next component or comment, not the next `}` (#288).
+        ("@milk{1%cup and @oats{2}", 1, 6, "`@milk{` is never closed"),
+        ("Add @milk{1%cup, a #pot{}", 1, 10, "`@milk{` is never closed"),
+        ("Wait ~{3%minutes -- then } stir", 1, 7, "`~{` is never closed"),
+        ("Add @milk{1 [- a note -] }", 1, 10, "`@milk{` is never closed"),
         ("Add @butter{}(softened to the bowl", 1, 14, "note on `@butter` is never closed"),
         ("Stir.\n[- a comment that\nnever ends", 2, 1, "`[-` is never closed"),
         ("---\ntitle: Open\n", 1, 1, "never closed"),
