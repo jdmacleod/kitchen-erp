@@ -1,5 +1,7 @@
+import { useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
+import { useLocations } from "../../api/geo";
 import {
   COST_BASES,
   basisLabel,
@@ -13,15 +15,18 @@ import {
   type Recipe,
 } from "../../api/recipes";
 import { CostTable, CostTotals } from "../../components/cook/CostTable";
+import { KitchenTag } from "../../components/plan/KitchenTag";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RemoveRecipe } from "../../components/cook/RemoveRecipe";
 import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
 import { RescanButton } from "../../components/cook/RescanButton";
 import { SnapshotChart, snapshotPoints } from "../../components/cook/SnapshotChart";
 import { useNotice } from "../../components/Notice";
+import { AddRecipeToListPanel } from "../../components/plan/AddToListPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
 import { formatRelative } from "../../lib/format";
+import { useCurrentKitchen, usePlanBuilt } from "../../lib/kitchen";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -104,11 +109,37 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
       { replace: true },
     );
 
+  // "Kitchen: All · {name}" beside the basis (17, 4A; UI-8.8): All by default and
+  // kept in the URL; with a kitchen chosen the cost is computed on demand with
+  // prices at its locations only, and never snapshotted, so the history stays out.
+  const kitchen = useCurrentKitchen();
+  const requested = params.get("home_base_id") ?? "";
+  const scoped = kitchen.kitchens.find((k) => k.id === requested) ?? null;
+  const setKitchen = (id: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (id) next.set("home_base_id", id);
+        else next.delete("home_base_id");
+        return next;
+      },
+      { replace: true },
+    );
+
   // A basis without a snapshot is computed inside the call, so "Costing…" shows
   // until it answers (UI-7.8). A missing file keeps its last snapshot.
-  const cost = useRecipeCost(recipe.id, basis);
-  const history = useRecipeCostHistory(recipe.id, basis);
+  const cost = useRecipeCost(recipe.id, basis, true, scoped?.id ?? "");
+  const history = useRecipeCostHistory(recipe.id, basis, scoped === null);
   const points = snapshotPoints(history.data?.items ?? [], cost.data);
+  // The kitchen's locations, to see whether the server honoured the filter: a
+  // priced line at another kitchen's store means it answered household-wide.
+  const locations = useLocations({ home_base_id: scoped?.id, include_inactive: true }, scoped !== null);
+  const locationIds = useMemo(() => (scoped && locations.data ? new Set(locations.data.map((l) => l.id)) : null), [scoped, locations.data]);
+  const outside = locationIds && cost.data ? cost.data.lines.filter((l) => l.price?.location_id && !locationIds.has(l.price.location_id)).length : 0;
+
+  // "Add to list" with a Scale field once Plan is built (10; UI-8.4).
+  const plan = usePlanBuilt();
+  const [addingToList, setAddingToList] = useState(false);
 
   const servings = servingsText(recipe);
   const meta = (
@@ -144,6 +175,11 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
             Jump to recipe
           </a>
           {recipe.status === "missing" ? <RemoveRecipe recipe={recipe} /> : null}
+          {plan && recipe.status !== "missing" ? (
+            <Button variant="secondary" onClick={() => setAddingToList((v) => !v)} aria-expanded={addingToList}>
+              Add to list
+            </Button>
+          ) : null}
           <RescanButton />
         </div>
       </PageHeader>
@@ -154,6 +190,11 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
         </Alert>
       ) : null}
       {recipe.status === "missing" ? <MissingAlert recipe={recipe} /> : null}
+      {addingToList ? (
+        <div className="mb-4">
+          <AddRecipeToListPanel recipe={recipe} onClose={() => setAddingToList(false)} />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[1fr_1.4fr] lg:items-start">
         <div className="order-2 min-w-0 lg:order-1">
@@ -161,9 +202,29 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
         </div>
         <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-medium">Cost</h2>
-            <SegmentedControl<CostBasis> label="Basis" options={COST_BASES.map((b) => ({ value: b, label: basisLabel[b] }))} value={basis} onChange={setBasis} />
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-medium">
+              <span>Cost</span>
+              {scoped ? <KitchenTag name={scoped.name} /> : null}
+            </h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <SegmentedControl<CostBasis> label="Basis" options={COST_BASES.map((b) => ({ value: b, label: basisLabel[b] }))} value={basis} onChange={setBasis} />
+              {kitchen.built && kitchen.kitchens.length > 0 ? (
+                <SegmentedControl label="Kitchen" value={scoped?.id ?? ""} onChange={setKitchen} options={[{ value: "", label: "All" }, ...kitchen.kitchens.map((k) => ({ value: k.id, label: k.name }))]} />
+              ) : null}
+            </div>
           </div>
+          {scoped ? (
+            <p className={`text-sm ${muted}`} data-testid="kitchen-cost-note">
+              Prices at {scoped.name}&apos;s stores only, worked out now and not kept as a snapshot.
+            </p>
+          ) : null}
+          {scoped && outside > 0 ? (
+            <Alert tone="warn">
+              <span data-testid="kitchen-cost-unfiltered">
+                {outside === 1 ? "One line is" : `${outside} lines are`} priced at another kitchen&apos;s store: the server doesn&apos;t filter costs by kitchen yet, so these figures count every kitchen&apos;s prices.
+              </span>
+            </Alert>
+          ) : null}
           {recipe.status === "parse_error" && cost.data ? <p className={`text-sm ${muted}`}>Showing the last version that could be read.</p> : null}
           {cost.isError ? (
             <Alert tone="error">
@@ -177,8 +238,8 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
           ) : (
             <>
               <CostTotals cost={cost.data} costing={cost.isPending} />
-              {cost.data ? <CostTable cost={cost.data} recipe={recipe} /> : null}
-              {history.isError ? <Alert tone="error">Couldn&apos;t load the cost history: {errorMessage(history.error)}</Alert> : <SnapshotChart points={points} />}
+              {cost.data ? <CostTable cost={cost.data} recipe={recipe} locationIds={locationIds} /> : null}
+              {scoped ? null : history.isError ? <Alert tone="error">Couldn&apos;t load the cost history: {errorMessage(history.error)}</Alert> : <SnapshotChart points={points} />}
             </>
           )}
         </div>

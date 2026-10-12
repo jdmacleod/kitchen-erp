@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router";
 import { useHealth } from "../api/queries";
 import { SEARCH_MAX, useSearch, type SearchResult, type SearchResults } from "../api/search";
 import { useCurrentUser } from "../auth/context";
-import { availableActions, commonActions, matchActions, type PaletteAction } from "../lib/paletteActions";
+import { useCurrentKitchen } from "../lib/kitchen";
+import { availableActions, commonActions, kitchenActions, matchActions, type PaletteAction } from "../lib/paletteActions";
 import { readRecents, rememberRecent } from "../lib/searchRecents";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { CategoryChip } from "./CategoryChip";
@@ -25,6 +26,7 @@ type PaletteItem = SearchResult | PaletteAction;
 /** Where an action or page lives, shown beside it. */
 function section(route: string): string {
   if (route.startsWith("/cook")) return "Cook";
+  if (route.startsWith("/plan")) return "Plan";
   if (route.startsWith("/shop")) return "Shop";
   if (route.startsWith("/catalog")) return "Catalog";
   if (route.startsWith("/settings")) return "Settings";
@@ -57,7 +59,12 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   // Actions for the sections that are built, as the navigation shows them.
   const admin = useCurrentUser().role === "admin";
   const features = useHealth().data?.features;
-  const available = useMemo(() => availableActions(features, admin), [features, admin]);
+  // With Plan built, "Switch to {kitchen}" for each other kitchen (17, 4A).
+  const kitchen = useCurrentKitchen();
+  const available = useMemo(
+    () => [...availableActions(features, admin), ...(kitchen.built ? kitchenActions(kitchen.kitchens, kitchen.currentId) : [])],
+    [features, admin, kitchen.built, kitchen.kitchens, kitchen.currentId],
+  );
   const actions = useMemo(() => (typed ? matchActions(q, available) : commonActions(available)), [typed, q, available]);
 
   // Groups in their fixed order, empty ones hidden; one flat list for the keys.
@@ -90,6 +97,12 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   });
 
   const open = (result: PaletteItem) => {
+    // Switching kitchens is done in place: the page stays, its scoped panels refetch.
+    if (result.kind === "action" && result.switchToKitchenId) {
+      kitchen.switchTo(result.switchToKitchenId);
+      onClose();
+      return;
+    }
     // Recents are things, not actions (G15).
     if (result.kind !== "action") rememberRecent(result);
     returnFocus.current = false;
@@ -195,7 +208,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
                     >
                       <span className="min-w-0 truncate font-medium">{r.label}</span>
                       {r.kind === "action" ? (
-                        <span className={`shrink-0 ${muted}`}>{section(r.route)}</span>
+                        <span className={`shrink-0 ${muted}`}>{r.section ?? section(r.route)}</span>
                       ) : r.kind === "ingredient" ? (
                         <CategoryChip category={r.detail} categoryKey={r.category_key} />
                       ) : r.kind === "recipe" ? (

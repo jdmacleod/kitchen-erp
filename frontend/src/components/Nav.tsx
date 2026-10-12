@@ -3,12 +3,15 @@ import { useInbox } from "../api/inbox";
 import { useHealth, useLogout } from "../api/queries";
 import { useCurrentUser } from "../auth/context";
 import { HealthStatus } from "./HealthStatus";
+import { KitchenSwitcher } from "./plan/KitchenSwitcher";
 import { Button, focusRing } from "./ui";
 
 interface NavItem {
   to: string;
   label: string;
   adminOnly?: boolean;
+  /** The `/health` feature that moves this item to another section once built (09, Routes: Compare, L4). */
+  until?: string;
 }
 
 export interface NavSection {
@@ -35,6 +38,19 @@ export const MAIN_SECTIONS: NavSection[] = [
     feature: "cook",
     items: [{ to: "/cook/recipes", label: "Recipes" }],
   },
+  // Plan sits between Cook and Shop and appears once migration 0050 is applied (UI-8.1).
+  {
+    key: "plan",
+    label: "Plan",
+    to: "/plan/list",
+    prefix: "/plan",
+    feature: "plan",
+    items: [
+      { to: "/plan/list", label: "Shopping list" },
+      { to: "/plan/trips", label: "Trips" },
+      { to: "/plan/compare", label: "Compare prices" },
+    ],
+  },
   {
     key: "shop",
     label: "Shop",
@@ -45,7 +61,8 @@ export const MAIN_SECTIONS: NavSection[] = [
       { to: "/shop/purchases", label: "Purchases" },
       { to: "/shop/receipts", label: "Receipts" },
       { to: "/shop/shelf-prices", label: "Shelf prices" },
-      { to: "/shop/compare", label: "Compare prices" },
+      // Compare lives here until 4A moves it to Plan (09, Sections; L4).
+      { to: "/plan/compare", label: "Compare prices", until: "plan" },
     ],
   },
 ];
@@ -85,10 +102,13 @@ export const DEFAULT_FEATURES = ["catalog", "shop"] as const;
 /**
  * The sections that are built. Features only add to the defaults, never remove,
  * and a section keeps its fixed place however late its feature arrives (G16).
+ * An item marked `until` leaves once the feature that takes it over is built.
  */
 export function visibleSections(sections: NavSection[], features: readonly string[] | undefined): NavSection[] {
   const built = new Set<string>([...DEFAULT_FEATURES, ...(features ?? [])]);
-  return sections.filter((s) => !s.feature || built.has(s.feature));
+  return sections
+    .filter((s) => !s.feature || built.has(s.feature))
+    .map((s) => (s.items.some((i) => i.until && built.has(i.until)) ? { ...s, items: s.items.filter((i) => !i.until || !built.has(i.until)) } : s));
 }
 
 function sectionClass(active: boolean): string {
@@ -181,6 +201,8 @@ export function Nav({ id }: { id?: string }) {
             <Section key={s.key} section={s} admin={admin} />
           ))}
         </ul>
+        {/* The current kitchen, above the signed-in user; only with two or more kitchens (UI-2.4). */}
+        <KitchenSwitcher />
         <div className="flex items-center justify-between gap-2 px-3 text-sm">
           <span className="min-w-0">
             <span className="block truncate font-medium">{user.display_name}</span>

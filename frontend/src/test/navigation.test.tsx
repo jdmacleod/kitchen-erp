@@ -64,12 +64,14 @@ describe("navigation sections (UI-2.1, UI-2.2)", () => {
     await waitFor(() => expect(screen.getAllByTestId("health-status")[0]).toHaveTextContent("failed"));
   });
 
-  it("lets features add sections in their fixed place, never remove them (UI-7.1)", () => {
-    // Cook sits between Home and Shop and appears only with the `cook` feature.
-    expect(MAIN_SECTIONS.map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+  it("lets features add sections in their fixed place, never remove them (UI-7.1, UI-8.1)", () => {
+    // Cook sits between Home and Shop and appears only with the `cook` feature;
+    // Plan sits between Cook and Shop with `plan`.
+    expect(MAIN_SECTIONS.map((s) => s.key)).toEqual(["home", "cook", "plan", "shop"]);
     expect(visibleSections(MAIN_SECTIONS, undefined).map((s) => s.key)).toEqual(["home", "shop"]);
     expect(visibleSections(MAIN_SECTIONS, []).map((s) => s.key)).toEqual(["home", "shop"]);
     expect(visibleSections(MAIN_SECTIONS, ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+    expect(visibleSections(MAIN_SECTIONS, ["plan"]).map((s) => s.key)).toEqual(["home", "plan", "shop"]);
     const later: NavSection = { key: "stock", label: "Stock", to: "/stock", prefix: "/stock", feature: "stock", items: [] };
     expect(visibleSections([...MAIN_SECTIONS, later], ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
     expect(visibleSections(FOOTER_SECTIONS, []).map((s) => s.key)).toEqual(["catalog", "settings"]);
@@ -123,13 +125,14 @@ describe("redirects from the retired paths (UI-2.3)", () => {
 
   it("covers every retired path the spec lists", () => {
     expect(REDIRECTS.map((r) => r.from)).toEqual(
-      expect.arrayContaining(["/map", "/compare", "/to-identify", "/price-book/needs-bridge", "/settings/home-bases"]),
+      expect.arrayContaining(["/map", "/compare", "/shop/compare", "/to-identify", "/price-book/needs-bridge", "/settings/home-bases"]),
     );
   });
 
   it("opens a section's first page from the section's own path", () => {
     expect(SECTION_ROOTS).toEqual([
       { from: "/cook", to: "/cook/recipes" },
+      { from: "/plan", to: "/plan/list" },
       { from: "/shop", to: "/shop/purchases" },
       { from: "/catalog", to: "/catalog/ingredients" },
       { from: "/settings", to: "/settings/kitchens" },

@@ -39,6 +39,8 @@ import { CategoryChip } from "../../components/CategoryChip";
 import { IngredientPageActions, MergedInto, type IngredientPageMode } from "../../components/catalog/IngredientPageActions";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
+import { usePlanBuilt } from "../../lib/kitchen";
+import { AddIngredientToListPanel } from "../../components/plan/AddToListPanel";
 
 export function IngredientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -122,6 +124,9 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const [more, setMore] = useState(false);
   const wide = useMediaQuery(LG_QUERY);
   const merged = ingredient.merged_into !== null;
+  // "Add to list" is the hub's secondary action once Plan is built (10; UI-8.4).
+  const plan = usePlanBuilt();
+  const [addingToList, setAddingToList] = useState(false);
   const actions: MoreAction[] = merged
     ? []
     : [
@@ -150,6 +155,11 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           <Button variant="secondary" onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
             {editing ? "Close editor" : "Edit details"}
           </Button>
+          {plan && !merged && ingredient.active ? (
+            <Button variant="secondary" onClick={() => setAddingToList((v) => !v)} aria-expanded={addingToList}>
+              Add to list
+            </Button>
+          ) : null}
           {actions.length === 0 ? null : wide ? (
             actions.map((a) => (
               <Button key={a.label} variant={a.variant ?? "secondary"} disabled={a.disabled} onClick={a.open}>
@@ -182,6 +192,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
 
       <div className="flex flex-col gap-6">
         {ingredient.merged_into ? <MergedInto survivorId={ingredient.merged_into} /> : null}
+        {addingToList ? <AddIngredientToListPanel ingredient={ingredient} onClose={() => setAddingToList(false)} /> : null}
         <IngredientPageActions ingredient={ingredient} mode={merged ? "idle" : mode} onClose={() => setMode("idle")} />
         {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
         {ingredient.notes ? <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p> : null}
