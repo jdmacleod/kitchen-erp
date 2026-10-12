@@ -97,8 +97,8 @@ describe("the Plan section (UI-8.1)", () => {
     expect(await screen.findByRole("heading", { name: /Compare/ })).toBeInTheDocument();
     second.unmount();
 
-    mount(settings.routes, "/plan");
-    expect(await screen.findByRole("heading", { name: "Shopping list" })).toBeInTheDocument();
+    mount({ ...settings.routes, "GET /plan/list": () => jsonResponse(200, { id: "l1", home_base_id: homeBaseId, home_base_name: homeBase.name, status: "open", created_at: "2026-10-12T08:00:00Z", archived_at: null, unchecked: [], checked: [] }) }, "/plan");
+    expect(await screen.findByRole("heading", { level: 1, name: /^Harbour flat list/ })).toBeInTheDocument();
   });
 });
 
@@ -206,8 +206,8 @@ describe("the phone tab bar and More sheet (UI-8.10, UI-4.9)", () => {
 
   it("opens the list from the second tab, lists Purchases under More, and switches kitchens at the top of the sheet", async () => {
     const settings = settingsApi();
-    const { calls } = mount(settings.routes, "/plan/list");
-    await screen.findByRole("heading", { name: "Shopping list" });
+    const { calls } = mount({ ...settings.routes, "GET /plan/list": () => jsonResponse(200, { id: "l1", home_base_id: homeBaseId, home_base_name: homeBase.name, status: "open", created_at: "2026-10-12T08:00:00Z", archived_at: null, unchecked: [], checked: [] }) }, "/plan/list");
+    await screen.findByRole("heading", { level: 1, name: /list/ });
     const user = userEvent.setup();
 
     const bar = within(tabs());
