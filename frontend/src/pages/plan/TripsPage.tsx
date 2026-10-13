@@ -174,7 +174,7 @@ function TripRow({ trip }: { trip: TripSummary }) {
         </span>
         <span className="text-sm tabular-nums" data-testid="trip-row-figures">
           {chosen ? (
-            `${variantLabel[chosen.kind]} · ${variantFigures(chosen)}`
+            `${variantLabel[chosen.kind]} · ${variantFigures(chosen)}${trip.actual_item_cost != null ? ` · predicted ${formatMoney(trip.predicted_item_cost ?? chosen.item_cost)} · actual ${formatMoney(trip.actual_item_cost)}` : ""}`
           ) : (
             <span className={muted}>
               Not chosen yet{balanced ? ` · Balanced ${variantFigures(balanced)}` : ""}

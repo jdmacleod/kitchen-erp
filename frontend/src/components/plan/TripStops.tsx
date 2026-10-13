@@ -14,6 +14,11 @@ interface TripStopsProps {
   onSelect: (stopId: string | null) => void;
   /** Below lg each stop folds behind its heading (UI-8.19). */
   wide: boolean;
+  /**
+   * The trip, once this variant is the chosen one: each stop then links to its
+   * at-the-store screen, "Open this stop" (UI-8.15).
+   */
+  openStopsOf?: string | null;
 }
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -28,7 +33,7 @@ export function legMinutes(stop: Pick<Stop, "leg_seconds" | "multiplier">): stri
  * the leg before each, its overhead, the items with packs and line cost, the
  * subtotal, and "Navigate" to the phone's maps application in a new tab.
  */
-export function TripStops({ variant, locationById, selectedId, onSelect, wide }: TripStopsProps) {
+export function TripStops({ variant, locationById, selectedId, onSelect, wide, openStopsOf = null }: TripStopsProps) {
   return (
     <section aria-labelledby="trip-stops-heading" className="flex flex-col gap-3">
       <h2 id="trip-stops-heading" className="font-display text-lg">
@@ -40,7 +45,7 @@ export function TripStops({ variant, locationById, selectedId, onSelect, wide }:
         variant.stops.map((stop) => {
           const location = locationById(stop.vendor_location_id);
           const title = `Stop ${stop.seq} · ${stop.vendor_location_name}`;
-          const body = <StopBody stop={stop} location={location} selected={selectedId === stop.id} onSelect={onSelect} />;
+          const body = <StopBody stop={stop} location={location} selected={selectedId === stop.id} onSelect={onSelect} tripId={openStopsOf} />;
           return wide ? (
             <section key={stop.id} aria-label={title} data-testid="stop" data-seq={stop.seq} data-selected={selectedId === stop.id ? "true" : "false"} className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
               <h3 className="text-base font-medium">{title}</h3>
@@ -59,7 +64,7 @@ export function TripStops({ variant, locationById, selectedId, onSelect, wide }:
   );
 }
 
-function StopBody({ stop, location, selected, onSelect }: { stop: Stop; location: VendorLocation | undefined; selected: boolean; onSelect: (id: string | null) => void }) {
+function StopBody({ stop, location, selected, onSelect, tripId }: { stop: Stop; location: VendorLocation | undefined; selected: boolean; onSelect: (id: string | null) => void; tripId: string | null }) {
   return (
     <div className="mt-2 flex flex-col gap-3 text-sm">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="stop-leg">
@@ -94,8 +99,13 @@ function StopBody({ stop, location, selected, onSelect }: { stop: Stop; location
       </p>
 
       {stop.done_at ? (
-        <p className={muted}>
-          Done {formatDateTime(stop.done_at)}
+        <p className={muted} data-testid="stop-actual">
+          Done {formatDateTime(stop.done_at)} · predicted <span className="tabular-nums">{formatMoney(stop.subtotal)}</span>
+          {stop.actual_cost !== null && stop.actual_cost !== undefined ? (
+            <>
+              {" · "}actual <span className="tabular-nums">{formatMoney(stop.actual_cost)}</span>
+            </>
+          ) : null}
           {stop.purchase_id ? (
             <>
               {" · "}
@@ -108,6 +118,11 @@ function StopBody({ stop, location, selected, onSelect }: { stop: Stop; location
       ) : null}
 
       <div className="flex flex-wrap gap-2">
+        {tripId ? (
+          <Link to={`/plan/trips/${tripId}/stop/${stop.seq}`} className={secondaryLinkClass}>
+            Open this stop
+          </Link>
+        ) : null}
         {location ? (
           <a href={navigateHref(location.lat, location.lon, location.name)} target="_blank" rel="noopener noreferrer" className={secondaryLinkClass}>
             Navigate
