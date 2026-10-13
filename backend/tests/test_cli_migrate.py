@@ -19,7 +19,7 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _kerp(*args: str) -> str:
-    done = subprocess.run(
+    done = subprocess.run(  # noqa: S603
         [sys.executable, "-m", "app.cli", *args],
         cwd=BACKEND_ROOT,
         env=os.environ.copy(),

@@ -80,7 +80,7 @@ async def test_the_to_identify_queue_skips_it(admin_client, owner_conn):
 
 
 async def test_the_table_keeps_it(admin_client, owner_conn):
-    p, removed = await _with_removed_line(admin_client)
+    p, removed = await _with_removed_line(admin_client)  # noqa: RUF059
     row = await owner_conn.fetchrow(
         "SELECT removed_at FROM purchase_line WHERE id = $1", uuid.UUID(removed)
     )

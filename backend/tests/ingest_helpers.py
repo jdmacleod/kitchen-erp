@@ -146,7 +146,7 @@ def receipts_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Pa
     monkeypatch.setattr(settings, "ollama_base_url", "http://127.0.0.1:9")
     monkeypatch.setattr(settings, "llm_timeout_seconds", 2.0)
     monkeypatch.setattr(llm, "http_transport", None)
-    yield target
+    yield target  # noqa: PT022
 
 
 @pytest.fixture

@@ -40,7 +40,9 @@ AS_OF = datetime(2026, 9, 15, 17, 30, tzinfo=UTC)
 WEEKS = 34
 
 DEMO_ADMIN_EMAIL = "demo@example.com"
-DEMO_ADMIN_PASSWORD = "demo-only-not-a-real-password"  # pii-scan: allow demo placeholder
+DEMO_ADMIN_PASSWORD = (
+    "demo-only-not-a-real-password"  # pii-scan: allow demo placeholder  # noqa: S105
+)
 DEMO_MEMBER_EMAIL = "second.cook@example.com"
 
 # The synthetic grid from SECURITY.md. Nothing real is inside it.
@@ -360,7 +362,7 @@ async def _already_seeded(db: AsyncSession) -> bool:
     return bool(n)
 
 
-async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
+async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:  # noqa: C901, PLR0915
     """Fill an empty database with the synthetic household. Returns row counts.
 
     Refuses a database that already holds purchases unless `force` is set: the
@@ -372,7 +374,7 @@ async def seed_demo(db: AsyncSession, *, force: bool = False) -> dict[str, int]:
             "instead, or pass --force if you are certain it is a demo"
         )
 
-    rng = random.Random(SEED)
+    rng = random.Random(SEED)  # noqa: S311
     counts = {
         "users": 0,
         "home_bases": 0,

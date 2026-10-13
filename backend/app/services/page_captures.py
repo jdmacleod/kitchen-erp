@@ -146,7 +146,7 @@ def listing_from_fields(listing: dict[str, Any], fields: dict[str, Any]) -> dict
     }
 
 
-async def capture_page(
+async def capture_page(  # noqa: C901
     db: AsyncSession, user: AppUser, data: PageCapture
 ) -> proposals.CaptureResult:
     # The page's images are evidence the browser happened to read, not uploads: one it
@@ -268,7 +268,7 @@ async def _queue_page_photos(
     return await lookups.queue_page_images(db, proposal, urls)
 
 
-async def run_job(db: AsyncSession, job: ProductJob) -> None:
+async def run_job(db: AsyncSession, job: ProductJob) -> None:  # noqa: C901, PLR0915
     """Retailer adapters, then the model over the page text; each only adds candidates."""
     from app.services import identify
 

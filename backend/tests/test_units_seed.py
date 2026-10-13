@@ -21,7 +21,7 @@ async def test_seed_is_idempotent_and_exact(db_session, owner_conn: asyncpg.Conn
     assert {r["code"] for r in first} == set(expected)
     for row in first:
         assert Decimal(row["f"]) == expected[row["code"]].to_base_factor, row["code"]
-    assert Decimal([r["f"] for r in first if r["code"] == "tsp"][0]) == Decimal("4.92892159375")
+    assert Decimal([r["f"] for r in first if r["code"] == "tsp"][0]) == Decimal("4.92892159375")  # noqa: RUF015
 
 
 async def test_seed_removes_stray_units(db_session, owner_conn: asyncpg.Connection):

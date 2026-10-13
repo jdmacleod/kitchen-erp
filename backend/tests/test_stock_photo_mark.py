@@ -58,7 +58,7 @@ CASES = [
 ]
 
 
-@pytest.mark.parametrize("label, others, expected", CASES, ids=[c[0] for c in CASES])
+@pytest.mark.parametrize("label, others, expected", CASES, ids=[c[0] for c in CASES])  # noqa: PT006
 async def test_a_page_photo_shared_by_three_other_products_is_marked_stock(
     admin_client, db_session: AsyncSession, label: str, others: int, expected: bool
 ):

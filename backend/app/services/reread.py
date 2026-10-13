@@ -516,7 +516,7 @@ async def run_read_once(db: AsyncSession, *, locked_by: str, llm: LlmClient | No
     except Exception as exc:
         await db.rollback()
         reread = await db.get(LineReread, reread_id, populate_existing=True)
-        assert reread is not None
+        assert reread is not None  # noqa: S101
         code = exc.code if isinstance(exc, IngestError) else "unexpected_error"
         retryable = isinstance(exc, RetryableError)
         reread.attempts += 1

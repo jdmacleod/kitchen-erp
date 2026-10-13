@@ -408,7 +408,7 @@ def test_the_planner_visits_at_most_the_bound_and_finishes_in_two_seconds():
 
 def test_more_than_fifteen_candidates_are_refused_by_the_pure_planner():
     candidates = [tp.Candidate(uuid.uuid4(), uuid.uuid4(), None, True, i) for i in range(16)]
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         tp.plan(inputs(), [item("barley")], candidates, book(), legs(), always_open)
 
 

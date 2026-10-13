@@ -39,7 +39,7 @@ def complete_line(line: LineIn) -> tuple[Decimal, Decimal]:
     if line.unit_price is not None:
         total = _CTX.multiply(line.unit_price, line.qty).quantize(_FOUR, rounding=ROUND_HALF_EVEN)
         return line.unit_price.quantize(_FOUR, rounding=ROUND_HALF_EVEN), total
-    assert line.line_total is not None
+    assert line.line_total is not None  # noqa: S101
     price = _CTX.divide(line.line_total, line.qty).quantize(_FOUR, rounding=ROUND_HALF_EVEN)
     return price, line.line_total.quantize(_FOUR, rounding=ROUND_HALF_EVEN)
 
@@ -199,7 +199,7 @@ def _fold_text(text: str) -> str:
     return text.lower().translate(str.maketrans(_ACCENTED, _PLAIN))
 
 
-async def list_purchases(
+async def list_purchases(  # noqa: C901, PLR0912, PLR0915
     db: AsyncSession,
     *,
     vendor_location_id: uuid.UUID | None = None,

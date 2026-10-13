@@ -680,7 +680,7 @@ async def decide(db: AsyncSession, user: AppUser, payload: ResolveDecisionIn) ->
                 await set_preferred_fdc(db, ingredient.id, payload.fdc_id)
         else:
             action = "matched"
-            assert payload.ingredient_id is not None  # the schema requires one choice
+            assert payload.ingredient_id is not None  # the schema requires one choice  # noqa: S101
             ingredient = await _chosen(db, payload.ingredient_id)
         await _learn(db, ingredient, name_norm)
         values: dict = {"resolution": "manual", "ingredient_id": ingredient.id}

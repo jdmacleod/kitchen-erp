@@ -205,7 +205,7 @@ async def test_ids_name_lines_of_this_purchase_once(admin_client, admin):
     _, pid, (line,) = await _draft(
         admin_client, admin, [{"raw_text": "SUMAC 3.10", "line_total": "3.10"}], "3.10"
     )
-    _, other, (stranger,) = await _draft(
+    _, other, (stranger,) = await _draft(  # noqa: RUF059
         admin_client,
         admin,
         [{"raw_text": "ZAATAR 2.90", "line_total": "2.90"}],

@@ -78,7 +78,7 @@ class MergeTarget(ApiModel):
 
 class MergeIn(MergeTarget):
     # Labels of the loser's measures to copy to the survivor (O10).
-    copy_measures: list[str] = []
+    copy_measures: list[str] = []  # noqa: RUF012
 
 
 class MergeMeasureOut(ApiModel):
@@ -131,7 +131,7 @@ class UsdaReviewOut(ApiModel):
 
 class UsdaDecisionIn(ApiModel):
     density_portion_id: uuid.UUID | None = None
-    measures: list[str] = []
+    measures: list[str] = []  # noqa: RUF012
     skip: bool = False
     # After a 409 density_exists: replace the density set since the list was read.
     replace_density: bool = False

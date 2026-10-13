@@ -178,7 +178,7 @@ async def stop_screen(
     variant = _chosen(plan_row)
     stop = _stop(variant, seq)
     home = await db.get(HomeBase, plan_row.home_base_id)
-    assert home is not None
+    assert home is not None  # noqa: S101
 
     # Only stops still ahead in the route: an earlier stop left undone is not
     # where "Cheaper at stop {m}" points (10, At the store; UI-4.8).
@@ -385,7 +385,7 @@ async def _line_for(
     planned pack price times packs, else the amounts at the plan's unit price."""
     multiplier = _multiplier(item)
     if item.actual_price is not None:
-        assert item.actual_qty is not None and item.actual_unit is not None
+        assert item.actual_qty is not None and item.actual_unit is not None  # noqa: S101
         qty = CTX.multiply(multiplier, item.actual_qty)
         total = money(CTX.multiply(multiplier, item.actual_price))
         unit = item.actual_unit
@@ -461,7 +461,7 @@ async def done(
     for item in stop.items:
         if item.id in checked_ids or item.actual_price is None:
             continue
-        assert item.actual_qty is not None and item.actual_unit is not None
+        assert item.actual_qty is not None and item.actual_unit is not None  # noqa: S101
         observation = await pricebook.observe(
             db,
             product_id=item.product_id,

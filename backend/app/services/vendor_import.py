@@ -77,7 +77,7 @@ def parse(raw: bytes, fmt: str | None = None) -> VendorFile:
     return interchange.validate(VendorFile, data)
 
 
-async def check_structure(db: AsyncSession, file: VendorFile) -> None:
+async def check_structure(db: AsyncSession, file: VendorFile) -> None:  # noqa: C901, PLR0912
     """Keys, parents and household blocks that make sense, before anything is written."""
     vendor_keys: set[str] = set()
     owner: dict[str, str] = {}  # location key -> vendor key
@@ -380,7 +380,7 @@ async def _import_vendor(ctx: _Context, entry: VendorEntry) -> list[ImportItem]:
     return items
 
 
-async def _import_location(
+async def _import_location(  # noqa: C901, PLR0912, PLR0915
     ctx: _Context, vendor: Vendor, vendor_entry: VendorEntry, entry: LocationEntry, match: _Match
 ) -> ImportItem:
     db = ctx.db
@@ -454,7 +454,7 @@ async def _import_location(
         if entry.platform_store_ref is not None:
             location.platform_store_ref = entry.platform_store_ref
         row.item.outcome = "created"
-        row.record(location, LOCATION_FIELDS + ("platform_store_ref",), ref=ctx.ref, now=ctx.now)
+        row.record(location, LOCATION_FIELDS + ("platform_store_ref",), ref=ctx.ref, now=ctx.now)  # noqa: RUF005
         return row.done()
 
     for fname in LOCATION_FIELDS:

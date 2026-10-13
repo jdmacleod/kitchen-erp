@@ -105,7 +105,7 @@ async def test_metric_setting_reads_per_kilogram_and_litre(admin_client, monkeyp
     }
 
 
-@pytest.mark.parametrize("pack_qty, unit", [("12", "oz"), ("16", "lb"), ("24", "lb")])
+@pytest.mark.parametrize("pack_qty, unit", [("12", "oz"), ("16", "lb"), ("24", "lb")])  # noqa: PT006
 async def test_the_usual_pack_decides_pound_or_ounce(admin_client, pack_qty, unit):
     loc = await make_location(admin_client, "Juniper Market", "Juniper Market Eastside")
     p = await make_product(

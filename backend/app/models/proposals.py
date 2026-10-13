@@ -77,7 +77,7 @@ class ProductProposal(UUIDPrimaryKey, Timestamped, Base):
     match: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     # {vendor_id, canonical_url, title, vendor_sku?, store_ref?}
     listing: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
-    # {amount, qty, unit, is_promo}
+    # {amount, qty, unit, is_promo}  # noqa: ERA001
     price: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     listing_key: Mapped[str | None] = mapped_column(
         Text, Computed("(listing ->> 'vendor_id') || ' ' || (listing ->> 'canonical_url')")

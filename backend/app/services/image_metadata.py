@@ -91,7 +91,7 @@ _KEEP_APP = {0xE0, 0xEE}  # JFIF, Adobe
 _STANDALONE = {0x01, *range(0xD0, 0xD8)}
 
 
-def _jpeg(data: bytes, orientation: int) -> bytes:
+def _jpeg(data: bytes, orientation: int) -> bytes:  # noqa: C901, PLR0912
     if not data.startswith(b"\xff\xd8"):
         raise _Malformed("no SOI")
     out = bytearray(b"\xff\xd8")

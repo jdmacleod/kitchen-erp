@@ -598,4 +598,4 @@ def test_the_mount_listing_skips_dot_directories(recipes_dir: TempRepo):  # noqa
     recipes_dir.write(".hidden/index_b.cook", "Whisk @egg{2}.\n")
     mount = recipes.inspect_mount(get_settings())
     assert [p.name for p in mount.files] == ["index_a.cook"]
-    assert os.path.isdir(recipes_dir.root / ".hidden")
+    assert os.path.isdir(recipes_dir.root / ".hidden")  # noqa: PTH112

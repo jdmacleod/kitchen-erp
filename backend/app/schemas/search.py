@@ -32,4 +32,4 @@ class SearchResults(ApiModel):
     ingredients: list[SearchResult]
     products: list[SearchResult]
     vendors: list[SearchResult]
-    recipes: list[SearchResult] = []
+    recipes: list[SearchResult] = []  # noqa: RUF012

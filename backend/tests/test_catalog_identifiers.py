@@ -139,7 +139,7 @@ def test_weight_layout_and_other_layouts():
     none = RwLayout.from_json({"price_kind": "none"})
     assert parse_random_weight(with_check(j("25123 401299")), none).price is None
     assert RwLayout.from_json(None) == DEFAULT_LAYOUT
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         RwLayout.from_json({"item_start": 0})
 
 
@@ -166,16 +166,16 @@ def test_meat_attributes_validate():
         "meat", {"species": "pork", "primal": "shoulder", "bone": "bone_in"}
     )
     assert stored == {"species": "pork", "primal": "shoulder", "bone": "bone_in"}
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         validate_attributes("meat", {"species": "unicorn"})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         validate_attributes("meat", {"species": "pork", "colour": "pink"})
 
 
 def test_categories_without_a_model_take_only_an_empty_object():
     assert validate_attributes("produce", {}) == {}
     assert validate_attributes(None, None) == {}
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         validate_attributes("produce", {"species": "pork"})
 
 
@@ -216,5 +216,5 @@ def test_unscoped_and_invalid_addresses():
         "https://larkspur.example/p/hash-browns-061528",
         None,
     )
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         canonical_url("javascript:alert(1)")

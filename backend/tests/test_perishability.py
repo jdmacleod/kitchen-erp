@@ -103,7 +103,7 @@ async def test_the_catch_up_proposes_unreviewed_values_and_writes_approved_ones(
     assert yogurt_now["perishability"] == "fresh"
 
     async with get_sessionmaker()() as db:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError):  # noqa: PT011
             await catchup.apply(db, [{"id": chicken["id"], "perishability": "chilled"}])
 
     # Approved in review, even against the proposal: settled, not proposed again.

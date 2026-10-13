@@ -68,7 +68,7 @@ async def setup(admin_client):
 
 
 async def test_default_views_leave_posted_prices_out(admin_client, setup):
-    loc, tin, paid, posted = setup
+    loc, tin, paid, posted = setup  # noqa: RUF059
     r = await admin_client.get(f"/api/v1/products/{tin['id']}/prices")
     body = r.json()
     assert [p["observation_id"] for p in body["points"]] == [paid["id"]]
@@ -109,7 +109,7 @@ async def test_offers_compare_cheapest_and_history_leave_them_out(admin_client, 
 
 async def test_outlier_and_narrowing_ignore_posted_prices(admin_client, setup, db_session):
     """Both read the recent median: a posted price at a third of the paid one must not move it."""
-    loc, tin, paid, posted = setup
+    loc, tin, paid, posted = setup  # noqa: RUF059
     median = await resolution.recent_median_unit_price(db_session, uuid.UUID(tin["id"]))
     assert median is not None
     # The paid price alone: 1.20 for 400 g.
@@ -119,7 +119,7 @@ async def test_outlier_and_narrowing_ignore_posted_prices(admin_client, setup, d
 async def test_the_listing_link_is_required_exactly_for_posted_prices(
     admin_client, setup, owner_conn: asyncpg.Connection
 ):
-    loc, tin, paid, posted = setup
+    loc, tin, paid, posted = setup  # noqa: RUF059
     listing = await owner_conn.fetchval(
         "SELECT listing_id FROM price_observation WHERE id = $1", uuid.UUID(posted)
     )
@@ -135,7 +135,7 @@ async def test_the_listing_link_is_required_exactly_for_posted_prices(
 
 
 async def test_observations_say_where_a_posted_price_came_from(admin_client, setup):
-    loc, tin, paid, posted = setup
+    loc, tin, paid, posted = setup  # noqa: RUF059
     r = await admin_client.get(f"/api/v1/price-observations/{posted}")
     assert r.status_code == 200
     assert r.json()["source"] == "listing" and r.json()["listing_id"] is not None

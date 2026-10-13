@@ -140,7 +140,7 @@ def _line_decision(line: dict[str, Any]) -> Decision | None:
     return None
 
 
-def plan(
+def plan(  # noqa: C901, PLR0912
     lines: list[dict[str, Any]],
     aliases: list[dict[str, Any]],
     suggestions: list[dict[str, Any]],

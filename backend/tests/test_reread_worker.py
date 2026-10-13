@@ -126,7 +126,7 @@ async def test_kerp_receipts_reread_proposes_only_what_would_change(
     await run_job(kept_job["id"])
     await _forget_answer(owner_conn, kept_job["id"])
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-c", CLI, "receipts", "reread", "--as", ADMIN["email"]],
         cwd=BACKEND_ROOT,
         env=os.environ.copy(),

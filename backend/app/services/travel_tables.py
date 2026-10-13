@@ -76,7 +76,7 @@ def speed_bands(text: str) -> tuple[SpeedBand, ...]:
     bounded = [b.upper_km for b in bands[:-1]]
     if any(b is None for b in bounded):
         raise ValueError("speed bands: only the last band may be unbounded")
-    if any(a >= b for a, b in zip(bounded, bounded[1:], strict=False)):
+    if any(a >= b for a, b in zip(bounded, bounded[1:], strict=False)):  # noqa: RUF007
         raise ValueError("speed bands: upper bounds must increase")
     return tuple(bands)
 
@@ -95,7 +95,7 @@ def _hour_bands(text: str, kind: str) -> tuple[HourBand, ...]:
             raise ValueError(f"multipliers ({kind}): {hours!r} must satisfy 0 <= start < end <= 24")
         bands.append(HourBand(start, end, _decimal(factor, f"multipliers ({kind}): factor")))
     bands.sort(key=lambda b: b.start)
-    for a, b in zip(bands, bands[1:], strict=False):
+    for a, b in zip(bands, bands[1:], strict=False):  # noqa: RUF007
         if b.start < a.end:
             raise ValueError(
                 f"multipliers ({kind}): bands {a.start}-{a.end} and {b.start}-{b.end} overlap"

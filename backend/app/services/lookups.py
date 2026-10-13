@@ -693,7 +693,7 @@ async def _store_photos(
             )
 
 
-async def answer(
+async def answer(  # noqa: C901, PLR0915
     db: AsyncSession, token_id: uuid.UUID | None, body: Any
 ) -> tuple[str, uuid.UUID | None]:
     """Take one answer: merged, a Product update opened, nothing changed, or closed."""
@@ -905,7 +905,7 @@ async def decide_price_change(
         await db.commit()
         return change
     listing = await db.get(VendorListing, change.listing_id)
-    assert listing is not None and listing.product_id is not None
+    assert listing is not None and listing.product_id is not None  # noqa: S101
     location_id = vendor_location_id or await _suggested_location(db, listing.vendor_id)
     location = await db.get(VendorLocation, location_id) if location_id else None
     if location is None or location.vendor_id != listing.vendor_id:

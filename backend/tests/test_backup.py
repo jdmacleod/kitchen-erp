@@ -21,7 +21,7 @@ TABLES = ("purchase", "price_observation", "receipt_alias", "ingredient", "produ
 
 
 @needs_pg_tools
-async def test_backup_and_restore_round_trip(
+async def test_backup_and_restore_round_trip(  # noqa: PLR0915
     admin_client, owner_conn: asyncpg.Connection, tmp_path: Path, monkeypatch
 ):
     receipts = tmp_path / "receipts"

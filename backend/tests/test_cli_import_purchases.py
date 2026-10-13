@@ -28,7 +28,7 @@ EXPORT = {
 
 
 def _kerp(path: Path, email: str = "admin@example.com") -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         [
             sys.executable,
             "-m",

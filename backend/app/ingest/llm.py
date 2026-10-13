@@ -592,7 +592,7 @@ class LlmClient:
         self._record("out_of_room" if self.last_done_reason in UNFINISHED else "ok")
         return content
 
-    async def chat_stream(
+    async def chat_stream(  # noqa: C901
         self, payload: dict[str, Any], timeout_seconds: float | None = None
     ) -> str:
         """POST one streamed chat request; return the content it streamed.

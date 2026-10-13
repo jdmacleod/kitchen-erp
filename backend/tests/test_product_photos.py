@@ -239,12 +239,12 @@ async def test_a_sideways_portrait_and_its_mask_give_an_upright_square_cutout(
     with Image.open(io.BytesIO(got.content)) as cutout:
         assert cutout.mode == "RGBA" and cutout.width == cutout.height
         alpha = cutout.getchannel("A")
-        left, top, right, bottom = alpha.point(lambda v: 255 if v >= 128 else 0).getbbox()
+        left, top, right, bottom = alpha.point(lambda v: 255 if v >= 128 else 0).getbbox()  # noqa: RUF059
         side = cutout.width
         # The subject's long side (160 px wide) fills all but 8% on each side.
         assert abs(left / side - 0.08) < 0.02 and abs((side - right) / side - 0.08) < 0.02
         assert top > left  # shorter than it is wide, so centred with more room above
-        r_, g_, b_, _ = cutout.getpixel((side // 2, side // 2))
+        r_, g_, b_, _ = cutout.getpixel((side // 2, side // 2))  # noqa: RUF059
         assert r_ > 150 and b_ < 100  # red: the mask landed on the top third
 
 

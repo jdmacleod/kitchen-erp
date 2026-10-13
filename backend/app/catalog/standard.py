@@ -78,7 +78,7 @@ class StandardListError(ValueError):
     pass
 
 
-def validate(entries: tuple[StandardEntry, ...]) -> None:
+def validate(entries: tuple[StandardEntry, ...]) -> None:  # noqa: C901
     """Rules that span entries. Raises ``StandardListError`` naming every problem."""
     problems: list[str] = []
     keys: set[str] = set()

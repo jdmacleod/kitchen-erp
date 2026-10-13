@@ -56,11 +56,11 @@ def observed_as(product_ids):
 
 async def _norm_row(db: AsyncSession, observation: PriceObservation) -> PriceNorm:
     product = await db.get(Product, observation.product_id)
-    assert product is not None
+    assert product is not None  # noqa: S101
     if product.merged_into is not None:
         # A merged product's prices compare as its survivor's: its pack, its density.
         product = await db.get(Product, product.merged_into)
-        assert product is not None
+        assert product is not None  # noqa: S101
     ingredient = (
         await db.execute(
             select(Ingredient)
@@ -82,7 +82,7 @@ async def _norm_row(db: AsyncSession, observation: PriceObservation) -> PriceNor
             bridge_confirmed=result.provenance.confirmed,
             convert_version=result.version,
         )
-    assert isinstance(result, ConversionFailure)
+    assert isinstance(result, ConversionFailure)  # noqa: S101
     return PriceNorm(
         observation_id=observation.id,
         status=result.code,

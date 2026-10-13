@@ -87,7 +87,7 @@ async def _purchase_was_removed(db: AsyncSession, job: IngestJob) -> bool:
     return purchase is not None and purchase.status == "voided"
 
 
-async def upload_receipt(
+async def upload_receipt(  # noqa: PLR0915
     db: AsyncSession,
     *,
     user: AppUser,

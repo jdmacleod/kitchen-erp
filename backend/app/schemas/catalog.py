@@ -134,7 +134,7 @@ class IngredientOut(Categorized):
     keep_freezer_days: int | None = None
     active: bool
     notes: str | None
-    measures: list[MeasureOut] = []
+    measures: list[MeasureOut] = []  # noqa: RUF012
     # Where it stands against the standard list (1G); "linked" has its standard name.
     reconcile_state: ReconcileState = "not_applicable"
     # The ingredient this one was merged into; its page links there (#211).

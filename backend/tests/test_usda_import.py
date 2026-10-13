@@ -123,7 +123,7 @@ async def test_suggestions_rank_the_more_used_food_first(admin_client, db_sessio
 
 
 def _kerp(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         [sys.executable, "-m", "app.cli", *args],
         cwd=BACKEND_ROOT,
         env=os.environ.copy(),

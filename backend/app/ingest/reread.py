@@ -207,7 +207,7 @@ class _Entry:
     owner: str = "reader"  # whose values the row carries
 
 
-def propose(
+def propose(  # noqa: C901, PLR0912, PLR0915
     *,
     baseline: list[Line],
     present: list[Line],
@@ -227,7 +227,7 @@ def propose(
     taken: set[uuid.UUID] = set()  # present lines a new-reading entry stands for
     for old_at, new_at in _align(baseline, new):
         if new_at is None:
-            assert old_at is not None
+            assert old_at is not None  # noqa: S101
             b = baseline[old_at]
             now = live.get(b.id)
             if now is None:
@@ -286,7 +286,7 @@ def propose(
     for i, e in enumerate(rows):
         target: int | None = None
         if e.owner == "reader":
-            assert e.new is not None
+            assert e.new is not None  # noqa: S101
             if e.new.parent_at is not None:
                 parent = entry_of_new.get(id(new[e.new.parent_at]))
                 if parent is not None and parent.row is not None:
@@ -316,7 +316,7 @@ def propose(
     for i, e in enumerate(rows):
         if e.action != "pending":
             continue
-        assert e.present is not None
+        assert e.present is not None  # noqa: S101
         before = _show(e.present, present_attached.get(e.present.id))
         after = _show(e.row, attached_text(i))
         # Flags compare only those a reading raises: a resolution's stay as they are.

@@ -106,7 +106,7 @@ def prepare() -> bool:
     return resolution.install_default_ranker()
 
 
-async def run(poll_seconds: float = 5.0) -> None:
+async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):

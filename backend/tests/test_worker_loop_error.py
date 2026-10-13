@@ -9,7 +9,7 @@ from app.worker import loop_error_fields
 
 
 async def test_a_missing_table_names_the_migration(db_session):
-    with pytest.raises(Exception) as caught:
+    with pytest.raises(Exception) as caught:  # noqa: PT011
         await db_session.execute(text("SELECT 1 FROM table_that_is_not_migrated_yet"))
     await db_session.rollback()
     fields = loop_error_fields(caught.value)
