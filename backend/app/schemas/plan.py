@@ -235,7 +235,7 @@ class RecomputeLegsOut(ApiModel):
 
 PlanStatus = Literal["planned", "underway", "done", "abandoned"]
 VariantKind = Literal["fastest", "cheapest", "balanced"]
-Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
+ValueOfTime = Annotated[Decimal, Field(ge=0, max_digits=8, decimal_places=2)]
 
 
 class TripCreate(ApiModel):
@@ -247,7 +247,7 @@ class TripCreate(ApiModel):
     origin_place_id: uuid.UUID | None = None
     destination_place_id: uuid.UUID | None = None
     planned_at: datetime
-    value_of_time_per_hour: Money | None = None
+    value_of_time_per_hour: ValueOfTime | None = None
     max_stops: Annotated[int, Field(ge=1, le=4)] = 3
     mileage_rate: Annotated[Decimal, Field(ge=0, max_digits=8, decimal_places=4)] | None = None
     stop_overhead_min: Annotated[int, Field(ge=0, le=32767)] | None = None
