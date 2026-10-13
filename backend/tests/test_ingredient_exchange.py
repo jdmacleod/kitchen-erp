@@ -15,7 +15,13 @@ from sqlalchemy import select
 
 from app.core.db import get_sessionmaker
 from app.core.errors import ApiError
-from app.models.catalog import Ingredient, IngredientAlias, IngredientMeasure, IngredientRef
+from app.models.catalog import (
+    FdcFood,
+    Ingredient,
+    IngredientAlias,
+    IngredientMeasure,
+    IngredientRef,
+)
 from app.services import ingredient_exchange as ix
 from app.services.spellings import add_spelling
 
@@ -242,3 +248,23 @@ async def test_measures_are_added_and_a_different_one_here_is_kept():
     (item,) = report.items
     assert [(c.field, c.current, c.file) for c in item.conflicts] == [("measure 1 cup", "44", "41")]
     assert ("measure 1 scoop", "30") in [(c.field, c.value) for c in item.changes]
+
+
+async def test_a_usda_food_that_names_another_food_is_kept_but_not_linked():
+    async with get_sessionmaker()() as db:
+        db.add(FdcFood(fdc_id=FDC_A, data_type="sr_legacy_food", description="Watermelon, raw"))
+        db.add(FdcFood(fdc_id=FDC_B, data_type="sr_legacy_food", description="Lanternfruit, raw"))
+        await db.commit()
+    report = await run(
+        document(
+            entry("local.rice-water", "rice water", fdc=[FDC_A]),
+            entry("local.lanternfruit", "lanternfruit", fdc=[FDC_B]),
+        )
+    )
+    items = {i.name: i for i in report.items}
+    assert "was not linked" in items["rice water"].reason
+    assert items["lanternfruit"].reason is None
+    async with get_sessionmaker()() as db:
+        refs = (await db.execute(select(IngredientRef))).scalars().all()
+    by_id = {r.external_id: r.is_preferred for r in refs}
+    assert by_id == {str(FDC_A): False, str(FDC_B): True}

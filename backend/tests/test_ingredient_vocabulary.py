@@ -125,6 +125,31 @@ async def test_report_lists_ingredients_without_a_reference(admin_client, db_ses
     assert report.without_reference == ["Sorrel"]
 
 
+async def test_report_lists_preferred_references_that_name_another_food(
+    admin_client, db_session, owner_conn
+):
+    await seed_units_via_service(db_session)
+    water = await make_ingredient(admin_client, "rice water")
+    sorrel = await make_ingredient(admin_client, "sorrel")
+    for fdc_id, description in ((900021, "Watermelon, raw"), (900022, "Sorrel, raw")):
+        await owner_conn.execute(
+            "INSERT INTO fdc_food (fdc_id, data_type, description) "
+            "VALUES ($1, 'sr_legacy_food', $2)",
+            fdc_id,
+            description,
+        )
+    insert = (
+        "INSERT INTO ingredient_ref (id, ingredient_id, system, external_id, is_preferred) "
+        "VALUES ($1, $2, 'fdc', $3, true)"
+    )
+    await owner_conn.execute(insert, new_id(), water["id"], "900021")
+    await owner_conn.execute(insert, new_id(), sorrel["id"], "900022")
+    report = await vocabulary_report(db_session)
+    assert [(n, f, v) for n, f, v, _ in report.unfit_references] == [
+        ("rice water", "900021", "misfit")
+    ]
+
+
 async def test_migration_marks_existing_ingredients_unreviewed(owner_conn):
     run_alembic("downgrade", "0013")
     try:

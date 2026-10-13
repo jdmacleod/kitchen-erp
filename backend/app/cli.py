@@ -484,30 +484,14 @@ cli.add_typer(ingredients_cli, name="ingredients")
 def ingredients_check() -> None:
     """List what the vocabulary lacks: skipped plurals and missing USDA references."""
     from app.core.db import dispose_engine, get_sessionmaker
-    from app.services.spellings import vocabulary_report
+    from app.services.spellings import report_lines, vocabulary_report
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
             report = await vocabulary_report(db)
         await dispose_engine()
-        skipped = report.skipped_plurals
-        typer.echo(f"Plurals skipped because another ingredient has them: {len(skipped)}")
-        for s in skipped:
-            typer.echo(f"  {s.ingredient}: “{s.plural}” belongs to {s.held_by}")
-        typer.echo(f"Ingredients without a USDA reference: {len(report.without_reference)}")
-        for name in report.without_reference:
-            typer.echo(f"  {name}")
-        if not report.usda_loaded:
-            typer.echo("USDA data isn't loaded, so references weren't checked against it.")
-            return
-        absent = report.absent_references
-        typer.echo(f"USDA references not in the loaded release: {len(absent)}")
-        for name, fdc_id in absent:
-            typer.echo(f"  {name}: {fdc_id}")
-        standard = report.absent_standard
-        typer.echo(f"Standard-list references not in the loaded release: {len(standard)}")
-        for key, fdc_id in standard:
-            typer.echo(f"  {key}: {fdc_id}")
+        for line in report_lines(report):
+            typer.echo(line)
 
     asyncio.run(_run())
 
