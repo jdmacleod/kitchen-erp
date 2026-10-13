@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { HomeBase } from "../../api/geo";
-import { chosenVariant, planStatusLabel, planStatusTone, useTrips, variantLabel, variantOf, type Trip, type TripSummary, type VariantSummary } from "../../api/trips";
+import { chosenVariant, planStatusLabel, planStatusTone, usePlanDefaults, useTrips, variantLabel, variantOf, type Trip, type TripSummary, type VariantSummary } from "../../api/trips";
 import { Badge } from "../../components/catalog/fields";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { KitchenTag } from "../../components/plan/KitchenTag";
@@ -93,10 +93,8 @@ interface TripsViewProps {
 function TripsView({ kitchen, kitchens, planning, onPlan, onClosePlan }: TripsViewProps) {
   const trips = useTrips(kitchen.id);
   const navigate = useNavigateWithNotice();
+  const defaults = usePlanDefaults();
   const newest = trips.data ? newestFirst(trips.data) : [];
-  // The value of time the last plan used stands in for the household setting,
-  // which the API does not publish (UI-8.12); with no plan yet, 20.00.
-  const lastValue = newest[0]?.value_of_time_per_hour;
 
   return (
     <>
@@ -136,13 +134,13 @@ function TripsView({ kitchen, kitchens, planning, onPlan, onClosePlan }: TripsVi
         </ul>
       )}
 
-      {/* The drawer waits for the list, whose last plan seeds the value of time. */}
-      {planning && !trips.isPending ? (
+      {/* The drawer waits for the household defaults, which seed the value of time (UI-8.12); if they cannot be read it opens on the documented ones. */}
+      {planning && !defaults.isPending ? (
         <PlanTripDrawer
           homeBaseId={kitchen.id}
           kitchen={kitchen}
           kitchens={kitchens}
-          prefill={lastValue ? { value_of_time_per_hour: lastValue } : null}
+          defaults={defaults.data ?? null}
           onClose={onClosePlan}
           onPlanned={(trip) => {
             onClosePlan();
@@ -152,6 +150,11 @@ function TripsView({ kitchen, kitchens, planning, onPlan, onClosePlan }: TripsVi
       ) : null}
     </>
   );
+}
+
+/** The stores in visiting order: the chosen plan's, or Balanced's until one is chosen (10, Trips: List). */
+export function storesInOrder(trip: Pick<TripSummary, "stops">): string {
+  return [...trip.stops].sort((a, b) => a.seq - b.seq).map((s) => s.name).join(" → ");
 }
 
 function newestFirst(trips: TripSummary[]): TripSummary[] {
@@ -171,6 +174,11 @@ function TripRow({ trip }: { trip: TripSummary }) {
         <span className="flex flex-wrap items-baseline gap-2">
           <span className="font-medium">{formatDateTime(trip.planned_at)}</span>
           <Badge tone={planStatusTone[trip.status]}>{planStatusLabel[trip.status]}</Badge>
+          {trip.stops.length > 0 ? (
+            <span className={`w-full text-sm ${muted}`} data-testid="trip-row-stores">
+              {storesInOrder(trip)}
+            </span>
+          ) : null}
         </span>
         <span className="text-sm tabular-nums" data-testid="trip-row-figures">
           {chosen ? (

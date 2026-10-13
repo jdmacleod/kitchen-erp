@@ -1,7 +1,7 @@
 // Synthetic trip plans (17, 4B). Stores, products and figures are invented; the
 // locations are the synthetic geography in geo-fixtures; ids are fixed
 // v7-shaped UUIDs.
-import type { Annotation, Stop, StopItem, Trip, TripSummary, Variant } from "../api/trips";
+import { chosenVariant, type Annotation, type Stop, type StopItem, type Trip, type TripSummary, type Variant } from "../api/trips";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { kitchenId, openListId } from "./plan-fixtures";
 
@@ -166,6 +166,11 @@ export function summary(t: Trip): TripSummary {
       estimated: v.estimated,
       trade: v.trade,
       stop_count: v.stop_count,
+    })),
+    stops: (chosenVariant(t) ?? t.variants.find((v) => v.kind === "balanced") ?? t.variants[0]).stops.map((s) => ({
+      seq: s.seq,
+      vendor_location_id: s.vendor_location_id,
+      name: s.vendor_location_name,
     })),
   };
 }

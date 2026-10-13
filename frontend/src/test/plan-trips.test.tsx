@@ -9,7 +9,7 @@ import { nextHourLocal } from "../components/plan/PlanTripDrawer";
 import { createQueryClient } from "../lib/queryClient";
 import { availableActions, matchActions } from "../lib/paletteActions";
 import { TripsPage } from "../pages/plan/TripsPage";
-import { homeBase } from "./geo-fixtures";
+import { chainLocation, homeBase, marketLocation } from "./geo-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, type RecordedCall, type RouteHandler } from "./helpers";
 import { kitchen, kitchenId, noKitchenSettings, planHealth, settings } from "./plan-fixtures";
 import { chosenTrip, olderTripId, summary, trip, tripId } from "./trip-fixtures";
@@ -20,7 +20,8 @@ import { chosenTrip, olderTripId, summary, trip, tripId } from "./trip-fixtures"
  * come with #325.
  */
 
-const secondKitchen = { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", name: "Ridge cabin", lat: "33.700000", lon: "-120.300000" };
+const secondKitchen = { ...homeBase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", place_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7009", name: "Ridge cabin", lat: "33.700000", lon: "-120.300000" };
+const defaults = { value_of_time_per_hour: "26.50", max_stops_default: 3, candidate_radius_km: "25" };
 
 const older = summary({ ...chosenTrip(), id: olderTripId, planned_at: "2026-10-03T17:00:00Z", status: "done", value_of_time_per_hour: "24.00" });
 const newer = summary(trip({ value_of_time_per_hour: "26.50" }));
@@ -33,6 +34,7 @@ function baseRoutes(): Record<string, RouteHandler> {
     "GET /home-bases": () => jsonResponse(200, { items: [kitchen] }),
     "GET /plan/trips": () => jsonResponse(200, { items: [older, newer] }),
     "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
+    "GET /plan/defaults": () => jsonResponse(200, defaults),
   };
 }
 
@@ -85,6 +87,11 @@ describe("the trips list (UI-8.12, UI-8.20)", () => {
     expect(within(second).getByText("Done")).toBeInTheDocument();
     expect(within(second).getByTestId("trip-row-figures")).toHaveTextContent("Cheapest · $36.25 · 75 min · 2 stops");
     expect(within(first).getByRole("link")).toHaveAttribute("href", `/plan/trips/${tripId}`);
+    // The stores in visiting order: Balanced's until a plan is chosen, then the chosen one's.
+    const names = (t: typeof newer) => t.stops.map((x) => x.name).join(" → ");
+    expect(newer.stops.length).toBeGreaterThan(0);
+    expect(within(first).getByTestId("trip-row-stores")).toHaveTextContent(names(newer));
+    expect(within(second).getByTestId("trip-row-stores")).toHaveTextContent(names(older));
     // Scoped to the current kitchen, never inferred by the server.
     const list = calls.find((c) => c.method === "GET" && c.path.startsWith("/plan/trips"));
     expect(list?.query.get("home_base_id")).toBe(kitchenId);
@@ -137,17 +144,48 @@ describe("the Plan a trip drawer (UI-8.12)", () => {
     expect(within(drawer).getByLabelText("Starting from")).toHaveDisplayValue(`${kitchen.name} (kitchen)`);
     expect(within(drawer).getByLabelText("Ending at")).toHaveDisplayValue("Same as the start");
     expect(within(drawer).getByLabelText("When")).toHaveValue(nextHourLocal());
-    // The last plan's value of time stands in for the household setting.
+    // The household's value of time, from /plan/defaults.
     await waitFor(() => expect(within(drawer).getByLabelText("Value of your time")).toHaveValue("26.50"));
     expect(within(drawer).getByText("Dollars per hour. What an hour of driving and shopping is worth to you.")).toBeInTheDocument();
     expect(within(drawer).getByLabelText("Stops at most")).toHaveValue("3");
     expect(within(within(drawer).getByLabelText("Stops at most")).getAllByRole("option").map((o) => o.textContent)).toEqual(["1", "2", "3", "4"]);
   });
 
-  it("falls back to 20.00 an hour with no plan yet", async () => {
-    mount({ "GET /plan/trips": () => jsonResponse(200, { items: [] }) }, "/plan/trips?new=1");
+  it("takes the value of time and stop count from the household defaults, not the last plan", async () => {
+    mount({ "GET /plan/defaults": () => jsonResponse(200, { ...defaults, value_of_time_per_hour: "31.00", max_stops_default: 2 }) }, "/plan/trips?new=1");
+    const drawer = await screen.findByRole("dialog", { name: "Plan a trip" });
+    expect(within(drawer).getByLabelText("Value of your time")).toHaveValue("31.00");
+    expect(within(drawer).getByLabelText("Stops at most")).toHaveValue("2");
+  });
+
+  it("falls back to 20.00 an hour when the defaults cannot be read", async () => {
+    mount({ "GET /plan/defaults": () => errorResponse(500, "internal", "Something broke.") }, "/plan/trips?new=1");
     const drawer = await screen.findByRole("dialog", { name: "Plan a trip" });
     expect(within(drawer).getByLabelText("Value of your time")).toHaveValue("20.00");
+  });
+
+  it("offers the other kitchens and the vendor locations by place, and sends the chosen places", async () => {
+    let body: TripCreateInput | null = null;
+    mount(
+      {
+        "GET /home-bases": () => jsonResponse(200, { items: [kitchen, secondKitchen] }),
+        "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
+        "POST /plan/trips": (call) => {
+          body = call.body as TripCreateInput;
+          return jsonResponse(201, trip());
+        },
+      },
+      "/plan/trips?new=1",
+    );
+    const user = userEvent.setup();
+    const drawer = await screen.findByRole("dialog", { name: "Plan a trip" });
+    const start = within(drawer).getByLabelText("Starting from");
+    await waitFor(() => expect(within(start).getAllByRole("option").map((o) => o.textContent)).toEqual([`${kitchen.name} (kitchen)`, "Ridge cabin (kitchen)", chainLocation.name, marketLocation.name]));
+    await user.selectOptions(start, chainLocation.name);
+    await user.selectOptions(within(drawer).getByLabelText("Ending at"), "Ridge cabin (kitchen)");
+    await user.click(within(drawer).getByRole("button", { name: "Plan" }));
+    await waitFor(() => expect(body).not.toBeNull());
+    expect(body).toMatchObject({ origin_place_id: chainLocation.place_id, destination_place_id: secondKitchen.place_id });
   });
 
   it("checks the fields before planning", async () => {

@@ -162,6 +162,29 @@ async def test_the_stop_screen_lists_its_items_and_the_cheaper_ones_elsewhere(
     assert again.status_code == 404
 
 
+async def test_cheaper_at_stop_names_only_later_stops(
+    admin_client: httpx.AsyncClient,
+    trip: dict,  # noqa: F811
+    shops: dict,  # noqa: F811
+):
+    """10 and UI-4.8: "Cheaper at stop {m}" points ahead. Barley, bought at
+    north, is also sold at the stall (dearer, so the plan keeps it at north),
+    and millet, bought at the stall, is also sold at north: each stop can fill
+    the other's item, but only the earlier stop lists the later one's."""
+    await shelf(admin_client, trip["products"]["Barley"]["id"], shops["stall"]["id"], "4.50")
+    await choose(admin_client, trip)
+    first, second = sorted((trip["north"], trip["stall"]))
+    assert (first, second) == (1, 2)
+
+    early = await screen(admin_client, trip, first)
+    assert [c["at_seq"] for c in early["cheaper_elsewhere"]] == [second]
+    late = await screen(admin_client, trip, second)
+    assert late["cheaper_elsewhere"] == []
+
+    # Even with the first stop left undone, the second does not point back at it.
+    assert late["next_seq"] == first and late["done_at"] is None
+
+
 async def test_get_here_without_a_price_here_needs_one_and_takes_it(
     admin_client: httpx.AsyncClient,
     trip: dict,  # noqa: F811

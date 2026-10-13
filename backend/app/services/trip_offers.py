@@ -234,9 +234,17 @@ def cost_item(
         product, _context(ingredient, product, units, keep_pack=True)
     )
     if pack_qty is None:
-        if pieces > 0:
+        if pieces > 0 or not pairs:
+            # Neither an amount nor a pack size says how much to buy.
             return None
         return Costed(None, None, packs.money(packs.CTX.multiply(canonical, unit_price)))
+    if not pairs:
+        # An item with no amount ("Basil") buys one pack (Phase 4 build, 2026-10-13).
+        return Costed(
+            Decimal(1),
+            packs.pack_price(unit_price, pack_qty),
+            packs.money(packs.pack_price(unit_price, pack_qty)),
+        )
     whole = packs.packs_for(canonical, pack_qty) if canonical > 0 else Decimal(0)
     if pieces > 0:
         if not product.pack_count:

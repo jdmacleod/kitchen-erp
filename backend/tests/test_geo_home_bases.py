@@ -12,7 +12,7 @@ clean_geo = gh.clean_geo
 
 async def test_create_with_name_and_pin_only(admin_client: httpx.AsyncClient):
     created = await make_home_base(admin_client, "Harbour Flat", HOME_A)
-    assert set(created) == {"id", "name", "lat", "lon", "label", "created_at"}
+    assert set(created) == {"id", "name", "place_id", "lat", "lon", "label", "created_at"}
     assert created["lat"] == HOME_A[0] and created["lon"] == HOME_A[1]
     assert isinstance(created["lat"], str)  # decimals cross the wire as strings
     assert created["label"] == "Harbour Flat"

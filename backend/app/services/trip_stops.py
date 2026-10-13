@@ -180,7 +180,9 @@ async def stop_screen(
     home = await db.get(HomeBase, plan_row.home_base_id)
     assert home is not None
 
-    later = [s for s in variant.stops if s.seq != seq and s.done_at is None]
+    # Only stops still ahead in the route: an earlier stop left undone is not
+    # where "Cheaper at stop {m}" points (10, At the store; UI-4.8).
+    later = [s for s in variant.stops if s.seq > seq and s.done_at is None]
     wanted = [i.list_item_id for i in stop.items] + [i.list_item_id for s in later for i in s.items]
     list_items = await _list_items(db, wanted)
     observed = await _observed_at(db, [i.observation_id for i in stop.items])

@@ -67,6 +67,7 @@ from app.schemas.plan import (
     Annotation,
     StopItemOut,
     StopOut,
+    SummaryStop,
     Trade,
     TripCreate,
     TripOut,
@@ -85,6 +86,12 @@ DEFAULT_STOP_OVERHEAD_MIN = 10
 
 PairKey = tuple[uuid.UUID, uuid.UUID]
 IsOpen = Callable[[uuid.UUID, datetime], bool | None]
+
+
+def _dollars(amount: Decimal) -> str:
+    """Money as a note's sentence reads it, "$8.59"; the ``amount`` field keeps
+    the exact figure."""
+    return f"${amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)}"
 
 
 def enumeration_bound(candidates: int, max_stops: int) -> tuple[int, int]:
@@ -606,7 +613,8 @@ def plan(
                 notes.append(
                     _note(
                         "defer_suggestion",
-                        f"Defer {names} to skip this stop: saves {saving} and {minutes} minutes.",
+                        f"Defer {names} to skip this stop: "
+                        f"saves {_dollars(saving)} and {minutes} minutes.",
                         item_id=next(iter(dropped)) if len(dropped) == 1 else None,
                         location_id=stop.location_id,
                         amount=saving,
@@ -617,7 +625,7 @@ def plan(
             sum((o.line_cost for s in variant.stops for o in s.items if o.stale), Decimal(0))
         )
         if stale_amount > 0:
-            text = f"{stale_amount} of the item cost rests on stale prices."
+            text = f"{_dollars(stale_amount)} of the item cost rests on stale prices."
             if kind == "cheapest":
                 same = without is not None and _same_stops(without["cheapest"], variant)
                 text += (
@@ -1097,9 +1105,14 @@ def _base(plan_row: TripPlan) -> dict[str, Any]:
 
 def trip_summary(plan_row: TripPlan) -> TripSummary:
     variants, balanced = _ordered(plan_row)
+    shown = chosen_variant(plan_row) or balanced
     return TripSummary(
         **_base(plan_row),
         variants=[VariantSummary(**_variant_summary(v, balanced)) for v in variants],
+        stops=[
+            SummaryStop(seq=s.seq, vendor_location_id=s.vendor_location_id, name=s.location.name)
+            for s in shown.stops
+        ],
     )
 
 

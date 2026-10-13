@@ -152,8 +152,24 @@ interface TripBase {
   actual_item_cost?: string | null;
 }
 
+/** One store of a trip summary, in visiting order. */
+export interface SummaryStop {
+  seq: number;
+  vendor_location_id: string;
+  name: string;
+}
+
 export interface TripSummary extends TripBase {
   variants: VariantSummary[];
+  /** The chosen variant's stores in order, or the balanced variant's while nothing is chosen. */
+  stops: SummaryStop[];
+}
+
+/** The household's planning defaults (`GET /plan/defaults`; 17, P4). */
+export interface PlanDefaults {
+  value_of_time_per_hour: string;
+  max_stops_default: number;
+  candidate_radius_km: string;
 }
 
 export interface Trip extends TripBase {
@@ -213,6 +229,7 @@ export const tripKeys = {
   all: ["plan", "trips"] as const,
   list: (homeBaseId: string) => ["plan", "trips", "list", homeBaseId] as const,
   detail: (id: string) => ["plan", "trips", "detail", id] as const,
+  defaults: ["plan", "defaults"] as const,
   stop: (id: string, seq: number) => ["plan", "trips", "stop", id, seq] as const,
 };
 
@@ -228,6 +245,15 @@ export function useTrips(homeBaseId: string | null) {
     queryFn: () => api<ListResponse<TripSummary>>(`/plan/trips${qs({ home_base_id: homeBaseId })}`),
     select: (data) => data.items,
     enabled: Boolean(homeBaseId),
+  });
+}
+
+/** What a new plan starts from: the household's value of time and the default stop count. */
+export function usePlanDefaults() {
+  return useQuery({
+    queryKey: tripKeys.defaults,
+    queryFn: () => api<PlanDefaults>("/plan/defaults"),
+    staleTime: 5 * 60_000,
   });
 }
 

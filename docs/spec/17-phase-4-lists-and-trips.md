@@ -133,6 +133,20 @@ API-token scope is added; every endpoint takes a session
 (`api/deps.CurrentUser`), and the mutations a phone may retry take
 `Idempotency`.
 
+As built, migrations 0050, 0052 and 0053 add no column beyond this block. They
+add constraints and indexes it leaves implicit: `trip_plan` checks on
+`max_stops`, a non-negative value of time, mileage and overhead, and
+`(chosen_variant_id IS NULL) = (chosen_at IS NULL)`; non-negative `seq`, legs,
+packs and line cost and a positive multiplier on the stops and items, and
+`(packs IS NULL) = (pack_price IS NULL)`; `travel_leg` checks that its two
+places differ; `ON DELETE CASCADE` from a variant to its plan, a stop to its
+variant, a stop item to its stop and to its list item, and a leg to either
+place; `ON DELETE SET NULL` on `trip_plan_stop.purchase_id` and
+`purchase.trip_plan_id`; indexes on `trip_plan(home_base_id)`,
+`trip_plan(list_id)`, `trip_plan_stop(vendor_location_id)`,
+`trip_plan_stop_item(list_item_id)`, `travel_leg(to_place_id)`, and a
+partial index on `purchase(trip_plan_id)` where it is set (Phase 4 build, 2026-10-13).
+
 ## 4A — Lists and the kitchen switcher
 
 **The current kitchen.** `GET /api/v1/me/settings` returns
@@ -257,6 +271,9 @@ table in config, `PLAN_TRAFFIC_MULTIPLIERS`, defaults to weekdays 06–10 ×1.35
 10–15 ×1.15, 15–20 ×1.45, otherwise ×1.0, and weekends 09–19 ×1.15, otherwise
 ×1.0, in `household_timezone` (Phase 4 review, 2026-10-12: these defaults
 stand, and the road factor and speed bands are their own settings, above, P2).
+The setting is `PLAN_TRAFFIC_MULTIPLIERS`, written
+`weekday=06-10:1.35,10-15:1.15,15-20:1.45;weekend=09-19:1.15` and validated at
+boot (Phase 4 build, 2026-10-13).
 It applies per leg at the leg's projected departure, and the multiplier used
 and the arrival it yields are recorded on the stop the leg reaches; the stored
 leg stays free-flow, and a variant with any estimated leg is marked
@@ -269,6 +286,8 @@ excluded from that ordering (`is_open_at`); unknown hours are allowed, with
 `hours_known = false` on the stop and an `hours_unknown` annotation; a stall
 inherits its parent's hours as `effective_hours` does. `05` says "closed at the
 planned time"; a third stop can come an hour later, so arrival is stricter.
+The hours check is per ordering, so candidates are not pre-filtered by hours
+at a direct arrival (Phase 4 build, 2026-10-13).
 
 **Offers.** Per item per candidate, the cheapest qualifying product. Qualifying
 is the price book's rule as `07` states it, keyed by location: a query in
@@ -285,7 +304,13 @@ convert makes that product unusable (`cant_convert`), and an item no candidate
 can fill is `unsourceable`. Packs round up through `_pack_canonical_qty` and
 `_basket`, moved from `recipe_costing` to `services/packs.py`; without a pack
 size, cost is quantity times unit price with `packs` null; a price older than
-`stale_after_days` is used and marked `price_stale`.
+`stale_after_days` is used and marked `price_stale`. An item with no amount
+buys one pack; with neither an amount nor a pack size it is `cant_convert`
+(Phase 4 build, 2026-10-13). As built, the query runs
+over `offer_applicable` with the committed-purchase restriction and
+`DISTINCT ON (product_id, applies_to_location_id)`, not over `ingredient_offer`,
+which is the latest row per (product, location) without that restriction
+(Phase 4 build, 2026-10-13).
 
 **The search.** Items are independent given a set of stops: each goes to the
 stop in the set with its cheapest offer, so the search is over sets and their
@@ -310,7 +335,9 @@ deferrable item alone at its stop: the planner re-solves without it, at most
 `stale_dependent` (how much item cost rests on stale prices, and whether
 `cheapest` stays cheapest without them); `unsourceable` (the item and why: no
 offer, `cant_convert`, quality, closed); `estimated_legs`; `hours_unknown`;
-`closed_excluded` (a candidate left out for its hours).
+`closed_excluded` (a candidate left out for its hours). `unsourceable` carries
+a `reason`: `no_offer`, `cant_convert`, `quality`, `closed` or `max_stops`
+(Phase 4 build, 2026-10-13).
 
 **Endpoints.** `POST /api/v1/plan/trips {home_base_id, origin_place_id?,
 destination_place_id?, planned_at, value_of_time_per_hour?, max_stops,
@@ -321,7 +348,13 @@ to 3, overhead to 10 minutes; an empty list is 422 `empty_list`. `GET
 /plan/trips?home_base_id=` lists plans newest first; `GET /plan/trips/{id}`
 returns variants, stops, stop items and annotations; `POST …/{id}/choose
 {variant_id}` sets `chosen_variant_id` once (409 after); `POST …/{id}/abandon`
-ends a planned or underway plan.
+ends a planned or underway plan. A new plan is `planned` with
+`chosen_variant_id` null; `choose` sets the variant and `chosen_at` and leaves
+the status as it is. `GET /plan/defaults` returns `{value_of_time_per_hour,
+max_stops_default, candidate_radius_km}` for the drawer; kitchens and vendor
+locations carry `place_id`, which the start and end name; and each summary in
+`GET /plan/trips` lists the chosen variant's stops (Balanced's until one is
+chosen) as `[{seq, vendor_location_id, name}]` (Phase 4 build, 2026-10-13).
 
 **Compose and the extract.** `compose.yaml` gains a `routing` service with
 `profiles: ["routing"]`, `ghcr.io/project-osrm/osrm-backend` pinned,
@@ -393,6 +426,11 @@ and the phone layout is `10`'s (UI-4.8).
 price on the stop item (`actual_*`) and the row shows the neutral edited tint.
 `POST …/stops/{seq}/get-here {item_id}` moves an item from a later stop here
 (`got_here`), re-priced at this location's offer or the edited price.
+As built, the API keeps the three apart: price holds are `PUT` and `DELETE
+…/items/{id}/price` (DELETE returns to the planned price), Get here is `POST
+…/get-here {item_id, price?}` (422 `not_offered_here` with neither an offer
+nor a price), and Done here is `POST …/done {checked_item_ids}`; "Cheaper at
+stop {m}" lists only stops after this one that are not done (Phase 4 build, 2026-10-13).
 
 **Done here.** `POST …/stops/{seq}/done {checked_item_ids}` is idempotent
 through `Idempotency` and, in one transaction: creates one purchase with
@@ -409,7 +447,8 @@ price carries the line flag `planned_price`, so a reader can tell a confirmed
 price from an assumed one (Phase 4 review, 2026-10-12, S1: a bought line's
 observation comes from the purchase line whether or not its price was edited,
 flagged `planned_price` when it was not; a shelf observation is written only
-for a price edited but not bought). "Done here" on a plan with no chosen
+for a price edited but not bought). `planned_price` is a value in the existing
+`purchase_line.flags` array, so 4C needs no migration (Phase 4 build, 2026-10-13). "Done here" on a plan with no chosen
 variant, or on a stop already done, is a 409 with the reason; a stop with
 nothing checked records `done_at` and no purchase.
 

@@ -29,6 +29,7 @@ from app.schemas.plan import (
     ListOut,
     ListsOut,
     ListStatus,
+    PlanDefaultsOut,
     RecomputeLegsIn,
     RecomputeLegsOut,
     SettingsIn,
@@ -200,6 +201,17 @@ async def recompute_travel_legs(
 
 
 # --- trip plans (17, 4B) --------------------------------------------------------------------
+
+
+@router.get("/plan/defaults", response_model=PlanDefaultsOut)
+async def plan_defaults(_: CurrentUser) -> PlanDefaultsOut:
+    """What a new plan starts from when the request leaves a field out."""
+    settings = config.get_settings()
+    return PlanDefaultsOut(
+        value_of_time_per_hour=settings.plan_value_of_time_per_hour,
+        max_stops_default=TripCreate.model_fields["max_stops"].default,
+        candidate_radius_km=settings.plan_candidate_radius_km,
+    )
 
 
 @router.post("/plan/trips", response_model=TripOut, status_code=status.HTTP_201_CREATED)
