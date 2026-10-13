@@ -110,6 +110,14 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
               </a>
             </>
           ) : null}
+          {vendor.shop_url ? (
+            <>
+              <span aria-hidden="true">·</span>
+              <a href={vendor.shop_url} rel="noreferrer noopener" target="_blank" className={`rounded underline ${focusRing}`}>
+                online shop
+              </a>
+            </>
+          ) : null}
           {vendor.brand_family ? (
             <>
               <span aria-hidden="true">·</span>
@@ -213,6 +221,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
     kind: vendor.kind as VendorKind,
     price_scope: vendor.price_scope as PriceScope,
     website: vendor.website ?? "",
+    shop_url: vendor.shop_url ?? "",
     notes: vendor.notes ?? "",
     brand_family_id: vendor.brand_family?.id ?? "",
   });
@@ -233,6 +242,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
     if (form.kind !== vendor.kind) input.kind = form.kind;
     if (form.price_scope !== vendor.price_scope) input.price_scope = form.price_scope;
     if ((form.website.trim() || null) !== vendor.website) input.website = form.website.trim() || null;
+    if ((form.shop_url.trim() || null) !== (vendor.shop_url ?? null)) input.shop_url = form.shop_url.trim() || null;
     if ((form.notes.trim() || null) !== vendor.notes) input.notes = form.notes.trim() || null;
     if ((form.brand_family_id || null) !== (vendor.brand_family?.id ?? null)) input.brand_family_id = form.brand_family_id || null;
     if (Object.keys(input).length === 0) {
@@ -254,6 +264,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
         <RadioGroup name="edit-vendor-kind" legend="Kind" options={VENDOR_KINDS.map((k) => ({ value: k, label: vendorKindLabel[k] }))} value={form.kind} onChange={(v) => set("kind", v)} />
         <RadioGroup name="edit-vendor-scope" legend="Price scope" options={PRICE_SCOPES.map((s) => ({ value: s, label: priceScopeLabel[s] }))} value={form.price_scope} onChange={(v) => set("price_scope", v)} />
         <Field id="edit-vendor-website" label="Website" type="url" autoComplete="off" value={form.website} onChange={(e) => set("website", e.target.value)} />
+        <Field id="edit-vendor-shop-url" label="Online shop" hint="Where it sells online when that is another site, such as a storefront on a delivery service. Pages you clip there count as this store’s." type="url" autoComplete="off" placeholder="https://" value={form.shop_url} onChange={(e) => set("shop_url", e.target.value)} />
         {retailers.length > 0 || vendor.brand_family ? (
           <SelectField
             id="edit-vendor-brand-family"

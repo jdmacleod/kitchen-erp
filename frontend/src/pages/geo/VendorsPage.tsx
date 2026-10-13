@@ -308,7 +308,7 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
 
 // --- create -----------------------------------------------------------------
 
-const emptyForm = { name: "", kind: "independent" as VendorKind, price_scope: "location" as PriceScope, website: "", notes: "" };
+const emptyForm = { name: "", kind: "independent" as VendorKind, price_scope: "location" as PriceScope, website: "", shop_url: "", notes: "" };
 
 function AddVendorDrawer({ onClose }: { onClose: () => void }) {
   const create = useCreateVendor();
@@ -328,6 +328,7 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
     setInvalid(null);
     const input: VendorCreateInput = { name: form.name.trim(), kind: form.kind, price_scope: form.price_scope };
     if (form.website.trim()) input.website = form.website.trim();
+    if (form.shop_url.trim()) input.shop_url = form.shop_url.trim();
     if (form.notes.trim()) input.notes = form.notes.trim();
     create.mutate(input, {
       onSuccess: async (vendor) => {
@@ -364,6 +365,7 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
           hint="A chain usually charges the same everywhere; a market stall sets its own."
         />
         <Field id="new-vendor-website" label="Website" type="url" autoComplete="off" placeholder="https://" value={form.website} onChange={(e) => set("website", e.target.value)} />
+        <Field id="new-vendor-shop-url" label="Online shop" hint="Where it sells online when that is another site, such as a storefront on a delivery service. Pages you clip there count as this store’s." type="url" autoComplete="off" placeholder="https://" value={form.shop_url} onChange={(e) => set("shop_url", e.target.value)} />
         <TextAreaField id="new-vendor-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
       </form>
     </Drawer>

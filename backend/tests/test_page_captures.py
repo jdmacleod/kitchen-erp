@@ -696,3 +696,60 @@ async def test_a_clip_lookup_is_held_back_while_its_store_is_paused(
         uuid.UUID(fetchable_store["vendor"]["id"]),
     )
     assert await page_requests(helper) == []
+
+
+# --- a vendor's online shop on another host (13, 3.4) --------------------------------------
+
+STOREFRONT = "https://juniper-market.storefronts.example.test"
+STOREFRONT_PAGE = f"{STOREFRONT}/store/juniper-market/products/4417-rolled-oats-500g"
+
+
+def storefront_page() -> dict:
+    return {
+        **page(),
+        "page_url": STOREFRONT_PAGE,
+        "canonical_url": STOREFRONT_PAGE,
+        "title": "Rolled Oats 500g | Juniper Market",
+    }
+
+
+async def test_a_clip_from_the_vendors_online_shop_is_the_vendors(admin_client, no_network):
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market", price_scope="chain")
+    r = await admin_client.patch(
+        f"/api/v1/vendors/{loc['vendor']['id']}",
+        json={"website": SHOP, "shop_url": STOREFRONT},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["shop_url"] == STOREFRONT
+    r = await admin_client.post("/api/v1/product-captures", json=storefront_page())
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["vendor"]["id"] == loc["vendor"]["id"]
+    assert body["listing"]["canonical_url"] == STOREFRONT_PAGE
+    assert body["price"]["amount"] == "3.49"
+
+
+async def test_a_storefront_host_without_a_shop_address_matches_no_vendor(
+    admin_client, store, no_network
+):
+    # The vendor's website is elsewhere and it names no shop: the clip keeps its
+    # details but is no vendor's page.
+    r = await admin_client.post("/api/v1/product-captures", json=storefront_page())
+    assert r.status_code == 201, r.text
+    assert r.json()["vendor"] is None
+    assert r.json()["listing"] is None
+
+
+async def test_matching_takes_a_shop_host_and_its_subdomains_only(admin_client):
+    from app.core.db import get_sessionmaker
+    from app.services.vendor_pages import match_vendor
+
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    await admin_client.patch(
+        f"/api/v1/vendors/{loc['vendor']['id']}", json={"shop_url": "storefronts.example.test"}
+    )
+    async with get_sessionmaker()() as db:
+        assert (await match_vendor(db, f"{STOREFRONT}/x")).name == "Juniper Market"
+        assert (await match_vendor(db, "https://storefronts.example.test/x")) is not None
+        assert await match_vendor(db, "https://notstorefronts.example.test/x") is None
+        assert await match_vendor(db, "https://other.example.test/x") is None

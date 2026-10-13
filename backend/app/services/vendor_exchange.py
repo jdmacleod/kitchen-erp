@@ -127,6 +127,7 @@ async def build(db: AsyncSession, mode: Mode, *, now: datetime | None = None) ->
             code_position=CodePositionEntry(**vendor.code_position)
             if vendor.code_position
             else None,
+            shop_url=vendor.shop_url,
         )
         if not public:
             entry.household = HouseholdVendor(

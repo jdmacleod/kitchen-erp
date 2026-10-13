@@ -62,6 +62,8 @@ export interface Vendor extends VendorRef {
   /** The stable key in kitchen-erp-vendors files; never follows a rename. */
   slug: string;
   website: string | null;
+  /** Where it sells online when that is another site, e.g. a delivery storefront (13, 3.4). */
+  shop_url?: string | null;
   brand: string | null;
   wikidata: string | null;
   notes: string | null;
@@ -172,6 +174,7 @@ export interface VendorCreateInput {
   kind: VendorKind;
   price_scope?: PriceScope;
   website?: string;
+  shop_url?: string;
   notes?: string;
 }
 
@@ -180,6 +183,7 @@ export interface VendorUpdateInput {
   kind?: VendorKind;
   price_scope?: PriceScope;
   website?: string | null;
+  shop_url?: string | null;
   notes?: string | null;
   fetch_policy?: FetchPolicy;
   /** Whose house brands its stores sell (2R); null clears a wrong link. */

@@ -121,6 +121,7 @@ The species and primal values feed ingredient matching (the 1G ingredient vocabu
 ```
 vendor
   + platform        text null      -- adapter key, e.g. 'instacart_storefront', 'chain_storefront', 'grocer_spa'
+  + shop_url        text null      -- its online shop when that is another site (amendment, 2026-10-13)
   + fetch_policy    text not null default 'capture_only'
                     check (fetch_policy in ('server_fetch','capture_only','none'))
   + rw_layout       jsonb null     -- random-weight barcode layout, see 3.5
@@ -135,6 +136,8 @@ vendor_location
 - `server_fetch` means the server may fetch listing URLs (paste-URL path, P6 refresh). The vendor's `robots.txt` is still checked on every fetch (§5.4).
 - `capture_only` means only client-captured payloads are accepted. This is the default, and it is the right value for any vendor whose `robots.txt` disallows automated access, such as an independent market's Instacart storefront.
 - `none` means listing capture is disabled for that vendor.
+
+`shop_url` is for a vendor that sells online through another site, such as a storefront on a delivery platform: a captured page is matched to its vendor when its host is the vendor's `website` host or `shop_url` host, or a subdomain of either. A posted price from that shop is a listing price like any other: shown as "Posted online" and never counted as the cheapest (2N). It carries `/2` in the vendors interchange.
 
 `platform_store_ref` lets a listing's store-scoped price map to one of the household's real locations. A captured page scoped to a store the household does not use (for example, a branch in a city the household never shops in) still yields product data. It does not yield a price observation unless the user maps it to a location in review.
 
@@ -334,7 +337,7 @@ class FieldCandidate:
 
 1. **JSON-LD.** Parse schema.org `Product` / `Offer` / `AggregateOffer`. Map `name`, `brand.name`, `gtin*`, `sku`, `image`, `offers.price`, `offers.priceCurrency`, `offers.priceSpecification.unitCode`, and so on. Confidence 0.9.
 2. **Meta tags.** OpenGraph and Twitter tags for title, image, and canonical URL. Confidence 0.7 for title, 0.8 for image and URL.
-3. **Platform adapter**, selected by `vendor.platform`. An adapter is a pure function from payload to candidates over `dom_text` and URL. It holds no network code. Adapters in this phase:
+3. **Platform adapter**, selected by `vendor.platform`. (As built, the products helper selects an adapter by the page's host, and Kitchen ERP runs the installed adapters on every capture; `vendor.platform` names the storefront software but does not choose the adapter.) An adapter is a pure function from payload to candidates over `dom_text` and URL. It holds no network code. Adapters in this phase:
    - `chain_storefront`: title with weight suffix ("Pork Shoulder Bone In - 7.25 Pound"), per-lb price, "avg/ea" price, product number (→ GTIN or random-weight UPC), item number, case size, breadcrumb category, and the store scope `store/<n>` from the URL.
    - `instacart_storefront`: product id and slug from `/store/<retailer>/products/<id>-<slug>`, title, price and unit text, size text from the rendered DOM. Capture-only.
    - `grocer_spa`: SKU from the URL suffix (`-061528`), title, price, size, and ingredients from the rendered DOM.

@@ -18524,6 +18524,18 @@
             "title": "Price Scope",
             "type": "string"
           },
+          "shop_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Url"
+          },
           "website": {
             "anyOf": [
               {
@@ -18667,6 +18679,18 @@
                 "type": "null"
               }
             ]
+          },
+          "shop_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Url"
           },
           "sources": {
             "additionalProperties": {
@@ -18919,6 +18943,17 @@
               }
             ],
             "title": "Refresh Unreachable Since"
+          },
+          "shop_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Url"
           },
           "slug": {
             "title": "Slug",
@@ -19832,6 +19867,17 @@
             ],
             "title": "Refresh Unreachable Since"
           },
+          "shop_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Url"
+          },
           "slug": {
             "title": "Slug",
             "type": "string"
@@ -20019,6 +20065,18 @@
               }
             ],
             "title": "Price Scope"
+          },
+          "shop_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shop Url"
           },
           "website": {
             "anyOf": [
