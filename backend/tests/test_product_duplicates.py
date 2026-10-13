@@ -201,7 +201,7 @@ async def test_the_inbox_row_costs_the_same_queries_for_a_few_products_or_many(
     await _catalog(admin_client)
     few = await _queries(db_session, inbox._duplicates)
     more = [("Reed syrup", f"Reed syrup grade {i}", None) for i in range(20)]
-    await _catalog(admin_client, more + [("Reed syrup", "Reed syrup grade 3", None)])
+    await _catalog(admin_client, [*more, ("Reed syrup", "Reed syrup grade 3", None)])
     many = await _queries(db_session, inbox._duplicates)
     [row] = await inbox._duplicates(db_session)
     pairs = await product_duplicates.find_duplicates(db_session)
