@@ -9,6 +9,16 @@ const playwright = require("eslint-plugin-playwright");
 const { defineConfig, globalIgnores } = require("eslint/config");
 const tseslint = require("typescript-eslint");
 
+// The plugin marks several rules "warn"; here every rule is an error, so a finding
+// either fails `pnpm lint` or sits in the suppressions file, never in between.
+const playwrightRecommended = playwright.configs["flat/recommended"];
+const playwrightRules = Object.fromEntries(
+  Object.entries(playwrightRecommended.rules).map(([rule, level]) => [
+    rule,
+    level === "warn" ? "error" : level,
+  ]),
+);
+
 module.exports = defineConfig([
   globalIgnores(["node_modules", "test-results", "playwright-report"]),
   {
@@ -16,7 +26,7 @@ module.exports = defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommendedTypeChecked,
-      playwright.configs["flat/recommended"],
+      { ...playwrightRecommended, rules: playwrightRules },
     ],
     languageOptions: {
       parserOptions: {
