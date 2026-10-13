@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, newIdempotencyKey } from "./client";
 import { qs } from "./catalog";
 import type { ListResponse } from "./types";
+import type { AmountOut, ProductBrief, UserBrief } from "./shoppingList";
 import { cmp, formatMoney, sub } from "../lib/decimal";
 
 /**
@@ -98,6 +99,9 @@ export interface Stop {
   hours_known: boolean;
   done_at: string | null;
   purchase_id: string | null;
+  /** Once "Done here" ran: what its purchase came to ("0" when nothing was bought), beside `subtotal`, the prediction (4C). */
+  actual_cost?: string | null;
+  lines_recorded?: number | null;
   items: StopItem[];
 }
 
@@ -143,6 +147,9 @@ interface TripBase {
   created_at: string;
   chosen_at: string | null;
   finished_at: string | null;
+  /** Predicted against actual (4C): the chosen variant's item cost and the sum of the purchases "Done here" recorded; null until a stop is done. */
+  predicted_item_cost?: string | null;
+  actual_item_cost?: string | null;
 }
 
 export interface TripSummary extends TripBase {
@@ -206,6 +213,7 @@ export const tripKeys = {
   all: ["plan", "trips"] as const,
   list: (homeBaseId: string) => ["plan", "trips", "list", homeBaseId] as const,
   detail: (id: string) => ["plan", "trips", "detail", id] as const,
+  stop: (id: string, seq: number) => ["plan", "trips", "stop", id, seq] as const,
 };
 
 const idem = () => ({ "Idempotency-Key": newIdempotencyKey() });
@@ -273,6 +281,184 @@ export function useDeleteTrip() {
     onSuccess: (_, { id, homeBaseId }) => {
       client.removeQueries({ queryKey: tripKeys.detail(id) });
       void client.invalidateQueries({ queryKey: tripKeys.list(homeBaseId) });
+    },
+  });
+}
+
+// --- at the store (17, 4C) ------------------------------------------------------
+
+export interface StopLocation {
+  id: string;
+  name: string;
+  vendor_name: string;
+  address: string | null;
+}
+
+/**
+ * One item to get at this stop. `line_cost` is the plan's figure; an aisle price
+ * (`actual_price` for `actual_qty actual_unit`) sets `edited`, and
+ * `effective_cost` is what the item comes to with it.
+ */
+export interface StopScreenItem {
+  id: string;
+  list_item_id: string;
+  label: string;
+  amounts: AmountOut[];
+  note: string | null;
+  product: ProductBrief;
+  packs: string | null;
+  pack_price: string | null;
+  line_cost: string;
+  observation_id: string;
+  planned_observed_at: string;
+  price_stale: boolean;
+  forced: boolean;
+  got_here: boolean;
+  actual_price: string | null;
+  actual_qty: string | null;
+  actual_unit: string | null;
+  edited: boolean;
+  effective_cost: string;
+  claimed_by: UserBrief | null;
+  checked_at: string | null;
+  checked_by: UserBrief | null;
+}
+
+/** A later stop's item this location could also fill; `difference` is here minus there. */
+export interface CheaperElsewhereItem {
+  id: string;
+  list_item_id: string;
+  label: string;
+  amounts: AmountOut[];
+  at_seq: number;
+  at_location_name: string;
+  product_there: ProductBrief;
+  line_cost_there: string;
+  product_here: ProductBrief;
+  packs_here: string | null;
+  pack_price_here: string | null;
+  line_cost_here: string;
+  price_stale_here: boolean;
+  difference: string;
+}
+
+/** One stop of a chosen plan (UI-4.8, UI-8.17). */
+export interface StopScreen {
+  plan_id: string;
+  plan_status: PlanStatus;
+  list_id: string;
+  home_base_id: string;
+  home_base_name: string;
+  stop_id: string;
+  seq: number;
+  stop_count: number;
+  location: StopLocation;
+  arrive_at: string;
+  /** The stop's frozen subtotal. */
+  predicted_cost: string;
+  /** The items re-summed with their edited prices. */
+  estimated_here: string;
+  done_at: string | null;
+  purchase_id: string | null;
+  lines_recorded: number | null;
+  actual_cost: string | null;
+  next_seq: number | null;
+  items: StopScreenItem[];
+  cheaper_elsewhere: CheaperElsewhereItem[];
+}
+
+export interface StopPriceInput {
+  price: string;
+  qty: string;
+  unit: string;
+}
+
+export interface StopDone {
+  plan_id: string;
+  stop_id: string;
+  seq: number;
+  status: PlanStatus;
+  done_at: string;
+  purchase_id: string | null;
+  lines_recorded: number;
+  observation_ids: string[];
+  shelf_observation_ids: string[];
+  checked: number;
+  next_seq: number | null;
+}
+
+const stopPath = (id: string, seq: number) => `/plan/trips/${enc(id)}/stops/${seq}`;
+
+/** The first stop of the chosen variant not yet done, or null when every stop is. */
+export function firstOpenStop(trip: Trip): Stop | null {
+  const chosen = chosenVariant(trip);
+  return chosen?.stops.find((s) => s.done_at === null) ?? null;
+}
+
+export function useStop(id: string | undefined, seq: number) {
+  return useQuery({
+    queryKey: tripKeys.stop(id ?? "", seq),
+    queryFn: () => api<StopScreen>(stopPath(id ?? "", seq)),
+    enabled: Boolean(id) && Number.isInteger(seq) && seq > 0,
+  });
+}
+
+function useStoreStop() {
+  const client = useQueryClient();
+  return (stop: StopScreen) => client.setQueryData<StopScreen>(tripKeys.stop(stop.plan_id, stop.seq), stop);
+}
+
+/** Hold a price read in the aisle on the stop item; it records nothing until "Done here". */
+export function useHoldStopPrice() {
+  const store = useStoreStop();
+  return useMutation({
+    mutationFn: ({ id, seq, itemId, input }: { id: string; seq: number; itemId: string; input: StopPriceInput }) =>
+      api<StopScreen>(`${stopPath(id, seq)}/items/${enc(itemId)}/price`, { method: "PUT", body: input }),
+    onSuccess: store,
+  });
+}
+
+/** Drop an edited price: the item goes back to the plan's. */
+export function useClearStopPrice() {
+  const store = useStoreStop();
+  return useMutation({
+    mutationFn: ({ id, seq, itemId }: { id: string; seq: number; itemId: string }) =>
+      api<StopScreen>(`${stopPath(id, seq)}/items/${enc(itemId)}/price`, { method: "DELETE" }),
+    onSuccess: store,
+  });
+}
+
+/**
+ * Move a later stop's item here. The caller holds `key` and sends the same one
+ * again when it retries the same move, so a retry that crossed a success replays.
+ */
+export function useGetHere() {
+  const store = useStoreStop();
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, seq, itemId, key }: { id: string; seq: number; itemId: string; key: string }) =>
+      api<StopScreen>(`${stopPath(id, seq)}/get-here`, { method: "POST", body: { item_id: itemId }, headers: { "Idempotency-Key": key } }),
+    onSuccess: (stop) => {
+      store(stop);
+      // The later stop lost the item; its screen and the trip page refetch.
+      void client.invalidateQueries({ queryKey: tripKeys.detail(stop.plan_id) });
+    },
+  });
+}
+
+/**
+ * "Done here": one committed purchase for the checked items. The caller holds
+ * `key` for this set of checks and reuses it on a retry, which then replays.
+ */
+export function useStopDone() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, seq, checkedItemIds, key }: { id: string; seq: number; checkedItemIds: string[]; key: string }) =>
+      api<StopDone>(`${stopPath(id, seq)}/done`, { method: "POST", body: { checked_item_ids: checkedItemIds }, headers: { "Idempotency-Key": key } }),
+    onSuccess: (done) => {
+      void client.invalidateQueries({ queryKey: tripKeys.detail(done.plan_id) });
+      void client.invalidateQueries({ queryKey: tripKeys.all });
+      void client.invalidateQueries({ queryKey: ["plan", "list"] });
     },
   });
 }

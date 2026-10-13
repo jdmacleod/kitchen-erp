@@ -244,6 +244,8 @@ class PurchaseOut(ApiModel):
     source: str
     flags: list[str]
     ledger_txn_ref: str | None
+    # The plan this purchase closed a stop of, when "Done here" recorded it (17, 4C).
+    trip_plan_id: uuid.UUID | None = None
     lines: list[LineOut]
     created_at: datetime
     updated_at: datetime

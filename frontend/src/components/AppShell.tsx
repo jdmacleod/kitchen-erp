@@ -36,8 +36,12 @@ type Overlay = "search" | "capture" | "more" | "shelf" | null;
  * shelf price).
  */
 const TASK_PATHS = new Set(["/shop/shelf-prices"]);
-/** Product review is a task screen too (10, PD17): Reject and Accept own the thumb zone. */
-const isTaskPath = (pathname: string) => TASK_PATHS.has(pathname) || pathname.startsWith("/catalog/products/review/");
+/**
+ * Product review is a task screen too (10, PD17): Reject and Accept own the thumb
+ * zone. So is a trip's stop (10, At the store): "Done here" is anchored there.
+ */
+const STOP_PATH = /^\/plan\/trips\/[^/]+\/stop\/[^/]+$/;
+const isTaskPath = (pathname: string) => TASK_PATHS.has(pathname) || pathname.startsWith("/catalog/products/review/") || STOP_PATH.test(pathname);
 
 /**
  * Authenticated layout. At lg (1024px) and wider: a fixed sidebar. Below lg

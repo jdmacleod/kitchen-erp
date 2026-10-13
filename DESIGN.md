@@ -170,7 +170,7 @@ tablet).
   `setWide`), `px-4 md:px-8 lg:py-8`.
 - Below `lg`: a sticky header with the wordmark and the person's initials, and `TabBar` fixed at the bottom
   (Home, Purchases, a raised 56px herb Capture circle, Search, More). `main` pads its bottom by 6.5rem plus
-  the safe area so the page ends above the bar. Task screens (`TASK_PATHS`, product review) hide both.
+  the safe area so the page ends above the bar. Task screens (`TASK_PATHS`, product review, a trip's stop at `/plan/trips/:id/stop/:seq`) hide both.
 - `Nav.tsx` holds `MAIN_SECTIONS` (Home, Cook, Shop) and `FOOTER_SECTIONS` (Catalog, Settings) in 09's order.
   `visibleSections()` keeps a section when its `feature` is in `/health`'s `features` list or in
   `DEFAULT_FEATURES` (`catalog`, `shop`), so Phase 1–2 sections render before `/health` answers (D11) and a

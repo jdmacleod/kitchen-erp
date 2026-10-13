@@ -203,6 +203,7 @@ async def list_purchases(
     db: AsyncSession,
     *,
     vendor_location_id: uuid.UUID | None = None,
+    trip_plan_id: uuid.UUID | None = None,
     status: str | None = None,
     source: str | None = None,
     q: str | None = None,
@@ -217,6 +218,7 @@ async def list_purchases(
     location's name, or on one line, in its receipt text or product name. Sorting by store
     or total falls back to newest first for ties. The cursor carries the sort
     value, the purchase date and the id, so the order holds across pages.
+    ``trip_plan_id`` keeps the purchases "Done here" recorded for one plan (17, 4C).
     """
     location = aliased(VendorLocation)
     vendor = aliased(Vendor)
@@ -224,6 +226,8 @@ async def list_purchases(
     stmt = stmt.outerjoin(vendor, vendor.id == location.vendor_id)
     if vendor_location_id is not None:
         stmt = stmt.where(Purchase.vendor_location_id == vendor_location_id)
+    if trip_plan_id is not None:
+        stmt = stmt.where(Purchase.trip_plan_id == trip_plan_id)
     if status is not None:
         stmt = stmt.where(Purchase.status == status)
     else:
@@ -448,7 +452,12 @@ async def _emit(db: AsyncSession, purchase: Purchase, line: PurchaseLine, user: 
 
 
 def _new_line(
-    seq: int, line_in: LineIn, price: Decimal, total: Decimal, user: AppUser
+    seq: int,
+    line_in: LineIn,
+    price: Decimal,
+    total: Decimal,
+    user: AppUser,
+    flags: list[str] | None = None,
 ) -> PurchaseLine:
     return PurchaseLine(
         seq=seq,
@@ -460,20 +469,46 @@ def _new_line(
         line_total=total,
         resolution="manual",
         resolved_by=user.id,
-        flags=[],
+        flags=list(flags or []),
     )
 
 
-async def create_manual(db: AsyncSession, user: AppUser, payload: ManualPurchaseIn) -> Purchase:
-    """A manual purchase commits immediately and emits one observation per line."""
+# A line "Done here" took at the plan's price, unedited in the aisle (17, 4C, S1):
+# its observation is the purchase line's, like any other, but a reader can tell
+# a confirmed price from an assumed one.
+PLANNED_PRICE = "planned_price"
+
+
+async def create_manual_core(
+    db: AsyncSession,
+    user: AppUser,
+    payload: ManualPurchaseIn,
+    *,
+    trip_plan_id: uuid.UUID | None = None,
+    line_flags: dict[int, list[str]] | None = None,
+) -> Purchase:
+    """A committed manual purchase with one observation per line. Flushes, never
+    commits, so "Done here" (17, 4C) can record it with the stop in one transaction.
+
+    ``line_flags`` maps a line's position in ``payload.lines`` (from 1) to the
+    flags it carries; ``trip_plan_id`` links the purchase to the plan it closes
+    a stop of.
+    """
     await _check_location(db, payload.vendor_location_id)
     await _check_products(db, payload.lines)
-    purchase = Purchase(source="manual", status="committed", entered_by=user.id, flags=[])
+    purchase = Purchase(
+        source="manual",
+        status="committed",
+        entered_by=user.id,
+        flags=[],
+        trip_plan_id=trip_plan_id,
+    )
     subtotal = Decimal("0")
     for seq, line_in in enumerate(payload.lines, start=1):
         price, total = complete_line(line_in)
         subtotal += total
-        purchase.lines.append(_new_line(seq, line_in, price, total, user))
+        flags = (line_flags or {}).get(seq)
+        purchase.lines.append(_new_line(seq, line_in, price, total, user, flags))
     _apply_header(purchase, payload, subtotal)
     db.add(purchase)
     await db.flush()
@@ -481,6 +516,12 @@ async def create_manual(db: AsyncSession, user: AppUser, payload: ManualPurchase
         await _emit(db, purchase, line, user)
     await best_by.refresh(db, purchase)
     await recipe_cost_triggers.after_purchase_changed(db, purchase.id)
+    return purchase
+
+
+async def create_manual(db: AsyncSession, user: AppUser, payload: ManualPurchaseIn) -> Purchase:
+    """A manual purchase commits immediately and emits one observation per line."""
+    purchase = await create_manual_core(db, user, payload)
     await db.commit()
     return await get_purchase(db, purchase.id)
 

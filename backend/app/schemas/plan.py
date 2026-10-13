@@ -287,7 +287,9 @@ class StopItemOut(ApiModel):
 class StopOut(ApiModel):
     """``leg_seconds`` and ``leg_meters`` are the free-flow leg that reaches the
     stop; ``multiplier`` and ``arrive_at`` are what the planner applied at its
-    projected departure."""
+    projected departure. Once "Done here" ran, ``actual_cost`` is what its
+    purchase came to (``0`` when nothing was bought) beside ``subtotal``, the
+    prediction, and ``lines_recorded`` counts the purchase's lines (4C)."""
 
     id: uuid.UUID
     seq: int
@@ -303,6 +305,8 @@ class StopOut(ApiModel):
     hours_known: bool
     done_at: datetime | None
     purchase_id: uuid.UUID | None
+    actual_cost: DecimalStr | None = None
+    lines_recorded: int | None = None
     items: list[StopItemOut]
 
 
@@ -349,6 +353,11 @@ class TripBase(ApiModel):
     created_at: datetime
     chosen_at: datetime | None
     finished_at: datetime | None
+    # Predicted against actual (4C): the chosen variant's item cost, and the sum
+    # of the purchases "Done here" recorded for this plan; both null until a
+    # stop is done.
+    predicted_item_cost: DecimalStr | None = None
+    actual_item_cost: DecimalStr | None = None
 
 
 class TripSummary(TripBase):
@@ -365,3 +374,145 @@ class TripsOut(ApiModel):
 
 class ChooseIn(ApiModel):
     variant_id: uuid.UUID
+
+
+# --- at the store (17, 4C) -----------------------------------------------------------------
+
+
+class StopLocation(ApiModel):
+    id: uuid.UUID
+    name: str
+    vendor_name: str
+    address: str | None
+
+
+class StopScreenItem(ApiModel):
+    """One item to get at this stop. ``line_cost`` rests on the plan's price
+    (``pack_price`` per pack, ``packs`` of them; or quantity times unit price
+    when the product has no pack size), observed ``planned_observed_at`` and
+    marked ``price_stale`` when older than the stale window. ``actual_*`` is a
+    price edited in the aisle: ``actual_price`` for ``actual_qty actual_unit``
+    of the product; ``edited`` says so and ``effective_cost`` is what the item
+    comes to with it (``packs`` of the edited price). ``checked_at`` is the
+    list's own check, set by "Done here" or on the list page."""
+
+    id: uuid.UUID
+    list_item_id: uuid.UUID
+    label: str
+    amounts: list[AmountOut]
+    note: str | None
+    product: ProductBrief
+    packs: DecimalStr | None
+    pack_price: DecimalStr | None
+    line_cost: DecimalStr
+    observation_id: uuid.UUID
+    planned_observed_at: datetime
+    price_stale: bool
+    forced: bool
+    got_here: bool
+    actual_price: DecimalStr | None
+    actual_qty: DecimalStr | None
+    actual_unit: str | None
+    edited: bool
+    effective_cost: DecimalStr
+    claimed_by: UserBrief | None
+    checked_at: datetime | None
+    checked_by: UserBrief | None
+
+
+class CheaperElsewhereItem(ApiModel):
+    """An item assigned to a later stop that this location could also fill:
+    ``id`` is its stop item there, ``at_seq`` that stop, ``line_cost_there`` the
+    plan's figure and ``line_cost_here`` this location's offer; ``difference``
+    is here minus there, so "+0.80 here" when it costs more here."""
+
+    id: uuid.UUID
+    list_item_id: uuid.UUID
+    label: str
+    amounts: list[AmountOut]
+    at_seq: int
+    at_location_name: str
+    product_there: ProductBrief
+    line_cost_there: DecimalStr
+    product_here: ProductBrief
+    packs_here: DecimalStr | None
+    pack_price_here: DecimalStr | None
+    line_cost_here: DecimalStr
+    price_stale_here: bool
+    difference: DecimalStr
+
+
+class StopScreenOut(ApiModel):
+    """One stop of a chosen plan (UI-4.8, UI-8.17). ``predicted_cost`` is the
+    stop's frozen subtotal; ``estimated_here`` re-sums the items with their
+    edited prices. Once done: ``done_at``, ``purchase_id``, ``lines_recorded``
+    and ``actual_cost``."""
+
+    plan_id: uuid.UUID
+    plan_status: PlanStatus
+    list_id: uuid.UUID
+    home_base_id: uuid.UUID
+    home_base_name: str
+    stop_id: uuid.UUID
+    seq: int
+    stop_count: int
+    location: StopLocation
+    arrive_at: datetime
+    predicted_cost: DecimalStr
+    estimated_here: DecimalStr
+    done_at: datetime | None
+    purchase_id: uuid.UUID | None
+    lines_recorded: int | None
+    actual_cost: DecimalStr | None
+    next_seq: int | None
+    items: list[StopScreenItem]
+    cheaper_elsewhere: list[CheaperElsewhereItem]
+
+
+Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
+
+
+class StopPriceIn(ApiModel):
+    """A price read in the aisle: ``price`` for ``qty`` ``unit`` of the item's
+    product, one pack ("1 each") unless said otherwise. Held on the stop item;
+    what it records is decided by "Done here"."""
+
+    price: Money
+    qty: Annotated[Decimal, Field(gt=0)] = Decimal(1)
+    unit: UnitCode = "each"
+
+
+class GetHereIn(ApiModel):
+    """Move a later stop's item to this stop: ``item_id`` is its stop item
+    there. It is re-priced at this location's offer, or at ``price`` for
+    ``qty unit`` when given (required when this location has no offer)."""
+
+    item_id: uuid.UUID
+    price: Money | None = None
+    qty: Annotated[Decimal, Field(gt=0)] = Decimal(1)
+    unit: UnitCode = "each"
+
+
+class StopDoneIn(ApiModel):
+    """The stop items ticked in the basket; empty records the stop as done with
+    nothing bought."""
+
+    checked_item_ids: list[uuid.UUID] = Field(default_factory=list, max_length=500)
+
+
+class StopDoneOut(ApiModel):
+    """What "Done here" recorded: the purchase (null when nothing was checked),
+    its lines' observation ids, the shelf observations for prices edited but not
+    bought, the list items checked, the plan's status after, and the next stop."""
+
+    plan_id: uuid.UUID
+    stop_id: uuid.UUID
+    seq: int
+    status: PlanStatus
+    done_at: datetime
+    purchase_id: uuid.UUID | None
+    lines_recorded: int
+    observation_ids: list[uuid.UUID]
+    shelf_observation_ids: list[uuid.UUID]
+    checked: int
+    next_seq: int | None
