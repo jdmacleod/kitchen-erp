@@ -1,10 +1,10 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { readingSentence } from "../api/inbox";
 import type { ProductPhoto } from "../api/productPhotos";
 import { photographProduct, type Proposal } from "../api/proposals";
 import { parsePieces } from "../pages/catalog/ProductReviewPage";
-import { readingSentence } from "../api/inbox";
 import { flourProduct, flourProductId, units } from "./catalog-fixtures";
 import {
   adminUser,

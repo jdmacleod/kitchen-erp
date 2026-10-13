@@ -9,11 +9,11 @@ import {
   type StyleSpecification,
 } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
-import { labelsWithCustomTheme, namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
-import { HEX, basemapColours, basemapLabelColours } from "../../lib/palette";
 import { Protocol } from "pmtiles";
+import { labelsWithCustomTheme, namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
 import { useEffect, useRef, useState } from "react";
 import type { VendorKind } from "../../api/geo";
+import { HEX, basemapColours, basemapLabelColours } from "../../lib/palette";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./map.css";
 
@@ -165,7 +165,7 @@ function withoutIcons(layer: LayerSpecification): LayerSpecification {
   const layout = Object.fromEntries(
     Object.entries(layer.layout).filter(([key]) => !key.startsWith("icon-")),
   );
-  return { ...layer, layout } as LayerSpecification;
+  return { ...layer, layout };
 }
 
 function prefersDark(): boolean {

@@ -9,10 +9,10 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
-import type { PhotoSummary } from "./productPhotos";
 import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import { inboxKey } from "./inbox";
+import type { PhotoSummary } from "./productPhotos";
 import type { ListResponse } from "./types";
 
 // --- types ------------------------------------------------------------------

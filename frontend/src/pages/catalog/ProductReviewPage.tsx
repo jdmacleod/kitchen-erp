@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { api, errorMessage, isApiError } from "../../api/client";
 import { formatPack, formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
+import { api, errorMessage, isApiError } from "../../api/client";
 import {
   ROLE_LABELS,
   type PhotoRole,
@@ -32,17 +32,17 @@ import {
   type ReviewCandidate,
 } from "../../api/proposals";
 import { Badge } from "../../components/catalog/fields";
-import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { ProductThumb } from "../../components/catalog/ProductThumb";
+import { whose } from "../../components/catalog/StoreBrandBadge";
+import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
-import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
-import { whose } from "../../components/catalog/StoreBrandBadge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const sectionHeading = "font-display mb-2 text-lg";
@@ -142,7 +142,7 @@ interface Choice {
 
 /** "5 links" or "5" as pieces; the name singular, as the product stores it. */
 export function parsePieces(text: string): { count: string; name?: string } | null {
-  const m = text.trim().match(/^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/);
+  const m = /^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/.exec(text.trim());
   if (!m || Number(m[1]) <= 0) return null;
   const name = m[2]
     ?.trim()
@@ -189,7 +189,7 @@ function Review({ proposal }: { proposal: Proposal }) {
   );
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
     Object.fromEntries(
-      Object.entries(fields).map(([name, f]) => [name, { index: f && f.conflict ? null : 0 }]),
+      Object.entries(fields).map(([name, f]) => [name, { index: f?.conflict ? null : 0 }]),
     ),
   );
   const [typed, setTyped] = useState<Record<string, string>>({});
@@ -292,13 +292,7 @@ function Review({ proposal }: { proposal: Proposal }) {
   const packUnit = ((): string => {
     const pack = chosenValue("pack");
     if (typeof pack === "string")
-      return (
-        pack
-          .trim()
-          .match(/^\d+(?:\.\d+)?\s*([a-zA-Z_ ]+)$/)?.[1]
-          .trim()
-          .toLowerCase() ?? ""
-      );
+      return /^\d+(?:\.\d+)?\s*([a-zA-Z_ ]+)$/.exec(pack.trim())?.[1].trim().toLowerCase() ?? "";
     return (pack as Pack | undefined)?.unit ?? "";
   })();
   const piecesOffered = !units.data || piecesFit(packUnit, units.data);
@@ -331,7 +325,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     }
     for (const [name, value] of Object.entries(typed)) {
       if (name === "pack") {
-        const m = value.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/);
+        const m = /^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/.exec(value.trim());
         if (m) out.pack = { qty: m[1], unit: m[2].trim().toLowerCase() };
       } else if (name === "pieces") {
         if (!piecesOffered) continue;
@@ -727,7 +721,7 @@ function Review({ proposal }: { proposal: Proposal }) {
               {priceConflict ? (
                 <p className="mt-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
                   The page gives more than one price:{" "}
-                  {candidates(fields.price as ProposalField)
+                  {candidates(fields.price!)
                     .map((c) => comparedPrice(c.value))
                     .join(" and ")}
                   . Say what the posted price is for.

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { errorMessage } from "../../api/client";
 import {
   formatPack,
   productTitle,
@@ -9,6 +8,7 @@ import {
   type DuplicatePair,
   type Product,
 } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useNotice } from "../Notice";
 import { Alert, Button, Card, EmptyState, focusRing } from "../ui";
 import { ProductMergePanel } from "./ProductMergePanel";

@@ -16,7 +16,7 @@ function mountWith(body: Health | null) {
 /** The dot beside the status word; it is aria-hidden, so it is found by position. */
 function dot(): HTMLElement {
   const live = screen.getByTestId("health-status").closest('[role="status"]')!;
-  return live.querySelector("span[aria-hidden='true']") as HTMLElement;
+  return live.querySelector("span[aria-hidden='true']")!;
 }
 
 /**

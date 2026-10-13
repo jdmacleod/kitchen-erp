@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { servingsText, type Recipe } from "../../api/recipes";
 import { useAddFromRecipe, useAddItem } from "../../api/shoppingList";
+import { useCurrentKitchen, type CurrentKitchen } from "../../lib/kitchen";
 import { useNotice } from "../Notice";
 import { Alert, Button, Card, Field, focusRing } from "../ui";
 import { fromRecipeSentence } from "./AddFromRecipeDrawer";
@@ -10,7 +11,6 @@ import { AmountRows, type AmountRow } from "./AmountRows";
 import { amountsInput, halfFilledAmount, positiveAmount } from "./amounts";
 import { ItemFlags } from "./ItemFlags";
 import { KitchenTag } from "./KitchenTag";
-import { useCurrentKitchen, type CurrentKitchen } from "../../lib/kitchen";
 
 /**
  * "Add to list" on an ingredient's and a recipe's page (10, Plan; UI-8.4):

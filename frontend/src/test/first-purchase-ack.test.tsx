@@ -4,12 +4,12 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { describe, expect, it } from "vitest";
 import { NoticeProvider } from "../components/Notice";
+import { createQueryClient } from "../lib/queryClient";
 import { FIRST_PURCHASE_NOTICE, NewPurchasePage } from "../pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "../pages/purchases/PurchaseDetailPage";
-import { createQueryClient } from "../lib/queryClient";
 import { chainLocation } from "./geo-fixtures";
-import { manualPurchase } from "./purchase-fixtures";
 import { adminUser, jsonResponse, mainRegion, mockApi, renderApp } from "./helpers";
+import { manualPurchase } from "./purchase-fixtures";
 
 /**
  * `renderApp` mounts a MemoryRouter, which keeps its history in memory and never

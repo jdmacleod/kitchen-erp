@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { errorMessage } from "../../api/client";
 import {
   catalogErrorMessage,
   productTitle,
@@ -10,6 +9,7 @@ import {
   type ProductMerge,
   type SearchHit,
 } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { Alert, Button, Card, alertTones } from "../ui";
 import { ProductTypeahead } from "./ProductTypeahead";
 

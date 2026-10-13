@@ -1,10 +1,10 @@
-import { render, screen } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
+import type { User } from "../api/types";
 import { App } from "../App";
 import { createQueryClient } from "../lib/queryClient";
-import type { User } from "../api/types";
 
 export const adminUser: User = {
   id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5a01",

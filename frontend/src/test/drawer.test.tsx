@@ -102,7 +102,7 @@ describe("the Drawer (spec 08, UI-3.2, UI-3.3)", () => {
     render(<Harness onSubmit={onSubmit} />);
     await user.click(screen.getByRole("button", { name: "Add product" }));
     const dialog = screen.getByRole("dialog");
-    await user.click(dialog.querySelector("footer button[type=submit]") as HTMLButtonElement);
+    await user.click(dialog.querySelector("footer button[type=submit]")!);
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 

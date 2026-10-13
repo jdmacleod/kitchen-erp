@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { validateOpeningHours } from "../../api/geo";
 import { errorMessage } from "../../api/client";
+import { validateOpeningHours } from "../../api/geo";
 import {
   DAY_CODES,
   DAY_SPANS,
@@ -13,8 +13,8 @@ import {
   type MonthCode,
   type Preset,
 } from "../../lib/openingHours";
-import { Field } from "../ui";
 import { RadioGroup, SelectField, hintClass, inputClass, labelClass } from "../catalog/fields";
+import { Field } from "../ui";
 
 type Mode = "none" | "daily" | "weekly" | "seasonal" | "raw";
 
@@ -109,7 +109,7 @@ export function OpeningHoursInput({
       className="flex flex-col gap-3"
       onBlur={(e) => {
         // Validate when focus leaves the whole builder, not on every field hop.
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void validate();
+        if (!e.currentTarget.contains(e.relatedTarget)) void validate();
       }}
     >
       <legend className={labelClass}>Opening hours</legend>

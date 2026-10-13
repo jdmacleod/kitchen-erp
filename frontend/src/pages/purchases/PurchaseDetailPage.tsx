@@ -18,15 +18,17 @@ import {
   type Resolution,
 } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
+import { CategoryChip } from "../../components/CategoryChip";
+import { useNavigateWithNotice, useNotice } from "../../components/Notice";
+import { BestBy } from "../../components/purchases/BestBy";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
 import {
   RemovedLinesCaption,
   RemovePurchase,
   RestorePurchase,
 } from "../../components/purchases/RemovePurchase";
-import { BestBy } from "../../components/purchases/BestBy";
-import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import { RereadLines } from "../../components/purchases/RereadLines";
+import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import {
   Alert,
   Button,
@@ -40,8 +42,6 @@ import {
 import { formatMoney } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { CategoryChip } from "../../components/CategoryChip";
-import { useNavigateWithNotice, useNotice } from "../../components/Notice";
 
 /**
  * A purchase. Draft and reviewed purchases open in review mode (Phase 2D);

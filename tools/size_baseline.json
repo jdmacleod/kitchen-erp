@@ -14,8 +14,8 @@
   "frontend/src/api/catalog.ts": 936,
   "frontend/src/api/purchases.ts": 961,
   "frontend/src/components/purchases/ReviewPurchase.tsx": 1916,
-  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1371,
+  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1365,
   "frontend/src/pages/geo/MapPage.tsx": 1145,
-  "frontend/src/pages/geo/VendorDetailPage.tsx": 1076,
+  "frontend/src/pages/geo/VendorDetailPage.tsx": 1074,
   "frontend/src/pages/purchases/ShelfPricePage.tsx": 912
 }

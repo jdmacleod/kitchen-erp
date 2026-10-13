@@ -3,11 +3,11 @@
 // {qty, unit}, a GTIN as its fourteen digits.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, ApiError, api } from "./client";
+import type { CategoryKey } from "../components/CategoryChip";
 import { catalogKeys, type HouseBrand } from "./catalog";
+import { API_BASE, ApiError, api } from "./client";
 import { inboxKey } from "./inbox";
 import type { PhotoRole, PhotoSummary, ProductPhoto } from "./productPhotos";
-import type { CategoryKey } from "../components/CategoryChip";
 import type { ErrorEnvelope } from "./types";
 
 export type ProductKind =

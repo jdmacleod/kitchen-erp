@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, newIdempotencyKey } from "./client";
-import { qs } from "./catalog";
-import type { ListResponse } from "./types";
-import type { AmountOut, ProductBrief, UserBrief } from "./shoppingList";
 import { cmp, formatMoney, sub } from "../lib/decimal";
+import { qs } from "./catalog";
+import { api, newIdempotencyKey } from "./client";
+import type { AmountOut, ProductBrief, UserBrief } from "./shoppingList";
+import type { ListResponse } from "./types";
 
 /**
  * Trip plans (docs/spec/17, 4B). A plan is the inputs and three variants, derived

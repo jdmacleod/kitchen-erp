@@ -2,8 +2,8 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
-import { REDIRECTS, SECTION_ROOTS } from "../App";
 import type { SearchResults } from "../api/search";
+import { REDIRECTS, SECTION_ROOTS } from "../App";
 import {
   DEFAULT_FEATURES,
   FOOTER_SECTIONS,

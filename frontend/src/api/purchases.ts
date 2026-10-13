@@ -9,6 +9,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
+import type { CategoryKey } from "../components/CategoryChip";
 import {
   qs,
   validationMessages,
@@ -18,7 +19,6 @@ import {
   type Page,
   type ProductCreateInput,
 } from "./catalog";
-import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
 

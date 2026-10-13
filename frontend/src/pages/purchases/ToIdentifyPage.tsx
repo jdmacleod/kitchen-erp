@@ -9,6 +9,7 @@ import {
   type ToIdentifyGroup,
 } from "../../api/purchases";
 import { SelectField } from "../../components/catalog/fields";
+import { useNotice } from "../../components/Notice";
 import { NameProducts } from "../../components/purchases/NameProducts";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
 import {
@@ -23,7 +24,6 @@ import {
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
 
 /**
  * Unmatched lines across every committed purchase, grouped by vendor and

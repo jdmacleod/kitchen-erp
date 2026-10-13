@@ -1,9 +1,9 @@
 import { useState, type RefObject } from "react";
-import { errorMessage } from "../../api/client";
 import { formatPack, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import { Badge } from "./fields";
 import { Combobox } from "./Combobox";
+import { Badge } from "./fields";
 
 interface ProductTypeaheadProps {
   id: string;

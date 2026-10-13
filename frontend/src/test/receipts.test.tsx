@@ -227,7 +227,7 @@ describe("receipts", () => {
     renderApp(`/shop/receipts?job=${failedJob.id}`);
 
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
-    const card = pinned.parentElement as HTMLElement;
+    const card = pinned.parentElement!;
     const row = await within(card).findByTestId("ingest-job");
     expect(row).toHaveAttribute("data-status", "failed");
     expect(within(row).getByRole("button", { name: "Retry" })).toBeInTheDocument();
@@ -257,9 +257,7 @@ describe("receipts", () => {
     });
     renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
-    expect(
-      await within(pinned.parentElement as HTMLElement).findByRole("alert"),
-    ).toBeInTheDocument();
+    expect(await within(pinned.parentElement!).findByRole("alert")).toBeInTheDocument();
     const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows.map((r) => r.getAttribute("data-status"))).toEqual(["needs_review", "failed"]);
@@ -286,7 +284,7 @@ describe("receipts", () => {
     const user = userEvent.setup();
     renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
-    const card = pinned.parentElement as HTMLElement;
+    const card = pinned.parentElement!;
     await user.click(await within(card).findByRole("button", { name: "Retry" }));
     await waitFor(
       () =>

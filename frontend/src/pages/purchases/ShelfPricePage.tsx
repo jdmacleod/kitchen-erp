@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { errorMessage } from "../../api/client";
 import {
   formatPack,
   isPositiveDecimal,
@@ -17,6 +16,7 @@ import {
   useProductSearch,
   type SearchHit,
 } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useLocations, type VendorLocation } from "../../api/geo";
 import { useProductPrices } from "../../api/pricebook";
 import {
@@ -28,10 +28,10 @@ import {
 } from "../../api/purchases";
 import { Combobox } from "../../components/catalog/Combobox";
 import { HitRow } from "../../components/catalog/ProductTypeahead";
-import { formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
 import { Drawer } from "../../components/Drawer";
+import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
+import { formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { LocationGuard } from "../../components/purchases/LocationGuard";
 import { locationLabel, rememberLocation } from "../../components/purchases/LocationSelect";
 import {
@@ -319,7 +319,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
   // the button that submitted says which (Enter uses the first, "another").
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
     save(variant === "page" || submitter?.dataset.action === "another");
   };
   // Except in the entry field: a wedge scanner ends every barcode with Enter,

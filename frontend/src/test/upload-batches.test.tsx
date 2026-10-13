@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { IngestJob } from "../api/ingest";
 import { readingSentence, type InboxReading } from "../api/inbox";
+import type { IngestJob } from "../api/ingest";
 import { TrustBadge } from "../components/purchases/TrustBadge";
 import { units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";

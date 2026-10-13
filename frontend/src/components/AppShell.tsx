@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router";
 import { useCurrentUser } from "../auth/context";
+import { ShelfPriceDrawer, type ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { CaptureSheet } from "./CaptureSheet";
 import { ChromeContext, type Chrome } from "./chrome";
 import { Nav } from "./Nav";
@@ -9,7 +10,6 @@ import { NoticeProvider } from "./Notice";
 import { PageErrorBoundary } from "./PageErrorBoundary";
 import { SearchPalette } from "./SearchPalette";
 import { MoreSheet, TabBar } from "./TabBar";
-import { ShelfPriceDrawer, type ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { focusRing } from "./ui";
 
 const chromeButton =

@@ -6,8 +6,8 @@ import { readingSentence, readingTotal, useInbox } from "../../api/inbox";
 import { formatTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
-import { TrustBadge } from "../purchases/TrustBadge";
 import { useChrome } from "../chrome";
+import { TrustBadge } from "../purchases/TrustBadge";
 import { Alert, Button, Card, focusRing, secondaryLinkClass, tapTarget } from "../ui";
 
 const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {

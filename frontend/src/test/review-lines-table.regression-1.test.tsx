@@ -4,9 +4,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import { flagLabel } from "../components/purchases/ReviewPurchase";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
-import { flagLabel } from "../components/purchases/ReviewPurchase";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { outlierLine, receiptPurchase, receiptPurchaseId } from "./purchase-fixtures";
 

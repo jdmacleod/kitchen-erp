@@ -2,9 +2,9 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { SelectField, TextAreaField, inputClass } from "../components/catalog/fields";
 import { Field } from "../components/ui";
+import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { units } from "./catalog-fixtures";
 
 // A grid or flex item defaults to `min-width: auto`, which is the width of its
 // content: a <select> sized to its longest option pushed the New purchase form

@@ -2,9 +2,9 @@
 // fixed v7-shaped ids, and prices that exercise the decimal arithmetic.
 import type { IngestJob, UploadBatch } from "../api/ingest";
 import type { Observation, Purchase, PurchaseLine, PurchaseLineProduct } from "../api/purchases";
-import { jsonResponse } from "./helpers";
 import { flourId, flourProductId, hits } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
+import { jsonResponse } from "./helpers";
 
 export const observationId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7001";
 export const purchaseId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001";

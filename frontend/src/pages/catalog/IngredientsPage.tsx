@@ -1,7 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
-import { errorMessage } from "../../api/client";
-import { useLinkSummary } from "../../api/ingredientLink";
 import {
   BRIDGE_SOURCES,
   CANONICAL_UNITS,
@@ -21,6 +19,9 @@ import {
   type IngredientCreateInput,
   type Perishability,
 } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
+import { useLinkSummary } from "../../api/ingredientLink";
+import { CategoryField } from "../../components/catalog/CategoryField";
 import {
   Badge,
   Disclosure,
@@ -29,6 +30,9 @@ import {
   TextAreaField,
 } from "../../components/catalog/fields";
 import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
+import { CategoryChip } from "../../components/CategoryChip";
+import { Drawer } from "../../components/Drawer";
+import { useNotice, type NoticeData } from "../../components/Notice";
 import {
   Alert,
   Button,
@@ -41,10 +45,6 @@ import {
 } from "../../components/ui";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { CategoryChip } from "../../components/CategoryChip";
-import { CategoryField } from "../../components/catalog/CategoryField";
-import { Drawer } from "../../components/Drawer";
-import { useNotice, type NoticeData } from "../../components/Notice";
 
 export function IngredientsPage() {
   usePageTitle("Ingredients");

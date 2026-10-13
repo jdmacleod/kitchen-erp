@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router";
-import { RereadLines } from "./RereadLines";
-import { CorrectLines } from "./CorrectLines";
-import { RemovedLinesCaption } from "./RemovePurchase";
-import { errorMessage } from "../../api/client";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useLocations } from "../../api/geo";
 import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
 import {
@@ -41,18 +38,21 @@ import {
   isNonNegativeDecimal,
   stripZeros,
 } from "../../lib/decimal";
-import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
-import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
-import { BestBy } from "./BestBy";
-import { ProductPicker } from "./ProductPicker";
-import { ReceiptImage } from "./ReceiptImage";
 import { CategoryChip } from "../CategoryChip";
 import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
+import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
+import { BestBy } from "./BestBy";
+import { CorrectLines } from "./CorrectLines";
+import { ProductPicker } from "./ProductPicker";
+import { ReceiptImage } from "./ReceiptImage";
+import { RemovedLinesCaption } from "./RemovePurchase";
+import { RereadLines } from "./RereadLines";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = {
   alias_unconfirmed: "alias",

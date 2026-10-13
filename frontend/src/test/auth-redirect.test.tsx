@@ -1,7 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { chainLocation } from "./geo-fixtures";
-import { manualPurchase } from "./purchase-fixtures";
 import {
   adminUser,
   errorResponse,
@@ -11,6 +10,7 @@ import {
   mockApi,
   renderApp,
 } from "./helpers";
+import { manualPurchase } from "./purchase-fixtures";
 
 describe("route guards", () => {
   it("sends an unauthenticated visitor to /login", async () => {

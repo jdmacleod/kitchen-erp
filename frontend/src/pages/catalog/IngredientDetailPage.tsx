@@ -1,6 +1,5 @@
 import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router";
-import { errorMessage, isApiError } from "../../api/client";
 import {
   CANONICAL_UNITS,
   PERISHABILITIES,
@@ -20,23 +19,31 @@ import {
   useProducts,
   useSetIngredientActive,
   useUpdateIngredient,
-  type CanonicalUnit,
   type Ingredient,
   type IngredientUpdateInput,
   type Perishability,
 } from "../../api/catalog";
-import { BridgeEditor } from "../../components/catalog/BridgeEditor";
-import { CategoryField } from "../../components/catalog/CategoryField";
-import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { TestBench } from "../../components/catalog/TestBench";
-import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
-import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
-import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
+import { errorMessage, isApiError } from "../../api/client";
 import {
   useIngredientOffers,
   useIngredientPriceHistory,
   type PriceFilters as PriceFiltersValue,
 } from "../../api/pricebook";
+import { BridgeEditor } from "../../components/catalog/BridgeEditor";
+import { CategoryField } from "../../components/catalog/CategoryField";
+import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
+import {
+  IngredientPageActions,
+  MergedInto,
+  type IngredientPageMode,
+} from "../../components/catalog/IngredientPageActions";
+import { TestBench } from "../../components/catalog/TestBench";
+import { CategoryChip } from "../../components/CategoryChip";
+import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
+import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
+import { AddIngredientToListPanel } from "../../components/plan/AddToListPanel";
+import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
+import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
 import {
   Alert,
   Button,
@@ -48,17 +55,9 @@ import {
   primaryLinkClass,
   secondaryLinkClass,
 } from "../../components/ui";
-import { usePageTitle } from "../../lib/usePageTitle";
-import { CategoryChip } from "../../components/CategoryChip";
-import {
-  IngredientPageActions,
-  MergedInto,
-  type IngredientPageMode,
-} from "../../components/catalog/IngredientPageActions";
-import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
-import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePlanBuilt } from "../../lib/kitchen";
-import { AddIngredientToListPanel } from "../../components/plan/AddToListPanel";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
+import { usePageTitle } from "../../lib/usePageTitle";
 
 export function IngredientDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -323,9 +322,9 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
   const [form, setForm] = useState({
     name: ingredient.name,
     category: ingredient.category ?? "",
-    canonical_unit: ingredient.canonical_unit as CanonicalUnit,
+    canonical_unit: ingredient.canonical_unit,
     yield_percent: fractionToPercent(ingredient.yield_pct),
-    perishability: ingredient.perishability as Perishability,
+    perishability: ingredient.perishability,
     keep_room_days: dayText(ingredient.keep_room_days),
     keep_fridge_days: dayText(ingredient.keep_fridge_days),
     keep_freezer_days: dayText(ingredient.keep_freezer_days),

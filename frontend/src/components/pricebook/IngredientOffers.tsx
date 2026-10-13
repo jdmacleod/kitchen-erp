@@ -4,10 +4,10 @@ import { formatPack } from "../../api/catalog";
 import { priceScopeLabel } from "../../api/geo";
 import { bridgeFixLink, type Offer, type PriceFilters as Filters } from "../../api/pricebook";
 import { formatMoney, stripZeros } from "../../lib/decimal";
+import { whose } from "../catalog/StoreBrandBadge";
 import { focusRing } from "../ui";
 import { PriceAge, PromoBadge, QualityText, formatUnitPrice } from "./PriceAge";
 import { PriceFilters } from "./PriceFilters";
-import { whose } from "../catalog/StoreBrandBadge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 

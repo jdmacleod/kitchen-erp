@@ -23,7 +23,15 @@ import {
   type VendorListItem,
   type VendorKind,
 } from "../../api/geo";
+import { useSuggestionSummary } from "../../api/suggestions";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
+import { Dialog } from "../../components/Dialog";
+import { Drawer } from "../../components/Drawer";
+import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
+import { VendorImportDrawer } from "../../components/geo/VendorImportDrawer";
+import { MoreActionsDialog } from "../../components/MoreActionsDialog";
+import { useNotice } from "../../components/Notice";
+import { SegmentedControl } from "../../components/SegmentedControl";
 import {
   Alert,
   Button,
@@ -36,20 +44,12 @@ import {
   secondaryLinkClass,
   tapTarget,
 } from "../../components/ui";
-import { Dialog } from "../../components/Dialog";
-import { MoreActionsDialog } from "../../components/MoreActionsDialog";
-import { Drawer } from "../../components/Drawer";
-import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
-import { VendorImportDrawer } from "../../components/geo/VendorImportDrawer";
-import { useSuggestionSummary } from "../../api/suggestions";
-import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
-import { SegmentedControl } from "../../components/SegmentedControl";
 import { formatDate } from "../../lib/format";
-import { MapPage } from "./MapPage";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
+import { MapPage } from "./MapPage";
 
 const KIND_OPTIONS: { value: VendorKind | ""; label: string }[] = [
   { value: "", label: "All" },

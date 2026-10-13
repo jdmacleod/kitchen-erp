@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useId, useRef, useState } from "react";
+import { isApiError } from "../../api/client";
 import {
   purchaseErrorMessage,
   purchaseKeys,
@@ -8,7 +9,6 @@ import {
   type Purchase,
   type RemovedPurchase,
 } from "../../api/purchases";
-import { isApiError } from "../../api/client";
 import { formatDate } from "../../lib/format";
 import { alertTones, Button, focusRing } from "../ui";
 

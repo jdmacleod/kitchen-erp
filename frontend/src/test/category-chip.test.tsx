@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CATEGORY_KEYS, CategoryChip, categoryClass } from "../components/CategoryChip";
 import type { Product } from "../api/catalog";
+import { CATEGORY_KEYS, CategoryChip, categoryClass } from "../components/CategoryChip";
+import themeCss from "../theme.css?raw";
 import { flourProduct, units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { manualPurchase, purchaseId } from "./purchase-fixtures";
-import themeCss from "../theme.css?raw";
 
 describe("CategoryChip (UI-1.6)", () => {
   it("colours the chip by the API's key and labels it with the free text", () => {

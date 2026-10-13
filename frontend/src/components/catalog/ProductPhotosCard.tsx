@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import { errorMessage } from "../../api/client";
 import { productTitle, type Product } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import {
   MAX_PHOTOS,
   ROLE_LABELS,

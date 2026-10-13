@@ -9,6 +9,7 @@ import {
   type Product,
   type Unit,
 } from "../../api/catalog";
+import { CategoryField } from "../../components/catalog/CategoryField";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import {
   choiceName,
@@ -16,7 +17,6 @@ import {
   IngredientPicker,
   type IngredientChoice,
 } from "../../components/catalog/IngredientPicker";
-import { CategoryField } from "../../components/catalog/CategoryField";
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { Alert, Button, Field } from "../../components/ui";

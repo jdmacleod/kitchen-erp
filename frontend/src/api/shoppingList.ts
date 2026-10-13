@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, isApiError, newIdempotencyKey } from "./client";
 import { qs, type IngredientSummary } from "./catalog";
+import { api, isApiError, newIdempotencyKey } from "./client";
 import { useMe } from "./queries";
 import type { ListResponse } from "./types";
 

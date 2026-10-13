@@ -2,8 +2,8 @@
 // Nothing a tool posts changes a vendor until a person accepts it here.
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api } from "./client";
 import { qs } from "./catalog";
+import { api } from "./client";
 import { geoKeys } from "./geo";
 import { inboxKey } from "./inbox";
 import type { ListResponse } from "./types";

@@ -392,7 +392,7 @@ export function PurchaseForm({
   // bring the field being edited to the middle so it stays visible.
   const onFocus = (event: FocusEvent<HTMLElement>) => {
     if (typeof window === "undefined" || window.innerWidth >= NARROW) return;
-    const target = event.target as HTMLElement;
+    const target = event.target;
     if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "center" });
   };
 

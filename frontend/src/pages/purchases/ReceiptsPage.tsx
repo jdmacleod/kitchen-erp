@@ -15,14 +15,14 @@ import {
   type UploadBatch,
 } from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
+import { useNotice } from "../../components/Notice";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { TrustBadge } from "../../components/purchases/TrustBadge";
-import { formatMoney } from "../../lib/decimal";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
 
 /** Upload a receipt photo and watch its job; a finished job links to its review. */
 export function ReceiptsPage() {

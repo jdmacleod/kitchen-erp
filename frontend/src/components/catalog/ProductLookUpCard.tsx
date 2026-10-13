@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { api, errorMessage } from "../../api/client";
+import { useState } from "react";
 import type { Product } from "../../api/catalog";
+import { api, errorMessage } from "../../api/client";
 import { useProductsHelper } from "../../api/proposals";
 import { Alert, Button, Card, Field } from "../ui";
 

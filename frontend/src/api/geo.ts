@@ -4,8 +4,8 @@
 // map edge, where MapLibre needs them.
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api, isApiError, newIdempotencyKey } from "./client";
 import { qs } from "./catalog";
+import { api, isApiError, newIdempotencyKey } from "./client";
 import type { ListResponse } from "./types";
 
 // --- types ------------------------------------------------------------------

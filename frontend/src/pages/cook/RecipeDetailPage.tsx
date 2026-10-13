@@ -14,7 +14,6 @@ import {
   type Recipe,
 } from "../../api/recipes";
 import { CostTable, CostTotals } from "../../components/cook/CostTable";
-import { KitchenTag } from "../../components/plan/KitchenTag";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RemoveRecipe } from "../../components/cook/RemoveRecipe";
 import { RenderedRecipe } from "../../components/cook/RenderedRecipe";
@@ -22,6 +21,7 @@ import { RescanButton } from "../../components/cook/RescanButton";
 import { SnapshotChart, snapshotPoints } from "../../components/cook/SnapshotChart";
 import { useNotice } from "../../components/Notice";
 import { AddRecipeToListPanel } from "../../components/plan/AddToListPanel";
+import { KitchenTag } from "../../components/plan/KitchenTag";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import {
   Alert,

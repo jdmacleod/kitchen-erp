@@ -1,5 +1,5 @@
-import type { Ingredient } from "../../api/catalog";
 import type { UseQueryResult } from "@tanstack/react-query";
+import type { Ingredient } from "../../api/catalog";
 import type { IngredientPriceHistory, IngredientPricePoint } from "../../api/pricebook";
 import { formatDate } from "../../lib/format";
 import { formatUnitPrice } from "./PriceAge";

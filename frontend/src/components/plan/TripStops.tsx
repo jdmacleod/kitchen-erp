@@ -1,11 +1,11 @@
 import { Link } from "react-router";
 import type { VendorLocation } from "../../api/geo";
 import { variantLabel, type Stop, type Variant } from "../../api/trips";
-import { Badge, Disclosure } from "../catalog/fields";
-import { Button, secondaryLinkClass } from "../ui";
 import { formatMoney, mul } from "../../lib/decimal";
 import { formatDateTime, formatKm, formatMinutes, formatTime } from "../../lib/format";
 import { navigateHref } from "../../lib/navigateLink";
+import { Badge, Disclosure } from "../catalog/fields";
+import { Button, secondaryLinkClass } from "../ui";
 
 interface TripStopsProps {
   variant: Variant;

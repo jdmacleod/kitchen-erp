@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import type { Purchase } from "../../api/purchases";
-import { focusRing, tapTarget } from "../ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
+import { focusRing, tapTarget } from "../ui";
 
 /**
  * Home's right column: the last few committed purchases (G12, G13).

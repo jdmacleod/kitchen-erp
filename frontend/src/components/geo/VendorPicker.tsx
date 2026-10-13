@@ -8,9 +8,9 @@ import {
   type VendorRef,
 } from "../../api/geo";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import { Button } from "../ui";
 import { Combobox } from "../catalog/Combobox";
 import { Badge, SelectField, labelClass } from "../catalog/fields";
+import { Button } from "../ui";
 
 /** Either an existing vendor or one to create in the same request. */
 export type VendorChoice =

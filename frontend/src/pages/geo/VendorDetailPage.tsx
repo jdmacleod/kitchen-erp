@@ -25,11 +25,10 @@ import {
   type LocationCreateInput,
   type LinkedField,
   type LocationUpdateInput,
-  type PriceScope,
   type Vendor,
-  type VendorKind,
   type VendorLocation,
 } from "../../api/geo";
+import { useSuggestionSummary } from "../../api/suggestions";
 import {
   Badge,
   Disclosure,
@@ -39,9 +38,8 @@ import {
 } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { LinkOsmDialog } from "../../components/geo/LinkOsmDialog";
-import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
-import { useSuggestionSummary } from "../../api/suggestions";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
+import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
 import {
   Alert,
   Button,
@@ -52,10 +50,10 @@ import {
   focusRing,
   secondaryLinkClass,
 } from "../../components/ui";
+import { formatDate } from "../../lib/format";
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { describeSource, fieldLabel, phoneError } from "../../lib/sources";
-import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function VendorDetailPage() {
@@ -255,8 +253,8 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
   const update = useUpdateVendor(vendor.id);
   const [form, setForm] = useState({
     name: vendor.name,
-    kind: vendor.kind as VendorKind,
-    price_scope: vendor.price_scope as PriceScope,
+    kind: vendor.kind,
+    price_scope: vendor.price_scope,
     website: vendor.website ?? "",
     shop_url: vendor.shop_url ?? "",
     notes: vendor.notes ?? "",

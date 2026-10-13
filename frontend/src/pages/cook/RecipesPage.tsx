@@ -10,7 +10,6 @@ import {
   useRecipesStatus,
   type Completeness,
   type RecipeListItem,
-  type RecipeStatus,
 } from "../../api/recipes";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RescanButton, useRescanWithNotice } from "../../components/cook/RescanButton";
@@ -81,7 +80,7 @@ export function RecipesPage() {
 
   const list = useRecipes({
     q: q || undefined,
-    status: status === "all" ? undefined : (status as RecipeStatus),
+    status: status === "all" ? undefined : status,
     completeness: completeness === "all" ? undefined : completeness,
   });
   const repo = useRecipesStatus();

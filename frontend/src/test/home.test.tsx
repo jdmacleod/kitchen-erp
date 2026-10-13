@@ -1,10 +1,9 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { chainLocation } from "./geo-fixtures";
-import { manualPurchase } from "./purchase-fixtures";
 import type { Inbox, InboxItem } from "../api/inbox";
 import { ingestErrorText } from "../lib/ingestErrors";
+import { chainLocation } from "./geo-fixtures";
 import {
   adminUser,
   errorResponse,
@@ -15,6 +14,7 @@ import {
   type RecordedCall,
   type RouteHandler,
 } from "./helpers";
+import { manualPurchase } from "./purchase-fixtures";
 
 /**
  * The landing route. Issue #15 reported that a new deployment lands on a form for

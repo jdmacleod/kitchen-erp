@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { api, errorMessage } from "../../api/client";
-import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import {
   formatPack,
   ingredientSummary,
@@ -15,11 +13,13 @@ import {
   type ProductCreateInput,
   type ProductListItem,
 } from "../../api/catalog";
+import { api, errorMessage } from "../../api/client";
 import { useProductsHelper, type KnownProduct } from "../../api/proposals";
+import { DuplicatePairs } from "../../components/catalog/DuplicatePairs";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
-import { DuplicatePairs } from "../../components/catalog/DuplicatePairs";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
+import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import {
   CATEGORY_KEYS,
   ProductCategory,

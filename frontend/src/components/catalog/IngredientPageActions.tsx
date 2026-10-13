@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { errorMessage, isApiError } from "../../api/client";
 import { useIngredient, type Ingredient, type IngredientSummary } from "../../api/catalog";
+import { errorMessage, isApiError } from "../../api/client";
 import { useLinkAction, type MergeNeeded, type StandardEntry } from "../../api/ingredientLink";
 import { useNotice } from "../Notice";
 import { Alert, Button, Card, focusRing } from "../ui";

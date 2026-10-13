@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { errorMessage, isApiError } from "../../api/client";
 import {
   catalogErrorMessage,
   productTitle,
@@ -13,15 +12,21 @@ import {
   type Product,
   type ProductUpdateInput,
 } from "../../api/catalog";
+import { errorMessage, isApiError } from "../../api/client";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
 import { ProductCategoryCard } from "../../components/catalog/ProductCategoryCard";
 import { ProductLookUpCard } from "../../components/catalog/ProductLookUpCard";
+import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
 import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
+import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
+import { CategoryChip } from "../../components/CategoryChip";
+import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
+import { useNotice } from "../../components/Notice";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
-import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import { formatDateTime } from "../../lib/format";
+import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 import {
   piecesFit,
@@ -30,11 +35,6 @@ import {
   validateProductValues,
   type ProductFormValues,
 } from "./ProductForm";
-import { CategoryChip } from "../../components/CategoryChip";
-import { useNotice } from "../../components/Notice";
-import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
-import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
-import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();

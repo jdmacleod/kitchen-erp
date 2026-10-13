@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
 import { isPositiveDecimal, useUnits, useUpdateProduct, type Product } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { inboxKey } from "../../api/inbox";

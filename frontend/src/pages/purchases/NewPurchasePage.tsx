@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { useCreatePurchase } from "../../api/purchases";
+import { useNavigateWithNotice, type NoticeData } from "../../components/Notice";
 import { LocationGuard } from "../../components/purchases/LocationGuard";
 import { rememberLocation } from "../../components/purchases/LocationSelect";
 import { PurchaseForm, emptyPurchaseValues } from "../../components/purchases/PurchaseForm";
 import { Card, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNavigateWithNotice, type NoticeData } from "../../components/Notice";
 
 // The first-run arc closes where the work finished, rather than on a later visit
 // to Home that may be days away. The Notice carries it to the purchase page and

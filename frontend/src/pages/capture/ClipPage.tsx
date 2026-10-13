@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, api, errorMessage, isApiError, newIdempotencyKey } from "../../api/client";
 import { useVendors } from "../../api/geo";
-import { useLogin, useMe } from "../../api/queries";
 import type { KnownProduct, Proposal } from "../../api/proposals";
+import { useLogin, useMe } from "../../api/queries";
 import { Alert, Button, Field, focusRing } from "../../components/ui";
 import { CLIP_VERSION } from "../../lib/bookmarklet";
 import { usePageTitle } from "../../lib/usePageTitle";

@@ -3,12 +3,6 @@ import { Link, useSearchParams } from "react-router";
 import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import {
-  formatAge,
-  useCheapest,
-  useLocationPricePanel,
-  type PriceFilters as Filters,
-} from "../../api/pricebook";
-import {
   VENDOR_KINDS,
   formatLatLon,
   geoErrorMessage,
@@ -25,13 +19,19 @@ import {
   type VendorKind,
   type VendorLocation,
 } from "../../api/geo";
+import {
+  formatAge,
+  useCheapest,
+  useLocationPricePanel,
+  type PriceFilters as Filters,
+} from "../../api/pricebook";
 import { Badge, Disclosure, SelectField } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { DraftPointControl } from "../../components/geo/DraftPointControl";
-import { PLACE_ZOOM, PlaceSearch } from "../../components/geo/PlaceSearch";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
+import { PLACE_ZOOM, PlaceSearch } from "../../components/geo/PlaceSearch";
 import { VendorPicker, type VendorChoice } from "../../components/geo/VendorPicker";
 import { PriceAge, PromoBadge, formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { Alert, Button, Field, PageHeader, focusRing } from "../../components/ui";

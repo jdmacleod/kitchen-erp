@@ -16,6 +16,7 @@ import {
   type SortDir,
 } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
+import { TrustBadge } from "../../components/purchases/TrustBadge";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import {
   Alert,
@@ -28,7 +29,6 @@ import {
   secondaryLinkClass,
   tapTarget,
 } from "../../components/ui";
-import { TrustBadge } from "../../components/purchases/TrustBadge";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";

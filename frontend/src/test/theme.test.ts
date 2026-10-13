@@ -62,7 +62,7 @@ describe("theme coverage (spec 08)", () => {
     const handRolled = files
       .filter(({ path }) => path !== "components/ui.tsx")
       .filter(({ text }) =>
-        /rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium/.test(text),
+        text.includes("rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium"),
       )
       .map(({ path }) => path);
     expect(handRolled).toEqual([]);

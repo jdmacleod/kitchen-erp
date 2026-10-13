@@ -1,14 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
-import { useCurrentUser } from "../../auth/context";
 import { errorMessage, isApiError } from "../../api/client";
 import { useCreateUser, useEditUser, useSetUserPassword, useUsers } from "../../api/queries";
 import type { User } from "../../api/types";
+import { useCurrentUser } from "../../auth/context";
 import { Drawer } from "../../components/Drawer";
+import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
 
 const emptyForm = { email: "", display_name: "", password: "" };
 

@@ -20,7 +20,7 @@ function priceField(conflict: boolean): ProposalField {
     confidence: null,
     alternatives: conflict ? [{ value: "3.49", source: "page_data", confidence: null }] : [],
     conflict,
-  } as ProposalField;
+  };
 }
 
 function proposal(conflict = false): Proposal {
@@ -67,7 +67,7 @@ function proposal(conflict = false): Proposal {
     decided_at: null,
     result: null,
     created_at: "2026-10-02T10:00:00Z",
-  } as Proposal;
+  };
 }
 
 function routes(p: Proposal) {
@@ -170,7 +170,7 @@ describe("field choices", () => {
         { value: "Organic bananas", source: "model", confidence: "0.4" },
       ],
       conflict: false,
-    } as ProposalField;
+    };
     mockApi(routes(p));
     const user = userEvent.setup();
     renderApp(`/catalog/products/review/${proposalId}`);

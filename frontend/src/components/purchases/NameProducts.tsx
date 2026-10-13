@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { errorMessage } from "../../api/client";
 import { isPositiveDecimal, productTitle } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import {
   purchaseErrorMessage,
   useNameProducts,
@@ -10,6 +10,7 @@ import {
   type NamingRow,
 } from "../../api/purchases";
 import { stripZeros } from "../../lib/decimal";
+import { hintClass } from "../catalog/fields";
 import {
   choiceFromMatch,
   choiceInput,
@@ -17,7 +18,6 @@ import {
   type IngredientChoice,
 } from "../catalog/IngredientPicker";
 import { UnitSelect } from "../catalog/UnitSelect";
-import { hintClass } from "../catalog/fields";
 import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
@@ -67,9 +67,9 @@ function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
   const model = row.model?.status === "done" ? row.model : null;
   const modelName = edit?.name === undefined && !!model?.name;
   const modelIngredient = edit?.ingredient === undefined && !row.ingredient && !!model?.ingredient;
-  const ingredient = row.ingredient ?? (modelIngredient ? model!.ingredient : null);
+  const ingredient = row.ingredient ?? (modelIngredient ? model.ingredient : null);
   return {
-    name: edit?.name ?? (modelName ? model!.name! : row.name),
+    name: edit?.name ?? (modelName ? model.name! : row.name),
     ingredient:
       edit?.ingredient !== undefined
         ? edit.ingredient

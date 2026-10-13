@@ -1,8 +1,8 @@
 import { tradeSentence, variantLabel, type Variant } from "../../api/trips";
-import { Badge } from "../catalog/fields";
-import { Button } from "../ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime, formatMinutes } from "../../lib/format";
+import { Badge } from "../catalog/fields";
+import { Button } from "../ui";
 
 interface VariantCardProps {
   variant: Variant;

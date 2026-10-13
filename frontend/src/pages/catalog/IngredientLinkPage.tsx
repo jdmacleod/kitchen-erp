@@ -10,11 +10,11 @@ import {
   type StandardEntry,
 } from "../../api/ingredientLink";
 import { useUsdaReview } from "../../api/usdaReview";
-import { CategoryChip } from "../../components/CategoryChip";
 import {
   ChooseStandard,
   IngredientMergePanel,
 } from "../../components/catalog/IngredientMergePanel";
+import { CategoryChip } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import {
   Alert,

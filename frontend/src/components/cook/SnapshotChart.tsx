@@ -25,7 +25,7 @@ export function snapshotPoints(
     .map((h) => ({
       id: h.id,
       computed_at: h.computed_at,
-      consumed_cost: h.totals.consumed_cost as string,
+      consumed_cost: h.totals.consumed_cost!,
       provisional: false,
     }));
   if (

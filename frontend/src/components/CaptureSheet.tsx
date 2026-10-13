@@ -1,8 +1,8 @@
 import { useId, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import type { VendorLocation } from "../api/geo";
-import type { ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { LG_QUERY, useMediaQuery } from "../lib/useMediaQuery";
+import type { ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { Dialog } from "./Dialog";
 import { rememberLocation } from "./purchases/LocationSelect";
 import { StoreChip, useStoreGuess } from "./purchases/StoreChip";

@@ -2,13 +2,13 @@ import { errorMessage } from "../api/client";
 import { useLocations } from "../api/geo";
 import { useInbox } from "../api/inbox";
 import { useRecentCommittedPurchases } from "../api/purchases";
-import { usePlanBuilt } from "../lib/kitchen";
 import { useChrome } from "../components/chrome";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
 import { RecentPurchases } from "../components/landing/RecentPurchases";
 import { ShoppingListPanel } from "../components/landing/ShoppingListPanel";
 import { Alert, Button, PageHeader } from "../components/ui";
+import { usePlanBuilt } from "../lib/kitchen";
 import { usePageTitle } from "../lib/usePageTitle";
 
 /** A time-of-day greeting without a name (G12). */

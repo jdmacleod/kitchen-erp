@@ -1,13 +1,13 @@
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import { itemName, useShoppingList } from "../../api/shoppingList";
+import { useCurrentKitchen } from "../../lib/kitchen";
 import { useNotice } from "../Notice";
 import { AddItemRow } from "../plan/AddItemRow";
 import { formatAmounts } from "../plan/amounts";
 import { ClaimChip } from "../plan/ClaimChip";
 import { KitchenTag } from "../plan/KitchenTag";
 import { Alert, focusRing, tapTarget } from "../ui";
-import { useCurrentKitchen } from "../../lib/kitchen";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 

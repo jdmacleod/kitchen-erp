@@ -1,5 +1,4 @@
 import { useState, type RefObject } from "react";
-import { errorMessage } from "../../api/client";
 import {
   useIngredientSearch,
   useIngredientsInText,
@@ -8,11 +7,12 @@ import {
   type IngredientMatch,
   type IngredientSummary,
 } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { CategoryChip, type CategoryKey } from "../CategoryChip";
 import { Button } from "../ui";
-import { Badge, labelClass } from "./fields";
 import { Combobox } from "./Combobox";
+import { Badge, labelClass } from "./fields";
 
 /**
  * An existing ingredient, the name of one to create, or a standard-list entry

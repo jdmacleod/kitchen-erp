@@ -3,11 +3,11 @@ import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import { useLocations, type HomeBase } from "../../api/geo";
 import { useCreateTrip, type PlanDefaults, type Trip, type TripCreateInput } from "../../api/trips";
+import { isNonNegativeDecimal } from "../../lib/decimal";
+import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Disclosure, SelectField } from "../catalog/fields";
 import { Drawer } from "../Drawer";
 import { Alert, Field, focusRing } from "../ui";
-import { isNonNegativeDecimal } from "../../lib/decimal";
-import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 
 /** The documented default of `PLAN_VALUE_OF_TIME_PER_HOUR` (17, P4), used only if `/plan/defaults` cannot be read. */
 export const DEFAULT_VALUE_OF_TIME = "20.00";

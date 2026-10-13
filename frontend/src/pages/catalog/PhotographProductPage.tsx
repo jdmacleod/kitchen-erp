@@ -1,4 +1,6 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useId, useRef, useState } from "react";
+import { inboxKey } from "../../api/inbox";
 import {
   MAX_PHOTOS,
   ROLE_LABELS,
@@ -6,8 +8,6 @@ import {
   type PhotoRole,
 } from "../../api/productPhotos";
 import { photographProduct } from "../../api/proposals";
-import { inboxKey } from "../../api/inbox";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
