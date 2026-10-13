@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { useLocations } from "../../api/geo";
 import {
   COST_BASES,
   basisLabel,
@@ -131,11 +130,6 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const cost = useRecipeCost(recipe.id, basis, true, scoped?.id ?? "");
   const history = useRecipeCostHistory(recipe.id, basis, scoped === null);
   const points = snapshotPoints(history.data?.items ?? [], cost.data);
-  // The kitchen's locations, to see whether the server honoured the filter: a
-  // priced line at another kitchen's store means it answered household-wide.
-  const locations = useLocations({ home_base_id: scoped?.id, include_inactive: true }, scoped !== null);
-  const locationIds = useMemo(() => (scoped && locations.data ? new Set(locations.data.map((l) => l.id)) : null), [scoped, locations.data]);
-  const outside = locationIds && cost.data ? cost.data.lines.filter((l) => l.price?.location_id && !locationIds.has(l.price.location_id)).length : 0;
 
   // "Add to list" with a Scale field once Plan is built (10; UI-8.4).
   const plan = usePlanBuilt();
@@ -218,13 +212,6 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
               Prices at {scoped.name}&apos;s stores only, worked out now and not kept as a snapshot.
             </p>
           ) : null}
-          {scoped && outside > 0 ? (
-            <Alert tone="warn">
-              <span data-testid="kitchen-cost-unfiltered">
-                {outside === 1 ? "One line is" : `${outside} lines are`} priced at another kitchen&apos;s store: the server doesn&apos;t filter costs by kitchen yet, so these figures count every kitchen&apos;s prices.
-              </span>
-            </Alert>
-          ) : null}
           {recipe.status === "parse_error" && cost.data ? <p className={`text-sm ${muted}`}>Showing the last version that could be read.</p> : null}
           {cost.isError ? (
             <Alert tone="error">
@@ -238,7 +225,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
           ) : (
             <>
               <CostTotals cost={cost.data} costing={cost.isPending} />
-              {cost.data ? <CostTable cost={cost.data} recipe={recipe} locationIds={locationIds} /> : null}
+              {cost.data ? <CostTable cost={cost.data} recipe={recipe} /> : null}
               {scoped ? null : history.isError ? <Alert tone="error">Couldn&apos;t load the cost history: {errorMessage(history.error)}</Alert> : <SnapshotChart points={points} />}
             </>
           )}

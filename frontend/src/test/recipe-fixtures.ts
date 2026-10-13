@@ -185,6 +185,7 @@ export function stewCost(over: Partial<RecipeCost> = {}): RecipeCost {
     head_commit: stewRecipe.head_commit,
     provisional: false,
     computed_at: "2026-10-09T11:05:00Z",
+    home_base_id: null,
     stale_after_days: 90,
     totals: { consumed_cost: "12.4000", consumed_cost_high: "13.1000", basket_cost: "31.9600", basket_cost_high: "31.9600", per_serving: "3.1000" },
     completeness: { lines_total: 6, lines_priced: 3, lines_unpriced: 1, lines_unconvertible: 1, lines_unmapped: 1, lines_negligible: 1 },

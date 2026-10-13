@@ -9,9 +9,8 @@ import { KitchenTag } from "../components/plan/KitchenTag";
 import { secondTab } from "../components/TabBar";
 import { resolveKitchen } from "../lib/kitchen";
 import { availableActions, kitchenActions } from "../lib/paletteActions";
-import { restrictToLocations } from "../pages/pricebook/ComparePage";
 import { flour, flourId, flourProductId, ingredientMatch, units } from "./catalog-fixtures";
-import { chainLocation, chainLocationId, chainVendor, chainVendorId, homeBase, homeBaseId, marketLocation, marketLocationId, marketVendor, marketVendorId } from "./geo-fixtures";
+import { chainLocationId, chainVendor, chainVendorId, homeBase, homeBaseId, marketLocation, marketLocationId, marketVendor, marketVendorId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
 import { cookHealth, emptyHistory, mountedStatus, quietInbox, recipeList, stewCost, stewRecipe } from "./recipe-fixtures";
 
@@ -317,26 +316,22 @@ const twoVendors: CompareResult = {
   stale_after_days: 90,
 };
 
-describe("Compare's kitchen control (UI-8.8, UI-2.7)", () => {
-  it("restricts to the kitchen's locations, marks the cheapest again and drops empty vendors", () => {
-    const narrowed = restrictToLocations(twoVendors, new Set([marketLocationId]));
-    expect(narrowed.vendors.map((v) => v.id)).toEqual([marketVendorId]);
-    expect(narrowed.rows[0].cells[chainVendorId]).toBeUndefined();
-    expect(narrowed.rows[0].cells[marketVendorId].cheapest).toBe(true);
-    // All: the server's answer stands.
-    expect(restrictToLocations(twoVendors, new Set([chainLocationId, marketLocationId])).rows[0].cells[chainVendorId].cheapest).toBe(true);
-    expect(restrictToLocations(twoVendors, new Set()).vendors).toEqual([]);
-  });
+/** The server's answer with the cabin's filter on: only the market, its price the cheapest. */
+const cabinOnly: CompareResult = {
+  ...twoVendors,
+  vendors: [{ id: marketVendorId, name: marketVendor.name }],
+  rows: [{ ...twoVendors.rows[0], cells: { [marketVendorId]: { ...twoVendors.rows[0].cells[marketVendorId], cheapest: true } } }],
+};
 
-  it("is All by default, keeps the choice in the URL, shows the tag and only that kitchen's prices", async () => {
+describe("Compare's kitchen control (UI-8.8, UI-2.7)", () => {
+  it("is All by default, keeps the choice in the URL, shows the tag and asks the server for that kitchen's prices", async () => {
     const settings = settingsApi();
     const { calls } = mount(
       {
         ...settings.routes,
         "GET /units": () => jsonResponse(200, { items: units }),
         "GET /ingredients/search": (call) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [ingredientMatch(flour)] : [] }),
-        "POST /price-book/compare": () => jsonResponse(200, twoVendors),
-        "GET /vendor-locations": (call) => jsonResponse(200, { items: call.query.get("home_base_id") === cabinId ? [{ ...marketLocation, home_base_id: cabinId }] : [chainLocation, marketLocation] }),
+        "POST /price-book/compare": (call) => jsonResponse(200, (call.body as { home_base_id?: string }).home_base_id === cabinId ? cabinOnly : twoVendors),
       },
       "/plan/compare",
     );
@@ -350,21 +345,24 @@ describe("Compare's kitchen control (UI-8.8, UI-2.7)", () => {
     await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));
     const table = await screen.findByRole("table", { name: "Price comparison" });
     expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Ingredient", chainVendor.name, marketVendor.name]);
+    const compares = () => calls.filter((c) => c.method === "POST" && c.path === "/price-book/compare");
+    // All: no kitchen in the body, so the server answers household-wide (UI-2.7).
+    expect("home_base_id" in (compares()[0].body as object)).toBe(false);
 
     await user.click(within(control).getByRole("button", { name: "Hillside cabin" }));
     expect(within(control).getByRole("button", { name: "Hillside cabin" })).toHaveAttribute("aria-pressed", "true");
     await waitFor(() => expect(within(screen.getByRole("table", { name: "Price comparison" })).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Ingredient", marketVendor.name]));
     expect(screen.getByTestId("kitchen-tag")).toHaveTextContent("Hillside cabin");
-    const locationCall = calls.find((c) => c.method === "GET" && c.path.startsWith("/vendor-locations"));
-    expect(locationCall?.query.get("home_base_id")).toBe(cabinId);
-    // The server's body is unchanged: the filter is the client's until it takes home_base_id.
-    expect(calls.filter((c) => c.method === "POST").every((c) => !("home_base_id" in (c.body as object)))).toBe(true);
-    // The cheapest mark moved to the kitchen's own price.
+    expect((compares().at(-1)?.body as { home_base_id?: string }).home_base_id).toBe(cabinId);
+    // The cheapest mark is the server's: the kitchen's own price.
     expect(within(screen.getByTestId(`cell-${flourId}-${marketVendorId}`)).getByText("cheapest")).toBeInTheDocument();
+    // Nothing is read client-side: no location lookup stands in for the server.
+    expect(calls.some((c) => c.method === "GET" && c.path.startsWith("/vendor-locations"))).toBe(false);
 
     await user.click(within(control).getByRole("button", { name: "All" }));
     await waitFor(() => expect(screen.queryByTestId("kitchen-tag")).not.toBeInTheDocument());
     expect(within(screen.getByRole("table", { name: "Price comparison" })).getAllByRole("columnheader")).toHaveLength(3);
+    expect("home_base_id" in (compares().at(-1)?.body as object)).toBe(false);
   });
 
   it("has no kitchen control without plan", async () => {
@@ -384,9 +382,9 @@ describe("the cost table's kitchen control (UI-8.8)", () => {
         "GET /recipes/status": () => jsonResponse(200, mountedStatus),
         "GET /recipes": () => jsonResponse(200, { items: recipeList }),
         "GET /recipes/r-barley": () => jsonResponse(200, stewRecipe),
-        "GET /recipes/r-barley/cost": () => jsonResponse(200, stewCost()),
+        // The server's per-kitchen view echoes the kitchen; the snapshot carries null.
+        "GET /recipes/r-barley/cost": (call) => jsonResponse(200, stewCost({ home_base_id: call.query.get("home_base_id") ?? null })),
         "GET /recipes/r-barley/cost/history": () => jsonResponse(200, emptyHistory),
-        "GET /vendor-locations": () => jsonResponse(200, { items: [{ ...chainLocation, id: "loc1", home_base_id: cabinId }] }),
         ...routes,
       },
       path,
@@ -410,16 +408,20 @@ describe("the cost table's kitchen control (UI-8.8)", () => {
     expect(scoped?.query.get("basis")).toBe("latest");
     expect(screen.getByTestId("kitchen-tag")).toHaveTextContent("Hillside cabin");
     expect(screen.getByTestId("kitchen-cost-note")).toHaveTextContent("Prices at Hillside cabin's stores only");
-    // Every priced line is at the kitchen's store (loc1), so nothing is marked.
-    await waitFor(() => expect(screen.queryByTestId("kitchen-cost-unfiltered")).not.toBeInTheDocument());
+    // The server filters, so no location lookup and no row is second-guessed.
+    expect(calls.some((c) => c.method === "GET" && c.path.startsWith("/vendor-locations"))).toBe(false);
     expect(screen.queryByTestId("priced-elsewhere")).not.toBeInTheDocument();
   });
 
-  it("says so when the server answered household-wide, and marks the lines priced elsewhere", async () => {
-    mountRecipe({ "GET /vendor-locations": () => jsonResponse(200, { items: [{ ...chainLocation, id: "somewhere-else", home_base_id: cabinId }] }) }, `/cook/recipes/r-barley?home_base_id=${cabinId}`);
-    const note = await screen.findByTestId("kitchen-cost-unfiltered");
-    expect(note).toHaveTextContent("2 lines are priced at another kitchen's store");
-    expect(screen.getAllByTestId("priced-elsewhere")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Hillside cabin", pressed: true })).toBeInTheDocument();
+  it("reads the kitchen from the URL and shows the server's per-kitchen figures as they are", async () => {
+    const { calls } = mountRecipe({}, `/cook/recipes/r-barley?home_base_id=${cabinId}`);
+    expect(await screen.findByRole("button", { name: "Hillside cabin", pressed: true })).toBeInTheDocument();
+    await waitFor(() => expect(calls.some((c) => c.path.startsWith("/recipes/r-barley/cost?") && c.query.get("home_base_id") === cabinId)).toBe(true));
+    expect(await screen.findByTestId("kitchen-cost-note")).toHaveTextContent("Prices at Hillside cabin's stores only");
+    expect(screen.getByTestId("kitchen-tag")).toHaveTextContent("Hillside cabin");
+    // The history is household-wide and stays out of a per-kitchen view (UI-8.8).
+    expect(calls.some((c) => c.path.startsWith("/recipes/r-barley/cost/history"))).toBe(false);
+    expect(screen.queryByTestId("kitchen-cost-unfiltered")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("priced-elsewhere")).not.toBeInTheDocument();
   });
 });

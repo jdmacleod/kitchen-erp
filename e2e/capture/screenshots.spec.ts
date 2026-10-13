@@ -145,3 +145,34 @@ test("capture the Cook screenshots", async ({ page }) => {
   }
   await page.setViewportSize({ width: 1280, height: 800 });
 });
+
+/**
+ * The Plan pages (17, 4A): the first kitchen's list as the seed fills it, at
+ * desktop width and at 390px, and Compare under Plan with its kitchen control.
+ * The demo household has two kitchens, so the switcher is in the sidebar.
+ */
+test("capture the Plan screenshots", async ({ page }) => {
+  await signIn(page);
+  await assertDemoData(page);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/plan/list");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Harbour Flat list");
+  await expect(page.getByTestId("list-item").first()).toBeVisible();
+  await shot(page, "plan-list");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/plan/list");
+  await expect(page.getByTestId("list-item").first()).toBeVisible();
+  await shot(page, "plan-list-phone");
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/plan/compare");
+  for (const name of ["Olive oil", "Whole milk", "Coffee beans"]) {
+    await pickIngredient(page, name);
+  }
+  await page.getByRole("group", { name: "Kitchen" }).getByRole("button", { name: "Harbour Flat" }).click();
+  await expect(page.getByTestId("kitchen-tag")).toContainText("Harbour Flat");
+  await expect(page.getByRole("table", { name: "Price comparison" })).toBeVisible();
+  await shot(page, "plan-compare");
+});

@@ -23,6 +23,11 @@ const PAGES = [
   { name: "Recipes", path: "/cook/recipes" },
   { name: "Resolve recipe names", path: "/cook/recipes/resolve" },
   { name: "Recipe page", path: "/cook/recipes", follow: "recipe-row" },
+  // The Plan pages (UI-8.19): the list as it stands (empty, or with another
+  // spec's items), Trips, and Compare under Plan with its kitchen control.
+  { name: "Shopping list", path: "/plan/list" },
+  { name: "Trips", path: "/plan/trips" },
+  { name: "Compare prices", path: "/plan/compare" },
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {

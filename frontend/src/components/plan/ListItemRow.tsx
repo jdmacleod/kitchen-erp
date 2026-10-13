@@ -106,7 +106,7 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
               </span>
             ) : null}
             {item.added_from === "recipe" && item.recipe_id ? (
-              <Link to={`/cook/recipes/${item.recipe_id}`} className={`rounded text-xs underline ${muted} ${focusRing}`}>
+              <Link to={`/cook/recipes/${item.recipe_id}`} className={`inline-flex min-h-11 items-center rounded text-xs underline lg:min-h-0 ${muted} ${focusRing}`}>
                 from recipe
               </Link>
             ) : null}

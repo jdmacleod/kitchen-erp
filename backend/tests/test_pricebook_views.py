@@ -8,6 +8,7 @@ import asyncpg
 import httpx
 
 from app.core.ids import new_id
+from tests.geo_helpers import NEAR_A, NEAR_B, make_home_base
 from tests.pricebook_helpers import SYNTH, make_location, make_product, shelf
 
 D = Decimal
@@ -99,6 +100,86 @@ async def test_compare_matrix_highlights_cheapest_and_leaves_unknown_empty(admin
     oil_cells = rows["Olive oil"]["cells"]
     assert set(oil_cells) == {chain_a["vendor"]["id"]}, "unknown cells are absent, never zero"
     assert oil_cells[chain_a["vendor"]["id"]]["cheapest"] is True
+
+
+async def test_compare_restricts_to_a_kitchens_locations_only_when_asked(admin_client):
+    """17, 4A, L3 and UI-8.8: ``home_base_id`` keeps the prices at that kitchen's
+    locations; unset, every kitchen's price shows, whichever kitchen recorded it."""
+    harbor = await make_home_base(admin_client, "Harbor kitchen", NEAR_A)
+    ridge = await make_home_base(admin_client, "Ridge kitchen", NEAR_B)
+    near = await make_location(
+        admin_client, "Harbor Market", "Harbor Market", coords=SYNTH[0], home_base_id=harbor["id"]
+    )
+    far = await make_location(
+        admin_client, "Ridge Grocer", "Ridge Grocer", coords=SYNTH[1], home_base_id=ridge["id"]
+    )
+    rig = await make_product(admin_client, "Rigatoni", "Rigatoni box", pack_qty="1", pack_unit="lb")
+    await shelf(admin_client, rig["id"], near["id"], "3.49")
+    await shelf(admin_client, rig["id"], far["id"], "2.99")
+    body = {"ingredient_ids": [rig["ingredient"]["id"]]}
+
+    household = (await admin_client.post("/api/v1/price-book/compare", json=body)).json()
+    assert {v["name"] for v in household["vendors"]} == {"Harbor Market", "Ridge Grocer"}
+    cells = household["rows"][0]["cells"]
+    assert cells[far["vendor"]["id"]]["cheapest"] is True
+    assert cells[near["vendor"]["id"]]["cheapest"] is False
+
+    r = await admin_client.post(
+        "/api/v1/price-book/compare", json={**body, "home_base_id": harbor["id"]}
+    )
+    assert r.status_code == 200, r.text
+    scoped = r.json()
+    assert set(scoped) == set(household), "the same shape with the filter on"
+    assert [v["name"] for v in scoped["vendors"]] == ["Harbor Market"]
+    cells = scoped["rows"][0]["cells"]
+    assert set(cells) == {near["vendor"]["id"]}, "the other kitchen's price is gone"
+    assert cells[near["vendor"]["id"]]["cheapest"] is True
+    assert cells[near["vendor"]["id"]]["location_id"] == near["id"]
+
+    # Explicit null is the household view; back without the filter, the price returns.
+    again = (
+        await admin_client.post("/api/v1/price-book/compare", json={**body, "home_base_id": None})
+    ).json()
+    assert again == household
+    assert (await admin_client.post("/api/v1/price-book/compare", json=body)).json() == household
+
+    r = await admin_client.post(
+        "/api/v1/price-book/compare", json={**body, "home_base_id": str(uuid.uuid4())}
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "unknown_home_base"
+
+
+async def test_compare_kitchen_filter_keeps_a_chain_price_at_the_kitchens_branch(admin_client):
+    """A chain price applies at every branch, so the kitchen's branch shows it even
+    when it was recorded at the other kitchen's branch (the view's own rule)."""
+    harbor = await make_home_base(admin_client, "Harbor kitchen", NEAR_A)
+    ridge = await make_home_base(admin_client, "Ridge kitchen", NEAR_B)
+    north = await make_location(
+        admin_client,
+        "Big Chain",
+        "Big Chain North",
+        kind="chain",
+        price_scope="chain",
+        coords=SYNTH[0],
+        home_base_id=ridge["id"],
+    )
+    south = await make_location(
+        admin_client,
+        None,
+        "Big Chain South",
+        vendor_id=north["vendor"]["id"],
+        coords=SYNTH[1],
+        home_base_id=harbor["id"],
+    )
+    rig = await make_product(admin_client, "Rigatoni", "Rigatoni box", pack_qty="1", pack_unit="lb")
+    await shelf(admin_client, rig["id"], north["id"], "3.49")
+    r = await admin_client.post(
+        "/api/v1/price-book/compare",
+        json={"ingredient_ids": [rig["ingredient"]["id"]], "home_base_id": harbor["id"]},
+    )
+    cells = r.json()["rows"][0]["cells"]
+    assert cells[north["vendor"]["id"]]["location_id"] == south["id"]
 
 
 async def test_stale_marking_and_exclusion(admin_client, owner_conn: asyncpg.Connection):
