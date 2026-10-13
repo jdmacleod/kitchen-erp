@@ -84,12 +84,15 @@ def _money(value: Decimal) -> Decimal:
 # One row per observation (offer_applicable repeats a chain price per location),
 # under the price book's default rules: price_current (non-voided, no posted
 # prices) applying at an active location, normalized, settled, active product.
+# ``home_base_id`` keeps only the rows applying at that kitchen's locations (17,
+# 4A, ruling L3): a chain price still counts at the kitchen's branch of the chain.
 _QUALIFYING_SQL = """
     SELECT DISTINCT ON (oa.observation_id)
            oa.observation_id, oa.product_id, p.ingredient_id, oa.observed_at,
            oa.norm_unit_price, oa.norm_unit
     FROM offer_applicable oa
     JOIN product p ON p.id = oa.product_id AND p.active
+    JOIN vendor_location vl ON vl.id = oa.applies_to_location_id
     LEFT JOIN purchase_line pl ON pl.id = oa.purchase_line_id
     LEFT JOIN purchase pu ON pu.id = pl.purchase_id
     WHERE p.ingredient_id = ANY(CAST(:ids AS uuid[]))
@@ -97,6 +100,8 @@ _QUALIFYING_SQL = """
       AND (oa.purchase_line_id IS NULL OR pu.status = 'committed')
       AND (CAST(:min_quality AS integer) IS NULL
            OR coalesce(p.quality_rating, 0) >= CAST(:min_quality AS integer))
+      AND (CAST(:home_base_id AS uuid) IS NULL
+           OR vl.home_base_id = CAST(:home_base_id AS uuid))
     ORDER BY oa.observation_id
 """
 
@@ -120,14 +125,21 @@ class Chosen:
 
 
 async def qualifying_prices(
-    db: AsyncSession, ingredient_ids: set[uuid.UUID], min_quality: int | None
+    db: AsyncSession,
+    ingredient_ids: set[uuid.UUID],
+    min_quality: int | None,
+    home_base_id: uuid.UUID | None = None,
 ) -> dict[uuid.UUID, list[QualifyingPrice]]:
     out: dict[uuid.UUID, list[QualifyingPrice]] = {}
     if not ingredient_ids:
         return out
     rows = await db.execute(
         text(_QUALIFYING_SQL),
-        {"ids": [str(i) for i in ingredient_ids], "min_quality": min_quality},
+        {
+            "ids": [str(i) for i in ingredient_ids],
+            "min_quality": min_quality,
+            "home_base_id": home_base_id,
+        },
     )
     for r in rows.mappings():
         price = QualifyingPrice(
@@ -394,17 +406,40 @@ async def find_snapshot(
     return await _find(db, recipe, basis, effective_window(basis, window_days), min_quality)
 
 
-async def compute_snapshot(
+@dataclass(slots=True)
+class Costing:
+    """A recipe costed in memory: every line's cost and the totals, before (or
+    without) a snapshot row. ``compute_snapshot`` writes one; ``compute_view``
+    reads one straight out for the per-kitchen view (17, 4A, L3)."""
+
+    lines: list[RecipeIngredient]
+    costs: list[LineCost]
+    computed_at: datetime
+    consumed_cost: Decimal | None = None
+    consumed_cost_high: Decimal | None = None
+    basket_cost: Decimal | None = None
+    basket_cost_high: Decimal | None = None
+    per_serving: Decimal | None = None
+    unconfirmed_share: Decimal = Decimal(0)
+
+    @property
+    def priced(self) -> list[LineCost]:
+        return [c for c in self.costs if c.status == "priced"]
+
+    def count(self, status: str) -> int:
+        return sum(c.status == status for c in self.costs)
+
+
+async def cost_recipe(
     db: AsyncSession,
     recipe: Recipe,
-    basis: Basis = "latest",
-    window_days: int | None = None,
-    min_quality: int | None = None,
+    basis: Basis,
+    window: int | None,
+    min_quality: int | None,
     *,
-    commit: bool = True,
-) -> RecipeCostSnapshot:
-    """Cost the recipe as it is indexed now and upsert the snapshot and its lines."""
-    window = effective_window(basis, window_days)
+    home_base_id: uuid.UUID | None = None,
+) -> Costing:
+    """Cost the recipe as it is indexed now; nothing is written."""
     now = datetime.now(UTC)
     # Read from the database, not the identity map: a trigger runs after a bulk
     # UPDATE (a decision, a merge) that the session's loaded rows do not reflect.
@@ -426,7 +461,10 @@ async def compute_snapshot(
         if line.ingredient_id is not None and line.ingredient_id not in ingredients:
             ingredients[line.ingredient_id] = await _survivor(db, line.ingredient_id)
     prices = await qualifying_prices(
-        db, {i.id for i in ingredients.values() if i is not None}, min_quality
+        db,
+        {i.id for i in ingredients.values() if i is not None},
+        min_quality,
+        home_base_id,
     )
 
     costs: list[LineCost] = []
@@ -445,20 +483,83 @@ async def compute_snapshot(
             )
         )
 
-    priced = [c for c in costs if c.status == "priced"]
-    consumed = consumed_high = basket = basket_high = per_serving = None
-    share = Decimal(0)
+    out = Costing(lines=list(lines), costs=costs, computed_at=now)
+    priced = out.priced
     if priced:
         consumed = sum((c.consumed_cost for c in priced), Decimal(0))
-        consumed_high = sum((c.consumed_cost_high or c.consumed_cost for c in priced), Decimal(0))
-        basket = sum((c.basket_cost for c in priced), Decimal(0))
-        basket_high = sum((c.basket_cost_high or c.basket_cost for c in priced), Decimal(0))
+        out.consumed_cost = consumed
+        out.consumed_cost_high = sum(
+            (c.consumed_cost_high or c.consumed_cost for c in priced), Decimal(0)
+        )
+        out.basket_cost = sum((c.basket_cost for c in priced), Decimal(0))
+        out.basket_cost_high = sum(
+            (c.basket_cost_high or c.basket_cost for c in priced), Decimal(0)
+        )
         if recipe.servings is not None and recipe.servings > 0:
-            per_serving = _money(_CTX.divide(consumed, recipe.servings))
+            out.per_serving = _money(_CTX.divide(consumed, recipe.servings))
         if consumed > 0:
             unconfirmed = sum((c.consumed_cost for c in priced if c.unconfirmed), Decimal(0))
-            share = _CTX.divide(unconfirmed, consumed).quantize(_FOUR, rounding=ROUND_HALF_EVEN)
+            out.unconfirmed_share = _CTX.divide(unconfirmed, consumed).quantize(
+                _FOUR, rounding=ROUND_HALF_EVEN
+            )
+    return out
 
+
+def _fill_snapshot(snapshot: RecipeCostSnapshot, recipe: Recipe, costing: Costing) -> None:
+    snapshot.head_commit = recipe.head_commit
+    snapshot.provisional = recipe.dirty
+    snapshot.consumed_cost = costing.consumed_cost
+    snapshot.consumed_cost_high = costing.consumed_cost_high
+    snapshot.basket_cost = costing.basket_cost
+    snapshot.basket_cost_high = costing.basket_cost_high
+    snapshot.per_serving = costing.per_serving
+    snapshot.lines_total = len(costing.costs)
+    snapshot.lines_priced = len(costing.priced)
+    snapshot.lines_unpriced = costing.count("unpriced")
+    snapshot.lines_unconvertible = costing.count("unconvertible")
+    snapshot.lines_unmapped = costing.count("unmapped")
+    snapshot.lines_negligible = costing.count("negligible")
+    snapshot.unconfirmed_share = costing.unconfirmed_share
+    snapshot.computed_at = costing.computed_at
+
+
+def _line_row(snapshot_id: uuid.UUID, cost: LineCost) -> RecipeCostLine:
+    return RecipeCostLine(
+        id=new_id(),
+        snapshot_id=snapshot_id,
+        recipe_ingredient_id=cost.recipe_ingredient_id,
+        status=cost.status,
+        canonical_qty=cost.canonical_qty,
+        canonical_qty_high=cost.canonical_qty_high,
+        canonical_unit=cost.canonical_unit,
+        yield_applied=cost.yield_applied,
+        product_id=cost.product_id,
+        observation_id=cost.observation_id,
+        norm_unit_price=cost.norm_unit_price,
+        consumed_cost=cost.consumed_cost,
+        consumed_cost_high=cost.consumed_cost_high,
+        basket_cost=cost.basket_cost,
+        basket_cost_high=cost.basket_cost_high,
+        packs=cost.packs,
+        packs_high=cost.packs_high,
+        bridge_kind=cost.bridge_kind,
+        bridge_confirmed=cost.bridge_confirmed,
+        failure_code=cost.failure_code,
+    )
+
+
+async def compute_snapshot(
+    db: AsyncSession,
+    recipe: Recipe,
+    basis: Basis = "latest",
+    window_days: int | None = None,
+    min_quality: int | None = None,
+    *,
+    commit: bool = True,
+) -> RecipeCostSnapshot:
+    """Cost the recipe as it is indexed now and upsert the snapshot and its lines."""
+    window = effective_window(basis, window_days)
+    costing = await cost_recipe(db, recipe, basis, window, min_quality)
     snapshot = await _find(db, recipe, basis, window, min_quality)
     if snapshot is None:
         snapshot = RecipeCostSnapshot(
@@ -472,51 +573,46 @@ async def compute_snapshot(
         db.add(snapshot)
     else:
         await db.execute(delete(RecipeCostLine).where(RecipeCostLine.snapshot_id == snapshot.id))
-    snapshot.head_commit = recipe.head_commit
-    snapshot.provisional = recipe.dirty
-    snapshot.consumed_cost = consumed
-    snapshot.consumed_cost_high = consumed_high
-    snapshot.basket_cost = basket
-    snapshot.basket_cost_high = basket_high
-    snapshot.per_serving = per_serving
-    snapshot.lines_total = len(costs)
-    snapshot.lines_priced = len(priced)
-    snapshot.lines_unpriced = sum(c.status == "unpriced" for c in costs)
-    snapshot.lines_unconvertible = sum(c.status == "unconvertible" for c in costs)
-    snapshot.lines_unmapped = sum(c.status == "unmapped" for c in costs)
-    snapshot.lines_negligible = sum(c.status == "negligible" for c in costs)
-    snapshot.unconfirmed_share = share
-    snapshot.computed_at = now
+    _fill_snapshot(snapshot, recipe, costing)
     await db.flush()
-    for cost in costs:
-        db.add(
-            RecipeCostLine(
-                id=new_id(),
-                snapshot_id=snapshot.id,
-                recipe_ingredient_id=cost.recipe_ingredient_id,
-                status=cost.status,
-                canonical_qty=cost.canonical_qty,
-                canonical_qty_high=cost.canonical_qty_high,
-                canonical_unit=cost.canonical_unit,
-                yield_applied=cost.yield_applied,
-                product_id=cost.product_id,
-                observation_id=cost.observation_id,
-                norm_unit_price=cost.norm_unit_price,
-                consumed_cost=cost.consumed_cost,
-                consumed_cost_high=cost.consumed_cost_high,
-                basket_cost=cost.basket_cost,
-                basket_cost_high=cost.basket_cost_high,
-                packs=cost.packs,
-                packs_high=cost.packs_high,
-                bridge_kind=cost.bridge_kind,
-                bridge_confirmed=cost.bridge_confirmed,
-                failure_code=cost.failure_code,
-            )
-        )
+    for cost in costing.costs:
+        db.add(_line_row(snapshot.id, cost))
     await db.flush()
     if commit:
         await db.commit()
     return snapshot
+
+
+async def compute_view(
+    db: AsyncSession,
+    recipe: Recipe,
+    basis: Basis = "latest",
+    window_days: int | None = None,
+    min_quality: int | None = None,
+    *,
+    home_base_id: uuid.UUID,
+) -> tuple[RecipeCostSnapshot, list[tuple[RecipeCostLine, RecipeIngredient]]]:
+    """The recipe costed with prices at one kitchen's locations only, as an
+    unsaved snapshot and its unsaved lines (17, 4A, L3).
+
+    Nothing here is added to the session: the stored snapshot, ``provisional``
+    and the household-wide history are untouched, and the row ids are fresh on
+    every call.
+    """
+    window = effective_window(basis, window_days)
+    costing = await cost_recipe(db, recipe, basis, window, min_quality, home_base_id=home_base_id)
+    snapshot = RecipeCostSnapshot(
+        id=new_id(),
+        recipe_id=recipe.id,
+        content_hash=recipe.content_hash,
+        basis=basis,
+        window_days=window,
+        min_quality=min_quality,
+    )
+    _fill_snapshot(snapshot, recipe, costing)
+    by_id = {line.id: line for line in costing.lines}
+    rows = [(_line_row(snapshot.id, c), by_id[c.recipe_ingredient_id]) for c in costing.costs]
+    return snapshot, rows
 
 
 # --- recompute entry points (called by the triggers and the CLI) ------------------------

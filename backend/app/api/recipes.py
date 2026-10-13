@@ -39,6 +39,7 @@ from app.services import (
     recipe_pages,
     recipe_resolution,
     recipes,
+    user_settings,
 )
 
 router = APIRouter(tags=["recipes"])
@@ -107,12 +108,22 @@ async def get_cost(
     basis: CostBasis = "latest",
     window_days: Annotated[int | None, Query(ge=1, le=3650)] = None,
     min_quality: Annotated[int | None, Query(ge=1, le=5)] = None,
+    home_base_id: uuid.UUID | None = None,
 ) -> RecipeCostOut:
     """The recipe's cost under a basis, computed now when its current content has none.
 
     ``window_days`` applies to ``average`` only and defaults to the stale window.
+    ``home_base_id`` asks for the per-kitchen view (17, 4A, L3): prices at that
+    kitchen's locations only, computed on demand and never snapshotted, so the
+    stored snapshot and the history stand; an unknown kitchen is a 422.
     """
     recipe = await recipes.get_recipe(db, recipe_id)
+    if home_base_id is not None:
+        await user_settings.require_home_base(db, home_base_id)
+        view, lines = await recipe_costing.compute_view(
+            db, recipe, basis, window_days, min_quality, home_base_id=home_base_id
+        )
+        return await recipe_cost_views.cost_out(db, view, lines, home_base_id=home_base_id)
     snapshot = await recipe_costing.find_snapshot(db, recipe, basis, window_days, min_quality)
     if snapshot is None:
         snapshot = await recipe_costing.compute_snapshot(

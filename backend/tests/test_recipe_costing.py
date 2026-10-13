@@ -25,7 +25,8 @@ from app.core.db import dispose_engine, get_sessionmaker
 from app.services import recipe_costing
 from tests.catalog_helpers import make_product as make_sibling_product
 from tests.conftest import BACKEND_ROOT, run_alembic
-from tests.pricebook_helpers import make_location, make_product, shelf
+from tests.geo_helpers import NEAR_A, NEAR_B, make_home_base
+from tests.pricebook_helpers import SYNTH, make_location, make_product, shelf
 from tests.recipes_helpers import TempRepo, recipes_repo  # noqa: F401
 from tests.test_posted_prices import post_listing_price
 
@@ -636,6 +637,78 @@ async def test_min_quality_narrows_the_qualifying_prices(
         "barley"
     ]
     assert good["price"]["product_id"] == fine["id"] and good["consumed_cost"] == "1.2000"
+
+
+async def test_the_kitchen_view_counts_that_kitchens_prices_only_and_writes_no_snapshot(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+    app_conn: asyncpg.Connection,
+):
+    """17, 4A, L3 and UI-8.8: ``home_base_id`` costs the recipe on demand from prices at
+    that kitchen's locations; the stored snapshot, ``provisional`` and the history stand."""
+    harbor = await make_home_base(admin_client, "Harbor kitchen", NEAR_A)
+    ridge = await make_home_base(admin_client, "Ridge kitchen", NEAR_B)
+    near = await make_location(
+        admin_client, "Harbor Market", "Harbor Market", coords=SYNTH[0], home_base_id=harbor["id"]
+    )
+    far = await make_location(
+        admin_client, "Ridge Grocer", "Ridge Grocer", coords=SYNTH[1], home_base_id=ridge["id"]
+    )
+    barley = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
+    milk = await make_product(
+        admin_client,
+        "Oat milk",
+        "Oat milk carton",
+        canonical_unit="ml",
+        pack_qty="1",
+        pack_unit="l",
+    )
+    # Barley at both kitchens' stores, the other kitchen's newer and cheaper; milk only there.
+    await shelf(admin_client, barley["id"], near["id"], "4.00", observed_at=days_ago(2))
+    await shelf(admin_client, barley["id"], far["id"], "3.00")
+    await shelf(admin_client, milk["id"], far["id"], "3.00")
+    recipe = await indexed(admin_client, recipes_repo, "porridge.cook", PORRIDGE)
+    rid = recipe["id"]
+
+    household = await cost(admin_client, rid)
+    assert household["home_base_id"] is None
+    lines = lines_by_name(household)
+    assert lines["barley"]["price"]["norm_unit_price"] == "0.003000"
+    assert lines["barley"]["price"]["location_id"] == far["id"]
+    assert lines["oat milk"]["status"] == "priced"
+    assert household["completeness"]["lines_priced"] == 2
+
+    scoped = await cost(admin_client, rid, home_base_id=harbor["id"])
+    assert scoped["home_base_id"] == harbor["id"]
+    assert scoped["id"] != household["id"], "a view, not the stored snapshot"
+    assert scoped["provisional"] == household["provisional"]
+    lines = lines_by_name(scoped)
+    assert lines["barley"]["price"]["norm_unit_price"] == "0.004000"
+    assert lines["barley"]["price"]["location_id"] == near["id"]
+    assert lines["barley"]["consumed_cost"] == "0.8000"
+    assert lines["oat milk"]["status"] == "unpriced" and lines["oat milk"]["price"] is None
+    assert scoped["completeness"]["lines_priced"] == 1
+    assert scoped["totals"]["consumed_cost"] == "0.8000"
+
+    # The other kitchen sees its own store's prices; the household answer is unchanged.
+    other = lines_by_name(await cost(admin_client, rid, home_base_id=ridge["id"]))
+    assert other["barley"]["price"]["location_id"] == far["id"]
+    assert other["oat milk"]["status"] == "priced"
+    assert await cost(admin_client, rid) == household
+
+    # Nothing was written: one snapshot, its lines, and the history as before.
+    assert await app_conn.fetchval("SELECT count(*) FROM recipe_cost_snapshot") == 1
+    assert await app_conn.fetchval("SELECT count(*) FROM recipe_cost_line") == len(
+        household["lines"]
+    )
+    history = (await admin_client.get(f"/api/v1/recipes/{rid}/cost/history")).json()
+    assert [h["id"] for h in history["items"]] == [household["id"]]
+
+    r = await admin_client.get(
+        f"/api/v1/recipes/{rid}/cost", params={"home_base_id": str(uuid.uuid4())}
+    )
+    assert r.status_code == 422, r.text
+    assert r.json()["error"]["code"] == "unknown_home_base"
 
 
 async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(

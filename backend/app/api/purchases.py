@@ -66,6 +66,7 @@ from app.services import (
     review,
     store_codes,
     unit_display,
+    user_settings,
 )
 
 router = APIRouter(tags=["purchases"])
@@ -687,6 +688,8 @@ async def ingredient_offers(
 
 @router.post("/price-book/compare", response_model=CompareOut)
 async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareOut:
+    if payload.home_base_id is not None:
+        await user_settings.require_home_base(db, payload.home_base_id)
     result = await pricebook_views.compare(
         db,
         payload.ingredient_ids,
@@ -695,6 +698,7 @@ async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareO
         exclude_promo=payload.exclude_promo,
         include_posted=payload.include_posted,
         brand_scope=payload.brand_scope,
+        home_base_id=payload.home_base_id,
     )
     return CompareOut(**result, stale_after_days=pricebook_views.stale_after_days())
 

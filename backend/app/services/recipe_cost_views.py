@@ -38,19 +38,43 @@ from app.units.table import SEED_UNITS, units_by_code
 
 _UNITS = units_by_code(SEED_UNITS)
 
-# What each line's price and product read as: names, so the table needs no lookups.
+# What each line's price and product read as: names, so the table needs no
+# lookups. Keyed by the observation and the product rather than the snapshot,
+# so an unsaved per-kitchen view (``compute_view``) reads the same way.
 _USED_SQL = """
-    SELECT l.id AS line_id,
+    SELECT o.id AS observation_id,
            o.observed_at, o.vendor_location_id AS location_id, vl.name AS location_name,
-           v.id AS vendor_id, v.name AS vendor_name,
-           p.id AS product_id, p.name AS product_name, p.brand
-    FROM recipe_cost_line l
-    LEFT JOIN price_observation o ON o.id = l.observation_id
-    LEFT JOIN vendor_location vl ON vl.id = o.vendor_location_id
-    LEFT JOIN vendor v ON v.id = vl.vendor_id
-    LEFT JOIN product p ON p.id = l.product_id
-    WHERE l.snapshot_id = CAST(:sid AS uuid)
+           v.id AS vendor_id, v.name AS vendor_name
+    FROM price_observation o
+    JOIN vendor_location vl ON vl.id = o.vendor_location_id
+    JOIN vendor v ON v.id = vl.vendor_id
+    WHERE o.id = ANY(CAST(:ids AS uuid[]))
 """
+_PRODUCTS_SQL = """
+    SELECT id AS product_id, name AS product_name, brand
+    FROM product WHERE id = ANY(CAST(:ids AS uuid[]))
+"""
+
+
+async def _used(db: AsyncSession, lines: list[RecipeCostLine]) -> dict[uuid.UUID, dict[str, Any]]:
+    """Each line's price and product as names, keyed by the line's id."""
+    observations = [line.observation_id for line in lines if line.observation_id is not None]
+    products = [line.product_id for line in lines if line.product_id is not None]
+    seen: dict[uuid.UUID, dict[str, Any]] = {}
+    if observations:
+        rows = await db.execute(text(_USED_SQL), {"ids": [str(i) for i in observations]})
+        seen = {r["observation_id"]: dict(r) for r in rows.mappings()}
+    named: dict[uuid.UUID, dict[str, Any]] = {}
+    if products:
+        rows = await db.execute(text(_PRODUCTS_SQL), {"ids": [str(i) for i in products]})
+        named = {r["product_id"]: dict(r) for r in rows.mappings()}
+    out: dict[uuid.UUID, dict[str, Any]] = {}
+    for line in lines:
+        used = dict(seen.get(line.observation_id, {})) if line.observation_id else {}
+        if line.product_id:
+            used.update(named.get(line.product_id, {}))
+        out[line.id] = used
+    return out
 
 
 def _totals(row: RecipeCostSnapshot) -> CostTotals:
@@ -114,19 +138,33 @@ def _price(
     )
 
 
-async def cost_out(db: AsyncSession, snapshot: RecipeCostSnapshot) -> RecipeCostOut:
+async def cost_out(
+    db: AsyncSession,
+    snapshot: RecipeCostSnapshot,
+    lines_in: list[tuple[RecipeCostLine, RecipeIngredient]] | None = None,
+    *,
+    home_base_id: uuid.UUID | None = None,
+) -> RecipeCostOut:
+    """The snapshot as the cost table shows it.
+
+    ``lines_in`` carries the unsaved lines of a per-kitchen view
+    (``recipe_costing.compute_view``), which has no rows to read back; stored
+    snapshots leave it out. ``home_base_id`` is echoed so the client knows which
+    kitchen the figures are for.
+    """
     rows = (
-        await db.execute(
-            select(RecipeCostLine, RecipeIngredient)
-            .join(RecipeIngredient, RecipeIngredient.id == RecipeCostLine.recipe_ingredient_id)
-            .where(RecipeCostLine.snapshot_id == snapshot.id)
-            .order_by(RecipeIngredient.seq)
-        )
-    ).all()
-    used = {
-        r["line_id"]: dict(r)
-        for r in (await db.execute(text(_USED_SQL), {"sid": snapshot.id})).mappings()
-    }
+        list(lines_in)
+        if lines_in is not None
+        else (
+            await db.execute(
+                select(RecipeCostLine, RecipeIngredient)
+                .join(RecipeIngredient, RecipeIngredient.id == RecipeCostLine.recipe_ingredient_id)
+                .where(RecipeCostLine.snapshot_id == snapshot.id)
+                .order_by(RecipeIngredient.seq)
+            )
+        ).all()
+    )
+    used = await _used(db, [line for line, _ in rows])
     ingredient_ids = {ri.ingredient_id for _, ri in rows if ri.ingredient_id is not None}
     names: dict[uuid.UUID, str] = {}
     if ingredient_ids:
@@ -175,6 +213,7 @@ async def cost_out(db: AsyncSession, snapshot: RecipeCostSnapshot) -> RecipeCost
         head_commit=snapshot.head_commit,
         provisional=snapshot.provisional,
         computed_at=snapshot.computed_at,
+        home_base_id=home_base_id,
         stale_after_days=stale,
         totals=_totals(snapshot),
         completeness=CostCompleteness(

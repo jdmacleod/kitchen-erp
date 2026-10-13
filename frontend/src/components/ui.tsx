@@ -18,9 +18,10 @@ const buttonVariants = {
 
 /**
  * A text link that is a 44px touch target below lg (UI-4.2) and plain inline text
- * at lg and wider, where the row it sits in is already dense enough to scan.
+ * at lg and wider, where the row it sits in is already dense enough to scan. The
+ * width floor is for a short name ("salt" is 27px wide); the text stays left.
  */
-export const tapTarget = "inline-flex min-h-11 items-center lg:inline lg:min-h-0";
+export const tapTarget = "inline-flex min-h-11 min-w-11 items-center lg:inline lg:min-h-0 lg:min-w-0";
 
 /** The primary button's look, for a link that acts as the page's primary action. */
 export const primaryLinkClass = `inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;

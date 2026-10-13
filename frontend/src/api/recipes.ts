@@ -304,6 +304,8 @@ export interface RecipeCost {
   head_commit: string | null;
   provisional: boolean;
   computed_at: string;
+  /** The kitchen whose prices alone were counted: the on-demand view (17, 4A); null for a snapshot. */
+  home_base_id: string | null;
   stale_after_days: number;
   totals: CostTotals;
   completeness: CostCompleteness;

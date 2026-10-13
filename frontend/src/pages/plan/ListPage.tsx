@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { itemName, listKeys, useArchivedLists, useArchiveList, useShoppingList, type ShoppingItem, type ShoppingList } from "../../api/shoppingList";
@@ -254,7 +254,12 @@ function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; l
   const archive = useArchiveList();
   const notice = useNotice();
   const [carry, setCarry] = useState(true);
+  const cancel = useRef<HTMLButtonElement>(null);
   const n = list.unchecked.length;
+  // Focus lands on Cancel (UI-8.2) after the More actions sheet, when there was
+  // one, has handed focus back to its opener: that happens in the sheet's unmount
+  // cleanup, which runs before this mount effect, so `autoFocus` would lose.
+  useEffect(() => cancel.current?.focus(), []);
   const start = () =>
     archive.mutate(
       { home_base_id: homeBaseId, carry_over: carry },
@@ -276,7 +281,7 @@ function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; l
           Carry unchecked items over
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={onClose} autoFocus disabled={archive.isPending}>
+          <Button ref={cancel} variant="secondary" onClick={onClose} disabled={archive.isPending}>
             Cancel
           </Button>
           <Button onClick={start} disabled={archive.isPending}>

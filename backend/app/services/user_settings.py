@@ -4,6 +4,8 @@ the kitchen and sends it, as 09 requires."""
 
 from __future__ import annotations
 
+import uuid
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,18 +31,23 @@ async def get_settings(db: AsyncSession, user: AppUser) -> SettingsOut:
     )
 
 
+async def require_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> None:
+    """A 422 ``unknown_home_base`` unless the kitchen exists.
+
+    For a kitchen named as a filter or a setting (the settings PUT, Compare and
+    the cost table's ``home_base_id``), where the kitchen is a parameter rather
+    than the resource itself, so a bad one is a validation failure, not a 404.
+    """
+    if await db.get(HomeBase, home_base_id) is None:
+        raise ApiError(
+            422, "unknown_home_base", "No such kitchen.", {"home_base_id": str(home_base_id)}
+        )
+
+
 async def put_settings(db: AsyncSession, user: AppUser, payload: SettingsIn) -> SettingsOut:
     """Set the current kitchen, refusing one that does not exist; null clears it."""
-    if (
-        payload.current_home_base_id is not None
-        and await db.get(HomeBase, payload.current_home_base_id) is None
-    ):
-        raise ApiError(
-            422,
-            "unknown_home_base",
-            "No such kitchen.",
-            {"home_base_id": str(payload.current_home_base_id)},
-        )
+    if payload.current_home_base_id is not None:
+        await require_home_base(db, payload.current_home_base_id)
     row = await db.get(UserSetting, user.id)
     if row is None:
         row = UserSetting(user_id=user.id)

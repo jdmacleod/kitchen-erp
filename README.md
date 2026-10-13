@@ -28,6 +28,12 @@ those prices, line by line, under the basis you choose:
 
 ![A recipe page: the rendered recipe beside its cost table, with the price each line used and the totals above](docs/screenshots/recipe-cost.png)
 
+Each kitchen keeps one shared shopping list: items by name or from a recipe,
+claimed and checked off from any phone, with Compare prices narrowed to that
+kitchen's stores:
+
+![A kitchen's shopping list: the add row, then the items to get with their amounts, one deferrable, one with a minimum quality, each with "I'll get it"](docs/screenshots/plan-list.png)
+
 Every screenshot above is the synthetic demo household, not anyone's real data.
 You can run exactly that yourself — see **Try it first** below.
 

@@ -211,6 +211,8 @@ export interface PriceFilters {
 
 export interface CompareInput extends PriceFilters {
   ingredient_ids: string[];
+  /** Only prices at this kitchen's locations (17, 4A; UI-8.8); unset, every kitchen's. */
+  home_base_id?: string;
 }
 
 // --- keys and hooks ---------------------------------------------------------
@@ -299,6 +301,7 @@ export function useCompare(input: CompareInput) {
       if (input.exclude_stale) body.exclude_stale = true;
       if (input.exclude_promo) body.exclude_promo = true;
       if (input.brand_scope && input.brand_scope !== "all") body.brand_scope = input.brand_scope;
+      if (input.home_base_id) body.home_base_id = input.home_base_id;
       return api<CompareResult>("/price-book/compare", { method: "POST", body });
     },
     enabled: input.ingredient_ids.length > 0,

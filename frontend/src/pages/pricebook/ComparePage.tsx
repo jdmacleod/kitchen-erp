@@ -1,9 +1,8 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { IngredientSummary } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
-import { useLocations } from "../../api/geo";
-import { useCompare, type CompareCell, type CompareResult, type PriceFilters as Filters } from "../../api/pricebook";
+import { useCompare, type CompareCell, type PriceFilters as Filters } from "../../api/pricebook";
 import { Badge } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { KitchenTag } from "../../components/plan/KitchenTag";
@@ -11,34 +10,17 @@ import { PriceAge, formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { PriceFilters } from "../../components/pricebook/PriceFilters";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
-import { cmp } from "../../lib/decimal";
 import { useCurrentKitchen } from "../../lib/kitchen";
 import { usePageTitle } from "../../lib/usePageTitle";
-
-/**
- * The matrix restricted to prices at the given locations (17, 4A; UI-8.8), with
- * the cheapest cell of each row marked again and vendors left with no price
- * dropped. The server answers household-wide; until it takes `home_base_id`
- * this is the client's reading of its answer.
- */
-export function restrictToLocations(result: CompareResult, locationIds: ReadonlySet<string>): CompareResult {
-  const rows = result.rows.map((row) => {
-    const kept = Object.entries(row.cells).filter(([, cell]) => locationIds.has(cell.location_id));
-    const lowest = kept.reduce<string | null>((low, [, cell]) => (low === null || cmp(cell.norm_unit_price, low) < 0 ? cell.norm_unit_price : low), null);
-    return { ...row, cells: Object.fromEntries(kept.map(([vendorId, cell]) => [vendorId, { ...cell, cheapest: lowest !== null && cmp(cell.norm_unit_price, lowest) === 0 }])) };
-  });
-  const vendors = result.vendors.filter((v) => rows.some((row) => v.id in row.cells));
-  return { ...result, vendors, rows };
-}
 
 /** Vendors as columns, ingredients as rows, the best qualifying normalized price in each cell. */
 export function ComparePage() {
   usePageTitle("Compare");
   const [chosen, setChosen] = useState<IngredientSummary[]>([]);
   const [filters, setFilters] = useState<Filters>({ min_quality: "", exclude_stale: false, exclude_promo: false });
-  const compare = useCompare({ ingredient_ids: chosen.map((i) => i.id), ...filters });
 
-  // "Kitchen: All · {name}", All by default and kept in the URL (10, Compare prices).
+  // "Kitchen: All · {name}", All by default and kept in the URL (10, Compare
+  // prices; UI-8.8): the server restricts to the kitchen's locations.
   const kitchen = useCurrentKitchen();
   const [params, setParams] = useSearchParams();
   const requested = params.get("home_base_id") ?? "";
@@ -53,10 +35,8 @@ export function ComparePage() {
       },
       { replace: true },
     );
-  const locations = useLocations({ home_base_id: scoped?.id, include_inactive: true }, scoped !== null);
-  const locationIds = useMemo(() => new Set((locations.data ?? []).map((l) => l.id)), [locations.data]);
-  const shown = useMemo(() => (compare.data && scoped ? restrictToLocations(compare.data, locationIds) : compare.data), [compare.data, scoped, locationIds]);
-  const narrowing = scoped !== null && locations.isPending;
+  const compare = useCompare({ ingredient_ids: chosen.map((i) => i.id), ...filters, home_base_id: scoped?.id });
+  const shown = compare.data;
 
   return (
     <>
@@ -100,14 +80,12 @@ export function ComparePage() {
 
         {chosen.length === 0 ? (
           <EmptyState title="Pick ingredients to compare">Each vendor becomes a column; the cheapest qualifying price in a row is marked.</EmptyState>
-        ) : compare.isPending || narrowing || !shown ? (
+        ) : compare.isPending || !shown ? (
           <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
             Comparing…
           </p>
         ) : compare.isError ? (
           <Alert tone="error">{errorMessage(compare.error)}</Alert>
-        ) : locations.isError ? (
-          <Alert tone="error">Couldn&apos;t load {scoped?.name}&apos;s locations: {errorMessage(locations.error)}</Alert>
         ) : shown.vendors.length === 0 ? (
           <EmptyState
             title="No prices to compare yet"
