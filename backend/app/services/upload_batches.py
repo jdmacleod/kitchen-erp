@@ -15,6 +15,7 @@ import math
 import statistics
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select, text
@@ -25,6 +26,7 @@ from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.models import AppUser, IngestJob, UploadBatch, UploadBatchReceipt
 from app.services import purchases
+from app.services.pagination import decode_keyset, encode_keyset
 
 # The most files one batch may announce; the upload form has no lower cap of its own.
 MAX_FILES = 500
@@ -154,28 +156,41 @@ def _receipt(r, job: IngestJob) -> BatchReceipt:
 
 
 async def list_batches(
-    db: AsyncSession, *, cursor: uuid.UUID | None = None, limit: int = 10
-) -> tuple[list[BatchSummary], uuid.UUID | None]:
-    """Newest first; a batch whose every receipt was removed is not listed."""
+    db: AsyncSession, *, cursor: str | None = None, limit: int = 10
+) -> tuple[list[BatchSummary], str | None]:
+    """Newest first; a batch whose every receipt was removed is not listed.
+
+    Ordered by when the batch was opened, then id. Ordering by id alone assumed
+    every id was time-ordered, and two batches with random ids listed first, above
+    newer uploads (QA 2026-10-12).
+    """
+    after = decode_keyset(cursor)
     rows = (
         await db.execute(
             text(
                 """
-                SELECT b.id FROM upload_batch b
+                SELECT b.id, b.created_at FROM upload_batch b
                 WHERE EXISTS (
                     SELECT 1 FROM upload_batch_receipt e JOIN ingest_job j ON j.id = e.job_id
                     WHERE e.batch_id = b.id AND j.status <> 'discarded')
-                  AND (CAST(:cursor AS uuid) IS NULL OR b.id < CAST(:cursor AS uuid))
-                ORDER BY b.id DESC
+                  AND (CAST(:at AS timestamptz) IS NULL
+                       OR (b.created_at, b.id) < (CAST(:at AS timestamptz), CAST(:id AS uuid)))
+                ORDER BY b.created_at DESC, b.id DESC
                 LIMIT :n
                 """
             ),
-            {"cursor": cursor, "n": limit + 1},
+            {
+                "at": None if after is None else datetime.fromisoformat(after[0]),
+                "id": None if after is None else after[1],
+                "n": limit + 1,
+            },
         )
-    ).scalars()
-    ids = list(rows)
-    next_cursor = ids[limit - 1] if len(ids) > limit else None
-    ids = ids[:limit]
+    ).all()
+    next_cursor = None
+    if len(rows) > limit:
+        last = rows[limit - 1]
+        next_cursor = encode_keyset(last.created_at.isoformat(), last.id)
+    ids = [r.id for r in rows[:limit]]
     if not ids:
         return [], None
     found = (await db.execute(select(UploadBatch).where(UploadBatch.id.in_(ids)))).scalars()

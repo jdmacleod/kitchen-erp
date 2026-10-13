@@ -128,17 +128,8 @@ async def list_upload_batches(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> UploadBatchList:
     """Recent uploads, newest first, each with what its receipts came to."""
-    cursor_id = None
-    if cursor:
-        try:
-            cursor_id = uuid.UUID(cursor)
-        except ValueError:
-            raise ApiError(422, "validation_error", "Invalid cursor.") from None
-    batches, next_cursor = await upload_batches.list_batches(db, cursor=cursor_id, limit=limit)
-    return UploadBatchList(
-        items=[_summary(b) for b in batches],
-        next_cursor=None if next_cursor is None else str(next_cursor),
-    )
+    batches, next_cursor = await upload_batches.list_batches(db, cursor=cursor, limit=limit)
+    return UploadBatchList(items=[_summary(b) for b in batches], next_cursor=next_cursor)
 
 
 def _summary(summary: upload_batches.BatchSummary) -> UploadBatchSummaryOut:
@@ -186,7 +177,8 @@ _IMAGE_HEADERS = {"Cache-Control": "private, max-age=86400", "X-Content-Type-Opt
     responses={
         200: {
             "description": "The receipt as a browser can show it: the stored original, "
-            "or page 1 rendered to PNG (always PNG when `width` is given).",
+            "or a rendering of it: page 1 of a PDF as PNG, anything else as JPEG "
+            "(always a rendering when `width` is given).",
             "content": {"image/png": {}, "image/jpeg": {}, "image/webp": {}},
         },
         404: {"description": "No such receipt, or its stored file is missing."},
@@ -201,9 +193,10 @@ async def get_receipt_image(
         int | None, Query(ge=receipt_images.THUMB_MIN, le=receipt_images.THUMB_MAX)
     ] = None,
 ) -> FileResponse | Response:
-    """The receipt as a browser can show it: the original, or page 1 as PNG (#30).
+    """The receipt as a browser can show it: the original, or a rendering (#30).
 
-    `width` asks for a PNG no wider than that, for a thumbnail in a list (#28).
+    `width` asks for an image no wider than that, for a thumbnail in a list (#28):
+    PNG for a PDF page, JPEG for a photograph.
     """
     document = await ingest.get_document(db, document_id)
     job = await ingest.job_for_document(db, document.id)

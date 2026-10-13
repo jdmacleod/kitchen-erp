@@ -142,7 +142,7 @@ async def test_a_thumbnail_of_a_sideways_photo_is_upright(
 
     r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 150})
 
-    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg"
     with Image.open(io.BytesIO(r.content)) as thumb:
         assert thumb.size == (150, 60)
         assert thumb.convert("L").getpixel((10, 10)) < 64

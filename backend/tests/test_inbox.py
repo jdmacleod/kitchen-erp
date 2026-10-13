@@ -93,7 +93,7 @@ async def test_a_draft_receipt_is_an_item_with_its_day_and_line_count(admin_clie
     [item] = (await get_inbox(admin_client))["items"]
     assert item["kind"] == "receipt"
     # 18:00 UTC is still Sep 24 in the household timezone.
-    assert item["title"] == "Finish the Sep 24 receipt"
+    assert item["title"] == "Finish the Tideline Market receipt from Sep 24"
     assert item["detail"] == "2 lines ready to review and commit."
     assert (item["action_label"], item["action_route"]) == ("Review", f"/shop/purchases/{pid}")
 
@@ -106,7 +106,22 @@ async def test_a_receipt_from_another_year_says_which(admin_client, admin):
         admin.id, loc["id"], LINES, purchased_at=datetime(2020, 7, 30, 18, 0, tzinfo=UTC)
     )
     [item] = (await get_inbox(admin_client))["items"]
-    assert item["title"] == "Finish the Jul 30, 2020 receipt"
+    assert item["title"] == "Finish the Tideline Market receipt from Jul 30, 2020"
+
+
+async def test_two_receipts_from_one_day_name_their_stores(admin_client, admin):
+    # Regression: ISSUE-002 — two drafts from one day both read "Finish the Oct 12 receipt"
+    # Found by /qa on 2026-10-12
+    # Report: QA run 2026-10-12, kept outside the repository (it was run on household data)
+    day = datetime(datetime.now(UTC).year, 9, 24, 18, 0, tzinfo=UTC)
+    for name in ("Tideline Market", "Harbor Light Grocer"):
+        loc = await make_location(admin_client, name, name)
+        await make_receipt_purchase(admin.id, loc["id"], LINES, purchased_at=day)
+    titles = sorted(item["title"] for item in (await get_inbox(admin_client))["items"])
+    assert titles == [
+        "Finish the Harbor Light Grocer receipt from Sep 24",
+        "Finish the Tideline Market receipt from Sep 24",
+    ]
 
 
 async def test_a_draft_without_a_location_asks_for_one(admin_client, admin):
@@ -319,7 +334,8 @@ async def test_a_draft_far_off_its_total_is_held_for_a_careful_look(admin_client
     pid = await make_receipt_purchase(admin.id, loc["id"], LINES, total="1.20")
     [item] = (await get_inbox(admin_client))["items"]
     assert item["kind"] == "receipt_held"
-    assert item["title"].endswith("receipt needs a careful look")
+    assert item["title"].startswith("The Tideline Market receipt from ")
+    assert item["title"].endswith(" needs a careful look")
     assert item["detail"] == (
         "Its lines add up to 3.59, but the receipt says 1.20. The flagged lines are shown first."
     )

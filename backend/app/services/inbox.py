@@ -77,16 +77,19 @@ _RECEIPTS_SQL = text(
            coalesce(sum(CASE WHEN pl.line_kind = 'discount' THEN -abs(pl.line_total)
                              ELSE pl.line_total END), 0) AS lines_sum,
            bool_or(pl.line_kind = 'tax') AS has_tax_line,
-           count(pl.id) FILTER (WHERE 'not_in_scan' = ANY(pl.flags)) AS unscanned
+           count(pl.id) FILTER (WHERE 'not_in_scan' = ANY(pl.flags)) AS unscanned,
+           v.name AS store
     FROM purchase p
     LEFT JOIN purchase_line pl ON pl.purchase_id = p.id AND pl.removed_at IS NULL
+    LEFT JOIN vendor_location vl ON vl.id = p.vendor_location_id
+    LEFT JOIN vendor v ON v.id = vl.vendor_id
     WHERE p.status IN ('draft', 'reviewed')
       AND NOT EXISTS (
           SELECT 1 FROM ingest_job j
           WHERE j.purchase_id = p.id
             AND (j.status IN ('pending', 'running') OR (j.status = 'failed' AND p.status = 'draft'))
       )
-    GROUP BY p.id
+    GROUP BY p.id, v.name
     """
 )
 
@@ -159,10 +162,19 @@ def _check(r) -> purchases.ReadingCheck:
     )
 
 
+def _which(noun: str, store: str | None, day: str) -> str:
+    """ "Vallarta Market receipt from Oct 12", or "Oct 12 receipt" before a store is set.
+
+    The day alone left two receipts from one day reading the same (QA 2026-10-12).
+    """
+    return f"{store} {noun} from {day}" if store else f"{day} {noun}"
+
+
 async def _receipts(db: AsyncSession) -> list[InboxItem]:
     items = []
     for r in (await db.execute(_RECEIPTS_SQL)).mappings():
         noun = "receipt" if r["source"] == "receipt" else "purchase"
+        which = _which(noun, r["store"], _day(r["purchased_at"]))
         check = _check(r)
         if check.held:
             # Ruling R2 (#121): far off its printed total, so it says so before it
@@ -170,7 +182,8 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
             items.append(
                 InboxItem(
                     kind="receipt_held",
-                    title=f"The {_day(r['purchased_at'])} receipt needs a careful look",
+                    title=f"The {_which('receipt', r['store'], _day(r['purchased_at']))} "
+                    "needs a careful look",
                     detail=(
                         f"Its lines add up to {check.lines_total:.2f}, but the receipt says "
                         f"{r['total']:.2f}. The flagged lines are shown first."
@@ -198,7 +211,7 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
         items.append(
             InboxItem(
                 kind="receipt",
-                title=f"Finish the {_day(r['purchased_at'])} {noun}",
+                title=f"Finish the {which}",
                 detail=detail,
                 action_label=action,
                 action_route=f"/shop/purchases/{r['id']}",

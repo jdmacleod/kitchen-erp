@@ -166,11 +166,21 @@ async def test_job_list_filters_by_status(admin_client: httpx.AsyncClient, recei
 # --- showing the receipt (#30, #28) ----------------------------------------------
 
 
-@pytest.mark.parametrize("mime", ["application/pdf", "image/heic"])
-async def test_a_receipt_a_browser_cannot_show_is_served_as_png(
-    admin_client: httpx.AsyncClient, receipts_dir: Path, tmp_path: Path, mime: str
+@pytest.mark.parametrize(
+    ("mime", "shown_as", "pil_format"),
+    [("application/pdf", "image/png", "PNG"), ("image/heic", "image/jpeg", "JPEG")],
+)
+async def test_a_receipt_a_browser_cannot_show_is_rendered(
+    admin_client: httpx.AsyncClient,
+    receipts_dir: Path,
+    tmp_path: Path,
+    mime: str,
+    shown_as: str,
+    pil_format: str,
 ):
-    """A PDF, or HEIC outside Safari, in an <img> is a blank panel on review."""
+    """A PDF, or HEIC outside Safari, in an <img> is a blank panel on review.
+
+    A PDF page renders as PNG, keeping its text sharp; a photograph as JPEG."""
     source = render_receipt_as(mime, "SYNTHETIC GROCER\nOATS 1KG  3.29", tmp_path / "receipt")
     document = (await upload(admin_client, source.read_bytes(), content_type=mime)).json()[
         "document"
@@ -179,20 +189,24 @@ async def test_a_receipt_a_browser_cannot_show_is_served_as_png(
 
     r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image")
     assert r.status_code == 200
-    assert r.headers["content-type"] == "image/png"
+    assert r.headers["content-type"] == shown_as
     with Image.open(io.BytesIO(r.content)) as shown:
-        assert shown.format == "PNG" and shown.width > 100
+        assert shown.format == pil_format and shown.width > 100
     # The original is untouched; the rendering is not stored beside it.
     assert (await admin_client.get(f"/api/v1/receipts/{document['id']}")).json()[
         "sha256"
     ] == document["sha256"]
 
 
-async def test_a_thumbnail_is_a_scaled_png(admin_client: httpx.AsyncClient, receipts_dir: Path):
+async def test_a_thumbnail_is_a_scaled_jpeg(admin_client: httpx.AsyncClient, receipts_dir: Path):
+    # Regression: ISSUE-004 — scaled receipt photos were PNG: about 4 MB at review width
+    # Found by /qa on 2026-10-12
+    # Report: QA run 2026-10-12, kept outside the repository (it was run on household data)
     document = (await upload(admin_client, png_bytes("thumb"))).json()["document"]
     r = await admin_client.get(f"/api/v1/receipts/{document['id']}/image", params={"width": 48})
-    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.status_code == 200 and r.headers["content-type"] == "image/jpeg"
     with Image.open(io.BytesIO(r.content)) as thumb:
+        assert thumb.format == "JPEG"
         assert thumb.width == 48 and thumb.height == 12  # 96x24 scaled by half
     too_big = await admin_client.get(
         f"/api/v1/receipts/{document['id']}/image", params={"width": 5000}
