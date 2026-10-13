@@ -267,6 +267,11 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
     voided_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id", name="fk_purchase_voided_by")
     )
+    # The plan this purchase closes a stop of (17, 4C); null for every other purchase.
+    trip_plan_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trip_plan.id", name="fk_purchase_trip_plan", ondelete="SET NULL"),
+    )
 
     # The lines people see and count. A removed line stays in the table only as
     # the provenance of an observation, and nothing that reads a purchase's lines
