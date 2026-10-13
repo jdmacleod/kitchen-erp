@@ -5,6 +5,7 @@ import { useLocations, type VendorLocation } from "../../api/geo";
 import {
   VARIANT_KINDS,
   chosenVariant,
+  firstOpenStop,
   planOpen,
   planStatusLabel,
   planStatusTone,
@@ -28,7 +29,7 @@ import { TripMap } from "../../components/plan/TripMap";
 import { TripStops } from "../../components/plan/TripStops";
 import { VariantCard } from "../../components/plan/VariantCard";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { Alert, Button, PageHeader, focusRing } from "../../components/ui";
+import { Alert, Button, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
@@ -51,6 +52,13 @@ export function replanPrefill(trip: Trip): TripPrefill {
   };
 }
 
+/** "predicted $x · actual $y" once a stop is done (10, Trip page: Stops; UI-8.18), else null. */
+export function predictedVsActual(trip: Pick<Trip, "predicted_item_cost" | "actual_item_cost">): string | null {
+  if (trip.actual_item_cost === null || trip.actual_item_cost === undefined) return null;
+  const predicted = trip.predicted_item_cost === null || trip.predicted_item_cost === undefined ? "" : `predicted ${formatMoney(trip.predicted_item_cost)} · `;
+  return `${predicted}actual ${formatMoney(trip.actual_item_cost)}`;
+}
+
 /** The meta line under the title: the trip's shape and the inputs it was planned with. */
 export function tripMeta(trip: Trip): string {
   const parts = [
@@ -59,6 +67,8 @@ export function tripMeta(trip: Trip): string {
     `up to ${trip.max_stops} ${trip.max_stops === 1 ? "stop" : "stops"}`,
   ];
   if (trip.mileage_rate !== null) parts.push(`mileage at ${formatMoney(trip.mileage_rate, 2, 4)} a mile`);
+  const actuals = predictedVsActual(trip);
+  if (actuals) parts.push(actuals);
   return parts.join(" · ");
 }
 
@@ -158,6 +168,10 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
       },
     );
 
+  // Once chosen, the trip is worked stop by stop: the first one not yet done (UI-8.15).
+  const startAt = chosen && open ? firstOpenStop(trip) : null;
+  const startLabel = startAt && chosen && startAt.seq !== chosen.stops[0]?.seq ? `Continue at stop ${startAt.seq}` : "Start the trip";
+
   const actions: MoreAction[] = open ? [{ label: "Abandon", variant: "danger", open: () => setAbandonAsk(true), disabled: abandonAsk }] : [];
 
   return (
@@ -189,9 +203,14 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
           ) : null}
           {/* Choose lives on the cards until one is chosen; afterwards Replan is the primary (10, Trip page). */}
           {tripKitchen ? (
-            <Button variant={chosen ? "primary" : "secondary"} onClick={() => setReplanning(true)}>
+            <Button variant={chosen && !startAt ? "primary" : "secondary"} onClick={() => setReplanning(true)}>
               Replan
             </Button>
+          ) : null}
+          {startAt ? (
+            <Link to={`/plan/trips/${trip.id}/stop/${startAt.seq}`} className={primaryLinkClass}>
+              {startLabel}
+            </Link>
           ) : null}
         </div>
       </PageHeader>
@@ -254,7 +273,7 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
               />
             )}
             <TripAnnotations annotations={shown.annotations} locationName={locationName} />
-            <TripStops variant={shown} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} wide={wide} />
+            <TripStops variant={shown} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} wide={wide} openStopsOf={chosen ? trip.id : null} />
           </div>
           <div className="lg:sticky lg:top-4 lg:self-start">
             {/* The map waits for the kitchen and the locations, so its first fit takes in every pin. */}

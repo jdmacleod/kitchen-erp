@@ -230,8 +230,9 @@ describe("choose, replan and abandon (UI-8.15)", () => {
     expect(within(chosen).queryByRole("button", { name: "Choose" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Stops · Cheapest" })).toBeInTheDocument();
     expect(await screen.findByTestId("notice")).toHaveTextContent("Chose Cheapest.");
-    // Replan becomes the primary action.
-    expect(screen.getByRole("button", { name: "Replan" }).className).toMatch(/bg-blue/);
+    // "Start the trip" becomes the primary action while stops remain (4C); Replan steps back.
+    expect(screen.getByRole("link", { name: "Start the trip" }).className).toMatch(/bg-blue/);
+    expect(screen.getByRole("button", { name: "Replan" }).className).not.toMatch(/bg-blue/);
 
     await user.click(screen.getByText("Show the other plans"));
     expect(screen.getAllByTestId("other-plan").map((p) => p.dataset.kind)).toEqual(["fastest", "balanced"]);
