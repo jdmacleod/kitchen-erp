@@ -129,8 +129,35 @@ screenshots:  ## Recapture docs/screenshots from the demo stack (never from real
 	cd e2e && corepack pnpm install --frozen-lockfile && corepack pnpm exec playwright install chromium
 	cd e2e && corepack pnpm exec playwright test -c playwright.screenshots.config.ts
 
-check:  ## Everything CI runs for safeguards
+# Code standards (CODING_STANDARDS.md). Run from the repository root, so ruff
+# reads backend/pyproject.toml for backend/ and its defaults for tools/, exactly
+# as the pre-commit hooks do.
+RUFF := uv run --project backend ruff
+
+fmt:  ## Format the code the formatters own (Python today)
+	$(RUFF) format backend tools
+	$(RUFF) check --fix --select I backend tools
+	@# The frontend half (Prettier over frontend/ and e2e/) arrives with the formatting PR.
+
+lint:  ## Lint the backend, tools and frontend
+	$(RUFF) check backend tools
+	corepack pnpm --dir frontend lint
+
+types:  ## Type-check the backend with ty (advisory: reports, never fails)
+	cd backend && uv run ty check || true
+
+size:  ## Fail files past the size limits; warn past the warning size
+	$(PY) -m tools.check_size
+
+size-report:  ## List every file over the preferred size, biggest first
+	$(PY) -m tools.check_size --report
+
+size-update:  ## Lower the size baseline after a baselined file shrinks
+	$(PY) -m tools.check_size --update
+
+check:  ## Everything CI runs for safeguards, plus the size check
 	$(PY) -m tools.check_compose_env
 	$(PY) -m tools.denylist --self-test
 	$(PY) -m tools.scan_pii
+	$(PY) -m tools.check_size
 	pre-commit run --all-files
