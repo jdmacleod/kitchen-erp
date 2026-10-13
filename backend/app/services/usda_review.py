@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -130,40 +131,61 @@ def _offers(  # noqa: C901
     return densities, unique
 
 
-async def _group(db: AsyncSession, ingredient: Ingredient, fdc_id: int) -> ReviewGroup:
-    portions = list(
+async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list[ReviewGroup]:
+    """Each ingredient's offers from its USDA food, in three queries however many."""
+    fdc_ids = {fdc_id for _, fdc_id in pairs}
+    portions: dict[int, list[RefUsdaPortion]] = defaultdict(list)
+    for p in (
+        await db.execute(
+            select(RefUsdaPortion)
+            .where(RefUsdaPortion.fdc_id.in_(fdc_ids))
+            .order_by(RefUsdaPortion.portion_label)
+        )
+    ).scalars():
+        portions[p.fdc_id].append(p)
+    labels: dict[uuid.UUID, set[str]] = defaultdict(set)
+    for ingredient_id, label in (
+        await db.execute(
+            select(IngredientMeasure.ingredient_id, IngredientMeasure.label).where(
+                IngredientMeasure.ingredient_id.in_([i.id for i, _ in pairs])
+            )
+        )
+    ).tuples():
+        labels[ingredient_id].add(label.lower())
+    descriptions = dict(
         (
             await db.execute(
-                select(RefUsdaPortion)
-                .where(RefUsdaPortion.fdc_id == fdc_id)
-                .order_by(RefUsdaPortion.portion_label)
+                select(FdcFood.fdc_id, FdcFood.description).where(FdcFood.fdc_id.in_(fdc_ids))
             )
-        ).scalars()
+        )
+        .tuples()
+        .all()
     )
-    labels = {
-        label.lower()
-        for label in (
-            await db.execute(
-                select(IngredientMeasure.label).where(
-                    IngredientMeasure.ingredient_id == ingredient.id
-                )
+    groups = []
+    for ingredient, fdc_id in pairs:
+        has_density = ingredient.density_g_per_ml is not None
+        densities, measures = _offers(
+            portions[fdc_id], ingredient.canonical_unit, has_density, labels[ingredient.id]
+        )
+        groups.append(
+            ReviewGroup(
+                ingredient_id=ingredient.id,
+                name=ingredient.name,
+                canonical_unit=ingredient.canonical_unit,
+                reconcile_state=ingredient.reconcile_state,
+                fdc_id=fdc_id,
+                usda_description=descriptions.get(fdc_id),
+                has_density=has_density,
+                densities=densities,
+                measures=measures,
             )
-        ).scalars()
-    }
-    has_density = ingredient.density_g_per_ml is not None
-    densities, measures = _offers(portions, ingredient.canonical_unit, has_density, labels)
-    food = await db.get(FdcFood, fdc_id)
-    return ReviewGroup(
-        ingredient_id=ingredient.id,
-        name=ingredient.name,
-        canonical_unit=ingredient.canonical_unit,
-        reconcile_state=ingredient.reconcile_state,
-        fdc_id=fdc_id,
-        usda_description=food.description if food else None,
-        has_density=has_density,
-        densities=densities,
-        measures=measures,
-    )
+        )
+    return groups
+
+
+async def _group(db: AsyncSession, ingredient: Ingredient, fdc_id: int) -> ReviewGroup:
+    [group] = await _groups(db, [(ingredient, fdc_id)])
+    return group
 
 
 async def review_list(db: AsyncSession) -> ReviewList:
@@ -183,11 +205,7 @@ async def review_list(db: AsyncSession) -> ReviewList:
         )
         .order_by(Ingredient.name)
     )
-    groups = []
-    for ingredient, fdc_id in rows.tuples():
-        group = await _group(db, ingredient, fdc_id)
-        if group.densities or group.measures:
-            groups.append(group)
+    groups = [g for g in await _groups(db, list(rows.tuples())) if g.densities or g.measures]
     return ReviewList(
         loaded=True, release_date=release.release_date if release else None, groups=groups
     )

@@ -9,7 +9,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.catalog.sameness import DISTINGUISHING, Facts, compare, name_key
+from app.catalog.sameness import (
+    DISTINGUISHING,
+    Facts,
+    compare,
+    name_key,
+    word_sets,
+    words_agree,
+)
 
 OZ8 = {"qty": "8", "unit": "oz"}
 OZ16 = {"qty": "16", "unit": "oz"}
@@ -134,3 +141,26 @@ def test_a_printed_size_never_changes_the_key(name, qty, unit):
 def test_distinguishing_words_survive_the_key():
     for word in DISTINGUISHING:
         assert word in name_key(f"{word} tarn cheese").words or word.endswith("s")
+
+
+# Names from a few shared words, sometimes with a brand, a ", Brand" tail or a printed
+# size, so that the words test both passes and fails.
+_close_word = st.sampled_from(["tarn", "kelp", "plum", "jam", "fernhill", "organic", "red", "10"])
+_close_names = st.builds(
+    lambda words, tail, size: " ".join(words) + (f", {tail}" if tail else "") + size,
+    st.lists(_close_word, min_size=1, max_size=3),
+    st.one_of(st.none(), st.sampled_from(["Fernhill", "Copperleaf"])),
+    st.sampled_from(["", ' 10"', " 8 oz"]),
+)
+_close_facts = st.builds(
+    facts, _close_names, st.one_of(st.none(), st.sampled_from(["Fernhill", "Fernhill Organic"]))
+)
+
+
+@given(_close_facts, _close_facts)
+def test_words_agree_is_compares_words_test(a, b):
+    """words_agree, which finds duplicate candidates without comparing every pair (#327),
+    holds exactly when compare finds no word on either side that the other lacks."""
+    verdict = compare(a, b)
+    agree = words_agree(word_sets(a), word_sets(b))
+    assert agree == (not verdict.only_a and not verdict.only_b)
