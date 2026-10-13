@@ -6,7 +6,8 @@ import { invalidatePurchases, purchaseKeys } from "./purchases";
 // Re-reading a receipt's lines (04, 2S, issue 272): a proposal a person applies.
 
 export type RereadMode = "check" | "read";
-export type RereadStatus = "pending" | "running" | "ready" | "no_changes" | "failed" | "applied" | "dismissed";
+export type RereadStatus =
+  "pending" | "running" | "ready" | "no_changes" | "failed" | "applied" | "dismissed";
 
 /** A line's values as the page shows them; amounts are decimal strings. */
 export interface RereadLine {
@@ -21,7 +22,8 @@ export interface RereadLine {
   flags: string[];
 }
 
-export type RereadField = "raw_text" | "line_kind" | "qty" | "unit" | "unit_price" | "line_total" | "attached" | "flags";
+export type RereadField =
+  "raw_text" | "line_kind" | "qty" | "unit" | "unit_price" | "line_total" | "attached" | "flags";
 
 export interface RereadChange {
   action: "changed" | "added" | "removed" | "kept";
@@ -80,7 +82,8 @@ export function useLatestReread(purchaseId: string) {
         throw error;
       }
     },
-    refetchInterval: (query) => (query.state.data && WAITING.includes(query.state.data.status) ? 3000 : false),
+    refetchInterval: (query) =>
+      query.state.data && WAITING.includes(query.state.data.status) ? 3000 : false,
   });
 }
 
@@ -104,7 +107,9 @@ export function useRequestReread(purchaseId: string) {
 
 export function useApplyReread(purchaseId: string) {
   const client = useQueryClient();
-  const mutation = useRereadMutation(purchaseId, (rereadId: string) => api<Reread>(`/rereads/${enc(rereadId)}/apply`, { method: "POST" }));
+  const mutation = useRereadMutation(purchaseId, (rereadId: string) =>
+    api<Reread>(`/rereads/${enc(rereadId)}/apply`, { method: "POST" }),
+  );
   return {
     ...mutation,
     mutate: (rereadId: string, options?: Parameters<typeof mutation.mutate>[1]) =>
@@ -119,7 +124,9 @@ export function useApplyReread(purchaseId: string) {
 }
 
 export function useDismissReread(purchaseId: string) {
-  return useRereadMutation(purchaseId, (rereadId: string) => api<Reread>(`/rereads/${enc(rereadId)}/dismiss`, { method: "POST" }));
+  return useRereadMutation(purchaseId, (rereadId: string) =>
+    api<Reread>(`/rereads/${enc(rereadId)}/dismiss`, { method: "POST" }),
+  );
 }
 
 /** What a failed re-read's reason means, in words (the codes are the stage's). */

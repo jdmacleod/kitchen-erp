@@ -3,14 +3,15 @@
 // {qty, unit}, a GTIN as its fourteen digits.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, ApiError, api } from "./client";
+import type { CategoryKey } from "../components/CategoryChip";
 import { catalogKeys, type HouseBrand } from "./catalog";
+import { API_BASE, ApiError, api } from "./client";
 import { inboxKey } from "./inbox";
 import type { PhotoRole, PhotoSummary, ProductPhoto } from "./productPhotos";
-import type { CategoryKey } from "../components/CategoryChip";
 import type { ErrorEnvelope } from "./types";
 
-export type ProductKind = "branded" | "private_label" | "random_weight" | "loose" | "unbranded_vendor";
+export type ProductKind =
+  "branded" | "private_label" | "random_weight" | "loose" | "unbranded_vendor";
 
 export const KIND_LABELS: Record<ProductKind, string> = {
   branded: "Branded",
@@ -114,7 +115,12 @@ export interface Proposal {
   kind: "new_product" | "product_update";
   status: ProposalStatus;
   product_id: string | null;
-  capture: { id: string; channel: CaptureChannel; source_url: string | null; captured_at: string } | null;
+  capture: {
+    id: string;
+    channel: CaptureChannel;
+    source_url: string | null;
+    captured_at: string;
+  } | null;
   fields: Partial<Record<string, ProposalField>>;
   match: ProposalMatch;
   /** The match's fuzzy candidates, ordered by verdict then similarity (2P). */
@@ -127,9 +133,16 @@ export interface Proposal {
   photos: ProductPhoto[];
   jobs: ProductJob[];
   /** How the capture was identified (criterion 81). */
-  reading?: { path: "barcode" | "vision" | "ocr_text" | "unread" | "page"; error: string | null } | null;
+  reading?: {
+    path: "barcode" | "vision" | "ocr_text" | "unread" | "page";
+    error: string | null;
+  } | null;
   /** The latest "Look this up online" request (2N). */
-  lookup?: { status: "open" | "answered" | "closed"; created_at: string; answered_at: string | null } | null;
+  lookup?: {
+    status: "open" | "answered" | "closed";
+    created_at: string;
+    answered_at: string | null;
+  } | null;
   /** The store brand the proposed brand names (2R); review starts it as a store brand. */
   house_brand?: HouseBrand | null;
   /** With no house brand: the families whose own-brand barcode prefix the code starts with (2R-3). */
@@ -202,7 +215,11 @@ export const proposalKeys = {
 
 /** Still reading: the identify job has not finished and nothing has been read yet. */
 export function isReading(p: Proposal | undefined): boolean {
-  return Boolean(p?.jobs.some((j) => j.kind === "identify" && (j.status === "pending" || j.status === "running")));
+  return Boolean(
+    p?.jobs.some(
+      (j) => j.kind === "identify" && (j.status === "pending" || j.status === "running"),
+    ),
+  );
 }
 
 export function useProposal(id: string | undefined) {
@@ -220,7 +237,8 @@ export function useProposal(id: string | undefined) {
 export function usePendingProposals() {
   return useQuery({
     queryKey: proposalKeys.pending,
-    queryFn: () => api<{ items: ProposalSummary[]; counts: Record<string, number> }>("/product-proposals"),
+    queryFn: () =>
+      api<{ items: ProposalSummary[]; counts: Record<string, number> }>("/product-proposals"),
   });
 }
 
@@ -238,7 +256,10 @@ export function useAcceptProposal(id: string) {
   const done = useAfterDecision(id);
   return useMutation({
     mutationFn: (input: AcceptInput) =>
-      api<Proposal>(`/product-proposals/${encodeURIComponent(id)}/accept`, { method: "POST", body: input }),
+      api<Proposal>(`/product-proposals/${encodeURIComponent(id)}/accept`, {
+        method: "POST",
+        body: input,
+      }),
     onSuccess: done,
   });
 }
@@ -246,7 +267,8 @@ export function useAcceptProposal(id: string) {
 export function useRejectProposal(id: string) {
   const done = useAfterDecision(id);
   return useMutation({
-    mutationFn: () => api<Proposal>(`/product-proposals/${encodeURIComponent(id)}/reject`, { method: "POST" }),
+    mutationFn: () =>
+      api<Proposal>(`/product-proposals/${encodeURIComponent(id)}/reject`, { method: "POST" }),
     onSuccess: done,
   });
 }
@@ -307,7 +329,8 @@ export function photographProduct(
 /** The evidence column's line about how a capture was read. */
 export function readingWords(reading: Proposal["reading"]): string | null {
   if (!reading) return null;
-  if (reading.error === "model_unavailable") return "The model couldn't be reached, so nothing was read.";
+  if (reading.error === "model_unavailable")
+    return "The model couldn't be reached, so nothing was read.";
   if (reading.error) return "The model's answer couldn't be used, so nothing was read.";
   if (reading.path === "barcode") return "Read from the barcode in the photo.";
   if (reading.path === "vision") return "Read from the photo by the vision model.";
@@ -330,7 +353,8 @@ export function useProductsHelper() {
 export function useLookUp(proposalId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api(`/product-proposals/${encodeURIComponent(proposalId)}/look-up`, { method: "POST" }),
+    mutationFn: () =>
+      api(`/product-proposals/${encodeURIComponent(proposalId)}/look-up`, { method: "POST" }),
     onSuccess: () => void client.invalidateQueries({ queryKey: proposalKeys.detail(proposalId) }),
   });
 }
@@ -358,13 +382,24 @@ export interface PriceChange {
 const priceChangesKey = ["listing-price-changes"] as const;
 
 export function usePriceChanges() {
-  return useQuery({ queryKey: priceChangesKey, queryFn: () => api<{ items: PriceChange[] }>("/listing-price-changes") });
+  return useQuery({
+    queryKey: priceChangesKey,
+    queryFn: () => api<{ items: PriceChange[] }>("/listing-price-changes"),
+  });
 }
 
 export function useDecidePriceChange() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, accept, vendor_location_id }: { id: string; accept: boolean; vendor_location_id?: string }) =>
+    mutationFn: ({
+      id,
+      accept,
+      vendor_location_id,
+    }: {
+      id: string;
+      accept: boolean;
+      vendor_location_id?: string;
+    }) =>
       api(`/listing-price-changes/${encodeURIComponent(id)}/${accept ? "accept" : "reject"}`, {
         method: "POST",
         body: accept ? { vendor_location_id } : undefined,

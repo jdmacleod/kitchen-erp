@@ -1,9 +1,9 @@
 import { useState, type RefObject } from "react";
-import { errorMessage } from "../../api/client";
 import { formatPack, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import { Badge } from "./fields";
 import { Combobox } from "./Combobox";
+import { Badge } from "./fields";
 
 interface ProductTypeaheadProps {
   id: string;
@@ -68,7 +68,8 @@ export function ProductTypeahead({
   const options: Option[] = hits.map((hit) => ({ kind: "hit", hit }));
   // Offered once the search has answered, and not for a name that already exists.
   const exact = hits.some((hit) => hit.name.toLowerCase() === trimmed.toLowerCase());
-  if (onCreate && trimmed && settled && !search.isError && !exact) options.push({ kind: "create", name: trimmed });
+  if (onCreate && trimmed && settled && !search.isError && !exact)
+    options.push({ kind: "create", name: trimmed });
 
   let status: string | undefined;
   if (trimmed) {
@@ -121,12 +122,19 @@ export function ProductTypeahead({
 export function HitRow({ hit }: { hit: SearchHit }) {
   const pack = formatPack(hit.pack_qty, hit.pack_unit, hit.pack_count, hit.piece_name);
   // Read aloud as one phrase with its parts apart, not "Wild salmon salmon name".
-  const spoken = [hit.name, hit.brand, pack, hit.ingredient.name].filter(Boolean).join(", ") + `, matched by ${matchLabel[hit.match]}`;
+  const spoken =
+    [hit.name, hit.brand, pack, hit.ingredient.name].filter(Boolean).join(", ") +
+    `, matched by ${matchLabel[hit.match]}`;
   return (
-    <div aria-label={spoken} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+    <div
+      aria-label={spoken}
+      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"
+    >
       <span className="min-w-0">
         <span className="font-medium">{hit.name}</span>
-        {hit.brand ? <span className="text-neutral-600 dark:text-neutral-400"> · {hit.brand}</span> : null}
+        {hit.brand ? (
+          <span className="text-neutral-600 dark:text-neutral-400"> · {hit.brand}</span>
+        ) : null}
         {pack ? <span className="text-neutral-600 dark:text-neutral-400"> · {pack}</span> : null}
       </span>
       <span className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">

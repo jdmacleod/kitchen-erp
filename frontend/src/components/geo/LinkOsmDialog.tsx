@@ -23,8 +23,13 @@ function fieldList(fields: LinkedField[]): string {
 /** What linking the chosen place would do, before anything is written (design D7). */
 export function linkPreview(candidate: LinkCandidate): string {
   const parts: string[] = [];
-  parts.push(candidate.fills.length ? `Will fill: ${fieldList(candidate.fills)}` : "Fills nothing new");
-  if (candidate.keeps.length) parts.push(`Keeps your: ${fieldList(candidate.keeps)} (you edited ${candidate.keeps.length === 1 ? "it" : "them"})`);
+  parts.push(
+    candidate.fills.length ? `Will fill: ${fieldList(candidate.fills)}` : "Fills nothing new",
+  );
+  if (candidate.keeps.length)
+    parts.push(
+      `Keeps your: ${fieldList(candidate.keeps)} (you edited ${candidate.keeps.length === 1 ? "it" : "them"})`,
+    );
   return parts.join(" · ");
 }
 
@@ -33,7 +38,15 @@ export function linkPreview(candidate: LinkCandidate): string {
  * on Find nearby. Choosing a place shows what it would fill and what a person's
  * edits keep; Link writes it.
  */
-export function LinkOsmDialog({ location, onClose, onLinked }: { location: VendorLocation; onClose: () => void; onLinked: () => void }) {
+export function LinkOsmDialog({
+  location,
+  onClose,
+  onLinked,
+}: {
+  location: VendorLocation;
+  onClose: () => void;
+  onLinked: () => void;
+}) {
   const titleId = useId();
   const candidates = useLinkCandidates(location.id, true);
   const link = useLinkOsm(location.id);
@@ -43,12 +56,18 @@ export function LinkOsmDialog({ location, onClose, onLinked }: { location: Vendo
   const selected = items.find((c) => key(c) === chosen && !c.linked_to) ?? null;
 
   return (
-    <Dialog open onClose={onClose} labelledBy={titleId} className="max-h-[80vh] overflow-y-auto p-5">
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      className="max-h-[80vh] overflow-y-auto p-5"
+    >
       <h2 id={titleId} className="mb-1 font-display text-xl">
         Link {location.name} to OpenStreetMap
       </h2>
       <p className={`mb-3 text-sm ${muted}`}>
-        Places within 250 m of this pin. Linking fills what this location is missing; anything you typed stays. © OpenStreetMap contributors.
+        Places within 250 m of this pin. Linking fills what this location is missing; anything you
+        typed stays. © OpenStreetMap contributors.
       </p>
       {candidates.isPending ? (
         <p role="status" className={`text-sm ${muted}`}>
@@ -71,12 +90,30 @@ export function LinkOsmDialog({ location, onClose, onLinked }: { location: Vendo
               const taken = c.linked_to !== null;
               return (
                 <li key={key(c)} className="py-1">
-                  <label htmlFor={id} className={`flex min-h-11 items-start gap-2 py-1 text-sm ${taken ? "text-neutral-500 dark:text-neutral-400" : ""}`}>
-                    <input id={id} type="radio" name={`${titleId}-candidate`} className={`mt-1 size-4 ${focusRing}`} disabled={taken} checked={chosen === key(c)} onChange={() => setChosen(key(c))} />
+                  <label
+                    htmlFor={id}
+                    className={`flex min-h-11 items-start gap-2 py-1 text-sm ${taken ? "text-neutral-500 dark:text-neutral-400" : ""}`}
+                  >
+                    <input
+                      id={id}
+                      type="radio"
+                      name={`${titleId}-candidate`}
+                      className={`mt-1 size-4 ${focusRing}`}
+                      disabled={taken}
+                      checked={chosen === key(c)}
+                      onChange={() => setChosen(key(c))}
+                    />
                     <span className="min-w-0">
                       <span className="font-medium">{c.name ?? `${c.osm_type} ${c.osm_id}`}</span>
                       <span className={`block text-xs ${muted}`}>
-                        {[formatDistance(c.distance_m), vendorKindLabel[c.kind_guess].toLowerCase(), c.address, taken ? `Linked to ${c.linked_to?.name}` : null].filter(Boolean).join(" · ")}
+                        {[
+                          formatDistance(c.distance_m),
+                          vendorKindLabel[c.kind_guess].toLowerCase(),
+                          c.address,
+                          taken ? `Linked to ${c.linked_to?.name}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </span>
                     </span>
                   </label>
@@ -87,7 +124,10 @@ export function LinkOsmDialog({ location, onClose, onLinked }: { location: Vendo
         </fieldset>
       )}
       {selected ? (
-        <p aria-live="polite" className="mt-3 rounded-md bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-800">
+        <p
+          aria-live="polite"
+          className="mt-3 rounded-md bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-800"
+        >
           {linkPreview(selected)}
         </p>
       ) : null}
@@ -102,7 +142,13 @@ export function LinkOsmDialog({ location, onClose, onLinked }: { location: Vendo
         </Button>
         <Button
           disabled={!selected || link.isPending}
-          onClick={() => selected && link.mutate({ osm_type: selected.osm_type, osm_id: selected.osm_id }, { onSuccess: onLinked })}
+          onClick={() =>
+            selected &&
+            link.mutate(
+              { osm_type: selected.osm_type, osm_id: selected.osm_id },
+              { onSuccess: onLinked },
+            )
+          }
         >
           {link.isPending ? "Linking…" : "Link"}
         </Button>

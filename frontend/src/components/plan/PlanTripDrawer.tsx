@@ -3,18 +3,29 @@ import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import { useLocations, type HomeBase } from "../../api/geo";
 import { useCreateTrip, type PlanDefaults, type Trip, type TripCreateInput } from "../../api/trips";
+import { isNonNegativeDecimal } from "../../lib/decimal";
+import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { Disclosure, SelectField } from "../catalog/fields";
 import { Drawer } from "../Drawer";
 import { Alert, Field, focusRing } from "../ui";
-import { isNonNegativeDecimal } from "../../lib/decimal";
-import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 
 /** The documented default of `PLAN_VALUE_OF_TIME_PER_HOUR` (17, P4), used only if `/plan/defaults` cannot be read. */
 export const DEFAULT_VALUE_OF_TIME = "20.00";
 export const DEFAULT_MAX_STOPS = 3;
 
 /** The inputs a drawer starts from: a Replan's (UI-8.15); a new plan starts from the household defaults. */
-export type TripPrefill = Partial<Pick<Trip, "origin_place_id" | "destination_place_id" | "planned_at" | "value_of_time_per_hour" | "max_stops" | "mileage_rate" | "stop_overhead_min">>;
+export type TripPrefill = Partial<
+  Pick<
+    Trip,
+    | "origin_place_id"
+    | "destination_place_id"
+    | "planned_at"
+    | "value_of_time_per_hour"
+    | "max_stops"
+    | "mileage_rate"
+    | "stop_overhead_min"
+  >
+>;
 
 interface PlanTripDrawerProps {
   homeBaseId: string;
@@ -56,20 +67,35 @@ interface FormState {
   overhead: string;
 }
 
-function initialState(prefill: TripPrefill | null | undefined, defaults: PlanDefaults | null | undefined, options: PlaceOption[]): FormState {
-  const byPlace = (placeId: string | null | undefined) => options.find((o) => o.placeId !== null && o.placeId === placeId)?.value;
+function initialState(
+  prefill: TripPrefill | null | undefined,
+  defaults: PlanDefaults | null | undefined,
+  options: PlaceOption[],
+): FormState {
+  const byPlace = (placeId: string | null | undefined) =>
+    options.find((o) => o.placeId !== null && o.placeId === placeId)?.value;
   const origin = byPlace(prefill?.origin_place_id) ?? KITCHEN;
-  const destination = prefill?.destination_place_id && prefill.destination_place_id !== prefill.origin_place_id ? (byPlace(prefill.destination_place_id) ?? SAME) : SAME;
+  const destination =
+    prefill?.destination_place_id && prefill.destination_place_id !== prefill.origin_place_id
+      ? (byPlace(prefill.destination_place_id) ?? SAME)
+      : SAME;
   const planned = prefill?.planned_at ? new Date(prefill.planned_at) : null;
-  const when = planned && !Number.isNaN(planned.getTime()) && planned.getTime() > Date.now() ? toDateTimeLocal(planned) : nextHourLocal();
+  const when =
+    planned && !Number.isNaN(planned.getTime()) && planned.getTime() > Date.now()
+      ? toDateTimeLocal(planned)
+      : nextHourLocal();
   return {
     origin,
     destination,
     when,
-    value: prefill?.value_of_time_per_hour ?? defaults?.value_of_time_per_hour ?? DEFAULT_VALUE_OF_TIME,
+    value:
+      prefill?.value_of_time_per_hour ?? defaults?.value_of_time_per_hour ?? DEFAULT_VALUE_OF_TIME,
     maxStops: String(prefill?.max_stops ?? defaults?.max_stops_default ?? DEFAULT_MAX_STOPS),
     mileage: prefill?.mileage_rate ?? "",
-    overhead: prefill?.stop_overhead_min === null || prefill?.stop_overhead_min === undefined ? "" : String(prefill.stop_overhead_min),
+    overhead:
+      prefill?.stop_overhead_min === null || prefill?.stop_overhead_min === undefined
+        ? ""
+        : String(prefill.stop_overhead_min),
   };
 }
 
@@ -83,12 +109,27 @@ function initialState(prefill: TripPrefill | null | undefined, defaults: PlanDef
  * other kitchens and every vendor location. The current kitchen is sent as
  * "nothing", which the server reads as the kitchen's place (17, Endpoints).
  */
-export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, defaults = null, onClose, onPlanned }: PlanTripDrawerProps) {
+export function PlanTripDrawer({
+  homeBaseId,
+  kitchen,
+  kitchens,
+  prefill = null,
+  defaults = null,
+  onClose,
+  onPlanned,
+}: PlanTripDrawerProps) {
   const locations = useLocations({});
   const options = useMemo<PlaceOption[]>(() => {
-    const out: PlaceOption[] = [{ value: KITCHEN, label: `${kitchen.name} (kitchen)`, placeId: kitchen.place_id ?? null }];
+    const out: PlaceOption[] = [
+      { value: KITCHEN, label: `${kitchen.name} (kitchen)`, placeId: kitchen.place_id ?? null },
+    ];
     for (const k of kitchens) {
-      if (k.id !== kitchen.id && k.place_id) out.push({ value: `place:${k.place_id}`, label: `${k.name} (kitchen)`, placeId: k.place_id });
+      if (k.id !== kitchen.id && k.place_id)
+        out.push({
+          value: `place:${k.place_id}`,
+          label: `${k.name} (kitchen)`,
+          placeId: k.place_id,
+        });
     }
     // A Replan keeps its start and end even when the API names no place for
     // them, so the new plan is made from the same inputs (UI-8.15).
@@ -97,10 +138,13 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
     const known = (id: string | undefined) => !id || out.some((o) => o.placeId === id);
     const origin = prefill?.origin_place_id;
     const destination = prefill?.destination_place_id;
-    if (origin && !known(origin)) out.push({ value: PREVIOUS_START, label: "Where the last plan started", placeId: origin });
-    if (destination && destination !== origin && !known(destination)) out.push({ value: PREVIOUS_END, label: "Where the last plan ended", placeId: destination });
+    if (origin && !known(origin))
+      out.push({ value: PREVIOUS_START, label: "Where the last plan started", placeId: origin });
+    if (destination && destination !== origin && !known(destination))
+      out.push({ value: PREVIOUS_END, label: "Where the last plan ended", placeId: destination });
     for (const l of locations.data ?? []) {
-      if (l.place_id) out.push({ value: `place:${l.place_id}`, label: l.name, placeId: l.place_id });
+      if (l.place_id)
+        out.push({ value: `place:${l.place_id}`, label: l.name, placeId: l.place_id });
     }
     return out;
   }, [kitchen, kitchens, locations.data, prefill]);
@@ -111,26 +155,37 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
   const [form, setForm] = useState<FormState>(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateTrip();
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
   const dirty = (Object.keys(initial) as (keyof FormState)[]).some((k) => form[k] !== initial[k]);
   const moreOpen = initial.mileage !== "" || initial.overhead !== "";
 
-  const placeIdOf = (value: string): string | null => options.find((o) => o.value === value)?.placeId ?? null;
+  const placeIdOf = (value: string): string | null =>
+    options.find((o) => o.value === value)?.placeId ?? null;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const plannedAt = fromDateTimeLocal(form.when);
     if (!plannedAt) return setProblem("Choose a date and time for the trip.");
-    if (!isNonNegativeDecimal(form.value.trim())) return setProblem("Value of your time must be dollars per hour, 0 or more.");
+    if (!isNonNegativeDecimal(form.value.trim()))
+      return setProblem("Value of your time must be dollars per hour, 0 or more.");
     const maxStops = Number(form.maxStops);
-    if (!Number.isInteger(maxStops) || maxStops < 1 || maxStops > 4) return setProblem("Stops at most must be between 1 and 4.");
+    if (!Number.isInteger(maxStops) || maxStops < 1 || maxStops > 4)
+      return setProblem("Stops at most must be between 1 and 4.");
     const mileage = form.mileage.trim();
-    if (mileage !== "" && !isNonNegativeDecimal(mileage)) return setProblem("Mileage rate must be dollars per mile, 0 or more, or blank.");
+    if (mileage !== "" && !isNonNegativeDecimal(mileage))
+      return setProblem("Mileage rate must be dollars per mile, 0 or more, or blank.");
     const overhead = form.overhead.trim();
-    if (overhead !== "" && !/^\d+$/.test(overhead)) return setProblem("Minutes per stop must be a whole number, or blank.");
+    if (overhead !== "" && !/^\d+$/.test(overhead))
+      return setProblem("Minutes per stop must be a whole number, or blank.");
     setProblem(null);
 
-    const input: TripCreateInput = { home_base_id: homeBaseId, planned_at: plannedAt, value_of_time_per_hour: form.value.trim(), max_stops: maxStops };
+    const input: TripCreateInput = {
+      home_base_id: homeBaseId,
+      planned_at: plannedAt,
+      value_of_time_per_hour: form.value.trim(),
+      max_stops: maxStops,
+    };
     const origin = form.origin === KITCHEN ? null : placeIdOf(form.origin);
     if (origin) input.origin_place_id = origin;
     if (form.destination !== SAME) {
@@ -142,12 +197,28 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
     create.mutate(input, { onSuccess: onPlanned });
   };
 
-  const emptyList = create.isError && isApiError(create.error) && create.error.code === "empty_list";
+  const emptyList =
+    create.isError && isApiError(create.error) && create.error.code === "empty_list";
   const destinationOptions = options.filter((o) => o.value !== KITCHEN || o.placeId !== null);
 
   return (
-    <Drawer title="Plan a trip" thing="trip" dirty={dirty} onClose={onClose} formId="plan-trip" primaryLabel="Plan" busy={create.isPending} busyLabel="Planning…">
-      <form id="plan-trip" aria-label="Plan a trip" className="flex flex-col gap-4" onSubmit={submit} noValidate>
+    <Drawer
+      title="Plan a trip"
+      thing="trip"
+      dirty={dirty}
+      onClose={onClose}
+      formId="plan-trip"
+      primaryLabel="Plan"
+      busy={create.isPending}
+      busyLabel="Planning…"
+    >
+      <form
+        id="plan-trip"
+        aria-label="Plan a trip"
+        className="flex flex-col gap-4"
+        onSubmit={submit}
+        noValidate
+      >
         {problem ? <Alert tone="error">{problem}</Alert> : null}
         {create.isError ? (
           <Alert tone="error">
@@ -164,14 +235,24 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
           </Alert>
         ) : null}
 
-        <SelectField id="plan-trip-origin" label="Starting from" value={form.origin} onChange={(e) => set("origin", e.target.value)}>
+        <SelectField
+          id="plan-trip-origin"
+          label="Starting from"
+          value={form.origin}
+          onChange={(e) => set("origin", e.target.value)}
+        >
           {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </SelectField>
-        <SelectField id="plan-trip-destination" label="Ending at" value={form.destination} onChange={(e) => set("destination", e.target.value)}>
+        <SelectField
+          id="plan-trip-destination"
+          label="Ending at"
+          value={form.destination}
+          onChange={(e) => set("destination", e.target.value)}
+        >
           <option value={SAME}>Same as the start</option>
           {destinationOptions.map((o) => (
             <option key={o.value} value={o.value}>
@@ -179,7 +260,15 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
             </option>
           ))}
         </SelectField>
-        <Field id="plan-trip-when" label="When" type="datetime-local" required value={form.when} onChange={(e) => set("when", e.target.value)} hint="Drive times follow the traffic at that hour." />
+        <Field
+          id="plan-trip-when"
+          label="When"
+          type="datetime-local"
+          required
+          value={form.when}
+          onChange={(e) => set("when", e.target.value)}
+          hint="Drive times follow the traffic at that hour."
+        />
         <Field
           id="plan-trip-value"
           label="Value of your time"
@@ -188,7 +277,12 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
           onChange={(e) => set("value", e.target.value)}
           hint="Dollars per hour. What an hour of driving and shopping is worth to you."
         />
-        <SelectField id="plan-trip-max-stops" label="Stops at most" value={form.maxStops} onChange={(e) => set("maxStops", e.target.value)}>
+        <SelectField
+          id="plan-trip-max-stops"
+          label="Stops at most"
+          value={form.maxStops}
+          onChange={(e) => set("maxStops", e.target.value)}
+        >
           {[1, 2, 3, 4].map((n) => (
             <option key={n} value={String(n)}>
               {n}
@@ -196,8 +290,22 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
           ))}
         </SelectField>
         <Disclosure summary="More" defaultOpen={moreOpen}>
-          <Field id="plan-trip-mileage" label="Mileage rate" inputMode="decimal" value={form.mileage} onChange={(e) => set("mileage", e.target.value)} hint="Dollars per mile. Blank leaves mileage out of the cost." />
-          <Field id="plan-trip-overhead" label="Minutes per stop" inputMode="numeric" value={form.overhead} onChange={(e) => set("overhead", e.target.value)} hint="Parking, the aisles and the till. Blank uses each store's own, else 10." />
+          <Field
+            id="plan-trip-mileage"
+            label="Mileage rate"
+            inputMode="decimal"
+            value={form.mileage}
+            onChange={(e) => set("mileage", e.target.value)}
+            hint="Dollars per mile. Blank leaves mileage out of the cost."
+          />
+          <Field
+            id="plan-trip-overhead"
+            label="Minutes per stop"
+            inputMode="numeric"
+            value={form.overhead}
+            onChange={(e) => set("overhead", e.target.value)}
+            hint="Parking, the aisles and the till. Blank uses each store's own, else 10."
+          />
         </Disclosure>
       </form>
     </Drawer>

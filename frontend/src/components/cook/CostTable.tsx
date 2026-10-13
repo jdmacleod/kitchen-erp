@@ -41,23 +41,43 @@ export function unconfirmedPercent(share: string): string | null {
  */
 export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; costing: boolean }) {
   const unconfirmed = cost ? unconfirmedPercent(cost.unconfirmed_share) : null;
-  const partial = cost !== undefined && cost.completeness.lines_priced < cost.completeness.lines_total;
+  const partial =
+    cost !== undefined && cost.completeness.lines_priced < cost.completeness.lines_total;
   const figure = (label: string, value: string | null) => (
     <div className="flex min-w-0 flex-col">
       <dt className={`text-xs ${muted}`}>{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">{costing ? "Costing…" : (value ?? "—")}</dd>
+      <dd className="text-lg font-semibold tabular-nums">
+        {costing ? "Costing…" : (value ?? "—")}
+      </dd>
     </div>
   );
   return (
-    <section aria-label="Totals" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900" data-testid="cost-totals">
+    <section
+      aria-label="Totals"
+      className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+      data-testid="cost-totals"
+    >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {figure("Consumed", cost ? formatCostRange(cost.totals.consumed_cost, cost.totals.consumed_cost_high) : null)}
-        {figure("Basket", cost ? formatCostRange(cost.totals.basket_cost, cost.totals.basket_cost_high) : null)}
-        {figure("Per serving", cost?.totals.per_serving ? formatMoney(cost.totals.per_serving) : null)}
+        {figure(
+          "Consumed",
+          cost ? formatCostRange(cost.totals.consumed_cost, cost.totals.consumed_cost_high) : null,
+        )}
+        {figure(
+          "Basket",
+          cost ? formatCostRange(cost.totals.basket_cost, cost.totals.basket_cost_high) : null,
+        )}
+        {figure(
+          "Per serving",
+          cost?.totals.per_serving ? formatMoney(cost.totals.per_serving) : null,
+        )}
         <div className="flex min-w-0 flex-col">
           <dt className={`text-xs ${muted}`}>Known</dt>
           <dd className={`text-sm ${partial ? squash : ""}`}>
-            {costing ? "Costing…" : cost ? pricedSentence(cost.completeness.lines_priced, cost.completeness.lines_total) : "—"}
+            {costing
+              ? "Costing…"
+              : cost
+                ? pricedSentence(cost.completeness.lines_priced, cost.completeness.lines_total)
+                : "—"}
           </dd>
         </div>
       </dl>
@@ -78,7 +98,8 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
 
 const headCell = `px-3 py-2 text-left text-xs font-semibold ${muted}`;
 // Line, Ingredient, Quantity, Price used, Cost.
-const columns = "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,0.8fr)]";
+const columns =
+  "lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.5fr)_minmax(0,0.8fr)]";
 
 /**
  * The cost table (10, Cost table; UI-7.9–7.12): each line as written, its
@@ -109,13 +130,25 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
   };
 
   if (cost.lines.length === 0) {
-    return <p className={`text-sm ${muted}`}>This recipe names no ingredients, so there is nothing to cost.</p>;
+    return (
+      <p className={`text-sm ${muted}`}>
+        This recipe names no ingredients, so there is nothing to cost.
+      </p>
+    );
   }
   return (
     <div className="flex flex-col gap-2">
-      <div ref={table} role="table" aria-label="Cost by line" className="rounded-lg border border-neutral-200 bg-white text-sm dark:border-neutral-800 dark:bg-neutral-900">
+      <div
+        ref={table}
+        role="table"
+        aria-label="Cost by line"
+        className="rounded-lg border border-neutral-200 bg-white text-sm dark:border-neutral-800 dark:bg-neutral-900"
+      >
         <div role="rowgroup" className="hidden lg:block">
-          <div role="row" className={`grid border-b border-neutral-200 dark:border-neutral-800 ${columns}`}>
+          <div
+            role="row"
+            className={`grid border-b border-neutral-200 dark:border-neutral-800 ${columns}`}
+          >
             <div role="columnheader" className={headCell}>
               Line
             </div>
@@ -164,9 +197,18 @@ interface RowProps {
 function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
   const ingredient = line.line;
   const price = line.price;
-  const packs = line.packs && !isZero(line.packs) ? `${stripZeros(line.packs)}${line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : ""} ${line.packs === "1" ? "pack" : "packs"}` : null;
+  const packs =
+    line.packs && !isZero(line.packs)
+      ? `${stripZeros(line.packs)}${line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : ""} ${line.packs === "1" ? "pack" : "packs"}`
+      : null;
   return (
-    <div role="row" className={`grid gap-x-3 gap-y-1 px-3 py-3 lg:items-start lg:py-2 ${columns}`} data-testid="cost-row" data-status={line.status} data-line-id={line.id}>
+    <div
+      role="row"
+      className={`grid gap-x-3 gap-y-1 px-3 py-3 lg:items-start lg:py-2 ${columns}`}
+      data-testid="cost-row"
+      data-status={line.status}
+      data-line-id={line.id}
+    >
       {/* Line: the text as written, in monospace, like a receipt's. */}
       <div role="cell" className="min-w-0 font-mono text-xs leading-5 break-words lg:text-sm">
         {lineText(ingredient)}
@@ -175,11 +217,21 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
       <div role="cell" className="flex min-w-0 flex-col gap-1">
         {ingredient.ingredient_id && ingredient.ingredient_name ? (
           <>
-            <Link to={`/catalog/ingredients/${ingredient.ingredient_id}`} className={`${tapTarget} self-start rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+            <Link
+              to={`/catalog/ingredients/${ingredient.ingredient_id}`}
+              className={`${tapTarget} self-start rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+            >
               {ingredient.ingredient_name}
             </Link>
             {line.status !== "negligible" ? (
-              <PinControls line={line} recipeId={recipeId} pin={pin} ingredientId={ingredient.ingredient_id} ingredientName={ingredient.ingredient_name} focusNext={focusNext} />
+              <PinControls
+                line={line}
+                recipeId={recipeId}
+                pin={pin}
+                ingredientId={ingredient.ingredient_id}
+                ingredientName={ingredient.ingredient_name}
+                focusNext={focusNext}
+              />
             ) : null}
           </>
         ) : line.status === "negligible" ? (
@@ -196,10 +248,24 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
       <div role="cell" className="min-w-0">
         <span className="flex flex-wrap items-baseline gap-x-2 lg:block">
           <span className={`lg:hidden ${muted}`}>Quantity</span>
-          <span className="tabular-nums">{line.quantity ? formatQuantity(line.quantity.display_qty, line.quantity.display_qty_high, line.quantity.display_unit) : "—"}</span>
+          <span className="tabular-nums">
+            {line.quantity
+              ? formatQuantity(
+                  line.quantity.display_qty,
+                  line.quantity.display_qty_high,
+                  line.quantity.display_unit,
+                )
+              : "—"}
+          </span>
         </span>
-        {line.yield_assumed ? <span className={`block text-xs ${squash}`}>yield 100% assumed</span> : null}
-        {line.yield_mode !== "auto" ? <span className={`block text-xs ${muted}`}>{line.yield_mode === "as_purchased" ? "as purchased" : "edible"}</span> : null}
+        {line.yield_assumed ? (
+          <span className={`block text-xs ${squash}`}>yield 100% assumed</span>
+        ) : null}
+        {line.yield_mode !== "auto" ? (
+          <span className={`block text-xs ${muted}`}>
+            {line.yield_mode === "as_purchased" ? "as purchased" : "edible"}
+          </span>
+        ) : null}
       </div>
       {/* Price used, or the words for why there is none. */}
       <div role="cell" className="min-w-0">
@@ -207,7 +273,9 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
           <>
             <span className="flex flex-wrap items-center gap-x-2">
               <span className={`lg:hidden ${muted}`}>Price</span>
-              <span className="tabular-nums">{formatUnitPrice(price.display_unit_price, price.display_unit)}</span>
+              <span className="tabular-nums">
+                {formatUnitPrice(price.display_unit_price, price.display_unit)}
+              </span>
               {price.stale ? (
                 <Badge tone="warn">
                   <span className="sr-only">older than {staleAfterDays} days: </span>stale
@@ -215,7 +283,13 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
               ) : null}
             </span>
             <span className={`block text-xs ${muted}`}>
-              {[price.product_name, price.vendor_name ?? price.location_name, price.observed_at ? formatDate(price.observed_at) : null].filter(Boolean).join(" · ")}
+              {[
+                price.product_name,
+                price.vendor_name ?? price.location_name,
+                price.observed_at ? formatDate(price.observed_at) : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </span>
           </>
         ) : (
@@ -226,7 +300,9 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
       <div role="cell" className="tabular-nums lg:text-right">
         <span className="flex items-baseline justify-between gap-2 lg:block">
           <span className={`lg:hidden ${muted}`}>Cost</span>
-          <span className={line.consumed_cost ? "font-medium" : muted}>{formatCostRange(line.consumed_cost, line.consumed_cost_high)}</span>
+          <span className={line.consumed_cost ? "font-medium" : muted}>
+            {formatCostRange(line.consumed_cost, line.consumed_cost_high)}
+          </span>
         </span>
         {line.basket_cost && packs ? (
           <span className={`block text-xs ${muted}`}>
@@ -256,7 +332,15 @@ function IngredientCell({ line, focusNext }: { line: CostLine; focusNext: RowPro
   });
   return (
     <>
-      <DecisionPicker id={`pick-${line.id}`} hideLabel rawName={rawName} decide={decide} pending={pending} choice={choice} setChoice={setChoice} />
+      <DecisionPicker
+        id={`pick-${line.id}`}
+        hideLabel
+        rawName={rawName}
+        decide={decide}
+        pending={pending}
+        choice={choice}
+        setChoice={setChoice}
+      />
       {messages}
     </>
   );
@@ -267,7 +351,9 @@ function pinRefusal(e: unknown): string {
   if (isApiError(e) && e.code === "product_does_not_fulfil") {
     const of = e.details?.product_ingredient;
     const line = e.details?.line_ingredient;
-    return typeof of === "string" && typeof line === "string" ? `${e.message} It is ${of}; the line is ${line}.` : e.message;
+    return typeof of === "string" && typeof line === "string"
+      ? `${e.message} It is ${of}; the line is ${line}.`
+      : e.message;
   }
   return errorMessage(e);
 }
@@ -297,7 +383,9 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
   if (pin) {
     return (
       <span className="flex flex-wrap items-center gap-x-2 text-xs" data-testid="pinned">
-        <span className={muted}>Pinned · {productTitle({ brand: pin.brand, name: pin.product_name })}</span>
+        <span className={muted}>
+          Pinned · {productTitle({ brand: pin.brand, name: pin.product_name })}
+        </span>
         <Button
           variant="ghost"
           className="min-h-11 lg:min-h-8 px-2 text-xs"
@@ -340,7 +428,13 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
           }}
         />
       ) : (
-        <Button variant="ghost" data-pin className={`min-h-11 lg:min-h-8 self-start px-2 text-xs ${muted}`} disabled={busy} onClick={() => setPicking(true)}>
+        <Button
+          variant="ghost"
+          data-pin
+          className={`min-h-11 lg:min-h-8 self-start px-2 text-xs ${muted}`}
+          disabled={busy}
+          onClick={() => setPicking(true)}
+        >
           {setPin.isPending ? "Pinning…" : "Pin product…"}
         </Button>
       )}
@@ -373,7 +467,10 @@ function RowWords({ line }: { line: CostLine }) {
         <span className={muted}>
           Can&apos;t convert yet ·{" "}
           {line.line.ingredient_id ? (
-            <Link to={`/catalog/ingredients/${line.line.ingredient_id}#density-heading`} className={link}>
+            <Link
+              to={`/catalog/ingredients/${line.line.ingredient_id}#density-heading`}
+              className={link}
+            >
               add density
             </Link>
           ) : (

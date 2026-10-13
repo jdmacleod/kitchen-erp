@@ -1,6 +1,7 @@
 # 13 — Assisted Product Ingestion and Product Photos
 
 **Status: folded, 2026-10-01. Kept as the record of the design-session handoff; it is not a work order.** After CEO, engineering and design reviews (each with an independent second reader), the work became Phase 1 sub-phases 1H and 1I (`03`) and Phase 2 sub-phases 2K–2N (`04`), with tables in `02`, settings and storage in `01`, and screens in `08`–`11`. Where this document and those disagree, they win. It was renumbered from 14, and its examples use invented vendors, codes and prices. Notable changes from this record:
+
 - Everything that needs the internet moved out of this application into a separate private helper, `kitchen-erp-products`, which reads a lookup queue and posts answers a person reviews (2N). Non-negotiable 9 stands unchanged.
 - Barcode lookups start from a local, opt-in USDA branded table.
 - Retailer adapters load from a private plugin folder, never this repository.

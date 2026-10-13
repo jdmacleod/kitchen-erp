@@ -1,4 +1,10 @@
-import { lineText, type BodyItem, type BodySection, type Recipe, type RecipeIngredient } from "../../api/recipes";
+import {
+  lineText,
+  type BodyItem,
+  type BodySection,
+  type Recipe,
+  type RecipeIngredient,
+} from "../../api/recipes";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -13,7 +19,9 @@ function metaValue(value: unknown): string {
 }
 
 /** The ingredient lines grouped by section, in document order; an unsectioned run comes first. */
-export function sections(lines: RecipeIngredient[]): { title: string | null; lines: RecipeIngredient[] }[] {
+export function sections(
+  lines: RecipeIngredient[],
+): { title: string | null; lines: RecipeIngredient[] }[] {
   const out: { title: string | null; lines: RecipeIngredient[] }[] = [];
   for (const line of [...lines].sort((a, b) => a.seq - b.seq)) {
     const last = out[out.length - 1];
@@ -33,14 +41,24 @@ export function sections(lines: RecipeIngredient[]): { title: string | null; lin
  */
 export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) {
   const meta = recipe.front_matter ?? {};
-  const keys = [...LEADING_KEYS.filter((k) => k in meta && k !== "title"), ...Object.keys(meta).filter((k) => !LEADING_KEYS.includes(k) && k !== "title")];
+  const keys = [
+    ...LEADING_KEYS.filter((k) => k in meta && k !== "title"),
+    ...Object.keys(meta).filter((k) => !LEADING_KEYS.includes(k) && k !== "title"),
+  ];
   return (
-    <section id={id} aria-labelledby={`${id ?? "recipe"}-heading`} className="flex min-w-0 flex-col gap-4">
+    <section
+      id={id}
+      aria-labelledby={`${id ?? "recipe"}-heading`}
+      className="flex min-w-0 flex-col gap-4"
+    >
       <h2 id={`${id ?? "recipe"}-heading`} className="text-lg font-medium">
         Recipe
       </h2>
       {keys.length > 0 ? (
-        <dl className={`grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm ${muted}`} aria-label="Front matter">
+        <dl
+          className={`grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm ${muted}`}
+          aria-label="Front matter"
+        >
           {keys.map((k) => (
             <div key={k} className="contents">
               <dt className="font-medium">{k}</dt>
@@ -50,7 +68,9 @@ export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) 
         </dl>
       ) : null}
       {recipe.body ? <Steps body={recipe.body} /> : <IngredientLines lines={recipe.ingredients} />}
-      <p className={`text-xs ${muted}`}>Edit this recipe in its file; it updates here on the next scan.</p>
+      <p className={`text-xs ${muted}`}>
+        Edit this recipe in its file; it updates here on the next scan.
+      </p>
     </section>
   );
 }
@@ -58,13 +78,21 @@ export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) 
 /** The steps as written: numbered within each section, items inline. */
 function Steps({ body }: { body: BodySection[] }) {
   const withSteps = body.filter((s) => s.steps.length > 0);
-  if (withSteps.length === 0) return <p className={`text-sm ${muted}`}>This recipe has no steps.</p>;
+  if (withSteps.length === 0)
+    return <p className={`text-sm ${muted}`}>This recipe has no steps.</p>;
   return (
     <>
       {withSteps.map((section, i) => (
-        <div key={`${section.name ?? ""}-${i}`} className="flex flex-col gap-2" data-testid="recipe-section">
+        <div
+          key={`${section.name ?? ""}-${i}`}
+          className="flex flex-col gap-2"
+          data-testid="recipe-section"
+        >
           {section.name ? <h2 className="text-base font-medium">{section.name}</h2> : null}
-          <ol className="flex list-decimal flex-col gap-2 pl-6 text-sm leading-6" aria-label={section.name ? `${section.name} steps` : "Steps"}>
+          <ol
+            className="flex list-decimal flex-col gap-2 pl-6 text-sm leading-6"
+            aria-label={section.name ? `${section.name} steps` : "Steps"}
+          >
             {section.steps.map((step, j) => (
               <li key={j}>
                 {step.map((item, k) => (
@@ -122,13 +150,17 @@ function Item({ item }: { item: BodyItem }) {
 /** The older rendering: ingredient lines by section, for an index without a body. */
 function IngredientLines({ lines }: { lines: RecipeIngredient[] }) {
   const groups = sections(lines);
-  if (groups.length === 0) return <p className={`text-sm ${muted}`}>This recipe names no ingredients.</p>;
+  if (groups.length === 0)
+    return <p className={`text-sm ${muted}`}>This recipe names no ingredients.</p>;
   return (
     <>
       {groups.map((g, i) => (
         <div key={`${g.title ?? ""}-${i}`} className="flex flex-col gap-2">
           {g.title ? <h2 className="text-base font-medium">{g.title}</h2> : null}
-          <ol className="flex flex-col gap-1 text-sm" aria-label={g.title ? `${g.title} ingredients` : "Ingredients"}>
+          <ol
+            className="flex flex-col gap-1 text-sm"
+            aria-label={g.title ? `${g.title} ingredients` : "Ingredients"}
+          >
             {g.lines.map((line) => (
               <li key={line.id} className="flex flex-wrap items-baseline gap-x-2">
                 <span className="font-semibold">{line.raw_name}</span>
@@ -146,5 +178,7 @@ function IngredientLines({ lines }: { lines: RecipeIngredient[] }) {
 /** The quantity and unit as written, without the name: "2 cups". */
 function quantityWords(line: RecipeIngredient): string {
   const whole = lineText({ ...line, note: null });
-  return whole.endsWith(line.raw_name) ? whole.slice(0, whole.length - line.raw_name.length).trim() : whole;
+  return whole.endsWith(line.raw_name)
+    ? whole.slice(0, whole.length - line.raw_name.length).trim()
+    : whole;
 }

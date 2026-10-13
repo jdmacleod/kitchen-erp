@@ -70,7 +70,7 @@ def _text(value: Any, limit: int) -> str:
     return value
 
 
-def normalize(field: str, value: Any) -> Any:
+def normalize(field: str, value: Any) -> Any:  # noqa: C901
     """A proposed or expected value as the edit form would store it, or _Invalid."""
     if field == "website":
         return _url(value)
@@ -111,7 +111,7 @@ def normalize(field: str, value: Any) -> Any:
 
 def current_value(field: str, obj: Vendor | VendorLocation) -> Any:
     if field == "osm":
-        assert isinstance(obj, VendorLocation)
+        assert isinstance(obj, VendorLocation)  # noqa: S101
         return {"type": obj.osm_type, "id": obj.osm_id} if obj.osm_type else None
     return getattr(obj, field)
 
@@ -388,7 +388,7 @@ async def _apply(
     """Write the proposed value and record where it came from."""
     value = s.proposed_value
     if s.field == "osm":
-        assert isinstance(obj, VendorLocation)
+        assert isinstance(obj, VendorLocation)  # noqa: S101
         obj.osm_type, obj.osm_id = value["type"], value["id"]
     else:
         setattr(obj, s.field, value)

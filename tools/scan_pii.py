@@ -207,8 +207,7 @@ def _not_inside_hash(m: re.Match[str]) -> bool:
     """False when the match sits inside a long hex token: a digest, not a number."""
     text = m.string
     return not any(
-        run.start() <= m.start() and m.end() <= run.end()
-        for run in HEX_RUN.finditer(text)
+        run.start() <= m.start() and m.end() <= run.end() for run in HEX_RUN.finditer(text)
     )
 
 
@@ -216,9 +215,7 @@ def _email_is_real(m: re.Match[str]) -> bool:
     if m.group(0).lower() in ALLOWED_EMAILS:
         return False
     domain = m.group("domain").lower()
-    return not (
-        domain in ALLOWED_EMAIL_DOMAINS or domain.endswith(ALLOWED_EMAIL_SUFFIXES)
-    )
+    return not (domain in ALLOWED_EMAIL_DOMAINS or domain.endswith(ALLOWED_EMAIL_SUFFIXES))
 
 
 def _phone_is_real(m: re.Match[str]) -> bool:
@@ -254,9 +251,7 @@ def _coordinate_is_real(m: re.Match[str]) -> bool:
 RULES: tuple[Rule, ...] = (
     Rule(
         name="EMAIL",
-        pattern=re.compile(
-            r"\b[A-Za-z0-9._%+-]+@(?P<domain>[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b"
-        ),
+        pattern=re.compile(r"\b[A-Za-z0-9._%+-]+@(?P<domain>[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b"),
         hint="Use an example.com / example.org address instead.",
         accept=_email_is_real,
     ),
@@ -302,9 +297,7 @@ RULES: tuple[Rule, ...] = (
     ),
     Rule(
         name="SSN",
-        pattern=re.compile(
-            r"(?<!\d)(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}(?!\d)"
-        ),
+        pattern=re.compile(r"(?<!\d)(?!000|666|9\d\d)\d{3}-(?!00)\d{2}-(?!0000)\d{4}(?!\d)"),
         hint="Never store or fabricate SSN-shaped values.",
     ),
     Rule(
@@ -381,8 +374,7 @@ def scan_lines(
     active = [
         r
         for r in RULES
-        if (r.applies_in_fixtures or not is_fixture)
-        and (r.applies_in_tests or not is_test)
+        if (r.applies_in_fixtures or not is_fixture) and (r.applies_in_tests or not is_test)
     ]
     found: list[Finding] = []
     for idx, line in enumerate(lines):
@@ -403,9 +395,7 @@ def scan_lines(
             for m in rule.pattern.finditer(line):
                 if rule.accept(m):
                     found.append(
-                        Finding(
-                            origin, idx + line_offset, rule.name, m.group(0), rule.hint
-                        )
+                        Finding(origin, idx + line_offset, rule.name, m.group(0), rule.hint)
                     )
     return found
 
@@ -427,8 +417,8 @@ def is_scannable(path: Path) -> bool:
 
 
 def git(*args: str) -> str:
-    return subprocess.run(
-        ["git", *args],
+    return subprocess.run(  # noqa: S603
+        ["git", *args],  # noqa: S607
         cwd=REPO_ROOT,
         check=True,
         capture_output=True,
@@ -449,9 +439,7 @@ def scan_paths(paths: Iterable[str], denylist: Denylist) -> list[Finding]:
         path = (REPO_ROOT / rel).resolve()
         if not is_scannable(path):
             if path.is_file() and opaque_in_fixtures(rel):
-                findings.append(
-                    Finding(rel, 1, "OPAQUE_FIXTURE", path.name, OPAQUE_FIXTURE_HINT)
-                )
+                findings.append(Finding(rel, 1, "OPAQUE_FIXTURE", path.name, OPAQUE_FIXTURE_HINT))
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -491,14 +479,12 @@ def scan_history(rev_range: str | None, denylist: Denylist) -> list[Finding]:
     try:
         out = git(*args)
     except subprocess.CalledProcessError as exc:
-        print(
-            f"scan_pii: could not read history ({exc.stderr.strip()})", file=sys.stderr
-        )
+        print(f"scan_pii: could not read history ({exc.stderr.strip()})", file=sys.stderr)
         return []
     return scan_diff_stream(out, denylist)
 
 
-def scan_diff_stream(out: str, denylist: Denylist = EMPTY_DENYLIST) -> list[Finding]:
+def scan_diff_stream(out: str, denylist: Denylist = EMPTY_DENYLIST) -> list[Finding]:  # noqa: C901
     """Walk `git log -p` output produced with LOG_FORMAT."""
     findings: list[Finding] = []
     commit = "HEAD"

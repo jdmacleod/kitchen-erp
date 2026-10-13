@@ -144,7 +144,7 @@ def _user(user: AppUser | None) -> UserBrief | None:
 
 def item_out(item: ShoppingListItem) -> ItemOut:
     added_by = _user(item.added_by_user)
-    assert added_by is not None
+    assert added_by is not None  # noqa: S101
     return ItemOut(
         id=item.id,
         list_id=item.list_id,
@@ -458,7 +458,7 @@ def _append_note(item: ShoppingListItem, note: str | None) -> None:
         item.note = f"{item.note}; {note}"
 
 
-async def add_from_recipe(
+async def add_from_recipe(  # noqa: C901
     db: AsyncSession,
     lst: ShoppingList,
     user: AppUser,
@@ -517,7 +517,7 @@ async def add_from_recipe(
         if item.checked_at is not None:
             continue
         target = item.ingredient_id if item.kind == "ingredient" else item.product_id
-        assert target is not None
+        assert target is not None  # noqa: S101
         existing.setdefault((item.kind, target), item)
 
     added = merged = 0

@@ -86,7 +86,7 @@ class RepoView:
 def open_repo(root: Path) -> Iterator[RepoView]:
     """Open the repository at ``root`` for reading; a view without one when ``.git`` is absent."""
     repo: Repo | None = None
-    if os.path.exists(os.path.join(root, ".git")):
+    if os.path.exists(os.path.join(root, ".git")):  # noqa: PTH110, PTH118
         try:
             repo = Repo(str(root))
         except NotGitRepository:

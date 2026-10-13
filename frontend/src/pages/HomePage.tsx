@@ -2,13 +2,13 @@ import { errorMessage } from "../api/client";
 import { useLocations } from "../api/geo";
 import { useInbox } from "../api/inbox";
 import { useRecentCommittedPurchases } from "../api/purchases";
-import { usePlanBuilt } from "../lib/kitchen";
 import { useChrome } from "../components/chrome";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
 import { RecentPurchases } from "../components/landing/RecentPurchases";
 import { ShoppingListPanel } from "../components/landing/ShoppingListPanel";
 import { Alert, Button, PageHeader } from "../components/ui";
+import { usePlanBuilt } from "../lib/kitchen";
 import { usePageTitle } from "../lib/usePageTitle";
 
 /** A time-of-day greeting without a name (G12). */
@@ -74,9 +74,8 @@ export function HomePage() {
       <>
         <PageHeader title="Set up your kitchen" />
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Kitchen ERP records what you buy, where, and for how much, so the price book can
-          tell you where a thing is cheapest. Two things to do before it has anything to
-          work with.
+          Kitchen ERP records what you buy, where, and for how much, so the price book can tell you
+          where a thing is cheapest. Two things to do before it has anything to work with.
         </p>
         {/* Only rows, not the empty state: on a new kitchen "Nothing needs you" above
             a to-do list would contradict it. Errors still show. */}
@@ -97,7 +96,10 @@ export function HomePage() {
 
   return (
     <>
-      <PageHeader title={greeting()} description={<span className="inline-block min-h-5">{summary}</span>}>
+      <PageHeader
+        title={greeting()}
+        description={<span className="inline-block min-h-5">{summary}</span>}
+      >
         {/* Secondary: the sidebar's (and the phone tab bar's) Capture is the primary one (issue 247). */}
         <Button variant="secondary" onClick={openCapture}>
           Capture

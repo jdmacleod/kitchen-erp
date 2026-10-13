@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
-import { errorMessage } from "../../api/client";
 import { productTitle, type Product } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import {
   MAX_PHOTOS,
   ROLE_LABELS,
@@ -20,7 +20,12 @@ import { Badge } from "./fields";
 import { ProductThumb } from "./ProductThumb";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
-const LABEL_ROLES: PhotoRole[] = ["label_front", "label_nutrition", "label_ingredients", "shelf_tag"];
+const LABEL_ROLES: PhotoRole[] = [
+  "label_front",
+  "label_nutrition",
+  "label_ingredients",
+  "shelf_tag",
+];
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS) as [PhotoRole, string][];
 
 /**
@@ -49,7 +54,12 @@ export function ProductPhotosCard({ product }: { product: Product }) {
         <div className="flex flex-wrap items-center gap-3">
           {hidden.length > 0 ? (
             <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-              <input type="checkbox" checked={showHidden} onChange={(e) => setShowHidden(e.target.checked)} className={`size-4 ${focusRing}`} />
+              <input
+                type="checkbox"
+                checked={showHidden}
+                onChange={(e) => setShowHidden(e.target.checked)}
+                className={`size-4 ${focusRing}`}
+              />
               Show hidden ({hidden.length})
             </label>
           ) : null}
@@ -75,17 +85,38 @@ export function ProductPhotosCard({ product }: { product: Product }) {
             <MainPhoto photo={main} title={title} onAction={act} busy={action.isPending} />
           ) : (
             <div className="flex items-center gap-3">
-              <ProductThumb name={product.name} photo={null} categoryKey={product.ingredient.category_key} size={96} />
-              <p className={`text-sm ${muted}`}>{others.length > 0 ? "No photo can be the main photo yet." : "No photo yet."}</p>
+              <ProductThumb
+                name={product.name}
+                photo={null}
+                categoryKey={product.ingredient.category_key}
+                size={96}
+              />
+              <p className={`text-sm ${muted}`}>
+                {others.length > 0 ? "No photo can be the main photo yet." : "No photo yet."}
+              </p>
             </div>
           )}
           {others.length > 0 || (showHidden && hidden.length > 0) ? (
             <ul aria-label="Other photos" className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3">
               {others.map((p) => (
-                <PhotoTile key={p.id} photo={p} title={title} onAction={act} busy={action.isPending} />
+                <PhotoTile
+                  key={p.id}
+                  photo={p}
+                  title={title}
+                  onAction={act}
+                  busy={action.isPending}
+                />
               ))}
               {showHidden
-                ? hidden.map((p) => <PhotoTile key={p.id} photo={p} title={title} onAction={act} busy={action.isPending} />)
+                ? hidden.map((p) => (
+                    <PhotoTile
+                      key={p.id}
+                      photo={p}
+                      title={title}
+                      onAction={act}
+                      busy={action.isPending}
+                    />
+                  ))
                 : null}
             </ul>
           ) : null}
@@ -117,9 +148,17 @@ function MainPhoto({
   return (
     <figure data-testid="main-photo" className="flex w-full max-w-[20rem] flex-none flex-col gap-2">
       {cutout ? (
-        <img src={cutout} alt={`Photo of ${title}`} className="aspect-square w-full object-contain cutout-shadow" />
+        <img
+          src={cutout}
+          alt={`Photo of ${title}`}
+          className="aspect-square w-full object-contain cutout-shadow"
+        />
       ) : urls ? (
-        <img src={urls.medium} alt={`Photo of ${title}`} className="aspect-square w-full rounded-md bg-neutral-100 object-contain dark:bg-neutral-800" />
+        <img
+          src={urls.medium}
+          alt={`Photo of ${title}`}
+          className="aspect-square w-full rounded-md bg-neutral-100 object-contain dark:bg-neutral-800"
+        />
       ) : null}
       <figcaption className="flex flex-col gap-2 text-sm">
         <span className="flex flex-wrap items-center gap-2">
@@ -131,19 +170,23 @@ function MainPhoto({
         {photo.has_cutout ? (
           <span className="self-start">
             <SegmentedControl
-            label="Show the photo as"
-            value={view}
-            onChange={setView}
-            options={[
-              { value: "cutout", label: "Cutout" },
-              { value: "original", label: "Original" },
-            ]}
+              label="Show the photo as"
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "cutout", label: "Cutout" },
+                { value: "original", label: "Original" },
+              ]}
             />
           </span>
         ) : null}
         <span className="flex flex-wrap gap-2">
           {photo.pinned ? (
-            <Button variant="secondary" disabled={busy} onClick={() => onAction(photo.id, "unset-main")}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => onAction(photo.id, "unset-main")}
+            >
               Let the app choose
             </Button>
           ) : null}
@@ -179,7 +222,8 @@ function PhotoTile({
       </Button>
     );
   } else {
-    const src = photo.has_cutout && photo.urls?.cutout_medium ? photo.urls.cutout_medium : photo.urls?.small;
+    const src =
+      photo.has_cutout && photo.urls?.cutout_medium ? photo.urls.cutout_medium : photo.urls?.small;
     picture = (
       <img
         src={src}
@@ -197,7 +241,11 @@ function PhotoTile({
         </Button>
       ) : (
         <>
-          <Button variant="secondary" disabled={busy} onClick={() => onAction(photo.id, "use-as-main")}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => onAction(photo.id, "use-as-main")}
+          >
             Use as main photo
           </Button>
           <Button variant="secondary" disabled={busy} onClick={() => onAction(photo.id, "hide")}>
@@ -222,7 +270,10 @@ function PhotoTile({
 
 function StateTile({ children }: { children: ReactNode }) {
   return (
-    <span role="status" className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 p-2 text-center text-sm dark:bg-neutral-800 ${muted}`}>
+    <span
+      role="status"
+      className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 p-2 text-center text-sm dark:bg-neutral-800 ${muted}`}
+    >
       {children}
     </span>
   );
@@ -249,7 +300,11 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
     setTooMany(staged.length + chosen.length > MAX_PHOTOS);
     const next = [
       ...staged,
-      ...chosen.map((file, i) => ({ key: `${file.name}-${file.size}-${Date.now()}-${i}`, file, role: "product" as PhotoRole })),
+      ...chosen.map((file, i) => ({
+        key: `${file.name}-${file.size}-${Date.now()}-${i}`,
+        file,
+        role: "product" as PhotoRole,
+      })),
     ].slice(0, MAX_PHOTOS);
     setStaged(next);
     add.reset();
@@ -262,7 +317,10 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
         onSuccess: () => {
           notice.show({
             tone: "success",
-            message: staged.length === 1 ? "Photo saved. It'll be ready in a moment." : "Photos saved. They'll be ready in a moment.",
+            message:
+              staged.length === 1
+                ? "Photo saved. It'll be ready in a moment."
+                : "Photos saved. They'll be ready in a moment.",
           });
           onDone();
         },
@@ -284,7 +342,9 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
         }}
       />
       {staged.length === 0 ? (
-        <p className={`text-sm ${muted}`}>Choose up to four photos. Give each one a role: the product itself, or one of its labels.</p>
+        <p className={`text-sm ${muted}`}>
+          Choose up to four photos. Give each one a role: the product itself, or one of its labels.
+        </p>
       ) : (
         <ul aria-label="Photos to add" className="flex flex-col gap-2">
           {staged.map((s, i) => (
@@ -296,7 +356,13 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
               <select
                 id={`${id}-role-${i}`}
                 value={s.role}
-                onChange={(e) => setStaged(staged.map((x) => (x.key === s.key ? { ...x, role: e.target.value as PhotoRole } : x)))}
+                onChange={(e) =>
+                  setStaged(
+                    staged.map((x) =>
+                      x.key === s.key ? { ...x, role: e.target.value as PhotoRole } : x,
+                    ),
+                  )
+                }
                 className={`min-h-11 rounded-md border border-neutral-300 bg-white px-2 text-sm lg:min-h-9 dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
               >
                 {ROLE_OPTIONS.map(([value, label]) => (
@@ -305,14 +371,19 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
                   </option>
                 ))}
               </select>
-              <Button variant="secondary" onClick={() => setStaged(staged.filter((x) => x.key !== s.key))}>
+              <Button
+                variant="secondary"
+                onClick={() => setStaged(staged.filter((x) => x.key !== s.key))}
+              >
                 Remove
               </Button>
             </li>
           ))}
         </ul>
       )}
-      {tooMany ? <Alert tone="info">Only four photos can be added at a time; the first four are kept.</Alert> : null}
+      {tooMany ? (
+        <Alert tone="info">Only four photos can be added at a time; the first four are kept.</Alert>
+      ) : null}
       {add.isError ? <Alert tone="error">{photoErrorMessage(add.error)}</Alert> : null}
       <div className="flex flex-wrap gap-2">
         {staged.length < MAX_PHOTOS ? (
@@ -322,7 +393,11 @@ function AddPhotos({ productId, onDone }: { productId: string; onDone: () => voi
         ) : null}
         {staged.length > 0 ? (
           <Button disabled={add.isPending} onClick={upload}>
-            {add.isPending ? "Uploading…" : staged.length === 1 ? "Upload photo" : `Upload ${staged.length} photos`}
+            {add.isPending
+              ? "Uploading…"
+              : staged.length === 1
+                ? "Upload photo"
+                : `Upload ${staged.length} photos`}
           </Button>
         ) : null}
         <Button variant="secondary" disabled={add.isPending} onClick={onDone}>
@@ -343,7 +418,10 @@ export function ProductLabelsCard({ product }: { product: Product }) {
   return (
     <Card>
       <h2 className="mb-3 text-lg font-medium">Labels</h2>
-      <ul aria-label="Labels" className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
+      <ul
+        aria-label="Labels"
+        className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800"
+      >
         {labels.map((p) => (
           <li key={p.id} className="flex gap-3 py-3 first:pt-0 last:pb-0">
             {p.urls ? (
@@ -355,7 +433,9 @@ export function ProductLabelsCard({ product }: { product: Product }) {
               />
             ) : (
               <span className="size-24 flex-none">
-                <StateTile>{p.status === "failed" ? "Couldn't process this photo" : "Preparing photo…"}</StateTile>
+                <StateTile>
+                  {p.status === "failed" ? "Couldn't process this photo" : "Preparing photo…"}
+                </StateTile>
               </span>
             )}
             <div className="min-w-0 text-sm">

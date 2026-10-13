@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import type { Purchase } from "../../api/purchases";
-import { focusRing, tapTarget } from "../ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
+import { focusRing, tapTarget } from "../ui";
 
 /**
  * Home's right column: the last few committed purchases (G12, G13).
@@ -19,7 +19,10 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
         <h2 id="recent-purchases" className="font-display text-lg">
           Recent purchases
         </h2>
-        <Link to="/shop/purchases" className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}>
+        <Link
+          to="/shop/purchases"
+          className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
+        >
           All purchases
         </Link>
       </div>
@@ -36,7 +39,9 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
             >
               {p.vendor_location?.vendor.name ?? "Receipt"}
             </Link>
-            <span className="text-neutral-600 dark:text-neutral-400">{formatDate(p.purchased_at)}</span>
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {formatDate(p.purchased_at)}
+            </span>
             <span className="tabular-nums">{formatMoney(p.total ?? p.computed_total)}</span>
           </li>
         ))}

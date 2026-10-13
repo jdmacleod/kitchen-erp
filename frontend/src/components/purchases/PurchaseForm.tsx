@@ -1,7 +1,34 @@
-import { useEffect, useRef, useState, type Dispatch, type FocusEvent, type KeyboardEvent, type ReactNode, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type FocusEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
 import { isPositiveDecimal } from "../../api/catalog";
-import { fetchLastPurchaseUnit, itemLines, purchaseErrorMessage, type Purchase, type PurchaseInput, type PurchaseLineInput } from "../../api/purchases";
-import { MONEY_PLACES, add, cmp, div, formatMoney, isNonNegativeDecimal, isZero, mul, roundTo, stripZeros } from "../../lib/decimal";
+import {
+  fetchLastPurchaseUnit,
+  itemLines,
+  purchaseErrorMessage,
+  type Purchase,
+  type PurchaseInput,
+  type PurchaseLineInput,
+} from "../../api/purchases";
+import {
+  MONEY_PLACES,
+  add,
+  cmp,
+  div,
+  formatMoney,
+  isNonNegativeDecimal,
+  isZero,
+  mul,
+  roundTo,
+  stripZeros,
+} from "../../lib/decimal";
 import { Badge, hintClass, inputClass, labelClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Field } from "../ui";
@@ -39,7 +66,16 @@ let lineCounter = 0;
 
 export function newLine(): LineDraft {
   lineCounter += 1;
-  return { key: `l${lineCounter}`, product: null, qty: "", unit: "", unitTouched: false, unit_price: "", line_total: "", driver: null };
+  return {
+    key: `l${lineCounter}`,
+    product: null,
+    qty: "",
+    unit: "",
+    unitTouched: false,
+    unit_price: "",
+    line_total: "",
+    driver: null,
+  };
 }
 
 /** YYYY-MM-DD in the viewer's zone. */
@@ -110,7 +146,12 @@ export function runningTotal(lines: LineDraft[]): string {
 }
 
 export function isLineEmpty(l: LineDraft): boolean {
-  return l.product === null && l.qty.trim() === "" && l.unit_price.trim() === "" && l.line_total.trim() === "";
+  return (
+    l.product === null &&
+    l.qty.trim() === "" &&
+    l.unit_price.trim() === "" &&
+    l.line_total.trim() === ""
+  );
 }
 
 type LineField = "product" | "qty" | "unit" | "unit_price" | "line_total";
@@ -128,26 +169,38 @@ export function lineProblem(l: LineDraft): { field: LineField; message: string }
 function purchasedAt(date: string, existing?: Purchase): string | null {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   if (!m) return null;
-  if (existing && toLocalDate(new Date(existing.purchased_at)) === date) return existing.purchased_at;
+  if (existing && toLocalDate(new Date(existing.purchased_at)) === date)
+    return existing.purchased_at;
   const now = new Date();
-  const at = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), now.getHours(), now.getMinutes(), now.getSeconds());
+  const at = new Date(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    now.getHours(),
+    now.getMinutes(),
+    now.getSeconds(),
+  );
   return Number.isNaN(at.getTime()) ? null : at.toISOString();
 }
 
-export type BuildResult = { ok: true; input: PurchaseInput } | { ok: false; message: string; lineKey?: string; field?: LineField };
+export type BuildResult =
+  | { ok: true; input: PurchaseInput }
+  | { ok: false; message: string; lineKey?: string; field?: LineField };
 
 /** Validate and turn the draft into a request body. Trailing empty lines are dropped. */
 export function buildPurchaseInput(v: PurchaseFormValues, existing?: Purchase): BuildResult {
   if (!v.vendor_location_id) return { ok: false, message: "Choose a location." };
   const at = purchasedAt(v.date, existing);
   if (!at) return { ok: false, message: "Enter a valid date." };
-  if (v.total.trim() !== "" && !isNonNegativeDecimal(v.total)) return { ok: false, message: "The entered total must be a number." };
+  if (v.total.trim() !== "" && !isNonNegativeDecimal(v.total))
+    return { ok: false, message: "The entered total must be a number." };
 
   const lines: PurchaseLineInput[] = [];
   for (const l of v.lines) {
     if (isLineEmpty(l)) continue;
     const problem = lineProblem(l);
-    if (problem) return { ok: false, message: problem.message, lineKey: l.key, field: problem.field };
+    if (problem)
+      return { ok: false, message: problem.message, lineKey: l.key, field: problem.field };
     const line: PurchaseLineInput = { product_id: l.product!.id, qty: l.qty.trim(), unit: l.unit };
     // By id, so removing a line from the middle leaves the others' prices alone (#72).
     if (l.id) line.id = l.id;
@@ -157,7 +210,11 @@ export function buildPurchaseInput(v: PurchaseFormValues, existing?: Purchase): 
   }
   if (lines.length === 0) return { ok: false, message: "Enter at least one line." };
 
-  const input: PurchaseInput = { vendor_location_id: v.vendor_location_id, purchased_at: at, lines };
+  const input: PurchaseInput = {
+    vendor_location_id: v.vendor_location_id,
+    purchased_at: at,
+    lines,
+  };
   if (v.total.trim() !== "") input.total = v.total.trim();
   return { ok: true, input };
 }
@@ -191,7 +248,20 @@ const NARROW = 640;
  * so an inline product creation, a save error, or a re-render never loses a
  * line that was already entered.
  */
-export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, existing, busy, error, submitLabel, busyLabel, children, warning }: PurchaseFormProps) {
+export function PurchaseForm({
+  idPrefix,
+  heading,
+  values,
+  onChange,
+  onSubmit,
+  existing,
+  busy,
+  error,
+  submitLabel,
+  busyLabel,
+  children,
+  warning,
+}: PurchaseFormProps) {
   const [invalid, setInvalid] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   // A field to focus once the next render has put it in the document.
@@ -203,13 +273,20 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
     document.getElementById(id)?.focus();
   });
 
-  const fieldId = (key: string, field: LineField) => `${idPrefix}-line-${key}-${field.replace("_", "-")}`;
-  const focusField = (key: string, field: LineField) => document.getElementById(fieldId(key, field))?.focus();
+  const fieldId = (key: string, field: LineField) =>
+    `${idPrefix}-line-${key}-${field.replace("_", "-")}`;
+  const focusField = (key: string, field: LineField) =>
+    document.getElementById(fieldId(key, field))?.focus();
 
-  const setLine = (key: string, patch: Partial<LineDraft> | ((l: LineDraft) => Partial<LineDraft>)) =>
+  const setLine = (
+    key: string,
+    patch: Partial<LineDraft> | ((l: LineDraft) => Partial<LineDraft>),
+  ) =>
     onChange((prev) => ({
       ...prev,
-      lines: prev.lines.map((l) => (l.key === key ? { ...l, ...(typeof patch === "function" ? patch(l) : patch) } : l)),
+      lines: prev.lines.map((l) =>
+        l.key === key ? { ...l, ...(typeof patch === "function" ? patch(l) : patch) } : l,
+      ),
     }));
 
   const setProduct = (key: string, product: ProductRef | null) => {
@@ -281,9 +358,9 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
   const focusNext = (from: HTMLElement) => {
     const form = formRef.current;
     if (!form) return;
-    const fields = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select")).filter(
-      (el) => !el.disabled && el.type !== "hidden",
-    );
+    const fields = Array.from(
+      form.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input, select"),
+    ).filter((el) => !el.disabled && el.type !== "hidden");
     const index = fields.indexOf(from as HTMLInputElement);
     fields[index + 1]?.focus();
   };
@@ -297,7 +374,8 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
     }
     if (event.isDefaultPrevented()) return; // a combobox chose an option
     const target = event.target as HTMLElement;
-    if (target.tagName === "BUTTON" || target.tagName === "TEXTAREA" || target.tagName === "A") return;
+    if (target.tagName === "BUTTON" || target.tagName === "TEXTAREA" || target.tagName === "A")
+      return;
     event.preventDefault();
     // A product box picks with the arrow keys and Enter; a bare Enter does nothing.
     if (target.getAttribute("role") === "combobox") return;
@@ -314,12 +392,13 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
   // bring the field being edited to the middle so it stays visible.
   const onFocus = (event: FocusEvent<HTMLElement>) => {
     if (typeof window === "undefined" || window.innerWidth >= NARROW) return;
-    const target = event.target as HTMLElement;
+    const target = event.target;
     if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "center" });
   };
 
   const total = runningTotal(values.lines);
-  const entered = values.total.trim() !== "" && isNonNegativeDecimal(values.total) ? values.total.trim() : null;
+  const entered =
+    values.total.trim() !== "" && isNonNegativeDecimal(values.total) ? values.total.trim() : null;
   const difference = entered !== null ? roundTo(add(entered, `-${total}`), MONEY_PLACES) : null;
   const headingId = `${idPrefix}-heading`;
 
@@ -424,7 +503,9 @@ export function PurchaseForm({ idPrefix, heading, values, onChange, onSubmit, ex
         ) : null}
       </dl>
 
-      {warning ? <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{warning}</p> : null}
+      {warning ? (
+        <p className="text-sm font-medium text-amber-800 dark:text-amber-300">{warning}</p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={busy}>
           {busy ? busyLabel : submitLabel}
@@ -449,13 +530,34 @@ interface LineRowProps {
   onRemove: () => void;
 }
 
-function LineRow({ idPrefix, index, line, busy, onProduct, onPicked, onQty, onUnit, onPrice, onRemove }: LineRowProps) {
+function LineRow({
+  idPrefix,
+  index,
+  line,
+  busy,
+  onProduct,
+  onPicked,
+  onQty,
+  onUnit,
+  onPrice,
+  onRemove,
+}: LineRowProps) {
   const id = (field: string) => `${idPrefix}-line-${line.key}-${field}`;
   const n = index + 1;
   const unitPriceComputed = line.driver !== "unit_price" ? computedUnitPrice(line) : null;
   const lineTotalComputed = line.driver !== "line_total" ? computedLineTotal(line) : null;
-  const unitPriceValue = line.driver === "unit_price" ? line.unit_price : unitPriceComputed ? stripZeros(unitPriceComputed, 2) : "";
-  const lineTotalValue = line.driver === "line_total" ? line.line_total : lineTotalComputed ? stripZeros(lineTotalComputed, 2) : "";
+  const unitPriceValue =
+    line.driver === "unit_price"
+      ? line.unit_price
+      : unitPriceComputed
+        ? stripZeros(unitPriceComputed, 2)
+        : "";
+  const lineTotalValue =
+    line.driver === "line_total"
+      ? line.line_total
+      : lineTotalComputed
+        ? stripZeros(lineTotalComputed, 2)
+        : "";
 
   return (
     <fieldset
@@ -463,10 +565,31 @@ function LineRow({ idPrefix, index, line, busy, onProduct, onPicked, onQty, onUn
       className="grid gap-2 rounded-md border border-neutral-200 p-2 sm:grid-cols-[minmax(0,3fr)_5rem_6rem_7rem_7rem_4rem] sm:items-start sm:border-0 sm:p-0 dark:border-neutral-800"
     >
       <div className="min-w-0">
-        <ProductPicker id={id("product")} label={`Product ${n}`} hideLabel value={line.product} onChange={onProduct} onPicked={onPicked} disabled={busy} />
+        <ProductPicker
+          id={id("product")}
+          label={`Product ${n}`}
+          hideLabel
+          value={line.product}
+          onChange={onProduct}
+          onPicked={onPicked}
+          disabled={busy}
+        />
       </div>
-      <PriceInput id={id("qty")} label={`Quantity ${n}`} field="qty" value={line.qty} onChange={onQty} disabled={busy} />
-      <UnitSelectCompact id={id("unit")} label={`Unit ${n}`} value={line.unit} onChange={onUnit} disabled={busy} />
+      <PriceInput
+        id={id("qty")}
+        label={`Quantity ${n}`}
+        field="qty"
+        value={line.qty}
+        onChange={onQty}
+        disabled={busy}
+      />
+      <UnitSelectCompact
+        id={id("unit")}
+        label={`Unit ${n}`}
+        value={line.unit}
+        onChange={onUnit}
+        disabled={busy}
+      />
       <PriceInput
         id={id("unit-price")}
         label={`Unit price ${n}`}
@@ -486,7 +609,13 @@ function LineRow({ idPrefix, index, line, busy, onProduct, onPicked, onQty, onUn
         disabled={busy}
       />
       <div className="flex sm:justify-end">
-        <Button variant="ghost" className="min-h-11 lg:min-h-10 px-2 text-xs" disabled={busy} onClick={onRemove} aria-label={`Remove line ${n}`}>
+        <Button
+          variant="ghost"
+          className="min-h-11 lg:min-h-10 px-2 text-xs"
+          disabled={busy}
+          onClick={onRemove}
+          aria-label={`Remove line ${n}`}
+        >
           Remove
         </Button>
       </div>
@@ -505,7 +634,15 @@ interface PriceInputProps {
 }
 
 /** A decimal text input with a visible "computed" mark when its value was derived. */
-function PriceInput({ id, label, field, value, onChange, computed = false, disabled }: PriceInputProps) {
+function PriceInput({
+  id,
+  label,
+  field,
+  value,
+  onChange,
+  computed = false,
+  disabled,
+}: PriceInputProps) {
   const short = label.replace(/ \d+$/, "");
   return (
     <div className="flex flex-col gap-1">
@@ -529,7 +666,10 @@ function PriceInput({ id, label, field, value, onChange, computed = false, disab
         {computed ? (
           // Inside the field on a phone, where it is full width; under it in the
           // narrow price columns of wider screens, where it covered the value.
-          <span className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 sm:static sm:mt-1 sm:block sm:translate-y-0" data-testid={`${id}-computed`}>
+          <span
+            className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 sm:static sm:mt-1 sm:block sm:translate-y-0"
+            data-testid={`${id}-computed`}
+          >
             <Badge>computed</Badge>
           </span>
         ) : null}
@@ -539,7 +679,19 @@ function PriceInput({ id, label, field, value, onChange, computed = false, disab
 }
 
 /** The unit select with its label hidden on wide screens, where the column header names it. */
-function UnitSelectCompact({ id, label, value, onChange, disabled }: { id: string; label: string; value: string; onChange: (u: string) => void; disabled?: boolean }) {
+function UnitSelectCompact({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (u: string) => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="sm:[&_label]:sr-only">
       <UnitSelect id={id} label={label} value={value} onChange={onChange} disabled={disabled} />

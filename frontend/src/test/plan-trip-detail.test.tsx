@@ -1,6 +1,6 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Trip, TripCreateInput } from "../api/trips";
@@ -9,10 +9,25 @@ import { NoticeProvider } from "../components/Notice";
 import { createQueryClient } from "../lib/queryClient";
 import { TripDetailPage } from "../pages/plan/TripDetailPage";
 import { chainLocation, marketLocation } from "./geo-fixtures";
-import { adminUser, errorResponse, jsonResponse, mockApi, type RecordedCall, type RouteHandler } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  type RecordedCall,
+  type RouteHandler,
+} from "./helpers";
 import { instances } from "./maplibre-stub";
 import { kitchen, planHealth, settings } from "./plan-fixtures";
-import { balancedId, cheapestId, chosenTrip, placeId, replannedTripId, trip, tripId } from "./trip-fixtures";
+import {
+  balancedId,
+  cheapestId,
+  chosenTrip,
+  placeId,
+  replannedTripId,
+  trip,
+  tripId,
+} from "./trip-fixtures";
 
 vi.mock("maplibre-gl", () => import("./maplibre-stub"));
 
@@ -38,7 +53,10 @@ function Where() {
   return <p data-testid="where">{location.pathname}</p>;
 }
 
-function mount(routes: Record<string, RouteHandler> = {}, current: () => Trip = () => trip()): RecordedCall[] {
+function mount(
+  routes: Record<string, RouteHandler> = {},
+  current: () => Trip = () => trip(),
+): RecordedCall[] {
   const calls = mockApi({ ...baseRoutes(current), ...routes });
   const client = createQueryClient({ retry: false });
   render(
@@ -61,7 +79,12 @@ function mount(routes: Record<string, RouteHandler> = {}, current: () => Trip = 
 function phoneWidth() {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
   });
 }
 
@@ -77,7 +100,9 @@ describe("the three variants (UI-8.13, UI-8.20)", () => {
     mount();
     expect(await screen.findByRole("heading", { level: 1, name: /Trip, / })).toBeInTheDocument();
     expect(await screen.findByTestId("kitchen-tag")).toHaveTextContent(kitchen.name);
-    expect(screen.getByText("There and back · time at $20.00 an hour · up to 3 stops")).toBeInTheDocument();
+    expect(
+      screen.getByText("There and back · time at $20.00 an hour · up to 3 stops"),
+    ).toBeInTheDocument();
     expect((await cards()).map((c) => c.dataset.kind)).toEqual(["fastest", "cheapest", "balanced"]);
 
     const fastest = await card("fastest");
@@ -85,15 +110,23 @@ describe("the three variants (UI-8.13, UI-8.20)", () => {
     expect(within(fastest).getByTestId("variant-items")).toHaveTextContent("$33.10");
     expect(within(fastest).getByTestId("variant-driving")).toHaveTextContent("21 min");
     expect(within(fastest).getByTestId("variant-shopping")).toHaveTextContent("10 min");
-    expect(within(fastest).getByTestId("variant-trade")).toHaveTextContent("$3.20 more, 14 minutes less");
+    expect(within(fastest).getByTestId("variant-trade")).toHaveTextContent(
+      "$3.20 more, 14 minutes less",
+    );
     expect(within(fastest).queryByTestId("variant-mileage")).not.toBeInTheDocument();
 
     const cheap = await card("cheapest");
-    expect(within(cheap).getByTestId("variant-trade")).toHaveTextContent("$2.35 less, 19 minutes more");
-    expect(within(cheap).getByRole("list", { name: "Cheapest stops" })).toHaveTextContent(/1\.\s*Millstone Harbour\$14\.40.*2\.\s*Pier Farmers Market\$10\.50/);
+    expect(within(cheap).getByTestId("variant-trade")).toHaveTextContent(
+      "$2.35 less, 19 minutes more",
+    );
+    expect(within(cheap).getByRole("list", { name: "Cheapest stops" })).toHaveTextContent(
+      /1\.\s*Millstone Harbour\$14\.40.*2\.\s*Pier Farmers Market\$10\.50/,
+    );
 
     const balanced = await card("balanced");
-    expect(within(balanced).getByTestId("variant-trade")).toHaveTextContent("The reference the others are measured against.");
+    expect(within(balanced).getByTestId("variant-trade")).toHaveTextContent(
+      "The reference the others are measured against.",
+    );
   });
 
   it("puts the olive cheapest word on the Cheapest heading only, and colours no figure", async () => {
@@ -101,9 +134,12 @@ describe("the three variants (UI-8.13, UI-8.20)", () => {
     const cheap = await card("cheapest");
     const badge = within(cheap).getByText("cheapest");
     expect(badge.className).toMatch(/green/);
-    expect(within(cheap).getByTestId("variant-total").className).not.toMatch(/green|blue|amber|red/);
+    expect(within(cheap).getByTestId("variant-total").className).not.toMatch(
+      /green|blue|amber|red/,
+    );
     for (const c of await cards()) {
-      if (c.dataset.kind !== "cheapest") expect(within(c).queryByText("cheapest")).not.toBeInTheDocument();
+      if (c.dataset.kind !== "cheapest")
+        expect(within(c).queryByText("cheapest")).not.toBeInTheDocument();
     }
   });
 
@@ -111,7 +147,9 @@ describe("the three variants (UI-8.13, UI-8.20)", () => {
     mount();
     const cheap = await card("cheapest");
     expect(within(cheap).getByText("estimated").className).toMatch(/amber/);
-    expect(within(cheap).getByText("Drive times are estimates: the routing engine wasn't available.")).toBeInTheDocument();
+    expect(
+      within(cheap).getByText("Drive times are estimates: the routing engine wasn't available."),
+    ).toBeInTheDocument();
     expect(within(await card("fastest")).queryByText("estimated")).not.toBeInTheDocument();
   });
 
@@ -138,7 +176,11 @@ describe("notes and stops (UI-8.14)", () => {
     expect(notes[0]).toHaveTextContent("rests on prices older than 90 days");
     expect(within(notes[1]).getByText("forced stop").className).not.toMatch(/amber|green|blue/);
 
-    await userEvent.setup().click(within(screen.getByRole("group", { name: "Show the stops of" })).getByRole("button", { name: "Cheapest" }));
+    await userEvent.setup().click(
+      within(screen.getByRole("group", { name: "Show the stops of" })).getByRole("button", {
+        name: "Cheapest",
+      }),
+    );
     const shown = screen.getAllByTestId("annotation");
     expect(shown.map((n) => n.dataset.kind)).toEqual(["estimated_legs"]);
     expect(within(shown[0]).getByText("estimated").className).toMatch(/amber/);
@@ -158,15 +200,23 @@ describe("notes and stops (UI-8.14)", () => {
     expect(within(stops[0]).getByTestId("stop-subtotal")).toHaveTextContent("$17.20");
     const navigate = await within(stops[0]).findByRole("link", { name: "Navigate" });
     expect(navigate).toHaveAttribute("target", "_blank");
-    expect(navigate.getAttribute("href")).toContain(encodeURIComponent(`${chainLocation.lat},${chainLocation.lon}`));
+    expect(navigate.getAttribute("href")).toContain(
+      encodeURIComponent(`${chainLocation.lat},${chainLocation.lon}`),
+    );
   });
 
   it("marks an estimated leg on its stop", async () => {
     mount();
     await cards();
-    await userEvent.setup().click(within(screen.getByRole("group", { name: "Show the stops of" })).getByRole("button", { name: "Cheapest" }));
+    await userEvent.setup().click(
+      within(screen.getByRole("group", { name: "Show the stops of" })).getByRole("button", {
+        name: "Cheapest",
+      }),
+    );
     const [first] = screen.getAllByTestId("stop");
-    expect(within(within(first).getByTestId("stop-leg")).getByText("estimated").className).toMatch(/amber/);
+    expect(within(within(first).getByTestId("stop-leg")).getByText("estimated").className).toMatch(
+      /amber/,
+    );
   });
 });
 
@@ -177,10 +227,15 @@ describe("the map (UI-8.16)", () => {
     const map = within(await screen.findByTestId("trip-map"));
     await waitFor(() => expect(map.getAllByRole("button", { name: /^Stop / })).toHaveLength(2));
     const pins = map.getAllByRole("button", { name: /^Stop / });
-    expect(pins.map((p) => p.getAttribute("aria-label"))).toEqual(["Stop 1: Millstone Harbour", "Stop 2: Pier Farmers Market"]);
+    expect(pins.map((p) => p.getAttribute("aria-label"))).toEqual([
+      "Stop 1: Millstone Harbour",
+      "Stop 2: Pier Farmers Market",
+    ]);
     expect(pins.map((p) => p.textContent)).toEqual(["1", "2"]);
     expect(pins[0].className).toMatch(/kerp-pin--stop/);
-    expect(map.getByRole("button", { name: `${kitchen.name} (kitchen)` }).className).toMatch(/kerp-pin--home/);
+    expect(map.getByRole("button", { name: `${kitchen.name} (kitchen)` }).className).toMatch(
+      /kerp-pin--home/,
+    );
 
     const stub = instances[instances.length - 1];
     await waitFor(() => expect(stub.sources.get("kerp-path")).toBeTruthy());
@@ -202,8 +257,13 @@ describe("the map (UI-8.16)", () => {
     await user.click(pin);
     expect(pin).toHaveAttribute("aria-pressed", "true");
     expect(screen.getAllByTestId("stop")[1]).toHaveAttribute("data-selected", "true");
-    await user.click(within(screen.getAllByTestId("stop")[0]).getByRole("button", { name: "Show on the map" }));
-    expect(map.getByRole("button", { name: "Stop 1: Millstone Harbour" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(
+      within(screen.getAllByTestId("stop")[0]).getByRole("button", { name: "Show on the map" }),
+    );
+    expect(map.getByRole("button", { name: "Stop 1: Millstone Harbour" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(pin).toHaveAttribute("aria-pressed", "false");
   });
 });
@@ -235,7 +295,10 @@ describe("choose, replan and abandon (UI-8.15)", () => {
     expect(screen.getByRole("button", { name: "Replan" }).className).not.toMatch(/bg-blue/);
 
     await user.click(screen.getByText("Show the other plans"));
-    expect(screen.getAllByTestId("other-plan").map((p) => p.dataset.kind)).toEqual(["fastest", "balanced"]);
+    expect(screen.getAllByTestId("other-plan").map((p) => p.dataset.kind)).toEqual([
+      "fastest",
+      "balanced",
+    ]);
     expect(screen.getAllByTestId("other-plan")[0]).toHaveTextContent("$3.20 more, 14 minutes less");
   });
 
@@ -245,14 +308,24 @@ describe("choose, replan and abandon (UI-8.15)", () => {
       {
         [`POST /plan/trips/${tripId}/choose`]: () => {
           current = trip({ chosen_variant_id: balancedId, chosen_at: "2026-10-16T09:20:00Z" });
-          return errorResponse(409, "already_chosen", "A variant was already chosen for this plan.");
+          return errorResponse(
+            409,
+            "already_chosen",
+            "A variant was already chosen for this plan.",
+          );
         },
       },
       () => current,
     );
-    await userEvent.setup().click(within(await card("fastest")).getByRole("button", { name: "Choose" }));
-    await waitFor(() => expect(screen.getByTestId("variant-card")).toHaveAttribute("data-kind", "balanced"));
-    expect(await screen.findByTestId("notice")).toHaveTextContent("A plan was already chosen for this trip; showing it.");
+    await userEvent
+      .setup()
+      .click(within(await card("fastest")).getByRole("button", { name: "Choose" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("variant-card")).toHaveAttribute("data-kind", "balanced"),
+    );
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "A plan was already chosen for this trip; showing it.",
+    );
   });
 
   it("replans from the same inputs in the drawer, and opens the new plan", async () => {
@@ -266,14 +339,23 @@ describe("choose, replan and abandon (UI-8.15)", () => {
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Replan" }));
     const drawer = await screen.findByRole("dialog", { name: "Plan a trip" });
-    expect(within(drawer).getByLabelText("Starting from")).toHaveDisplayValue("Where the last plan started");
+    expect(within(drawer).getByLabelText("Starting from")).toHaveDisplayValue(
+      "Where the last plan started",
+    );
     expect(within(drawer).getByLabelText("Ending at")).toHaveDisplayValue("Same as the start");
     expect(within(drawer).getByLabelText("Value of your time")).toHaveValue("20.00");
     expect(within(drawer).getByLabelText("Stops at most")).toHaveValue("3");
     expect(within(drawer).getByLabelText("Minutes per stop")).toHaveValue("10");
     await user.click(within(drawer).getByRole("button", { name: "Plan" }));
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${replannedTripId}`));
-    expect(body).toMatchObject({ origin_place_id: placeId, value_of_time_per_hour: "20.00", max_stops: 3, stop_overhead_min: 10 });
+    await waitFor(() =>
+      expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${replannedTripId}`),
+    );
+    expect(body).toMatchObject({
+      origin_place_id: placeId,
+      value_of_time_per_hour: "20.00",
+      max_stops: 3,
+      stop_overhead_min: 10,
+    });
     expect(body).not.toHaveProperty("destination_place_id");
   });
 
@@ -300,7 +382,9 @@ describe("choose, replan and abandon (UI-8.15)", () => {
     expect(calls.some((c) => c.method === "POST")).toBe(false);
 
     await user.click(screen.getByRole("button", { name: "Abandon" }));
-    await user.click(within(screen.getByTestId("abandon-confirm")).getByRole("button", { name: "Abandon trip" }));
+    await user.click(
+      within(screen.getByTestId("abandon-confirm")).getByRole("button", { name: "Abandon trip" }),
+    );
     expect(await screen.findByTestId("notice")).toHaveTextContent("Abandoned the trip.");
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Abandoned");
     expect(screen.queryByRole("button", { name: "Choose" })).not.toBeInTheDocument();
@@ -310,12 +394,16 @@ describe("choose, replan and abandon (UI-8.15)", () => {
 
 describe("the trip page's states", () => {
   it("says a trip is gone, and offers Try again on any other error", async () => {
-    mount({ [`GET /plan/trips/${tripId}`]: () => errorResponse(404, "not_found", "No such trip plan.") });
+    mount({
+      [`GET /plan/trips/${tripId}`]: () => errorResponse(404, "not_found", "No such trip plan."),
+    });
     expect(await screen.findByRole("alert")).toHaveTextContent("There is no such trip.");
   });
 
   it("offers Try again when the trip could not load", async () => {
-    mount({ [`GET /plan/trips/${tripId}`]: () => errorResponse(500, "internal", "Something broke.") });
+    mount({
+      [`GET /plan/trips/${tripId}`]: () => errorResponse(500, "internal", "Something broke."),
+    });
     expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't load the trip");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
@@ -333,12 +421,22 @@ describe("the trip page on a phone (UI-8.19)", () => {
     const stops = screen.getAllByTestId("stop");
     expect(stops[0].querySelector("details")).toHaveAttribute("open");
     expect(stops[1].querySelector("details")).not.toHaveAttribute("open");
-    expect(within(stops[1]).getByText(/Stop 2 · Pier Farmers Market · \$10\.50/)).toBeInTheDocument();
+    expect(
+      within(stops[1]).getByText(/Stop 2 · Pier Farmers Market · \$10\.50/),
+    ).toBeInTheDocument();
 
     expect(screen.queryByRole("button", { name: "Abandon" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "More actions" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "More actions" })).getByRole("button", { name: "Abandon" }));
-    await waitFor(() => expect(within(screen.getByTestId("abandon-confirm")).getByRole("button", { name: "Cancel" })).toHaveFocus());
+    await user.click(
+      within(await screen.findByRole("dialog", { name: "More actions" })).getByRole("button", {
+        name: "Abandon",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId("abandon-confirm")).getByRole("button", { name: "Cancel" }),
+      ).toHaveFocus(),
+    );
     // The map comes after the stops.
     const map = await screen.findByTestId("trip-map");
     expect(stops[1].compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

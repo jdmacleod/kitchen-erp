@@ -10,7 +10,6 @@ import {
   useRecipesStatus,
   type Completeness,
   type RecipeListItem,
-  type RecipeStatus,
 } from "../../api/recipes";
 import { RecipeBadges } from "../../components/cook/RecipeBadges";
 import { RescanButton, useRescanWithNotice } from "../../components/cook/RescanButton";
@@ -81,7 +80,7 @@ export function RecipesPage() {
 
   const list = useRecipes({
     q: q || undefined,
-    status: status === "all" ? undefined : (status as RecipeStatus),
+    status: status === "all" ? undefined : status,
     completeness: completeness === "all" ? undefined : completeness,
   });
   const repo = useRecipesStatus();
@@ -114,17 +113,24 @@ export function RecipesPage() {
   };
 
   const counts = repo.data?.counts;
-  const withCount = (label: string, n: number | undefined) => (n === undefined ? label : `${label} (${n})`);
+  const withCount = (label: string, n: number | undefined) =>
+    n === undefined ? label : `${label} (${n})`;
   const items = list.data?.items ?? [];
 
   return (
     <>
-      <PageHeader title="Recipes" description="What each dish costs from the price book, and how much of that figure is known.">
+      <PageHeader
+        title="Recipes"
+        description="What each dish costs from the price book, and how much of that figure is known."
+      >
         <RescanButton />
       </PageHeader>
 
       {waiting ? (
-        <p className="mb-4 text-sm text-neutral-700 dark:text-neutral-300" data-testid="names-waiting-line">
+        <p
+          className="mb-4 text-sm text-neutral-700 dark:text-neutral-300"
+          data-testid="names-waiting-line"
+        >
           {waiting.title} ·{" "}
           <Link to={waiting.action_route} className={`rounded font-medium underline ${focusRing}`}>
             {waiting.action_label}
@@ -199,8 +205,8 @@ export function RecipesPage() {
           // No repository (the directory missing, empty or without .cook files) is an
           // empty state, not an error: the application is working as configured (UI-7.5).
           <EmptyState title="No recipes found" action={<RescanButton />}>
-            Point <code className="font-mono">RECIPES_PATH</code> at a Cooklang repository, or run <code className="font-mono">make seed-examples</code> to start with
-            the example recipes.
+            Point <code className="font-mono">RECIPES_PATH</code> at a Cooklang repository, or run{" "}
+            <code className="font-mono">make seed-examples</code> to start with the example recipes.
           </EmptyState>
         )
       ) : (
@@ -213,7 +219,11 @@ export function RecipesPage() {
 }
 
 /** "No recipes match 'soup' that can't be read" (10, States). */
-export function filteredEmptyTitle(q: string, status: StatusFilter, completeness: CompletenessFilter): string {
+export function filteredEmptyTitle(
+  q: string,
+  status: StatusFilter,
+  completeness: CompletenessFilter,
+): string {
   const parts = [
     q ? `match ‘${q}’` : null,
     status !== "all" ? STATUS_WORDS[status] : null,
@@ -224,7 +234,8 @@ export function filteredEmptyTitle(q: string, status: StatusFilter, completeness
 
 const headCell = `px-3 py-2 text-left text-xs font-semibold ${muted}`;
 // Recipe, Servings, Cost, Basket, Known, Indexed.
-const columns = "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.1fr)]";
+const columns =
+  "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,0.7fr)_minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1.1fr)]";
 
 /**
  * The rows: a grid table at lg and wider; below it each row stacks as a block
@@ -235,7 +246,10 @@ function RecipeRows({ items }: { items: RecipeListItem[] }) {
   return (
     <div role="table" aria-label="Recipes" className="text-sm">
       <div role="rowgroup" className="hidden lg:block">
-        <div role="row" className={`grid border-b border-neutral-200 dark:border-neutral-800 ${columns}`}>
+        <div
+          role="row"
+          className={`grid border-b border-neutral-200 dark:border-neutral-800 ${columns}`}
+        >
           <div role="columnheader" className={headCell}>
             Recipe
           </div>
@@ -270,17 +284,27 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
   const servings = servingsText(recipe);
   const partial = cost !== null && cost.lines_priced < cost.lines_total;
   return (
-    <div role="row" className={`grid gap-x-3 gap-y-1 px-3 py-3 lg:items-start lg:py-2 ${columns}`} data-testid="recipe-row">
+    <div
+      role="row"
+      className={`grid gap-x-3 gap-y-1 px-3 py-3 lg:items-start lg:py-2 ${columns}`}
+      data-testid="recipe-row"
+    >
       <div role="cell" className="min-w-0">
         <span className="flex flex-wrap items-center gap-2">
-          <Link to={`/cook/recipes/${recipe.id}`} className={`${tapTarget} rounded-md font-semibold underline-offset-2 hover:underline ${focusRing}`}>
+          <Link
+            to={`/cook/recipes/${recipe.id}`}
+            className={`${tapTarget} rounded-md font-semibold underline-offset-2 hover:underline ${focusRing}`}
+          >
             {recipe.title}
           </Link>
           <RecipeBadges recipe={recipe} />
         </span>
         <span className={`block truncate font-mono text-xs ${muted}`}>{recipe.path}</span>
       </div>
-      <div role="cell" className={`text-xs lg:text-sm ${muted} lg:text-neutral-900 lg:dark:text-neutral-100`}>
+      <div
+        role="cell"
+        className={`text-xs lg:text-sm ${muted} lg:text-neutral-900 lg:dark:text-neutral-100`}
+      >
         {servings ? (
           <>
             <span className="lg:hidden">Serves </span>
@@ -297,8 +321,14 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
               <span className="lg:hidden">Cost </span>
               {formatCostRange(cost.consumed_cost, cost.consumed_cost_high)}
             </span>
-            {cost.per_serving ? <span className={`block text-xs ${muted}`}>{formatMoney(cost.per_serving)} per serving</span> : null}
-            {cost.provisional ? <span className={`block text-xs ${muted}`}>provisional</span> : null}
+            {cost.per_serving ? (
+              <span className={`block text-xs ${muted}`}>
+                {formatMoney(cost.per_serving)} per serving
+              </span>
+            ) : null}
+            {cost.provisional ? (
+              <span className={`block text-xs ${muted}`}>provisional</span>
+            ) : null}
           </>
         ) : (
           <span className={muted}>Not costed yet</span>
@@ -314,8 +344,15 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
           <span className={muted}>—</span>
         )}
       </div>
-      <div role="cell" className={cost ? (partial ? "text-amber-900 dark:text-amber-200" : "") : "hidden lg:block"}>
-        {cost ? pricedSentence(cost.lines_priced, cost.lines_total) : <span className={muted}>—</span>}
+      <div
+        role="cell"
+        className={cost ? (partial ? "text-amber-900 dark:text-amber-200" : "") : "hidden lg:block"}
+      >
+        {cost ? (
+          pricedSentence(cost.lines_priced, cost.lines_total)
+        ) : (
+          <span className={muted}>—</span>
+        )}
       </div>
       <div role="cell" className={`text-xs lg:text-sm ${muted}`}>
         <span className="lg:hidden">Indexed </span>

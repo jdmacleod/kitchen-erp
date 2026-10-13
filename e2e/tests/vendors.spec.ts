@@ -45,7 +45,9 @@ test("create a vendor, open it, and change its price scope", async ({ page }) =>
   await expect(locations.getByText("33.512345, -120.487654")).toBeVisible();
 });
 
-test("the OpenStreetMap panel says the integration is off rather than failing", async ({ page }) => {
+test("the OpenStreetMap panel says the integration is off rather than failing", async ({
+  page,
+}) => {
   await login(page);
   // A kitchen to search from; the box in SECURITY.md, never a real place.
   const created = await page.request.post("/api/v1/home-bases", {
@@ -61,6 +63,8 @@ test("the OpenStreetMap panel says the integration is off rather than failing", 
   const dialog = page.getByRole("dialog", { name: "Find nearby" });
   await dialog.getByLabel("Kitchen").selectOption(home.id);
   await dialog.getByRole("button", { name: "Find candidates" }).click();
-  await expect(page.getByText("OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.")).toBeVisible();
+  await expect(
+    page.getByText("OpenStreetMap adoption is off; set ENABLE_OVERPASS=true."),
+  ).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
 });

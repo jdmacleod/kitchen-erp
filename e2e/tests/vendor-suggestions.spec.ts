@@ -13,7 +13,12 @@ test("a scoped tool suggests, a person accepts", async ({ page, playwright, base
   const storeName = `E2E Beacon Grocer ${stamp}`;
   const created = await page.request.post("/api/v1/vendor-locations", {
     // The synthetic box from SECURITY.md.
-    data: { name: "Elm St", lat: "33.660000", lon: "-120.550000", vendor: { name: storeName, kind: "chain" } },
+    data: {
+      name: "Elm St",
+      lat: "33.660000",
+      lon: "-120.550000",
+      vendor: { name: storeName, kind: "chain" },
+    },
     headers: { "Idempotency-Key": `e2e-suggest-loc-${stamp}` },
   });
   expect(created.status()).toBe(201);
@@ -23,13 +28,24 @@ test("a scoped tool suggests, a person accepts", async ({ page, playwright, base
   });
   const { plaintext } = (await token.json()) as { plaintext: string };
 
-  const tool = await playwright.request.newContext({ baseURL, extraHTTPHeaders: { Authorization: `Bearer ${plaintext}` } });
+  const tool = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { Authorization: `Bearer ${plaintext}` },
+  });
   expect((await tool.get("/api/v1/vendors")).status()).toBe(403);
   const posted = await tool.post("/api/v1/vendor-suggestions", {
     data: {
       tool: "e2e-tool",
       tool_version: "1",
-      items: [{ target: "location", key: location.key, field: "phone", proposed: "+1 555 0145", source_url: "https://beacon.example/elm" }],
+      items: [
+        {
+          target: "location",
+          key: location.key,
+          field: "phone",
+          proposed: "+1 555 0145",
+          source_url: "https://beacon.example/elm",
+        },
+      ],
     },
   });
   expect(posted.status()).toBe(201);
@@ -38,7 +54,10 @@ test("a scoped tool suggests, a person accepts", async ({ page, playwright, base
   await page.goto(`/catalog/vendors/${location.vendor.id}`);
   await page.getByRole("button", { name: "Review" }).click();
   const drawer = page.getByRole("dialog", { name: "Vendor suggestions" });
-  await expect(drawer.getByRole("link", { name: "beacon.example ↗" })).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(drawer.getByRole("link", { name: "beacon.example ↗" })).toHaveAttribute(
+    "rel",
+    "noopener noreferrer",
+  );
   await drawer.getByRole("button", { name: "Accept phone for Elm St" }).click();
   await expect(drawer.getByRole("button", { name: "Accept phone for Elm St" })).toHaveCount(0);
   await drawer.getByRole("button", { name: "Close" }).click();

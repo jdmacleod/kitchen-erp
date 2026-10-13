@@ -19,18 +19,30 @@ interface Seeded {
  * any committed purchase back into review, which is the screen under test.
  */
 async function seedReviewedPurchase(page: Page): Promise<Seeded> {
-  const ingredient = await page.request.post("/api/v1/ingredients", { data: { name: `E2E semolina ${stamp}` } });
+  const ingredient = await page.request.post("/api/v1/ingredients", {
+    data: { name: `E2E semolina ${stamp}` },
+  });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };
 
   const product = await page.request.post("/api/v1/products", {
-    data: { ingredient_id: ingredientId, name: `E2E semolina bag ${stamp}`, pack_qty: "1", pack_unit: "kg" },
+    data: {
+      ingredient_id: ingredientId,
+      name: `E2E semolina bag ${stamp}`,
+      pack_qty: "1",
+      pack_unit: "kg",
+    },
   });
   expect(product.status()).toBe(201);
   const { id: productId } = (await product.json()) as { id: string };
 
   const location = await page.request.post("/api/v1/vendor-locations", {
-    data: { name: `E2E Cove Grocer ${stamp}`, lat: "33.610000", lon: "-120.390000", vendor: { name: `E2E Cove Grocer ${stamp}`, kind: "independent" } },
+    data: {
+      name: `E2E Cove Grocer ${stamp}`,
+      lat: "33.610000",
+      lon: "-120.390000",
+      vendor: { name: `E2E Cove Grocer ${stamp}`, kind: "independent" },
+    },
     headers: { "Idempotency-Key": `e2e-review-loc-${stamp}` },
   });
   expect(location.status()).toBe(201);
@@ -58,7 +70,9 @@ async function seedReviewedPurchase(page: Page): Promise<Seeded> {
   return { purchaseId, productId, locationId };
 }
 
-test("review a reopened purchase by keyboard: move between lines, reattach a discount, commit, reopen", async ({ page }) => {
+test("review a reopened purchase by keyboard: move between lines, reattach a discount, commit, reopen", async ({
+  page,
+}) => {
   await login(page);
   const { purchaseId } = await seedReviewedPurchase(page);
   await page.goto(`/shop/purchases/${purchaseId}`);
@@ -81,7 +95,9 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
   await expect(rows.nth(1)).toBeFocused();
   const attach = page.getByRole("combobox", { name: "Attach line 2 to" });
   await attach.focus();
-  const patched = page.waitForResponse((r) => r.request().method() === "PATCH" && r.url().includes(`/purchases/${purchaseId}/lines/`));
+  const patched = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && r.url().includes(`/purchases/${purchaseId}/lines/`),
+  );
   await attach.selectOption({ index: 1 });
   expect((await patched).status()).toBe(200);
   await expect(page.getByRole("combobox", { name: "Attach line 2 to" })).not.toHaveValue("");
@@ -92,7 +108,9 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
   const dialog = page.getByRole("dialog", { name: "Commit this purchase?" });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Commit" })).toBeFocused();
-  const committed = page.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/purchases/${purchaseId}/commit`));
+  const committed = page.waitForResponse(
+    (r) => r.request().method() === "POST" && r.url().endsWith(`/purchases/${purchaseId}/commit`),
+  );
   await page.keyboard.press("Enter");
   expect((await committed).status()).toBe(200);
 
@@ -105,12 +123,18 @@ test("review a reopened purchase by keyboard: move between lines, reattach a dis
   await expect(page.getByRole("group", { name: "Show lines" })).toBeVisible();
 });
 
-test("the receipts page uploads nothing by itself and lists jobs; the to-identify queue loads", async ({ page }) => {
+test("the receipts page uploads nothing by itself and lists jobs; the to-identify queue loads", async ({
+  page,
+}) => {
   await login(page);
   await page.goto("/shop/receipts");
   await expect(page.getByRole("heading", { name: "Upload receipts" })).toBeVisible();
   // A PDF is named because the picker accepts one: an emailed receipt is not a photo.
-  await expect(page.getByText("Choose one or several, or drop them here. They stay on this deployment; nothing is sent elsewhere.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Choose one or several, or drop them here. They stay on this deployment; nothing is sent elsewhere.",
+    ),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Upload" }).click();
   await expect(page.getByRole("alert")).toContainText("Choose a receipt photo or PDF.");
 

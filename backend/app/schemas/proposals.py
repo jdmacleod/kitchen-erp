@@ -31,7 +31,7 @@ class FieldCandidateOut(ApiModel):
 class ProposalFieldOut(FieldCandidateOut):
     """The chosen value and where it came from, with every other candidate (criterion 73)."""
 
-    alternatives: list[FieldCandidateOut] = []
+    alternatives: list[FieldCandidateOut] = []  # noqa: RUF012
     conflict: bool = False
 
 
@@ -116,9 +116,9 @@ class ProposalOut(ApiModel):
     fields: dict[str, ProposalFieldOut]
     match: dict[str, Any]
     # The match's fuzzy candidates, ordered by verdict then similarity (2P).
-    candidates: list[MatchCandidateOut] = []
+    candidates: list[MatchCandidateOut] = []  # noqa: RUF012
     # Other pending proposals that are likely the same product (2P).
-    look_alikes: list[LookAlikeOut] = []
+    look_alikes: list[LookAlikeOut] = []  # noqa: RUF012
     listing: dict[str, Any] | None
     vendor: ProposalVendor | None = None
     price: dict[str, Any] | None
@@ -131,7 +131,7 @@ class ProposalOut(ApiModel):
     house_brand: HouseBrandOut | None = None
     # With no house brand, the families whose own-brand barcode prefix the proposed GTIN
     # starts with (2R-3): review offers a store brand for a person to confirm.
-    barcode_families: list[BrandFamilyRef] = []
+    barcode_families: list[BrandFamilyRef] = []  # noqa: RUF012
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime
@@ -146,7 +146,7 @@ class ProposalSummary(ApiModel):
     channel: CaptureChannel | None
     has_conflict: bool
     # Other pending proposals that are likely the same product (2P).
-    look_alikes: list[uuid.UUID] = []
+    look_alikes: list[uuid.UUID] = []  # noqa: RUF012
     created_at: datetime
 
 
@@ -174,11 +174,11 @@ class AcceptIn(ApiModel):
     product_id: uuid.UUID | None = None
     ingredient_id: uuid.UUID | None = None
     kind: ProductKind | None = None
-    edits: dict[str, Any] = {}
+    edits: dict[str, Any] = {}  # noqa: RUF012
     record_price: bool = False
     # Overrides the page's price and what it is for; it also settles a price conflict.
     price: PriceIn | None = None
     vendor_location_id: uuid.UUID | None = None
     main_photo_id: uuid.UUID | None = None
-    photo_roles: dict[uuid.UUID, PhotoRole] = {}
-    hidden_photo_ids: list[uuid.UUID] = []
+    photo_roles: dict[uuid.UUID, PhotoRole] = {}  # noqa: RUF012
+    hidden_photo_ids: list[uuid.UUID] = []  # noqa: RUF012

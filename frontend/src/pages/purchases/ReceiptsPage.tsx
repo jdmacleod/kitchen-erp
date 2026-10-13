@@ -1,16 +1,28 @@
 import { useEffect, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { createUploadBatch, useIngestJob, useJobToManual, useRemoveJob, useRetryJob, useUploadBatches, useUploadReceipt, type BatchReceipt, type IngestJob, type ReceiptUploadResult, type UploadBatch } from "../../api/ingest";
+import {
+  createUploadBatch,
+  useIngestJob,
+  useJobToManual,
+  useRemoveJob,
+  useRetryJob,
+  useUploadBatches,
+  useUploadReceipt,
+  type BatchReceipt,
+  type IngestJob,
+  type ReceiptUploadResult,
+  type UploadBatch,
+} from "../../api/ingest";
 import { Badge } from "../../components/catalog/fields";
+import { useNotice } from "../../components/Notice";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { TrustBadge } from "../../components/purchases/TrustBadge";
-import { formatMoney } from "../../lib/decimal";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
 
 /** Upload a receipt photo and watch its job; a finished job links to its review. */
 export function ReceiptsPage() {
@@ -58,27 +70,47 @@ export function ReceiptsPage() {
     }
     setProgress(null);
     if (fileRef.current) fileRef.current.value = "";
-    if (failed.length > 0) setInvalid(failed.length === 1 ? `Not uploaded: ${failed[0]}` : `${failed.length} weren't uploaded. ${failed.join("; ")}`);
+    if (failed.length > 0)
+      setInvalid(
+        failed.length === 1
+          ? `Not uploaded: ${failed[0]}`
+          : `${failed.length} weren't uploaded. ${failed.join("; ")}`,
+      );
     if (results.length === 1 && failed.length === 0) {
       const result = results[0];
-      if (result.revived) notice.show({ tone: "info", message: "This receipt was removed before; it's being read again." });
+      if (result.revived)
+        notice.show({
+          tone: "info",
+          message: "This receipt was removed before; it's being read again.",
+        });
       else if (result.created === false)
         // Nothing new is read: saying "once it's read" sent people waiting for nothing.
         notice.show({
           tone: "info",
           message: "You've uploaded this receipt before, so it isn't read again.",
-          action: result.job.purchase_id ? { label: "Open its purchase", to: `/shop/purchases/${result.job.purchase_id}` } : undefined,
+          action: result.job.purchase_id
+            ? { label: "Open its purchase", to: `/shop/purchases/${result.job.purchase_id}` }
+            : undefined,
         });
-      else notice.show({ tone: "success", message: "Receipt uploaded. It'll appear in Needs you once it's read." });
+      else
+        notice.show({
+          tone: "success",
+          message: "Receipt uploaded. It'll appear in Needs you once it's read.",
+        });
     } else if (results.length > 1) {
       const fresh = results.filter((r) => r.created !== false && !r.revived).length;
       const again = results.filter((r) => r.revived).length;
       const seen = results.length - fresh - again;
       const parts: string[] = [];
       if (fresh > 0) parts.push(`Uploaded ${fresh} ${fresh === 1 ? "receipt" : "receipts"}.`);
-      if (again > 0) parts.push(`${again} removed before ${again === 1 ? "is" : "are"} being read again.`);
-      if (fresh + again > 0) parts.push(`${fresh + again === 1 ? "It" : "They"}'ll appear in Needs you once read.`);
-      if (seen > 0) parts.push(`${seen} ${seen === 1 ? "was" : "were"} uploaded before and ${seen === 1 ? "isn't" : "aren't"} read again.`);
+      if (again > 0)
+        parts.push(`${again} removed before ${again === 1 ? "is" : "are"} being read again.`);
+      if (fresh + again > 0)
+        parts.push(`${fresh + again === 1 ? "It" : "They"}'ll appear in Needs you once read.`);
+      if (seen > 0)
+        parts.push(
+          `${seen} ${seen === 1 ? "was" : "were"} uploaded before and ${seen === 1 ? "isn't" : "aren't"} read again.`,
+        );
       notice.show({ tone: fresh + again > 0 ? "success" : "info", message: parts.join(" ") });
     }
   };
@@ -96,7 +128,10 @@ export function ReceiptsPage() {
 
   return (
     <>
-      <PageHeader title="Receipts" description="Upload receipts and their lines are read for you to review." />
+      <PageHeader
+        title="Receipts"
+        description="Upload receipts and their lines are read for you to review."
+      />
       <div className="flex flex-col gap-6">
         <Card>
           <form
@@ -123,8 +158,18 @@ export function ReceiptsPage() {
               {/* The server's allowlist (app/ingest/formats.py) is the one that
                   decides; this only filters the picker, and image/* alone used to
                   hide the PDFs that emailed receipts arrive as. */}
-              <input id="receipt-image" ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" className={`min-h-11 text-sm lg:min-h-0 ${focusRing}`} />
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">Choose one or several, or drop them here. They stay on this deployment; nothing is sent elsewhere.</p>
+              <input
+                id="receipt-image"
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                className={`min-h-11 text-sm lg:min-h-0 ${focusRing}`}
+              />
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
+                Choose one or several, or drop them here. They stay on this deployment; nothing is
+                sent elsewhere.
+              </p>
             </div>
             <div>
               <Button type="submit" disabled={busy}>
@@ -143,7 +188,9 @@ export function ReceiptsPage() {
               </p>
             ) : pinned.isError ? (
               isApiError(pinned.error) && pinned.error.code === "receipt_removed" ? (
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">This receipt was removed.</p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  This receipt was removed.
+                </p>
               ) : (
                 <Alert tone="error">{errorMessage(pinned.error)}</Alert>
               )
@@ -163,7 +210,9 @@ export function ReceiptsPage() {
           ) : batches.isError ? (
             <Alert tone="error">{errorMessage(batches.error)}</Alert>
           ) : batches.data.length === 0 && !pinnedId ? (
-            <EmptyState title="No receipts yet">Upload a photo and its lines will be parsed for review.</EmptyState>
+            <EmptyState title="No receipts yet">
+              Upload a photo and its lines will be parsed for review.
+            </EmptyState>
           ) : (
             <ol aria-label="Uploads" className="flex flex-col gap-6">
               {batches.data.map((b) => (
@@ -204,7 +253,10 @@ function BatchSection({ batch, hidden }: { batch: UploadBatch; hidden?: string }
           <time dateTime={batch.created_at}>{formatDateTime(batch.created_at)}</time>
         </h3>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">{arrived.join(" · ")}</p>
-        <dl className="flex w-full flex-wrap gap-x-4 text-sm" aria-label="What the readings came to">
+        <dl
+          className="flex w-full flex-wrap gap-x-4 text-sm"
+          aria-label="What the readings came to"
+        >
           <div className="flex gap-1">
             <dt>Add up</dt>
             <dd className="font-medium tabular-nums">{tally(batch.adds_up)}</dd>
@@ -219,7 +271,10 @@ function BatchSection({ batch, hidden }: { batch: UploadBatch; hidden?: string }
           </div>
         </dl>
       </div>
-      <ul aria-label="Receipts in this upload" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+      <ul
+        aria-label="Receipts in this upload"
+        className="divide-y divide-neutral-200 dark:divide-neutral-800"
+      >
         {rows.map((r) => (
           <li key={r.job.id} className="py-2">
             <JobRow job={r.job} receipt={r} />
@@ -235,7 +290,8 @@ function receiptFacts(receipt: BatchReceipt): string | null {
   const facts: string[] = [];
   if (receipt.store) facts.push(receipt.store);
   if (receipt.total) facts.push(formatMoney(receipt.total));
-  if (receipt.item_lines !== null) facts.push(`${receipt.item_lines} ${receipt.item_lines === 1 ? "line" : "lines"}`);
+  if (receipt.item_lines !== null)
+    facts.push(`${receipt.item_lines} ${receipt.item_lines === 1 ? "line" : "lines"}`);
   return facts.length > 0 ? facts.join(" · ") : null;
 }
 
@@ -266,7 +322,15 @@ function jobStatusText(job: IngestJob): string {
   return statusText[job.status] ?? job.status;
 }
 
-function JobRow({ job, receipt, onRemoved }: { job: IngestJob; receipt?: BatchReceipt; onRemoved?: () => void }) {
+function JobRow({
+  job,
+  receipt,
+  onRemoved,
+}: {
+  job: IngestJob;
+  receipt?: BatchReceipt;
+  onRemoved?: () => void;
+}) {
   const retry = useRetryJob();
   const toManual = useJobToManual();
   const remove = useRemoveJob();
@@ -279,13 +343,24 @@ function JobRow({ job, receipt, onRemoved }: { job: IngestJob; receipt?: BatchRe
   useEffect(() => {
     if (confirming) keep.current?.focus();
   }, [confirming]);
-  const tone = job.status === "done" ? "good" : job.status === "failed" ? "danger" : job.last_error ? "warn" : "neutral";
+  const tone =
+    job.status === "done"
+      ? "good"
+      : job.status === "failed"
+        ? "danger"
+        : job.last_error
+          ? "warn"
+          : "neutral";
   const error = job.last_error ? ingestErrorText(job.last_error, job.last_error_detail) : null;
   // When it was last sent to be read: a receipt uploaded again shows that day.
   const when = job.uploaded_at ?? job.created_at;
   const facts = receipt ? receiptFacts(receipt) : null;
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-sm" data-testid="ingest-job" data-status={job.status}>
+    <div
+      className="flex flex-wrap items-center justify-between gap-2 text-sm"
+      data-testid="ingest-job"
+      data-status={job.status}
+    >
       {/* Which receipt this is (#28): two failed jobs otherwise read the same. */}
       {job.receipt_document_id ? (
         <ReceiptImage
@@ -298,9 +373,15 @@ function JobRow({ job, receipt, onRemoved }: { job: IngestJob; receipt?: BatchRe
       ) : null}
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <Badge tone={tone}>{jobStatusText(job)}</Badge>
-        {job.status !== "failed" ? <TrustBadge trust={receipt?.trust} gap={receipt?.gap} held={receipt?.held} /> : null}
-        {receipt?.outcome === "already_seen" ? <span className="text-neutral-600 dark:text-neutral-400">uploaded before</span> : null}
-        {job.status === "running" && job.stage && stageText[job.stage] ? <span className="text-neutral-600 dark:text-neutral-400">{stageText[job.stage]}</span> : null}
+        {job.status !== "failed" ? (
+          <TrustBadge trust={receipt?.trust} gap={receipt?.gap} held={receipt?.held} />
+        ) : null}
+        {receipt?.outcome === "already_seen" ? (
+          <span className="text-neutral-600 dark:text-neutral-400">uploaded before</span>
+        ) : null}
+        {job.status === "running" && job.stage && stageText[job.stage] ? (
+          <span className="text-neutral-600 dark:text-neutral-400">{stageText[job.stage]}</span>
+        ) : null}
         {when ? <time dateTime={when}>{formatDateTime(when)}</time> : null}
         {facts ? <span className="text-neutral-600 dark:text-neutral-400">{facts}</span> : null}
         {error ? (
@@ -316,31 +397,62 @@ function JobRow({ job, receipt, onRemoved }: { job: IngestJob; receipt?: BatchRe
       </span>
       <span className="flex flex-wrap gap-1">
         {job.purchase_id ? (
-          <Link to={`/shop/purchases/${job.purchase_id}`} className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-sm font-medium underline ${focusRing}`}>
+          <Link
+            to={`/shop/purchases/${job.purchase_id}`}
+            className={`inline-flex min-h-11 lg:min-h-8 items-center rounded-md px-2 text-sm font-medium underline ${focusRing}`}
+          >
             {job.status === "done" ? "View purchase" : "Review purchase"}
           </Link>
         ) : null}
         {job.status === "failed" ? (
-          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={retry.isPending} onClick={() => retry.mutate(job.id)}>
+          <Button
+            variant="secondary"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            disabled={retry.isPending}
+            onClick={() => retry.mutate(job.id)}
+          >
             Retry
           </Button>
         ) : null}
         {job.status === "failed" || job.status === "pending" ? (
-          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={toManual.isPending} onClick={() => toManual.mutate(job.id)}>
+          <Button
+            variant="secondary"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            disabled={toManual.isPending}
+            onClick={() => toManual.mutate(job.id)}
+          >
             Enter by hand
           </Button>
         ) : null}
         {removable && !confirming ? (
-          <Button ref={trigger} variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(true)}>
+          <Button
+            ref={trigger}
+            variant="danger"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            onClick={() => setConfirming(true)}
+          >
             Remove
           </Button>
         ) : null}
       </span>
       {removable && confirming ? (
-        <div role="group" aria-label="Remove this receipt" className="flex w-full flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950">
+        <div
+          role="group"
+          aria-label="Remove this receipt"
+          className="flex w-full flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950"
+        >
           <span className="text-sm">Remove this receipt? Its photo is deleted.</span>
-          {remove.isError ? <span role="alert" className="text-sm text-red-700 dark:text-red-300">{errorMessage(remove.error)}</span> : null}
-          <Button variant="dangerFill" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(job.id, { onSuccess: onRemoved })}>
+          {remove.isError ? (
+            <span role="alert" className="text-sm text-red-700 dark:text-red-300">
+              {errorMessage(remove.error)}
+            </span>
+          ) : null}
+          <Button
+            variant="dangerFill"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate(job.id, { onSuccess: onRemoved })}
+          >
             {remove.isPending ? "Removing…" : "Remove"}
           </Button>
           <Button

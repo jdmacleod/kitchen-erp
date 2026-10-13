@@ -19,14 +19,31 @@ function Harness() {
 
 describe("opening hours", () => {
   it("presets write OpenStreetMap syntax", () => {
-    expect(presetToString({ kind: "daily", days: "Mo-Su", open: "08:00", close: "20:00" })).toBe("Mo-Su 08:00-20:00");
-    expect(presetToString({ kind: "weekly", day: "Sa", open: "08:00", close: "13:00" })).toBe("Sa 08:00-13:00");
-    expect(presetToString({ kind: "seasonal", from: "Apr", to: "Oct", day: "Sa", open: "08:00", close: "13:00" })).toBe("Apr-Oct Sa 08:00-13:00");
+    expect(presetToString({ kind: "daily", days: "Mo-Su", open: "08:00", close: "20:00" })).toBe(
+      "Mo-Su 08:00-20:00",
+    );
+    expect(presetToString({ kind: "weekly", day: "Sa", open: "08:00", close: "13:00" })).toBe(
+      "Sa 08:00-13:00",
+    );
+    expect(
+      presetToString({
+        kind: "seasonal",
+        from: "Apr",
+        to: "Oct",
+        day: "Sa",
+        open: "08:00",
+        close: "13:00",
+      }),
+    ).toBe("Apr-Oct Sa 08:00-13:00");
   });
 
   it("describes stored strings readably and leaves the unknown alone", () => {
-    expect(describeOpeningHours("Mo-Fr 08:00-21:00; Sa,Su 09:00-20:00")).toBe("Monday–Friday 08:00–21:00; Saturday, Sunday 09:00–20:00");
-    expect(describeOpeningHours("Apr-Oct Sa 08:00-13:00")).toBe("April–October Saturday 08:00–13:00");
+    expect(describeOpeningHours("Mo-Fr 08:00-21:00; Sa,Su 09:00-20:00")).toBe(
+      "Monday–Friday 08:00–21:00; Saturday, Sunday 09:00–20:00",
+    );
+    expect(describeOpeningHours("Apr-Oct Sa 08:00-13:00")).toBe(
+      "April–October Saturday 08:00–13:00",
+    );
     expect(describeOpeningHours("Mo-Su 07:00-22:00")).toBe("every day 07:00–22:00");
     expect(describeOpeningHours("24/7")).toBe("Open 24 hours, every day");
     expect(describeOpeningHours("PH off")).toBe("public holidays closed");
@@ -38,7 +55,12 @@ describe("opening hours", () => {
     const calls = mockApi({
       "POST /opening-hours/validate": (call) => {
         const text = (call.body as { text: string }).text;
-        return jsonResponse(200, text.includes("Xx") ? { valid: false, error: "Unknown day 'Xx' at position 1." } : { valid: true, error: null });
+        return jsonResponse(
+          200,
+          text.includes("Xx")
+            ? { valid: false, error: "Unknown day 'Xx' at position 1." }
+            : { valid: true, error: null },
+        );
       },
     });
     const user = userEvent.setup();
@@ -65,7 +87,9 @@ describe("opening hours", () => {
     await user.type(raw, "Xx 08:00-13:00");
     await user.click(screen.getByRole("button", { name: "elsewhere" }));
 
-    await waitFor(() => expect(screen.getByText("Unknown day 'Xx' at position 1.")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("Unknown day 'Xx' at position 1.")).toBeInTheDocument(),
+    );
     const post = calls.find((c) => c.path === "/opening-hours/validate");
     expect(post?.body).toEqual({ text: "Xx 08:00-13:00" });
 

@@ -1,7 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { errorMessage } from "../../api/client";
 import { geoErrorMessage, priceScopeLabel, type PriceScope } from "../../api/geo";
-import { useAcceptAll, useDecideSuggestion, useSuggestionSummary, useSuggestions, type Suggestion, type SuggestionField, type SuggestionValue } from "../../api/suggestions";
+import {
+  useAcceptAll,
+  useDecideSuggestion,
+  useSuggestionSummary,
+  useSuggestions,
+  type Suggestion,
+  type SuggestionField,
+  type SuggestionValue,
+} from "../../api/suggestions";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { Disclosure } from "../catalog/fields";
 import { Drawer } from "../Drawer";
@@ -55,14 +63,23 @@ export function tallyMessage(t: Tally): string | null {
  * focus moves to the next. A row whose field changed since it was proposed
  * shows all three values and makes keeping yours the obvious choice.
  */
-export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { initialVendorId?: string | null; onClose: () => void }) {
+export function SuggestionReviewDrawer({
+  initialVendorId = null,
+  onClose,
+}: {
+  initialVendorId?: string | null;
+  onClose: () => void;
+}) {
   const pickerId = useId();
   const notice = useNotice();
   const summary = useSuggestionSummary();
   const [chosen, setChosen] = useState<string | null>(initialVendorId);
   const vendors = summary.data?.vendors ?? [];
   // A vendor whose last row was decided drops out of the summary; the next one opens.
-  const vendorId = chosen && vendors.some((v) => v.vendor_id === chosen) ? chosen : (vendors[0]?.vendor_id ?? null);
+  const vendorId =
+    chosen && vendors.some((v) => v.vendor_id === chosen)
+      ? chosen
+      : (vendors[0]?.vendor_id ?? null);
   const list = useSuggestions(vendorId);
   const decide = useDecideSuggestion();
   const acceptAll = useAcceptAll();
@@ -72,14 +89,17 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
   const [focusAt, setFocusAt] = useState<number | null>(null);
 
   const rows = list.data ?? [];
-  const vendorName = vendors.find((v) => v.vendor_id === vendorId)?.name ?? rows[0]?.vendor_name ?? "";
+  const vendorName =
+    vendors.find((v) => v.vendor_id === vendorId)?.name ?? rows[0]?.vendor_name ?? "";
   const tools = [...new Set(rows.map((r) => `${r.tool} ${r.tool_version}`))];
   const fresh = rows.filter((r) => !r.stale);
 
   // After a row leaves, focus the row now in its place, or the heading when none are left.
   useEffect(() => {
     if (focusAt === null || list.isFetching) return;
-    const buttons = [...(body.current?.querySelectorAll<HTMLElement>("[data-row] button:not([disabled])") ?? [])];
+    const buttons = [
+      ...(body.current?.querySelectorAll<HTMLElement>("[data-row] button:not([disabled])") ?? []),
+    ];
     const rowsNow = [...(body.current?.querySelectorAll<HTMLElement>("[data-row]") ?? [])];
     const target = rowsNow[Math.min(focusAt, rowsNow.length - 1)];
     const first = target?.querySelector<HTMLElement>("button:not([disabled])") ?? buttons[0];
@@ -95,7 +115,13 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
     onClose();
   };
 
-  const act = (s: Suggestion, index: number, action: "accept" | "reject", override = false, kept = false) => {
+  const act = (
+    s: Suggestion,
+    index: number,
+    action: "accept" | "reject",
+    override = false,
+    kept = false,
+  ) => {
     decide.mutate(
       { id: s.id, action, override },
       {
@@ -131,7 +157,15 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
   let index = -1;
 
   return (
-    <Drawer title="Vendor suggestions" thing="review" dirty={false} onClose={close} formId="" primaryLabel="" actions={false}>
+    <Drawer
+      title="Vendor suggestions"
+      thing="review"
+      dirty={false}
+      onClose={close}
+      formId=""
+      primaryLabel=""
+      actions={false}
+    >
       <div ref={body} className="flex flex-col gap-4">
         <p aria-live="polite" className="sr-only">
           {said}
@@ -162,10 +196,16 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
                   </option>
                 ))}
               </select>
-              {tools.length ? <p className={`text-xs ${muted}`}>From {tools.join(", ")}. Nothing changes until you accept it.</p> : null}
+              {tools.length ? (
+                <p className={`text-xs ${muted}`}>
+                  From {tools.join(", ")}. Nothing changes until you accept it.
+                </p>
+              ) : null}
             </div>
             {decide.isError ? <Alert tone="error">{geoErrorMessage(decide.error)}</Alert> : null}
-            {acceptAll.isError ? <Alert tone="error">{geoErrorMessage(acceptAll.error)}</Alert> : null}
+            {acceptAll.isError ? (
+              <Alert tone="error">{geoErrorMessage(acceptAll.error)}</Alert>
+            ) : null}
             {list.isPending ? (
               <p role="status" className={`text-sm ${muted}`}>
                 Loading…
@@ -187,7 +227,9 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
                           <p className="font-medium">{FIELD[s.field]}</p>
                           {s.stale ? (
                             <>
-                              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Changed since proposed</p>
+                              <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+                                Changed since proposed
+                              </p>
                               <p className="flex flex-col gap-0.5 text-sm sm:flex-row sm:flex-wrap sm:gap-x-2">
                                 <span>Was {showValue(s.field, s.expected)}</span>
                                 <span>Now {showValue(s.field, s.current)}</span>
@@ -196,12 +238,23 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
                             </>
                           ) : (
                             <p>
-                              <span className="font-semibold">{showValue(s.field, s.proposed)}</span>
-                              {s.current !== null ? <span className={`block text-xs ${muted}`}>Replaces {showValue(s.field, s.current)}</span> : null}
+                              <span className="font-semibold">
+                                {showValue(s.field, s.proposed)}
+                              </span>
+                              {s.current !== null ? (
+                                <span className={`block text-xs ${muted}`}>
+                                  Replaces {showValue(s.field, s.current)}
+                                </span>
+                              ) : null}
                             </p>
                           )}
                           <div className={`flex flex-wrap items-center gap-x-2 text-xs ${muted}`}>
-                            <a href={s.source_url} target="_blank" rel="noopener noreferrer" className="underline">
+                            <a
+                              href={s.source_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline"
+                            >
                               {s.source_domain} ↗
                             </a>
                             {s.evidence ? (
@@ -214,19 +267,38 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
                           <div className="flex flex-wrap gap-2">
                             {s.stale ? (
                               <>
-                                <Button disabled={busy} onClick={() => act(s, i, "reject", false, true)} aria-label={`Keep my ${label}`}>
+                                <Button
+                                  disabled={busy}
+                                  onClick={() => act(s, i, "reject", false, true)}
+                                  aria-label={`Keep my ${label}`}
+                                >
                                   Keep mine
                                 </Button>
-                                <Button variant="ghost" disabled={busy} onClick={() => act(s, i, "accept", true)} aria-label={`Replace my ${label} with the proposed one`}>
+                                <Button
+                                  variant="ghost"
+                                  disabled={busy}
+                                  onClick={() => act(s, i, "accept", true)}
+                                  aria-label={`Replace my ${label} with the proposed one`}
+                                >
                                   Replace with proposed
                                 </Button>
                               </>
                             ) : (
                               <>
-                                <Button variant="secondary" disabled={busy} onClick={() => act(s, i, "accept")} aria-label={`Accept ${label}`}>
+                                <Button
+                                  variant="secondary"
+                                  disabled={busy}
+                                  onClick={() => act(s, i, "accept")}
+                                  aria-label={`Accept ${label}`}
+                                >
                                   Accept
                                 </Button>
-                                <Button variant="ghost" disabled={busy} onClick={() => act(s, i, "reject")} aria-label={`Reject ${label}`}>
+                                <Button
+                                  variant="ghost"
+                                  disabled={busy}
+                                  onClick={() => act(s, i, "reject")}
+                                  aria-label={`Reject ${label}`}
+                                >
                                   Reject
                                 </Button>
                               </>
@@ -256,7 +328,9 @@ export function SuggestionReviewDrawer({ initialVendorId = null, onClose }: { in
                 >
                   Accept all for {vendorName}
                 </Button>
-                {rows.length > fresh.length ? <span className={`text-xs ${muted}`}>Changed rows are left for you.</span> : null}
+                {rows.length > fresh.length ? (
+                  <span className={`text-xs ${muted}`}>Changed rows are left for you.</span>
+                ) : null}
               </div>
             ) : null}
           </>

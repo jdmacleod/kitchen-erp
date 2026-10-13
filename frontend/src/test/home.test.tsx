@@ -1,11 +1,20 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { chainLocation } from "./geo-fixtures";
-import { manualPurchase } from "./purchase-fixtures";
 import type { Inbox, InboxItem } from "../api/inbox";
 import { ingestErrorText } from "../lib/ingestErrors";
-import { adminUser, errorResponse, jsonResponse, mainRegion, mockApi, renderApp, type RecordedCall, type RouteHandler } from "./helpers";
+import { chainLocation } from "./geo-fixtures";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mainRegion,
+  mockApi,
+  renderApp,
+  type RecordedCall,
+  type RouteHandler,
+} from "./helpers";
+import { manualPurchase } from "./purchase-fixtures";
 
 /**
  * The landing route. Issue #15 reported that a new deployment lands on a form for
@@ -67,7 +76,11 @@ function item(overrides: Partial<InboxItem> = {}): InboxItem {
 }
 
 function inboxOf(items: InboxItem[], reading: Partial<Inbox["reading"]> = {}): RouteHandler {
-  return () => jsonResponse(200, { items, reading: { count: 0, oldest_at: null, stalled: false, ...reading } });
+  return () =>
+    jsonResponse(200, {
+      items,
+      reading: { count: 0, oldest_at: null, stalled: false, ...reading },
+    });
 }
 
 describe("home page, first run, with the inbox", () => {
@@ -137,32 +150,69 @@ describe("home page, first run", () => {
 
 describe("home page, set up", () => {
   it("greets without a name, summarizes, and shows no checklist", async () => {
-    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify", action_label: "Review lines", action_route: "/shop/receipts/identify" })]));
+    mountSetUp(
+      inboxOf([
+        item(),
+        item({
+          kind: "identify",
+          title: "23 receipt lines to identify",
+          action_label: "Review lines",
+          action_route: "/shop/receipts/identify",
+        }),
+      ]),
+    );
 
-    const heading = await within(await screen.findByRole("main")).findByRole("heading", { level: 1 });
+    const heading = await within(await screen.findByRole("main")).findByRole("heading", {
+      level: 1,
+    });
     expect(heading.textContent).toMatch(/^Good (morning|afternoon|evening)$/);
-    expect(await within(await screen.findByRole("main")).findByText("2 things need you")).toBeInTheDocument();
+    expect(
+      await within(await screen.findByRole("main")).findByText("2 things need you"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(CHECKLIST_STEP)).not.toBeInTheDocument();
     expect(within(mainRegion()).getByRole("button", { name: "Capture" })).toBeInTheDocument();
   });
 
   it("lists inbox rows with a kind badge, the title, and an action that opens the fix", async () => {
-    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify", detail: "Match them once.", action_label: "Review lines", action_route: "/shop/receipts/identify" })]));
+    mountSetUp(
+      inboxOf([
+        item(),
+        item({
+          kind: "identify",
+          title: "23 receipt lines to identify",
+          detail: "Match them once.",
+          action_label: "Review lines",
+          action_route: "/shop/receipts/identify",
+        }),
+      ]),
+    );
 
     const rows = await screen.findAllByTestId("inbox-item");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("Receipt");
     expect(rows[0]).toHaveTextContent("Finish the Sep 24 receipt");
-    expect(within(rows[0]).getByRole("link", { name: "Review" })).toHaveAttribute("href", "/shop/purchases/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001");
+    expect(within(rows[0]).getByRole("link", { name: "Review" })).toHaveAttribute(
+      "href",
+      "/shop/purchases/0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8001",
+    );
     // An aggregate row carries its size in its title (G6).
     expect(rows[1]).toHaveTextContent("23 receipt lines to identify");
-    expect(within(rows[1]).getByRole("link", { name: "Review lines" })).toHaveAttribute("href", "/shop/receipts/identify");
+    expect(within(rows[1]).getByRole("link", { name: "Review lines" })).toHaveAttribute(
+      "href",
+      "/shop/receipts/identify",
+    );
   });
 
   it("shows recipe names to resolve as one row whose Resolve opens the resolve page (UI-7.2)", async () => {
     mountSetUp(
       inboxOf([
-        item({ kind: "recipe", title: "14 recipe names to resolve", detail: "In 9 recipes. Say once which ingredient each name means.", action_label: "Resolve", action_route: "/cook/recipes/resolve" }),
+        item({
+          kind: "recipe",
+          title: "14 recipe names to resolve",
+          detail: "In 9 recipes. Say once which ingredient each name means.",
+          action_label: "Resolve",
+          action_route: "/cook/recipes/resolve",
+        }),
       ]),
     );
 
@@ -171,14 +221,26 @@ describe("home page, set up", () => {
     expect(badge.className).toMatch(/bg-neutral-200/);
     expect(row).toHaveTextContent("14 recipe names to resolve");
     expect(row).toHaveTextContent("In 9 recipes.");
-    expect(within(row).getByRole("link", { name: "Resolve" })).toHaveAttribute("href", "/cook/recipes/resolve");
-    expect(await within(await screen.findByRole("main")).findByText("1 thing needs you")).toBeInTheDocument();
+    expect(within(row).getByRole("link", { name: "Resolve" })).toHaveAttribute(
+      "href",
+      "/cook/recipes/resolve",
+    );
+    expect(
+      await within(await screen.findByRole("main")).findByText("1 thing needs you"),
+    ).toBeInTheDocument();
   });
 
   it("marks a failed read in tomato and says what went wrong (G5)", async () => {
     mountSetUp(
       inboxOf([
-        item({ kind: "receipt_failed", title: "A receipt couldn't be read", detail: "Retry it, or enter it by hand.", action_label: "Open receipt", action_route: "/shop/receipts?job=j1", error_code: "no_ocr_text" }),
+        item({
+          kind: "receipt_failed",
+          title: "A receipt couldn't be read",
+          detail: "Retry it, or enter it by hand.",
+          action_label: "Open receipt",
+          action_route: "/shop/receipts?job=j1",
+          error_code: "no_ocr_text",
+        }),
       ]),
     );
 
@@ -186,14 +248,23 @@ describe("home page, set up", () => {
     expect(row).toHaveTextContent(ingestErrorText("no_ocr_text").message);
     const badge = within(row).getByText("Couldn't read");
     expect(badge.className).toMatch(/bg-red-100/);
-    expect(within(row).getByRole("link", { name: "Open receipt" })).toHaveAttribute("href", "/shop/receipts?job=j1");
+    expect(within(row).getByRole("link", { name: "Open receipt" })).toHaveAttribute(
+      "href",
+      "/shop/receipts?job=j1",
+    );
   });
 
   it("says nothing needs you when the inbox is empty, with a way to capture", async () => {
     mountSetUp();
 
-    expect(await within(await screen.findByRole("main")).findByText("Nothing needs you", { selector: "p.font-medium" })).toBeInTheDocument();
-    expect(within(mainRegion()).getAllByRole("button", { name: "Capture" }).length).toBeGreaterThan(0);
+    expect(
+      await within(await screen.findByRole("main")).findByText("Nothing needs you", {
+        selector: "p.font-medium",
+      }),
+    ).toBeInTheDocument();
+    expect(within(mainRegion()).getAllByRole("button", { name: "Capture" }).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it("shows an error, never an empty inbox, when the inbox fails (D6)", async () => {
@@ -203,41 +274,65 @@ describe("home page, set up", () => {
     expect(alert).toHaveTextContent("Couldn't load what needs you");
     expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
     expect(screen.queryByText("Nothing needs you")).not.toBeInTheDocument();
-    expect(await screen.findAllByRole("img", { name: "Couldn't check what needs you" })).not.toHaveLength(0);
+    expect(
+      await screen.findAllByRole("img", { name: "Couldn't check what needs you" }),
+    ).not.toHaveLength(0);
   });
 
   it("lists recent purchases in the right column", async () => {
     mountSetUp();
     const recent = await screen.findByRole("region", { name: "Recent purchases" });
-    expect(within(recent).getByRole("link", { name: "All purchases" })).toHaveAttribute("href", "/shop/purchases");
+    expect(within(recent).getByRole("link", { name: "All purchases" })).toHaveAttribute(
+      "href",
+      "/shop/purchases",
+    );
   });
 
   it("shows receipts being read above Needs you, not as rows (G1)", async () => {
     mountSetUp(inboxOf([], { count: 2, oldest_at: "2026-09-25T10:00:00Z" }));
-    expect(await within(await screen.findByRole("main")).findByText("Reading 2 receipts…")).toBeInTheDocument();
+    expect(
+      await within(await screen.findByRole("main")).findByText("Reading 2 receipts…"),
+    ).toBeInTheDocument();
     expect(screen.queryAllByTestId("inbox-item")).toHaveLength(0);
   });
 
   it("turns the reading line squash with a way to System once it has stalled (D21)", async () => {
     mountSetUp(inboxOf([], { count: 1, oldest_at: "2026-09-25T10:00:00Z", stalled: true }));
-    const line = await within(await screen.findByRole("main")).findByText(/Reading is taking longer than usual/);
-    expect(within(line).getByRole("link", { name: "Check System" })).toHaveAttribute("href", "/settings/system");
+    const line = await within(await screen.findByRole("main")).findByText(
+      /Reading is taking longer than usual/,
+    );
+    expect(within(line).getByRole("link", { name: "Check System" })).toHaveAttribute(
+      "href",
+      "/settings/system",
+    );
   });
 
   it("shows three rows on a phone and expands the rest in place (G6)", async () => {
-    const items = [1, 2, 3, 4, 5].map((n) => item({ title: `Finish receipt ${n}`, action_route: `/shop/purchases/${n}` }));
+    const items = [1, 2, 3, 4, 5].map((n) =>
+      item({ title: `Finish receipt ${n}`, action_route: `/shop/purchases/${n}` }),
+    );
     mountSetUp(inboxOf(items));
 
     const rows = await screen.findAllByTestId("inbox-item");
-    expect(rows.map((r) => r.className.includes("max-lg:hidden"))).toEqual([false, false, false, true, true]);
+    expect(rows.map((r) => r.className.includes("max-lg:hidden"))).toEqual([
+      false,
+      false,
+      false,
+      true,
+      true,
+    ]);
     await userEvent.click(screen.getByRole("button", { name: "See all 5" }));
-    expect(screen.getAllByTestId("inbox-item").some((r) => r.className.includes("max-lg:hidden"))).toBe(false);
+    expect(
+      screen.getAllByTestId("inbox-item").some((r) => r.className.includes("max-lg:hidden")),
+    ).toBe(false);
   });
 });
 
 describe("the Home nav badge", () => {
   it("counts inbox rows, an aggregate once (G6)", async () => {
-    mountSetUp(inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify" })]));
+    mountSetUp(
+      inboxOf([item(), item({ kind: "identify", title: "23 receipt lines to identify" })]),
+    );
     expect((await screen.findAllByLabelText("2 things need you")).length).toBeGreaterThan(0);
   });
 
@@ -245,7 +340,9 @@ describe("the Home nav badge", () => {
     mountSetUp(NEVER);
     await within(await screen.findByRole("main")).findByRole("heading", { level: 1 });
     expect(screen.queryByLabelText(/things? needs? you/)).not.toBeInTheDocument();
-    expect(screen.queryByRole("img", { name: "Couldn't check what needs you" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "Couldn't check what needs you" }),
+    ).not.toBeInTheDocument();
   });
 });
 

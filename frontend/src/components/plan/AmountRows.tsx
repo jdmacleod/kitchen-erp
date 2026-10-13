@@ -18,7 +18,8 @@ interface AmountRowsProps {
  * Pairs that cannot combine stay separate here as they do on the row (UI-8.5).
  */
 export function AmountRows({ idPrefix, rows, onChange, disabled }: AmountRowsProps) {
-  const set = (index: number, patch: Partial<AmountRow>) => onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const set = (index: number, patch: Partial<AmountRow>) =>
+    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="text-sm font-medium">Amounts</legend>
@@ -35,17 +36,34 @@ export function AmountRows({ idPrefix, rows, onChange, disabled }: AmountRowsPro
             onChange={(e) => set(i, { amount: e.target.value })}
           />
           <div className="w-36">
-            <UnitSelect id={`${idPrefix}-unit-${i}`} label={rows.length > 1 ? `Unit ${i + 1}` : "Unit"} value={row.unit} onChange={(unit) => set(i, { unit })} emptyLabel="unit" disabled={disabled} />
+            <UnitSelect
+              id={`${idPrefix}-unit-${i}`}
+              label={rows.length > 1 ? `Unit ${i + 1}` : "Unit"}
+              value={row.unit}
+              onChange={(unit) => set(i, { unit })}
+              emptyLabel="unit"
+              disabled={disabled}
+            />
           </div>
           {rows.length > 1 ? (
-            <Button variant="ghost" disabled={disabled} onClick={() => onChange(rows.filter((_, j) => j !== i))} aria-label={`Remove amount ${i + 1}`}>
+            <Button
+              variant="ghost"
+              disabled={disabled}
+              onClick={() => onChange(rows.filter((_, j) => j !== i))}
+              aria-label={`Remove amount ${i + 1}`}
+            >
               Remove
             </Button>
           ) : null}
         </div>
       ))}
       <div>
-        <Button variant="ghost" className="px-2" disabled={disabled} onClick={() => onChange([...rows, { amount: "", unit: "" }])}>
+        <Button
+          variant="ghost"
+          className="px-2"
+          disabled={disabled}
+          onClick={() => onChange([...rows, { amount: "", unit: "" }])}
+        >
           Add another amount
         </Button>
       </div>

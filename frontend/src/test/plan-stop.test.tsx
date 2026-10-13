@@ -1,6 +1,6 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StopScreen, Trip } from "../api/trips";
@@ -10,9 +10,25 @@ import { StopPage } from "../pages/plan/StopPage";
 import { TripDetailPage } from "../pages/plan/TripDetailPage";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
-import { adminUser, errorResponse, jsonResponse, mockApi, type RecordedCall, type RouteHandler } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  type RecordedCall,
+  type RouteHandler,
+} from "./helpers";
 import { kitchen, planHealth, settings } from "./plan-fixtures";
-import { doneResult, lentilItemId, milk, milkItemId, oatsItemId, purchaseId, stopItem, stopScreen } from "./stop-fixtures";
+import {
+  doneResult,
+  lentilItemId,
+  milk,
+  milkItemId,
+  oatsItemId,
+  purchaseId,
+  stopItem,
+  stopScreen,
+} from "./stop-fixtures";
 import { balanced, chosenTrip, tripId } from "./trip-fixtures";
 
 vi.mock("maplibre-gl", () => import("./maplibre-stub"));
@@ -36,7 +52,22 @@ function baseRoutes(current: () => StopScreen, trip: () => Trip): Record<string,
     "HEAD /tiles/basemap.pmtiles": () => jsonResponse(404),
     [`GET /plan/trips/${tripId}`]: () => jsonResponse(200, trip()),
     [`GET ${stop1}`]: () => jsonResponse(200, current()),
-    [`GET ${stop2}`]: () => jsonResponse(200, stopScreen({ seq: 2, next_seq: null, items: [], cheaper_elsewhere: [], location: { id: marketLocation.id, name: marketLocation.name, vendor_name: marketLocation.vendor.name, address: null } })),
+    [`GET ${stop2}`]: () =>
+      jsonResponse(
+        200,
+        stopScreen({
+          seq: 2,
+          next_seq: null,
+          items: [],
+          cheaper_elsewhere: [],
+          location: {
+            id: marketLocation.id,
+            name: marketLocation.name,
+            vendor_name: marketLocation.vendor.name,
+            address: null,
+          },
+        }),
+      ),
   };
 }
 
@@ -52,7 +83,12 @@ interface MountOptions {
   at?: string;
 }
 
-function mount({ routes = {}, current = () => stopScreen(), trip = () => chosenTrip(balanced), at = `/plan/trips/${tripId}/stop/1` }: MountOptions = {}): RecordedCall[] {
+function mount({
+  routes = {},
+  current = () => stopScreen(),
+  trip = () => chosenTrip(balanced),
+  at = `/plan/trips/${tripId}/stop/1`,
+}: MountOptions = {}): RecordedCall[] {
   const calls = mockApi({ ...baseRoutes(current, trip), ...routes });
   const client = createQueryClient({ retry: false });
   render(
@@ -84,12 +120,17 @@ const footer = () => screen.getByTestId("stop-footer");
 describe("the stop screen (UI-4.8, UI-8.17)", () => {
   it("shows the header, the store, the progress strip and the items to get here", async () => {
     mount();
-    expect(await screen.findByRole("heading", { level: 1, name: `Stop 1 of 2 · ${kitchen.name} list` })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: `Stop 1 of 2 · ${kitchen.name} list` }),
+    ).toBeInTheDocument();
     expect(screen.getByText(chainLocation.name)).toBeInTheDocument();
     expect(screen.getByText("Ground floor, Harbour arcade")).toBeInTheDocument();
     expect(screen.getByTestId("stop-progress")).toHaveTextContent("0 of 2 in the basket");
     expect(screen.getByTestId("estimated-here")).toHaveTextContent("About $17.20 here");
-    expect(screen.getByRole("link", { name: /Back to the trip/ })).toHaveAttribute("href", `/plan/trips/${tripId}`);
+    expect(screen.getByRole("link", { name: /Back to the trip/ })).toHaveAttribute(
+      "href",
+      `/plan/trips/${tripId}`,
+    );
 
     const m = row(milkItemId);
     expect(within(m).getByTestId("item-name")).toHaveTextContent("Oat milk");
@@ -119,7 +160,9 @@ describe("the stop screen (UI-4.8, UI-8.17)", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Check Oat milk" }));
     const basket = screen.getByRole("list", { name: "In the basket" });
     expect(within(basket).getByText("Oat milk")).toBeInTheDocument();
-    expect(within(screen.getByRole("list", { name: "To get here" })).queryByText("Oat milk")).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "To get here" })).queryByText("Oat milk"),
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId("stop-progress")).toHaveTextContent("1 of 2 in the basket · $8.50");
     expect(screen.getByText("Checked Oat milk. 1 to get.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Done here · record purchase" })).toBeInTheDocument();
@@ -132,7 +175,17 @@ describe("the stop screen (UI-4.8, UI-8.17)", () => {
   it("holds an edited price with the neutral tint and edited, and clears it", async () => {
     const edited = stopScreen({
       estimated_here: "16.68",
-      items: [stopItem({ ...milk, actual_price: "3.99", actual_qty: "1", actual_unit: "each", edited: true, effective_cost: "7.98" }), stopScreen().items[1]],
+      items: [
+        stopItem({
+          ...milk,
+          actual_price: "3.99",
+          actual_qty: "1",
+          actual_unit: "each",
+          edited: true,
+          effective_cost: "7.98",
+        }),
+        stopScreen().items[1],
+      ],
     });
     const calls = mount({
       routes: {
@@ -164,7 +217,9 @@ describe("the stop screen (UI-4.8, UI-8.17)", () => {
     await user.click(within(m).getByTestId("item-price"));
     await user.click(screen.getByRole("button", { name: "Use the planned price" }));
     await waitFor(() => expect(row(milkItemId).dataset.edited).toBe("false"));
-    expect(calls.some((c) => c.method === "DELETE" && c.path === `${stop1}/items/${milkItemId}/price`)).toBe(true);
+    expect(
+      calls.some((c) => c.method === "DELETE" && c.path === `${stop1}/items/${milkItemId}/price`),
+    ).toBe(true);
     expect(within(row(milkItemId)).queryByText("edited")).not.toBeInTheDocument();
   });
 
@@ -182,12 +237,22 @@ describe("the stop screen (UI-4.8, UI-8.17)", () => {
 describe("Cheaper at stop 2 (UI-8.17)", () => {
   it("lists a later stop's item with the difference, and Get here moves it in", async () => {
     let current = stopScreen();
-    const moved = stopItem({ id: oatsItemId, label: "Rolled oats", got_here: true, line_cost: "11.30", effective_cost: "11.30" });
+    const moved = stopItem({
+      id: oatsItemId,
+      label: "Rolled oats",
+      got_here: true,
+      line_cost: "11.30",
+      effective_cost: "11.30",
+    });
     const calls = mount({
       current: () => current,
       routes: {
         [`POST ${stop1}/get-here`]: () => {
-          current = stopScreen({ items: [...stopScreen().items, moved], cheaper_elsewhere: [], estimated_here: "28.50" });
+          current = stopScreen({
+            items: [...stopScreen().items, moved],
+            cheaper_elsewhere: [],
+            estimated_here: "28.50",
+          });
           return jsonResponse(200, current);
         },
       },
@@ -196,7 +261,9 @@ describe("Cheaper at stop 2 (UI-8.17)", () => {
     const section = await screen.findByTestId("cheaper-section");
     expect(within(section).getByRole("heading", { name: "Cheaper at stop 2" })).toBeInTheDocument();
     expect(within(section).getByTestId("cheaper-difference")).toHaveTextContent("+$0.80 here");
-    expect(within(section).getByText(/\$11\.30 here, \$10\.50 at Pier Farmers Market/)).toBeInTheDocument();
+    expect(
+      within(section).getByText(/\$11\.30 here, \$10\.50 at Pier Farmers Market/),
+    ).toBeInTheDocument();
 
     await user.click(within(section).getByRole("button", { name: "Get Rolled oats here" }));
     await waitFor(() => expect(screen.queryByTestId("cheaper-section")).not.toBeInTheDocument());
@@ -209,19 +276,29 @@ describe("Cheaper at stop 2 (UI-8.17)", () => {
   });
 
   it("says Not sold here on a 422, inline, and offers no second Get here", async () => {
-    mount({ routes: { [`POST ${stop1}/get-here`]: () => errorResponse(422, "not_offered_here", "This location has no price for it.") } });
+    mount({
+      routes: {
+        [`POST ${stop1}/get-here`]: () =>
+          errorResponse(422, "not_offered_here", "This location has no price for it."),
+      },
+    });
     const user = userEvent.setup();
     const section = await screen.findByTestId("cheaper-section");
     await user.click(within(section).getByRole("button", { name: "Get Rolled oats here" }));
     expect(await within(section).findByText("Not sold here")).toBeInTheDocument();
-    expect(within(section).queryByRole("button", { name: "Get Rolled oats here" })).not.toBeInTheDocument();
+    expect(
+      within(section).queryByRole("button", { name: "Get Rolled oats here" }),
+    ).not.toBeInTheDocument();
   });
 
   it("reuses the same key when a failed Get here is retried", async () => {
     let attempts = 0;
     const calls = mount({
       routes: {
-        [`POST ${stop1}/get-here`]: () => (++attempts === 1 ? errorResponse(503, "unavailable", "Try again.") : jsonResponse(200, stopScreen({ cheaper_elsewhere: [] }))),
+        [`POST ${stop1}/get-here`]: () =>
+          ++attempts === 1
+            ? errorResponse(503, "unavailable", "Try again.")
+            : jsonResponse(200, stopScreen({ cheaper_elsewhere: [] })),
       },
     });
     const user = userEvent.setup();
@@ -230,7 +307,9 @@ describe("Cheaper at stop 2 (UI-8.17)", () => {
     expect(await screen.findByText(/Couldn't move it/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Get Rolled oats here" }));
     await waitFor(() => expect(screen.queryByTestId("cheaper-section")).not.toBeInTheDocument());
-    const keys = calls.filter((c) => c.method === "POST").map((c) => c.headers.get("Idempotency-Key"));
+    const keys = calls
+      .filter((c) => c.method === "POST")
+      .map((c) => c.headers.get("Idempotency-Key"));
     expect(keys).toHaveLength(2);
     expect(keys[0]).toBe(keys[1]);
   });
@@ -245,7 +324,13 @@ describe("Done here (UI-8.18)", () => {
       routes: {
         [`POST ${stop1}/done`]: () => {
           if (++attempts === 1) return errorResponse(503, "unavailable", "The database is busy.");
-          current = stopScreen({ done_at: "2026-10-17T16:30:00Z", purchase_id: purchaseId, lines_recorded: 1, actual_cost: "8.50", items: [{ ...milk, checked_at: "2026-10-17T16:30:00Z" }, stopScreen().items[1]] });
+          current = stopScreen({
+            done_at: "2026-10-17T16:30:00Z",
+            purchase_id: purchaseId,
+            lines_recorded: 1,
+            actual_cost: "8.50",
+            items: [{ ...milk, checked_at: "2026-10-17T16:30:00Z" }, stopScreen().items[1]],
+          });
           return jsonResponse(200, doneResult());
         },
       },
@@ -254,7 +339,9 @@ describe("Done here (UI-8.18)", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Check Oat milk" }));
     await user.click(screen.getByRole("button", { name: "Done here · record purchase" }));
     const confirm = screen.getByTestId("done-confirm");
-    expect(confirm).toHaveTextContent(`Record 1 item at ${chainLocation.name} for $8.50? Prices you edited but didn't buy are saved as shelf prices.`);
+    expect(confirm).toHaveTextContent(
+      `Record 1 item at ${chainLocation.name} for $8.50? Prices you edited but didn't buy are saved as shelf prices.`,
+    );
     expect(within(confirm).getByRole("button", { name: "Not yet" })).toHaveFocus();
 
     // A failed record keeps the ticks and shows its alert in the panel.
@@ -263,7 +350,9 @@ describe("Done here (UI-8.18)", () => {
     expect(screen.getByRole("checkbox", { name: "Uncheck Oat milk" })).toBeInTheDocument();
 
     // The retry carries the same key, so a lost answer replays rather than records twice.
-    await user.click(within(screen.getByTestId("done-confirm")).getByRole("button", { name: "Record" }));
+    await user.click(
+      within(screen.getByTestId("done-confirm")).getByRole("button", { name: "Record" }),
+    );
     const notice = await screen.findByTestId("notice");
     expect(notice).toHaveTextContent(`Recorded 1 line at ${chainLocation.name} · $8.50.`);
     const posts = calls.filter((c) => c.method === "POST" && c.path === `${stop1}/done`);
@@ -274,15 +363,22 @@ describe("Done here (UI-8.18)", () => {
 
     // The done view: no controls, the purchase linked.
     expect(await screen.findByTestId("stop-done")).toHaveTextContent("1 line recorded · $8.50");
-    expect(screen.getByRole("link", { name: "Open the purchase" })).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
+    expect(screen.getByRole("link", { name: "Open the purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${purchaseId}`,
+    );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByTestId("stop-footer")).not.toBeInTheDocument();
 
     const next = within(notice).getByRole("link", { name: `Next stop: ${marketLocation.name}` });
     expect(next).toHaveFocus();
     await user.click(next);
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${tripId}/stop/2`));
-    expect(await screen.findByRole("heading", { level: 1, name: `Stop 2 of 2 · ${kitchen.name} list` })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${tripId}/stop/2`),
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: `Stop 2 of 2 · ${kitchen.name} list` }),
+    ).toBeInTheDocument();
   });
 
   it("offers Back to the trip after the last stop, where predicted sits beside actual", async () => {
@@ -295,14 +391,33 @@ describe("Done here (UI-8.18)", () => {
       routes: {
         [`GET ${stop2}`]: () => jsonResponse(200, current),
         [`POST ${stop2}/done`]: () => {
-          current = { ...current, done_at: "2026-10-17T16:50:00Z", purchase_id: purchaseId, lines_recorded: 1, actual_cost: "8.50" };
+          current = {
+            ...current,
+            done_at: "2026-10-17T16:50:00Z",
+            purchase_id: purchaseId,
+            lines_recorded: 1,
+            actual_cost: "8.50",
+          };
           const [s1, s2] = balanced.stops;
           trip = {
             ...chosenTrip(balanced),
             status: "done",
             predicted_item_cost: "27.70",
             actual_item_cost: "25.10",
-            variants: [{ ...balanced, stops: [{ ...s1, done_at: "2026-10-17T16:30:00Z", actual_cost: "16.60", purchase_id: purchaseId }, { ...s2, done_at: "2026-10-17T16:50:00Z", actual_cost: "8.50" }] }],
+            variants: [
+              {
+                ...balanced,
+                stops: [
+                  {
+                    ...s1,
+                    done_at: "2026-10-17T16:30:00Z",
+                    actual_cost: "16.60",
+                    purchase_id: purchaseId,
+                  },
+                  { ...s2, done_at: "2026-10-17T16:50:00Z", actual_cost: "8.50" },
+                ],
+              },
+            ],
           };
           return jsonResponse(200, doneResult({ seq: 2, next_seq: null, status: "done" }));
         },
@@ -312,9 +427,13 @@ describe("Done here (UI-8.18)", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Check Oat milk" }));
     await user.click(screen.getByRole("button", { name: "Done here · record purchase" }));
     await user.click(screen.getByRole("button", { name: "Record" }));
-    const back = await within(await screen.findByTestId("notice")).findByRole("link", { name: "Back to the trip" });
+    const back = await within(await screen.findByTestId("notice")).findByRole("link", {
+      name: "Back to the trip",
+    });
     await user.click(back);
-    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${tripId}`));
+    await waitFor(() =>
+      expect(screen.getByTestId("where")).toHaveTextContent(`/plan/trips/${tripId}`),
+    );
     expect(await screen.findByText(/predicted \$27\.70 · actual \$25\.10/)).toBeInTheDocument();
     const actuals = screen.getAllByTestId("stop-actual");
     expect(actuals[0]).toHaveTextContent("predicted $17.20 · actual $16.60");
@@ -322,12 +441,24 @@ describe("Done here (UI-8.18)", () => {
   });
 
   it("moves on with nothing bought after asking, and sends no ids", async () => {
-    const calls = mount({ routes: { [`POST ${stop1}/done`]: () => jsonResponse(200, doneResult({ purchase_id: null, lines_recorded: 0, checked: 0, observation_ids: [] })) } });
+    const calls = mount({
+      routes: {
+        [`POST ${stop1}/done`]: () =>
+          jsonResponse(
+            200,
+            doneResult({ purchase_id: null, lines_recorded: 0, checked: 0, observation_ids: [] }),
+          ),
+      },
+    });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Done here · nothing bought" }));
-    expect(screen.getByTestId("done-confirm")).toHaveTextContent("Move on without buying anything here?");
+    expect(screen.getByTestId("done-confirm")).toHaveTextContent(
+      "Move on without buying anything here?",
+    );
     await user.click(screen.getByRole("button", { name: "Move on" }));
-    expect(await screen.findByTestId("notice")).toHaveTextContent(`Moved on from ${chainLocation.name}; nothing bought.`);
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      `Moved on from ${chainLocation.name}; nothing bought.`,
+    );
     expect(calls.find((c) => c.method === "POST")?.body).toEqual({ checked_item_ids: [] });
   });
 
@@ -346,7 +477,12 @@ describe("Done here (UI-8.18)", () => {
       current: () => current,
       routes: {
         [`POST ${stop1}/done`]: () => {
-          current = stopScreen({ done_at: "2026-10-17T16:30:00Z", purchase_id: purchaseId, lines_recorded: 2, actual_cost: "17.20" });
+          current = stopScreen({
+            done_at: "2026-10-17T16:30:00Z",
+            purchase_id: purchaseId,
+            lines_recorded: 2,
+            actual_cost: "17.20",
+          });
           return errorResponse(409, "stop_done", "This stop is already done.");
         },
       },
@@ -355,40 +491,64 @@ describe("Done here (UI-8.18)", () => {
     await user.click(await screen.findByRole("button", { name: "Done here · nothing bought" }));
     await user.click(screen.getByRole("button", { name: "Move on" }));
     expect(await screen.findByTestId("stop-done")).toHaveTextContent("2 lines recorded · $17.20");
-    expect(await screen.findByTestId("notice")).toHaveTextContent("This stop was already recorded; showing it.");
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "This stop was already recorded; showing it.",
+    );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Get .* here/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: `Next stop: ${marketLocation.name}` })).toHaveAttribute("href", `/plan/trips/${tripId}/stop/2`);
+    expect(screen.getByRole("link", { name: `Next stop: ${marketLocation.name}` })).toHaveAttribute(
+      "href",
+      `/plan/trips/${tripId}/stop/2`,
+    );
   });
 
   it("explains a 409 plan_ended in the panel with a way back to the trip", async () => {
-    mount({ routes: { [`POST ${stop1}/done`]: () => errorResponse(409, "plan_ended", "This plan is abandoned.") } });
+    mount({
+      routes: {
+        [`POST ${stop1}/done`]: () => errorResponse(409, "plan_ended", "This plan is abandoned."),
+      },
+    });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: "Done here · nothing bought" }));
     await user.click(screen.getByRole("button", { name: "Move on" }));
     const confirm = screen.getByTestId("done-confirm");
     expect(await within(confirm).findByText(/This trip has ended/)).toBeInTheDocument();
-    expect(within(confirm).getByRole("link", { name: "Open the trip" })).toHaveAttribute("href", `/plan/trips/${tripId}`);
+    expect(within(confirm).getByRole("link", { name: "Open the trip" })).toHaveAttribute(
+      "href",
+      `/plan/trips/${tripId}`,
+    );
   });
 });
 
 describe("the stop screen's states", () => {
   it("says Choose a plan first on 409 plan_not_chosen, with a link to the trip", async () => {
-    mount({ routes: { [`GET ${stop1}`]: () => errorResponse(409, "plan_not_chosen", "Choose a plan first.") } });
+    mount({
+      routes: {
+        [`GET ${stop1}`]: () => errorResponse(409, "plan_not_chosen", "Choose a plan first."),
+      },
+    });
     const msg = await screen.findByTestId("plan-not-chosen");
     expect(msg).toHaveTextContent("Choose a plan first.");
-    expect(within(msg).getByRole("link", { name: "Open the trip" })).toHaveAttribute("href", `/plan/trips/${tripId}`);
+    expect(within(msg).getByRole("link", { name: "Open the trip" })).toHaveAttribute(
+      "href",
+      `/plan/trips/${tripId}`,
+    );
     expect(screen.queryByTestId("stop-footer")).not.toBeInTheDocument();
   });
 
   it("shows an error with Try again, never an empty stop", async () => {
-    mount({ routes: { [`GET ${stop1}`]: () => errorResponse(500, "internal", "Something broke.") } });
+    mount({
+      routes: { [`GET ${stop1}`]: () => errorResponse(500, "internal", "Something broke.") },
+    });
     expect(await screen.findByText(/Couldn't load the stop/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
   it("keeps the ticks on this device across a reload of the screen", async () => {
-    window.sessionStorage.setItem(`kerp.stop.${tripId}.1`, JSON.stringify([milkItemId, "not-on-this-stop"]));
+    window.sessionStorage.setItem(
+      `kerp.stop.${tripId}.1`,
+      JSON.stringify([milkItemId, "not-on-this-stop"]),
+    );
     mount();
     expect(await screen.findByRole("checkbox", { name: "Uncheck Oat milk" })).toBeInTheDocument();
     expect(screen.getByTestId("stop-progress")).toHaveTextContent("1 of 2 in the basket");
@@ -400,7 +560,12 @@ describe("the stop screen on a 390px phone (UI-8.19, 17 criterion 27)", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
-      value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
     });
     mount();
     await screen.findByTestId("stop-footer");
@@ -410,7 +575,11 @@ describe("the stop screen on a 390px phone (UI-8.19, 17 criterion 27)", () => {
     const done = within(footer()).getByRole("button", { name: "Done here · nothing bought" });
     expect(done.className).toMatch(/min-h-14/);
     // Every button and link on the screen clears 44px below lg.
-    for (const el of [...screen.getAllByRole("button"), ...screen.getAllByRole("checkbox"), ...screen.getAllByRole("link")]) {
+    for (const el of [
+      ...screen.getAllByRole("button"),
+      ...screen.getAllByRole("checkbox"),
+      ...screen.getAllByRole("link"),
+    ]) {
       expect(el.className, el.textContent ?? "").toMatch(/min-h-1[14]|size-11/);
     }
     // Nothing on the stop screen is blue except actions: no info tint.
@@ -422,19 +591,32 @@ describe("the trip page at the store (UI-8.15)", () => {
   it("offers Open this stop on each stop of the chosen plan, and Start the trip to the first", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
-      value: (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+      value: (query: string) => ({
+        matches: true,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
     });
     mount({ at: `/plan/trips/${tripId}` });
     const start = await screen.findByRole("link", { name: "Start the trip" });
     expect(start).toHaveAttribute("href", `/plan/trips/${tripId}/stop/1`);
     const opens = screen.getAllByRole("link", { name: "Open this stop" });
-    expect(opens.map((a) => a.getAttribute("href"))).toEqual([`/plan/trips/${tripId}/stop/1`, `/plan/trips/${tripId}/stop/2`]);
+    expect(opens.map((a) => a.getAttribute("href"))).toEqual([
+      `/plan/trips/${tripId}/stop/1`,
+      `/plan/trips/${tripId}/stop/2`,
+    ]);
   });
 
   it("continues at the first stop not yet done, with predicted beside actual", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
-      value: (query: string) => ({ matches: true, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+      value: (query: string) => ({
+        matches: true,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
     });
     const [s1, s2] = balanced.stops;
     const underway: Trip = {
@@ -442,16 +624,38 @@ describe("the trip page at the store (UI-8.15)", () => {
       status: "underway",
       predicted_item_cost: "27.70",
       actual_item_cost: "16.60",
-      variants: [{ ...balanced, stops: [{ ...s1, done_at: "2026-10-17T16:30:00Z", purchase_id: purchaseId, actual_cost: "16.60", lines_recorded: 2 }, s2] }],
+      variants: [
+        {
+          ...balanced,
+          stops: [
+            {
+              ...s1,
+              done_at: "2026-10-17T16:30:00Z",
+              purchase_id: purchaseId,
+              actual_cost: "16.60",
+              lines_recorded: 2,
+            },
+            s2,
+          ],
+        },
+      ],
     };
     mount({ at: `/plan/trips/${tripId}`, trip: () => underway });
-    expect(await screen.findByRole("link", { name: "Continue at stop 2" })).toHaveAttribute("href", `/plan/trips/${tripId}/stop/2`);
+    expect(await screen.findByRole("link", { name: "Continue at stop 2" })).toHaveAttribute(
+      "href",
+      `/plan/trips/${tripId}/stop/2`,
+    );
     expect(screen.getByText(/predicted \$27\.70 · actual \$16\.60/)).toBeInTheDocument();
-    expect(screen.getAllByTestId("stop-actual")[0]).toHaveTextContent("predicted $17.20 · actual $16.60");
+    expect(screen.getAllByTestId("stop-actual")[0]).toHaveTextContent(
+      "predicted $17.20 · actual $16.60",
+    );
   });
 
   it("has no Open this stop or Start the trip before a plan is chosen", async () => {
-    mount({ at: `/plan/trips/${tripId}`, trip: () => ({ ...chosenTrip(balanced), chosen_variant_id: null, chosen_at: null }) });
+    mount({
+      at: `/plan/trips/${tripId}`,
+      trip: () => ({ ...chosenTrip(balanced), chosen_variant_id: null, chosen_at: null }),
+    });
     await screen.findAllByTestId("variant-card");
     expect(screen.queryByRole("link", { name: "Open this stop" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Start the trip" })).not.toBeInTheDocument();

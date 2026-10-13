@@ -92,7 +92,12 @@ describe("api tokens", () => {
       last_used_at: null,
       revoked_at: null,
     };
-    const old: ApiToken = { ...tool, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5ace", name: "capture app", scopes: ["*"] };
+    const old: ApiToken = {
+      ...tool,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5ace",
+      name: "capture app",
+      scopes: ["*"],
+    };
     let items: ApiToken[] = [old];
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
@@ -110,7 +115,9 @@ describe("api tokens", () => {
     expect(within(list).getByText(/Full access/)).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Full access/ })).toBeChecked();
     const suggest = screen.getByRole("radio", { name: /Read and suggest vendor facts/ });
-    expect(suggest).toHaveAccessibleDescription(/Cannot see notes, kitchens, purchases or receipts/);
+    expect(suggest).toHaveAccessibleDescription(
+      /Cannot see notes, kitchens, purchases or receipts/,
+    );
     await user.type(screen.getByLabelText("Name"), "enricher");
     await user.click(suggest);
     await user.click(screen.getByRole("button", { name: "Create token" }));

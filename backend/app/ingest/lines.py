@@ -270,7 +270,7 @@ def _unit(text: str | None) -> str | None:
     return None if isinstance(parsed, UnitParseFailure) else parsed
 
 
-def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:
+def refine_line(seq: int, line: ReceiptLine) -> ParsedLine:  # noqa: C901
     """Normalize units and fill quantities from the printed patterns when absent."""
     flags: list[str] = []
     qty, unit_price = line.qty, line.unit_price
@@ -651,7 +651,7 @@ def _prints_its_quantity(line: ParsedLine) -> bool:
     return bool(WEIGHT_PATTERN.search(line.raw_text) or COUNT_PATTERN.search(line.raw_text))
 
 
-def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list[str]]:
+def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], list[str]]:  # noqa: C901
     """Join each weight or count printed on a row of its own to its item (#87).
 
     Tills print a weighed or counted item on two rows, and the model reads each

@@ -18,7 +18,8 @@ function routes(vendor: () => Vendor, onPatch: (body: unknown) => Vendor) {
     [`GET /vendors/${chainVendorId}`]: () => jsonResponse(200, vendor()),
     "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
     "GET /brand-families": () => jsonResponse(200, { items: [] }),
-    [`PATCH /vendors/${chainVendorId}`]: (c: { body: unknown }) => jsonResponse(200, onPatch(c.body)),
+    [`PATCH /vendors/${chainVendorId}`]: (c: { body: unknown }) =>
+      jsonResponse(200, onPatch(c.body)),
   };
 }
 
@@ -46,7 +47,12 @@ describe("a vendor's online shop", () => {
   });
 
   it("is not shown when a vendor has none", async () => {
-    mockApi(routes(() => ({ ...chainVendor, shop_url: null }), () => chainVendor));
+    mockApi(
+      routes(
+        () => ({ ...chainVendor, shop_url: null }),
+        () => chainVendor,
+      ),
+    );
     renderApp(`/catalog/vendors/${chainVendorId}`);
     await screen.findByRole("button", { name: "Edit vendor" });
     expect(screen.queryByRole("link", { name: "online shop" })).toBeNull();

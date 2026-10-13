@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { purchaseErrorMessage, useApplyToIdentify, useRememberCode, useToIdentify, type ToIdentifyGroup } from "../../api/purchases";
+import {
+  purchaseErrorMessage,
+  useApplyToIdentify,
+  useRememberCode,
+  useToIdentify,
+  type ToIdentifyGroup,
+} from "../../api/purchases";
 import { SelectField } from "../../components/catalog/fields";
+import { useNotice } from "../../components/Notice";
 import { NameProducts } from "../../components/purchases/NameProducts";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
-import { useNotice } from "../../components/Notice";
 
 /**
  * Unmatched lines across every committed purchase, grouped by vendor and
@@ -34,13 +48,22 @@ export function ToIdentifyPage() {
     focusKey.current = null;
     const at = groups.findIndex((g) => groupKey(g) === key);
     // Its product box, or the ingredient box of the new product it is being given.
-    if (at >= 0) (document.getElementById(`identify-${at}`) ?? document.getElementById(`identify-${at}-new-ingredient`))?.focus();
+    if (at >= 0)
+      (
+        document.getElementById(`identify-${at}`) ??
+        document.getElementById(`identify-${at}-new-ingredient`)
+      )?.focus();
   });
 
   return (
     <>
-      <PageHeader title="To identify" description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned.">
-        {offerNaming ? <Button onClick={() => setParams({ mode: "name" })}>Name the new products</Button> : null}
+      <PageHeader
+        title="To identify"
+        description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned."
+      >
+        {offerNaming ? (
+          <Button onClick={() => setParams({ mode: "name" })}>Name the new products</Button>
+        ) : null}
         {naming ? (
           <Button variant="secondary" onClick={() => setParams({})}>
             One at a time
@@ -107,7 +130,10 @@ interface Offer {
 function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) {
   const remember = useRememberCode(offer.purchaseId);
   return (
-    <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
+    <div
+      role="status"
+      className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700"
+    >
       {remember.isSuccess ? (
         <span>
           Remembered {offer.code} for {offer.product}.
@@ -115,10 +141,18 @@ function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) 
       ) : (
         <>
           <span>This line carries the item code {offer.code}.</span>
-          <Button variant="secondary" disabled={remember.isPending} onClick={() => remember.mutate(offer.lineId)}>
+          <Button
+            variant="secondary"
+            disabled={remember.isPending}
+            onClick={() => remember.mutate(offer.lineId)}
+          >
             Remember {offer.code} for {offer.product}
           </Button>
-          {remember.isError ? <span className="text-red-800 dark:text-red-300">{purchaseErrorMessage(remember.error)}</span> : null}
+          {remember.isError ? (
+            <span className="text-red-800 dark:text-red-300">
+              {purchaseErrorMessage(remember.error)}
+            </span>
+          ) : null}
         </>
       )}
       <Button variant="secondary" onClick={onDone}>
@@ -128,14 +162,34 @@ function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) 
   );
 }
 
-function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index: number; onAnswered: (offer: Offer | null) => void }) {
+function GroupCard({
+  group,
+  index,
+  onAnswered,
+}: {
+  group: ToIdentifyGroup;
+  index: number;
+  onAnswered: (offer: Offer | null) => void;
+}) {
   const apply = useApplyToIdentify();
   const notice = useNotice();
   // The group leaves the list once applied, so the confirmation lives in the Notice.
   const onApplied = ({ applied }: { applied: number }, chosen: string | null) => {
-    notice.show({ tone: "success", message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.` });
+    notice.show({
+      tone: "success",
+      message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.`,
+    });
     const first = all ? group.lines[0] : group.lines.find((l) => l.line_id === lineId);
-    onAnswered(group.code && chosen && first ? { purchaseId: first.purchase_id, lineId: first.line_id, code: group.code.value, product: chosen } : null);
+    onAnswered(
+      group.code && chosen && first
+        ? {
+            purchaseId: first.purchase_id,
+            lineId: first.line_id,
+            code: group.code.value,
+            product: chosen,
+          }
+        : null,
+    );
   };
   const [all, setAll] = useState(true);
   const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
@@ -143,7 +197,11 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
   const scope = () => (all ? {} : { line_ids: [lineId] });
 
   return (
-    <div className="flex flex-col gap-3" role="group" aria-label={`${group.vendor.name}: ${group.raw_text_norm ?? "(no text)"}`}>
+    <div
+      className="flex flex-col gap-3"
+      role="group"
+      aria-label={`${group.vendor.name}: ${group.raw_text_norm ?? "(no text)"}`}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-base font-medium">
           <span className="font-mono">{group.raw_text_norm ?? "(no text)"}</span>
@@ -157,10 +215,15 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 dark:text-neutral-300">
         {group.lines.map((l) => (
           <li key={l.line_id}>
-            <Link to={`/shop/purchases/${l.purchase_id}`} className={`rounded underline ${focusRing}`}>
+            <Link
+              to={`/shop/purchases/${l.purchase_id}`}
+              className={`rounded underline ${focusRing}`}
+            >
               {formatDate(l.purchased_at)}
             </Link>
-            {l.raw_text && l.raw_text !== group.raw_text_norm ? <span className="font-mono"> {l.raw_text}</span> : null}
+            {l.raw_text && l.raw_text !== group.raw_text_norm ? (
+              <span className="font-mono"> {l.raw_text}</span>
+            ) : null}
             {l.line_total !== null ? <span> · {formatMoney(l.line_total)}</span> : null}
           </li>
         ))}
@@ -173,7 +236,15 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
           lineText={group.raw_text_norm}
           onChange={(p) => {
             if (!p) return;
-            apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", product_id: p.id, ...scope() }, { onSuccess: (r) => onApplied(r, p.name) });
+            apply.mutate(
+              {
+                vendor_id: group.vendor.id,
+                raw_text_norm: group.raw_text_norm ?? "",
+                product_id: p.id,
+                ...scope(),
+              },
+              { onSuccess: (r) => onApplied(r, p.name) },
+            );
           }}
           disabled={apply.isPending}
         />
@@ -182,7 +253,15 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
             variant="secondary"
             disabled={apply.isPending}
             onClick={() => {
-              apply.mutate({ vendor_id: group.vendor.id, raw_text_norm: group.raw_text_norm ?? "", ignore: true, ...scope() }, { onSuccess: (r) => onApplied(r, null) });
+              apply.mutate(
+                {
+                  vendor_id: group.vendor.id,
+                  raw_text_norm: group.raw_text_norm ?? "",
+                  ignore: true,
+                  ...scope(),
+                },
+                { onSuccess: (r) => onApplied(r, null) },
+              );
             }}
           >
             Ignore
@@ -194,15 +273,27 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
             offered a choice that changed nothing (QA 2026-10-13). */}
         {group.line_count > 1 ? (
           <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} className={`size-4 ${focusRing}`} />
+            <input
+              type="checkbox"
+              checked={all}
+              onChange={(e) => setAll(e.target.checked)}
+              className={`size-4 ${focusRing}`}
+            />
             Apply to all {group.line_count}
           </label>
         ) : null}
         {!all && group.lines.length > 1 ? (
-          <SelectField id={`${id}-line`} label="Only this line" value={lineId} onChange={(e) => setLineId(e.target.value)} className="w-56">
+          <SelectField
+            id={`${id}-line`}
+            label="Only this line"
+            value={lineId}
+            onChange={(e) => setLineId(e.target.value)}
+            className="w-56"
+          >
             {group.lines.map((l) => (
               <option key={l.line_id} value={l.line_id}>
-                {formatDate(l.purchased_at)} {l.line_total !== null ? formatMoney(l.line_total) : ""}
+                {formatDate(l.purchased_at)}{" "}
+                {l.line_total !== null ? formatMoney(l.line_total) : ""}
               </option>
             ))}
           </SelectField>

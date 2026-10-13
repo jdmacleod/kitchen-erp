@@ -38,7 +38,10 @@ const PAGES = [
 for (const scheme of ["light", "dark"] as const) {
   test.describe(`contrast in the ${scheme} theme`, () => {
     test.beforeEach(async ({ page }, testInfo) => {
-      test.skip(testInfo.project.name !== "desktop", "desktop only: the phone projects render the same tokens");
+      test.skip(
+        testInfo.project.name !== "desktop",
+        "desktop only: the phone projects render the same tokens",
+      );
       await page.emulateMedia({ colorScheme: scheme });
       await login(page);
     });
@@ -47,13 +50,17 @@ for (const scheme of ["light", "dark"] as const) {
       const { name, path } = entry;
       const follow = "follow" in entry ? entry.follow : undefined;
       const trip = "trip" in entry ? entry.trip : undefined;
+
       test(`${name} passes axe colour contrast`, async ({ page }) => {
         if (follow) {
           // The example recipes are mounted on the e2e stack; one scan indexes them.
           expect((await page.request.post("/api/v1/recipes/rescan")).status()).toBe(200);
         }
         if (trip !== undefined) {
-          const planId = await makeChosenTrip(page.request, await makeTripWorld(page.request, nextTag()));
+          const planId = await makeChosenTrip(
+            page.request,
+            await makeTripWorld(page.request, nextTag()),
+          );
           await page.goto(`/plan/trips/${planId}${trip}`);
           await expect(page.getByTestId(trip ? "stop-item" : "variant-card").first()).toBeVisible();
         } else {
@@ -66,7 +73,9 @@ for (const scheme of ["light", "dark"] as const) {
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
         const failures = results.violations.flatMap((v) =>
-          v.nodes.map((n) => `${n.target.join(" ")}: ${n.failureSummary?.split("\n").slice(1).join(" ")}`),
+          v.nodes.map(
+            (n) => `${n.target.join(" ")}: ${n.failureSummary?.split("\n").slice(1).join(" ")}`,
+          ),
         );
         expect(failures, `${name} (${scheme})`).toEqual([]);
       });

@@ -9,7 +9,15 @@ import { Button } from "../ui";
  * row, and "Unclaim" for the claimant. A claim is only a display: anyone may
  * still check the item, and the check clears it (L2).
  */
-export function ClaimChip({ item, readOnly = false, onError }: { item: ShoppingItem; readOnly?: boolean; onError?: (e: unknown) => void }) {
+export function ClaimChip({
+  item,
+  readOnly = false,
+  onError,
+}: {
+  item: ShoppingItem;
+  readOnly?: boolean;
+  onError?: (e: unknown) => void;
+}) {
   const me = useMe();
   const claim = useClaimItem();
   const unclaim = useUnclaimItem();
@@ -21,9 +29,16 @@ export function ClaimChip({ item, readOnly = false, onError }: { item: ShoppingI
     const mine = me.data?.id === item.claimed_by.id;
     return (
       <span className="inline-flex flex-wrap items-center gap-1">
-        <Badge>{mine ? "You're getting it" : `${item.claimed_by.display_name} is getting it`}</Badge>
+        <Badge>
+          {mine ? "You're getting it" : `${item.claimed_by.display_name} is getting it`}
+        </Badge>
         {mine && !readOnly ? (
-          <Button variant="ghost" className={quiet} disabled={busy} onClick={() => unclaim.mutate(item.id, { onError })}>
+          <Button
+            variant="ghost"
+            className={quiet}
+            disabled={busy}
+            onClick={() => unclaim.mutate(item.id, { onError })}
+          >
             {unclaim.isPending ? "Unclaiming…" : "Unclaim"}
           </Button>
         ) : null}
@@ -32,7 +47,12 @@ export function ClaimChip({ item, readOnly = false, onError }: { item: ShoppingI
   }
   if (readOnly) return null;
   return (
-    <Button variant="ghost" className={quiet} disabled={busy} onClick={() => claim.mutate(item.id, { onError })}>
+    <Button
+      variant="ghost"
+      className={quiet}
+      disabled={busy}
+      onClick={() => claim.mutate(item.id, { onError })}
+    >
       {claim.isPending ? "Claiming…" : "I'll get it"}
     </Button>
   );

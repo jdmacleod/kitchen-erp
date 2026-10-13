@@ -3,11 +3,12 @@
 // out, so they are never built here.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE, ApiError, api } from "./client";
 import { catalogKeys } from "./catalog";
+import { API_BASE, ApiError, api } from "./client";
 import type { ErrorEnvelope } from "./types";
 
-export type PhotoRole = "product" | "label_front" | "label_nutrition" | "label_ingredients" | "shelf_tag";
+export type PhotoRole =
+  "product" | "label_front" | "label_nutrition" | "label_ingredients" | "shelf_tag";
 export type PhotoStatus = "processing" | "candidate" | "active" | "hidden" | "failed";
 export type PhotoSource = "user_photo" | "manufacturer" | "open_food_facts" | "vendor_listing";
 
@@ -88,7 +89,10 @@ export interface PhotoUploadInput {
   photos: { file: File; role: PhotoRole }[];
 }
 
-export async function addProductPhotos({ productId, photos }: PhotoUploadInput): Promise<ProductPhotoList> {
+export async function addProductPhotos({
+  productId,
+  photos,
+}: PhotoUploadInput): Promise<ProductPhotoList> {
   const form = new FormData();
   form.append("product_id", productId);
   for (const { file, role } of photos) {
@@ -110,8 +114,13 @@ export async function addProductPhotos({ productId, photos }: PhotoUploadInput):
   }
   if (!response.ok) {
     const err = (payload as ErrorEnvelope | undefined)?.error;
-    if (err && typeof err.code === "string") throw new ApiError(response.status, err.code, err.message, err.details);
-    throw new ApiError(response.status, "http_error", `Upload failed with status ${response.status}.`);
+    if (err && typeof err.code === "string")
+      throw new ApiError(response.status, err.code, err.message, err.details);
+    throw new ApiError(
+      response.status,
+      "http_error",
+      `Upload failed with status ${response.status}.`,
+    );
   }
   return payload as ProductPhotoList;
 }

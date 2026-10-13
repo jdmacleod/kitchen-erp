@@ -62,7 +62,9 @@ export function UnitSelect({
       required={required}
       disabled={disabled}
     >
-      {emptyLabel !== null ? <option value="">{units.isPending ? "Loading…" : emptyLabel}</option> : null}
+      {emptyLabel !== null ? (
+        <option value="">{units.isPending ? "Loading…" : emptyLabel}</option>
+      ) : null}
       {!known && value ? <option value={value}>{value}</option> : null}
       {groups.map(([dimension, list]) => (
         <optgroup key={dimension} label={dimension}>

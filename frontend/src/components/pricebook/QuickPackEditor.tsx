@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
 import { isPositiveDecimal, useUnits, useUpdateProduct, type Product } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { inboxKey } from "../../api/inbox";
@@ -81,7 +81,13 @@ export function QuickPackEditor({ productId, title, onSaved, onCancel }: QuickPa
           value={qty}
           onChange={(e) => setQty(e.target.value)}
         />
-        <UnitSelect id={`${prefix}-unit`} label="Pack unit" value={unit} onChange={setUnit} emptyLabel="Choose…" />
+        <UnitSelect
+          id={`${prefix}-unit`}
+          label="Pack unit"
+          value={unit}
+          onChange={setUnit}
+          emptyLabel="Choose…"
+        />
         {showPieces ? (
           <Field
             id={`${prefix}-pieces`}

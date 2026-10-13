@@ -58,7 +58,7 @@ def _raise_integrity(exc: IntegrityError) -> None:
     for name, (status, code, message) in _INTEGRITY_CODES.items():
         if name in text:
             raise ApiError(status, code, message) from exc
-    raise
+    raise  # noqa: PLE0704
 
 
 async def _commit(db: AsyncSession) -> None:
@@ -674,7 +674,7 @@ async def update_location(
     return await _load_location(db, location_id)
 
 
-async def apply_location_changes(
+async def apply_location_changes(  # noqa: C901
     db: AsyncSession, location: VendorLocation, changes: dict[str, Any]
 ) -> None:
     """Validate and set the named fields; the caller flushes or commits."""

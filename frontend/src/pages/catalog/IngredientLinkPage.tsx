@@ -1,12 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { useLinkAction, useLinkPage, type LinkRow, type MergeNeeded, type MergeTarget, type StandardEntry } from "../../api/ingredientLink";
+import {
+  useLinkAction,
+  useLinkPage,
+  type LinkRow,
+  type MergeNeeded,
+  type MergeTarget,
+  type StandardEntry,
+} from "../../api/ingredientLink";
 import { useUsdaReview } from "../../api/usdaReview";
+import {
+  ChooseStandard,
+  IngredientMergePanel,
+} from "../../components/catalog/IngredientMergePanel";
 import { CategoryChip } from "../../components/CategoryChip";
-import { ChooseStandard, IngredientMergePanel } from "../../components/catalog/IngredientMergePanel";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 type Tally = { linked: number; renamed: number; merged: number; skipped: number };
@@ -34,7 +53,9 @@ export function IngredientLinkPage() {
   // Focus the next row's first action once the list has refreshed without the decided row.
   useEffect(() => {
     if (focusNext.current === null || page.isFetching) return;
-    const target = document.getElementById(focusNext.current === "" ? "link-empty" : `link-${focusNext.current}-first`);
+    const target = document.getElementById(
+      focusNext.current === "" ? "link-empty" : `link-${focusNext.current}-first`,
+    );
     if (!target) return;
     target.focus();
     focusNext.current = null;
@@ -62,14 +83,23 @@ export function IngredientLinkPage() {
       notice.show({
         tone: "success",
         message: `${reviewed} reviewed: ${parts.join(", ")}.`,
-        action: next > 0 ? { label: `Next: review USDA densities for ${plural(next, "ingredient")}`, to: "/catalog/bridges#usda" } : undefined,
+        action:
+          next > 0
+            ? {
+                label: `Next: review USDA densities for ${plural(next, "ingredient")}`,
+                to: "/catalog/bridges#usda",
+              }
+            : undefined,
       });
     }
   };
 
   return (
     <>
-      <PageHeader title="Link ingredients to the standard list" description="Give each ingredient its standard name so spellings and USDA data line up." />
+      <PageHeader
+        title="Link ingredients to the standard list"
+        description="Give each ingredient its standard name so spellings and USDA data line up."
+      />
       <p aria-live="polite" className="sr-only" data-testid="link-announcement">
         {announcement}
       </p>
@@ -81,7 +111,10 @@ export function IngredientLinkPage() {
         <Alert tone="error">{errorMessage(page.error)}</Alert>
       ) : (
         <>
-          <p className="sticky top-[env(safe-area-inset-top,0px)] z-10 -mx-1 mb-3 bg-neutral-50 px-1 py-2 text-sm text-neutral-700 lg:static dark:bg-neutral-950 dark:text-neutral-300" data-testid="link-counts">
+          <p
+            className="sticky top-[env(safe-area-inset-top,0px)] z-10 -mx-1 mb-3 bg-neutral-50 px-1 py-2 text-sm text-neutral-700 lg:static dark:bg-neutral-950 dark:text-neutral-300"
+            data-testid="link-counts"
+          >
             {toReview.length} to review · {skipped.length} skipped
           </p>
           {toReview.length === 0 ? (
@@ -97,7 +130,10 @@ export function IngredientLinkPage() {
             </EmptyState>
           ) : (
             <Card>
-              <ul className="divide-y divide-neutral-200 dark:divide-neutral-800" aria-label="Ingredients to review">
+              <ul
+                className="divide-y divide-neutral-200 dark:divide-neutral-800"
+                aria-label="Ingredients to review"
+              >
                 {toReview.map((row) => (
                   <LinkRowView key={row.id} row={row} onDecided={decided} />
                 ))}
@@ -111,9 +147,19 @@ export function IngredientLinkPage() {
   );
 }
 
-type Mode = { kind: "idle" } | { kind: "rename" } | { kind: "choose" } | { kind: "merge"; target: MergeTarget; needed: MergeNeeded };
+type Mode =
+  | { kind: "idle" }
+  | { kind: "rename" }
+  | { kind: "choose" }
+  | { kind: "merge"; target: MergeTarget; needed: MergeNeeded };
 
-function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRow, kind: Decision, message: string) => void }) {
+function LinkRowView({
+  row,
+  onDecided,
+}: {
+  row: LinkRow;
+  onDecided: (row: LinkRow, kind: Decision, message: string) => void;
+}) {
   const action = useLinkAction();
   const [mode, setMode] = useState<Mode>({ kind: "idle" });
   const [chosen, setChosen] = useState<StandardEntry | null>(null);
@@ -135,7 +181,10 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
     setError(null);
     action.mutate(
       { id: row.id, action: "link", standard_key: suggestion.key },
-      { onSuccess: () => onDecided(row, "linked", `Linked ${row.name} to ${suggestion.name}.`), onError: (e) => failed(e, { standard_key: suggestion.key }) },
+      {
+        onSuccess: () => onDecided(row, "linked", `Linked ${row.name} to ${suggestion.name}.`),
+        onError: (e) => failed(e, { standard_key: suggestion.key }),
+      },
     );
   };
   const rename = () => {
@@ -144,15 +193,27 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
     setError(null);
     action.mutate(
       { id: row.id, action: "rename", name },
-      { onSuccess: () => onDecided(row, "renamed", `Renamed ${row.name} to ${name}.`), onError: (e) => failed(e, { name }) },
+      {
+        onSuccess: () => onDecided(row, "renamed", `Renamed ${row.name} to ${name}.`),
+        onError: (e) => failed(e, { name }),
+      },
     );
   };
   const skip = () =>
-    action.mutate({ id: row.id, action: "skip" }, { onSuccess: () => onDecided(row, "skipped", `Skipped ${row.name}.`), onError: (e) => setError(errorMessage(e)) });
+    action.mutate(
+      { id: row.id, action: "skip" },
+      {
+        onSuccess: () => onDecided(row, "skipped", `Skipped ${row.name}.`),
+        onError: (e) => setError(errorMessage(e)),
+      },
+    );
 
   // A chosen entry has no USDA line; the suggestion carries one when USDA data is loaded.
   const usda = chosen ? null : (row.suggestion?.usda_description ?? null);
-  const kept = suggestion && suggestion.name.toLowerCase() !== row.name.toLowerCase() ? `; “${row.name}” kept as another spelling` : "";
+  const kept =
+    suggestion && suggestion.name.toLowerCase() !== row.name.toLowerCase()
+      ? `; “${row.name}” kept as another spelling`
+      : "";
 
   return (
     <li className="flex flex-col gap-2 py-3" aria-labelledby={headingId} data-testid="link-row">
@@ -167,7 +228,8 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
           {suggestion ? (
             <>
-              → <span className="font-medium">{suggestion.name}</span> <CategoryChip category={suggestion.category} categoryKey={suggestion.category_key} />
+              → <span className="font-medium">{suggestion.name}</span>{" "}
+              <CategoryChip category={suggestion.category} categoryKey={suggestion.category_key} />
               {kept}
             </>
           ) : (
@@ -177,13 +239,22 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
       </div>
       {usda ? <p className="text-xs text-neutral-600 dark:text-neutral-400">USDA: {usda}</p> : null}
       {row.conflict && !chosen && mode.kind === "idle" ? (
-        <p className="text-xs text-neutral-600 dark:text-neutral-400">{row.conflict.name} already exists, so linking merges the two.</p>
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">
+          {row.conflict.name} already exists, so linking merges the two.
+        </p>
       ) : null}
       {error ? <Alert tone="error">{error}</Alert> : null}
 
       {mode.kind === "rename" ? (
         <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
-          <Field id={`link-${row.id}-rename`} label={`New name for ${row.name}`} value={newName} autoFocus onChange={(e) => setNewName(e.target.value)} className="lg:w-72" />
+          <Field
+            id={`link-${row.id}-rename`}
+            label={`New name for ${row.name}`}
+            value={newName}
+            autoFocus
+            onChange={(e) => setNewName(e.target.value)}
+            className="lg:w-72"
+          />
           <div className="grid grid-cols-2 gap-2 lg:flex">
             <Button onClick={rename} disabled={action.isPending}>
               Save
@@ -205,26 +276,46 @@ function LinkRowView({ row, onDecided }: { row: LinkRow; onDecided: (row: LinkRo
       ) : mode.kind === "merge" ? (
         <IngredientMergePanel
           first={{ id: row.id, name: row.name, products: row.products }}
-          second={{ id: mode.needed.other.id, name: mode.needed.other.name, products: mode.needed.other.products }}
+          second={{
+            id: mode.needed.other.id,
+            name: mode.needed.other.name,
+            products: mode.needed.other.products,
+          }}
           // The one with more products survives by default; a tie keeps the other.
-          defaultSurvivor={row.products > mode.needed.other.products ? row.id : mode.needed.other.id}
+          defaultSurvivor={
+            row.products > mode.needed.other.products ? row.id : mode.needed.other.id
+          }
           targetFor={() => ({ target: mode.target, name: mode.needed.target_name })}
           onCancel={() => setMode({ kind: "idle" })}
-          onMerged={({ targetName }) => onDecided(row, "merged", `Merged ${row.name} into ${targetName}.`)}
+          onMerged={({ targetName }) =>
+            onDecided(row, "merged", `Merged ${row.name} into ${targetName}.`)
+          }
         />
       ) : (
         <div className="grid grid-cols-3 gap-2 lg:flex lg:flex-wrap lg:items-center">
-          <Button id={`link-${row.id}-first`} onClick={suggestion ? link : () => setMode({ kind: "choose" })} disabled={action.isPending}>
+          <Button
+            id={`link-${row.id}-first`}
+            onClick={suggestion ? link : () => setMode({ kind: "choose" })}
+            disabled={action.isPending}
+          >
             {suggestion ? "Link" : "Choose…"}
           </Button>
-          <Button variant="secondary" onClick={() => setMode({ kind: "rename" })} disabled={action.isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => setMode({ kind: "rename" })}
+            disabled={action.isPending}
+          >
             Rename…
           </Button>
           <Button variant="ghost" onClick={skip} disabled={action.isPending}>
             Skip
           </Button>
           {suggestion ? (
-            <button type="button" onClick={() => setMode({ kind: "choose" })} className={`col-span-3 min-h-11 rounded text-left text-sm underline lg:min-h-0 ${focusRing}`}>
+            <button
+              type="button"
+              onClick={() => setMode({ kind: "choose" })}
+              className={`col-span-3 min-h-11 rounded text-left text-sm underline lg:min-h-0 ${focusRing}`}
+            >
               Choose another standard name
             </button>
           ) : null}
@@ -238,15 +329,26 @@ function SkippedFold({ rows }: { rows: LinkRow[] }) {
   const action = useLinkAction();
   return (
     <details className="mt-4 rounded-2xl border border-neutral-200 bg-white px-4 py-2 dark:border-neutral-800 dark:bg-neutral-900">
-      <summary className={`min-h-11 cursor-pointer py-2 text-sm font-medium lg:min-h-0 ${focusRing}`}>Skipped ({rows.length})</summary>
+      <summary
+        className={`min-h-11 cursor-pointer py-2 text-sm font-medium lg:min-h-0 ${focusRing}`}
+      >
+        Skipped ({rows.length})
+      </summary>
       <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
         {rows.map((row) => (
           <li key={row.id} className="flex items-center justify-between gap-2 py-2 text-sm">
             <span>
               <span className="font-medium">{row.name}</span>
-              <span className="text-neutral-600 dark:text-neutral-400"> · {plural(row.products, "product")}</span>
+              <span className="text-neutral-600 dark:text-neutral-400">
+                {" "}
+                · {plural(row.products, "product")}
+              </span>
             </span>
-            <Button variant="secondary" onClick={() => action.mutate({ id: row.id, action: "reopen" })} disabled={action.isPending}>
+            <Button
+              variant="secondary"
+              onClick={() => action.mutate({ id: row.id, action: "reopen" })}
+              disabled={action.isPending}
+            >
               Reopen
             </Button>
           </li>

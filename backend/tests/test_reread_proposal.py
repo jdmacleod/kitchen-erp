@@ -20,7 +20,7 @@ def written(*rows: tuple) -> list[Line]:
     out: list[Line] = []
     for at, row in enumerate(rows):
         text, kind, total, *rest = row
-        qty, unit, parent, flags = (rest + [None, None, None, None])[:4]
+        qty, unit, parent, flags = (rest + [None, None, None, None])[:4]  # noqa: RUF005
         out.append(
             Line(
                 raw_text=text,
@@ -42,7 +42,7 @@ def reading(*rows: tuple) -> list[ParsedLine]:
     out = []
     for at, row in enumerate(rows):
         text, kind, total, *rest = row
-        qty, unit, parent_seq, flags = (rest + [None, None, None, None])[:4]
+        qty, unit, parent_seq, flags = (rest + [None, None, None, None])[:4]  # noqa: RUF005
         out.append(
             ParsedLine(
                 seq=at + 1,

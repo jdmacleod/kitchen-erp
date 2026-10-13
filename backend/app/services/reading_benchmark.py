@@ -890,7 +890,7 @@ class RunResult:
     summary: str
 
 
-async def run(
+async def run(  # noqa: C901, PLR0915
     selection: Selection, options: RunOptions, *, echo: Callable[[str], None] = print
 ) -> RunResult:
     """Read every receipt with every configuration, checkpointing each reading."""

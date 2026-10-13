@@ -108,9 +108,9 @@ async def test_the_endpoint_needs_a_session(client, extract):
 
 
 def test_a_malformed_tile_is_an_error_not_a_hang():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         mvt.points(b"\x1a\xff\xff\xff\xff\x0f", {"pois"})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         mvt.points(b"\x1a\x05\x0a\x03", {"pois"})
 
 

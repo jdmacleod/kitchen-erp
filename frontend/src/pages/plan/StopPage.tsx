@@ -14,7 +14,14 @@ import {
 } from "../../api/trips";
 import { useNotice } from "../../components/Notice";
 import { CheaperRow, StopItemRow } from "../../components/plan/StopRows";
-import { Alert, Button, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  PageHeader,
+  focusRing,
+  primaryLinkClass,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { add, formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -47,14 +54,20 @@ function writeTicks(planId: string, seq: number, ids: readonly string[]): void {
 }
 
 /** The sum of the checked items at their edited or planned cost. */
-export function basketTotal(items: readonly StopScreenItem[], checked: ReadonlySet<string>): string {
+export function basketTotal(
+  items: readonly StopScreenItem[],
+  checked: ReadonlySet<string>,
+): string {
   return items.filter((i) => checked.has(i.id)).reduce((sum, i) => add(sum, i.effective_cost), "0");
 }
 
 function BackToTrip({ planId }: { planId: string }) {
   return (
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
-      <Link to={`/plan/trips/${planId}`} className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+      <Link
+        to={`/plan/trips/${planId}`}
+        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+      >
         <span aria-hidden="true">←&nbsp;</span>Back to the trip
       </Link>
     </nav>
@@ -102,8 +115,14 @@ export function StopPage() {
         <PageHeader title={`Stop ${seq}`} />
         {notChosen ? (
           <Alert tone="info">
-            <span className="flex flex-wrap items-center justify-between gap-2" data-testid="plan-not-chosen">
-              <span>Choose a plan first. The stops are worked through once one of the three plans is chosen.</span>
+            <span
+              className="flex flex-wrap items-center justify-between gap-2"
+              data-testid="plan-not-chosen"
+            >
+              <span>
+                Choose a plan first. The stops are worked through once one of the three plans is
+                chosen.
+              </span>
               <Link to={`/plan/trips/${id}`} className={secondaryLinkClass}>
                 Open the trip
               </Link>
@@ -112,7 +131,11 @@ export function StopPage() {
         ) : (
           <Alert tone="error">
             <span className="flex flex-wrap items-center justify-between gap-2">
-              <span>{gone ? "There is no such stop on this trip." : `Couldn't load the stop: ${errorMessage(e)}`}</span>
+              <span>
+                {gone
+                  ? "There is no such stop on this trip."
+                  : `Couldn't load the stop: ${errorMessage(e)}`}
+              </span>
               {gone ? null : (
                 <Button variant="secondary" onClick={() => void stop.refetch()}>
                   Try again
@@ -124,7 +147,13 @@ export function StopPage() {
       </Column>
     );
   }
-  return <StopView key={`${stop.data.plan_id}:${stop.data.seq}`} stop={stop.data} refetch={() => void stop.refetch()} />;
+  return (
+    <StopView
+      key={`${stop.data.plan_id}:${stop.data.seq}`}
+      stop={stop.data}
+      refetch={() => void stop.refetch()}
+    />
+  );
 }
 
 function Column({ children }: { children: ReactNode }) {
@@ -150,7 +179,10 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
   // Only ids still on this stop count; a done stop shows what the list recorded.
   const itemIds = useMemo(() => new Set(stop.items.map((i) => i.id)), [stop.items]);
   const checked = useMemo(
-    () => (done ? new Set(stop.items.filter((i) => i.checked_at !== null).map((i) => i.id)) : new Set(ticks.filter((t) => itemIds.has(t)))),
+    () =>
+      done
+        ? new Set(stop.items.filter((i) => i.checked_at !== null).map((i) => i.id))
+        : new Set(ticks.filter((t) => itemIds.has(t))),
     [done, stop.items, ticks, itemIds],
   );
   useEffect(() => {
@@ -163,20 +195,28 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
 
   const nextStopName = useMemo(() => {
     if (stop.next_seq === null || !trip.data) return null;
-    return chosenVariant(trip.data)?.stops.find((s) => s.seq === stop.next_seq)?.vendor_location_name ?? null;
+    return (
+      chosenVariant(trip.data)?.stops.find((s) => s.seq === stop.next_seq)?.vendor_location_name ??
+      null
+    );
   }, [stop.next_seq, trip.data]);
 
   const onToggle = (item: StopScreenItem) => {
     const was = checked.has(item.id);
-    const next = was ? ticks.filter((t) => t !== item.id) : [...ticks.filter((t) => itemIds.has(t)), item.id];
+    const next = was
+      ? ticks.filter((t) => t !== item.id)
+      : [...ticks.filter((t) => itemIds.has(t)), item.id];
     setTicks(next);
     const left = stop.items.length - next.filter((t) => itemIds.has(t)).length;
-    setAnnounce(was ? `Unchecked ${item.label}. ${left} to get.` : `Checked ${item.label}. ${left} to get.`);
+    setAnnounce(
+      was ? `Unchecked ${item.label}. ${left} to get.` : `Checked ${item.label}. ${left} to get.`,
+    );
   };
 
   const onConflict = (e: unknown) => {
     refetch();
-    if (isApiError(e) && e.code === "stop_done") notice.show({ tone: "info", message: "This stop was already recorded; showing it." });
+    if (isApiError(e) && e.code === "stop_done")
+      notice.show({ tone: "info", message: "This stop was already recorded; showing it." });
   };
 
   const onGetHere = (item: CheaperElsewhereItem) => {
@@ -195,7 +235,11 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
       {
         onSuccess: () => {
           moveKeys.current.delete(item.id);
-          notice.show({ tone: "success", message: `Moved ${item.label} here from stop ${item.at_seq}.`, timeoutMs: 3000 });
+          notice.show({
+            tone: "success",
+            message: `Moved ${item.label} here from stop ${item.at_seq}.`,
+            timeoutMs: 3000,
+          });
         },
         onError: (e) => {
           if (isApiError(e) && e.code === "not_offered_here") {
@@ -213,7 +257,10 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
   // "Next stop: {store}" while stops remain, "Back to the trip" after the last (UI-8.18).
   const nextActionFor = (nextSeq: number | null) =>
     nextSeq !== null
-      ? { label: nextStopName ? `Next stop: ${nextStopName}` : "Next stop", to: stopPath(planId, nextSeq) }
+      ? {
+          label: nextStopName ? `Next stop: ${nextStopName}` : "Next stop",
+          to: stopPath(planId, nextSeq),
+        }
       : { label: "Back to the trip", to: `/plan/trips/${planId}` };
   const nextAction = nextActionFor(stop.next_seq);
 
@@ -225,13 +272,19 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
       result.purchase_id === null
         ? `Moved on from ${stop.location.name}; nothing bought.`
         : `Recorded ${lines} ${lines === 1 ? "line" : "lines"} at ${stop.location.name} · ${formatMoney(recordedTotal)}.`;
-    notice.show({ tone: "success", message, action: nextActionFor(result.next_seq), focusAction: true });
+    notice.show({
+      tone: "success",
+      message,
+      action: nextActionFor(result.next_seq),
+      focusAction: true,
+    });
   };
 
   // Later stops' items, one section per stop.
   const cheaperBySeq = useMemo(() => {
     const groups = new Map<number, CheaperElsewhereItem[]>();
-    for (const c of stop.cheaper_elsewhere) groups.set(c.at_seq, [...(groups.get(c.at_seq) ?? []), c]);
+    for (const c of stop.cheaper_elsewhere)
+      groups.set(c.at_seq, [...(groups.get(c.at_seq) ?? []), c]);
     return [...groups.entries()].sort((a, b) => a[0] - b[0]);
   }, [stop.cheaper_elsewhere]);
 
@@ -239,33 +292,54 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
     <Column>
       <div className={readOnly ? "" : "pb-40 lg:pb-0"}>
         <BackToTrip planId={planId} />
-        <PageHeader title={`Stop ${stop.seq} of ${stop.stop_count} · ${stop.home_base_name} list`} description={<span className="text-base font-medium text-neutral-900 dark:text-neutral-100">{stop.location.name}</span>} />
+        <PageHeader
+          title={`Stop ${stop.seq} of ${stop.stop_count} · ${stop.home_base_name} list`}
+          description={
+            <span className="text-base font-medium text-neutral-900 dark:text-neutral-100">
+              {stop.location.name}
+            </span>
+          }
+        />
         <div className="-mt-5 mb-4 flex flex-col gap-1 text-sm">
           {stop.location.address ? <p className={muted}>{stop.location.address}</p> : null}
           {done ? (
             <p data-testid="stop-done" className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>
-                Done {formatDateTime(stop.done_at)} · {stop.lines_recorded ?? 0} {stop.lines_recorded === 1 ? "line" : "lines"} recorded
+                Done {formatDateTime(stop.done_at)} · {stop.lines_recorded ?? 0}{" "}
+                {stop.lines_recorded === 1 ? "line" : "lines"} recorded
                 {stop.actual_cost !== null ? ` · ${formatMoney(stop.actual_cost)}` : ""}
               </span>
               {stop.purchase_id ? (
-                <Link to={`/shop/purchases/${stop.purchase_id}`} className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+                <Link
+                  to={`/shop/purchases/${stop.purchase_id}`}
+                  className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+                >
                   Open the purchase
                 </Link>
               ) : null}
             </p>
           ) : (
-            <p data-testid="stop-progress" className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-md bg-neutral-100 px-3 py-2 tabular-nums dark:bg-neutral-900">
+            <p
+              data-testid="stop-progress"
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 rounded-md bg-neutral-100 px-3 py-2 tabular-nums dark:bg-neutral-900"
+            >
               <span>
                 <span className="font-medium">
                   {inBasket.length} of {stop.items.length}
                 </span>{" "}
                 in the basket{inBasket.length > 0 ? ` · ${formatMoney(total)}` : ""}
               </span>
-              <span data-testid="estimated-here">About {formatMoney(stop.estimated_here)} here</span>
+              <span data-testid="estimated-here">
+                About {formatMoney(stop.estimated_here)} here
+              </span>
             </p>
           )}
-          {ended ? <Alert tone="info">This trip is {stop.plan_status === "done" ? "done" : "abandoned"}; nothing more is recorded here.</Alert> : null}
+          {ended ? (
+            <Alert tone="info">
+              This trip is {stop.plan_status === "done" ? "done" : "abandoned"}; nothing more is
+              recorded here.
+            </Alert>
+          ) : null}
         </div>
 
         <p className="sr-only" aria-live="polite" aria-atomic="true">
@@ -282,13 +356,34 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
             <>
               <ul aria-label="To get here" className="flex flex-col">
                 {toGet.map((item) => (
-                  <StopItemRow key={item.id} item={item} planId={planId} seq={stop.seq} checked={false} readOnly={readOnly} onToggle={onToggle} onConflict={onConflict} />
+                  <StopItemRow
+                    key={item.id}
+                    item={item}
+                    planId={planId}
+                    seq={stop.seq}
+                    checked={false}
+                    readOnly={readOnly}
+                    onToggle={onToggle}
+                    onConflict={onConflict}
+                  />
                 ))}
               </ul>
               {inBasket.length > 0 ? (
-                <ul aria-label="In the basket" className="mt-1 flex flex-col border-t border-neutral-300 pt-1 dark:border-neutral-700">
+                <ul
+                  aria-label="In the basket"
+                  className="mt-1 flex flex-col border-t border-neutral-300 pt-1 dark:border-neutral-700"
+                >
                   {inBasket.map((item) => (
-                    <StopItemRow key={item.id} item={item} planId={planId} seq={stop.seq} checked readOnly={readOnly} onToggle={onToggle} onConflict={onConflict} />
+                    <StopItemRow
+                      key={item.id}
+                      item={item}
+                      planId={planId}
+                      seq={stop.seq}
+                      checked
+                      readOnly={readOnly}
+                      onToggle={onToggle}
+                      onConflict={onConflict}
+                    />
                   ))}
                 </ul>
               ) : null}
@@ -297,11 +392,18 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
         </section>
 
         {cheaperBySeq.map(([at, items]) => (
-          <section key={at} aria-labelledby={`cheaper-${at}`} className="mb-6" data-testid="cheaper-section">
+          <section
+            key={at}
+            aria-labelledby={`cheaper-${at}`}
+            className="mb-6"
+            data-testid="cheaper-section"
+          >
             <h2 id={`cheaper-${at}`} className="font-display text-lg">
               Cheaper at stop {at}
             </h2>
-            <p className={`mb-1 text-sm ${muted}`}>Planned for {items[0].at_location_name}, and this store sells them too.</p>
+            <p className={`mb-1 text-sm ${muted}`}>
+              Planned for {items[0].at_location_name}, and this store sells them too.
+            </p>
             <ul className="flex flex-col">
               {items.map((item) => (
                 <CheaperRow
@@ -325,7 +427,13 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
             </Link>
           </div>
         ) : (
-          <DoneFooter stop={stop} checkedIds={[...checked]} total={total} onRecorded={onRecorded} onConflict={onConflict} />
+          <DoneFooter
+            stop={stop}
+            checkedIds={[...checked]}
+            total={total}
+            onRecorded={onRecorded}
+            onConflict={onConflict}
+          />
         )}
       </div>
     </Column>
@@ -368,7 +476,8 @@ function DoneFooter({ stop, checkedIds, total, onRecorded, onConflict }: DoneFoo
   const submit = () => {
     const ids = [...checkedIds].sort();
     const signature = ids.join(",");
-    if (held.current?.signature !== signature) held.current = { signature, key: newIdempotencyKey() };
+    if (held.current?.signature !== signature)
+      held.current = { signature, key: newIdempotencyKey() };
     record.mutate(
       { id: stop.plan_id, seq: stop.seq, checkedItemIds: ids, key: held.current.key },
       {
@@ -398,7 +507,12 @@ function DoneFooter({ stop, checkedIds, total, onRecorded, onConflict }: DoneFoo
     >
       <div className="mx-auto flex max-w-xl flex-col gap-2">
         {asking ? (
-          <div role="group" aria-label="Confirm Done here" data-testid="done-confirm" className="flex flex-col gap-2 text-sm">
+          <div
+            role="group"
+            aria-label="Confirm Done here"
+            data-testid="done-confirm"
+            className="flex flex-col gap-2 text-sm"
+          >
             <p>
               {nothing
                 ? "Move on without buying anything here?"
@@ -408,27 +522,46 @@ function DoneFooter({ stop, checkedIds, total, onRecorded, onConflict }: DoneFoo
               <Alert tone="error">
                 {ended ? (
                   <span className="flex flex-wrap items-center justify-between gap-2">
-                    <span>This trip has ended, so nothing more is recorded: {errorMessage(failure)}</span>
+                    <span>
+                      This trip has ended, so nothing more is recorded: {errorMessage(failure)}
+                    </span>
                     <Link to={`/plan/trips/${stop.plan_id}`} className={secondaryLinkClass}>
                       Open the trip
                     </Link>
                   </span>
                 ) : (
-                  <>Couldn&apos;t record this stop: {errorMessage(failure)} Your ticks are kept; try again.</>
+                  <>
+                    Couldn&apos;t record this stop: {errorMessage(failure)} Your ticks are kept; try
+                    again.
+                  </>
                 )}
               </Alert>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              <Button ref={notYet} variant="secondary" className="min-h-14 flex-1 lg:min-h-10" onClick={close} disabled={record.isPending}>
+              <Button
+                ref={notYet}
+                variant="secondary"
+                className="min-h-14 flex-1 lg:min-h-10"
+                onClick={close}
+                disabled={record.isPending}
+              >
                 Not yet
               </Button>
-              <Button className="min-h-14 flex-1 lg:min-h-10" onClick={submit} disabled={record.isPending || ended}>
+              <Button
+                className="min-h-14 flex-1 lg:min-h-10"
+                onClick={submit}
+                disabled={record.isPending || ended}
+              >
                 {record.isPending ? "Recording…" : nothing ? "Move on" : "Record"}
               </Button>
             </div>
           </div>
         ) : (
-          <Button ref={opener} className="min-h-14 w-full text-base lg:min-h-12" onClick={() => setAsking(true)}>
+          <Button
+            ref={opener}
+            className="min-h-14 w-full text-base lg:min-h-12"
+            onClick={() => setAsking(true)}
+          >
             {nothing ? "Done here · nothing bought" : "Done here · record purchase"}
           </Button>
         )}

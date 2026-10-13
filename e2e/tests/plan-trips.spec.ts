@@ -17,7 +17,11 @@ import { makeTripWorld, type TripWorld } from "./trip-setup";
  */
 
 const stamp = nextTag();
-const COOK = { email: `e2e-tripper-${stamp}@example.com`, password: "e2e-only-not-a-secret", name: `E2E Tripper ${stamp}` };
+const COOK = {
+  email: `e2e-tripper-${stamp}@example.com`,
+  password: "e2e-only-not-a-secret",
+  name: `E2E Tripper ${stamp}`,
+};
 
 const isPhone = (project: string) => project !== "desktop";
 const money = (text: string) => Number((/\$(\d+\.\d{2})/.exec(text) ?? ["", "NaN"])[1]);
@@ -36,9 +40,19 @@ async function setUp(page: Page): Promise<TripWorld> {
   // cannot land after ours.
   await page.goto("/plan/trips");
   await expect(page.getByTestId("kitchen-tag")).toBeVisible();
-  const settled = async () => ((await (await page.request.get("/api/v1/me/settings")).json()) as { current_home_base_id: string | null }).current_home_base_id;
-  await expect.poll(settled, { timeout: 5_000 }).not.toBeNull().catch(() => undefined);
-  const put = await page.request.put("/api/v1/me/settings", { data: { current_home_base_id: world.kitchenId } });
+  const settled = async () =>
+    (
+      (await (await page.request.get("/api/v1/me/settings")).json()) as {
+        current_home_base_id: string | null;
+      }
+    ).current_home_base_id;
+  await expect
+    .poll(settled, { timeout: 5_000 })
+    .not.toBeNull()
+    .catch(() => undefined);
+  const put = await page.request.put("/api/v1/me/settings", {
+    data: { current_home_base_id: world.kitchenId },
+  });
   expect(put.status(), await put.text()).toBe(200);
   return world;
 }
@@ -53,7 +67,10 @@ async function checkStopOnPhone(page: Page, where: string): Promise<void> {
     await page.evaluate((y) => window.scrollTo(0, y), scroll);
     const box = await footer.boundingBox();
     expect(box, "the footer is rendered").toBeTruthy();
-    expect(Math.abs(box!.y + box!.height - viewport.height), `${where}: the footer sits on the bottom edge`).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(box!.y + box!.height - viewport.height),
+      `${where}: the footer sits on the bottom edge`,
+    ).toBeLessThanOrEqual(1);
   }
   const done = footer.getByRole("button", { name: /^Done here/ });
   expect((await done.boundingBox())!.height, "Done here is 56px").toBeGreaterThanOrEqual(55.5);
@@ -78,7 +95,9 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
   await expect(drawer.getByLabel("Value of your time")).toHaveValue("20.00");
   await expect(drawer.getByLabel("Stops at most")).toHaveValue("3");
   // The stores are offered as places to start or end.
-  await expect(drawer.getByLabel("Starting from").locator("option", { hasText: world.north.name })).toHaveCount(1);
+  await expect(
+    drawer.getByLabel("Starting from").locator("option", { hasText: world.north.name }),
+  ).toHaveCount(1);
   if (phone) await expectNoSidewaysScroll(page, "the Plan a trip sheet");
   await drawer.getByRole("button", { name: "Plan", exact: true }).click();
 
@@ -90,21 +109,40 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
   for (const kind of ["fastest", "cheapest", "balanced"]) {
     const card = page.locator(`[data-testid=variant-card][data-kind=${kind}]`);
     await expect(card.getByText("estimated", { exact: true })).toBeVisible();
-    await expect(card.getByText("Drive times are estimates: the routing engine wasn't available.")).toBeVisible();
+    await expect(
+      card.getByText("Drive times are estimates: the routing engine wasn't available."),
+    ).toBeVisible();
     await expect(card.getByRole("list", { name: /stops$/ }).getByRole("listitem")).toHaveCount(2);
   }
-  await expect(page.locator("[data-testid=variant-card][data-kind=cheapest]").getByText("cheapest", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .locator("[data-testid=variant-card][data-kind=cheapest]")
+      .getByText("cheapest", { exact: true }),
+  ).toBeVisible();
   if (phone) {
     // Balanced first on a phone (UI-8.19).
-    const first = await cards.evaluateAll((els) => els.map((e) => [e.getAttribute("data-kind"), e.getBoundingClientRect().top] as const).sort((a, b) => a[1] - b[1])[0][0]);
+    const first = await cards.evaluateAll(
+      (els) =>
+        els
+          .map((e) => [e.getAttribute("data-kind"), e.getBoundingClientRect().top] as const)
+          .sort((a, b) => a[1] - b[1])[0][0],
+    );
     expect(first).toBe("balanced");
     await expectNoSidewaysScroll(page, "the trip page");
   }
-  const predicted = money((await page.locator("[data-testid=variant-card][data-kind=balanced]").getByTestId("variant-items").textContent()) ?? "");
+  const predicted = money(
+    (await page
+      .locator("[data-testid=variant-card][data-kind=balanced]")
+      .getByTestId("variant-items")
+      .textContent()) ?? "",
+  );
   expect(predicted).toBe(14);
 
   // --- Choose (UI-8.15) ------------------------------------------------------------
-  await page.locator("[data-testid=variant-card][data-kind=balanced]").getByRole("button", { name: "Choose" }).click();
+  await page
+    .locator("[data-testid=variant-card][data-kind=balanced]")
+    .getByRole("button", { name: "Choose" })
+    .click();
   await expect(page.getByText(/^Chosen /)).toBeVisible();
   await expect(page.getByText("Show the other plans")).toBeVisible();
   const start = page.getByRole("link", { name: "Start the trip" });
@@ -113,7 +151,9 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
 
   // --- Stop 1 (UI-4.8, UI-8.17) ------------------------------------------------------
   await expect(page).toHaveURL(/\/stop\/1$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Stop 1 of 2 · ${world.kitchenName} list`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    `Stop 1 of 2 · ${world.kitchenName} list`,
+  );
   const items = page.getByTestId("stop-item");
   await expect(items).toHaveCount(2);
   const cheaper = page.getByTestId("cheaper-item");
@@ -148,7 +188,9 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
     await page.getByRole("list", { name: "To get here" }).getByRole("checkbox").first().click();
   }
   await expect(page.getByTestId("stop-progress")).toContainText("3 of 3 in the basket");
-  await expect(page.getByRole("list", { name: "In the basket" }).getByTestId("stop-item")).toHaveCount(3);
+  await expect(
+    page.getByRole("list", { name: "In the basket" }).getByTestId("stop-item"),
+  ).toHaveCount(3);
   if (phone) await checkStopOnPhone(page, "stop 1 with the basket full");
 
   // --- Done here (UI-8.18): confirm inline, the Notice offers the next stop ------------
@@ -166,7 +208,9 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
 
   // --- Stop 2 ---------------------------------------------------------------------
   await expect(page).toHaveURL(/\/stop\/2$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(`Stop 2 of 2 · ${world.kitchenName} list`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    `Stop 2 of 2 · ${world.kitchenName} list`,
+  );
   await expect(page.getByTestId("stop-item")).toHaveCount(1);
   // Nothing is offered from an earlier stop.
   await expect(page.getByTestId("cheaper-section")).toHaveCount(0);
@@ -191,5 +235,7 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
   await page.goto("/plan/trips");
   const row = page.getByTestId("trip-row").first();
   await expect(row.getByTestId("trip-row-stores")).toContainText(" → ");
-  await expect(row.getByTestId("trip-row-figures")).toContainText(`predicted $14.00 · actual $${actual}`);
+  await expect(row.getByTestId("trip-row-figures")).toContainText(
+    `predicted $14.00 · actual $${actual}`,
+  );
 });

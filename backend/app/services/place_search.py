@@ -206,7 +206,7 @@ _lock = threading.Lock()
 def _extract(tiles_path: str) -> Extract:
     path = Path(tiles_path) / TILES_FILE
     try:
-        mtime = os.stat(path).st_mtime
+        mtime = os.stat(path).st_mtime  # noqa: PTH116
     except FileNotFoundError:
         raise ApiError(
             409,

@@ -84,7 +84,7 @@ async def table_counts(db: AsyncSession) -> dict[str, int]:
         exists = (await db.execute(text("SELECT to_regclass(:t)"), {"t": table})).scalar_one()
         if exists is None:
             continue
-        counts[table] = int((await db.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one())
+        counts[table] = int((await db.execute(text(f"SELECT count(*) FROM {table}"))).scalar_one())  # noqa: S608
     return counts
 
 
@@ -106,10 +106,10 @@ async def backup(db: AsyncSession, out: Path, *, force: bool = False) -> dict[st
             "Choose another directory, or pass --force to replace it.",
         )
     settings = get_settings()
-    out.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
     dump = out / "db.dump"
-    subprocess.run(
-        [
+    subprocess.run(  # noqa: ASYNC221, S603
+        [  # noqa: S607
             "pg_dump",
             "--format=custom",
             "--no-owner",
@@ -186,8 +186,8 @@ async def restore(db: AsyncSession, src: Path, *, force: bool = False) -> dict[s
     await db.commit()
     await db.close()
     await _as_owner(("DROP SCHEMA public CASCADE", "CREATE SCHEMA public"))
-    result = subprocess.run(
-        [
+    result = subprocess.run(  # noqa: ASYNC221, S603
+        [  # noqa: S607
             "pg_restore",
             "--no-owner",
             "--no-privileges",

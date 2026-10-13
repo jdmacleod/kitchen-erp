@@ -1,7 +1,12 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { fractionToPercent, isYieldPercent, percentToFraction, type Ingredient } from "../api/catalog";
+import {
+  fractionToPercent,
+  isYieldPercent,
+  percentToFraction,
+  type Ingredient,
+} from "../api/catalog";
 import { flour, flourId, flourProduct, units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
@@ -14,9 +19,11 @@ function routes(ingredient: () => Ingredient, onPatch: (body: unknown) => Ingred
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     [`GET /ingredients/${flourId}`]: () => jsonResponse(200, ingredient()),
-    [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: [], stale_after_days: 90 }),
+    [`GET /ingredients/${flourId}/offers`]: () =>
+      jsonResponse(200, { items: [], stale_after_days: 90 }),
     "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
-    [`PATCH /ingredients/${flourId}`]: (call: { body: unknown }) => jsonResponse(200, onPatch(call.body)),
+    [`PATCH /ingredients/${flourId}`]: (call: { body: unknown }) =>
+      jsonResponse(200, onPatch(call.body)),
   };
 }
 
@@ -78,7 +85,12 @@ describe("yield on the ingredient page", () => {
   });
 
   it("refuses a percentage over 100 and sends nothing", async () => {
-    const calls = mockApi(routes(() => flour, () => flour));
+    const calls = mockApi(
+      routes(
+        () => flour,
+        () => flour,
+      ),
+    );
     const user = userEvent.setup();
     renderApp(`/catalog/ingredients/${flourId}`);
 
@@ -90,26 +102,42 @@ describe("yield on the ingredient page", () => {
     await user.type(field, "120");
     await user.click(screen.getByRole("button", { name: "Save details" }));
 
-    expect(await screen.findByText("Yield is a percentage above 0 and up to 100, such as 85.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Yield is a percentage above 0 and up to 100, such as 85."),
+    ).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
   });
 
   it("does not resend an unchanged yield", async () => {
-    const calls = mockApi(routes(() => flour, () => flour));
+    const calls = mockApi(
+      routes(
+        () => flour,
+        () => flour,
+      ),
+    );
     const user = userEvent.setup();
     renderApp(`/catalog/ingredients/${flourId}`);
 
     await screen.findByRole("heading", { name: flour.name });
     await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
     await user.click(screen.getByRole("button", { name: "Save details" }));
-    await waitFor(() => expect(screen.queryByRole("button", { name: "Save details" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Save details" })).not.toBeInTheDocument(),
+    );
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
   });
 });
 
 describe("yield in the add drawer", () => {
   it("sends a typed percentage as a fraction", async () => {
-    const created: Ingredient = { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b10", name: "leeks", category: null, measures: [], yield_pct: "0.6" };
+    const created: Ingredient = {
+      ...flour,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b10",
+      name: "leeks",
+      category: null,
+      measures: [],
+      yield_pct: "0.6",
+    };
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -127,9 +155,17 @@ describe("yield in the add drawer", () => {
     await user.type(screen.getByLabelText("Name"), "leeks");
     await user.click(screen.getByText("More: density, yield, perishability, notes"));
     await user.type(screen.getByLabelText("Yield (%)"), "60");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
 
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/ingredients")).toBe(true));
-    expect(calls.find((c) => c.method === "POST")?.body).toEqual({ name: "leeks", canonical_unit: "g", yield_pct: "0.6" });
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/ingredients")).toBe(true),
+    );
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      name: "leeks",
+      canonical_unit: "g",
+      yield_pct: "0.6",
+    });
   });
 });

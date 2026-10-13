@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { validateOpeningHours } from "../../api/geo";
 import { errorMessage } from "../../api/client";
+import { validateOpeningHours } from "../../api/geo";
 import {
   DAY_CODES,
   DAY_SPANS,
@@ -13,8 +13,8 @@ import {
   type MonthCode,
   type Preset,
 } from "../../lib/openingHours";
-import { Field } from "../ui";
 import { RadioGroup, SelectField, hintClass, inputClass, labelClass } from "../catalog/fields";
+import { Field } from "../ui";
 
 type Mode = "none" | "daily" | "weekly" | "seasonal" | "raw";
 
@@ -40,17 +40,33 @@ interface OpeningHoursInputProps {
 
 const defaultDaily: Preset = { kind: "daily", days: "Mo-Su", open: "08:00", close: "20:00" };
 const defaultWeekly: Preset = { kind: "weekly", day: "Sa", open: "08:00", close: "13:00" };
-const defaultSeasonal: Preset = { kind: "seasonal", from: "Apr", to: "Oct", day: "Sa", open: "08:00", close: "13:00" };
+const defaultSeasonal: Preset = {
+  kind: "seasonal",
+  from: "Apr",
+  to: "Oct",
+  day: "Sa",
+  open: "08:00",
+  close: "13:00",
+};
 
 /**
  * Writes OpenStreetMap opening_hours syntax for the common cases and lets the
  * raw string through for anything else. The string is validated by the server
  * (POST /opening-hours/validate) when the user leaves the field.
  */
-export function OpeningHoursInput({ idPrefix, value, onChange, onValidated, disabled, noneHint }: OpeningHoursInputProps) {
+export function OpeningHoursInput({
+  idPrefix,
+  value,
+  onChange,
+  onValidated,
+  disabled,
+  noneHint,
+}: OpeningHoursInputProps) {
   const [mode, setMode] = useState<Mode>(value ? "raw" : "none");
   const [preset, setPreset] = useState<Preset>(defaultDaily);
-  const [check, setCheck] = useState<{ text: string; valid: boolean; error: string | null } | "checking" | null>(null);
+  const [check, setCheck] = useState<
+    { text: string; valid: boolean; error: string | null } | "checking" | null
+  >(null);
 
   const write = (next: Preset) => {
     setPreset(next);
@@ -89,12 +105,22 @@ export function OpeningHoursInput({ idPrefix, value, onChange, onValidated, disa
   const previewId = `${idPrefix}-hours-preview`;
 
   return (
-    <fieldset className="flex flex-col gap-3" onBlur={(e) => {
-      // Validate when focus leaves the whole builder, not on every field hop.
-      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) void validate();
-    }}>
+    <fieldset
+      className="flex flex-col gap-3"
+      onBlur={(e) => {
+        // Validate when focus leaves the whole builder, not on every field hop.
+        if (!e.currentTarget.contains(e.relatedTarget)) void validate();
+      }}
+    >
       <legend className={labelClass}>Opening hours</legend>
-      <RadioGroup name={`${idPrefix}-hours-mode`} legend="How to enter hours" options={MODES} value={mode} onChange={switchMode} disabled={disabled} />
+      <RadioGroup
+        name={`${idPrefix}-hours-mode`}
+        legend="How to enter hours"
+        options={MODES}
+        value={mode}
+        onChange={switchMode}
+        disabled={disabled}
+      />
 
       {mode === "none" && noneHint ? <p className={hintClass}>{noneHint}</p> : null}
 
@@ -113,26 +139,84 @@ export function OpeningHoursInput({ idPrefix, value, onChange, onValidated, disa
               </option>
             ))}
           </SelectField>
-          <TimeField id={`${idPrefix}-hours-open`} label="Opens" value={preset.open} disabled={disabled} onChange={(v) => write({ ...preset, open: v })} />
-          <TimeField id={`${idPrefix}-hours-close`} label="Closes" value={preset.close} disabled={disabled} onChange={(v) => write({ ...preset, close: v })} />
+          <TimeField
+            id={`${idPrefix}-hours-open`}
+            label="Opens"
+            value={preset.open}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, open: v })}
+          />
+          <TimeField
+            id={`${idPrefix}-hours-close`}
+            label="Closes"
+            value={preset.close}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, close: v })}
+          />
         </div>
       ) : null}
 
       {mode === "weekly" && preset.kind === "weekly" ? (
         <div className="grid gap-3 sm:grid-cols-3">
-          <DaySelect id={`${idPrefix}-hours-day`} value={preset.day} disabled={disabled} onChange={(day) => write({ ...preset, day })} />
-          <TimeField id={`${idPrefix}-hours-open`} label="Opens" value={preset.open} disabled={disabled} onChange={(v) => write({ ...preset, open: v })} />
-          <TimeField id={`${idPrefix}-hours-close`} label="Closes" value={preset.close} disabled={disabled} onChange={(v) => write({ ...preset, close: v })} />
+          <DaySelect
+            id={`${idPrefix}-hours-day`}
+            value={preset.day}
+            disabled={disabled}
+            onChange={(day) => write({ ...preset, day })}
+          />
+          <TimeField
+            id={`${idPrefix}-hours-open`}
+            label="Opens"
+            value={preset.open}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, open: v })}
+          />
+          <TimeField
+            id={`${idPrefix}-hours-close`}
+            label="Closes"
+            value={preset.close}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, close: v })}
+          />
         </div>
       ) : null}
 
       {mode === "seasonal" && preset.kind === "seasonal" ? (
         <div className="grid gap-3 sm:grid-cols-3">
-          <MonthSelect id={`${idPrefix}-hours-from`} label="From" value={preset.from} disabled={disabled} onChange={(from) => write({ ...preset, from })} />
-          <MonthSelect id={`${idPrefix}-hours-to`} label="To" value={preset.to} disabled={disabled} onChange={(to) => write({ ...preset, to })} />
-          <DaySelect id={`${idPrefix}-hours-day`} value={preset.day} disabled={disabled} onChange={(day) => write({ ...preset, day })} />
-          <TimeField id={`${idPrefix}-hours-open`} label="Opens" value={preset.open} disabled={disabled} onChange={(v) => write({ ...preset, open: v })} />
-          <TimeField id={`${idPrefix}-hours-close`} label="Closes" value={preset.close} disabled={disabled} onChange={(v) => write({ ...preset, close: v })} />
+          <MonthSelect
+            id={`${idPrefix}-hours-from`}
+            label="From"
+            value={preset.from}
+            disabled={disabled}
+            onChange={(from) => write({ ...preset, from })}
+          />
+          <MonthSelect
+            id={`${idPrefix}-hours-to`}
+            label="To"
+            value={preset.to}
+            disabled={disabled}
+            onChange={(to) => write({ ...preset, to })}
+          />
+          <DaySelect
+            id={`${idPrefix}-hours-day`}
+            value={preset.day}
+            disabled={disabled}
+            onChange={(day) => write({ ...preset, day })}
+          />
+          <TimeField
+            id={`${idPrefix}-hours-open`}
+            label="Opens"
+            value={preset.open}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, open: v })}
+          />
+          <TimeField
+            id={`${idPrefix}-hours-close`}
+            label="Closes"
+            value={preset.close}
+            disabled={disabled}
+            onChange={(v) => write({ ...preset, close: v })}
+          />
         </div>
       ) : null}
 
@@ -152,21 +236,35 @@ export function OpeningHoursInput({ idPrefix, value, onChange, onValidated, disa
             className={`font-mono text-sm ${inputClass}`}
             placeholder="Mo-Fr 08:00-21:00; Sa,Su 09:00-20:00"
           />
-          <p className={hintClass}>OpenStreetMap syntax. Seasons, exceptions, and holidays all fit here.</p>
+          <p className={hintClass}>
+            OpenStreetMap syntax. Seasons, exceptions, and holidays all fit here.
+          </p>
         </div>
       ) : null}
 
       {mode !== "none" ? (
         <p id={previewId} className="text-sm">
           <span className="text-neutral-600 dark:text-neutral-400">Writes </span>
-          <code data-testid={`${idPrefix}-hours-string`} className="rounded bg-neutral-100 px-1 py-0.5 text-xs dark:bg-neutral-800">
+          <code
+            data-testid={`${idPrefix}-hours-string`}
+            className="rounded bg-neutral-100 px-1 py-0.5 text-xs dark:bg-neutral-800"
+          >
             {value || "(nothing yet)"}
           </code>
-          {value ? <span className="text-neutral-600 dark:text-neutral-400"> — {describeOpeningHours(value)}</span> : null}
+          {value ? (
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {" "}
+              — {describeOpeningHours(value)}
+            </span>
+          ) : null}
         </p>
       ) : null}
 
-      <p id={checkId} role="status" className={`text-xs ${check !== null && check !== "checking" && !check.valid ? "text-red-700 dark:text-red-300" : hintClass}`}>
+      <p
+        id={checkId}
+        role="status"
+        className={`text-xs ${check !== null && check !== "checking" && !check.valid ? "text-red-700 dark:text-red-300" : hintClass}`}
+      >
         {check === "checking"
           ? "Checking…"
           : check === null
@@ -179,13 +277,51 @@ export function OpeningHoursInput({ idPrefix, value, onChange, onValidated, disa
   );
 }
 
-function TimeField({ id, label, value, onChange, disabled }: { id: string; label: string; value: string; onChange: (v: string) => void; disabled?: boolean }) {
-  return <Field id={id} label={label} type="time" value={value} disabled={disabled} required onChange={(e) => onChange(e.target.value)} />;
+function TimeField({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Field
+      id={id}
+      label={label}
+      type="time"
+      value={value}
+      disabled={disabled}
+      required
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
 }
 
-function DaySelect({ id, value, onChange, disabled }: { id: string; value: DayCode; onChange: (v: DayCode) => void; disabled?: boolean }) {
+function DaySelect({
+  id,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  value: DayCode;
+  onChange: (v: DayCode) => void;
+  disabled?: boolean;
+}) {
   return (
-    <SelectField id={id} label="Day" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as DayCode)}>
+    <SelectField
+      id={id}
+      label="Day"
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as DayCode)}
+    >
       {DAY_CODES.map((d) => (
         <option key={d} value={d}>
           {d}
@@ -195,9 +331,27 @@ function DaySelect({ id, value, onChange, disabled }: { id: string; value: DayCo
   );
 }
 
-function MonthSelect({ id, label, value, onChange, disabled }: { id: string; label: string; value: MonthCode; onChange: (v: MonthCode) => void; disabled?: boolean }) {
+function MonthSelect({
+  id,
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  label: string;
+  value: MonthCode;
+  onChange: (v: MonthCode) => void;
+  disabled?: boolean;
+}) {
   return (
-    <SelectField id={id} label={label} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value as MonthCode)}>
+    <SelectField
+      id={id}
+      label={label}
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value as MonthCode)}
+    >
       {MONTH_CODES.map((m) => (
         <option key={m} value={m}>
           {m}

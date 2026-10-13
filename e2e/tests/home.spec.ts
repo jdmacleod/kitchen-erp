@@ -33,7 +33,12 @@ async function seedCommittedPurchase(page: Page): Promise<void> {
   const { id: ingredientId } = (await ingredient.json()) as { id: string };
 
   const product = await page.request.post("/api/v1/products", {
-    data: { ingredient_id: ingredientId, name: `E2E barley sack ${stamp}`, pack_qty: "1", pack_unit: "kg" },
+    data: {
+      ingredient_id: ingredientId,
+      name: `E2E barley sack ${stamp}`,
+      pack_qty: "1",
+      pack_unit: "kg",
+    },
   });
   expect(product.status()).toBe(201);
   const { id: productId } = (await product.json()) as { id: string };
@@ -62,14 +67,18 @@ async function seedCommittedPurchase(page: Page): Promise<void> {
   expect(purchase.status()).toBe(201);
 }
 
-test("a set-up household lands on the home page and can start a purchase from it", async ({ page }) => {
+test("a set-up household lands on the home page and can start a purchase from it", async ({
+  page,
+}) => {
   await login(page);
   await seedCommittedPurchase(page);
 
   await page.goto("/");
 
   await expect(page.getByRole("region", { name: "Recent purchases" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(/^Good (morning|afternoon|evening)$/);
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText(
+    /^Good (morning|afternoon|evening)$/,
+  );
   // The regression that matters: an established household must never be told to
   // go and add a shop it already has.
   await expect(page.getByText("Add somewhere you shop")).toHaveCount(0);
@@ -77,7 +86,10 @@ test("a set-up household lands on the home page and can start a purchase from it
   // New purchase lives under Capture now, not in the nav (UI-2.14).
   // The header's primary action; an empty inbox offers Capture again in its card.
   await page.getByRole("main").getByRole("button", { name: "Capture" }).first().click();
-  await page.getByRole("dialog", { name: "Capture" }).getByRole("link", { name: /Enter a purchase/ }).click();
+  await page
+    .getByRole("dialog", { name: "Capture" })
+    .getByRole("link", { name: /Enter a purchase/ })
+    .click();
   await expect(page).toHaveURL(/\/shop\/purchases\/new$/);
   await expect(page.getByRole("button", { name: "Save purchase" })).toBeVisible();
 });

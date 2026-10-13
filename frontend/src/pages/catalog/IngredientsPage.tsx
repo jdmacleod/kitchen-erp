@@ -1,7 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router";
-import { errorMessage } from "../../api/client";
-import { useLinkSummary } from "../../api/ingredientLink";
 import {
   BRIDGE_SOURCES,
   CANONICAL_UNITS,
@@ -21,15 +19,32 @@ import {
   type IngredientCreateInput,
   type Perishability,
 } from "../../api/catalog";
-import { Badge, Disclosure, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, tapTarget } from "../../components/ui";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
-import { usePageTitle } from "../../lib/usePageTitle";
-import { CategoryChip } from "../../components/CategoryChip";
+import { errorMessage } from "../../api/client";
+import { useLinkSummary } from "../../api/ingredientLink";
 import { CategoryField } from "../../components/catalog/CategoryField";
+import {
+  Badge,
+  Disclosure,
+  RadioGroup,
+  SelectField,
+  TextAreaField,
+} from "../../components/catalog/fields";
+import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
+import { CategoryChip } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
 import { useNotice, type NoticeData } from "../../components/Notice";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  tapTarget,
+} from "../../components/ui";
+import { useDebouncedValue } from "../../lib/useDebouncedValue";
+import { usePageTitle } from "../../lib/usePageTitle";
 
 export function IngredientsPage() {
   usePageTitle("Ingredients");
@@ -92,13 +107,23 @@ export function IngredientsPage() {
 
   return (
     <>
-      <PageHeader title="Ingredients" description="The things you cook with, each measured in one unit.">
+      <PageHeader
+        title="Ingredients"
+        description="The things you cook with, each measured in one unit."
+      >
         <Button onClick={() => setAdding(true)}>Add ingredient</Button>
       </PageHeader>
       {linkSummary.data && linkSummary.data.skipped > 0 ? (
-        <p className="mb-4 text-sm text-neutral-700 dark:text-neutral-300" data-testid="link-skipped-line">
-          {linkSummary.data.skipped} {linkSummary.data.skipped === 1 ? "ingredient" : "ingredients"} skipped when linking ·{" "}
-          <Link to="/catalog/ingredients/link" className={`rounded font-medium underline ${focusRing}`}>
+        <p
+          className="mb-4 text-sm text-neutral-700 dark:text-neutral-300"
+          data-testid="link-skipped-line"
+        >
+          {linkSummary.data.skipped} {linkSummary.data.skipped === 1 ? "ingredient" : "ingredients"}{" "}
+          skipped when linking ·{" "}
+          <Link
+            to="/catalog/ingredients/link"
+            className={`rounded font-medium underline ${focusRing}`}
+          >
             Review
           </Link>
         </p>
@@ -153,20 +178,30 @@ export function IngredientsPage() {
             }
           />
         ) : (
-          <EmptyState title="Add your first ingredient" action={<Button onClick={() => setAdding(true)}>Add ingredient</Button>}>
+          <EmptyState
+            title="Add your first ingredient"
+            action={<Button onClick={() => setAdding(true)}>Add ingredient</Button>}
+          >
             Ingredients are the things you cook with. Products are the packages they come in.
           </EmptyState>
         )
       ) : (
         <Card>
-          <ul aria-label="Ingredients" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          <ul
+            aria-label="Ingredients"
+            className="divide-y divide-neutral-200 dark:divide-neutral-800"
+          >
             {items.map((i) => (
               <IngredientRow key={i.id} ingredient={i} />
             ))}
           </ul>
           {list.hasNextPage ? (
             <div className="mt-3">
-              <Button variant="secondary" disabled={list.isFetchingNextPage} onClick={() => list.fetchNextPage()}>
+              <Button
+                variant="secondary"
+                disabled={list.isFetchingNextPage}
+                onClick={() => list.fetchNextPage()}
+              >
                 {list.isFetchingNextPage ? "Loading…" : "Load more"}
               </Button>
             </div>
@@ -174,7 +209,9 @@ export function IngredientsPage() {
         </Card>
       )}
 
-      {adding ? <AddIngredientDrawer onClose={() => setAdding(false)} onCreated={onCreated} /> : null}
+      {adding ? (
+        <AddIngredientDrawer onClose={() => setAdding(false)} onCreated={onCreated} />
+      ) : null}
     </>
   );
 }
@@ -182,7 +219,11 @@ export function IngredientsPage() {
 function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-2">
-      <Link id={`ingredient-row-${ingredient.id}`} to={`/catalog/ingredients/${ingredient.id}`} className={`${tapTarget} rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}>
+      <Link
+        id={`ingredient-row-${ingredient.id}`}
+        to={`/catalog/ingredients/${ingredient.id}`}
+        className={`${tapTarget} rounded-md font-medium underline-offset-2 hover:underline ${focusRing}`}
+      >
         {ingredient.name}
       </Link>
       <span className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
@@ -278,7 +319,11 @@ export function AddIngredientDrawer({
       setAddingMeasures(true);
       for (const m of queued) {
         try {
-          await addMeasure(ingredient.id, { label: m.label, canonical_qty: m.canonical_qty, source: "usda" });
+          await addMeasure(ingredient.id, {
+            label: m.label,
+            canonical_qty: m.canonical_qty,
+            source: "usda",
+          });
           added += 1;
         } catch {
           failed.push(m.label);
@@ -287,7 +332,10 @@ export function AddIngredientDrawer({
       setAddingMeasures(false);
     }
     const withMeasures = added > 0 ? ` with ${added} ${added === 1 ? "measure" : "measures"}` : "";
-    const missed = failed.length > 0 ? ` Could not add: ${failed.join(", ")}. Add them on the ingredient page.` : "";
+    const missed =
+      failed.length > 0
+        ? ` Could not add: ${failed.join(", ")}. Add them on the ingredient page.`
+        : "";
     onCreated(ingredient, {
       tone: failed.length > 0 ? "info" : "success",
       message: `Added ${ingredient.name}${withMeasures}.${missed}`,
@@ -297,7 +345,9 @@ export function AddIngredientDrawer({
 
   const busy = create.isPending || addingMeasures;
 
-  const dirty = JSON.stringify(form) !== JSON.stringify({ ...emptyForm, name: initialName }) || queued.length > 0;
+  const dirty =
+    JSON.stringify(form) !== JSON.stringify({ ...emptyForm, name: initialName }) ||
+    queued.length > 0;
 
   return (
     <Drawer
@@ -310,7 +360,13 @@ export function AddIngredientDrawer({
       busy={busy}
       busyLabel={addingMeasures ? "Adding measures…" : "Adding…"}
     >
-      <form id="add-ingredient" onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Add ingredient" noValidate>
+      <form
+        id="add-ingredient"
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        aria-label="Add ingredient"
+        noValidate
+      >
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
 
@@ -323,7 +379,11 @@ export function AddIngredientDrawer({
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
           />
-          <CategoryField id="new-ingredient-category" value={form.category} onChange={(value) => set("category", value)} />
+          <CategoryField
+            id="new-ingredient-category"
+            value={form.category}
+            onChange={(value) => set("category", value)}
+          />
         </div>
         <RadioGroup
           name="new-ingredient-unit"
@@ -345,7 +405,11 @@ export function AddIngredientDrawer({
           onAddMeasure={(m) => setQueued((list) => [...list, m])}
         />
         {queued.length > 0 ? (
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Measures to add">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Measures to add"
+          >
             <span className="text-sm">Measures to add:</span>
             {queued.map((m) => (
               <span
@@ -366,7 +430,11 @@ export function AddIngredientDrawer({
           </div>
         ) : null}
 
-        <Disclosure summary="More: density, yield, perishability, notes" open={moreOpen} onOpenChange={setMoreOpen}>
+        <Disclosure
+          summary="More: density, yield, perishability, notes"
+          open={moreOpen}
+          onOpenChange={setMoreOpen}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <Field
               id="new-ingredient-density"
@@ -403,7 +471,11 @@ export function AddIngredientDrawer({
             <SelectField
               id="new-ingredient-perishability"
               label="Perishability"
-              hint={form.perishability ? perishabilityHint[form.perishability] : "From the standard list, or else the category."}
+              hint={
+                form.perishability
+                  ? perishabilityHint[form.perishability]
+                  : "From the standard list, or else the category."
+              }
               value={form.perishability}
               onChange={(e) => set("perishability", e.target.value as Perishability | "")}
             >

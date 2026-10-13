@@ -63,9 +63,9 @@ def test_rounding_rule():
 
 
 def test_a_count_cannot_be_restated_by_weight():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         per_unit(D("1"), "each", "lb")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         per_unit(D("1"), "g", "fl_oz")
 
 

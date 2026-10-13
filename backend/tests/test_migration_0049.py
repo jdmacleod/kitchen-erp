@@ -160,7 +160,7 @@ async def test_keys_move_to_version_3_and_come_back(admin_client, admin, owner_c
         before_aliases = await _aliases(owner_conn)
         assert before_keys["SEA SALT B -"] == "SEA SALT B"
 
-        dry = subprocess.run(
+        dry = subprocess.run(  # noqa: S603
             [sys.executable, "-c", CLI, "migrate", "--check-normalize"],
             cwd=BACKEND_ROOT,
             env=os.environ.copy(),

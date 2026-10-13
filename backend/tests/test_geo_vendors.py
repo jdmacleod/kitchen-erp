@@ -82,7 +82,7 @@ async def test_price_scope_chain_is_reflected_everywhere(
             "UPDATE vendor SET price_scope = 'regional' WHERE id = $1::uuid", vendor["id"]
         )
     except asyncpg.CheckViolationError as exc:
-        assert "ck_vendor_price_scope" in str(exc)
+        assert "ck_vendor_price_scope" in str(exc)  # noqa: PT017
     else:
         raise AssertionError("CHECK constraint on price_scope missing")
 

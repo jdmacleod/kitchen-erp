@@ -18,7 +18,7 @@ case "$file" in
 esac
 
 # From the repository root, so ruff reads backend/pyproject.toml for backend/ and
-# its defaults for tools/, exactly as the pre-commit hooks do.
+# tools/ruff.toml (which extends it) for tools/, exactly as the pre-commit hooks do.
 cd "$root" || exit 0
 
 case "$rel" in
@@ -28,8 +28,10 @@ case "$rel" in
         ;;
     frontend/*.ts | frontend/*.tsx | frontend/*.css | frontend/*.json | \
         e2e/*.ts | e2e/*.json)
-        # Nothing yet: Prettier arrives with the formatting PR, and this branch
-        # then runs it on the file.
+        # The Prettier pinned in frontend/ (e2e/ pins the same version), with the
+        # root .prettierrc.json and .prettierignore, as the pre-commit hook runs it.
+        corepack pnpm --dir frontend exec prettier --write --log-level silent \
+            --ignore-path ../.prettierignore "$root/$rel" >/dev/null 2>&1
         ;;
 esac
 

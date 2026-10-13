@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, newIdempotencyKey } from "./client";
-import { qs } from "./catalog";
-import type { ListResponse } from "./types";
-import type { AmountOut, ProductBrief, UserBrief } from "./shoppingList";
 import { cmp, formatMoney, sub } from "../lib/decimal";
+import { qs } from "./catalog";
+import { api, newIdempotencyKey } from "./client";
+import type { AmountOut, ProductBrief, UserBrief } from "./shoppingList";
+import type { ListResponse } from "./types";
 
 /**
  * Trip plans (docs/spec/17, 4B). A plan is the inputs and three variants, derived
@@ -178,12 +178,20 @@ export interface Trip extends TripBase {
 
 // --- reading a plan ------------------------------------------------------------
 
-export function variantOf<V extends VariantSummary>(trip: { variants: V[] }, kind: VariantKind): V | undefined {
+export function variantOf<V extends VariantSummary>(
+  trip: { variants: V[] },
+  kind: VariantKind,
+): V | undefined {
   return trip.variants.find((v) => v.kind === kind);
 }
 
-export function chosenVariant<V extends VariantSummary>(trip: { variants: V[]; chosen_variant_id: string | null }): V | undefined {
-  return trip.chosen_variant_id ? trip.variants.find((v) => v.id === trip.chosen_variant_id) : undefined;
+export function chosenVariant<V extends VariantSummary>(trip: {
+  variants: V[];
+  chosen_variant_id: string | null;
+}): V | undefined {
+  return trip.chosen_variant_id
+    ? trip.variants.find((v) => v.id === trip.chosen_variant_id)
+    : undefined;
 }
 
 /** Whether a plan can still be chosen or abandoned. */
@@ -202,9 +210,15 @@ export function tradeSentence(trade: Trade): string {
   const money = cmp(trade.money, "0");
   const minutes = wholeMinutes(trade.minutes);
   if (money === 0 && minutes === 0) return "the same as Balanced";
-  const moneyPart = money === 0 ? "the same cost" : `${formatMoney(money < 0 ? sub("0", trade.money) : trade.money)} ${money < 0 ? "less" : "more"}`;
+  const moneyPart =
+    money === 0
+      ? "the same cost"
+      : `${formatMoney(money < 0 ? sub("0", trade.money) : trade.money)} ${money < 0 ? "less" : "more"}`;
   const n = Math.abs(minutes);
-  const minutesPart = minutes === 0 ? "the same time" : `${n} ${n === 1 ? "minute" : "minutes"} ${minutes < 0 ? "less" : "more"}`;
+  const minutesPart =
+    minutes === 0
+      ? "the same time"
+      : `${n} ${n === 1 ? "minute" : "minutes"} ${minutes < 0 ? "less" : "more"}`;
   return `${moneyPart}, ${minutesPart}`;
 }
 
@@ -278,7 +292,8 @@ function useStoreTrip() {
 export function useCreateTrip() {
   const store = useStoreTrip();
   return useMutation({
-    mutationFn: (input: TripCreateInput) => api<Trip>("/plan/trips", { method: "POST", body: input, headers: idem() }),
+    mutationFn: (input: TripCreateInput) =>
+      api<Trip>("/plan/trips", { method: "POST", body: input, headers: idem() }),
     onSuccess: store,
   });
 }
@@ -287,7 +302,11 @@ export function useChooseVariant() {
   const store = useStoreTrip();
   return useMutation({
     mutationFn: ({ id, variantId }: { id: string; variantId: string }) =>
-      api<Trip>(`/plan/trips/${enc(id)}/choose`, { method: "POST", body: { variant_id: variantId }, headers: idem() }),
+      api<Trip>(`/plan/trips/${enc(id)}/choose`, {
+        method: "POST",
+        body: { variant_id: variantId },
+        headers: idem(),
+      }),
     onSuccess: store,
   });
 }
@@ -303,7 +322,8 @@ export function useAbandonTrip() {
 export function useDeleteTrip() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id }: { id: string; homeBaseId: string }) => api<void>(`/plan/trips/${enc(id)}`, { method: "DELETE" }),
+    mutationFn: ({ id }: { id: string; homeBaseId: string }) =>
+      api<void>(`/plan/trips/${enc(id)}`, { method: "DELETE" }),
     onSuccess: (_, { id, homeBaseId }) => {
       client.removeQueries({ queryKey: tripKeys.detail(id) });
       void client.invalidateQueries({ queryKey: tripKeys.list(homeBaseId) });
@@ -431,15 +451,29 @@ export function useStop(id: string | undefined, seq: number) {
 
 function useStoreStop() {
   const client = useQueryClient();
-  return (stop: StopScreen) => client.setQueryData<StopScreen>(tripKeys.stop(stop.plan_id, stop.seq), stop);
+  return (stop: StopScreen) =>
+    client.setQueryData<StopScreen>(tripKeys.stop(stop.plan_id, stop.seq), stop);
 }
 
 /** Hold a price read in the aisle on the stop item; it records nothing until "Done here". */
 export function useHoldStopPrice() {
   const store = useStoreStop();
   return useMutation({
-    mutationFn: ({ id, seq, itemId, input }: { id: string; seq: number; itemId: string; input: StopPriceInput }) =>
-      api<StopScreen>(`${stopPath(id, seq)}/items/${enc(itemId)}/price`, { method: "PUT", body: input }),
+    mutationFn: ({
+      id,
+      seq,
+      itemId,
+      input,
+    }: {
+      id: string;
+      seq: number;
+      itemId: string;
+      input: StopPriceInput;
+    }) =>
+      api<StopScreen>(`${stopPath(id, seq)}/items/${enc(itemId)}/price`, {
+        method: "PUT",
+        body: input,
+      }),
     onSuccess: store,
   });
 }
@@ -462,8 +496,22 @@ export function useGetHere() {
   const store = useStoreStop();
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, seq, itemId, key }: { id: string; seq: number; itemId: string; key: string }) =>
-      api<StopScreen>(`${stopPath(id, seq)}/get-here`, { method: "POST", body: { item_id: itemId }, headers: { "Idempotency-Key": key } }),
+    mutationFn: ({
+      id,
+      seq,
+      itemId,
+      key,
+    }: {
+      id: string;
+      seq: number;
+      itemId: string;
+      key: string;
+    }) =>
+      api<StopScreen>(`${stopPath(id, seq)}/get-here`, {
+        method: "POST",
+        body: { item_id: itemId },
+        headers: { "Idempotency-Key": key },
+      }),
     onSuccess: (stop) => {
       store(stop);
       // The later stop lost the item; its screen and the trip page refetch.
@@ -479,8 +527,22 @@ export function useGetHere() {
 export function useStopDone() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, seq, checkedItemIds, key }: { id: string; seq: number; checkedItemIds: string[]; key: string }) =>
-      api<StopDone>(`${stopPath(id, seq)}/done`, { method: "POST", body: { checked_item_ids: checkedItemIds }, headers: { "Idempotency-Key": key } }),
+    mutationFn: ({
+      id,
+      seq,
+      checkedItemIds,
+      key,
+    }: {
+      id: string;
+      seq: number;
+      checkedItemIds: string[];
+      key: string;
+    }) =>
+      api<StopDone>(`${stopPath(id, seq)}/done`, {
+        method: "POST",
+        body: { checked_item_ids: checkedItemIds },
+        headers: { "Idempotency-Key": key },
+      }),
     onSuccess: (done) => {
       void client.invalidateQueries({ queryKey: tripKeys.detail(done.plan_id) });
       void client.invalidateQueries({ queryKey: tripKeys.all });

@@ -6,7 +6,16 @@ const chip = `flex min-h-11 w-full items-center justify-between gap-2 rounded-md
 
 function Chevron({ open }: { open: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className={`size-4 shrink-0 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className={`size-4 shrink-0 ${open ? "rotate-180" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="m6 9 6 6 6-6" />
     </svg>
   );
@@ -14,7 +23,16 @@ function Chevron({ open }: { open: boolean }) {
 
 function Check() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="m5 12 5 5 9-10" />
     </svg>
   );
@@ -54,7 +72,12 @@ export function KitchenSwitcher() {
   if (!kitchen.built || items.length < 2 || !kitchen.current) return null;
 
   const show = () => {
-    setActive(Math.max(0, items.findIndex((k) => k.id === kitchen.currentId)));
+    setActive(
+      Math.max(
+        0,
+        items.findIndex((k) => k.id === kitchen.currentId),
+      ),
+    );
     setOpen(true);
   };
   const close = (refocus: boolean) => {
@@ -113,8 +136,7 @@ export function KitchenSwitcher() {
         }}
       >
         <span className="min-w-0 truncate">
-          <span className="sr-only">Kitchen:</span>{" "}
-          {kitchen.current.name}
+          <span className="sr-only">Kitchen:</span> {kitchen.current.name}
         </span>
         <Chevron open={open} />
       </button>
@@ -139,7 +161,9 @@ export function KitchenSwitcher() {
                 onMouseMove={() => setActive(i)}
                 onClick={() => choose(k.id)}
                 className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-md px-3 text-left text-sm lg:min-h-9 ${focusRing} ${
-                  current ? "font-semibold text-neutral-900 dark:text-neutral-100" : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
+                  current
+                    ? "font-semibold text-neutral-900 dark:text-neutral-100"
+                    : "text-neutral-800 hover:bg-neutral-100 dark:text-neutral-200 dark:hover:bg-neutral-800"
                 }`}
               >
                 <span className="min-w-0 truncate">{current ? k.name : `Switch to ${k.name}`}</span>
@@ -168,10 +192,16 @@ export function KitchenSwitcherRow() {
       <h3 id={`${ids}-label`} className="sr-only">
         Kitchen
       </h3>
-      <button type="button" aria-expanded={open} aria-controls={`${ids}-list`} disabled={kitchen.switching} className={chip} onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={`${ids}-list`}
+        disabled={kitchen.switching}
+        className={chip}
+        onClick={() => setOpen((o) => !o)}
+      >
         <span className="min-w-0 truncate">
-          <span className="sr-only">Kitchen:</span>{" "}
-          {kitchen.current.name}
+          <span className="sr-only">Kitchen:</span> {kitchen.current.name}
         </span>
         <Chevron open={open} />
       </button>
@@ -179,7 +209,10 @@ export function KitchenSwitcherRow() {
         <fieldset id={`${ids}-list`} className="mt-1 flex flex-col">
           <legend className="sr-only">Switch kitchen</legend>
           {kitchen.kitchens.map((k) => (
-            <label key={k.id} className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800`}>
+            <label
+              key={k.id}
+              className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800`}
+            >
               <input
                 type="radio"
                 name={`${ids}-kitchen`}

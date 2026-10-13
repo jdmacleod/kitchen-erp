@@ -130,18 +130,27 @@ screenshots:  ## Recapture docs/screenshots from the demo stack (never from real
 	cd e2e && corepack pnpm exec playwright test -c playwright.screenshots.config.ts
 
 # Code standards (CODING_STANDARDS.md). Run from the repository root, so ruff
-# reads backend/pyproject.toml for backend/ and its defaults for tools/, exactly
-# as the pre-commit hooks do.
+# reads backend/pyproject.toml for backend/ and tools/ruff.toml (which extends
+# it) for tools/, exactly as the pre-commit hooks do. The frontend and e2e halves
+# need `corepack pnpm install` in each package first.
 RUFF := uv run --project backend ruff
+PNPM := corepack pnpm
 
-fmt:  ## Format the code the formatters own (Python today)
+fmt:  ## Format: ruff over backend/ and tools/, Prettier over frontend/ and e2e/
 	$(RUFF) format backend tools
 	$(RUFF) check --fix --select I backend tools
-	@# The frontend half (Prettier over frontend/ and e2e/) arrives with the formatting PR.
+	$(PNPM) --dir frontend format
+	$(PNPM) --dir e2e format
 
-lint:  ## Lint the backend, tools and frontend
+lint:  ## Lint and type-check: ruff over backend/ and tools/, ESLint and tsc over frontend/ and e2e/
 	$(RUFF) check backend tools
-	corepack pnpm --dir frontend lint
+	$(RUFF) format --check backend tools
+	$(PNPM) --dir frontend format:check
+	$(PNPM) --dir frontend lint
+	$(PNPM) --dir frontend typecheck
+	$(PNPM) --dir e2e format:check
+	$(PNPM) --dir e2e lint
+	$(PNPM) --dir e2e typecheck
 
 types:  ## Type-check the backend with ty (advisory: reports, never fails)
 	cd backend && uv run ty check || true

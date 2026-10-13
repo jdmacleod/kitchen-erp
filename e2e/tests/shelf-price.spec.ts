@@ -12,25 +12,40 @@ const LAST_LOCATION = "kerp.lastVendorLocationId";
 function syntheticBarcode(): string {
   let body = "2";
   while (body.length < 12) body += Math.floor(Math.random() * 10).toString();
-  const total = [...body].reverse().reduce((sum, ch, i) => sum + Number(ch) * (i % 2 === 0 ? 3 : 1), 0);
+  const total = [...body]
+    .reverse()
+    .reduce((sum, ch, i) => sum + Number(ch) * (i % 2 === 0 ? 3 : 1), 0);
   return body + ((10 - (total % 10)) % 10).toString();
 }
 
 async function seedStoreAndProduct(page: Page, stamp: string) {
-  const ingredient = await page.request.post("/api/v1/ingredients", { data: { name: `E2E rolled oats ${stamp}` } });
+  const ingredient = await page.request.post("/api/v1/ingredients", {
+    data: { name: `E2E rolled oats ${stamp}` },
+  });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };
 
   const barcode = syntheticBarcode();
   const product = await page.request.post("/api/v1/products", {
-    data: { ingredient_id: ingredientId, name: `E2E oats tub ${stamp}`, pack_qty: "1", pack_unit: "kg", barcode },
+    data: {
+      ingredient_id: ingredientId,
+      name: `E2E oats tub ${stamp}`,
+      pack_qty: "1",
+      pack_unit: "kg",
+      barcode,
+    },
   });
   expect(product.status()).toBe(201);
 
   const storeName = `E2E Tidewater Grocer ${stamp}`;
   const location = await page.request.post("/api/v1/vendor-locations", {
     // The synthetic box from SECURITY.md.
-    data: { name: storeName, lat: "33.610000", lon: "-120.530000", vendor: { name: storeName, kind: "independent" } },
+    data: {
+      name: storeName,
+      lat: "33.610000",
+      lon: "-120.530000",
+      vendor: { name: storeName, kind: "independent" },
+    },
     headers: { "Idempotency-Key": `e2e-shelf-loc-${stamp}` },
   });
   expect(location.status()).toBe(201);
@@ -51,7 +66,9 @@ test("logs two shelf prices in a row at the remembered store", async ({ page }) 
 
   await page.goto("/shop/shelf-prices");
   // No geolocation in the test browser: a guess, never "Near".
-  await expect(page.getByRole("button", { name: `Last used: ${storeName}. Change store` })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `Last used: ${storeName}. Change store` }),
+  ).toBeVisible();
 
   const entry = page.getByRole("combobox", { name: "Barcode or product name" });
   await entry.fill(barcode);
@@ -66,7 +83,9 @@ test("logs two shelf prices in a row at the remembered store", async ({ page }) 
   await expect(page.getByRole("main").getByText(`Saved $3.29 at ${storeName}`)).toBeVisible();
   await expect(entry).toBeFocused();
   await expect(entry).toHaveValue("");
-  await expect(page.getByRole("button", { name: `Last used: ${storeName}. Change store` })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: `Last used: ${storeName}. Change store` }),
+  ).toBeVisible();
 
   // The product just logged is now the first of this store's recent five.
   const recent = page.getByRole("region", { name: `Recently logged at ${storeName}` });
@@ -76,8 +95,12 @@ test("logs two shelf prices in a row at the remembered store", async ({ page }) 
   await price.press("Enter");
   await expect(page.getByRole("main").getByText(`Saved $3.09 at ${storeName}`)).toBeVisible();
 
-  const listed = await page.request.get(`/api/v1/price-observations?vendor_location_id=${locationId}`);
-  const { items } = (await listed.json()) as { items: { price: string; is_promo: boolean; source: string }[] };
+  const listed = await page.request.get(
+    `/api/v1/price-observations?vendor_location_id=${locationId}`,
+  );
+  const { items } = (await listed.json()) as {
+    items: { price: string; is_promo: boolean; source: string }[];
+  };
   // Prices come back as the API stores them, at four places.
   expect(items.map((o) => [o.price, o.is_promo, o.source])).toEqual([
     ["3.0900", true, "shelf"],
@@ -85,7 +108,9 @@ test("logs two shelf prices in a row at the remembered store", async ({ page }) 
   ]);
 });
 
-test("below lg the shelf price is a task screen: no tab bar, Save in the thumb zone", async ({ page }, testInfo) => {
+test("below lg the shelf price is a task screen: no tab bar, Save in the thumb zone", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "the task screen is the phone layout");
   await login(page);
   await page.goto("/shop/shelf-prices");
@@ -98,12 +123,17 @@ test("below lg the shelf price is a task screen: no tab bar, Save in the thumb z
   expect(box && viewport && box.height >= 56 && box.y > viewport.height * 0.7).toBe(true);
 });
 
-test("at lg Capture opens the shelf price in a drawer over the page (G14)", async ({ page }, testInfo) => {
+test("at lg Capture opens the shelf price in a drawer over the page (G14)", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "the drawer is the desktop layout");
   await login(page);
   await page.goto("/shop/purchases");
   await page.locator("aside").getByRole("button", { name: "Capture" }).click();
-  await page.getByRole("dialog", { name: "Capture" }).getByRole("link", { name: /Log a shelf price/ }).click();
+  await page
+    .getByRole("dialog", { name: "Capture" })
+    .getByRole("link", { name: /Log a shelf price/ })
+    .click();
 
   const drawer = page.getByRole("dialog", { name: "Log a shelf price" });
   await expect(drawer).toBeVisible();

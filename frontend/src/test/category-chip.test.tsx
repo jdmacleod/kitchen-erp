@@ -1,11 +1,11 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { CATEGORY_KEYS, CategoryChip, categoryClass } from "../components/CategoryChip";
 import type { Product } from "../api/catalog";
+import { CATEGORY_KEYS, CategoryChip, categoryClass } from "../components/CategoryChip";
+import themeCss from "../theme.css?raw";
 import { flourProduct, units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { manualPurchase, purchaseId } from "./purchase-fixtures";
-import themeCss from "../theme.css?raw";
 
 describe("CategoryChip (UI-1.6)", () => {
   it("colours the chip by the API's key and labels it with the free text", () => {
@@ -59,7 +59,10 @@ describe("category chips on pages", () => {
   });
 
   it("names a product row's group as the chips do, with the ingredient's own word beside it", async () => {
-    const dry: Product = { ...flourProduct, ingredient: { ...flourProduct.ingredient, category: "Dry goods", category_key: "pantry" } };
+    const dry: Product = {
+      ...flourProduct,
+      ingredient: { ...flourProduct.ingredient, category: "Dry goods", category_key: "pantry" },
+    };
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),

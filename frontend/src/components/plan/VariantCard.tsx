@@ -1,8 +1,8 @@
 import { tradeSentence, variantLabel, type Variant } from "../../api/trips";
-import { Badge } from "../catalog/fields";
-import { Button } from "../ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime, formatMinutes } from "../../lib/format";
+import { Badge } from "../catalog/fields";
+import { Button } from "../ui";
 
 interface VariantCardProps {
   variant: Variant;
@@ -23,7 +23,14 @@ const muted = "text-neutral-600 dark:text-neutral-400";
  * The Cheapest card's heading carries the olive "cheapest" word; a card with an
  * estimated leg reads "estimated" in squash; no figure is coloured (UI-8.20).
  */
-export function VariantCard({ variant, showMileage, chosenAt = null, canChoose, choosing = false, onChoose }: VariantCardProps) {
+export function VariantCard({
+  variant,
+  showMileage,
+  chosenAt = null,
+  canChoose,
+  choosing = false,
+  onChoose,
+}: VariantCardProps) {
   const chosen = Boolean(chosenAt);
   const headingId = `variant-${variant.kind}-heading`;
   return (
@@ -72,15 +79,27 @@ export function VariantCard({ variant, showMileage, chosenAt = null, canChoose, 
       </dl>
 
       <p className="text-sm" data-testid="variant-trade">
-        {variant.kind === "balanced" ? <span className={muted}>The reference the others are measured against.</span> : tradeSentence(variant.trade)}
+        {variant.kind === "balanced" ? (
+          <span className={muted}>The reference the others are measured against.</span>
+        ) : (
+          tradeSentence(variant.trade)
+        )}
       </p>
-      {variant.estimated ? <p className={`text-xs ${muted}`}>Drive times are estimates: the routing engine wasn&apos;t available.</p> : null}
+      {variant.estimated ? (
+        <p className={`text-xs ${muted}`}>
+          Drive times are estimates: the routing engine wasn&apos;t available.
+        </p>
+      ) : null}
 
-      <ol className="flex flex-col gap-1 text-sm" aria-label={`${variantLabel[variant.kind]} stops`}>
+      <ol
+        className="flex flex-col gap-1 text-sm"
+        aria-label={`${variantLabel[variant.kind]} stops`}
+      >
         {variant.stops.map((stop) => (
           <li key={stop.id} className="flex items-baseline justify-between gap-3">
             <span>
-              <span className={`tabular-nums ${muted}`}>{stop.seq}.</span> {stop.vendor_location_name}
+              <span className={`tabular-nums ${muted}`}>{stop.seq}.</span>{" "}
+              {stop.vendor_location_name}
             </span>
             <span className="tabular-nums">{formatMoney(stop.subtotal)}</span>
           </li>

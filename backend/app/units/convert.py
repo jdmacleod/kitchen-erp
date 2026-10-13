@@ -127,7 +127,7 @@ def _find_measure(label: str, measures: tuple[Measure, ...]) -> Measure | None:
     return None
 
 
-def convert(
+def convert(  # noqa: C901
     qty: Decimal | None, from_unit: str, context: ConversionContext
 ) -> CanonicalQty | ConversionFailure:
     if qty is None:

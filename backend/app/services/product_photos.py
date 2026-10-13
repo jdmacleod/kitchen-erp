@@ -460,7 +460,7 @@ async def record(
     )
 
 
-async def run_job(db: AsyncSession, job: ProductJob) -> None:
+async def run_job(db: AsyncSession, job: ProductJob) -> None:  # noqa: C901, PLR0915
     """Prepare one photo (an ``image_process`` job). app.services.product_jobs dispatches."""
     started = time.monotonic()
     image = await get_image(db, job.product_image_id)  # type: ignore[arg-type]

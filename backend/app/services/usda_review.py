@@ -77,7 +77,7 @@ class ReviewList:
     groups: list[ReviewGroup]
 
 
-def _offers(
+def _offers(  # noqa: C901
     portions: list[RefUsdaPortion], unit: str, has_density: bool, labels: set[str]
 ) -> tuple[list[DensityOffer], list[MeasureOffer]]:
     densities: list[DensityOffer] = []

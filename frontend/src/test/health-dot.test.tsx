@@ -6,7 +6,8 @@ import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./he
 function mountWith(body: Health | null) {
   mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
-    "GET /health": () => (body === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, body)),
+    "GET /health": () =>
+      body === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, body),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });
   renderApp("/shop/purchases");
@@ -15,7 +16,7 @@ function mountWith(body: Health | null) {
 /** The dot beside the status word; it is aria-hidden, so it is found by position. */
 function dot(): HTMLElement {
   const live = screen.getByTestId("health-status").closest('[role="status"]')!;
-  return live.querySelector("span[aria-hidden='true']") as HTMLElement;
+  return live.querySelector("span[aria-hidden='true']")!;
 }
 
 /**
@@ -42,7 +43,9 @@ describe("health status dot", () => {
   it("marks an unreachable API without relying on colour alone", async () => {
     mountWith(null);
     // The word carries the state; the dot is what people scan for it.
-    await waitFor(() => expect(screen.getByTestId("health-status")).toHaveTextContent("unreachable"));
+    await waitFor(() =>
+      expect(screen.getByTestId("health-status")).toHaveTextContent("unreachable"),
+    );
     expect(dot()).toHaveClass("bg-neutral-500", "dark:bg-neutral-400");
     expect(dot()).toHaveAttribute("aria-hidden", "true");
   });

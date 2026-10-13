@@ -3,7 +3,12 @@
  * maps application, in a new tab, so the trip page stays where it was. Nothing
  * here is fetched by the app; it is a link the person follows.
  */
-export function navigateHref(lat: string, lon: string, name: string, userAgent: string = typeof navigator === "undefined" ? "" : navigator.userAgent): string {
+export function navigateHref(
+  lat: string,
+  lon: string,
+  name: string,
+  userAgent: string = typeof navigator === "undefined" ? "" : navigator.userAgent,
+): string {
   const at = `${lat},${lon}`;
   if (/iPhone|iPad|iPod/i.test(userAgent)) {
     // Apple's universal link opens Maps on iOS.

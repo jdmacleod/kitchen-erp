@@ -44,7 +44,7 @@ async def _engine_reset() -> None:
     await dispose_engine()
 
 
-async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):
+async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # noqa: PLR0915
     upca = with_check(j("04812 300001"))
     ean13 = with_check(j("59012 3412345"))
     gtin = with_check(j("10614 14100004"))

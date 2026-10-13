@@ -77,7 +77,10 @@ export function HealthStatus() {
       {/* The live region covers the status only. The build identity never changes,
           and re-announcing a sha on every 60s poll would train people to ignore it. */}
       <p role="status" className="flex items-center gap-2">
-        <span aria-hidden="true" className={`inline-block size-2 rounded-full ${dot[word] ?? dot.unreachable}`} />
+        <span
+          aria-hidden="true"
+          className={`inline-block size-2 rounded-full ${dot[word] ?? dot.unreachable}`}
+        />
         <span>
           System: <span data-testid="health-status">{word}</span>
         </span>
@@ -92,7 +95,8 @@ export function HealthStatus() {
             // dev build is a choice rather than a fault.
             <span
               data-testid="build-dev-badge"
-              className="mr-1 rounded bg-neutral-200 px-1 py-px text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200">
+              className="mr-1 rounded bg-neutral-200 px-1 py-px text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200"
+            >
               dev
             </span>
           )}

@@ -71,7 +71,14 @@ function isEnvelope(value: unknown): value is ErrorEnvelope {
  * rejects with an ApiError carrying the server's envelope on any non-2xx.
  */
 export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { method = "GET", body, rawBody, headers = {}, quiet401 = false, acceptStatuses = [] } = options;
+  const {
+    method = "GET",
+    body,
+    rawBody,
+    headers = {},
+    quiet401 = false,
+    acceptStatuses = [],
+  } = options;
   const init: RequestInit = {
     method,
     credentials: "include",
@@ -101,7 +108,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     }
   }
 
-  if (!response.ok && acceptStatuses.includes(response.status) && payload !== undefined && !isEnvelope(payload)) {
+  if (
+    !response.ok &&
+    acceptStatuses.includes(response.status) &&
+    payload !== undefined &&
+    !isEnvelope(payload)
+  ) {
     return payload as T;
   }
 

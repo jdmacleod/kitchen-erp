@@ -332,7 +332,7 @@ def _create(create: index.Create, parsed: Parsed, repo: RepoView, now: datetime)
     return row
 
 
-async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:
+async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  # noqa: C901, PLR0912, PLR0915
     """Run one scan and commit what it changed. Safe to run from the worker or inline."""
     settings = settings or get_settings()
     now = datetime.now(UTC)

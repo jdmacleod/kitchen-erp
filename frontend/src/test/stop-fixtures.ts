@@ -26,7 +26,9 @@ function product(id: string, name: string, over: Partial<ProductBrief> = {}): Pr
   };
 }
 
-export function stopItem(over: Partial<StopScreenItem> & { id: string; label: string }): StopScreenItem {
+export function stopItem(
+  over: Partial<StopScreenItem> & { id: string; label: string },
+): StopScreenItem {
   return {
     list_item_id: over.id.replace(/a0/, "b0"),
     amounts: [],
@@ -67,7 +69,10 @@ export const lentils = stopItem({
   id: lentilItemId,
   label: "Red lentils",
   amounts: [{ seq: 1, amount: "1", unit: "kg" }],
-  product: product("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fa303", "Cedar row lentils", { pack_qty: "1", pack_unit: "kg" }),
+  product: product("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fa303", "Cedar row lentils", {
+    pack_qty: "1",
+    pack_unit: "kg",
+  }),
   pack_price: "8.70",
   line_cost: "8.70",
   effective_cost: "8.70",
@@ -102,7 +107,12 @@ export function stopScreen(over: Partial<StopScreen> = {}): StopScreen {
     stop_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fa501",
     seq: 1,
     stop_count: 2,
-    location: { id: chainLocation.id, name: chainLocation.name, vendor_name: chainLocation.vendor.name, address: "Ground floor, Harbour arcade" },
+    location: {
+      id: chainLocation.id,
+      name: chainLocation.name,
+      vendor_name: chainLocation.vendor.name,
+      address: "Ground floor, Harbour arcade",
+    },
     arrive_at: "2026-10-17T16:12:00Z",
     predicted_cost: "17.20",
     estimated_here: "17.20",

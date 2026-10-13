@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
-import { sourceLabel, useObservations, useVoidObservation, type Observation } from "../../api/purchases";
+import {
+  sourceLabel,
+  useObservations,
+  useVoidObservation,
+  type Observation,
+} from "../../api/purchases";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
@@ -27,7 +32,12 @@ export function PriceRecords({ productId }: { productId: string }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-medium">Price records</h2>
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <input type="checkbox" checked={showVoided} onChange={(e) => setShowVoided(e.target.checked)} className={`size-4 ${focusRing}`} />
+          <input
+            type="checkbox"
+            checked={showVoided}
+            onChange={(e) => setShowVoided(e.target.checked)}
+            className={`size-4 ${focusRing}`}
+          />
           Show voided
         </label>
       </div>
@@ -38,17 +48,28 @@ export function PriceRecords({ productId }: { productId: string }) {
       ) : records.isError ? (
         <Alert tone="error">{errorMessage(records.error)}</Alert>
       ) : items.length === 0 ? (
-        <p className={`text-sm ${muted}`}>{showVoided ? "No prices recorded yet." : "No current prices. Tick Show voided to see voided ones."}</p>
+        <p className={`text-sm ${muted}`}>
+          {showVoided
+            ? "No prices recorded yet."
+            : "No current prices. Tick Show voided to see voided ones."}
+        </p>
       ) : (
         <>
-          <ul aria-label="Price records" className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800">
+          <ul
+            aria-label="Price records"
+            className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800"
+          >
             {items.map((o) => (
               <PriceRecord key={o.id} record={o} />
             ))}
           </ul>
           {records.hasNextPage ? (
             <div className="mt-3">
-              <Button variant="secondary" disabled={records.isFetchingNextPage} onClick={() => records.fetchNextPage()}>
+              <Button
+                variant="secondary"
+                disabled={records.isFetchingNextPage}
+                onClick={() => records.fetchNextPage()}
+              >
                 {records.isFetchingNextPage ? "Loading…" : "Load more"}
               </Button>
             </div>
@@ -80,7 +101,10 @@ function PriceRecord({ record }: { record: Observation }) {
       voidButton.current?.focus();
     }
   }, [voiding]);
-  const where = record.vendor_location.name === record.vendor_location.vendor.name ? record.vendor_location.name : `${record.vendor_location.vendor.name} — ${record.vendor_location.name}`;
+  const where =
+    record.vendor_location.name === record.vendor_location.vendor.name
+      ? record.vendor_location.name
+      : `${record.vendor_location.vendor.name} — ${record.vendor_location.name}`;
   const fieldId = `void-reason-${record.id}`;
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -95,10 +119,13 @@ function PriceRecord({ record }: { record: Observation }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className={`flex min-w-0 flex-col ${record.voided ? muted : ""}`}>
           <span className={`tabular-nums ${record.voided ? "line-through" : ""}`}>
-            {formatMoney(record.price)} / {stripZeros(record.qty)} {record.unit} <PromoBadge promo={record.is_promo} />
+            {formatMoney(record.price)} / {stripZeros(record.qty)} {record.unit}{" "}
+            <PromoBadge promo={record.is_promo} />
           </span>
           <span className={`text-xs ${muted}`}>
-            {where} · <time dateTime={record.observed_at}>{formatDateTime(record.observed_at)}</time> · {recordKind(record)}
+            {where} ·{" "}
+            <time dateTime={record.observed_at}>{formatDateTime(record.observed_at)}</time> ·{" "}
+            {recordKind(record)}
           </span>
           {record.voided ? (
             <span className={`text-xs ${muted}`}>
@@ -107,7 +134,10 @@ function PriceRecord({ record }: { record: Observation }) {
               {record.purchase_id ? (
                 <>
                   {" · "}
-                  <Link to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`} className={`${tapTarget} rounded underline ${focusRing}`}>
+                  <Link
+                    to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`}
+                    className={`${tapTarget} rounded underline ${focusRing}`}
+                  >
                     Open the purchase
                   </Link>
                 </>
@@ -116,17 +146,29 @@ function PriceRecord({ record }: { record: Observation }) {
           ) : null}
         </div>
         {record.voided ? null : record.purchase_id ? (
-          <Link to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`} className={`inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline lg:min-h-0 ${focusRing}`}>
+          <Link
+            to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`}
+            className={`inline-flex min-h-11 items-center text-sm underline-offset-2 hover:underline lg:min-h-0 ${focusRing}`}
+          >
             Correct in its purchase
           </Link>
         ) : voiding ? null : (
-          <Button ref={voidButton} variant="danger" onClick={() => setVoiding(true)} aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}>
+          <Button
+            ref={voidButton}
+            variant="danger"
+            onClick={() => setVoiding(true)}
+            aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}
+          >
             Void
           </Button>
         )}
       </div>
       {voiding ? (
-        <form onSubmit={onSubmit} className="flex flex-col gap-2" aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}>
+        <form
+          onSubmit={onSubmit}
+          className="flex flex-col gap-2"
+          aria-label={`Void the ${formatMoney(record.price)} price at ${where}`}
+        >
           {voidPrice.isError ? <Alert tone="error">{errorMessage(voidPrice.error)}</Alert> : null}
           <Field
             id={fieldId}
@@ -139,7 +181,11 @@ function PriceRecord({ record }: { record: Observation }) {
             autoFocus
           />
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" variant="danger" disabled={voidPrice.isPending || reason.trim() === ""}>
+            <Button
+              type="submit"
+              variant="danger"
+              disabled={voidPrice.isPending || reason.trim() === ""}
+            >
               {voidPrice.isPending ? "Voiding…" : "Void price"}
             </Button>
             <Button

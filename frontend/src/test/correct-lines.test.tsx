@@ -4,7 +4,14 @@ import { describe, expect, it } from "vitest";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { aliasLine, discountLine, outlierLine, receiptPurchase, receiptPurchaseId, unmatchedLine } from "./purchase-fixtures";
+import {
+  aliasLine,
+  discountLine,
+  outlierLine,
+  receiptPurchase,
+  receiptPurchaseId,
+  unmatchedLine,
+} from "./purchase-fixtures";
 
 const base = `/purchases/${receiptPurchaseId}`;
 
@@ -32,7 +39,9 @@ describe("correct the lines (issue 182)", () => {
   it("retypes in the table, adds a row with Enter, and saves every line in one request", async () => {
     const calls = mockApi(routes());
     const { user, table } = await openTable();
-    expect(within(table).getByText(/Lines add up to \$11\.50; the receipt says \$12\.00\./)).toBeInTheDocument();
+    expect(
+      within(table).getByText(/Lines add up to \$11\.50; the receipt says \$12\.00\./),
+    ).toBeInTheDocument();
     // Commit waits until the corrections are saved or dropped.
     expect(screen.getByRole("button", { name: "Commit purchase" })).toBeDisabled();
 
@@ -56,12 +65,39 @@ describe("correct the lines (issue 182)", () => {
     });
     expect(put?.body).toEqual({
       lines: [
-        { id: aliasLine.id, raw_text: "MLSTN AP FLOUR 5LB", line_kind: "item", qty: "1", unit: "each", line_total: "4.99" },
-        { id: unmatchedLine.id, raw_text: "RVRBND BREAD FLR 2KG", line_kind: "item", qty: "1", unit: "each", line_total: "7.00" },
+        {
+          id: aliasLine.id,
+          raw_text: "MLSTN AP FLOUR 5LB",
+          line_kind: "item",
+          qty: "1",
+          unit: "each",
+          line_total: "4.99",
+        },
+        {
+          id: unmatchedLine.id,
+          raw_text: "RVRBND BREAD FLR 2KG",
+          line_kind: "item",
+          qty: "1",
+          unit: "each",
+          line_total: "7.00",
+        },
         { raw_text: "JAR DEPOSIT", line_kind: "item", line_total: "0.25" },
         // A discount with no item of its own attaches to the item above it.
-        { id: discountLine.id, raw_text: "COUPON", line_kind: "discount", line_total: "-1.00", attach_to: 2 },
-        { id: outlierLine.id, raw_text: "CSTLN WHOLE MILK GAL", line_kind: "item", qty: "1", unit: "each", line_total: "1.01" },
+        {
+          id: discountLine.id,
+          raw_text: "COUPON",
+          line_kind: "discount",
+          line_total: "-1.00",
+          attach_to: 2,
+        },
+        {
+          id: outlierLine.id,
+          raw_text: "CSTLN WHOLE MILK GAL",
+          line_kind: "item",
+          qty: "1",
+          unit: "each",
+          line_total: "1.01",
+        },
       ],
     });
     expect(await screen.findByText("Lines saved: 5 lines.")).toBeInTheDocument();

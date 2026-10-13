@@ -61,7 +61,7 @@ class TempRepo:
     def move(self, old: str, new: str) -> None:
         target = self.path(new)
         target.parent.mkdir(parents=True, exist_ok=True)
-        os.rename(self.path(old), target)
+        os.rename(self.path(old), target)  # noqa: PTH104
         self.age(new)
 
     def remove(self, rel: str) -> None:

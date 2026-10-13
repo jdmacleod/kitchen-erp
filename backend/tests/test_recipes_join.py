@@ -92,7 +92,7 @@ and @scallions{2}(sliced).
 # --- the five parser fixtures -------------------------------------------------------
 
 
-async def test_the_parser_fixtures_index_with_their_ingredient_rows(recipes_repo: TempRepo):  # noqa: F811
+async def test_the_parser_fixtures_index_with_their_ingredient_rows(recipes_repo: TempRepo):  # noqa: F811, PLR0915
     seed_parser_fixtures(recipes_repo)
     recipes_repo.commit("five")
     result = await run_scan()

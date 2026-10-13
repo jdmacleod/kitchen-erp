@@ -163,7 +163,7 @@ def parse(text: str) -> Recipe | ParseError:
     )
 
 
-def _scan_line(scan: _Scan, line: str, line_number: int) -> ParseError | None:
+def _scan_line(scan: _Scan, line: str, line_number: int) -> ParseError | None:  # noqa: C901
     """Fold one line into the scan state."""
     start = 0
     if scan.in_block_comment:

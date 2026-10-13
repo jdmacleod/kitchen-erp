@@ -26,7 +26,7 @@ async def _merge(admin_client, purchase_id, line, into):
 
 
 async def test_a_count_merges_into_the_next_line_and_the_total_reconciles(admin_client, admin):
-    p, (count, avocado, milk) = await _draft(
+    p, (count, avocado, milk) = await _draft(  # noqa: RUF059
         admin_client,
         admin,
         [
@@ -94,7 +94,7 @@ async def test_a_weight_with_its_amount_gives_a_name_row_its_price(admin_client,
 
 
 async def test_a_saving_attached_to_the_quantity_row_moves_to_the_item(admin_client, admin):
-    p, (count, saving, avocado) = await _draft(
+    p, (count, saving, avocado) = await _draft(  # noqa: RUF059
         admin_client,
         admin,
         [

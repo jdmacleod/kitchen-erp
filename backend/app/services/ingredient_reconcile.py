@@ -383,7 +383,7 @@ def _target(key: str | None, name: str | None) -> tuple[str, standard.StandardEn
     return name.strip(), None
 
 
-async def _merge_in_session(
+async def _merge_in_session(  # noqa: C901, PLR0915
     db: AsyncSession,
     survivor_id: uuid.UUID,
     loser_id: uuid.UUID,

@@ -82,7 +82,7 @@ def no_network(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
     monkeypatch.setattr(socket.socket, "connect", guarded_connect)
     monkeypatch.setattr(socket, "getaddrinfo", guarded_getaddrinfo)
-    yield
+    yield  # noqa: PT022
 
 
 @dataclass

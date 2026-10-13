@@ -10,7 +10,10 @@ import { PriceHistoryChart } from "./PriceHistoryChart";
 /** The product page's price history chart and latest-price-per-location table. */
 export function ProductPrices({ product }: { product: Product }) {
   const prices = useProductPrices(product.id);
-  const unit = prices.data?.points.find((p) => p.display_unit)?.display_unit ?? prices.data?.latest.find((l) => l.display_unit)?.display_unit ?? null;
+  const unit =
+    prices.data?.points.find((p) => p.display_unit)?.display_unit ??
+    prices.data?.latest.find((l) => l.display_unit)?.display_unit ??
+    null;
 
   return (
     <Card>
@@ -39,15 +42,28 @@ export function ProductPrices({ product }: { product: Product }) {
                   {prices.data.latest.map((l) => (
                     <tr key={l.location_id} data-testid="latest-price">
                       <td className="py-2 pr-3">
-                        <Link to={`/catalog/vendors?view=map&location=${encodeURIComponent(l.location_id)}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
-                          {l.location_name === l.vendor_name ? l.location_name : `${l.vendor_name} — ${l.location_name}`}
+                        <Link
+                          to={`/catalog/vendors?view=map&location=${encodeURIComponent(l.location_id)}`}
+                          className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                        >
+                          {l.location_name === l.vendor_name
+                            ? l.location_name
+                            : `${l.vendor_name} — ${l.location_name}`}
                         </Link>
-                        {l.price_scope === "chain" ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · chain price</span> : null}
+                        {l.price_scope === "chain" ? (
+                          <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                            {" "}
+                            · chain price
+                          </span>
+                        ) : null}
                       </td>
                       <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
-                        {formatMoney(l.price)} / {stripZeros(l.qty)} {l.unit} <PromoBadge promo={l.is_promo} />
+                        {formatMoney(l.price)} / {stripZeros(l.qty)} {l.unit}{" "}
+                        <PromoBadge promo={l.is_promo} />
                       </td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{formatUnitPrice(l.display_unit_price, l.display_unit)}</td>
+                      <td className="py-2 pr-3 text-right tabular-nums">
+                        {formatUnitPrice(l.display_unit_price, l.display_unit)}
+                      </td>
                       <td className="py-2">
                         <PriceAge observedAt={l.observed_at} ageDays={l.age_days} stale={l.stale} />
                       </td>

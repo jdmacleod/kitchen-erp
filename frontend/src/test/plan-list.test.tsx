@@ -1,6 +1,6 @@
+import { QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ShoppingItem } from "../api/shoppingList";
@@ -8,8 +8,29 @@ import { NoticeProvider } from "../components/Notice";
 import { createQueryClient } from "../lib/queryClient";
 import { ListPage } from "../pages/plan/ListPage";
 import { flour, ingredientMatch, units } from "./catalog-fixtures";
-import { adminUser, errorResponse, jsonResponse, mockApi, type RecordedCall, type RouteHandler } from "./helpers";
-import { archivedList, archivedListId, archivedSummary, bayLeaves, chickpeas, kitchen, kitchenId, list, me, noKitchenSettings, oatMilk, planHealth, settings } from "./plan-fixtures";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  type RecordedCall,
+  type RouteHandler,
+} from "./helpers";
+import {
+  archivedList,
+  archivedListId,
+  archivedSummary,
+  bayLeaves,
+  chickpeas,
+  kitchen,
+  kitchenId,
+  list,
+  me,
+  noKitchenSettings,
+  oatMilk,
+  planHealth,
+  settings,
+} from "./plan-fixtures";
 import { recipeList } from "./recipe-fixtures";
 
 /**
@@ -27,7 +48,8 @@ function baseRoutes(): Record<string, RouteHandler> {
     "GET /plan/list": () => jsonResponse(200, list()),
     "GET /plan/lists": () => jsonResponse(200, { items: [archivedSummary] }),
     "GET /units": () => jsonResponse(200, { items: units }),
-    "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour, { exact: true })] }),
+    "GET /ingredients/search": () =>
+      jsonResponse(200, { items: [ingredientMatch(flour, { exact: true })] }),
     "GET /products/search": () => jsonResponse(200, { items: [] }),
     "GET /recipes": () => jsonResponse(200, { items: recipeList }),
   };
@@ -64,7 +86,12 @@ function deferred() {
 function phoneWidth() {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
-    value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }),
   });
 }
 
@@ -72,20 +99,31 @@ afterEach(() => {
   delete (window as { matchMedia?: unknown }).matchMedia;
 });
 
-const toGet = async () => within(await screen.findByRole("region", { name: /To get/ })).getAllByTestId("list-item");
+const toGet = async () =>
+  within(await screen.findByRole("region", { name: /To get/ })).getAllByTestId("list-item");
 const notice = () => screen.findByTestId("notice");
 
 describe("the list page: groups and rows (UI-8.2, UI-8.3, UI-8.5)", () => {
   it("heads the page with the kitchen, groups To get and Checked, and shows pairs as written", async () => {
     const calls = mount();
-    expect(await screen.findByRole("heading", { level: 1, name: /^Harbour flat list/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /^Harbour flat list/ }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("kitchen-tag")).toHaveTextContent("Harbour flat");
-    expect(screen.getByText("What this kitchen needs next. Anyone can add, claim and check.")).toBeInTheDocument();
-    expect(calls.find((c) => c.path.startsWith("/plan/list?"))?.query.get("home_base_id")).toBe(kitchenId);
+    expect(
+      screen.getByText("What this kitchen needs next. Anyone can add, claim and check."),
+    ).toBeInTheDocument();
+    expect(calls.find((c) => c.path.startsWith("/plan/list?"))?.query.get("home_base_id")).toBe(
+      kitchenId,
+    );
 
     const rows = await toGet();
     expect(screen.getByRole("heading", { name: "To get (3)" })).toBeInTheDocument();
-    expect(rows.map((r) => within(r).getByTestId("item-name").textContent)).toEqual(["dried chickpeas", "Moonfield oat milk", "bay leaves"]);
+    expect(rows.map((r) => within(r).getByTestId("item-name").textContent)).toEqual([
+      "dried chickpeas",
+      "Moonfield oat milk",
+      "bay leaves",
+    ]);
     // Pairs that do not convert stay separate figures, never summed.
     expect(within(rows[0]).getByTestId("item-amounts")).toHaveTextContent("2 lb · 1 cup");
     // A product row shows its pack in a caption.
@@ -94,36 +132,51 @@ describe("the list page: groups and rows (UI-8.2, UI-8.3, UI-8.5)", () => {
     // Deferrable, the minimum quality and the recipe link are words, not colour.
     expect(within(rows[2]).getByText("deferrable")).toBeInTheDocument();
     expect(within(rows[2]).getByRole("img", { name: "4 of 5 stars" })).toBeInTheDocument();
-    expect(within(rows[2]).getByRole("link", { name: "from recipe" })).toHaveAttribute("href", "/cook/recipes/r-barley");
+    expect(within(rows[2]).getByRole("link", { name: "from recipe" })).toHaveAttribute(
+      "href",
+      "/cook/recipes/r-barley",
+    );
     expect(rows[2]).toHaveTextContent("the fresh kind");
 
     // Checked is folded with its count; opened, it says who checked and when.
     const checked = screen.getByText("Checked (1)");
     expect(checked.closest("details")).not.toHaveAttribute("open");
     await userEvent.click(checked);
-    const checkedRow = within(screen.getByRole("region", { name: "Checked" })).getByTestId("list-item");
+    const checkedRow = within(screen.getByRole("region", { name: "Checked" })).getByTestId(
+      "list-item",
+    );
     expect(checkedRow).toHaveAttribute("data-checked", "true");
     expect(checkedRow).toHaveTextContent("Checked by Member Example");
-    expect(within(checkedRow).getByRole("checkbox", { name: "Uncheck yellow onions" })).toBeChecked();
+    expect(
+      within(checkedRow).getByRole("checkbox", { name: "Uncheck yellow onions" }),
+    ).toBeChecked();
   });
 
   it("adds an item through the picker with the amount and unit as written, and keeps focus in the picker", async () => {
     const user = userEvent.setup();
-    const added: ShoppingItem = { ...chickpeas, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7299", ingredient: { ...flour, category_key: "pantry" } };
+    const added: ShoppingItem = {
+      ...chickpeas,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7299",
+      ingredient: { ...flour, category_key: "pantry" },
+    };
     const calls = mount({ "POST /plan/list/items": () => jsonResponse(201, added) });
     await toGet();
     const form = screen.getByRole("form", { name: "Add an item" });
     const picker = within(form).getByRole("combobox", { name: "What do you need?" });
     await user.type(picker, "flour");
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
-    expect(within(form).getByTestId("add-list-item-ingredient-choice")).toHaveTextContent("all-purpose flour");
+    expect(within(form).getByTestId("add-list-item-ingredient-choice")).toHaveTextContent(
+      "all-purpose flour",
+    );
     // Focus moved on to the amount, so Enter from there adds.
     const amount = within(form).getByLabelText("Amount");
     await waitFor(() => expect(amount).toHaveFocus());
     await user.selectOptions(within(form).getByLabelText("Unit"), "lb");
     await user.type(amount, "2{Enter}");
 
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/plan/list/items")).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/plan/list/items")).toBe(true),
+    );
     const post = calls.find((c) => c.method === "POST" && c.path === "/plan/list/items")!;
     expect(post.body).toEqual({
       home_base_id: kitchenId,
@@ -136,7 +189,9 @@ describe("the list page: groups and rows (UI-8.2, UI-8.3, UI-8.5)", () => {
     });
     expect(post.headers.get("Idempotency-Key")).toBeTruthy();
     expect(await notice()).toHaveTextContent("Added all-purpose flour.");
-    await waitFor(() => expect(within(form).getByRole("combobox", { name: "What do you need?" })).toHaveFocus());
+    await waitFor(() =>
+      expect(within(form).getByRole("combobox", { name: "What do you need?" })).toHaveFocus(),
+    );
   });
 
   it("refuses an amount without a unit before anything is sent", async () => {
@@ -164,9 +219,15 @@ describe("the list page: check, claim and stale edits (UI-8.6)", () => {
     expect(screen.getByRole("heading", { name: "To get (2)" })).toBeInTheDocument();
     expect(screen.getByText("Checked (2)")).toBeInTheDocument();
     await act(async () => {
-      pending.resolve(jsonResponse(200, { ...chickpeas, checked_by: me, checked_at: "2026-10-12T10:00:00Z" }));
+      pending.resolve(
+        jsonResponse(200, { ...chickpeas, checked_by: me, checked_at: "2026-10-12T10:00:00Z" }),
+      );
     });
-    await waitFor(() => expect(screen.getByTestId("list-announcement")).toHaveTextContent("Checked dried chickpeas. 2 to get."));
+    await waitFor(() =>
+      expect(screen.getByTestId("list-announcement")).toHaveTextContent(
+        "Checked dried chickpeas. 2 to get.",
+      ),
+    );
   });
 
   it("puts the row back when the server refuses the check", async () => {
@@ -188,7 +249,8 @@ describe("the list page: check, claim and stale edits (UI-8.6)", () => {
     const mine = { ...bayLeaves, claimed_by: me, claimed_at: "2026-10-12T09:00:00Z" };
     const calls = mount({
       "GET /plan/list": () => jsonResponse(200, list({ unchecked: [chickpeas, oatMilk, mine] })),
-      [`POST /plan/list/items/${chickpeas.id}/claim`]: () => jsonResponse(200, { ...chickpeas, claimed_by: me }),
+      [`POST /plan/list/items/${chickpeas.id}/claim`]: () =>
+        jsonResponse(200, { ...chickpeas, claimed_by: me }),
     });
     const [unclaimed, theirs, ours] = await toGet();
     expect(theirs).toHaveTextContent("Member Example is getting it");
@@ -198,18 +260,31 @@ describe("the list page: check, claim and stale edits (UI-8.6)", () => {
     expect(within(ours).getByRole("button", { name: "Unclaim" })).toBeInTheDocument();
 
     await user.click(within(unclaimed).getByRole("button", { name: "I'll get it" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/plan/list/items/${chickpeas.id}/claim`)).toBe(true));
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) => c.method === "POST" && c.path === `/plan/list/items/${chickpeas.id}/claim`,
+        ),
+      ).toBe(true),
+    );
   });
 
   it("sends the updated_at it saw and, on a stale answer, shows the server's row and says so", async () => {
     const user = userEvent.setup();
-    const current: ShoppingItem = { ...bayLeaves, note: "changed elsewhere", updated_at: "2026-10-12T11:00:00Z" };
+    const current: ShoppingItem = {
+      ...bayLeaves,
+      note: "changed elsewhere",
+      updated_at: "2026-10-12T11:00:00Z",
+    };
     let patched = false;
     const calls = mount({
-      "GET /plan/list": () => jsonResponse(200, patched ? list({ unchecked: [chickpeas, oatMilk, current] }) : list()),
+      "GET /plan/list": () =>
+        jsonResponse(200, patched ? list({ unchecked: [chickpeas, oatMilk, current] }) : list()),
       [`PATCH /plan/list/items/${bayLeaves.id}`]: () => {
         patched = true;
-        return errorResponse(409, "stale_item", "This item changed since you loaded it; reload.", { item: current });
+        return errorResponse(409, "stale_item", "This item changed since you loaded it; reload.", {
+          item: current,
+        });
       },
     });
     const rows = await toGet();
@@ -222,7 +297,13 @@ describe("the list page: check, claim and stale edits (UI-8.6)", () => {
     await user.click(within(drawer).getByRole("button", { name: "Save" }));
 
     const patch = await waitFor(() => calls.find((c) => c.method === "PATCH")!);
-    expect(patch.body).toMatchObject({ updated_at: bayLeaves.updated_at, note: "dried is fine", deferrable: true, min_quality: 4, amounts: [] });
+    expect(patch.body).toMatchObject({
+      updated_at: bayLeaves.updated_at,
+      note: "dried is fine",
+      deferrable: true,
+      min_quality: 4,
+      amounts: [],
+    });
     expect(await notice()).toHaveTextContent("Updated by someone else; showing the latest.");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect((await toGet())[2]).toHaveTextContent("changed elsewhere");
@@ -232,7 +313,9 @@ describe("the list page: check, claim and stale edits (UI-8.6)", () => {
     const user = userEvent.setup();
     mount();
     const rows = await toGet();
-    await user.click(within(rows[0]).getByRole("button", { name: "More actions for dried chickpeas" }));
+    await user.click(
+      within(rows[0]).getByRole("button", { name: "More actions for dried chickpeas" }),
+    );
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const drawer = screen.getByRole("dialog", { name: "Edit dried chickpeas" });
     await user.type(within(drawer).getByLabelText("Note"), "x");
@@ -250,8 +333,23 @@ describe("the list page: from a recipe and a fresh list (UI-8.2, UI-8.5)", () =>
       "POST /plan/list/items/from-recipe": (call) => {
         attempt += 1;
         const body = call.body as { replace: boolean };
-        if (!body.replace) return jsonResponse(200, { list: list(), added: 0, merged: 0, skipped: [], already_on_list: true, existing_items: 2 });
-        return jsonResponse(200, { list: list(), added: 3, merged: 1, skipped: [{ raw_name: "mystery root", reason: "unmatched" }], already_on_list: false, existing_items: 0 });
+        if (!body.replace)
+          return jsonResponse(200, {
+            list: list(),
+            added: 0,
+            merged: 0,
+            skipped: [],
+            already_on_list: true,
+            existing_items: 2,
+          });
+        return jsonResponse(200, {
+          list: list(),
+          added: 3,
+          merged: 1,
+          skipped: [{ raw_name: "mystery root", reason: "unmatched" }],
+          already_on_list: false,
+          existing_items: 0,
+        });
       },
     });
     await toGet();
@@ -259,21 +357,39 @@ describe("the list page: from a recipe and a fresh list (UI-8.2, UI-8.5)", () =>
     const drawer = screen.getByRole("dialog", { name: "Add from recipe" });
     await user.type(within(drawer).getByRole("combobox", { name: "Recipe" }), "barley");
     await user.click(await within(drawer).findByRole("option", { name: /Barley moon stew/ }));
-    expect(within(drawer).getByTestId("add-from-recipe-recipe-choice")).toHaveTextContent("Barley moon stew · 4 servings");
+    expect(within(drawer).getByTestId("add-from-recipe-recipe-choice")).toHaveTextContent(
+      "Barley moon stew · 4 servings",
+    );
     const scale = within(drawer).getByLabelText("Scale");
     await user.clear(scale);
     await user.type(scale, "2");
     expect(drawer).toHaveTextContent("4 servings · ×2");
     await user.click(within(drawer).getByRole("button", { name: "Add to list" }));
 
-    expect(await within(drawer).findByTestId("already-on-list")).toHaveTextContent("Barley moon stew is already on the list: 2 items to get. Nothing was changed.");
-    expect(calls.filter((c) => c.method === "POST")[0].body).toEqual({ home_base_id: kitchenId, recipe_id: "r-barley", scale: "2", replace: false });
+    expect(await within(drawer).findByTestId("already-on-list")).toHaveTextContent(
+      "Barley moon stew is already on the list: 2 items to get. Nothing was changed.",
+    );
+    expect(calls.filter((c) => c.method === "POST")[0].body).toEqual({
+      home_base_id: kitchenId,
+      recipe_id: "r-barley",
+      scale: "2",
+      replace: false,
+    });
     await user.click(within(drawer).getByRole("button", { name: "Replace at ×2" }));
     await waitFor(() => expect(attempt).toBe(2));
-    expect(calls.filter((c) => c.method === "POST")[1].body).toMatchObject({ recipe_id: "r-barley", scale: "2", replace: true });
+    expect(calls.filter((c) => c.method === "POST")[1].body).toMatchObject({
+      recipe_id: "r-barley",
+      scale: "2",
+      replace: true,
+    });
     const shown = await notice();
-    expect(shown).toHaveTextContent("Added 3 items from Barley moon stew. 1 merged into an item already on the list. 1 unmapped line skipped.");
-    expect(within(shown).getByRole("link", { name: "Resolve them" })).toHaveAttribute("href", "/cook/recipes/resolve");
+    expect(shown).toHaveTextContent(
+      "Added 3 items from Barley moon stew. 1 merged into an item already on the list. 1 unmapped line skipped.",
+    );
+    expect(within(shown).getByRole("link", { name: "Resolve them" })).toHaveAttribute(
+      "href",
+      "/cook/recipes/resolve",
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -285,13 +401,23 @@ describe("the list page: from a recipe and a fresh list (UI-8.2, UI-8.5)", () =>
       "GET /plan/list": () => jsonResponse(200, archived ? fresh : list()),
       "POST /plan/list/archive": () => {
         archived = true;
-        return jsonResponse(200, { archived: { ...list(), id: archivedListId, status: "archived", archived_at: "2026-10-12T12:00:00Z" }, list: fresh });
+        return jsonResponse(200, {
+          archived: {
+            ...list(),
+            id: archivedListId,
+            status: "archived",
+            archived_at: "2026-10-12T12:00:00Z",
+          },
+          list: fresh,
+        });
       },
     });
     await toGet();
     await user.click(screen.getByRole("button", { name: "Start a fresh list" }));
     const confirm = screen.getByTestId("fresh-list-confirm");
-    expect(confirm).toHaveTextContent("Archive this list and start a new one? 3 unchecked items carry over.");
+    expect(confirm).toHaveTextContent(
+      "Archive this list and start a new one? 3 unchecked items carry over.",
+    );
     const carry = within(confirm).getByRole("checkbox", { name: "Carry unchecked items over" });
     expect(carry).toBeChecked();
     expect(within(confirm).getByRole("button", { name: "Cancel" })).toHaveFocus();
@@ -300,20 +426,38 @@ describe("the list page: from a recipe and a fresh list (UI-8.2, UI-8.5)", () =>
     await user.click(carry);
     expect(confirm).toHaveTextContent("3 unchecked items stay on the old list.");
     await user.click(within(confirm).getByRole("button", { name: "Start a fresh list" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/plan/list/archive")).toBe(true));
-    expect(calls.find((c) => c.path === "/plan/list/archive")!.body).toEqual({ home_base_id: kitchenId, carry_over: false });
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/plan/list/archive")).toBe(true),
+    );
+    expect(calls.find((c) => c.path === "/plan/list/archive")!.body).toEqual({
+      home_base_id: kitchenId,
+      carry_over: false,
+    });
     const shown = await notice();
     expect(shown).toHaveTextContent("Started a fresh list.");
-    expect(within(shown).getByRole("link", { name: "Open the old one" })).toHaveAttribute("href", `/plan/list?list_id=${archivedListId}`);
+    expect(within(shown).getByRole("link", { name: "Open the old one" })).toHaveAttribute(
+      "href",
+      `/plan/list?list_id=${archivedListId}`,
+    );
     expect(await screen.findByText("Nothing on the list.")).toBeInTheDocument();
   });
 
   it("reads an archived list without offering to change it", async () => {
-    const calls = mount({ "GET /plan/list": () => jsonResponse(200, archivedList) }, `/plan/list?list_id=${archivedListId}`);
-    expect(await screen.findByRole("heading", { level: 1, name: /Harbour flat list · archived/ })).toBeInTheDocument();
-    expect(calls.find((c) => c.path.startsWith("/plan/list?"))?.query.get("list_id")).toBe(archivedListId);
+    const calls = mount(
+      { "GET /plan/list": () => jsonResponse(200, archivedList) },
+      `/plan/list?list_id=${archivedListId}`,
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: /Harbour flat list · archived/ }),
+    ).toBeInTheDocument();
+    expect(calls.find((c) => c.path.startsWith("/plan/list?"))?.query.get("list_id")).toBe(
+      archivedListId,
+    );
     expect(screen.getByText("Archived")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to the current list" })).toHaveAttribute("href", "/plan/list");
+    expect(screen.getByRole("link", { name: "Back to the current list" })).toHaveAttribute(
+      "href",
+      "/plan/list",
+    );
     expect(screen.getByRole("status")).toHaveTextContent("nothing on it can change");
     expect(screen.queryByRole("form", { name: "Add an item" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Add item" })).not.toBeInTheDocument();
@@ -338,14 +482,22 @@ describe("the list page: states and the phone (G11, UI-8.11)", () => {
   it("names the three ways to add on an empty list", async () => {
     mount({ "GET /plan/list": () => jsonResponse(200, list({ unchecked: [], checked: [] })) });
     const empty = await screen.findByRole("region", { name: "Nothing on the list." });
-    expect(empty).toHaveTextContent("Add what you need above, add a recipe's ingredients with “Add from recipe”, or add an ingredient from its own page.");
+    expect(empty).toHaveTextContent(
+      "Add what you need above, add a recipe's ingredients with “Add from recipe”, or add an ingredient from its own page.",
+    );
     expect(screen.getByRole("combobox", { name: "What do you need?" })).toHaveFocus();
   });
 
   it("sends to Settings → Kitchens when there is no kitchen, and asks for no list", async () => {
-    const calls = mount({ "GET /me/settings": () => jsonResponse(200, noKitchenSettings), "GET /home-bases": () => jsonResponse(200, { items: [] }) });
+    const calls = mount({
+      "GET /me/settings": () => jsonResponse(200, noKitchenSettings),
+      "GET /home-bases": () => jsonResponse(200, { items: [] }),
+    });
     const empty = await screen.findByRole("region", { name: "No kitchen yet" });
-    expect(within(empty).getByRole("link", { name: "Settings → Kitchens" })).toHaveAttribute("href", "/settings/kitchens");
+    expect(within(empty).getByRole("link", { name: "Settings → Kitchens" })).toHaveAttribute(
+      "href",
+      "/settings/kitchens",
+    );
     expect(calls.some((c) => c.path.startsWith("/plan/list"))).toBe(false);
   });
 
@@ -383,7 +535,9 @@ describe("the list page: states and the phone (G11, UI-8.11)", () => {
     const circle = within(rows[0]).getByRole("checkbox", { name: "Check dried chickpeas" });
     expect(circle.className).toContain("size-11");
     expect(circle.querySelector("span")?.className).toContain("size-7");
-    expect(within(rows[0]).getByRole("button", { name: "I'll get it" }).className).toContain("min-h-11");
+    expect(within(rows[0]).getByRole("button", { name: "I'll get it" }).className).toContain(
+      "min-h-11",
+    );
     expect(screen.getByRole("button", { name: "Add" }).className).toContain("min-h-11");
   });
 });

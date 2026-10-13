@@ -173,7 +173,7 @@ def choose(
     if basis == "cheapest":
         best = min(prices, key=lambda p: (p.norm_unit_price, now - p.observed_at))
         return Chosen(best.norm_unit_price, best)
-    assert basis == "average" and window_days is not None
+    assert basis == "average" and window_days is not None  # noqa: S101
     since = now - timedelta(days=window_days)
     window = [p for p in prices if p.observed_at >= since]
     if not window:
@@ -237,7 +237,7 @@ def grosses_up(line: RecipeIngredient, from_unit: str, context: ConversionContex
     return unit is not None and unit.dimension in ("mass", "volume")
 
 
-async def cost_line(
+async def cost_line(  # noqa: C901
     db: AsyncSession,
     line: RecipeIngredient,
     ingredient: Ingredient | None,
@@ -305,7 +305,7 @@ async def cost_line(
     out.status = "priced"
     out.observation_id = chosen.observation.observation_id
     out.norm_unit_price = chosen.norm_unit_price
-    assert product is not None
+    assert product is not None  # noqa: S101
     pack_qty = _pack_canonical_qty(product, context)
     out.consumed_cost = _money(_CTX.multiply(qty_low, chosen.norm_unit_price))
     out.basket_cost, out.packs = _basket(qty_low, chosen.norm_unit_price, pack_qty)

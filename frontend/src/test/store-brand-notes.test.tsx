@@ -15,7 +15,10 @@ describe("store-brand notes on receipt suggestions", () => {
   it("shows the note beside a suggestion that carries one", async () => {
     const line = {
       ...unmatchedLine,
-      suggestions: [unmatchedLine.suggestions![0], { ...unmatchedLine.suggestions![1], brand_note: NOTE }],
+      suggestions: [
+        unmatchedLine.suggestions![0],
+        { ...unmatchedLine.suggestions![1], brand_note: NOTE },
+      ],
     };
     const purchase: Purchase = { ...receiptPurchase, lines: [line] };
     mockApi({

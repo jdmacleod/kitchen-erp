@@ -104,11 +104,18 @@ export const DEFAULT_FEATURES = ["catalog", "shop"] as const;
  * and a section keeps its fixed place however late its feature arrives (G16).
  * An item marked `until` leaves once the feature that takes it over is built.
  */
-export function visibleSections(sections: NavSection[], features: readonly string[] | undefined): NavSection[] {
+export function visibleSections(
+  sections: NavSection[],
+  features: readonly string[] | undefined,
+): NavSection[] {
   const built = new Set<string>([...DEFAULT_FEATURES, ...(features ?? [])]);
   return sections
     .filter((s) => !s.feature || built.has(s.feature))
-    .map((s) => (s.items.some((i) => i.until && built.has(i.until)) ? { ...s, items: s.items.filter((i) => !i.until || !built.has(i.until)) } : s));
+    .map((s) =>
+      s.items.some((i) => i.until && built.has(i.until))
+        ? { ...s, items: s.items.filter((i) => !i.until || !built.has(i.until)) }
+        : s,
+    );
 }
 
 function sectionClass(active: boolean): string {
@@ -133,12 +140,17 @@ function itemClass({ isActive }: { isActive: boolean }): string {
  */
 export function InboxBadge() {
   const inbox = useInbox();
-  const pill = "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold";
+  const pill =
+    "inline-flex min-w-6 items-center justify-center rounded-full px-1.5 text-xs font-semibold";
   // Checked before the count: after a failed refresh the last answer is still
   // cached, and showing it would claim a check that did not happen (D6).
   if (inbox.isError) {
     return (
-      <span role="img" aria-label="Couldn't check what needs you" className={`${pill} bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100`}>
+      <span
+        role="img"
+        aria-label="Couldn't check what needs you"
+        className={`${pill} bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100`}
+      >
         !
       </span>
     );
@@ -146,7 +158,10 @@ export function InboxBadge() {
   const count = inbox.data?.items.length ?? 0;
   if (count === 0) return null;
   return (
-    <span aria-label={`${count} ${count === 1 ? "thing needs" : "things need"} you`} className={`${pill} bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100`}>
+    <span
+      aria-label={`${count} ${count === 1 ? "thing needs" : "things need"} you`}
+      className={`${pill} bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-100`}
+    >
       {count}
     </span>
   );
@@ -154,13 +169,19 @@ export function InboxBadge() {
 
 function Section({ section, admin }: { section: NavSection; admin: boolean }) {
   const { pathname } = useLocation();
-  const active = section.prefix ? pathname === section.prefix || pathname.startsWith(`${section.prefix}/`) : pathname === section.to;
+  const active = section.prefix
+    ? pathname === section.prefix || pathname.startsWith(`${section.prefix}/`)
+    : pathname === section.to;
   const items = section.items.filter((i) => admin || !i.adminOnly);
   return (
     <li>
       {/* A plain link: the section is "current" as a place, and the sub-page link
           below is the one that is the current page. */}
-      <Link to={section.to} className={sectionClass(active)} aria-current={active ? (section.prefix ? "true" : "page") : undefined}>
+      <Link
+        to={section.to}
+        className={sectionClass(active)}
+        aria-current={active ? (section.prefix ? "true" : "page") : undefined}
+      >
         <span>{section.label}</span>
         {section.key === "home" ? <InboxBadge /> : null}
       </Link>
@@ -206,9 +227,16 @@ export function Nav({ id }: { id?: string }) {
         <div className="flex items-center justify-between gap-2 px-3 text-sm">
           <span className="min-w-0">
             <span className="block truncate font-medium">{user.display_name}</span>
-            <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">{user.email}</span>
+            <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
+              {user.email}
+            </span>
           </span>
-          <Button variant="ghost" className="shrink-0" disabled={logout.isPending} onClick={() => logout.mutate()}>
+          <Button
+            variant="ghost"
+            className="shrink-0"
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
             Log out
           </Button>
         </div>

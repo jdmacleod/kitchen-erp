@@ -19,7 +19,15 @@ type Point = { lat: string; lon: string };
  * this device's position is a button someone presses, not something the page
  * does on arrival, so the default is untouched.
  */
-export function DraftPointControl({ draft, onPoint, disabled }: { draft: Point | null; onPoint: (point: Point | null) => void; disabled?: boolean }) {
+export function DraftPointControl({
+  draft,
+  onPoint,
+  disabled,
+}: {
+  draft: Point | null;
+  onPoint: (point: Point | null) => void;
+  disabled?: boolean;
+}) {
   const [text, setText] = useState(() => (draft ? formatLatLon(draft.lat, draft.lon) : ""));
 
   // A click on the map is the other direction of the same state, so it has to
@@ -52,8 +60,13 @@ export function DraftPointControl({ draft, onPoint, disabled }: { draft: Point |
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400" data-testid="draft-point">
-        {draft ? formatLatLon(draft.lat, draft.lon) : "No pin yet — click the map, or give the coordinates below."}
+      <p
+        className="font-mono text-xs text-neutral-600 dark:text-neutral-400"
+        data-testid="draft-point"
+      >
+        {draft
+          ? formatLatLon(draft.lat, draft.lon)
+          : "No pin yet — click the map, or give the coordinates below."}
       </p>
       <CoordinatesField id="draft-coordinates" value={text} onChange={onText} disabled={disabled} />
     </div>

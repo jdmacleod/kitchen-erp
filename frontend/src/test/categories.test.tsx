@@ -19,22 +19,37 @@ describe("categories from the products pages", () => {
     renderApp("/catalog/products");
     const group = await screen.findByRole("group", { name: "Category" });
     await user.click(within(group).getByRole("button", { name: "No category" }));
-    await waitFor(() => expect(calls.some((c) => c.path.split("?")[0] === "/products" && c.query.get("category") === "none")).toBe(true));
-    expect(within(group).getByRole("button", { name: "No category" })).toHaveAttribute("aria-pressed", "true");
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) => c.path.split("?")[0] === "/products" && c.query.get("category") === "none",
+        ),
+      ).toBe(true),
+    );
+    expect(within(group).getByRole("button", { name: "No category" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("sets the ingredient's category from the product's page", async () => {
-    const product = { ...flourProduct, ingredient: { ...flourProduct.ingredient, category: null, category_key: null } };
+    const product = {
+      ...flourProduct,
+      ingredient: { ...flourProduct.ingredient, category: null, category_key: null },
+    };
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       "GET /products-helper": () => jsonResponse(200, { configured: false }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, product),
-      [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
-      [`GET /products/${flourProductId}/photos`]: () => jsonResponse(200, { items: [], primary_image_id: null }),
+      [`GET /products/${flourProductId}/prices`]: () =>
+        jsonResponse(200, { points: [], latest: [] }),
+      [`GET /products/${flourProductId}/photos`]: () =>
+        jsonResponse(200, { items: [], primary_image_id: null }),
       "GET /price-observations": () => jsonResponse(200, { items: [], next_cursor: null }),
-      [`PATCH /ingredients/${product.ingredient.id}`]: () => jsonResponse(200, { ...product.ingredient, category: "pantry", category_key: "pantry" }),
+      [`PATCH /ingredients/${product.ingredient.id}`]: () =>
+        jsonResponse(200, { ...product.ingredient, category: "pantry", category_key: "pantry" }),
     });
     const user = userEvent.setup();
     renderApp(`/catalog/products/${flourProductId}`);
@@ -65,6 +80,8 @@ describe("categories from the products pages", () => {
     await user.type(within(dialog).getByLabelText("Name"), "Snap peas");
     await user.click(within(dialog).getByRole("button", { name: "Add product" }));
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
-    expect((calls.find((c) => c.method === "POST")?.body as { ingredient: unknown }).ingredient).toEqual({ name: "snap peas", category: "produce" });
+    expect(
+      (calls.find((c) => c.method === "POST")?.body as { ingredient: unknown }).ingredient,
+    ).toEqual({ name: "snap peas", category: "produce" });
   });
 });

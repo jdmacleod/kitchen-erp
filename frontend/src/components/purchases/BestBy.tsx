@@ -1,11 +1,21 @@
 import { useId, useState } from "react";
 import { errorMessage } from "../../api/client";
-import { STORAGE_PLACES, useLineKeeping, type LineKeepingInput, type PurchaseLine, type StoragePlace } from "../../api/purchases";
+import {
+  STORAGE_PLACES,
+  useLineKeeping,
+  type LineKeepingInput,
+  type PurchaseLine,
+  type StoragePlace,
+} from "../../api/purchases";
 import { formatCalendarDate } from "../../lib/format";
 import { Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { Alert, Button, Field } from "../ui";
 
-const placePhrase = { room: "at room temperature", fridge: "in the fridge", freezer: "in the freezer" } as const;
+const placePhrase = {
+  room: "at room temperature",
+  fridge: "in the fridge",
+  freezer: "in the freezer",
+} as const;
 
 const sourceLabel = { inferred: "inferred", printed: "printed", person: "your date" } as const;
 
@@ -29,7 +39,17 @@ const dateKinds: { value: DateKind; label: string }[] = [
  * place or give the date on its label. A use-by date replaces the inferred one;
  * a sell-by date does not, following USDA FSIS.
  */
-export function BestBy({ purchaseId, line, editable = true, inReview = false }: { purchaseId: string; line: PurchaseLine; editable?: boolean; inReview?: boolean }) {
+export function BestBy({
+  purchaseId,
+  line,
+  editable = true,
+  inReview = false,
+}: {
+  purchaseId: string;
+  line: PurchaseLine;
+  editable?: boolean;
+  inReview?: boolean;
+}) {
   const text = bestByText(line);
   if (line.line_kind !== "item" || !line.product) return null;
   return (
@@ -40,10 +60,18 @@ export function BestBy({ purchaseId, line, editable = true, inReview = false }: 
       ) : text ? (
         <span className="whitespace-nowrap">
           {text}
-          {line.best_by_source ? <span className={`ml-1 ${hintClass}`}>· {sourceLabel[line.best_by_source]}</span> : null}
+          {line.best_by_source ? (
+            <span className={`ml-1 ${hintClass}`}>· {sourceLabel[line.best_by_source]}</span>
+          ) : null}
         </span>
       ) : (
-        <span className={hintClass}>{line.best_by_source === "person" ? "No date (cleared)" : line.stored_in ? `No date: no keep time ${placePhrase[line.stored_in]}` : "No date"}</span>
+        <span className={hintClass}>
+          {line.best_by_source === "person"
+            ? "No date (cleared)"
+            : line.stored_in
+              ? `No date: no keep time ${placePhrase[line.stored_in]}`
+              : "No date"}
+        </span>
       )}
       {editable ? <BestByForm purchaseId={purchaseId} line={line} /> : null}
     </div>
@@ -83,26 +111,48 @@ function BestByForm({ purchaseId, line }: { purchaseId: string; line: PurchaseLi
       setOpen(false);
       return;
     }
-    send(input, input.date === "sell_by" ? "A sell-by date is not a best-by date, so the inferred date stands." : undefined);
+    send(
+      input,
+      input.date === "sell_by"
+        ? "A sell-by date is not a best-by date, so the inferred date stands."
+        : undefined,
+    );
   }
 
   return (
     <Disclosure summary="Change" open={open} onOpenChange={setOpen} className="text-sm">
-      <SelectField id={`${id}-place`} label="Kept in" value={place} onChange={(e) => setPlace(e.target.value as StoragePlace)}>
+      <SelectField
+        id={`${id}-place`}
+        label="Kept in"
+        value={place}
+        onChange={(e) => setPlace(e.target.value as StoragePlace)}
+      >
         {STORAGE_PLACES.map((p) => (
           <option key={p.value} value={p.value}>
             {p.label}
           </option>
         ))}
       </SelectField>
-      <SelectField id={`${id}-kind`} label="Date" value={kind} onChange={(e) => setKind(e.target.value as DateKind)}>
+      <SelectField
+        id={`${id}-kind`}
+        label="Date"
+        value={kind}
+        onChange={(e) => setKind(e.target.value as DateKind)}
+      >
         {dateKinds.map((k) => (
           <option key={k.value} value={k.value}>
             {k.label}
           </option>
         ))}
       </SelectField>
-      <Field id={`${id}-date`} label="Best by" type="date" value={date} onChange={(e) => setDate(e.target.value)} hint="Leave empty to keep the current date." />
+      <Field
+        id={`${id}-date`}
+        label="Best by"
+        type="date"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        hint="Leave empty to keep the current date."
+      />
       {keeping.error ? <Alert tone="error">{errorMessage(keeping.error)}</Alert> : null}
       {note ? <p className={hintClass}>{note}</p> : null}
       <div className="flex flex-wrap gap-2">
@@ -110,12 +160,20 @@ function BestByForm({ purchaseId, line }: { purchaseId: string; line: PurchaseLi
           {keeping.isPending ? "Saving…" : "Save"}
         </Button>
         {line.best_by_source && line.best_by_source !== "inferred" ? (
-          <Button variant="secondary" onClick={() => send({ date: "infer" })} disabled={keeping.isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => send({ date: "infer" })}
+            disabled={keeping.isPending}
+          >
             Use the inferred date
           </Button>
         ) : null}
         {line.best_by ? (
-          <Button variant="secondary" onClick={() => send({ date: "clear" })} disabled={keeping.isPending}>
+          <Button
+            variant="secondary"
+            onClick={() => send({ date: "clear" })}
+            disabled={keeping.isPending}
+          >
             No date
           </Button>
         ) : null}

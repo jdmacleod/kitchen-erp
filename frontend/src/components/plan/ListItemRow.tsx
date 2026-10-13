@@ -3,7 +3,14 @@ import { Link } from "react-router";
 import { formatPack } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { useMe } from "../../api/queries";
-import { itemName, useCheckItem, useDeleteItem, useUncheckItem, type ShoppingItem, type listKeys } from "../../api/shoppingList";
+import {
+  itemName,
+  useCheckItem,
+  useDeleteItem,
+  useUncheckItem,
+  type ShoppingItem,
+  type listKeys,
+} from "../../api/shoppingList";
 import { formatDateTime } from "../../lib/format";
 import { Badge, QualityStars } from "../catalog/fields";
 import { MoreActionsDialog } from "../MoreActionsDialog";
@@ -32,7 +39,14 @@ interface ListItemRowProps {
  * the claim chip and the note. Edit and Remove live under More actions; Edit
  * opens a drawer with the unsaved-input guard.
  */
-export function ListItemRow({ item, listKey, readOnly = false, onToggled, onError, onNotice }: ListItemRowProps) {
+export function ListItemRow({
+  item,
+  listKey,
+  readOnly = false,
+  onToggled,
+  onError,
+  onNotice,
+}: ListItemRowProps) {
   const me = useMe();
   // Hook-level callbacks: this row unmounts as it moves to the other group.
   const check = useCheckItem({ onSuccess: (saved) => onToggled?.(saved, true), onError });
@@ -44,7 +58,14 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
   const name = itemName(item);
   const checked = item.checked_at !== null;
   const amounts = formatAmounts(item.amounts);
-  const pack = item.product ? formatPack(item.product.pack_qty, item.product.pack_unit, item.product.pack_count, item.product.piece_name) : "";
+  const pack = item.product
+    ? formatPack(
+        item.product.pack_qty,
+        item.product.pack_unit,
+        item.product.pack_count,
+        item.product.piece_name,
+      )
+    : "";
   const toggling = check.isPending || uncheck.isPending;
 
   const toggle = () => {
@@ -63,7 +84,11 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
   const claimedByOther = item.claimed_by !== null && item.claimed_by.id !== me.data?.id;
 
   return (
-    <li data-testid="list-item" data-checked={checked ? "true" : "false"} className="border-t border-neutral-200 py-2 first:border-t-0 dark:border-neutral-800">
+    <li
+      data-testid="list-item"
+      data-checked={checked ? "true" : "false"}
+      className="border-t border-neutral-200 py-2 first:border-t-0 dark:border-neutral-800"
+    >
       <div className="flex items-start gap-2">
         <button
           type="button"
@@ -77,11 +102,21 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
           <span
             aria-hidden="true"
             className={`inline-flex size-7 items-center justify-center rounded-full border-2 ${
-              checked ? "border-green-700 bg-green-700 text-white dark:border-green-500 dark:bg-green-500 dark:text-neutral-950" : "border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900"
+              checked
+                ? "border-green-700 bg-green-700 text-white dark:border-green-500 dark:bg-green-500 dark:text-neutral-950"
+                : "border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900"
             }`}
           >
             {checked ? (
-              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                viewBox="0 0 16 16"
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <path d="M3 8.5l3 3 7-7" />
               </svg>
             ) : null}
@@ -90,7 +125,10 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
 
         <div className="min-w-0 flex-1 pt-2.5 lg:pt-1">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span className={`font-medium ${checked ? `line-through ${muted}` : ""}`} data-testid="item-name">
+            <span
+              className={`font-medium ${checked ? `line-through ${muted}` : ""}`}
+              data-testid="item-name"
+            >
               {name}
             </span>
             {pack ? <span className={`text-xs ${muted}`}>{pack}</span> : null}
@@ -106,7 +144,10 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
               </span>
             ) : null}
             {item.added_from === "recipe" && item.recipe_id ? (
-              <Link to={`/cook/recipes/${item.recipe_id}`} className={`inline-flex min-h-11 items-center rounded text-xs underline lg:min-h-0 ${muted} ${focusRing}`}>
+              <Link
+                to={`/cook/recipes/${item.recipe_id}`}
+                className={`inline-flex min-h-11 items-center rounded text-xs underline lg:min-h-0 ${muted} ${focusRing}`}
+              >
                 from recipe
               </Link>
             ) : null}
@@ -114,13 +155,20 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
           {item.note ? <p className={`text-sm ${muted}`}>{item.note}</p> : null}
           {checked && item.checked_by ? (
             <p className={`text-xs ${muted}`}>
-              Checked by {item.checked_by.display_name} · <time dateTime={item.checked_at ?? undefined}>{formatDateTime(item.checked_at)}</time>
+              Checked by {item.checked_by.display_name} ·{" "}
+              <time dateTime={item.checked_at ?? undefined}>{formatDateTime(item.checked_at)}</time>
             </p>
           ) : null}
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <ClaimChip item={item} readOnly={readOnly} onError={onError} />
             {readOnly ? null : (
-              <Button variant="ghost" className="min-h-11 px-2 text-xs lg:min-h-8" aria-haspopup="dialog" aria-label={`More actions for ${name}`} onClick={() => setMore(true)}>
+              <Button
+                variant="ghost"
+                className="min-h-11 px-2 text-xs lg:min-h-8"
+                aria-haspopup="dialog"
+                aria-label={`More actions for ${name}`}
+                onClick={() => setMore(true)}
+              >
                 More actions
               </Button>
             )}
@@ -174,7 +222,14 @@ export function ListItemRow({ item, listKey, readOnly = false, onToggled, onErro
           onClose={() => setMore(false)}
         />
       ) : null}
-      {editing ? <EditItemDrawer item={item} listKey={listKey} onClose={() => setEditing(false)} onNotice={onNotice} /> : null}
+      {editing ? (
+        <EditItemDrawer
+          item={item}
+          listKey={listKey}
+          onClose={() => setEditing(false)}
+          onNotice={onNotice}
+        />
+      ) : null}
     </li>
   );
 }

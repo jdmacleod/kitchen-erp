@@ -267,7 +267,7 @@ def _qualifies(item: ShoppingListItem, product: Product) -> bool:
     return (product.quality_rating or 0) >= item.min_quality
 
 
-async def offers(
+async def offers(  # noqa: C901, PLR0912, PLR0915
     db: AsyncSession,
     items: list[ShoppingListItem],
     location_ids: list[uuid.UUID],

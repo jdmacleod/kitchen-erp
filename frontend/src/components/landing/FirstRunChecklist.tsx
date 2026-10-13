@@ -20,8 +20,7 @@ import { focusRing, primaryLinkClass, secondaryLinkClass } from "../ui";
  * alone — an sr-only word, the tick's shape, and a muted title all say it.
  */
 
-const primaryAction =
-  `${primaryLinkClass} w-full sm:w-auto`;
+const primaryAction = `${primaryLinkClass} w-full sm:w-auto`;
 
 const secondaryAction = `${secondaryLinkClass} w-full sm:w-auto`;
 
@@ -50,18 +49,28 @@ function Step({ done, next, title, to, state, action, children }: StepProps) {
         <span
           aria-hidden="true"
           className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 ${
-            done ? "border-green-600 bg-green-600 dark:border-green-500 dark:bg-green-500" : "border-neutral-300 dark:border-neutral-600"
+            done
+              ? "border-green-600 bg-green-600 dark:border-green-500 dark:bg-green-500"
+              : "border-neutral-300 dark:border-neutral-600"
           }`}
         >
           {done ? (
-            <svg viewBox="0 0 16 16" className="size-3 text-white" fill="none" stroke="currentColor" strokeWidth="3">
+            <svg
+              viewBox="0 0 16 16"
+              className="size-3 text-white"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+            >
               <path d="M3.5 8.5 6.5 11.5 12.5 4.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           ) : null}
         </span>
 
         <div className="min-w-0">
-          <p className={`text-base font-medium ${done ? "text-neutral-600 dark:text-neutral-400" : ""}`}>
+          <p
+            className={`text-base font-medium ${done ? "text-neutral-600 dark:text-neutral-400" : ""}`}
+          >
             <span className="sr-only">{done ? "Done" : "To do"} — </span>
             {title}
           </p>
@@ -88,9 +97,9 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         to="/catalog/vendors?view=map&place=location"
         action="Open the map"
       >
-        Dropping a pin names the shop and its location together, so this is one step rather
-        than two. The map opens ready to place, and stays a plain background until map tiles
-        are installed — pins work either way.
+        Dropping a pin names the shop and its location together, so this is one step rather than
+        two. The map opens ready to place, and stays a plain background until map tiles are
+        installed — pins work either way.
       </Step>
       <Step
         done={false}
@@ -107,8 +116,8 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         <Link to="/shop/receipts" className={`rounded underline ${focusRing}`}>
           upload receipts
         </Link>{" "}
-        and their lines are read for you. Products, and the ingredients behind them, are
-        created as you go. There is nothing to set up first.
+        and their lines are read for you. Products, and the ingredients behind them, are created as
+        you go. There is nothing to set up first.
       </Step>
     </ol>
   );

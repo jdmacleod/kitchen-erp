@@ -27,7 +27,9 @@ async function indexExamples(page: Page): Promise<void> {
   expect(body.counts.ok).toBeGreaterThanOrEqual(EXAMPLES);
 }
 
-test("the list shows every example with its title, path and badge, and filters live in the URL", async ({ page }) => {
+test("the list shows every example with its title, path and badge, and filters live in the URL", async ({
+  page,
+}) => {
   await login(page);
   await indexExamples(page);
   await page.goto("/cook/recipes");
@@ -47,7 +49,10 @@ test("the list shows every example with its title, path and badge, and filters l
   await expect(rows).toHaveCount(1);
 
   // The status control writes ?status=; no example is missing, so the list says what it filtered.
-  await page.getByRole("group", { name: "Status" }).getByRole("button", { name: /^Missing/ }).click();
+  await page
+    .getByRole("group", { name: "Status" })
+    .getByRole("button", { name: /^Missing/ })
+    .click();
   await expect(page).toHaveURL(/[?&]status=missing/);
   await expect(page.getByText("No recipes match ‘risotto’ that are missing")).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click();
@@ -56,10 +61,14 @@ test("the list shows every example with its title, path and badge, and filters l
 
   // A filter arriving by URL is honoured: ?completeness=incomplete selects that segment.
   await page.goto("/cook/recipes?completeness=incomplete");
-  await expect(page.getByRole("group", { name: "Completeness" }).getByRole("button", { name: "Incomplete" })).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Completeness" }).getByRole("button", { name: "Incomplete" }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
-test("the recipe page shows the cost table with a line per ingredient and a basis control in the URL", async ({ page }) => {
+test("the recipe page shows the cost table with a line per ingredient and a basis control in the URL", async ({
+  page,
+}) => {
   await login(page);
   await indexExamples(page);
   await page.goto("/cook/recipes?q=risotto");
@@ -83,11 +92,16 @@ test("the recipe page shows the cost table with a line per ingredient and a basi
   // The basis control (UI-7.8): Latest is the default and absent from the URL;
   // another basis is kept in ?basis= and survives a reload.
   const basis = page.getByRole("group", { name: "Basis" });
-  await expect(basis.getByRole("button", { name: "Latest" })).toHaveAttribute("aria-pressed", "true");
+  await expect(basis.getByRole("button", { name: "Latest" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await basis.getByRole("button", { name: "Cheapest" }).click();
   await expect(page).toHaveURL(/[?&]basis=cheapest/);
   await page.reload();
-  await expect(page.getByRole("group", { name: "Basis" }).getByRole("button", { name: "Cheapest" })).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("group", { name: "Basis" }).getByRole("button", { name: "Cheapest" }),
+  ).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("table", { name: "Cost by line" })).toBeVisible();
 
   // The rendered recipe is there too, with its sections as headings.
@@ -109,7 +123,9 @@ test("the cost table reads without horizontal scroll at 390px", async ({ page },
   expect(deviceWidth).toBe(390);
   const { scrollWidth, tableWidth } = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
-    tableWidth: document.querySelector('[role=table][aria-label="Cost by line"]')?.getBoundingClientRect().width ?? 0,
+    tableWidth:
+      document.querySelector('[role=table][aria-label="Cost by line"]')?.getBoundingClientRect()
+        .width ?? 0,
   }));
   expect(scrollWidth, "the recipe page scrolls sideways").toBeLessThanOrEqual(390);
   expect(tableWidth, "the cost table is wider than the viewport").toBeLessThanOrEqual(390);
@@ -125,7 +141,9 @@ test("the cost table reads without horizontal scroll at 390px", async ({ page },
  */
 const LEAVE_UNRESOLVED = new Set(["arborio rice", "water"]);
 
-test("resolving a name on the resolve page writes the spelling and the recipe page shows the ingredient", async ({ page }, testInfo) => {
+test("resolving a name on the resolve page writes the spelling and the recipe page shows the ingredient", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "one decision per name across the shared backend");
   await login(page);
   await indexExamples(page);
@@ -135,7 +153,9 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
   // The first group not reserved by another spec: most-used first, with its recipes as links.
   const rows = page.getByTestId("resolve-row");
   await expect(rows.first()).toBeVisible();
-  const names = await rows.evaluateAll((els) => els.map((el) => el.getAttribute("data-resolve-row") ?? ""));
+  const names = await rows.evaluateAll((els) =>
+    els.map((el) => el.getAttribute("data-resolve-row") ?? ""),
+  );
   const name = names.find((n) => !LEAVE_UNRESOLVED.has(n));
   expect(name, "a queued name no other spec relies on").toBeTruthy();
   const row = page.locator(`[data-resolve-row="${name}"]`);
@@ -153,7 +173,9 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
   await expect(options.first()).toBeVisible();
   // The option whose name is exactly this one (the list also ranks longer
   // standard names that start with it), never the first that merely begins with it.
-  const named = options.filter({ has: page.locator("span.font-medium", { hasText: new RegExp(`^${name}$`, "i") }) });
+  const named = options.filter({
+    has: page.locator("span.font-medium", { hasText: new RegExp(`^${name}$`, "i") }),
+  });
   if ((await named.count()) > 0) {
     await named.first().click();
   } else {
@@ -168,8 +190,12 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
   await expect(row).toHaveCount(0);
   const counts = page.getByTestId("resolve-counts");
   await expect.poll(async () => (await rows.count()) < before).toBe(true);
-  await expect.poll(async () => (await counts.textContent())?.startsWith(`${await rows.count()} name`)).toBe(true);
-  await expect(page.getByTestId("notice")).toContainText(new RegExp(`Resolved '${name}' as .+ in \\d+ recipes?\\. \\d+ left\\.`, "i"));
+  await expect
+    .poll(async () => (await counts.textContent())?.startsWith(`${await rows.count()} name`))
+    .toBe(true);
+  await expect(page.getByTestId("notice")).toContainText(
+    new RegExp(`Resolved '${name}' as .+ in \\d+ recipes?\\. \\d+ left\\.`, "i"),
+  );
 
   // That recipe's page shows the ingredient on the line, in words.
   // The decision recomputed every recipe using the name; the page costs the rest inline.
@@ -178,7 +204,10 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
   const table = page.getByRole("table", { name: "Cost by line" });
   await expect(table).toBeVisible();
   // The row whose ingredient cell links the ingredient by that exact name.
-  const line = table.getByTestId("cost-row").filter({ has: page.getByRole("link", { name: new RegExp(`^${name}$`, "i") }) }).first();
+  const line = table
+    .getByTestId("cost-row")
+    .filter({ has: page.getByRole("link", { name: new RegExp(`^${name}$`, "i") }) })
+    .first();
   await expect(line).toBeVisible();
   await expect(line).toContainText(name!);
   await expect(line).not.toContainText("Needs an ingredient");
@@ -199,11 +228,16 @@ test("resolve rows stack at 390px with the count strip pinned", async ({ page },
   expect(scrollWidth, "the resolve page scrolls sideways").toBeLessThanOrEqual(390);
 
   // Every row fits the device width, and its controls are 44px targets.
-  for (const box of await rows.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width))) {
+  for (const box of await rows.evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect().width),
+  )) {
     expect(box).toBeLessThanOrEqual(390);
   }
   const first = rows.first();
-  for (const control of [first.getByRole("combobox", { name: "Choose an ingredient" }), first.getByRole("button", { name: "Not an ingredient" })]) {
+  for (const control of [
+    first.getByRole("combobox", { name: "Choose an ingredient" }),
+    first.getByRole("button", { name: "Not an ingredient" }),
+  ]) {
     const box = await control.boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   }

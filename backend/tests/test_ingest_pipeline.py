@@ -92,7 +92,7 @@ def _assert_lines_match(lines: list[PurchaseLine], expected: list[dict]) -> None
 
 
 @pytest.mark.parametrize("name", fixture_names())
-async def test_fixture_advances_to_review(
+async def test_fixture_advances_to_review(  # noqa: PLR0915
     name: str,
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,
@@ -485,7 +485,7 @@ async def test_rerunning_lines_keeps_one_purchase(
         await db.commit()
     rerun = await run_job(job["id"])
     assert rerun.stage == "review" and rerun.purchase_id == first_purchase_id
-    purchase, lines = await _purchase_with_lines(str(first_purchase_id))
+    purchase, lines = await _purchase_with_lines(str(first_purchase_id))  # noqa: RUF059
     assert len(lines) == len(first_lines) == len(fixture.expected_lines)
     assert {line.id for line in lines}.isdisjoint({line.id for line in first_lines})
     _assert_lines_match(lines, fixture.expected_lines)
@@ -501,7 +501,7 @@ async def test_rerunning_lines_keeps_one_purchase(
             .all()
         )
     assert len(purchases) == 1
-    assert sorted(r.stage for r in results) == sorted(STAGES + ["lines", "resolve"])
+    assert sorted(r.stage for r in results) == sorted(STAGES + ["lines", "resolve"])  # noqa: RUF005
 
 
 async def test_vendor_parser_is_consulted_first(

@@ -124,9 +124,7 @@ def digest(salt: bytes, entry: str) -> str:
     return hashlib.sha256(salt + entry.encode("utf-8")).hexdigest()
 
 
-def write_hashes(
-    entries: list[str], salt: bytes, path: Path = HASHES_PATH
-) -> tuple[int, int]:
+def write_hashes(entries: list[str], salt: bytes, path: Path = HASHES_PATH) -> tuple[int, int]:
     """Write the committed digest file. Returns (entries, distinct lengths)."""
     payload = sorted(set(entries) | {CANARY})
     rows = sorted((len(e), digest(salt, e)) for e in payload)
@@ -215,7 +213,7 @@ class Denylist:
     def _find_hashed(self, lowered: str) -> list[str]:
         hits: list[str] = []
         salt = self.salt
-        assert salt is not None
+        assert salt is not None  # noqa: S101
         misses = self._misses
         memo_open = len(misses) < MEMO_LIMIT
         for run in ALPHABET_RUN.finditer(lowered):
@@ -229,9 +227,7 @@ class Denylist:
                     window = text[start : start + length]
                     if window in misses:
                         continue
-                    if hashlib.sha256(salt + window.encode("utf-8")).hexdigest() in (
-                        bucket
-                    ):
+                    if hashlib.sha256(salt + window.encode("utf-8")).hexdigest() in (bucket):
                         hits.append(window)
                     elif memo_open:
                         misses.add(window)
@@ -351,15 +347,9 @@ def _write() -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--write", action="store_true", help="regenerate the digests from cleartext"
-    )
-    group.add_argument(
-        "--self-test", action="store_true", help="prove salt and digests agree"
-    )
-    group.add_argument(
-        "--status", action="store_true", help="report which tier would run"
-    )
+    group.add_argument("--write", action="store_true", help="regenerate the digests from cleartext")
+    group.add_argument("--self-test", action="store_true", help="prove salt and digests agree")
+    group.add_argument("--status", action="store_true", help="report which tier would run")
     args = parser.parse_args(argv)
     if args.write:
         return _write()

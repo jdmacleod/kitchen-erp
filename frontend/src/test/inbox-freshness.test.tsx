@@ -1,5 +1,5 @@
-import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClientProvider, useMutation } from "@tanstack/react-query";
+import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { useInbox, type Inbox, type InboxItem } from "../api/inbox";
@@ -33,12 +33,16 @@ describe("inbox freshness", () => {
       "POST /to-identify/apply": () => jsonResponse(200, { applied: 1 }),
     });
     const client = createQueryClient({ retry: false });
-    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
 
     const { result } = renderHook(
       () => ({
         inbox: useInbox(),
-        apply: useMutation({ mutationFn: () => fetch("/api/v1/to-identify/apply", { method: "POST" }) }),
+        apply: useMutation({
+          mutationFn: () => fetch("/api/v1/to-identify/apply", { method: "POST" }),
+        }),
       }),
       { wrapper },
     );

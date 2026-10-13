@@ -1,7 +1,7 @@
 import { screen, waitFor } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { buildIdentity } from "../components/HealthStatus";
 import type { Health } from "../api/types";
+import { buildIdentity } from "../components/HealthStatus";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
 
 function health(extra: Partial<Health> = {}): Health {
@@ -12,7 +12,9 @@ function mountWith(healthBody: unknown) {
   mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () =>
-      healthBody === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, healthBody),
+      healthBody === null
+        ? errorResponse(503, "unavailable", "down")
+        : jsonResponse(200, healthBody),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });
   renderApp("/shop/purchases");
@@ -26,7 +28,7 @@ describe("build identity line", () => {
     expect(line).toHaveTextContent("a1b2c3d · v0.2.0");
     // The sha identifies the build and is the half that survives a wrap, so it
     // leads. Order is the point of this assertion, not the text.
-    expect(line.textContent!.indexOf("a1b2c3d")).toBeLessThan(line.textContent!.indexOf("v0.2.0"));
+    expect(line.textContent.indexOf("a1b2c3d")).toBeLessThan(line.textContent.indexOf("v0.2.0"));
     expect(screen.queryByText("dev")).not.toBeInTheDocument();
   });
 

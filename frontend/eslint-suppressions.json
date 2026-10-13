@@ -1,0 +1,1447 @@
+{
+  "src/api/catalog.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 2
+    },
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    }
+  },
+  "src/api/client.ts": {
+    "@typescript-eslint/no-misused-spread": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/api/geo.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 1
+    }
+  },
+  "src/api/ingest.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/api/purchases.ts": {
+    "@typescript-eslint/no-redundant-type-constituents": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/api/queries.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 3
+    }
+  },
+  "src/api/recipes.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 2
+    }
+  },
+  "src/api/shoppingList.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 1
+    }
+  },
+  "src/api/trips.ts": {
+    "@typescript-eslint/no-invalid-void-type": {
+      "count": 1
+    }
+  },
+  "src/auth/RequireAuth.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/components/AppShell.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/CategoryChip.tsx": {
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "src/components/Drawer.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    }
+  },
+  "src/components/Notice.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/components/RedirectTo.tsx": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/components/SearchPalette.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/BridgeEditor.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/components/catalog/Combobox.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/IngredientMergePanel.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/IngredientPicker.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/ProductMergePanel.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/ProductPhotosCard.tsx": {
+    "@typescript-eslint/no-unnecessary-type-assertion": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/img-redundant-alt": {
+      "count": 3
+    }
+  },
+  "src/components/catalog/ProductTypeahead.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/components/catalog/TestBench.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    }
+  },
+  "src/components/catalog/UsdaSuggestions.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/components/chrome.ts": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 3
+    }
+  },
+  "src/components/cook/CostTable.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/components/cook/NameDecision.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/components/cook/PinPicker.tsx": {
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/components/cook/RemoveRecipe.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/components/cook/RenderedRecipe.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/components/cook/SnapshotChart.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/components/geo/CoordinatesField.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    }
+  },
+  "src/components/geo/DraftPointControl.tsx": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    }
+  },
+  "src/components/geo/LinkOsmDialog.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/components/geo/MapView.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/geo/OpeningHoursInput.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/geo/SuggestionReviewDrawer.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 6
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/geo/VendorImportDrawer.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    }
+  },
+  "src/components/geo/VendorPicker.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/components/landing/InboxList.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/components/plan/AddFromRecipeDrawer.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    }
+  },
+  "src/components/plan/AddItemRow.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/plan/AddToListPanel.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    }
+  },
+  "src/components/plan/EditItemDrawer.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    }
+  },
+  "src/components/plan/KitchenSwitcher.tsx": {
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/plan/ListItemRow.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/plan/PlanTripDrawer.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 5
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/plan/StopRows.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/components/pricebook/PriceHistoryChart.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/pricebook/PriceRecords.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/components/pricebook/QuickPackEditor.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/CorrectLines.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 3
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/LocationSelect.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/NameProducts.tsx": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/components/purchases/ProductPicker.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 4
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/PurchaseForm.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/role-supports-aria-props": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/RereadLines.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/components/purchases/ReviewPurchase.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 9
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 13
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 4
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 3
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "src/components/ui.tsx": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "src/lib/decimal.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    }
+  },
+  "src/lib/ingestErrors.ts": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    }
+  },
+  "src/lib/kitchen.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/lib/openingHours.ts": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 4
+    }
+  },
+  "src/lib/useMediaQuery.ts": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/main.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/pages/HomePage.tsx": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/pages/LoginPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/pages/capture/ClipPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 5
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 1
+    },
+    "@typescript-eslint/use-unknown-in-catch-callback-variable": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/IngredientDetailPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/pages/catalog/IngredientLinkPage.tsx": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    },
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/IngredientsPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/pages/catalog/PhotographProductPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/ProductDetailPage.tsx": {
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/ProductForm.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/ProductReviewPage.tsx": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 2
+    },
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 11
+    },
+    "@typescript-eslint/prefer-nullish-coalescing": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 4
+    },
+    "jsx-a11y/img-redundant-alt": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/catalog/ProductsPage.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/pages/cook/RecipeDetailPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/cook/RecipesPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/cook/ResolveRecipesPage.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/pages/geo/MapPage.tsx": {
+    "@typescript-eslint/consistent-type-definitions": {
+      "count": 1
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/pages/geo/VendorDetailPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 4
+    }
+  },
+  "src/pages/geo/VendorsPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/prefer-optional-chain": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    }
+  },
+  "src/pages/plan/ListPage.tsx": {
+    "complexity": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/plan/StopPage.tsx": {
+    "@typescript-eslint/no-dynamic-delete": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/plan/TripDetailPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/plan/TripsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/pages/pricebook/ComparePage.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/pricebook/NeedsBridgePage.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/pricebook/UsdaReviewSection.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/purchases/NewPurchasePage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/pages/purchases/PurchaseDetailPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/purchases/PurchasesPage.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-type-conversion": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/purchases/ReceiptsPage.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/pages/purchases/RereadPage.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "complexity": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/purchases/ShelfPricePage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 2
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/purchases/ToIdentifyPage.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/settings/CapturePage.tsx": {
+    "jsx-a11y/anchor-is-valid": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/pages/settings/HomeBasesPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/pages/settings/SystemPage.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 2
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    }
+  },
+  "src/pages/settings/TokensPage.tsx": {
+    "@typescript-eslint/no-deprecated": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/pages/settings/UsersPage.tsx": {
+    "@typescript-eslint/no-confusing-void-expression": {
+      "count": 1
+    },
+    "@typescript-eslint/no-deprecated": {
+      "count": 2
+    },
+    "complexity": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/test/bookmarklet-run.test.tsx": {
+    "@typescript-eslint/no-implied-eval": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unsafe-call": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unsafe-member-access": {
+      "count": 8
+    },
+    "@typescript-eslint/require-await": {
+      "count": 3
+    }
+  },
+  "src/test/build-identity.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/categories.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/clip.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/cook-recipe-page.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 6
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/cook-recipes.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    }
+  },
+  "src/test/cook-resolve.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/devex-fixes.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/drawer.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/health-dot.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/helpers.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    }
+  },
+  "src/test/home.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/inbox-freshness.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/test/ingredient-hub.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/ingredient-link.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/ingredient-page-merge.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/ingredients.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/kitchen-switcher.test.tsx": {
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/test/link-osm.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/location-guard.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/test/map-worker.test.ts": {
+    "@typescript-eslint/no-unsafe-assignment": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-return": {
+      "count": 1
+    },
+    "import-x/order": {
+      "count": 1
+    }
+  },
+  "src/test/map.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 2
+    }
+  },
+  "src/test/maplibre-stub.ts": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    },
+    "@typescript-eslint/no-extraneous-class": {
+      "count": 1
+    }
+  },
+  "src/test/name-products.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/navigation.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/needs-photo.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/new-version.test.tsx": {
+    "@typescript-eslint/no-misused-spread": {
+      "count": 1
+    }
+  },
+  "src/test/notice.test.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 3
+    }
+  },
+  "src/test/outage.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/test/page-error-boundary.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/test/plan-add-to-list.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/plan-home-panel.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/plan-list.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "@typescript-eslint/prefer-find": {
+      "count": 1
+    },
+    "@typescript-eslint/require-await": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/plan-stop.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 6
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/plan-trip-detail.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/plan-trips.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/price-book.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/price-records.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    }
+  },
+  "src/test/product-photos.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/product-review.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 7
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/products-page.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/products.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/purchase-entry.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/purchases-find-sort.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    }
+  },
+  "src/test/purchases-reading.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 2
+    }
+  },
+  "src/test/purchases.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/receipt-image.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/receipts.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/recipe-fixtures.ts": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/remember-code.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/remove-purchase.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/review-lines-table.regression-1.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    }
+  },
+  "src/test/review-phone.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 3
+    }
+  },
+  "src/test/review-price-basis.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    }
+  },
+  "src/test/review.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 1
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 4
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/shelf-price.test.tsx": {
+    "@typescript-eslint/no-empty-function": {
+      "count": 3
+    },
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 3
+    }
+  },
+  "src/test/store-brand-notes.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 2
+    }
+  },
+  "src/test/suggestion-review.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/to-identify.test.tsx": {
+    "max-lines-per-function": {
+      "count": 1
+    }
+  },
+  "src/test/ux-polish.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    }
+  },
+  "src/test/vendors.test.tsx": {
+    "@typescript-eslint/no-non-null-assertion": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unsafe-argument": {
+      "count": 2
+    },
+    "max-lines-per-function": {
+      "count": 1
+    }
+  }
+}

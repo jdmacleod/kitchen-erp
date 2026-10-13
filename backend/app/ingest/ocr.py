@@ -127,7 +127,7 @@ class TesseractAdapter:
                 try:
                     import subprocess
 
-                    out = subprocess.run(
+                    out = subprocess.run(  # noqa: S603
                         [self.command, "--version"],
                         capture_output=True,
                         text=True,
@@ -209,7 +209,7 @@ class VisionOcrAdapter:
     """
 
     name = "vision"
-    REASON_BY_MISSING = {
+    REASON_BY_MISSING = {  # noqa: RUF012
         "not_found": "vision_model_missing",
         "not_multimodal": "vision_model_text_only",
     }

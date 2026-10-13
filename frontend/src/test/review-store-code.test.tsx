@@ -36,24 +36,47 @@ describe("remember store code", () => {
   it("shows the printed line and remembers the code in place", async () => {
     const calls = render(() => jsonResponse(200, offer));
     const user = userEvent.setup();
-    expect(await screen.findByText("STORE 0217 TERM ••••", { normalizer: (t) => t.replace(/\s+/g, " ") })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: `Remember 0217 for ${chainLocation.name}` }));
-    await waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toEqual({ code: "0217" }));
-    expect(await screen.findByText(`Remembered 0217 for ${chainLocation.name}.`)).toBeInTheDocument();
+    expect(
+      await screen.findByText("STORE 0217 TERM ••••", {
+        normalizer: (t) => t.replace(/\s+/g, " "),
+      }),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: `Remember 0217 for ${chainLocation.name}` }),
+    );
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toEqual({ code: "0217" }),
+    );
+    expect(
+      await screen.findByText(`Remembered 0217 for ${chainLocation.name}.`),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Remember 0217/ })).not.toBeInTheDocument();
   });
 
   it("says why when the code is no longer on offer, and keeps the button", async () => {
-    render(() => errorResponse(409, "store_code_not_offered", "That store code is not on offer for this receipt any more."));
+    render(() =>
+      errorResponse(
+        409,
+        "store_code_not_offered",
+        "That store code is not on offer for this receipt any more.",
+      ),
+    );
     const user = userEvent.setup();
-    const button = await screen.findByRole("button", { name: `Remember 0217 for ${chainLocation.name}` });
+    const button = await screen.findByRole("button", {
+      name: `Remember 0217 for ${chainLocation.name}`,
+    });
     await user.click(button);
     expect(await screen.findByRole("alert")).toHaveTextContent("not on offer");
-    expect(screen.getByRole("button", { name: `Remember 0217 for ${chainLocation.name}` })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: `Remember 0217 for ${chainLocation.name}` }),
+    ).toBeEnabled();
   });
 
   it("offers nothing on a committed purchase", async () => {
-    const calls = render(() => jsonResponse(200, offer), { ...receiptPurchase, status: "committed" });
+    const calls = render(() => jsonResponse(200, offer), {
+      ...receiptPurchase,
+      status: "committed",
+    });
     await screen.findByRole("heading", { level: 1 });
     await waitFor(() => expect(calls.some((c) => c.path.startsWith("/purchases/"))).toBe(true));
     expect(screen.queryByRole("button", { name: /Remember 0217/ })).not.toBeInTheDocument();

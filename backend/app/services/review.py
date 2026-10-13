@@ -386,10 +386,10 @@ class ReadRow(LineRow):
     """
 
     unit_price: Decimal | None = None
-    flags: list[str] = []
+    flags: list[str] = []  # noqa: RUF012
 
 
-async def apply_rows(
+async def apply_rows(  # noqa: C901
     db: AsyncSession, user: AppUser, purchase, rows: list[LineRow]
 ) -> list[PurchaseLine]:
     """The lines of a locked, editable purchase made to read as ``rows``, in order.

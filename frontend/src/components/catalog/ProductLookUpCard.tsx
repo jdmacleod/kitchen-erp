@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { api, errorMessage } from "../../api/client";
+import { useState } from "react";
 import type { Product } from "../../api/catalog";
+import { api, errorMessage } from "../../api/client";
 import { useProductsHelper } from "../../api/proposals";
 import { Alert, Button, Card, Field } from "../ui";
 
@@ -21,7 +21,8 @@ export function ProductLookUpCard({ product }: { product: Product }) {
     mutationFn: (what: LookUp) =>
       api(`/products/${encodeURIComponent(product.id)}/look-up`, {
         method: "POST",
-        body: what === null ? {} : "pageUrl" in what ? { page_url: what.pageUrl } : { by_name: true },
+        body:
+          what === null ? {} : "pageUrl" in what ? { page_url: what.pageUrl } : { by_name: true },
       }),
     onSuccess: (_, what) => {
       setSent(
@@ -40,19 +41,28 @@ export function ProductLookUpCard({ product }: { product: Product }) {
     <Card>
       <h2 className="mb-1 text-lg font-medium">Look this up online</h2>
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-        A photo, the name and the size from the barcode or a store's page{product.barcode || !product.brand ? "" : ", or a search by name"}. What the helper finds waits
-        on Home for review.
+        A photo, the name and the size from the barcode or a store's page
+        {product.barcode || !product.brand ? "" : ", or a search by name"}. What the helper finds
+        waits on Home for review.
       </p>
       <div className="flex flex-col gap-3">
         {product.barcode ? (
           <div>
-            <Button variant="secondary" disabled={lookUp.isPending} onClick={() => lookUp.mutate(null)}>
+            <Button
+              variant="secondary"
+              disabled={lookUp.isPending}
+              onClick={() => lookUp.mutate(null)}
+            >
               Look up its barcode
             </Button>
           </div>
         ) : product.brand ? (
           <div>
-            <Button variant="secondary" disabled={lookUp.isPending} onClick={() => lookUp.mutate({ byName: true })}>
+            <Button
+              variant="secondary"
+              disabled={lookUp.isPending}
+              onClick={() => lookUp.mutate({ byName: true })}
+            >
               Search by name
             </Button>
           </div>
@@ -76,7 +86,11 @@ export function ProductLookUpCard({ product }: { product: Product }) {
               onChange={(e) => setPage(e.target.value)}
             />
           </div>
-          <Button type="submit" variant="secondary" disabled={lookUp.isPending || !/^https?:\/\//i.test(address)}>
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={lookUp.isPending || !/^https?:\/\//i.test(address)}
+          >
             Read this page
           </Button>
         </form>

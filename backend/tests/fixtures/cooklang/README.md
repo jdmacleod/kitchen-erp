@@ -1,7 +1,7 @@
 # Cooklang canonical test suite (vendored)
 
 `canonical.yaml` and `LICENSE` are copied from the Cooklang specification
-repository, https://github.com/cooklang/spec, at commit
+repository, <https://github.com/cooklang/spec>, at commit
 `f08832362abec6b16db8eb5ae6b421edd6813989` (2026-09-30), from
 `tests/canonical.yaml` and `LICENSE`. The only change is that this
 repository's pre-commit hook strips trailing spaces at line ends; the YAML

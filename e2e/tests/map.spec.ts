@@ -7,7 +7,6 @@ import { login, watchExternalRequests, nextTag } from "./helpers";
 // SECURITY.md (lat 33–34, lon -121 to -120); ?center= opens the map there so a
 // click on it lands in the box whatever else the dev database holds.
 const stamp = nextTag();
-const BOX = "/catalog/vendors?view=map&center=33.500000,-120.500000&zoom=12";
 
 // The household zone; the open-at instants below are Saturdays 09:00 there.
 test.use({ timezoneId: "America/Los_Angeles" });
@@ -38,14 +37,19 @@ function freshView(): string {
   return `/catalog/vendors?view=map&center=${lat.toFixed(6)},${lon.toFixed(6)}&zoom=12`;
 }
 
-test("with no tiles: notice, pins, no external requests, create by pin drop, readable detail", async ({ page, baseURL }) => {
+test("with no tiles: notice, pins, no external requests, create by pin drop, readable detail", async ({
+  page,
+  baseURL,
+}) => {
   const external = watchExternalRequests(page, baseURL ?? "http://127.0.0.1:8082");
   await login(page);
   const view = freshView();
   await page.goto(view);
 
   await expect(page.getByText(/Map tiles are missing; see docs\/tiles\.md/)).toBeVisible();
-  await expect(page.getByTestId("map-attribution")).toHaveText("© OpenStreetMap contributors © Protomaps");
+  await expect(page.getByTestId("map-attribution")).toHaveText(
+    "© OpenStreetMap contributors © Protomaps",
+  );
 
   // A kitchen by pin drop plus a name.
   const homeName = `E2E cabin ${stamp}`;
@@ -77,7 +81,9 @@ test("with no tiles: notice, pins, no external requests, create by pin drop, rea
   await expect(panel).toContainText(locationName);
   await expect(panel).toContainText(vendorName);
   await expect(panel).toContainText("Hours unknown");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 
   // Selecting again from a fresh load also works by tapping the pin itself.
   // The same view as the drop, so the pin is drawn exactly where it was
@@ -88,24 +94,43 @@ test("with no tiles: notice, pins, no external requests, create by pin drop, rea
   await expect(again).toBeVisible();
   // Measured within the map: the placing hint above it has gone, so the map
   // itself sits higher on the page than it did at the drop.
-  const [drawn, map] = await Promise.all([again.boundingBox(), page.getByTestId("map-canvas").boundingBox()]);
+  const [drawn, map] = await Promise.all([
+    again.boundingBox(),
+    page.getByTestId("map-canvas").boundingBox(),
+  ]);
   expect(drawn && map, "the pin and the map have boxes").toBeTruthy();
-  expect(Math.abs(drawn!.x + drawn!.width / 2 - map!.x - dropped.x), "pin x against the drop").toBeLessThan(6);
-  expect(Math.abs(drawn!.y + drawn!.height / 2 - map!.y - dropped.y), "pin y against the drop").toBeLessThan(6);
+  expect(
+    Math.abs(drawn!.x + drawn!.width / 2 - map!.x - dropped.x),
+    "pin x against the drop",
+  ).toBeLessThan(6);
+  expect(
+    Math.abs(drawn!.y + drawn!.height / 2 - map!.y - dropped.y),
+    "pin y against the drop",
+  ).toBeLessThan(6);
   await again.click();
   await expect(page.getByTestId("location-panel")).toContainText(locationName);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 
   expect(external).toEqual([]);
 });
 
-test("open-at hides a seasonal stall in January and shows it on a July Saturday morning", async ({ page }) => {
+test("open-at hides a seasonal stall in January and shows it on a July Saturday morning", async ({
+  page,
+}) => {
   await login(page);
   const headers = (key: string) => ({ "Idempotency-Key": `e2e-map-${stamp}-${key}` });
 
   const marketName = `E2E pier market ${stamp}`;
   const market = await page.request.post("/api/v1/vendor-locations", {
-    data: { vendor: { name: marketName, kind: "market" }, name: marketName, lat: "33.520000", lon: "-120.480000", opening_hours: "Sa 08:00-13:00" },
+    data: {
+      vendor: { name: marketName, kind: "market" },
+      name: marketName,
+      lat: "33.520000",
+      lon: "-120.480000",
+      opening_hours: "Sa 08:00-13:00",
+    },
     headers: headers("market"),
   });
   expect(market.status()).toBe(201);
@@ -125,7 +150,9 @@ test("open-at hides a seasonal stall in January and shows it on a July Saturday 
   });
   expect(stall.status()).toBe(201);
 
-  await page.goto(`/catalog/vendors?view=map&location=${marketId}&center=33.520000,-120.480000&zoom=13`);
+  await page.goto(
+    `/catalog/vendors?view=map&location=${marketId}&center=33.520000,-120.480000&zoom=13`,
+  );
   const panel = page.getByTestId("location-panel");
   await expect(panel).toContainText(marketName);
   await expect(panel.getByRole("list", { name: "Stalls" })).toContainText(stallName);
@@ -152,6 +179,9 @@ test("the placing deep-link applies once and then leaves the URL alone", async (
   await login(page);
   await page.goto("/catalog/vendors?view=map&place=location");
 
-  await expect(page.getByRole("button", { name: "Add location here" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Add location here" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page).not.toHaveURL(/place=/);
 });

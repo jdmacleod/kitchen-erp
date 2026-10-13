@@ -61,8 +61,40 @@ markers = [
 line-length = 100
 target-version = "py312"
 
+# One rule set for backend/ and tools/ (tools/ruff.toml extends this file). The
+# rules, the families left out and the noqa baseline are explained in
+# CODING_STANDARDS.md, section 3. Existing findings carry `# noqa` comments that
+# may only be removed.
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "C4", "SIM", "PLW"]
+select = [
+    "E", "F", "W", "I", "B", "UP", "C4", "SIM", "PLW", "PLE",
+    "PLR0912", "PLR0915", "C90", "RUF", "ASYNC", "PT", "S", "TID", "PTH", "ERA",
+]
+ignore = [
+    # One `assert a and b` per check reads fine in a test; splitting ~930 of them
+    # buys nothing.
+    "PT018",
+]
+# Receipt and recipe text is typographic: quantities use ×, ranges an en dash,
+# and the parsers name the quote, minus and fraction characters they handle.
+allowed-confusables = ["×", "–", "−", "’", "‘", "ʼ", "´", "⁄"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 12
+
+[tool.ruff.lint.pylint]
+max-statements = 50
+max-branches = 15
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert, and build their SQL from fixed fragments. Blocking file and
+# process calls (ASYNC2xx) only matter on the server's event loop, not in a test,
+# a one-shot `kerp` command or a script.
+"tests/**" = ["S101", "S608", "ASYNC2"]
+"app/cli.py" = ["ASYNC2"]
+"scripts/**" = ["ASYNC2"]
+# Migrations compose DDL and backfills from constants in the migration itself.
+"alembic/versions/**" = ["S608"]
 
 # ty is advisory (CODING_STANDARDS.md, Python): `make types` and the CI job
 # "Types (advisory)" report its findings without failing anything.

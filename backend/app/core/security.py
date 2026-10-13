@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 
 _hasher = PasswordHasher()  # argon2id with the library's current defaults
 
-API_TOKEN_PREFIX = "kerp_"
+API_TOKEN_PREFIX = "kerp_"  # noqa: S105
 
 
 def hash_password(password: str) -> str:

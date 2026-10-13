@@ -1,0 +1,86 @@
+{
+  "capture/screenshots.spec.ts": {
+    "playwright/no-networkidle": {
+      "count": 1
+    },
+    "playwright/no-wait-for-timeout": {
+      "count": 1
+    }
+  },
+  "tests/build-identity.spec.ts": {
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    }
+  },
+  "tests/clip.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "tests/contrast.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 3
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 3
+    },
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "tests/narrow-phone.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 2
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 2
+    },
+    "playwright/no-networkidle": {
+      "count": 1
+    },
+    "playwright/no-skipped-test": {
+      "count": 2
+    }
+  },
+  "tests/plan-list.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 11
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 3
+    },
+    "playwright/no-networkidle": {
+      "count": 1
+    },
+    "playwright/no-skipped-test": {
+      "count": 1
+    }
+  },
+  "tests/plan-trips.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 4
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 7
+    }
+  },
+  "tests/recipes.spec.ts": {
+    "playwright/no-conditional-expect": {
+      "count": 1
+    },
+    "playwright/no-conditional-in-test": {
+      "count": 1
+    },
+    "playwright/no-networkidle": {
+      "count": 2
+    },
+    "playwright/no-skipped-test": {
+      "count": 3
+    }
+  },
+  "tests/shelf-price.spec.ts": {
+    "playwright/no-skipped-test": {
+      "count": 2
+    }
+  }
+}

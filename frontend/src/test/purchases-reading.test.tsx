@@ -6,7 +6,13 @@ import type { Purchase } from "../api/purchases";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 import { manualPurchase } from "./purchase-fixtures";
 
-const draft: Purchase = { ...manualPurchase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8a01", status: "draft", source: "receipt", vendor_location: null };
+const draft: Purchase = {
+  ...manualPurchase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8a01",
+  status: "draft",
+  source: "receipt",
+  vendor_location: null,
+};
 const readingJob: IngestJob = {
   id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a01",
   stage: "ocr",
@@ -16,13 +22,23 @@ const readingJob: IngestJob = {
   created_at: "2026-09-25T09:00:00Z",
 };
 // Past the lines stage: its draft exists, though the job is still running.
-const runningWithDraft: IngestJob = { ...readingJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a02", stage: "resolve", status: "running", purchase_id: draft.id };
+const runningWithDraft: IngestJob = {
+  ...readingJob,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a02",
+  stage: "resolve",
+  status: "running",
+  purchase_id: draft.id,
+};
 
 function routes() {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
-    "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 1, oldest_at: readingJob.created_at, stalled: false } }),
+    "GET /inbox": () =>
+      jsonResponse(200, {
+        items: [],
+        reading: { count: 1, oldest_at: readingJob.created_at, stalled: false },
+      }),
     "GET /purchases": (call: RecordedCall) => {
       const status = call.query.get("status");
       if (status === "draft") return jsonResponse(200, { items: [draft], next_cursor: null });
@@ -39,7 +55,10 @@ function routes() {
   };
 }
 
-const rows = () => within(screen.getByRole("table", { name: "Purchases" })).getAllByRole("row").slice(1);
+const rows = () =>
+  within(screen.getByRole("table", { name: "Purchases" }))
+    .getAllByRole("row")
+    .slice(1);
 
 describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
   it("lists a receipt being read as a row with a Reading pill, linked to its job", async () => {
@@ -49,7 +68,10 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
     const reading = await screen.findByTestId("reading-row");
     expect(reading).toHaveTextContent("Reading");
     expect(reading).toHaveTextContent("Uploaded Sep 25, 2026");
-    expect(within(reading).getByRole("link")).toHaveAttribute("href", `/shop/receipts?job=${readingJob.id}`);
+    expect(within(reading).getByRole("link")).toHaveAttribute(
+      "href",
+      `/shop/receipts?job=${readingJob.id}`,
+    );
     // The running job that already made its draft is listed as that draft, once.
     expect(screen.getAllByTestId("reading-row")).toHaveLength(1);
     expect(rows()).toHaveLength(3);
@@ -67,7 +89,10 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
     expect(within(filter).getByRole("button", { name: "Drafts 1" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /1 draft to finish/ }));
-    expect(within(filter).getByRole("button", { name: "Drafts 1" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(filter).getByRole("button", { name: "Drafts 1" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     // Drafts still shows the receipt that is about to become one.
     expect(await screen.findByTestId("reading-row")).toBeInTheDocument();
   });
@@ -78,15 +103,26 @@ describe("purchases: receipts being read and drafts (G1, spec 10)", () => {
     renderApp("/shop/purchases");
     await screen.findByTestId("reading-row");
 
-    await user.click(within(screen.getByRole("group", { name: "Status" })).getByRole("button", { name: "Committed" }));
-    expect(await screen.findByRole("region", { name: "No committed purchases" })).toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole("group", { name: "Status" })).getByRole("button", {
+        name: "Committed",
+      }),
+    );
+    expect(
+      await screen.findByRole("region", { name: "No committed purchases" }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("reading-row")).toBeNull();
   });
 
   it("lists purchases as rows below lg: where, date and lines, total and status (Phone: purchases)", async () => {
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
-      value: (query: string) => ({ matches: false, media: query, addEventListener: () => {}, removeEventListener: () => {} }),
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      }),
     });
     mockApi(routes());
     renderApp("/shop/purchases");
@@ -122,8 +158,13 @@ describe("purchases: review findings on Reading rows", () => {
     const calls = mockApi({
       ...routes(),
       "GET /purchases": (call: RecordedCall) =>
-        call.query.get("status") ? jsonResponse(200, { items: read ? [draft] : [], next_cursor: null }) : jsonResponse(200, { items: read ? [draft] : [], next_cursor: null }),
-      "GET /ingest-jobs": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("status") === "pending" && !read ? [readingJob] : [] }),
+        call.query.get("status")
+          ? jsonResponse(200, { items: read ? [draft] : [], next_cursor: null })
+          : jsonResponse(200, { items: read ? [draft] : [], next_cursor: null }),
+      "GET /ingest-jobs": (call: RecordedCall) =>
+        jsonResponse(200, {
+          items: call.query.get("status") === "pending" && !read ? [readingJob] : [],
+        }),
     });
     renderApp("/shop/purchases");
     await screen.findByTestId("reading-row");
@@ -132,7 +173,9 @@ describe("purchases: review findings on Reading rows", () => {
     // The job finishes; the next poll (every 3 s while one is in flight) sees it gone.
     read = true;
     await waitFor(() => expect(screen.queryByTestId("reading-row")).toBeNull(), { timeout: 5000 });
-    await waitFor(() => expect(calls.filter((c) => c.path.startsWith("/purchases")).length).toBeGreaterThan(before));
+    await waitFor(() =>
+      expect(calls.filter((c) => c.path.startsWith("/purchases")).length).toBeGreaterThan(before),
+    );
     expect(await screen.findByText("Location needed")).toBeInTheDocument();
   }, 10_000);
 });

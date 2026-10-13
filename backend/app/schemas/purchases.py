@@ -176,7 +176,7 @@ class LineOut(ApiModel):
     flags: list[str]
     observation_id: uuid.UUID | None
     raw_text_norm: str | None = None
-    suggestions: list[dict] = []
+    suggestions: list[dict] = []  # noqa: RUF012
     # Whether this line ever reached the price book, so removing it voids a
     # price. On a single purchase only; null in lists.
     recorded: bool | None = None

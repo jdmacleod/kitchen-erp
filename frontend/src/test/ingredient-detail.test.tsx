@@ -11,7 +11,8 @@ function baseRoutes(ingredient: () => Ingredient) {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     [`GET /ingredients/${flourId}`]: () => jsonResponse(200, ingredient()),
-    [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: [], stale_after_days: 90 }),
+    [`GET /ingredients/${flourId}/offers`]: () =>
+      jsonResponse(200, { items: [], stale_after_days: 90 }),
     "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
   };
 }
@@ -39,8 +40,12 @@ describe("ingredient detail", () => {
     await user.click(within(bench).getByRole("button", { name: "Convert" }));
 
     expect(await screen.findByTestId("bench-failure-code")).toHaveTextContent("no_density");
-    expect(screen.getByText("Crossing mass and volume needs a density; none is known.")).toBeInTheDocument();
-    const post = calls.find((c) => c.method === "POST" && c.path === `/ingredients/${flourId}/convert`);
+    expect(
+      screen.getByText("Crossing mass and volume needs a density; none is known."),
+    ).toBeInTheDocument();
+    const post = calls.find(
+      (c) => c.method === "POST" && c.path === `/ingredients/${flourId}/convert`,
+    );
     expect(post?.body).toEqual({ qty: "2", unit: "ml" });
   });
 
@@ -57,7 +62,13 @@ describe("ingredient detail", () => {
             source: null,
             confirmed: null,
             detail: `1 each = 5 lb (${(call.body as { product_id: string }).product_id})`,
-            via: { bridge_kind: "none", source: null, confirmed: null, detail: "lb → g", rests_on_unconfirmed: false },
+            via: {
+              bridge_kind: "none",
+              source: null,
+              confirmed: null,
+              detail: "lb → g",
+              rests_on_unconfirmed: false,
+            },
             rests_on_unconfirmed: false,
           },
           version: "1",
@@ -69,7 +80,10 @@ describe("ingredient detail", () => {
     await screen.findByRole("heading", { name: "all-purpose flour" });
     const bench = screen.getByRole("form", { name: "Conversion test bench" });
     await user.type(within(bench).getByLabelText("Unit or measure"), "each");
-    await user.selectOptions(await within(bench).findByLabelText("Through product"), flourProduct.id);
+    await user.selectOptions(
+      await within(bench).findByLabelText("Through product"),
+      flourProduct.id,
+    );
     await user.click(within(bench).getByRole("button", { name: "Convert" }));
 
     expect(await screen.findByTestId("bench-result")).toHaveTextContent("= 2267.96185 g");
@@ -96,7 +110,9 @@ describe("ingredient detail", () => {
 
     await waitFor(() => expect(within(table).getByText("confirmed")).toBeInTheDocument());
     expect(within(table).queryByRole("button", { name: "Confirm cup" })).not.toBeInTheDocument();
-    expect(calls.some((c) => c.method === "POST" && c.path === `/measures/${cupMeasureId}/confirm`)).toBe(true);
+    expect(
+      calls.some((c) => c.method === "POST" && c.path === `/measures/${cupMeasureId}/confirm`),
+    ).toBe(true);
   });
 
   it("adds a density and deactivates the ingredient", async () => {
@@ -105,7 +121,11 @@ describe("ingredient detail", () => {
       ...baseRoutes(() => ingredient),
       [`PATCH /ingredients/${flourId}`]: (call) => {
         const body = call.body as { density_g_per_ml: string; density_source: string };
-        ingredient = { ...ingredient, density_g_per_ml: body.density_g_per_ml, density_source: "measured" };
+        ingredient = {
+          ...ingredient,
+          density_g_per_ml: body.density_g_per_ml,
+          density_source: "measured",
+        };
         return jsonResponse(200, ingredient);
       },
       [`POST /ingredients/${flourId}/deactivate`]: () => {

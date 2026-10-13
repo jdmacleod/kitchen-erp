@@ -1,8 +1,13 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { api, errorMessage, isApiError } from "../../api/client";
 import { formatPack, formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
-import { ROLE_LABELS, type PhotoRole, type PhotoSummary, type ProductPhoto } from "../../api/productPhotos";
+import { api, errorMessage, isApiError } from "../../api/client";
+import {
+  ROLE_LABELS,
+  type PhotoRole,
+  type PhotoSummary,
+  type ProductPhoto,
+} from "../../api/productPhotos";
 import {
   CHANNEL_WORDS,
   KIND_LABELS,
@@ -27,22 +32,24 @@ import {
   type ReviewCandidate,
 } from "../../api/proposals";
 import { Badge } from "../../components/catalog/fields";
-import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import { ProductThumb } from "../../components/catalog/ProductThumb";
+import { whose } from "../../components/catalog/StoreBrandBadge";
+import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import { Alert, Button, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
-import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
-import { whose } from "../../components/catalog/StoreBrandBadge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const sectionHeading = "font-display mb-2 text-lg";
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS) as [PhotoRole, string][];
-const KIND_OPTIONS = (Object.entries(KIND_LABELS) as [ProductKind, string][]).map(([value, label]) => ({ value, label }));
+const KIND_OPTIONS = (Object.entries(KIND_LABELS) as [ProductKind, string][]).map(
+  ([value, label]) => ({ value, label }),
+);
 /** The fields a review shows, in order, with their labels. */
 const REVIEWED: [string, string][] = [
   ["title", "Name"],
@@ -60,7 +67,10 @@ export function basisText(qty: string | undefined, unit: string | undefined): st
   return q === "1" ? ` / ${u}` : ` / ${q} ${u}`;
 }
 
-export function showPrice(price: { amount: string; qty?: string; unit?: string }, sayEach = false): string {
+export function showPrice(
+  price: { amount: string; qty?: string; unit?: string },
+  sayEach = false,
+): string {
   const basis = basisText(price.qty, price.unit);
   return `${formatMoney(price.amount)}${basis || (sayEach ? " each" : "")}`;
 }
@@ -132,9 +142,14 @@ interface Choice {
 
 /** "5 links" or "5" as pieces; the name singular, as the product stores it. */
 export function parsePieces(text: string): { count: string; name?: string } | null {
-  const m = text.trim().match(/^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/);
+  const m = /^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/.exec(text.trim());
   if (!m || Number(m[1]) <= 0) return null;
-  const name = m[2]?.trim().toLowerCase().replace(/(ies)$/, "y").replace(/(ches|shes|sses|xes|zes)$/, (s) => s.slice(0, -2)).replace(/([^s])s$/, "$1");
+  const name = m[2]
+    ?.trim()
+    .toLowerCase()
+    .replace(/(ies)$/, "y")
+    .replace(/(ches|shes|sses|xes|zes)$/, (s) => s.slice(0, -2))
+    .replace(/([^s])s$/, "$1");
   return { count: String(Number(m[1])), ...(name ? { name } : {}) };
 }
 
@@ -165,10 +180,17 @@ function Review({ proposal }: { proposal: Proposal }) {
   const matchRef = useRef<HTMLFieldSetElement>(null);
 
   // With nothing in the catalog to update, a new product is the only answer: preselect it.
-  const nothingToUpdate = !proposal.match.strong && (proposal.match.candidates ?? []).length === 0 && proposal.kind === "new_product";
-  const [match, setMatch] = useState<string | null>(proposal.match.preselect ?? (nothingToUpdate ? "new" : null));
+  const nothingToUpdate =
+    !proposal.match.strong &&
+    (proposal.match.candidates ?? []).length === 0 &&
+    proposal.kind === "new_product";
+  const [match, setMatch] = useState<string | null>(
+    proposal.match.preselect ?? (nothingToUpdate ? "new" : null),
+  );
   const [choices, setChoices] = useState<Record<string, Choice>>(() =>
-    Object.fromEntries(Object.entries(fields).map(([name, f]) => [name, { index: f && f.conflict ? null : 0 }])),
+    Object.fromEntries(
+      Object.entries(fields).map(([name, f]) => [name, { index: f?.conflict ? null : 0 }]),
+    ),
   );
   const [typed, setTyped] = useState<Record<string, string>>({});
   // Fields the person chose or typed; only these replace what an updated product has.
@@ -185,28 +207,47 @@ function Review({ proposal }: { proposal: Proposal }) {
   // A barcode under a store family's own prefix suggests a store brand too (2R-3); the
   // hint below the kind says so, and the person confirms or changes it.
   const byBarcode = !proposal.house_brand && (proposal.barcode_families?.length ?? 0) > 0;
-  const [kind, setKind] = useState<ProductKind>(proposal.house_brand || byBarcode ? "private_label" : brandOrCode ? "branded" : "loose");
+  const [kind, setKind] = useState<ProductKind>(
+    proposal.house_brand || byBarcode ? "private_label" : brandOrCode ? "branded" : "loose",
+  );
   const vendor = proposal.vendor;
-  const [recordPrice, setRecordPrice] = useState(Boolean(proposal.price && vendor?.suggested_location_id));
+  const [recordPrice, setRecordPrice] = useState(
+    Boolean(proposal.price && vendor?.suggested_location_id),
+  );
   const [location, setLocation] = useState<string | null>(vendor?.suggested_location_id ?? null);
   // A page that prices per different quantities (per lb and each) must be settled by a person.
   const priceConflict = Boolean(fields.price?.conflict);
   const pagePrice: PriceBasis | null = proposal.price
-    ? { amount: proposal.price.amount, qty: proposal.price.qty ?? "1", unit: proposal.price.unit ?? "each" }
+    ? {
+        amount: proposal.price.amount,
+        qty: proposal.price.qty ?? "1",
+        unit: proposal.price.unit ?? "each",
+      }
     : null;
   const [priceEdit, setPriceEdit] = useState<PriceBasis | null>(priceConflict ? pagePrice : null);
-  const priceValid = !priceEdit || (DECIMAL.test(priceEdit.amount.trim()) && DECIMAL.test(priceEdit.qty.trim()) && Number(priceEdit.qty) > 0 && priceEdit.unit !== "");
+  const priceValid =
+    !priceEdit ||
+    (DECIMAL.test(priceEdit.amount.trim()) &&
+      DECIMAL.test(priceEdit.qty.trim()) &&
+      Number(priceEdit.qty) > 0 &&
+      priceEdit.unit !== "");
   const [taken, setTaken] = useState<{ product_id: string; name: string | null } | null>(null);
   const isNew = match === "new";
-  const targetProduct = useProduct(match?.startsWith("update:") ? match.slice("update:".length) : undefined);
+  const targetProduct = useProduct(
+    match?.startsWith("update:") ? match.slice("update:".length) : undefined,
+  );
   /** What the product being updated already has; accepting keeps it unless the person changes it. */
   const current = (name: string): unknown => {
     const p = isNew ? undefined : targetProduct.data;
     if (!p) return undefined;
     if (name === "title") return p.name || undefined;
     if (name === "brand") return p.brand || undefined;
-    if (name === "pack") return p.pack_qty && p.pack_unit ? { qty: p.pack_qty, unit: p.pack_unit } : undefined;
-    if (name === "pieces") return p.pack_count ? { count: String(p.pack_count), ...(p.piece_name ? { name: p.piece_name } : {}) } : undefined;
+    if (name === "pack")
+      return p.pack_qty && p.pack_unit ? { qty: p.pack_qty, unit: p.pack_unit } : undefined;
+    if (name === "pieces")
+      return p.pack_count
+        ? { count: String(p.pack_count), ...(p.piece_name ? { name: p.piece_name } : {}) }
+        : undefined;
     return undefined;
   };
   /** The main photo of the product being updated: keeping it is a choice, and the default unless a larger photo arrives. */
@@ -217,13 +258,18 @@ function Review({ proposal }: { proposal: Proposal }) {
     return have !== null && offered !== null && offered < have;
   };
   // A choice stops applying when the match changes away from the product whose photo it was.
-  const choosable = chosenMain !== null && (chosenMain === currentMain?.id || productPhotos.some((p) => p.id === chosenMain));
+  const choosable =
+    chosenMain !== null &&
+    (chosenMain === currentMain?.id || productPhotos.some((p) => p.id === chosenMain));
   const mainPhoto = choosable ? chosenMain : defaultMain(productPhotos, currentMain);
   const kept = (name: string) => !touched.has(name) && current(name) !== undefined;
   // Keeping what the product being updated has settles a conflict: the server writes
   // nothing of it, so only a field with no kept value and no choice is still open.
-  const conflicts = REVIEWED.filter(([name]) => fields[name]?.conflict && choices[name]?.index === null && !kept(name));
-  const collapsible = Boolean(strong) && match === proposal.match.preselect && conflicts.length === 0 && !nothingRead;
+  const conflicts = REVIEWED.filter(
+    ([name]) => fields[name]?.conflict && choices[name]?.index === null && !kept(name),
+  );
+  const collapsible =
+    Boolean(strong) && match === proposal.match.preselect && conflicts.length === 0 && !nothingRead;
   const [editing, setEditing] = useState(!collapsible);
 
   useEffect(() => {
@@ -245,7 +291,8 @@ function Review({ proposal }: { proposal: Proposal }) {
   const units = useUnits();
   const packUnit = ((): string => {
     const pack = chosenValue("pack");
-    if (typeof pack === "string") return pack.trim().match(/^\d+(?:\.\d+)?\s*([a-zA-Z_ ]+)$/)?.[1].trim().toLowerCase() ?? "";
+    if (typeof pack === "string")
+      return /^\d+(?:\.\d+)?\s*([a-zA-Z_ ]+)$/.exec(pack.trim())?.[1].trim().toLowerCase() ?? "";
     return (pack as Pack | undefined)?.unit ?? "";
   })();
   const piecesOffered = !units.data || piecesFit(packUnit, units.data);
@@ -269,11 +316,16 @@ function Review({ proposal }: { proposal: Proposal }) {
       const index = choices[name]?.index;
       // A choice other than the merge's, one that settles a conflict, or one made over
       // what the product has, is the person's.
-      if (index !== null && index !== undefined && (index !== 0 || field.conflict || touched.has(name))) out[name] = candidates(field)[index].value;
+      if (
+        index !== null &&
+        index !== undefined &&
+        (index !== 0 || field.conflict || touched.has(name))
+      )
+        out[name] = candidates(field)[index].value;
     }
     for (const [name, value] of Object.entries(typed)) {
       if (name === "pack") {
-        const m = value.trim().match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/);
+        const m = /^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/.exec(value.trim());
         if (m) out.pack = { qty: m[1], unit: m[2].trim().toLowerCase() };
       } else if (name === "pieces") {
         if (!piecesOffered) continue;
@@ -287,16 +339,30 @@ function Review({ proposal }: { proposal: Proposal }) {
   const ingredientId = async (): Promise<string | undefined> => {
     if (!ingredient) return undefined;
     if (ingredient.kind === "existing") return ingredient.ingredient.id;
-    const body = ingredient.kind === "standard" ? { name: ingredient.name, standard_key: ingredient.key } : { name: ingredient.name };
+    const body =
+      ingredient.kind === "standard"
+        ? { name: ingredient.name, standard_key: ingredient.key }
+        : { name: ingredient.name };
     return (await api<Ingredient>("/ingredients", { method: "POST", body })).id;
   };
 
   const goNext = async (notice: { message: string; productId?: string }) => {
     const refreshed = await pending.refetch();
     const next = refreshed.data?.items.find((p) => p.id !== proposal.id);
-    const action = notice.productId ? { label: "Open it", to: `/catalog/products/${notice.productId}` } : undefined;
-    if (next) navigateWithNotice(`/catalog/products/review/${next.id}`, { tone: "success", message: notice.message, action });
-    else if (notice.productId) navigateWithNotice(`/catalog/products/${notice.productId}`, { tone: "success", message: notice.message });
+    const action = notice.productId
+      ? { label: "Open it", to: `/catalog/products/${notice.productId}` }
+      : undefined;
+    if (next)
+      navigateWithNotice(`/catalog/products/review/${next.id}`, {
+        tone: "success",
+        message: notice.message,
+        action,
+      });
+    else if (notice.productId)
+      navigateWithNotice(`/catalog/products/${notice.productId}`, {
+        tone: "success",
+        message: notice.message,
+      });
     else navigateWithNotice("/", { tone: "success", message: notice.message });
   };
 
@@ -311,7 +377,10 @@ function Review({ proposal }: { proposal: Proposal }) {
       photo_roles: roles,
       hidden_photo_ids: [...hidden],
       record_price: recordPrice,
-      price: recordPrice && priceEdit ? { amount: priceEdit.amount.trim(), qty: priceEdit.qty.trim(), unit: priceEdit.unit } : undefined,
+      price:
+        recordPrice && priceEdit
+          ? { amount: priceEdit.amount.trim(), qty: priceEdit.qty.trim(), unit: priceEdit.unit }
+          : undefined,
       vendor_location_id: recordPrice ? (location ?? undefined) : undefined,
     };
     if (target === "new") {
@@ -321,14 +390,23 @@ function Review({ proposal }: { proposal: Proposal }) {
     accept.mutate(input, {
       onSuccess: (done) => {
         const name = title || "the product";
-        void goNext({ message: `${input.action === "new" ? "Added" : "Updated"} ${name}.`, productId: done.result?.product_id });
+        void goNext({
+          message: `${input.action === "new" ? "Added" : "Updated"} ${name}.`,
+          productId: done.result?.product_id,
+        });
       },
       onError: (e) => setTaken(takenBy(e)),
     });
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !blocker && !readOnly && !accept.isPending) {
+    if (
+      e.key === "Enter" &&
+      (e.metaKey || e.ctrlKey) &&
+      !blocker &&
+      !readOnly &&
+      !accept.isPending
+    ) {
       e.preventDefault();
       void doAccept();
     }
@@ -341,41 +419,84 @@ function Review({ proposal }: { proposal: Proposal }) {
       : "New product";
   const how = proposal.capture ? CHANNEL_WORDS[proposal.capture.channel] : "from the lookup helper";
   const when = proposal.capture?.captured_at ?? proposal.created_at;
-  const evidence = productPhotos.find((p) => p.id === mainPhoto) ?? productPhotos[0] ?? proposal.photos[0];
+  const evidence =
+    productPhotos.find((p) => p.id === mainPhoto) ?? productPhotos[0] ?? proposal.photos[0];
 
   return (
     <div onKeyDown={onKeyDown} className="pb-24 lg:pb-0">
-      <PageHeader title={heading} description={[vendor ? `From ${vendor.name}` : null, how[0].toUpperCase() + how.slice(1), formatDate(when)].filter(Boolean).join(" · ")} />
+      <PageHeader
+        title={heading}
+        description={[
+          vendor ? `From ${vendor.name}` : null,
+          how[0].toUpperCase() + how.slice(1),
+          formatDate(when),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+      />
       <StatusNotice proposal={proposal} />
       <div className="flex flex-col gap-8 lg:grid lg:grid-cols-[20rem_1fr] lg:items-start">
         <aside aria-label="Evidence" className="flex flex-col gap-2 lg:sticky lg:top-4">
-          {evidence ? <EvidencePhoto photo={evidence} /> : <div className={`flex h-30 items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}>No photo</div>}
-          {proposal.capture?.source_url ? <p className={`text-sm break-all ${muted}`}>{proposal.capture.source_url}</p> : null}
+          {evidence ? (
+            <EvidencePhoto photo={evidence} />
+          ) : (
+            <div
+              className={`flex h-30 items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}
+            >
+              No photo
+            </div>
+          )}
+          {proposal.capture?.source_url ? (
+            <p className={`text-sm break-all ${muted}`}>{proposal.capture.source_url}</p>
+          ) : null}
           <p className={`text-sm ${muted}`}>
-            {how[0].toUpperCase() + how.slice(1)} · <time dateTime={when}>{formatDateTime(when)}</time>
+            {how[0].toUpperCase() + how.slice(1)} ·{" "}
+            <time dateTime={when}>{formatDateTime(when)}</time>
           </p>
-          {readingWords(proposal.reading) ? <p className={`text-sm ${muted}`}>{readingWords(proposal.reading)}</p> : null}
+          {readingWords(proposal.reading) ? (
+            <p className={`text-sm ${muted}`}>{readingWords(proposal.reading)}</p>
+          ) : null}
           {readOnly ? null : <LookUp proposal={proposal} />}
         </aside>
 
         <div className="flex min-w-0 flex-col gap-8">
           {reading && Object.keys(fields).length === 0 ? (
             <div role="status" className="flex flex-col gap-2">
-              <p className={`text-sm ${muted}`}>{proposal.capture?.channel === "photo" ? "Reading this photo…" : "Reading this page…"}</p>
+              <p className={`text-sm ${muted}`}>
+                {proposal.capture?.channel === "photo"
+                  ? "Reading this photo…"
+                  : "Reading this page…"}
+              </p>
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-5 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800" />
+                <div
+                  key={i}
+                  className="h-5 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800"
+                />
               ))}
             </div>
           ) : null}
-          {nothingRead && !readOnly ? <Alert tone="info">Nothing could be read from this photo. Fill in what you know.</Alert> : null}
+          {nothingRead && !readOnly ? (
+            <Alert tone="info">Nothing could be read from this photo. Fill in what you know.</Alert>
+          ) : null}
 
           <fieldset ref={matchRef} disabled={readOnly}>
             <legend className={sectionHeading}>Match</legend>
             <div className="flex flex-col gap-1">
               {matchOptions(proposal, strongProduct.data?.name).map((o) => (
-                <RadioRow key={o.value} name={`${id}-match`} checked={match === o.value} onChange={() => setMatch(o.value)}>
+                <RadioRow
+                  key={o.value}
+                  name={`${id}-match`}
+                  checked={match === o.value}
+                  onChange={() => setMatch(o.value)}
+                >
                   <span className="flex min-w-0 items-center gap-3">
-                    {o.candidate ? <ProductThumb name={o.candidate.name} photo={o.candidate.photo} categoryKey={o.candidate.ingredient.category_key} /> : null}
+                    {o.candidate ? (
+                      <ProductThumb
+                        name={o.candidate.name}
+                        photo={o.candidate.photo}
+                        categoryKey={o.candidate.ingredient.category_key}
+                      />
+                    ) : null}
                     <span className="flex min-w-0 flex-col">
                       <span>
                         {o.label}
@@ -404,7 +525,10 @@ function Review({ proposal }: { proposal: Proposal }) {
                 {lookAlikes.map((a, i) => (
                   <span key={a.id}>
                     {i > 0 ? ", " : null}
-                    <Link to={`/catalog/products/review/${a.id}`} className={`underline ${focusRing}`}>
+                    <Link
+                      to={`/catalog/products/review/${a.id}`}
+                      className={`underline ${focusRing}`}
+                    >
                       {a.title ?? "Untitled"}
                     </Link>
                   </span>
@@ -418,7 +542,10 @@ function Review({ proposal }: { proposal: Proposal }) {
               Summary
             </h2>
             <p data-testid="review-summary" className="text-sm">
-              {REVIEWED.filter(([name]) => name !== "pieces" || (piecesOffered && chosenValue("pieces") !== undefined))
+              {REVIEWED.filter(
+                ([name]) =>
+                  name !== "pieces" || (piecesOffered && chosenValue("pieces") !== undefined),
+              )
                 .map(([name]) => showValue(name, chosenValue(name)))
                 .join(" · ")}
             </p>
@@ -451,7 +578,9 @@ function Review({ proposal }: { proposal: Proposal }) {
                         label={label}
                         field={field}
                         index={kept(name) ? null : (choices[name]?.index ?? null)}
-                        keep={current(name) !== undefined ? showValue(name, current(name)) : undefined}
+                        keep={
+                          current(name) !== undefined ? showValue(name, current(name)) : undefined
+                        }
                         keeping={kept(name)}
                         onKeep={() => {
                           setTouched((t) => {
@@ -477,7 +606,15 @@ function Review({ proposal }: { proposal: Proposal }) {
                         id={`${id}-${name}`}
                         label={label}
                         disabled={readOnly}
-                        value={typed[name] ?? (kept(name) || field ? showValue(name, kept(name) ? current(name) : field?.value).replace(/^—$/, "") : "")}
+                        value={
+                          typed[name] ??
+                          (kept(name) || field
+                            ? showValue(name, kept(name) ? current(name) : field?.value).replace(
+                                /^—$/,
+                                "",
+                              )
+                            : "")
+                        }
                         onChange={(e) => {
                           touch(name);
                           setTyped({ ...typed, [name]: e.target.value });
@@ -502,7 +639,13 @@ function Review({ proposal }: { proposal: Proposal }) {
               <h2 id={`${id}-ingredient`} className={sectionHeading}>
                 Ingredient
               </h2>
-              <IngredientPicker id={`${id}-ingredient-picker`} value={ingredient} onChange={setIngredient} suggestFrom={title} disabled={readOnly} />
+              <IngredientPicker
+                id={`${id}-ingredient-picker`}
+                value={ingredient}
+                onChange={setIngredient}
+                suggestFrom={title}
+                disabled={readOnly}
+              />
             </section>
           ) : null}
 
@@ -510,7 +653,14 @@ function Review({ proposal }: { proposal: Proposal }) {
             <fieldset disabled={readOnly}>
               <legend className={sectionHeading}>Images</legend>
               <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {currentMain ? <CurrentMainTile photo={currentMain} name={`${id}-main`} main={mainPhoto === currentMain.id} onMain={() => setChosenMain(currentMain.id)} /> : null}
+                {currentMain ? (
+                  <CurrentMainTile
+                    photo={currentMain}
+                    name={`${id}-main`}
+                    main={mainPhoto === currentMain.id}
+                    onMain={() => setChosenMain(currentMain.id)}
+                  />
+                ) : null}
                 {proposal.photos.map((photo) => (
                   <ReviewTile
                     key={photo.id}
@@ -539,10 +689,20 @@ function Review({ proposal }: { proposal: Proposal }) {
               <h2 id={`${id}-kind`} className={sectionHeading}>
                 Kind
               </h2>
-              <SegmentedControl label="Kind" options={KIND_OPTIONS} value={kind} onChange={setKind} />
+              <SegmentedControl
+                label="Kind"
+                options={KIND_OPTIONS}
+                value={kind}
+                onChange={setKind}
+              />
               {byBarcode ? (
-                <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400" data-testid="barcode-family-hint">
-                  The barcode starts with {proposal.barcode_families!.map((f) => whose(f.name)).join(" or ")} own-brand prefix. Check the package.
+                <p
+                  className="mt-1 text-xs text-neutral-600 dark:text-neutral-400"
+                  data-testid="barcode-family-hint"
+                >
+                  The barcode starts with{" "}
+                  {proposal.barcode_families!.map((f) => whose(f.name)).join(" or ")} own-brand
+                  prefix. Check the package.
                 </p>
               ) : null}
             </section>
@@ -555,19 +715,23 @@ function Review({ proposal }: { proposal: Proposal }) {
               </h2>
               <p className="text-sm">
                 Posted at {showPrice(proposal.price)}
-                {proposal.price.is_promo ? " on sale" : ""}. Posted prices are kept, but not counted in cheapest.
+                {proposal.price.is_promo ? " on sale" : ""}. Posted prices are kept, but not counted
+                in cheapest.
               </p>
               {priceConflict ? (
                 <p className="mt-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
                   The page gives more than one price:{" "}
-                  {candidates(fields.price as ProposalField)
+                  {candidates(fields.price!)
                     .map((c) => comparedPrice(c.value))
                     .join(" and ")}
                   . Say what the posted price is for.
                 </p>
               ) : null}
               {priceEdit ? (
-                <fieldset className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3" disabled={readOnly}>
+                <fieldset
+                  className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3"
+                  disabled={readOnly}
+                >
                   <legend className="sr-only">Posted price</legend>
                   <Field
                     id={`${id}-price-amount`}
@@ -585,17 +749,32 @@ function Review({ proposal }: { proposal: Proposal }) {
                     value={priceEdit.qty}
                     onChange={(e) => setPriceEdit({ ...priceEdit, qty: e.target.value })}
                   />
-                  <UnitSelect id={`${id}-price-unit`} label="Unit" value={priceEdit.unit} onChange={(unit) => setPriceEdit({ ...priceEdit, unit })} />
+                  <UnitSelect
+                    id={`${id}-price-unit`}
+                    label="Unit"
+                    value={priceEdit.unit}
+                    onChange={(unit) => setPriceEdit({ ...priceEdit, unit })}
+                  />
                 </fieldset>
               ) : !readOnly && pagePrice ? (
-                <button type="button" onClick={() => setPriceEdit(pagePrice)} className={`mt-1 inline-flex min-h-11 items-center text-sm text-blue-700 underline lg:min-h-9 dark:text-blue-300 ${focusRing}`}>
+                <button
+                  type="button"
+                  onClick={() => setPriceEdit(pagePrice)}
+                  className={`mt-1 inline-flex min-h-11 items-center text-sm text-blue-700 underline lg:min-h-9 dark:text-blue-300 ${focusRing}`}
+                >
                   Change the price or what it is for
                 </button>
               ) : null}
               {vendor && vendor.locations.length > 0 ? (
                 <div className="mt-2 flex flex-col gap-2">
                   <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-                    <input type="checkbox" checked={recordPrice} disabled={readOnly} onChange={(e) => setRecordPrice(e.target.checked)} className={`size-4 ${focusRing}`} />
+                    <input
+                      type="checkbox"
+                      checked={recordPrice}
+                      disabled={readOnly}
+                      onChange={(e) => setRecordPrice(e.target.checked)}
+                      className={`size-4 ${focusRing}`}
+                    />
                     Record this posted price
                   </label>
                   {recordPrice ? (
@@ -622,7 +801,10 @@ function Review({ proposal }: { proposal: Proposal }) {
                   {vendor ? (
                     <>
                       {vendor.name} has no stores yet, so no price is recorded.{" "}
-                      <Link to={`/catalog/vendors/${vendor.id}`} className={`rounded font-medium underline ${focusRing}`}>
+                      <Link
+                        to={`/catalog/vendors/${vendor.id}`}
+                        className={`rounded font-medium underline ${focusRing}`}
+                      >
                         Add one
                       </Link>
                     </>
@@ -634,9 +816,14 @@ function Review({ proposal }: { proposal: Proposal }) {
             </section>
           ) : null}
 
-          {accept.isError && !taken ? <Alert tone="error">{errorMessage(accept.error)}</Alert> : null}
+          {accept.isError && !taken ? (
+            <Alert tone="error">{errorMessage(accept.error)}</Alert>
+          ) : null}
           {/* A task screen below lg has no tab bar, so it offers its own way out (10, PD17). */}
-          <Link to="/" className={`inline-flex min-h-11 items-center self-start text-sm underline lg:hidden ${focusRing}`}>
+          <Link
+            to="/"
+            className={`inline-flex min-h-11 items-center self-start text-sm underline lg:hidden ${focusRing}`}
+          >
             Cancel
           </Link>
           {reject.isError ? <Alert tone="error">{errorMessage(reject.error)}</Alert> : null}
@@ -644,19 +831,31 @@ function Review({ proposal }: { proposal: Proposal }) {
           {readOnly ? null : (
             <div className="fixed inset-x-0 bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-neutral-200 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:sticky lg:bottom-4 lg:inset-x-auto lg:flex-nowrap lg:rounded-lg lg:border lg:pb-3 dark:border-neutral-800 dark:bg-neutral-900">
               {blocker ? (
-                <span className={`basis-full text-sm lg:min-w-0 lg:flex-1 lg:basis-auto ${muted}`}>{blocker}</span>
+                <span className={`basis-full text-sm lg:min-w-0 lg:flex-1 lg:basis-auto ${muted}`}>
+                  {blocker}
+                </span>
               ) : (
-                <span className={`hidden text-xs lg:inline lg:flex-1 ${muted}`}>Ctrl or ⌘ + Enter accepts</span>
+                <span className={`hidden text-xs lg:inline lg:flex-1 ${muted}`}>
+                  Ctrl or ⌘ + Enter accepts
+                </span>
               )}
               <Button
                 variant="secondary"
                 className="min-h-14 flex-1 lg:min-h-10 lg:flex-none"
                 disabled={reject.isPending || accept.isPending}
-                onClick={() => reject.mutate(undefined, { onSuccess: () => void goNext({ message: "Rejected. The capture is kept." }) })}
+                onClick={() =>
+                  reject.mutate(undefined, {
+                    onSuccess: () => void goNext({ message: "Rejected. The capture is kept." }),
+                  })
+                }
               >
                 Reject
               </Button>
-              <Button className="min-h-14 flex-1 lg:min-h-10 lg:flex-none" disabled={Boolean(blocker) || accept.isPending} onClick={() => void doAccept()}>
+              <Button
+                className="min-h-14 flex-1 lg:min-h-10 lg:flex-none"
+                disabled={Boolean(blocker) || accept.isPending}
+                onClick={() => void doAccept()}
+              >
                 {accept.isPending ? "Accepting…" : "Accept"}
               </Button>
             </div>
@@ -711,13 +910,25 @@ interface MatchOption {
 function matchOptions(proposal: Proposal, strongName: string | undefined): MatchOption[] {
   const out: MatchOption[] = [];
   const strong = proposal.match.strong;
-  if (strong) out.push({ value: `update:${strong.product_id}`, label: `Update ${strongName ?? "the matching product"}`, note: STRONG_NOTES[strong.reason] });
-  const label = (c: { name: string; brand: string | null }) => `Update ${c.name}${c.brand ? ` (${c.brand})` : ""}`;
+  if (strong)
+    out.push({
+      value: `update:${strong.product_id}`,
+      label: `Update ${strongName ?? "the matching product"}`,
+      note: STRONG_NOTES[strong.reason],
+    });
+  const label = (c: { name: string; brand: string | null }) =>
+    `Update ${c.name}${c.brand ? ` (${c.brand})` : ""}`;
   if (proposal.candidates) {
     for (const c of proposal.candidates) {
       if (c.product_id === strong?.product_id) continue;
       const pack = formatPack(c.pack_qty, c.pack_unit, c.pack_count, c.piece_name);
-      out.push({ value: `update:${c.product_id}`, label: label(c), note: [verdictNote(c), c.brand_note].filter(Boolean).join(" · "), pack: pack || undefined, candidate: c });
+      out.push({
+        value: `update:${c.product_id}`,
+        label: label(c),
+        note: [verdictNote(c), c.brand_note].filter(Boolean).join(" · "),
+        pack: pack || undefined,
+        candidate: c,
+      });
     }
   } else {
     for (const c of proposal.match.candidates ?? []) {
@@ -729,14 +940,32 @@ function matchOptions(proposal: Proposal, strongName: string | undefined): Match
   return out;
 }
 
-function RadioRow({ name, checked, onChange, children, outline }: { name: string; checked: boolean; onChange: () => void; children: ReactNode; outline?: boolean }) {
+function RadioRow({
+  name,
+  checked,
+  onChange,
+  children,
+  outline,
+}: {
+  name: string;
+  checked: boolean;
+  onChange: () => void;
+  children: ReactNode;
+  outline?: boolean;
+}) {
   return (
     <label
       className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-neutral-50 lg:min-h-10 dark:hover:bg-neutral-800 ${
         outline ? "border border-amber-400 dark:border-amber-600" : ""
       } ${checked ? "bg-neutral-100 dark:bg-neutral-800" : ""}`}
     >
-      <input type="radio" name={name} checked={checked} onChange={onChange} className={`size-4 ${focusRing}`} />
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        onChange={onChange}
+        className={`size-4 ${focusRing}`}
+      />
       <span className="min-w-0">{children}</span>
     </label>
   );
@@ -766,9 +995,18 @@ function Alternatives({
 }) {
   const id = useId();
   return (
-    <fieldset disabled={disabled} className={field.conflict ? "rounded-md border border-amber-400 p-3 dark:border-amber-600" : ""}>
+    <fieldset
+      disabled={disabled}
+      className={
+        field.conflict ? "rounded-md border border-amber-400 p-3 dark:border-amber-600" : ""
+      }
+    >
       <legend className="text-sm font-medium">{label}</legend>
-      {field.conflict ? <p className="mb-1 text-sm text-amber-900 dark:text-amber-200">These disagree. Choose one.</p> : null}
+      {field.conflict ? (
+        <p className="mb-1 text-sm text-amber-900 dark:text-amber-200">
+          These disagree. Choose one.
+        </p>
+      ) : null}
       <div className="flex flex-col gap-1">
         {keep !== undefined ? (
           <RadioRow name={`${id}-${name}`} checked={Boolean(keeping)} onChange={() => onKeep?.()}>
@@ -777,7 +1015,13 @@ function Alternatives({
           </RadioRow>
         ) : null}
         {candidates(field).map((c, i) => (
-          <RadioRow key={`${name}-${i}`} name={`${id}-${name}`} checked={index === i} onChange={() => onChoose(i)} outline={c.source === "model"}>
+          <RadioRow
+            key={`${name}-${i}`}
+            name={`${id}-${name}`}
+            checked={index === i}
+            onChange={() => onChoose(i)}
+            outline={c.source === "model"}
+          >
             <span className="mr-2">{showValue(name, c.value)}</span>
             <Badge>{c.via === "helper" ? "Lookup helper" : SOURCE_BADGES[c.source]}</Badge>
           </RadioRow>
@@ -787,13 +1031,29 @@ function Alternatives({
   );
 }
 
-function TakenPanel({ code, taken, onUpdateInstead, onKeepReviewing }: { code: string; taken: { product_id: string; name: string | null }; onUpdateInstead: (id: string) => void; onKeepReviewing: () => void }) {
+function TakenPanel({
+  code,
+  taken,
+  onUpdateInstead,
+  onKeepReviewing,
+}: {
+  code: string;
+  taken: { product_id: string; name: string | null };
+  onUpdateInstead: (id: string) => void;
+  onKeepReviewing: () => void;
+}) {
   const name = taken.name ?? "another product";
   return (
-    <div role="alert" className="mt-2 flex flex-col gap-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
+    <div
+      role="alert"
+      className="mt-2 flex flex-col gap-2 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200"
+    >
       <p>
         Barcode {code} already belongs to{" "}
-        <Link to={`/catalog/products/${taken.product_id}`} className={`rounded font-medium underline ${focusRing}`}>
+        <Link
+          to={`/catalog/products/${taken.product_id}`}
+          className={`rounded font-medium underline ${focusRing}`}
+        >
           {name}
         </Link>
         .
@@ -813,12 +1073,16 @@ function TakenPanel({ code, taken, onUpdateInstead, onKeepReviewing }: { code: s
 function EvidencePhoto({ photo }: { photo: ProductPhoto }) {
   if (!photo.urls) {
     return (
-      <div role="status" className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}>
+      <div
+        role="status"
+        className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 text-sm dark:bg-neutral-800 ${muted}`}
+      >
         {photo.status === "failed" ? "Couldn't process this photo" : "Preparing photo…"}
       </div>
     );
   }
-  const src = photo.has_cutout && photo.urls.cutout_medium ? photo.urls.cutout_medium : photo.urls.medium;
+  const src =
+    photo.has_cutout && photo.urls.cutout_medium ? photo.urls.cutout_medium : photo.urls.medium;
   return (
     <img
       src={src}
@@ -835,7 +1099,9 @@ function EvidencePhoto({ photo }: { photo: ProductPhoto }) {
 function defaultMain(arrived: ProductPhoto[], current: PhotoSummary | null): string | null {
   if (!current) return arrived[0]?.id ?? null;
   const have = pixels(current) ?? Infinity;
-  const larger = arrived.filter((p) => (pixels(p) ?? 0) > have).sort((x, y) => (pixels(y) ?? 0) - (pixels(x) ?? 0));
+  const larger = arrived
+    .filter((p) => (pixels(p) ?? 0) > have)
+    .sort((x, y) => (pixels(y) ?? 0) - (pixels(x) ?? 0));
   return larger[0]?.id ?? current.id;
 }
 
@@ -854,18 +1120,41 @@ function PhotoSize({ photo }: { photo: PhotoSummary }) {
 }
 
 /** The main photo the product has now; choosing it keeps it over the photos that arrived. */
-function CurrentMainTile({ photo, name, main, onMain }: { photo: PhotoSummary; name: string; main: boolean; onMain: () => void }) {
+function CurrentMainTile({
+  photo,
+  name,
+  main,
+  onMain,
+}: {
+  photo: PhotoSummary;
+  name: string;
+  main: boolean;
+  onMain: () => void;
+}) {
   return (
-    <li data-testid="review-tile" className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}>
+    <li
+      data-testid="review-tile"
+      className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}
+    >
       {photo.urls ? (
-        <img src={photo.urls.small} alt="The product's current main photo" className="aspect-square w-full rounded-md bg-neutral-100 object-cover dark:bg-neutral-800" />
+        <img
+          src={photo.urls.small}
+          alt="The product's current main photo"
+          className="aspect-square w-full rounded-md bg-neutral-100 object-cover dark:bg-neutral-800"
+        />
       ) : null}
       <span className="flex flex-wrap items-center gap-2">
         <Badge>Current</Badge>
         <PhotoSize photo={photo} />
       </span>
       <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-        <input type="radio" name={name} checked={main} onChange={onMain} className={`size-4 ${focusRing}`} />
+        <input
+          type="radio"
+          name={name}
+          checked={main}
+          onChange={onMain}
+          className={`size-4 ${focusRing}`}
+        />
         {main ? "Main photo" : "Keep as main photo"}
       </label>
     </li>
@@ -896,22 +1185,40 @@ function ReviewTile({
 }) {
   const id = useId();
   const picture = photo.urls ? (
-    <img src={photo.urls.small} alt={`${ROLE_LABELS[role]} photo`} className={`aspect-square w-full rounded-md bg-neutral-100 object-cover dark:bg-neutral-800 ${hidden ? "opacity-50" : ""}`} />
+    <img
+      src={photo.urls.small}
+      alt={`${ROLE_LABELS[role]} photo`}
+      className={`aspect-square w-full rounded-md bg-neutral-100 object-cover dark:bg-neutral-800 ${hidden ? "opacity-50" : ""}`}
+    />
   ) : (
-    <span role="status" className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 p-2 text-center text-sm dark:bg-neutral-800 ${muted}`}>
+    <span
+      role="status"
+      className={`flex aspect-square w-full items-center justify-center rounded-md bg-neutral-100 p-2 text-center text-sm dark:bg-neutral-800 ${muted}`}
+    >
       {photo.status === "failed" ? "Couldn't process this photo" : "Preparing photo…"}
     </span>
   );
   return (
-    <li data-testid="review-tile" className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}>
+    <li
+      data-testid="review-tile"
+      className={`flex flex-col gap-2 rounded-md p-1 ${main ? "border-2 border-neutral-500 dark:border-neutral-400" : "border-2 border-transparent"}`}
+    >
       {picture}
       <span className="flex flex-wrap items-center gap-2">
         <PhotoSize photo={photo} />
-        {smaller && role === "product" ? <Badge tone="warn">Smaller than the current main photo</Badge> : null}
+        {smaller && role === "product" ? (
+          <Badge tone="warn">Smaller than the current main photo</Badge>
+        ) : null}
       </span>
       {role === "product" ? (
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <input type="radio" name={name} checked={main} onChange={onMain} className={`size-4 ${focusRing}`} />
+          <input
+            type="radio"
+            name={name}
+            checked={main}
+            onChange={onMain}
+            className={`size-4 ${focusRing}`}
+          />
           {main ? "Main photo" : "Use as main photo"}
         </label>
       ) : null}
@@ -931,7 +1238,12 @@ function ReviewTile({
         ))}
       </select>
       <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-        <input type="checkbox" checked={hidden} onChange={(e) => onHidden(e.target.checked)} className={`size-4 ${focusRing}`} />
+        <input
+          type="checkbox"
+          checked={hidden}
+          onChange={(e) => onHidden(e.target.checked)}
+          className={`size-4 ${focusRing}`}
+        />
         Hide
       </label>
     </li>
@@ -939,7 +1251,9 @@ function ReviewTile({
 }
 
 function StatusNotice({ proposal }: { proposal: Proposal }) {
-  const product = useProduct(proposal.status === "accepted" ? (proposal.product_id ?? undefined) : undefined);
+  const product = useProduct(
+    proposal.status === "accepted" ? (proposal.product_id ?? undefined) : undefined,
+  );
   if (proposal.status === "pending") return null;
   const when = proposal.decided_at ? formatDate(proposal.decided_at) : "";
   if (proposal.status === "superseded") {
@@ -950,7 +1264,10 @@ function StatusNotice({ proposal }: { proposal: Proposal }) {
         {newer ? (
           <>
             {" · "}
-            <Link to={`/catalog/products/review/${newer}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link
+              to={`/catalog/products/review/${newer}`}
+              className={`rounded font-medium underline ${focusRing}`}
+            >
               Open it
             </Link>
           </>
@@ -965,7 +1282,10 @@ function StatusNotice({ proposal }: { proposal: Proposal }) {
         {proposal.product_id ? (
           <>
             {" · "}
-            <Link to={`/catalog/products/${proposal.product_id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link
+              to={`/catalog/products/${proposal.product_id}`}
+              className={`rounded font-medium underline ${focusRing}`}
+            >
               Open {product.data?.name ?? "the product"}
             </Link>
           </>
@@ -998,15 +1318,27 @@ function LookUp({ proposal }: { proposal: Proposal }) {
   if (!lookup) {
     return (
       <span className="flex flex-col gap-1">
-        <Button variant="secondary" className="self-start" disabled={ask.isPending} onClick={() => ask.mutate()}>
+        <Button
+          variant="secondary"
+          className="self-start"
+          disabled={ask.isPending}
+          onClick={() => ask.mutate()}
+        >
           {ask.isPending ? "Asking…" : "Look this up online"}
         </Button>
-        {ask.isError ? <span className="text-sm text-red-800 dark:text-red-300">{errorMessage(ask.error)}</span> : null}
+        {ask.isError ? (
+          <span className="text-sm text-red-800 dark:text-red-300">{errorMessage(ask.error)}</span>
+        ) : null}
       </span>
     );
   }
   if (lookup.status !== "open") {
-    return <p className={`text-sm ${muted}`}>The lookup helper answered{lookup.answered_at ? ` ${minutesAgo(lookup.answered_at, now)}` : ""}.</p>;
+    return (
+      <p className={`text-sm ${muted}`}>
+        The lookup helper answered
+        {lookup.answered_at ? ` ${minutesAgo(lookup.answered_at, now)}` : ""}.
+      </p>
+    );
   }
   const waited = (now - new Date(lookup.created_at).getTime()) / 60_000;
   if (waited > LOOKUP_OVERDUE_MINUTES) {
@@ -1019,7 +1351,11 @@ function LookUp({ proposal }: { proposal: Proposal }) {
       </p>
     );
   }
-  return <p className={`text-sm ${muted}`}>Asked the lookup helper {minutesAgo(lookup.created_at, now)}.</p>;
+  return (
+    <p className={`text-sm ${muted}`}>
+      Asked the lookup helper {minutesAgo(lookup.created_at, now)}.
+    </p>
+  );
 }
 
 function minutesAgo(iso: string, now: number): string {

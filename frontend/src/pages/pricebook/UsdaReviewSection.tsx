@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
-import { useUsdaDecision, useUsdaReview, type DensityExists, type UsdaReviewGroup } from "../../api/usdaReview";
+import {
+  useUsdaDecision,
+  useUsdaReview,
+  type DensityExists,
+  type UsdaReviewGroup,
+} from "../../api/usdaReview";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, focusRing } from "../../components/ui";
 
@@ -20,7 +25,8 @@ export function UsdaReviewSection() {
 
   // The inbox row links to #usda; scroll there once the section has content.
   useEffect(() => {
-    if (location.hash === "#usda" && review.data) section.current?.scrollIntoView({ block: "start" });
+    if (location.hash === "#usda" && review.data)
+      section.current?.scrollIntoView({ block: "start" });
   }, [location.hash, review.data]);
 
   if (review.isPending) {
@@ -41,11 +47,15 @@ export function UsdaReviewSection() {
       </h2>
       {!loaded ? (
         <p className="text-sm text-neutral-700 dark:text-neutral-300">
-          USDA data isn&apos;t loaded yet. Whoever runs this Kitchen ERP can load it with <code>kerp import usda</code>.
+          USDA data isn&apos;t loaded yet. Whoever runs this Kitchen ERP can load it with{" "}
+          <code>kerp import usda</code>.
         </p>
       ) : (
         <Card>
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800" aria-label="USDA suggestions">
+          <ul
+            className="divide-y divide-neutral-200 dark:divide-neutral-800"
+            aria-label="USDA suggestions"
+          >
             {groups.map((g) => (
               <GroupRow key={g.ingredient_id} group={g} />
             ))}
@@ -88,7 +98,8 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
       {
         onSuccess: (r) => (r.saved > 0 ? saved(r.saved) : undefined),
         onError: (e) => {
-          if (isApiError(e) && e.code === "density_exists" && e.details) setRaced(e.details as unknown as DensityExists);
+          if (isApiError(e) && e.code === "density_exists" && e.details)
+            setRaced(e.details as unknown as DensityExists);
         },
       },
     );
@@ -107,12 +118,24 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
         <fieldset className="flex flex-col gap-1 text-sm lg:flex-row lg:flex-wrap lg:gap-x-6">
           <legend className="mb-1 text-xs text-neutral-600 dark:text-neutral-400">Density</legend>
           <label className="flex min-h-11 items-center gap-2 lg:min-h-0">
-            <input type="radio" name={`${headingId}-density`} checked={density === ""} onChange={() => setDensity("")} className={focusRing} />
+            <input
+              type="radio"
+              name={`${headingId}-density`}
+              checked={density === ""}
+              onChange={() => setDensity("")}
+              className={focusRing}
+            />
             None
           </label>
           {group.densities.map((d) => (
             <label key={d.portion_id} className="flex min-h-11 items-center gap-2 lg:min-h-0">
-              <input type="radio" name={`${headingId}-density`} checked={density === d.portion_id} onChange={() => setDensity(d.portion_id)} className={focusRing} />
+              <input
+                type="radio"
+                name={`${headingId}-density`}
+                checked={density === d.portion_id}
+                onChange={() => setDensity(d.portion_id)}
+                className={focusRing}
+              />
               {d.portion_label} = {d.gram_weight} g → {d.density_g_per_ml} g/ml
             </label>
           ))}
@@ -140,9 +163,13 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
         </fieldset>
       ) : null}
       {raced ? (
-        <div role="alert" className="flex flex-col gap-2 rounded-md border border-neutral-300 bg-neutral-50 p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900">
+        <div
+          role="alert"
+          className="flex flex-col gap-2 rounded-md border border-neutral-300 bg-neutral-50 p-3 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+        >
           <p>
-            {group.name} now has a density of {Number(raced.density_g_per_ml).toString()} g/ml{raced.density_confirmed ? "" : " (unconfirmed)"}.
+            {group.name} now has a density of {Number(raced.density_g_per_ml).toString()} g/ml
+            {raced.density_confirmed ? "" : " (unconfirmed)"}.
           </p>
           <div className="grid grid-cols-2 gap-2 lg:flex">
             <Button
@@ -168,15 +195,24 @@ function GroupRow({ group }: { group: UsdaReviewGroup }) {
           </div>
         </div>
       ) : null}
-      {decision.isError && !raced && !(isApiError(decision.error) && decision.error.code === "density_exists") ? (
+      {decision.isError &&
+      !raced &&
+      !(isApiError(decision.error) && decision.error.code === "density_exists") ? (
         <Alert tone="error">{errorMessage(decision.error)}</Alert>
       ) : null}
       {!raced ? (
         <div className="grid grid-cols-2 gap-2 lg:flex">
-          <Button disabled={decision.isPending || chosen === 0} onClick={() => accept({ withDensity: true })}>
+          <Button
+            disabled={decision.isPending || chosen === 0}
+            onClick={() => accept({ withDensity: true })}
+          >
             Accept selected
           </Button>
-          <Button variant="ghost" disabled={decision.isPending} onClick={() => decision.mutate({ ingredientId: group.ingredient_id, skip: true })}>
+          <Button
+            variant="ghost"
+            disabled={decision.isPending}
+            onClick={() => decision.mutate({ ingredientId: group.ingredient_id, skip: true })}
+          >
             Skip
           </Button>
         </div>

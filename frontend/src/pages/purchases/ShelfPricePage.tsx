@@ -1,19 +1,44 @@
-import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { Link, useLocation, useNavigate } from "react-router";
+import {
+  formatPack,
+  isPositiveDecimal,
+  productTitle,
+  useProductSearch,
+  type SearchHit,
+} from "../../api/catalog";
 import { errorMessage } from "../../api/client";
-import { formatPack, isPositiveDecimal, productTitle, useProductSearch, type SearchHit } from "../../api/catalog";
 import { useLocations, type VendorLocation } from "../../api/geo";
 import { useProductPrices } from "../../api/pricebook";
-import { purchaseErrorMessage, useCreateObservation, useObservations, type Observation, type ObservationCreateInput } from "../../api/purchases";
+import {
+  purchaseErrorMessage,
+  useCreateObservation,
+  useObservations,
+  type Observation,
+  type ObservationCreateInput,
+} from "../../api/purchases";
 import { Combobox } from "../../components/catalog/Combobox";
 import { HitRow } from "../../components/catalog/ProductTypeahead";
-import { formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
 import { Drawer } from "../../components/Drawer";
+import { useNavigateWithNotice, useNotice, type NoticeData } from "../../components/Notice";
+import { formatUnitPrice } from "../../components/pricebook/PriceAge";
 import { LocationGuard } from "../../components/purchases/LocationGuard";
 import { locationLabel, rememberLocation } from "../../components/purchases/LocationSelect";
-import { InlineProductCreate, productRefFromHit, type ProductRef } from "../../components/purchases/ProductPicker";
+import {
+  InlineProductCreate,
+  productRefFromHit,
+  type ProductRef,
+} from "../../components/purchases/ProductPicker";
 import { StoreChip, useStoreGuess } from "../../components/purchases/StoreChip";
 import { Alert, Button, Card, Field, PageHeader, focusRing } from "../../components/ui";
 import { cmp, formatMoney, isNonNegativeDecimal, moneyForQty, stripZeros } from "../../lib/decimal";
@@ -70,7 +95,16 @@ export function ShelfPricePage() {
           aria-label="Back"
           className={`-ml-3 inline-flex size-11 items-center justify-center rounded-md text-neutral-800 dark:text-neutral-200 ${focusRing}`}
         >
-          <svg viewBox="0 0 24 24" className="size-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <svg
+            viewBox="0 0 24 24"
+            className="size-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M15 6l-6 6 6 6" />
           </svg>
         </button>
@@ -81,7 +115,11 @@ export function ShelfPricePage() {
         </Link>
       </PageHeader>
       <LocationGuard>
-        <ShelfPriceForm arrival={arrival} variant="page" onSaved={(notice) => navigateWithNotice(arrival.from ?? "/", notice)} />
+        <ShelfPriceForm
+          arrival={arrival}
+          variant="page"
+          onSaved={(notice) => navigateWithNotice(arrival.from ?? "/", notice)}
+        />
       </LocationGuard>
     </>
   );
@@ -92,7 +130,13 @@ export function ShelfPricePage() {
  * opened on (G14). Plain Save closes it and shows the notice on that page;
  * typed input asks before it is discarded (D5).
  */
-export function ShelfPriceDrawer({ arrival, onClose }: { arrival: ShelfPriceState; onClose: () => void }) {
+export function ShelfPriceDrawer({
+  arrival,
+  onClose,
+}: {
+  arrival: ShelfPriceState;
+  onClose: () => void;
+}) {
   const notice = useNotice();
   const formId = useId();
   const [state, setState] = useState({ dirty: false, busy: false });
@@ -111,7 +155,13 @@ export function ShelfPriceDrawer({ arrival, onClose }: { arrival: ShelfPriceStat
       busy={state.busy}
       busyLabel="Saving…"
       secondaryAction={
-        <Button type="submit" form={formId} variant="secondary" data-action="another" disabled={state.busy}>
+        <Button
+          type="submit"
+          form={formId}
+          variant="secondary"
+          data-action="another"
+          disabled={state.busy}
+        >
           Save and scan another
         </Button>
       }
@@ -207,13 +257,20 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
   const validate = (): ObservationCreateInput | null => {
     if (!store) return fail("Choose the store.");
     if (!product) return fail("Scan or type a product first.");
-    if (price.trim() === "" || !isNonNegativeDecimal(price)) return fail("Enter the price on the shelf.");
+    if (price.trim() === "" || !isNonNegativeDecimal(price))
+      return fail("Enter the price on the shelf.");
     if (!isPositiveDecimal(qty)) return fail("The amount must be a positive number.");
     if (!unit) return fail("Choose a unit.");
     const at = observedTouched ? fromDateTimeLocal(observedAt) : undefined;
     if (observedTouched && !at) return fail("Enter a valid time.");
     setInvalid(null);
-    const input: ObservationCreateInput = { product_id: product.id, vendor_location_id: store.id, price: price.trim(), qty: qty.trim(), unit };
+    const input: ObservationCreateInput = {
+      product_id: product.id,
+      vendor_location_id: store.id,
+      price: price.trim(),
+      qty: qty.trim(),
+      unit,
+    };
     if (promo) input.is_promo = true;
     if (at) input.observed_at = at;
     return input;
@@ -237,7 +294,15 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
           // Back to where Capture was opened; with nowhere recorded, Home. A price
           // that could not be normalized says what is missing, and links to it.
           const fix = normalized ? null : bridgeFix(observation);
-          onSaved(fix ? { tone: "info", message: `${message}. ${fix.reason}`, action: { label: fix.label, to: fix.to } } : { tone: "success", message });
+          onSaved(
+            fix
+              ? {
+                  tone: "info",
+                  message: `${message}. ${fix.reason}`,
+                  action: { label: fix.label, to: fix.to },
+                }
+              : { tone: "success", message },
+          );
           return;
         }
         // The store stays; everything about the last tag goes (G4).
@@ -254,7 +319,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
   // the button that submitted says which (Enter uses the first, "another").
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
     save(variant === "page" || submitter?.dataset.action === "another");
   };
   // Except in the entry field: a wedge scanner ends every barcode with Enter,
@@ -269,160 +334,222 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
     // In the drawer the submit buttons sit in the Drawer's footer, outside this
     // form's markup, so Enter in a field is handled here rather than left to
     // implicit submission.
-    if (variant === "drawer" && target.tagName === "INPUT" && (target as HTMLInputElement).type !== "checkbox") {
+    if (
+      variant === "drawer" &&
+      target.tagName === "INPUT" &&
+      (target as HTMLInputElement).type !== "checkbox"
+    ) {
       event.preventDefault();
       save(true);
     }
   };
 
   const busy = create.isPending;
-  const pack = product ? formatPack(product.pack_qty, product.pack_unit, product.pack_count, product.piece_name) : "";
+  const pack = product
+    ? formatPack(product.pack_qty, product.pack_unit, product.pack_count, product.piece_name)
+    : "";
   // Typed input of any kind, the search text included, is asked about before a
   // drawer discards it (D5).
-  const dirty = product !== null || creating !== null || price.trim() !== "" || entryText.trim() !== "";
+  const dirty =
+    product !== null || creating !== null || price.trim() !== "" || entryText.trim() !== "";
   useEffect(() => {
     onStateChange?.({ dirty, busy });
   }, [dirty, busy, onStateChange]);
 
   return (
-        <form
-          id={formId}
-          onSubmit={onSubmit}
-          onKeyDown={onKeyDown}
-          aria-label="Log a shelf price"
-          noValidate
-          className={`flex flex-col gap-4 ${variant === "page" ? "pb-36 lg:max-w-xl lg:pb-0" : ""}`}
-        >
-          <StoreChip
-            value={store}
-            source={source}
-            locations={locations}
-            onChoose={(l) => setChosenId(l.id)}
-            onSkip={skip}
-            disabled={busy}
-          />
+    <form
+      id={formId}
+      onSubmit={onSubmit}
+      onKeyDown={onKeyDown}
+      aria-label="Log a shelf price"
+      noValidate
+      className={`flex flex-col gap-4 ${variant === "page" ? "pb-36 lg:max-w-xl lg:pb-0" : ""}`}
+    >
+      <StoreChip
+        value={store}
+        source={source}
+        locations={locations}
+        onChoose={(l) => setChosenId(l.id)}
+        onSkip={skip}
+        disabled={busy}
+      />
 
-          {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-          {create.error ? <Alert tone="error">{purchaseErrorMessage(create.error)}</Alert> : null}
-          {unpriced ? <ObservationResult observation={unpriced} /> : null}
+      {invalid ? <Alert tone="error">{invalid}</Alert> : null}
+      {create.error ? <Alert tone="error">{purchaseErrorMessage(create.error)}</Alert> : null}
+      {unpriced ? <ObservationResult observation={unpriced} /> : null}
 
-          {product ? (
-            <ProductCard product={product} onChange={clearProduct} disabled={busy} />
-          ) : creating ? (
-            <InlineProductCreate
-              id="shelf-new-product"
-              initialBarcode={creating.barcode}
-              initialName={creating.name}
-              onCreated={pick}
-              onCancel={() => {
-                setCreating(null);
-                focusNext.current = "entry";
-              }}
-              disabled={busy}
-            />
-          ) : (
-            <ProductEntry
-              storeId={store?.id}
-              storeName={store ? locationLabel(store) : null}
-              inputRef={entryRef}
-              onPick={pick}
-              onCreate={setCreating}
-              onTextChange={setEntryText}
-              disabled={busy}
-            />
-          )}
+      {product ? (
+        <ProductCard product={product} onChange={clearProduct} disabled={busy} />
+      ) : creating ? (
+        <InlineProductCreate
+          id="shelf-new-product"
+          initialBarcode={creating.barcode}
+          initialName={creating.name}
+          onCreated={pick}
+          onCancel={() => {
+            setCreating(null);
+            focusNext.current = "entry";
+          }}
+          disabled={busy}
+        />
+      ) : (
+        <ProductEntry
+          storeId={store?.id}
+          storeName={store ? locationLabel(store) : null}
+          inputRef={entryRef}
+          onPick={pick}
+          onCreate={setCreating}
+          onTextChange={setEntryText}
+          disabled={busy}
+        />
+      )}
 
-          {product ? (
-            <>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="shelf-price" className="text-sm font-medium">
-                  Price on the shelf
-                </label>
-                <div className="flex h-[4.5rem] items-center gap-1 rounded-2xl border-2 border-neutral-300 bg-white px-4 focus-within:border-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-blue-400">
-                  <span aria-hidden="true" className="font-display text-3xl text-neutral-600 dark:text-neutral-400">
-                    $
-                  </span>
-                  <input
-                    ref={priceRef}
-                    id="shelf-price"
-                    type="text"
-                    inputMode="decimal"
-                    enterKeyHint="done"
-                    autoComplete="off"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    disabled={busy}
-                    className="font-display w-full min-w-0 bg-transparent text-4xl font-semibold tabular-nums outline-none"
-                  />
-                  <span className="shrink-0 text-sm text-neutral-600 dark:text-neutral-400">
-                    {stripZeros(qty) === "1" && unit === "each" ? "each" : `for ${stripZeros(qty)} ${unit}`}
-                  </span>
-                </div>
-                <label className="inline-flex min-h-11 items-center gap-2.5 self-start text-base">
-                  <input type="checkbox" checked={promo} onChange={(e) => setPromo(e.target.checked)} disabled={busy} className={`size-5 ${focusRing}`} />
-                  On sale
-                </label>
-              </div>
+      {product ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="shelf-price" className="text-sm font-medium">
+              Price on the shelf
+            </label>
+            <div className="flex h-[4.5rem] items-center gap-1 rounded-2xl border-2 border-neutral-300 bg-white px-4 focus-within:border-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-blue-400">
+              <span
+                aria-hidden="true"
+                className="font-display text-3xl text-neutral-600 dark:text-neutral-400"
+              >
+                $
+              </span>
+              <input
+                ref={priceRef}
+                id="shelf-price"
+                type="text"
+                inputMode="decimal"
+                enterKeyHint="done"
+                autoComplete="off"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                disabled={busy}
+                className="font-display w-full min-w-0 bg-transparent text-4xl font-semibold tabular-nums outline-none"
+              />
+              <span className="shrink-0 text-sm text-neutral-600 dark:text-neutral-400">
+                {stripZeros(qty) === "1" && unit === "each"
+                  ? "each"
+                  : `for ${stripZeros(qty)} ${unit}`}
+              </span>
+            </div>
+            <label className="inline-flex min-h-11 items-center gap-2.5 self-start text-base">
+              <input
+                type="checkbox"
+                checked={promo}
+                onChange={(e) => setPromo(e.target.checked)}
+                disabled={busy}
+                className={`size-5 ${focusRing}`}
+              />
+              On sale
+            </label>
+          </div>
 
-              <PriceContext productId={product.id} store={store} />
+          <PriceContext productId={product.id} store={store} />
 
-              <details className="text-sm">
-                <summary className={`group inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md [&::-webkit-details-marker]:hidden ${focusRing}`}>
-                  <svg viewBox="0 0 24 24" className="size-4 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                    <path d="M9 6l6 6-6 6" />
-                  </svg>
-                  Amount and time
-                </summary>
-                <div className="mt-2 grid gap-4 sm:grid-cols-2">
-                  <Field id="shelf-qty" label="Amount" inputMode="decimal" autoComplete="off" value={qty} onChange={(e) => setQty(e.target.value)} disabled={busy} />
-                  <UnitSelect id="shelf-unit" label="Unit" value={unit} onChange={setUnit} disabled={busy} hint={pack ? `1 each = one ${pack} pack.` : undefined} />
-                  <Field
-                    id="shelf-observed-at"
-                    label="Seen at"
-                    type="datetime-local"
-                    value={observedAt}
-                    onChange={(e) => {
-                      setObservedAt(e.target.value);
-                      setObservedTouched(true);
-                    }}
-                    disabled={busy}
-                    hint={observedTouched ? undefined : "Now, unless you change it."}
-                  />
-                </div>
-              </details>
-            </>
-          ) : null}
+          <details className="text-sm">
+            <summary
+              className={`group inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md [&::-webkit-details-marker]:hidden ${focusRing}`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4 transition-transform group-open:rotate-90"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+              Amount and time
+            </summary>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              <Field
+                id="shelf-qty"
+                label="Amount"
+                inputMode="decimal"
+                autoComplete="off"
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                disabled={busy}
+              />
+              <UnitSelect
+                id="shelf-unit"
+                label="Unit"
+                value={unit}
+                onChange={setUnit}
+                disabled={busy}
+                hint={pack ? `1 each = one ${pack} pack.` : undefined}
+              />
+              <Field
+                id="shelf-observed-at"
+                label="Seen at"
+                type="datetime-local"
+                value={observedAt}
+                onChange={(e) => {
+                  setObservedAt(e.target.value);
+                  setObservedTouched(true);
+                }}
+                disabled={busy}
+                hint={observedTouched ? undefined : "Now, unless you change it."}
+              />
+            </div>
+          </details>
+        </>
+      ) : null}
 
-          {/* The thumb zone (G4): pinned to the bottom edge below lg, where this
+      {/* The thumb zone (G4): pinned to the bottom edge below lg, where this
               task screen has no tab bar. The form's bottom padding keeps the last
               field clear of it. The drawer has its own footer. */}
-          {variant === "page" ? (
-          <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-1 border-t border-neutral-200 bg-neutral-50 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-8 lg:static lg:flex-row lg:gap-2 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2 lg:pb-0 dark:border-neutral-800 dark:bg-neutral-950 lg:dark:bg-transparent">
-            <Button onClick={() => save(false)} disabled={busy} className="min-h-14 w-full rounded-2xl text-base lg:min-h-10 lg:w-auto lg:rounded-md lg:text-sm">
-              {busy ? "Saving…" : "Save price"}
-            </Button>
-            {/* An action, so herb text; not the ghost button, whose neutral text would win. */}
-            <button
-              type="submit"
-              disabled={busy}
-              className={`inline-flex min-h-11 w-full items-center justify-center rounded-md px-3 text-base font-medium text-blue-700 hover:bg-neutral-200 disabled:opacity-50 lg:min-h-10 lg:w-auto lg:text-sm dark:text-blue-300 dark:hover:bg-neutral-800 ${focusRing}`}
-            >
-              Save and scan another
-            </button>
-          </div>
-          ) : null}
-        </form>
+      {variant === "page" ? (
+        <div className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-1 border-t border-neutral-200 bg-neutral-50 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-8 lg:static lg:flex-row lg:gap-2 lg:border-0 lg:bg-transparent lg:px-0 lg:pt-2 lg:pb-0 dark:border-neutral-800 dark:bg-neutral-950 lg:dark:bg-transparent">
+          <Button
+            onClick={() => save(false)}
+            disabled={busy}
+            className="min-h-14 w-full rounded-2xl text-base lg:min-h-10 lg:w-auto lg:rounded-md lg:text-sm"
+          >
+            {busy ? "Saving…" : "Save price"}
+          </Button>
+          {/* An action, so herb text; not the ghost button, whose neutral text would win. */}
+          <button
+            type="submit"
+            disabled={busy}
+            className={`inline-flex min-h-11 w-full items-center justify-center rounded-md px-3 text-base font-medium text-blue-700 hover:bg-neutral-200 disabled:opacity-50 lg:min-h-10 lg:w-auto lg:text-sm dark:text-blue-300 dark:hover:bg-neutral-800 ${focusRing}`}
+          >
+            Save and scan another
+          </button>
+        </div>
+      ) : null}
+    </form>
   );
 }
 
-function ProductCard({ product, onChange, disabled }: { product: ProductRef; onChange: () => void; disabled?: boolean }) {
-  const pack = formatPack(product.pack_qty, product.pack_unit, product.pack_count, product.piece_name);
+function ProductCard({
+  product,
+  onChange,
+  disabled,
+}: {
+  product: ProductRef;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
+  const pack = formatPack(
+    product.pack_qty,
+    product.pack_unit,
+    product.pack_count,
+    product.piece_name,
+  );
   return (
     <Card>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0" data-testid="shelf-product-choice">
           <p className="text-lg font-semibold">{productTitle(product)}</p>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">{[product.ingredient?.name, pack].filter(Boolean).join(" · ")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            {[product.ingredient?.name, pack].filter(Boolean).join(" · ")}
+          </p>
         </div>
         <Button variant="ghost" onClick={onChange} disabled={disabled} className="shrink-0">
           Change
@@ -447,7 +574,15 @@ interface ProductEntryProps {
  * exact barcode match is taken at once, as a wedge scanner expects; a barcode no
  * product has offers to create one with it filled in (UI-4.7).
  */
-function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, onTextChange, disabled }: ProductEntryProps) {
+function ProductEntry({
+  storeId,
+  storeName,
+  inputRef,
+  onPick,
+  onCreate,
+  onTextChange,
+  disabled,
+}: ProductEntryProps) {
   const [text, setTextState] = useState("");
   const setText = (next: string) => {
     setTextState(next);
@@ -456,7 +591,8 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, onTextCh
   const typed = text.trim();
   const debounced = useDebouncedValue(text, 150);
   const search = useProductSearch(debounced, 8);
-  const current = typed !== "" && debounced.trim() === typed && !search.isPlaceholderData && search.isSuccess;
+  const current =
+    typed !== "" && debounced.trim() === typed && !search.isPlaceholderData && search.isSuccess;
   // Only results for the text in the field: while a new lookup is pending the
   // last one's hits are for other words, and a tap on one would log the wrong
   // product.
@@ -511,8 +647,13 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, onTextCh
         </div>
       ) : unknownBarcode || (current && hits.length === 0) ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
-          <span>{isBarcode ? `No product has barcode ${typed}.` : `Nothing called “${typed}” yet.`}</span>
-          <Button variant="secondary" onClick={() => onCreate(isBarcode ? { barcode: typed } : { name: typed })}>
+          <span>
+            {isBarcode ? `No product has barcode ${typed}.` : `Nothing called “${typed}” yet.`}
+          </span>
+          <Button
+            variant="secondary"
+            onClick={() => onCreate(isBarcode ? { barcode: typed } : { name: typed })}
+          >
             Create product
           </Button>
         </div>
@@ -524,9 +665,17 @@ function ProductEntry({ storeId, storeName, inputRef, onPick, onCreate, onTextCh
 }
 
 /** Before typing: the last five products logged at this store, newest first (G3). */
-function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undefined; storeName: string | null; onPick: (p: ProductRef) => void }) {
+function RecentAtStore({
+  storeId,
+  storeName,
+  onPick,
+}: {
+  storeId: string | undefined;
+  storeName: string | null;
+  onPick: (p: ProductRef) => void;
+}) {
   const observations = useObservations({ vendor_location_id: storeId }, 50, Boolean(storeId));
-  const pages = observations.data?.pages ?? [];
+  const pages = useMemo(() => observations.data?.pages ?? [], [observations.data?.pages]);
   const recent = useMemo(() => {
     const seen = new Set<string>();
     const out: ProductRef[] = [];
@@ -534,7 +683,18 @@ function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undef
       if (seen.has(o.product.id)) continue;
       seen.add(o.product.id);
       const { id, name, brand, pack_qty, pack_unit, ingredient } = o.product;
-      out.push({ id, name, brand, pack_qty, pack_unit, ingredient: { id: ingredient.id, name: ingredient.name, canonical_unit: ingredient.canonical_unit } });
+      out.push({
+        id,
+        name,
+        brand,
+        pack_qty,
+        pack_unit,
+        ingredient: {
+          id: ingredient.id,
+          name: ingredient.name,
+          canonical_unit: ingredient.canonical_unit,
+        },
+      });
       if (out.length === RECENT_COUNT) break;
     }
     return out;
@@ -544,13 +704,23 @@ function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undef
   // read further back until there are five, within a bound.
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = observations;
   useEffect(() => {
-    if (recent.length < RECENT_COUNT && hasNextPage && !isFetchingNextPage && pages.length < RECENT_PAGES) void fetchNextPage();
+    if (
+      recent.length < RECENT_COUNT &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      pages.length < RECENT_PAGES
+    )
+      void fetchNextPage();
   }, [recent.length, hasNextPage, isFetchingNextPage, pages.length, fetchNextPage]);
 
-  if (!storeId || observations.isPending || observations.isError || recent.length === 0) return null;
+  if (!storeId || observations.isPending || observations.isError || recent.length === 0)
+    return null;
   return (
     <section aria-labelledby="shelf-recent">
-      <h2 id="shelf-recent" className="mb-1 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+      <h2
+        id="shelf-recent"
+        className="mb-1 text-sm font-medium text-neutral-600 dark:text-neutral-400"
+      >
         Recently logged at {storeName}
       </h2>
       <ul className="flex flex-col">
@@ -562,7 +732,9 @@ function RecentAtStore({ storeId, storeName, onPick }: { storeId: string | undef
               className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
             >
               <span className="min-w-0 truncate font-medium">{productTitle(p)}</span>
-              <span className="shrink-0 text-neutral-600 dark:text-neutral-400">{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}</span>
+              <span className="shrink-0 text-neutral-600 dark:text-neutral-400">
+                {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}
+              </span>
             </button>
           </li>
         ))}
@@ -582,13 +754,20 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
     lastPaid = best = "Couldn't load";
   } else {
     // Paid means bought: a shelf price someone only saw is not what they paid.
-    const paid = prices.data.points.filter((p) => p.location_id === store?.id && p.source !== "shelf").at(-1);
-    if (paid) lastPaid = `${moneyForQty(paid.price, paid.qty, paid.unit)} · ${formatDate(paid.observed_at)}`;
+    const paid = prices.data.points
+      .filter((p) => p.location_id === store?.id && p.source !== "shelf")
+      .at(-1);
+    if (paid)
+      lastPaid = `${moneyForQty(paid.price, paid.qty, paid.unit)} · ${formatDate(paid.observed_at)}`;
     // Stale offers are left out: an old low price is not what the shelf costs now.
     const cheapest = prices.data.latest
       .filter((l) => l.norm_unit_price !== null && !l.stale)
-      .reduce<(typeof prices.data.latest)[number] | null>((low, l) => (low === null || cmp(l.norm_unit_price!, low.norm_unit_price!) < 0 ? l : low), null);
-    if (cheapest) best = `${moneyForQty(cheapest.price, cheapest.qty, cheapest.unit)} · ${cheapest.vendor_name}`;
+      .reduce<(typeof prices.data.latest)[number] | null>(
+        (low, l) => (low === null || cmp(l.norm_unit_price!, low.norm_unit_price!) < 0 ? l : low),
+        null,
+      );
+    if (cheapest)
+      best = `${moneyForQty(cheapest.price, cheapest.qty, cheapest.unit)} · ${cheapest.vendor_name}`;
   }
   return (
     <Card>
@@ -607,19 +786,37 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
 }
 
 /** What a price that could not be normalized is missing, in one sentence, and where to add it. */
-export function bridgeFix(observation: Observation): { reason: string; label: string; to: string } | null {
+export function bridgeFix(
+  observation: Observation,
+): { reason: string; label: string; to: string } | null {
   const { product, norm } = observation;
   if (!norm || norm.status === "ok") return null;
   const ingredient = `/catalog/ingredients/${product.ingredient.id}`;
   switch (norm.status) {
     case "no_density":
-      return { reason: `It can't be compared yet: ${product.ingredient.name} has no density.`, label: "Add a density", to: `${ingredient}#density-heading` };
+      return {
+        reason: `It can't be compared yet: ${product.ingredient.name} has no density.`,
+        label: "Add a density",
+        to: `${ingredient}#density-heading`,
+      };
     case "unknown_measure":
-      return { reason: `It can't be compared yet: ${product.ingredient.name} has no measure named “${observation.unit}”.`, label: "Add the measure", to: `${ingredient}#measures-heading` };
+      return {
+        reason: `It can't be compared yet: ${product.ingredient.name} has no measure named “${observation.unit}”.`,
+        label: "Add the measure",
+        to: `${ingredient}#measures-heading`,
+      };
     case "no_pack":
-      return { reason: `It can't be compared yet: ${productTitle(product)} has no pack size.`, label: "Set the pack", to: `/catalog/products/${product.id}` };
+      return {
+        reason: `It can't be compared yet: ${productTitle(product)} has no pack size.`,
+        label: "Set the pack",
+        to: `/catalog/products/${product.id}`,
+      };
     default:
-      return { reason: "It can't be compared yet: the quantity could not be used.", label: "Check the product", to: `/catalog/products/${product.id}` };
+      return {
+        reason: "It can't be compared yet: the quantity could not be used.",
+        label: "Check the product",
+        to: `/catalog/products/${product.id}`,
+      };
   }
 }
 
@@ -628,8 +825,12 @@ export function ObservationResult({ observation }: { observation: Observation })
   const { product, norm } = observation;
   const recorded = (
     <>
-      Recorded {formatMoney(observation.price)} for {stripZeros(observation.qty)} {observation.unit} of{" "}
-      <Link to={`/catalog/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
+      Recorded {formatMoney(observation.price)} for {stripZeros(observation.qty)} {observation.unit}{" "}
+      of{" "}
+      <Link
+        to={`/catalog/products/${product.id}`}
+        className={`rounded font-medium underline ${focusRing}`}
+      >
         {productTitle(product)}
       </Link>
       {observation.is_promo ? " (sale)" : ""}.
@@ -637,15 +838,14 @@ export function ObservationResult({ observation }: { observation: Observation })
   );
 
   if (!norm) {
-    return (
-      <Alert tone="success">
-        {recorded} Normalization is pending.
-      </Alert>
-    );
+    return <Alert tone="success">{recorded} Normalization is pending.</Alert>;
   }
 
   if (norm.status === "ok") {
-    const bridge = norm.bridge_kind && norm.bridge_kind !== "none" ? ` via ${norm.bridge_kind.replace("_", " ")}${norm.bridge_source ? ` (${norm.bridge_source}${norm.bridge_confirmed === false ? ", unconfirmed" : ""})` : ""}` : "";
+    const bridge =
+      norm.bridge_kind && norm.bridge_kind !== "none"
+        ? ` via ${norm.bridge_kind.replace("_", " ")}${norm.bridge_source ? ` (${norm.bridge_source}${norm.bridge_confirmed === false ? ", unconfirmed" : ""})` : ""}`
+        : "";
     return (
       <Alert tone="success">
         {recorded}{" "}
@@ -658,12 +858,18 @@ export function ObservationResult({ observation }: { observation: Observation })
   }
 
   const ingredientLink = (hash: string, text: string) => (
-    <Link to={`/catalog/ingredients/${product.ingredient.id}#${hash}`} className={`rounded font-medium underline ${focusRing}`}>
+    <Link
+      to={`/catalog/ingredients/${product.ingredient.id}#${hash}`}
+      className={`rounded font-medium underline ${focusRing}`}
+    >
       {text}
     </Link>
   );
   const productLink = (text: string) => (
-    <Link to={`/catalog/products/${product.id}`} className={`rounded font-medium underline ${focusRing}`}>
+    <Link
+      to={`/catalog/products/${product.id}`}
+      className={`rounded font-medium underline ${focusRing}`}
+    >
       {text}
     </Link>
   );
@@ -673,20 +879,26 @@ export function ObservationResult({ observation }: { observation: Observation })
     case "no_density":
       missing = (
         <>
-          {product.ingredient.name} has no density, so {observation.unit} cannot be turned into {product.ingredient.canonical_unit}.{" "}
-          {ingredientLink("density-heading", "Add a density")}.
+          {product.ingredient.name} has no density, so {observation.unit} cannot be turned into{" "}
+          {product.ingredient.canonical_unit}. {ingredientLink("density-heading", "Add a density")}.
         </>
       );
       break;
     case "unknown_measure":
       missing = (
         <>
-          {product.ingredient.name} has no measure named “{observation.unit}”. {ingredientLink("measures-heading", "Add the measure")}.
+          {product.ingredient.name} has no measure named “{observation.unit}”.{" "}
+          {ingredientLink("measures-heading", "Add the measure")}.
         </>
       );
       break;
     case "no_pack":
-      missing = <>{productTitle(product)} has no pack size, so “each” cannot be priced per {product.ingredient.canonical_unit}. {productLink("Set the pack")}.</>;
+      missing = (
+        <>
+          {productTitle(product)} has no pack size, so “each” cannot be priced per{" "}
+          {product.ingredient.canonical_unit}. {productLink("Set the pack")}.
+        </>
+      );
       break;
     default:
       missing = <>The quantity could not be used. {productLink("Check the product")}.</>;

@@ -29,13 +29,46 @@ repos:
     hooks:
       - id: gitleaks
 
+  # ruff reads backend/pyproject.toml for backend/ and tools/ruff.toml (which
+  # extends it) for tools/: one rule set for both.
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.6
+    rev: v0.16.9  # matches backend/uv.lock
     hooks:
       - id: ruff
         files: ^(backend|tools)/
       - id: ruff-format
         files: ^(backend|tools)/
+
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.30.1  # matches the CI "Repo hygiene" job
+    hooks:
+      - id: zizmor
+        files: ^\.github/workflows/
+
+  # Markdown: .markdownlint-cli2.yaml (no line length, inline HTML allowed).
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.23.3
+    hooks:
+      - id: markdownlint-cli2
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
+
+  # CI only (`pre-commit run --hook-stage manual editorconfig-checker`): the
+  # formatters already own most of what it checks in the files they cover.
+  - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+    rev: 3.11.1
+    hooks:
+      - id: editorconfig-checker
+        alias: ec
+        stages: [manual]
 
   - repo: local
     hooks:
@@ -58,3 +91,26 @@ repos:
         entry: python3 -m tools.check_size --files
         language: system
         types_or: [python, ts, tsx]
+
+      # Prettier and ESLint run from the pinned node_modules in frontend/ and e2e/
+      # (`corepack pnpm install` there first); tools/pnpm_hook.sh passes the paths.
+      # One Prettier for both packages: the same version is pinned in each.
+      - id: prettier
+        name: prettier (frontend, e2e)
+        entry: tools/pnpm_hook.sh frontend prettier --write --ignore-path ../.prettierignore --
+        language: system
+        files: ^(frontend|e2e)/.*\.(ts|tsx|js|mjs|cjs|css|json|html)$
+
+      - id: eslint-frontend
+        name: eslint (frontend)
+        entry: tools/pnpm_hook.sh frontend eslint --max-warnings=0 --
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        require_serial: true
+
+      - id: eslint-e2e
+        name: eslint (e2e)
+        entry: tools/pnpm_hook.sh e2e eslint --max-warnings=0 --
+        language: system
+        files: ^e2e/.*\.ts$
+        require_serial: true

@@ -4,8 +4,8 @@ import { servingsText, useRecipes, type RecipeListItem } from "../../api/recipes
 import { useAddFromRecipe, type FromRecipeOut } from "../../api/shoppingList";
 import { Drawer } from "../Drawer";
 import { Alert, Button, Field } from "../ui";
-import { RecipePicker } from "./RecipePicker";
 import { positiveAmount } from "./amounts";
+import { RecipePicker } from "./RecipePicker";
 
 interface AddFromRecipeDrawerProps {
   homeBaseId: string;
@@ -58,7 +58,17 @@ export function AddFromRecipeDrawer({ homeBaseId, onClose, onDone }: AddFromReci
   };
 
   return (
-    <Drawer title="Add from recipe" thing="recipe" dirty={recipe !== null} onClose={onClose} formId={formId} primaryLabel="Add to list" busy={add.isPending} busyLabel="Adding…" primaryDisabled={alreadyOn !== null}>
+    <Drawer
+      title="Add from recipe"
+      thing="recipe"
+      dirty={recipe !== null}
+      onClose={onClose}
+      formId={formId}
+      primaryLabel="Add to list"
+      busy={add.isPending}
+      busyLabel="Adding…"
+      primaryDisabled={alreadyOn !== null}
+    >
       <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
         <RecipePicker
           id={`${formId}-recipe`}
@@ -78,7 +88,11 @@ export function AddFromRecipeDrawer({ homeBaseId, onClose, onDone }: AddFromReci
           autoComplete="off"
           className="w-32"
           value={scale}
-          hint={servings ? `${servings} servings · ×${scale.trim() || "1"}` : "×1 adds the recipe as written."}
+          hint={
+            servings
+              ? `${servings} servings · ×${scale.trim() || "1"}`
+              : "×1 adds the recipe as written."
+          }
           onChange={(e) => {
             setScale(e.target.value);
             setAlreadyOn(null);
@@ -88,7 +102,8 @@ export function AddFromRecipeDrawer({ homeBaseId, onClose, onDone }: AddFromReci
           <Alert tone="info">
             <span className="flex flex-col gap-2">
               <span data-testid="already-on-list">
-                {recipe.title} is already on the list: {alreadyOn} {alreadyOn === 1 ? "item" : "items"} to get. Nothing was changed.
+                {recipe.title} is already on the list: {alreadyOn}{" "}
+                {alreadyOn === 1 ? "item" : "items"} to get. Nothing was changed.
               </span>
               <span>
                 <Button variant="secondary" disabled={add.isPending} onClick={() => submit(true)}>
@@ -99,7 +114,9 @@ export function AddFromRecipeDrawer({ homeBaseId, onClose, onDone }: AddFromReci
           </Alert>
         ) : null}
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-        {add.isError ? <Alert tone="error">Couldn&apos;t add the recipe: {errorMessage(add.error)}</Alert> : null}
+        {add.isError ? (
+          <Alert tone="error">Couldn&apos;t add the recipe: {errorMessage(add.error)}</Alert>
+        ) : null}
       </form>
     </Drawer>
   );
@@ -108,7 +125,13 @@ export function AddFromRecipeDrawer({ homeBaseId, onClose, onDone }: AddFromReci
 /** The Notice after a recipe was added: how many were added, merged and skipped. */
 export function fromRecipeSentence(out: FromRecipeOut, title: string): string {
   const parts = [`Added ${out.added} ${out.added === 1 ? "item" : "items"} from ${title}.`];
-  if (out.merged > 0) parts.push(`${out.merged} merged into ${out.merged === 1 ? "an item" : "items"} already on the list.`);
-  if (out.skipped.length > 0) parts.push(`${out.skipped.length} unmapped ${out.skipped.length === 1 ? "line" : "lines"} skipped.`);
+  if (out.merged > 0)
+    parts.push(
+      `${out.merged} merged into ${out.merged === 1 ? "an item" : "items"} already on the list.`,
+    );
+  if (out.skipped.length > 0)
+    parts.push(
+      `${out.skipped.length} unmapped ${out.skipped.length === 1 ? "line" : "lines"} skipped.`,
+    );
   return parts.join(" ");
 }

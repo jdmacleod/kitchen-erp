@@ -1,6 +1,6 @@
 # 08 — UI design system ("Market")
 
-This document specifies the visual system for the Kitchen ERP web app. It applies to every screen in every phase. The visual reference is the private design canvas at https://claude.ai/artifact/HiZpR3VsDVnU2VkGUreeKt; ask the project owner for screenshots if you cannot open it. Where the canvas and this document disagree, this document wins.
+This document specifies the visual system for the Kitchen ERP web app. It applies to every screen in every phase. The visual reference is the private design canvas at <https://claude.ai/artifact/HiZpR3VsDVnU2VkGUreeKt>; ask the project owner for screenshots if you cannot open it. Where the canvas and this document disagree, this document wins.
 
 Rows in the canvas marked with brackets, such as `[Brand]`, `[Vendor]` or `[n]`, are placeholders. Other sample rows use the project's invented demo vendors and are illustrative, not seed data.
 
@@ -183,6 +183,7 @@ These are patterns, not a component library; build them as the pages need them.
 ## Map
 
 The map uses the self-hosted PMTiles extract from the Phase 1 spec. The basemap is the Protomaps light or dark flavour, recoloured onto the palette:
+
 - **Light:** land on `neutral-50`, parks in a desaturated leaf, water in a muted tide blue, roads in `neutral-200`/`neutral-300`.
 - **Dark:** the same roles on the espresso neutrals.
 - **Labels:** the map has none, because its label layers would need fonts from a CDN.

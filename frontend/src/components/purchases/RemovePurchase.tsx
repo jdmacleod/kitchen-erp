@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useId, useRef, useState } from "react";
+import { isApiError } from "../../api/client";
 import {
   purchaseErrorMessage,
   purchaseKeys,
@@ -8,7 +9,6 @@ import {
   type Purchase,
   type RemovedPurchase,
 } from "../../api/purchases";
-import { isApiError } from "../../api/client";
 import { formatDate } from "../../lib/format";
 import { alertTones, Button, focusRing } from "../ui";
 
@@ -18,7 +18,13 @@ import { alertTones, Button, focusRing } from "../ui";
  * `removal` preview, the same rule the removal itself follows, so the page
  * never guesses whether the purchase will be deleted or voided.
  */
-export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; onRemoved: (removed: RemovedPurchase) => void }) {
+export function RemovePurchase({
+  purchase,
+  onRemoved,
+}: {
+  purchase: Purchase;
+  onRemoved: (removed: RemovedPurchase) => void;
+}) {
   const removal = purchase.removal;
   const remove = useRemovePurchase(purchase.id);
   const client = useQueryClient();
@@ -60,7 +66,9 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
         Remove this purchase
       </h2>
       {reading || raced ? (
-        <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">You can remove it once it&apos;s been read.</p>
+        <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+          You can remove it once it&apos;s been read.
+        </p>
       ) : (
         <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">{outcome}</p>
       )}
@@ -75,7 +83,12 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
           </h3>
           <p className="text-sm">{outcome}</p>
           {remove.isError ? (
-            <div ref={alert} tabIndex={-1} role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}>
+            <div
+              ref={alert}
+              tabIndex={-1}
+              role="alert"
+              className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}
+            >
               {purchaseErrorMessage(remove.error)}
             </div>
           ) : null}
@@ -98,7 +111,13 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
             >
               {remove.isPending ? "Removing…" : "Remove purchase"}
             </Button>
-            <Button ref={keep} variant="secondary" className="w-full lg:w-auto" disabled={remove.isPending} onClick={cancel}>
+            <Button
+              ref={keep}
+              variant="secondary"
+              className="w-full lg:w-auto"
+              disabled={remove.isPending}
+              onClick={cancel}
+            >
               Keep it
             </Button>
           </div>
@@ -128,7 +147,13 @@ export function RemovePurchase({ purchase, onRemoved }: { purchase: Purchase; on
  * spec 10, Removing lines and purchases). Restoring puts it back in review; its
  * voided prices stay voided, and committing it records them again.
  */
-export function RestorePurchase({ purchase, onRestored }: { purchase: Purchase; onRestored: (restored: Purchase) => void }) {
+export function RestorePurchase({
+  purchase,
+  onRestored,
+}: {
+  purchase: Purchase;
+  onRestored: (restored: Purchase) => void;
+}) {
   const restore = useRestorePurchase(purchase.id);
   const [confirming, setConfirming] = useState(false);
   const headingId = useId();
@@ -152,7 +177,10 @@ export function RestorePurchase({ purchase, onRestored }: { purchase: Purchase; 
   };
 
   return (
-    <section aria-labelledby={`${headingId}-section`} className="mt-2 border-t border-neutral-200 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 dark:border-neutral-800">
+    <section
+      aria-labelledby={`${headingId}-section`}
+      className="mt-2 border-t border-neutral-200 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 dark:border-neutral-800"
+    >
       <h2 id={`${headingId}-section`} className="text-lg font-medium">
         Restore this purchase
       </h2>
@@ -162,20 +190,39 @@ export function RestorePurchase({ purchase, onRestored }: { purchase: Purchase; 
           : "Restoring brings it back to review. Its prices count again once you commit it."}
       </p>
       {blocked ? null : confirming ? (
-        <div role="group" aria-labelledby={headingId} className="mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800">
+        <div
+          role="group"
+          aria-labelledby={headingId}
+          className="mt-3 flex flex-col gap-3 rounded-md border border-neutral-200 p-3 dark:border-neutral-800"
+        >
           <h3 id={headingId} className="text-sm font-medium">
             {restoreHeading(purchase)}
           </h3>
           {restore.isError ? (
-            <div ref={alert} tabIndex={-1} role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}>
+            <div
+              ref={alert}
+              tabIndex={-1}
+              role="alert"
+              className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}
+            >
               {purchaseErrorMessage(restore.error)}
             </div>
           ) : null}
           <div className="flex flex-col gap-2 lg:flex-row">
-            <Button className="w-full lg:w-auto" disabled={restore.isPending} onClick={() => restore.mutate(undefined, { onSuccess: onRestored })}>
+            <Button
+              className="w-full lg:w-auto"
+              disabled={restore.isPending}
+              onClick={() => restore.mutate(undefined, { onSuccess: onRestored })}
+            >
               {restore.isPending ? "Restoring…" : "Restore purchase"}
             </Button>
-            <Button ref={keep} variant="secondary" className="w-full lg:w-auto" disabled={restore.isPending} onClick={cancel}>
+            <Button
+              ref={keep}
+              variant="secondary"
+              className="w-full lg:w-auto"
+              disabled={restore.isPending}
+              onClick={cancel}
+            >
               Cancel
             </Button>
           </div>
@@ -213,7 +260,8 @@ export function outcomeSentence(purchase: Purchase): string {
   if (removal.outcome === "void") {
     const n = removal.prices;
     // Every price it had was voided already, by a reopen or a removed line.
-    if (n === 0) return "It's been in the price book, so it will be kept as voided. You can restore it afterwards.";
+    if (n === 0)
+      return "It's been in the price book, so it will be kept as voided. You can restore it afterwards.";
     return `It's in the price book, so its ${n} ${n === 1 ? "price" : "prices"} will be voided. You can restore it afterwards.`;
   }
   return removal.photo

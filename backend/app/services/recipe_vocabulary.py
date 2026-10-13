@@ -424,7 +424,7 @@ def _rewritten_text(
         line = lines[number - 1]
         for ref in sorted(refs, key=lambda r: r.span[0], reverse=True):
             c = targets[normalize_name(ref.raw_name)]
-            assert c.target is not None
+            assert c.target is not None  # noqa: S101
             line = rewrite_token(line, ref, _cased(ref.raw_name, c.target), c.note)
             tokens += 1
         lines[number - 1] = line
@@ -453,7 +453,7 @@ def _reads_back(before: Recipe, after: str, targets: dict[str, Classification]) 
             ):
                 return False
             continue
-        assert c.target is not None
+        assert c.target is not None  # noqa: S101
         if normalize_name(new.raw_name) != normalize_name(c.target):
             return False
         if (new.quantity, new.unit_text, new.optional) != (

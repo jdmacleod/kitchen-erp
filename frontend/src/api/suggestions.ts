@@ -2,13 +2,22 @@
 // Nothing a tool posts changes a vendor until a person accepts it here.
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { api } from "./client";
 import { qs } from "./catalog";
+import { api } from "./client";
 import { geoKeys } from "./geo";
 import { inboxKey } from "./inbox";
 import type { ListResponse } from "./types";
 
-export type SuggestionField = "website" | "brand" | "wikidata" | "phone" | "address" | "opening_hours" | "osm" | "name" | "price_scope";
+export type SuggestionField =
+  | "website"
+  | "brand"
+  | "wikidata"
+  | "phone"
+  | "address"
+  | "opening_hours"
+  | "osm"
+  | "name"
+  | "price_scope";
 export type SuggestionValue = string | { type: string; id: number } | null;
 
 export interface Suggestion {
@@ -63,7 +72,8 @@ export function useSuggestionSummary() {
 export function useSuggestions(vendorId: string | null, enabled = true) {
   return useQuery({
     queryKey: suggestionKeys.list(vendorId),
-    queryFn: () => api<ListResponse<Suggestion>>(`/vendor-suggestions${qs({ vendor_id: vendorId })}`),
+    queryFn: () =>
+      api<ListResponse<Suggestion>>(`/vendor-suggestions${qs({ vendor_id: vendorId })}`),
     select: (data) => data.items,
     enabled: enabled && vendorId !== null,
   });
@@ -79,7 +89,15 @@ function afterDecision(client: QueryClient) {
 export function useDecideSuggestion() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, action, override = false }: { id: string; action: "accept" | "reject"; override?: boolean }) =>
+    mutationFn: ({
+      id,
+      action,
+      override = false,
+    }: {
+      id: string;
+      action: "accept" | "reject";
+      override?: boolean;
+    }) =>
       api<Decision>(`/vendor-suggestions/${encodeURIComponent(id)}/${action}`, {
         method: "POST",
         body: action === "accept" ? { override } : undefined,
@@ -92,7 +110,10 @@ export function useAcceptAll() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (vendorId: string) =>
-      api<{ accepted: number; skipped_stale: number }>(`/vendor-suggestions/vendors/${encodeURIComponent(vendorId)}/accept-all`, { method: "POST" }),
+      api<{ accepted: number; skipped_stale: number }>(
+        `/vendor-suggestions/vendors/${encodeURIComponent(vendorId)}/accept-all`,
+        { method: "POST" },
+      ),
     onSuccess: () => afterDecision(client),
   });
 }

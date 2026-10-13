@@ -35,7 +35,8 @@ describe("login", () => {
   it("shows the server's message inline on 401", async () => {
     mockApi({
       "GET /auth/me": () => errorResponse(401, "unauthenticated", "Not signed in."),
-      "POST /auth/login": () => errorResponse(401, "invalid_credentials", "Invalid email or password."),
+      "POST /auth/login": () =>
+        errorResponse(401, "invalid_credentials", "Invalid email or password."),
     });
     const user = userEvent.setup();
     renderApp("/login");

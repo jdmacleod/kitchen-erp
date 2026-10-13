@@ -26,9 +26,7 @@ import zipfile
 from pathlib import Path
 
 if len(sys.argv) != 2:
-    sys.exit(
-        "usage: python3 tools/fdc_profile.py data/usda/FoodData_Central_csv_<date>.zip"
-    )
+    sys.exit("usage: python3 tools/fdc_profile.py data/usda/FoodData_Central_csv_<date>.zip")
 ZIP = Path(sys.argv[1]).expanduser()
 OUT_MD = ZIP.with_name("fdc_profile.md")
 OUT_CSV = ZIP.with_name("fdc_candidates.csv")
@@ -37,11 +35,7 @@ CORE = ("foundation_food", "sr_legacy_food")
 T0 = time.time()
 
 zf = zipfile.ZipFile(ZIP)
-members = {
-    Path(i.filename).name: i
-    for i in zf.infolist()
-    if i.filename.lower().endswith(".csv")
-}
+members = {Path(i.filename).name: i for i in zf.infolist() if i.filename.lower().endswith(".csv")}
 
 
 def log(msg):
@@ -49,9 +43,7 @@ def log(msg):
 
 
 def _open(name):
-    return io.TextIOWrapper(
-        zf.open(members[name]), encoding="utf-8", errors="replace", newline=""
-    )
+    return io.TextIOWrapper(zf.open(members[name]), encoding="utf-8", errors="replace", newline="")
 
 
 def rows(name):
@@ -141,11 +133,7 @@ if "input_food.csv" in members:
         key = g(r, "fdc_id_of_input_food", "fdc_of_input_food")
         if key not in food:
             sr = g(r, "sr_code")
-            key = (
-                ndb_to_fdc.get(sr)
-                or code_to_fdc.get(sr)
-                or (f"code:{sr}" if sr else "")
-            )
+            key = ndb_to_fdc.get(sr) or code_to_fdc.get(sr) or (f"code:{sr}" if sr else "")
         if not key:
             continue
         use[key] += 1
@@ -162,10 +150,11 @@ p()
 # 4. Category breakdown for core foods, with usage thresholds
 p("## Foundation + SR Legacy by food_category (with FNDDS usage)\n")
 p(
-    "| category | foundation | foundation used ≥1 | sr_legacy | SR used ≥1 | SR used ≥5 | SR used ≥20 |\n|---|---:|---:|---:|---:|---:|---:|"
+    "| category | foundation | foundation used ≥1 | sr_legacy | SR used ≥1 | SR used ≥5 "
+    "| SR used ≥20 |\n|---|---:|---:|---:|---:|---:|---:|"
 )
 agg = collections.defaultdict(lambda: [0, 0, 0, 0, 0, 0])
-for fid, (dt, desc, cid) in food.items():
+for fid, (dt, _desc, cid) in food.items():
     if dt not in CORE:
         continue
     a = agg[cat.get(cid, f"(id {cid})")]
@@ -181,7 +170,7 @@ for fid, (dt, desc, cid) in food.items():
 tot = [0] * 6
 for c in sorted(agg, key=lambda c: -(agg[c][0] + agg[c][2])):
     a = agg[c]
-    tot = [x + y for x, y in zip(tot, a)]
+    tot = [x + y for x, y in zip(tot, a, strict=True)]
     p("| " + " | ".join([c] + [str(x) for x in a]) + " |")
 p("| **total** | " + " | ".join(str(x) for x in tot) + " |\n")
 
@@ -253,12 +242,10 @@ for r in rows("food_portion.csv") or []:
     units[u] += 1
 core_ids = [k for k, v in food.items() if v[0] in CORE]
 p("## Portions (gram weights) for core foods\n")
-p(
-    f"- core foods with ≥1 portion: {sum(1 for k in core_ids if nport[k]):,} of {len(core_ids):,}"
-)
-p(
-    f"- SR foods used in FNDDS with ≥1 portion: {sum(1 for k in core_ids if nport[k] and use.get(k)):,} of {sum(1 for k in core_ids if use.get(k)):,}"
-)
+p(f"- core foods with ≥1 portion: {sum(1 for k in core_ids if nport[k]):,} of {len(core_ids):,}")
+sr_used = sum(1 for k in core_ids if use.get(k))
+sr_used_with_portion = sum(1 for k in core_ids if nport[k] and use.get(k))
+p(f"- SR foods used in FNDDS with ≥1 portion: {sr_used_with_portion:,} of {sr_used:,}")
 p("\n| unit / modifier | rows |\n|---|---:|")
 for u, v in units.most_common(30):
     p(f"| {u} | {v:,} |")
@@ -280,7 +267,7 @@ for c, v in bc.most_common(40):
 p()
 
 # 8. Candidate CSV
-with open(OUT_CSV, "w", newline="", encoding="utf-8") as f:
+with OUT_CSV.open("w", newline="", encoding="utf-8") as f:
     w = csv.writer(f)
     w.writerow(
         [

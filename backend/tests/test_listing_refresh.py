@@ -77,7 +77,7 @@ async def test_each_active_listing_is_queued_once_with_its_id(
     listings,
     helper,  # noqa: F811
 ):
-    active, oats = listings
+    active, oats = listings  # noqa: RUF059
     assert await queue() == 1
     assert await queue() == 0  # already open
     [request] = (await helper.get("/api/v1/lookup-requests", headers=helper.read_headers)).json()[

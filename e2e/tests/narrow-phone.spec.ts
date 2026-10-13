@@ -35,7 +35,9 @@ test("the purchase form fits the viewport even with a long location name", async
   await expectNoSidewaysScroll(page, "/shop/purchases/new");
 });
 
-test("the product picker stays inside its column on the purchase form", async ({ page }, testInfo) => {
+test("the product picker stays inside its column on the purchase form", async ({
+  page,
+}, testInfo) => {
   // A 12rem minimum on the picker's search box pushed it into the Quantity
   // field beside it at 768 and 1024px (review of #67), widths no project here
   // runs at, so the test sets them itself and runs once. Where the two share a
@@ -52,7 +54,10 @@ test("the product picker stays inside its column on the purchase form", async ({
     expect(box && button && quantity, "the picker and Quantity are on the page").toBeTruthy();
     const pickerRight = Math.max(box!.x + box!.width, button!.x + button!.width);
     const sameRow = Math.abs(quantity!.y - box!.y) < 40;
-    if (sameRow) expect(pickerRight, `at ${width}px the picker runs into Quantity`).toBeLessThanOrEqual(quantity!.x);
+    if (sameRow)
+      expect(pickerRight, `at ${width}px the picker runs into Quantity`).toBeLessThanOrEqual(
+        quantity!.x,
+      );
   }
 });
 
@@ -73,13 +78,23 @@ test("the receipt upload and map pages fit the viewport", async ({ page }) => {
  * is a 44px target (UI-4.1, UI-4.2). Measured on the pages people use in the
  * store: Home, Purchases and a list page with filters.
  */
-test("the phone shell shows the tab bar and every control is a 44px target", async ({ page }, testInfo) => {
+test("the phone shell shows the tab bar and every control is a 44px target", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name === "desktop", "the phone shell is below lg");
   await login(page);
   const small: string[] = [];
 
   const tabs = page.getByRole("navigation", { name: "Tabs" });
-  for (const path of ["/", "/shop/purchases", "/shop/receipts", "/catalog/products", "/catalog/ingredients", "/catalog/vendors", "/settings/kitchens"]) {
+  for (const path of [
+    "/",
+    "/shop/purchases",
+    "/shop/receipts",
+    "/catalog/products",
+    "/catalog/ingredients",
+    "/catalog/vendors",
+    "/settings/kitchens",
+  ]) {
     await page.goto(path);
     await expect(tabs).toBeVisible();
     await expect(page.locator("aside")).toBeHidden();
@@ -91,7 +106,11 @@ test("the phone shell shows the tab bar and every control is a 44px target", asy
   }
 
   // The overlays render outside main: measure each one open.
-  for (const [tab, dialog] of [["More", "More"], ["Search", "Search"], ["Capture", "Capture"]]) {
+  for (const [tab, dialog] of [
+    ["More", "More"],
+    ["Search", "Search"],
+    ["Capture", "Capture"],
+  ]) {
     await tabs.getByRole("button", { name: tab }).click();
     const open = page.getByRole("dialog", { name: dialog });
     await expect(open).toBeVisible();

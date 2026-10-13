@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { errorMessage, isApiError } from "../../api/client";
 import { useIngredient, type Ingredient, type IngredientSummary } from "../../api/catalog";
+import { errorMessage, isApiError } from "../../api/client";
 import { useLinkAction, type MergeNeeded, type StandardEntry } from "../../api/ingredientLink";
 import { useNotice } from "../Notice";
 import { Alert, Button, Card, focusRing } from "../ui";
@@ -15,7 +15,15 @@ import { IngredientPicker, type IngredientChoice } from "./IngredientPicker";
  */
 export type IngredientPageMode = "idle" | "merge" | "link";
 
-export function IngredientPageActions({ ingredient, mode, onClose }: { ingredient: Ingredient; mode: IngredientPageMode; onClose: () => void }) {
+export function IngredientPageActions({
+  ingredient,
+  mode,
+  onClose,
+}: {
+  ingredient: Ingredient;
+  mode: IngredientPageMode;
+  onClose: () => void;
+}) {
   if (mode === "merge") return <MergeInto ingredient={ingredient} onClose={onClose} />;
   if (mode === "link") return <LinkToStandard ingredient={ingredient} onClose={onClose} />;
   return null;
@@ -28,7 +36,10 @@ export function MergedInto({ survivorId }: { survivorId: string }) {
   return (
     <Alert tone="info">
       Merged into{" "}
-      <Link to={`/catalog/ingredients/${survivorId}`} className={`rounded font-medium underline ${focusRing}`}>
+      <Link
+        to={`/catalog/ingredients/${survivorId}`}
+        className={`rounded font-medium underline ${focusRing}`}
+      >
         {name}
       </Link>
       . Its products and spellings are there now.
@@ -38,7 +49,14 @@ export function MergedInto({ survivorId }: { survivorId: string }) {
 
 function useMergedNotice(ingredient: Ingredient, onClose: () => void) {
   const notice = useNotice();
-  return ({ survivor, loser }: { survivor: { id: string; name: string }; loser: { name: string }; targetName: string }) => {
+  return ({
+    survivor,
+    loser,
+  }: {
+    survivor: { id: string; name: string };
+    loser: { name: string };
+    targetName: string;
+  }) => {
     onClose();
     if (survivor.id === ingredient.id) {
       notice.show({ tone: "success", message: `Merged ${loser.name} into ${ingredient.name}.` });
@@ -75,7 +93,13 @@ function MergeInto({ ingredient, onClose }: { ingredient: Ingredient; onClose: (
       ) : (
         <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
           <div className="lg:w-80">
-            <IngredientPicker id={`merge-${ingredient.id}-into`} label="Merge into" value={null} onChange={setChoice} allowCreate={false} />
+            <IngredientPicker
+              id={`merge-${ingredient.id}-into`}
+              label="Merge into"
+              value={null}
+              onChange={setChoice}
+              allowCreate={false}
+            />
           </div>
           <Button variant="secondary" onClick={onClose}>
             Cancel
@@ -125,9 +149,16 @@ function LinkToStandard({ ingredient, onClose }: { ingredient: Ingredient; onClo
       {needed ? (
         <IngredientMergePanel
           first={{ id: ingredient.id, name: ingredient.name }}
-          second={{ id: needed.needed.other.id, name: needed.needed.other.name, products: needed.needed.other.products }}
+          second={{
+            id: needed.needed.other.id,
+            name: needed.needed.other.name,
+            products: needed.needed.other.products,
+          }}
           defaultSurvivor={needed.needed.other.id}
-          targetFor={() => ({ target: { standard_key: needed.entry.key }, name: needed.needed.target_name })}
+          targetFor={() => ({
+            target: { standard_key: needed.entry.key },
+            name: needed.needed.target_name,
+          })}
           onCancel={() => setNeeded(null)}
           onMerged={merged}
         />

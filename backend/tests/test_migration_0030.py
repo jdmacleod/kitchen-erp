@@ -181,7 +181,7 @@ async def _lines(conn: asyncpg.Connection) -> dict[str, dict[str, Any]]:
     return {r["raw_text"]: dict(r) for r in rows}
 
 
-async def test_keys_move_to_version_2_and_come_back(admin_client, admin, owner_conn):
+async def test_keys_move_to_version_2_and_come_back(admin_client, admin, owner_conn):  # noqa: PLR0915
     loc = await make_location(admin_client, "Lantern Row Grocer", "Lantern Row Grocer")
     vendor = await owner_conn.fetchval(
         "SELECT vendor_id FROM vendor_location WHERE id = $1", uuid.UUID(loc["id"])
@@ -261,7 +261,7 @@ async def test_keys_move_to_version_2_and_come_back(admin_client, admin, owner_c
         before_aliases = await _aliases(owner_conn)
 
         # The dry run counts and changes nothing.
-        dry = subprocess.run(
+        dry = subprocess.run(  # noqa: S603
             [sys.executable, "-c", CLI, "migrate", "--check-normalize"],
             cwd=BACKEND_ROOT,
             env=os.environ.copy(),

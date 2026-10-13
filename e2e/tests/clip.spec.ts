@@ -9,7 +9,13 @@ import { ADMIN, nextTag } from "./helpers";
 const SHOP = "https://shop.example.test";
 
 function storefront(tag: string): string {
-  const product = { "@context": "https://schema.org", "@type": "Product", name: `E2E Rolled Oats ${tag}`, sku: "77123", offers: { "@type": "Offer", price: 3.49 } };
+  const product = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: `E2E Rolled Oats ${tag}`,
+    sku: "77123",
+    offers: { "@type": "Offer", price: 3.49 },
+  };
   return `<!doctype html><html><head><title>E2E Rolled Oats ${tag} – Shop</title>
 <meta property="og:title" content="E2E Rolled Oats ${tag}">
 <script type="application/ld+json">${JSON.stringify(product)}</script></head>
@@ -17,16 +23,24 @@ function storefront(tag: string): string {
 }
 
 /** A page that only opens the clip window and never answers it. */
-const SILENT = (app: string) => `<!doctype html><html><body><button onclick="window.open('${app}/capture/clip','kerp-clip','width=440,height=620')">open</button></body></html>`;
+const SILENT = (app: string) =>
+  `<!doctype html><html><body><button onclick="window.open('${app}/capture/clip','kerp-clip','width=440,height=620')">open</button></body></html>`;
 
 async function serve(page: Page, html: string, headers: Record<string, string> = {}) {
-  await page.context().route(`${SHOP}/**`, (route) => route.fulfill({ contentType: "text/html; charset=utf-8", body: html, headers }));
+  await page
+    .context()
+    .route(`${SHOP}/**`, (route) =>
+      route.fulfill({ contentType: "text/html; charset=utf-8", body: html, headers }),
+    );
 }
 
 test.describe("the clip window", () => {
   test.skip(({ isMobile }) => isMobile, "pop-up windows are a desktop flow");
 
-  test("completes the ready handshake with another origin, after signing in inside the window", async ({ page, baseURL }) => {
+  test("completes the ready handshake with another origin, after signing in inside the window", async ({
+    page,
+    baseURL,
+  }) => {
     const tag = nextTag();
     await serve(page, storefront(tag));
     await page.goto(`${SHOP}/p/rolled-oats-${tag}`);
@@ -35,7 +49,8 @@ test.describe("the clip window", () => {
     const popup = await opened;
     const saves: string[] = [];
     popup.on("request", (r) => {
-      if (r.method() === "POST" && r.url().endsWith("/api/v1/product-captures")) saves.push(r.url());
+      if (r.method() === "POST" && r.url().endsWith("/api/v1/product-captures"))
+        saves.push(r.url());
     });
 
     await expect(popup.getByRole("heading", { name: "Save this product" })).toBeVisible();
@@ -58,7 +73,10 @@ test.describe("the clip window", () => {
     expect(popup.isClosed()).toBe(false);
   });
 
-  test("ignores a message from any window but its opener, and saves nothing", async ({ page, baseURL }) => {
+  test("ignores a message from any window but its opener, and saves nothing", async ({
+    page,
+    baseURL,
+  }) => {
     const app = new URL(baseURL!).origin;
     await page.goto("/login");
     await page.getByLabel("Email").fill(ADMIN.email);
@@ -74,14 +92,27 @@ test.describe("the clip window", () => {
     await expect(popup.getByText("Waiting for the page…")).toBeVisible();
     // A forged page, posted by the window itself rather than its opener.
     await popup.evaluate(() =>
-      window.postMessage({ type: "kerp-clip", payload: { page_url: "https://forged.example.test/p/1", title: "Forged" } }, "*"),
+      window.postMessage(
+        {
+          type: "kerp-clip",
+          payload: { page_url: "https://forged.example.test/p/1", title: "Forged" },
+        },
+        "*",
+      ),
     );
     await expect(popup.getByText("Forged")).toHaveCount(0);
     // The opener never answers: after the wait, the window says so.
-    await expect(popup.getByText(/The store page didn't answer\. Reload it and click Save to Kitchen ERP again/)).toBeVisible({ timeout: 15_000 });
+    await expect(
+      popup.getByText(
+        /The store page didn't answer\. Reload it and click Save to Kitchen ERP again/,
+      ),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
-  test("says the window isn't connected when the page cuts its opener", async ({ page, baseURL }) => {
+  test("says the window isn't connected when the page cuts its opener", async ({
+    page,
+    baseURL,
+  }) => {
     const tag = nextTag();
     await serve(page, storefront(tag), { "Cross-Origin-Opener-Policy": "same-origin" });
     await page.goto(`${SHOP}/p/coop-${tag}`);

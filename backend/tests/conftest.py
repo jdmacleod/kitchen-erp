@@ -48,7 +48,7 @@ from app.services import identity  # noqa: E402
 
 
 def run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         [sys.executable, "-m", "alembic", *args],
         cwd=BACKEND_ROOT,
         env=os.environ.copy(),

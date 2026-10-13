@@ -1060,7 +1060,7 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             ingredient = await new_ingredient(db, payload.ingredient)
             ingredient_id = ingredient.id
         else:
-            assert payload.ingredient_id is not None
+            assert payload.ingredient_id is not None  # noqa: S101
             ingredient = await db.get(Ingredient, payload.ingredient_id)
             if ingredient is None:
                 raise ApiError(404, "not_found", "No such ingredient.")
@@ -1124,7 +1124,7 @@ async def _check_pieces(db: AsyncSession, product: Product) -> None:
         )
 
 
-async def update_product(
+async def update_product(  # noqa: C901, PLR0912, PLR0915
     db: AsyncSession, product_id: uuid.UUID, payload: ProductUpdate
 ) -> Product:
     product = await get_product(db, product_id)
@@ -1169,7 +1169,7 @@ async def update_product(
     data.pop("barcode", None)
     if "attributes" in data:
         ingredient = await db.get(Ingredient, data.get("ingredient_id") or product.ingredient_id)
-        assert ingredient is not None
+        assert ingredient is not None  # noqa: S101
         data["attributes"] = _attributes(ingredient, data["attributes"])
     if data.pop("clear_exclusive_vendor", False):
         product.exclusive_vendor_id = None

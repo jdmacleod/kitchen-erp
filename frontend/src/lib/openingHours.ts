@@ -5,7 +5,20 @@
 export const DAY_CODES = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
 export type DayCode = (typeof DAY_CODES)[number];
 
-export const MONTH_CODES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+export const MONTH_CODES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
 export type MonthCode = (typeof MONTH_CODES)[number];
 
 const dayName: Record<DayCode, string> = {

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
-import { errorMessage, isApiError } from "../../api/client";
 import {
   catalogErrorMessage,
   productTitle,
@@ -13,22 +12,29 @@ import {
   type Product,
   type ProductUpdateInput,
 } from "../../api/catalog";
+import { errorMessage, isApiError } from "../../api/client";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
 import { ProductCategoryCard } from "../../components/catalog/ProductCategoryCard";
 import { ProductLookUpCard } from "../../components/catalog/ProductLookUpCard";
+import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
 import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
+import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
+import { CategoryChip } from "../../components/CategoryChip";
+import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
+import { useNotice } from "../../components/Notice";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
-import { StoreBrandBadge } from "../../components/catalog/StoreBrandBadge";
 import { formatDateTime } from "../../lib/format";
-import { usePageTitle } from "../../lib/usePageTitle";
-import { piecesFit, ProductForm, productValues, validateProductValues, type ProductFormValues } from "./ProductForm";
-import { CategoryChip } from "../../components/CategoryChip";
-import { useNotice } from "../../components/Notice";
-import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
-import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
+import { usePageTitle } from "../../lib/usePageTitle";
+import {
+  piecesFit,
+  ProductForm,
+  productValues,
+  validateProductValues,
+  type ProductFormValues,
+} from "./ProductForm";
 
 export function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -92,7 +98,12 @@ function ProductDetail({ product }: { product: Product }) {
         {actions.length === 0 ? null : wide ? (
           <div className="flex flex-wrap gap-2">
             {actions.map((a) => (
-              <Button key={a.label} variant={a.variant ?? "secondary"} disabled={a.disabled} onClick={a.open}>
+              <Button
+                key={a.label}
+                variant={a.variant ?? "secondary"}
+                disabled={a.disabled}
+                onClick={a.open}
+              >
                 {a.label}
               </Button>
             ))}
@@ -126,7 +137,10 @@ function ProductDetail({ product }: { product: Product }) {
               notice.show({
                 tone: "success",
                 message: `Merged into ${done.survivor_name}.`,
-                action: { label: `Open ${done.survivor_name}`, to: `/catalog/products/${done.survivor_id}` },
+                action: {
+                  label: `Open ${done.survivor_name}`,
+                  to: `/catalog/products/${done.survivor_id}`,
+                },
                 focusAction: true,
               });
             }}
@@ -139,10 +153,16 @@ function ProductDetail({ product }: { product: Product }) {
           <span aria-hidden="true">·</span>
           <span>
             Ingredient{" "}
-            <Link to={`/catalog/ingredients/${product.ingredient.id}`} className={`rounded font-medium underline ${focusRing}`}>
+            <Link
+              to={`/catalog/ingredients/${product.ingredient.id}`}
+              className={`rounded font-medium underline ${focusRing}`}
+            >
               {product.ingredient.name}
             </Link>{" "}
-            <CategoryChip category={product.ingredient.category} categoryKey={product.ingredient.category_key} />
+            <CategoryChip
+              category={product.ingredient.category}
+              categoryKey={product.ingredient.category_key}
+            />
           </span>
           <StoreBrandBadge brand={product.house_brand} />
           <span aria-hidden="true">·</span>
@@ -151,7 +171,9 @@ function ProductDetail({ product }: { product: Product }) {
           </span>
           {product.active ? <Badge tone="good">active</Badge> : <Badge tone="warn">inactive</Badge>}
         </p>
-        {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
+        {setActive.isError ? (
+          <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert>
+        ) : null}
 
         <ProductPhotosCard product={product} />
         <ProductLookUpCard product={product} />
@@ -163,11 +185,18 @@ function ProductDetail({ product }: { product: Product }) {
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <p data-testid="density-override-summary">
                 <span className="font-medium">{trimDecimal(product.density_override)} g/ml</span>
-                <span className="text-neutral-600 dark:text-neutral-400"> · {product.density_override_source}</span>{" "}
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {" "}
+                  · {product.density_override_source}
+                </span>{" "}
                 <ConfirmedBadge confirmed={product.density_override_confirmed} />
               </p>
               {product.density_override_confirmed ? null : (
-                <Button variant="secondary" disabled={confirmDensity.isPending} onClick={() => confirmDensity.mutate()}>
+                <Button
+                  variant="secondary"
+                  disabled={confirmDensity.isPending}
+                  onClick={() => confirmDensity.mutate()}
+                >
                   {confirmDensity.isPending ? "Confirming…" : "Confirm density override"}
                 </Button>
               )}
@@ -199,7 +228,10 @@ function MergedInto({ survivorId }: { survivorId: string }) {
   return (
     <Alert tone="info">
       Merged into{" "}
-      <Link to={`/catalog/products/${survivorId}`} className={`rounded font-medium underline ${focusRing}`}>
+      <Link
+        to={`/catalog/products/${survivorId}`}
+        className={`rounded font-medium underline ${focusRing}`}
+      >
         {name}
       </Link>
       . Its prices, codes, photos and receipt wordings are there now.
@@ -221,7 +253,8 @@ function EditProductForm({ product }: { product: Product }) {
     if (problem || !values.ingredient || values.ingredient.kind !== "existing") return;
 
     const input: ProductUpdateInput = {};
-    if (values.ingredient.ingredient.id !== product.ingredient.id) input.ingredient_id = values.ingredient.ingredient.id;
+    if (values.ingredient.ingredient.id !== product.ingredient.id)
+      input.ingredient_id = values.ingredient.ingredient.id;
     const brand = values.brand.trim() || null;
     if (brand !== product.brand) input.brand = brand;
     if (values.name.trim() !== product.name) input.name = values.name.trim();
@@ -236,8 +269,12 @@ function EditProductForm({ product }: { product: Product }) {
     // Pieces go with a weighed or measured pack; a hidden field sends nothing.
     const count = piecesFit(values.pack_unit, units.data ?? []) ? values.pack_count.trim() : "";
     const pieceName = values.piece_name.trim().toLowerCase();
-    if (count === "" && (product.pack_count ?? null) !== null && !input.clear_pack) input.clear_pieces = true;
-    else if (count !== "" && (Number(count) !== product.pack_count || pieceName !== (product.piece_name ?? ""))) {
+    if (count === "" && (product.pack_count ?? null) !== null && !input.clear_pack)
+      input.clear_pieces = true;
+    else if (
+      count !== "" &&
+      (Number(count) !== product.pack_count || pieceName !== (product.piece_name ?? ""))
+    ) {
       input.pack_count = Number(count);
       if (pieceName) input.piece_name = pieceName;
     }
@@ -246,7 +283,8 @@ function EditProductForm({ product }: { product: Product }) {
     if (barcode === "" && product.barcode !== null) input.clear_barcode = true;
     else if (barcode !== "" && barcode !== product.barcode) input.barcode = barcode;
 
-    if (values.quality_rating !== product.quality_rating) input.quality_rating = values.quality_rating;
+    if (values.quality_rating !== product.quality_rating)
+      input.quality_rating = values.quality_rating;
     const notes = values.notes.trim() || null;
     if (notes !== product.notes) input.notes = notes;
 
@@ -254,7 +292,8 @@ function EditProductForm({ product }: { product: Product }) {
     if (density === "" && product.density_override !== null) input.clear_density_override = true;
     else if (
       density !== "" &&
-      (density !== product.density_override || values.density_override_source !== product.density_override_source)
+      (density !== product.density_override ||
+        values.density_override_source !== product.density_override_source)
     ) {
       input.density_override = density;
       input.density_override_source = values.density_override_source;

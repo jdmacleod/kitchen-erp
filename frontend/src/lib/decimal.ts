@@ -171,5 +171,7 @@ export function formatMoney(a: string | null | undefined, minPlaces = 2, maxPlac
  */
 export function moneyForQty(price: string, qty: string, unit: string): string {
   const count = stripZeros(qty);
-  return count === "1" && unit === "each" ? formatMoney(price) : `${formatMoney(price)} / ${count} ${unit}`;
+  return count === "1" && unit === "each"
+    ? formatMoney(price)
+    : `${formatMoney(price)} / ${count} ${unit}`;
 }

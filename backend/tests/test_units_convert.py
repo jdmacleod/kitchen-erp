@@ -173,7 +173,7 @@ def test_measure_precedes_pack():
 
 
 def test_invalid_canonical_unit_is_a_programming_error():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError):  # noqa: PT011
         convert(D("1"), "g", ConversionContext("kg"))
 
 

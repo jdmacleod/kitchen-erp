@@ -1,0 +1,3 @@
+# tools/ shares the backend's ruff configuration (CODING_STANDARDS.md, section 3),
+# so pre-commit, CI and `make lint` check both with one rule set.
+extend = "../backend/pyproject.toml"

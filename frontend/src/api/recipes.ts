@@ -123,7 +123,14 @@ export interface RecipePin {
  */
 export type BodyItem =
   | { t: "text"; v: string }
-  | { t: "ingredient"; name: string; qty: string | null; unit: string | null; note: string | null; seq: number }
+  | {
+      t: "ingredient";
+      name: string;
+      qty: string | null;
+      unit: string | null;
+      note: string | null;
+      seq: number;
+    }
   | { t: "cookware"; name: string; qty: string | null }
   | { t: "timer"; name: string | null; qty: string | null; unit: string | null };
 
@@ -338,7 +345,8 @@ export const recipeKeys = {
   list: (filters: RecipeListFilters) => ["recipes", "list", filters] as const,
   status: ["recipes", "status"] as const,
   recipe: (id: string) => ["recipes", "recipe", id] as const,
-  cost: (id: string, basis: CostBasis, homeBaseId = "") => ["recipes", "cost", id, basis, homeBaseId] as const,
+  cost: (id: string, basis: CostBasis, homeBaseId = "") =>
+    ["recipes", "cost", id, basis, homeBaseId] as const,
   history: (id: string, basis: CostBasis) => ["recipes", "history", id, basis] as const,
   resolve: ["recipes", "resolve"] as const,
   usedIn: (ingredientId: string) => ["recipes", "used-in", ingredientId] as const,
@@ -354,7 +362,10 @@ export interface RecipeListFilters {
 export function useRecipes(filters: RecipeListFilters) {
   return useQuery({
     queryKey: recipeKeys.list(filters),
-    queryFn: () => api<RecipeList>(`/recipes${qs({ q: filters.q, status: filters.status, completeness: filters.completeness })}`),
+    queryFn: () =>
+      api<RecipeList>(
+        `/recipes${qs({ q: filters.q, status: filters.status, completeness: filters.completeness })}`,
+      ),
   });
 }
 
@@ -382,7 +393,12 @@ export function useRecipe(id: string | undefined) {
  * UI-8.8): prices restricted to that kitchen's locations, computed on demand and
  * never snapshotted.
  */
-export function useRecipeCost(id: string | undefined, basis: CostBasis, enabled = true, homeBaseId = "") {
+export function useRecipeCost(
+  id: string | undefined,
+  basis: CostBasis,
+  enabled = true,
+  homeBaseId = "",
+) {
   return useQuery({
     queryKey: recipeKeys.cost(id ?? "", basis, homeBaseId),
     queryFn: () => api<RecipeCost>(`/recipes/${id}/cost${qs({ basis, home_base_id: homeBaseId })}`),
@@ -426,7 +442,8 @@ export function useIngredientRecipes(ingredientId: string | undefined, enabled =
 export function useDecideName() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: ResolveDecisionInput) => api<ResolveDecision>("/recipes/resolve", { method: "POST", body: input }),
+    mutationFn: (input: ResolveDecisionInput) =>
+      api<ResolveDecision>("/recipes/resolve", { method: "POST", body: input }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: recipeKeys.all });
       void client.invalidateQueries({ queryKey: inboxKey });
@@ -438,7 +455,8 @@ export function useDecideName() {
 /** Ask the cascade, the local model included, about one queued name. Suggestions only. */
 export function useAskModel() {
   return useMutation({
-    mutationFn: (name_norm: string) => api<ResolveAsk>("/recipes/resolve/ask", { method: "POST", body: { name_norm } }),
+    mutationFn: (name_norm: string) =>
+      api<ResolveAsk>("/recipes/resolve/ask", { method: "POST", body: { name_norm } }),
   });
 }
 
@@ -447,7 +465,10 @@ export function useSetPin(recipeId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ nameNorm, productId }: { nameNorm: string; productId: string }) =>
-      api<Recipe>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, { method: "PUT", body: { product_id: productId } }),
+      api<Recipe>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, {
+        method: "PUT",
+        body: { product_id: productId },
+      }),
     onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
   });
 }
@@ -455,7 +476,8 @@ export function useSetPin(recipeId: string) {
 export function useDeletePin(recipeId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (nameNorm: string) => api<void>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, { method: "DELETE" }),
+    mutationFn: (nameNorm: string) =>
+      api<void>(`/recipes/${recipeId}/pins/${encodeURIComponent(nameNorm)}`, { method: "DELETE" }),
     onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
   });
 }
@@ -482,7 +504,8 @@ export function useRescanRecipes() {
 export function useRelinkRecipe(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (targetId: string) => api<Recipe>(`/recipes/${id}/relink`, { method: "POST", body: { target_id: targetId } }),
+    mutationFn: (targetId: string) =>
+      api<Recipe>(`/recipes/${id}/relink`, { method: "POST", body: { target_id: targetId } }),
     onSuccess: () => client.invalidateQueries({ queryKey: recipeKeys.all }),
   });
 }
@@ -545,7 +568,8 @@ export function resolvedSentence(rawName: string, decision: ResolveDecision): st
   const recipes = `${decision.recipes} ${decision.recipes === 1 ? "recipe" : "recipes"}`;
   if (decision.action === "ignored") return `Ignored '${rawName}'. It won't be asked about again.`;
   const name = decision.ingredient?.name ?? rawName;
-  if (decision.lines > decision.recipes) return `Resolved '${rawName}' as ${name}: ${decision.lines} lines in ${recipes}.`;
+  if (decision.lines > decision.recipes)
+    return `Resolved '${rawName}' as ${name}: ${decision.lines} lines in ${recipes}.`;
   return `Resolved '${rawName}' as ${name} in ${recipes}.`;
 }
 
@@ -555,12 +579,17 @@ export function pricedSentence(priced: number, total: number): string {
 }
 
 /** Servings as written, or the number, or nothing. */
-export function servingsText(recipe: Pick<RecipeSummary, "servings" | "servings_text">): string | null {
+export function servingsText(
+  recipe: Pick<RecipeSummary, "servings" | "servings_text">,
+): string | null {
   return recipe.servings_text ?? recipe.servings;
 }
 
 /** "$12.40", or "$12.40–13.10" for a range whose high differs; "—" with no figure. */
-export function formatCostRange(low: string | null | undefined, high: string | null | undefined): string {
+export function formatCostRange(
+  low: string | null | undefined,
+  high: string | null | undefined,
+): string {
   if (!low) return "—";
   const lowText = formatMoney(low);
   if (!high || cmp(low, high) === 0) return lowText;
@@ -568,7 +597,11 @@ export function formatCostRange(low: string | null | undefined, high: string | n
 }
 
 /** "1.5 lb", or "1–2 lb" for a range; "—" when the server sent no display quantity. */
-export function formatQuantity(qty: string | null | undefined, high: string | null | undefined, unit: string | null | undefined): string {
+export function formatQuantity(
+  qty: string | null | undefined,
+  high: string | null | undefined,
+  unit: string | null | undefined,
+): string {
   if (!qty || !unit) return "—";
   const low = stripZeros(qty);
   const top = high && cmp(qty, high) !== 0 ? `–${stripZeros(high)}` : "";
@@ -579,7 +612,8 @@ export function formatQuantity(qty: string | null | undefined, high: string | nu
 export function lineText(line: RecipeIngredient): string {
   let qty = "";
   if (line.qty_kind === "text") qty = line.qty_text ?? "";
-  else if (line.qty_kind === "range" && line.qty) qty = `${stripZeros(line.qty)}–${line.qty_high ? stripZeros(line.qty_high) : ""}`;
+  else if (line.qty_kind === "range" && line.qty)
+    qty = `${stripZeros(line.qty)}–${line.qty_high ? stripZeros(line.qty_high) : ""}`;
   else if (line.qty_kind === "number" && line.qty) qty = stripZeros(line.qty);
   const parts = [qty, line.unit_text ?? "", line.raw_name].filter((p) => p !== "");
   const text = parts.join(" ");

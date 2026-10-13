@@ -520,7 +520,7 @@ def _note(kind: str, text: str, **extra: Any) -> dict[str, Any]:
     return note
 
 
-def plan(
+def plan(  # noqa: C901, PLR0912, PLR0915
     inputs: PlanInputs,
     items: list[PlanItem],
     candidates: list[Candidate],

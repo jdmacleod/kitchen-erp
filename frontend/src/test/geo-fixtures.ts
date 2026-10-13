@@ -110,7 +110,12 @@ export const stallLocation: VendorLocation = {
   id: stallLocationId,
   place_id: stallPlaceId,
   key: "sandys-stone-fruit/stall",
-  vendor: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5f03", name: "Sandy's Stone Fruit", kind: "stand", price_scope: "location" },
+  vendor: {
+    id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5f03",
+    name: "Sandy's Stone Fruit",
+    kind: "stand",
+    price_scope: "location",
+  },
   name: "Sandy's Stone Fruit",
   lat: "33.520000",
   lon: "-120.480000",

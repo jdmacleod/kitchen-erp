@@ -116,7 +116,7 @@ async def observation_count(conn: asyncpg.Connection, **where) -> int:
 
 async def test_the_stop_screen_lists_its_items_and_the_cheaper_ones_elsewhere(
     admin_client: httpx.AsyncClient,
-    trip: dict,  # noqa: F811
+    trip: dict,
     shops: dict,  # noqa: F811
 ):
     r = await admin_client.get(stop_url(trip, trip["north"]))
@@ -164,7 +164,7 @@ async def test_the_stop_screen_lists_its_items_and_the_cheaper_ones_elsewhere(
 
 async def test_cheaper_at_stop_names_only_later_stops(
     admin_client: httpx.AsyncClient,
-    trip: dict,  # noqa: F811
+    trip: dict,
     shops: dict,  # noqa: F811
 ):
     """10 and UI-4.8: "Cheaper at stop {m}" points ahead. Barley, bought at
@@ -187,7 +187,7 @@ async def test_cheaper_at_stop_names_only_later_stops(
 
 async def test_get_here_without_a_price_here_needs_one_and_takes_it(
     admin_client: httpx.AsyncClient,
-    trip: dict,  # noqa: F811
+    trip: dict,
 ):
     await choose(admin_client, trip)
     north = await screen(admin_client, trip, trip["north"])
@@ -205,9 +205,9 @@ async def test_get_here_without_a_price_here_needs_one_and_takes_it(
 # --- criteria 23 to 25: "Done here" ---------------------------------------------------------
 
 
-async def test_done_here_records_one_purchase_and_observes_bought_lines_through_it(
+async def test_done_here_records_one_purchase_and_observes_bought_lines_through_it(  # noqa: PLR0915
     admin_client: httpx.AsyncClient,
-    trip: dict,  # noqa: F811
+    trip: dict,
     shops: dict,  # noqa: F811
     app_conn: asyncpg.Connection,
 ):
@@ -341,8 +341,8 @@ async def test_done_here_records_one_purchase_and_observes_bought_lines_through_
 
 async def test_a_stop_with_nothing_checked_is_done_without_a_purchase(
     admin_client: httpx.AsyncClient,
-    trip: dict,  # noqa: F811
-    app_conn: asyncpg.Connection,  # noqa: F811
+    trip: dict,
+    app_conn: asyncpg.Connection,
 ):
     r = await done(admin_client, trip, trip["north"], [])
     assert r.status_code == 409 and r.json()["error"]["code"] == "plan_not_chosen"

@@ -122,8 +122,8 @@ class RecipeOut(RecipeSummary):
     notes: str | None
     relink: RelinkProposal | None = None
     # The rows of the last good parse; still there when the file stopped parsing.
-    ingredients: list[RecipeIngredientOut] = []
-    pins: list[RecipePinOut] = []
+    ingredients: list[RecipeIngredientOut] = []  # noqa: RUF012
+    pins: list[RecipePinOut] = []  # noqa: RUF012
     # The last good parse's steps (0048); null for a recipe indexed before it.
     body: list[BodySection] | None = None
 

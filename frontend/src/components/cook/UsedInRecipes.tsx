@@ -22,11 +22,18 @@ export function UsedInRecipes({ ingredientId }: { ingredientId: string }) {
   if (!cook || !recipes.isSuccess || items.length === 0) return null;
   const shown = all ? items : items.slice(0, SHOWN);
   return (
-    <section aria-labelledby="ingredient-used-in" className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900" data-testid="used-in-card">
+    <section
+      aria-labelledby="ingredient-used-in"
+      className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+      data-testid="used-in-card"
+    >
       <h2 id="ingredient-used-in" className="font-display mb-3 text-lg">
         Used in
       </h2>
-      <ul aria-label="Recipes using this ingredient" className="flex flex-col divide-y divide-neutral-200 text-sm dark:divide-neutral-800">
+      <ul
+        aria-label="Recipes using this ingredient"
+        className="flex flex-col divide-y divide-neutral-200 text-sm dark:divide-neutral-800"
+      >
         {shown.map((use) => (
           <UseRow key={use.id} use={use} />
         ))}
@@ -45,12 +52,19 @@ function UseRow({ use }: { use: IngredientRecipeUse }) {
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-2">
       <span className="flex min-w-0 flex-wrap items-center gap-2">
-        <Link to={`/cook/recipes/${use.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+        <Link
+          to={`/cook/recipes/${use.id}`}
+          className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+        >
           {use.title}
         </Link>
-        {use.status !== "ok" ? <RecipeBadges recipe={{ status: use.status, dirty: false }} /> : null}
+        {use.status !== "ok" ? (
+          <RecipeBadges recipe={{ status: use.status, dirty: false }} />
+        ) : null}
       </span>
-      <span className={`tabular-nums ${muted}`}>{quantities.length > 0 ? quantities.join(" · ") : "as needed"}</span>
+      <span className={`tabular-nums ${muted}`}>
+        {quantities.length > 0 ? quantities.join(" · ") : "as needed"}
+      </span>
     </li>
   );
 }

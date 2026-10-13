@@ -132,7 +132,7 @@ def _check_barcodes() -> None:
 
     path = Path(__file__).resolve().parent.parent / "alembic/versions/0017_product_identity.py"
     spec = importlib.util.spec_from_file_location("migration_0017", path)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None and spec.loader is not None  # noqa: S101
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
 
@@ -202,7 +202,7 @@ def _check_normalize() -> None:
     for revision, filename, version in _NORMALIZE_MIGRATIONS:
         path = Path(__file__).resolve().parent.parent / "alembic/versions" / filename
         spec = importlib.util.spec_from_file_location(f"migration_{revision}", path)
-        assert spec is not None and spec.loader is not None
+        assert spec is not None and spec.loader is not None  # noqa: S101
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         migrations.append((revision, version, module))

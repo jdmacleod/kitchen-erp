@@ -12,8 +12,18 @@ import { manualPurchase, purchaseId } from "./purchase-fixtures";
 // source; a freezer line reads as quality; a printed use-by date is sent as such.
 
 const [first, second] = manualPurchase.lines;
-const fridgeLine: PurchaseLine = { ...first, stored_in: "fridge", best_by: "2026-09-20", best_by_source: "inferred" };
-const freezerLine: PurchaseLine = { ...second, stored_in: "freezer", best_by: "2027-06-16", best_by_source: "inferred" };
+const fridgeLine: PurchaseLine = {
+  ...first,
+  stored_in: "fridge",
+  best_by: "2026-09-20",
+  best_by_source: "inferred",
+};
+const freezerLine: PurchaseLine = {
+  ...second,
+  stored_in: "freezer",
+  best_by: "2027-06-16",
+  best_by_source: "inferred",
+};
 const withDates: Purchase = { ...manualPurchase, lines: [fridgeLine, freezerLine] };
 
 function routes(purchase: () => Purchase) {
@@ -44,7 +54,10 @@ describe("best-by dates", () => {
     const calls = mockApi({
       ...routes(() => purchase),
       [`PUT /purchases/${purchaseId}/lines/${fridgeLine.id}/keeping`]: () => {
-        purchase = { ...purchase, lines: [{ ...fridgeLine, best_by: "2026-09-22", best_by_source: "printed" }, freezerLine] };
+        purchase = {
+          ...purchase,
+          lines: [{ ...fridgeLine, best_by: "2026-09-22", best_by_source: "printed" }, freezerLine],
+        };
         return jsonResponse(200, purchase);
       },
     });
@@ -63,7 +76,14 @@ describe("best-by dates", () => {
 });
 
 describe("keep times on the ingredient page", () => {
-  const chicken: Ingredient = { ...flour, perishability: "fresh", keep_room_days: null, keep_fridge_days: 1, keep_freezer_days: 270, stored_in: "fridge" };
+  const chicken: Ingredient = {
+    ...flour,
+    perishability: "fresh",
+    keep_room_days: null,
+    keep_fridge_days: 1,
+    keep_freezer_days: 270,
+    stored_in: "fridge",
+  };
 
   it("shows them, and sends an edited time as whole days", async () => {
     let ingredient = chicken;
@@ -72,7 +92,8 @@ describe("keep times on the ingredient page", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /ingredients/${flourId}`]: () => jsonResponse(200, ingredient),
-      [`GET /ingredients/${flourId}/offers`]: () => jsonResponse(200, { items: [], stale_after_days: 90 }),
+      [`GET /ingredients/${flourId}/offers`]: () =>
+        jsonResponse(200, { items: [], stale_after_days: 90 }),
       "GET /products": () => jsonResponse(200, { items: [flourProduct], next_cursor: null }),
       [`PATCH /ingredients/${flourId}`]: () => {
         ingredient = { ...ingredient, keep_fridge_days: 2 };
@@ -81,7 +102,9 @@ describe("keep times on the ingredient page", () => {
     });
     const user = userEvent.setup();
     renderApp(`/catalog/ingredients/${flourId}`);
-    expect(await screen.findByText("Keeps 1 day in the fridge, 270 days in the freezer")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Keeps 1 day in the fridge, 270 days in the freezer"),
+    ).toBeInTheDocument();
     await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
     const fridge = screen.getByLabelText("Fridge");
     await user.clear(fridge);

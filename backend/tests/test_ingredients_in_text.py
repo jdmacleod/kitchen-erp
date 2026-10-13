@@ -15,7 +15,7 @@ async def test_a_catalog_ingredient_named_in_the_line_is_offered(admin_client, d
     await seed_units_via_service(db_session)
     await make_ingredient(admin_client, "Broccoli")
     items = await _in_text(admin_client, "WT BROCCOLI CROWNS 10.81 F")
-    assert [(i["kind"], i["name"]) for i in items][0] == ("ingredient", "Broccoli")
+    assert [(i["kind"], i["name"]) for i in items][0] == ("ingredient", "Broccoli")  # noqa: RUF015
     assert items[0]["exact"] is True
 
 

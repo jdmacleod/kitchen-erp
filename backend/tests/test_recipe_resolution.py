@@ -155,7 +155,7 @@ async def test_the_queue_groups_names_most_used_first_with_proposals(
     body = await queue(admin_client)
     assert body["names"] == 7 and body["recipes"] == 3
     items = {i["name_norm"]: i for i in body["items"]}
-    assert [i["name_norm"] for i in body["items"]][0] == "minced garlic"
+    assert [i["name_norm"] for i in body["items"]][0] == "minced garlic"  # noqa: RUF015
     garlic = items["minced garlic"]
     assert garlic["line_count"] == 3
     assert sorted(garlic["raw_names"]) == ["Minced Garlic", "minced garlic"]

@@ -20,7 +20,7 @@ function priceField(conflict: boolean): ProposalField {
     confidence: null,
     alternatives: conflict ? [{ value: "3.49", source: "page_data", confidence: null }] : [],
     conflict,
-  } as ProposalField;
+  };
 }
 
 function proposal(conflict = false): Proposal {
@@ -29,21 +29,45 @@ function proposal(conflict = false): Proposal {
     kind: "new_product",
     status: "pending",
     product_id: null,
-    capture: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c10", channel: "clip", source_url: "https://shop.example.test/p/bananas", captured_at: "2026-10-02T10:00:00Z" },
+    capture: {
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c10",
+      channel: "clip",
+      source_url: "https://shop.example.test/p/bananas",
+      captured_at: "2026-10-02T10:00:00Z",
+    },
     fields: {
-      title: { value: "Bananas", source: "page_data", confidence: null, alternatives: [], conflict: false },
+      title: {
+        value: "Bananas",
+        source: "page_data",
+        confidence: null,
+        alternatives: [],
+        conflict: false,
+      },
       price: priceField(conflict),
     },
-    match: { strong: { product_id: flourProductId, reason: "identifier" }, candidates: [], preselect: `update:${flourProductId}` },
-    listing: { vendor_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c20", canonical_url: "https://shop.example.test/p/bananas" },
-    vendor: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c20", name: "Juniper Market", price_scope: "chain", locations: [{ id: locationId, name: "Juniper Market" }], suggested_location_id: locationId },
+    match: {
+      strong: { product_id: flourProductId, reason: "identifier" },
+      candidates: [],
+      preselect: `update:${flourProductId}`,
+    },
+    listing: {
+      vendor_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c20",
+      canonical_url: "https://shop.example.test/p/bananas",
+    },
+    vendor: {
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9c20",
+      name: "Juniper Market",
+      price_scope: "chain",
+      locations: [{ id: locationId, name: "Juniper Market" }],
+      suggested_location_id: locationId,
+    },
     price: { ...PER_LB, is_promo: false },
     photos: [],
     jobs: [],
     decided_at: null,
     result: null,
     created_at: "2026-10-02T10:00:00Z",
-  } as Proposal;
+  };
 }
 
 function routes(p: Proposal) {
@@ -51,18 +75,26 @@ function routes(p: Proposal) {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
-    "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, photos: 0, pages: 0, oldest_at: null, stalled: false } }),
+    "GET /inbox": () =>
+      jsonResponse(200, {
+        items: [],
+        reading: { count: 0, photos: 0, pages: 0, oldest_at: null, stalled: false },
+      }),
     [`GET /product-proposals/${p.id}`]: () => jsonResponse(200, p),
     [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
-    [`GET /products/${flourProductId}/photos`]: () => jsonResponse(200, { items: [], primary_image_id: null }),
+    [`GET /products/${flourProductId}/photos`]: () =>
+      jsonResponse(200, { items: [], primary_image_id: null }),
     [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
     "GET /price-observations": () => jsonResponse(200, { items: [], next_cursor: null }),
     "GET /product-proposals": () => jsonResponse(200, { items: [], counts: {} }),
-    [`POST /product-proposals/${p.id}/accept`]: () => jsonResponse(200, { ...p, status: "accepted", result: { product_id: flourProductId } }),
+    [`POST /product-proposals/${p.id}/accept`]: () =>
+      jsonResponse(200, { ...p, status: "accepted", result: { product_id: flourProductId } }),
   };
 }
 
-const accepted = (calls: RecordedCall[]) => calls.find((c) => c.method === "POST" && c.path.endsWith("/accept"))?.body as Record<string, unknown> | undefined;
+const accepted = (calls: RecordedCall[]) =>
+  calls.find((c) => c.method === "POST" && c.path.endsWith("/accept"))?.body as
+    Record<string, unknown> | undefined;
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -90,7 +122,11 @@ describe("posted price basis", () => {
     const calls = mockApi(routes(proposal(true)));
     const user = userEvent.setup();
     renderApp(`/catalog/products/review/${proposalId}`);
-    expect(await screen.findByText(/The page gives more than one price: \$0\.69 \/ lb and \$3\.49 each\./)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        /The page gives more than one price: \$0\.69 \/ lb and \$3\.49 each\./,
+      ),
+    ).toBeInTheDocument();
     // The editor is open, starting from the page's chosen price.
     expect(screen.getByLabelText("Posted price")).toHaveValue("0.69");
     expect(screen.getByLabelText("For")).toHaveValue("1");
@@ -103,12 +139,16 @@ describe("posted price basis", () => {
     const calls = mockApi(routes(proposal()));
     const user = userEvent.setup();
     renderApp(`/catalog/products/review/${proposalId}`);
-    await user.click(await screen.findByRole("button", { name: "Change the price or what it is for" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Change the price or what it is for" }),
+    );
     const amount = screen.getByLabelText("Posted price");
     await user.clear(amount);
     await user.type(amount, "abc");
     expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
-    expect(screen.getByText("Give the posted price an amount and what it is for")).toBeInTheDocument();
+    expect(
+      screen.getByText("Give the posted price an amount and what it is for"),
+    ).toBeInTheDocument();
     await user.clear(amount);
     await user.type(amount, "1.52");
     await user.selectOptions(screen.getByLabelText("Unit"), "kg");
@@ -130,7 +170,7 @@ describe("field choices", () => {
         { value: "Organic bananas", source: "model", confidence: "0.4" },
       ],
       conflict: false,
-    } as ProposalField;
+    };
     mockApi(routes(p));
     const user = userEvent.setup();
     renderApp(`/catalog/products/review/${proposalId}`);

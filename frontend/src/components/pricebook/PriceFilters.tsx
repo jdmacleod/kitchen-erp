@@ -14,14 +14,23 @@ interface PriceFiltersProps {
 }
 
 /** Minimum quality plus the exclude-stale and exclude-promo toggles, shared by the price views. */
-export function PriceFilters({ id, value, onChange, promo = true, stale = true, brands = false }: PriceFiltersProps) {
+export function PriceFilters({
+  id,
+  value,
+  onChange,
+  promo = true,
+  stale = true,
+  brands = false,
+}: PriceFiltersProps) {
   return (
     <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
       <SelectField
         id={`${id}-min-quality`}
         label="Minimum quality"
         value={value.min_quality ?? ""}
-        onChange={(e) => onChange({ ...value, min_quality: e.target.value ? Number(e.target.value) : "" })}
+        onChange={(e) =>
+          onChange({ ...value, min_quality: e.target.value ? Number(e.target.value) : "" })
+        }
         className="w-40"
       >
         <option value="">Any</option>
@@ -46,13 +55,23 @@ export function PriceFilters({ id, value, onChange, promo = true, stale = true, 
       ) : null}
       {stale ? (
         <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-          <input type="checkbox" checked={Boolean(value.exclude_stale)} onChange={(e) => onChange({ ...value, exclude_stale: e.target.checked })} className={`size-4 ${focusRing}`} />
+          <input
+            type="checkbox"
+            checked={Boolean(value.exclude_stale)}
+            onChange={(e) => onChange({ ...value, exclude_stale: e.target.checked })}
+            className={`size-4 ${focusRing}`}
+          />
           Exclude stale
         </label>
       ) : null}
       {promo ? (
         <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-          <input type="checkbox" checked={Boolean(value.exclude_promo)} onChange={(e) => onChange({ ...value, exclude_promo: e.target.checked })} className={`size-4 ${focusRing}`} />
+          <input
+            type="checkbox"
+            checked={Boolean(value.exclude_promo)}
+            onChange={(e) => onChange({ ...value, exclude_promo: e.target.checked })}
+            className={`size-4 ${focusRing}`}
+          />
           Exclude sale prices
         </label>
       ) : null}

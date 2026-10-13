@@ -1,9 +1,21 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
-import { PALETTE_ACTIONS, availableActions, matchActions, type PaletteAction } from "../lib/paletteActions";
+import {
+  PALETTE_ACTIONS,
+  availableActions,
+  matchActions,
+  type PaletteAction,
+} from "../lib/paletteActions";
 import { units } from "./catalog-fixtures";
-import { adminUser, jsonResponse, memberUser, mockApi, renderApp, type RouteHandler } from "./helpers";
+import {
+  adminUser,
+  jsonResponse,
+  memberUser,
+  mockApi,
+  renderApp,
+  type RouteHandler,
+} from "./helpers";
 
 const quietInbox = { items: [], reading: { count: 0, oldest_at: null, stalled: false } };
 const noResults = { ingredients: [], products: [], vendors: [] };
@@ -48,7 +60,14 @@ describe("matching actions (UI-2.9)", () => {
   });
 
   it("offers only built sections and admin pages to admins", () => {
-    const later: PaletteAction = { kind: "action", id: "recipes", label: "Recipes", route: "/cook/recipes", keywords: [], feature: "cook" };
+    const later: PaletteAction = {
+      kind: "action",
+      id: "recipes",
+      label: "Recipes",
+      route: "/cook/recipes",
+      keywords: [],
+      feature: "cook",
+    };
     const list = [...PALETTE_ACTIONS, later];
     expect(labels(availableActions(undefined, true, list))).not.toContain("Recipes");
     expect(labels(availableActions(["cook"], true, list))).toContain("Recipes");
@@ -61,9 +80,15 @@ describe("actions in the search palette (UI-2.9)", () => {
   it("lists common actions under the hint before typing", async () => {
     mount();
     const { dialog } = await openPalette();
-    expect(within(dialog).getByText("Type a product, ingredient, vendor or barcode.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Type a product, ingredient, vendor or barcode."),
+    ).toBeInTheDocument();
     const group = within(dialog).getByRole("group", { name: "Actions" });
-    expect(within(group).getAllByRole("option").map((o) => o.textContent)).toEqual([
+    expect(
+      within(group)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual([
       "New purchaseShop",
       "Upload receiptsShop",
       "Log a shelf priceShop",
@@ -91,7 +116,9 @@ describe("actions in the search palette (UI-2.9)", () => {
     expect(await screen.findByRole("dialog", { name: "Add ingredient" })).toBeInTheDocument();
     await screen.findByRole("heading", { name: "Ingredients" });
     await user.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Add ingredient" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Add ingredient" })).not.toBeInTheDocument(),
+    );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 

@@ -85,7 +85,7 @@ async def product_history(
             JOIN vendor v ON v.id = vl.vendor_id
             WHERE pc.product_id = CAST(:pid AS uuid)
             ORDER BY pc.observed_at, pc.observation_id
-            """
+            """  # noqa: S608
         ),
         {"pid": product_id},
     )
@@ -107,7 +107,7 @@ async def product_history(
             JOIN ingredient i ON i.id = p.ingredient_id
             WHERE ol.product_id = CAST(:pid AS uuid)
             ORDER BY ol.observed_at DESC
-            """
+            """  # noqa: S608
         ),
         _params(pid=product_id),
     )
@@ -230,7 +230,7 @@ async def ingredient_offers(
               AND (CAST(:brand_scope AS text) = 'all'
                    OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
             ORDER BY (ol.norm_unit_price IS NULL), ol.norm_unit_price, ol.observed_at DESC
-            """
+            """  # noqa: S608
         ),
         _params(iid=ingredient_id, min_quality=min_quality, brand_scope=brand_scope),
     )
@@ -295,7 +295,7 @@ async def compare(
             SELECT DISTINCT ON (ingredient_id, vendor_id) *
             FROM offers
             ORDER BY ingredient_id, vendor_id, norm_unit_price, observed_at DESC
-            """
+            """  # noqa: S608
         ),
         _params(
             ids=list(ingredient_ids),
@@ -375,7 +375,7 @@ async def location_panel(
             WHERE pc.vendor_location_id = CAST(:lid AS uuid)
             ORDER BY pc.observed_at DESC, pc.observation_id DESC
             LIMIT 12
-            """
+            """  # noqa: S608
         ),
         {"lid": location_id},
     )
@@ -424,7 +424,7 @@ async def cheapest_by_location(
             SELECT DISTINCT ON (location_id) * FROM offers
             WHERE NOT CAST(:exclude_stale AS boolean) OR NOT stale
             ORDER BY location_id, norm_unit_price, observed_at DESC
-            """
+            """  # noqa: S608
         ),
         _params(iid=ingredient_id, min_quality=min_quality, exclude_stale=exclude_stale),
     )

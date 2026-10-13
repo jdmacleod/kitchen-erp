@@ -21,17 +21,26 @@ export type StoreGuess =
  * position, the nearest active location within NEAR_METRES; otherwise the last
  * location used on this device, labelled as such. Never "near" without a fix.
  */
-export function useStoreGuess(): { guess: StoreGuess; skip: () => void; locations: VendorLocation[]; isError: boolean } {
+export function useStoreGuess(): {
+  guess: StoreGuess;
+  skip: () => void;
+  locations: VendorLocation[];
+  isError: boolean;
+} {
   const [geo, skip] = useGeoPosition(true);
   const located = useLocations(geo.status === "ok" ? { near: geo.near } : {});
   const locations = useMemo(() => located.data ?? [], [located.data]);
 
   let guess: StoreGuess;
-  if (geo.status === "pending" || (geo.status === "ok" && (located.isPending || located.isPlaceholderData))) {
+  if (
+    geo.status === "pending" ||
+    (geo.status === "ok" && (located.isPending || located.isPlaceholderData))
+  ) {
     guess = { status: "finding" };
   } else {
     const nearest = geo.status === "ok" ? locations.find((l) => l.active) : undefined;
-    const close = nearest && nearest.distance_m !== null && Number(nearest.distance_m) <= NEAR_METRES;
+    const close =
+      nearest && nearest.distance_m !== null && Number(nearest.distance_m) <= NEAR_METRES;
     const lastId = readLastLocation();
     const last = lastId ? locations.find((l) => l.id === lastId && l.active) : undefined;
     if (nearest && close) guess = { status: "near", location: nearest };
@@ -56,14 +65,24 @@ interface StoreChipProps {
  * The store as a tappable chip (10, Shelf price; Capture sheet). A guess says it
  * is one: "Last used: {vendor} · change" in a squash outline (G2).
  */
-export function StoreChip({ value, source, locations, onChoose, onSkip, disabled }: StoreChipProps) {
+export function StoreChip({
+  value,
+  source,
+  locations,
+  onChoose,
+  onSkip,
+  disabled,
+}: StoreChipProps) {
   const selectId = useId();
   const [changing, setChanging] = useState(false);
   const picking = changing || (source !== "finding" && !value);
 
   if (source === "finding") {
     return (
-      <p role="status" className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
+      <p
+        role="status"
+        className="flex min-h-11 flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300"
+      >
         Finding where you are…
         <Button variant="ghost" onClick={onSkip}>
           Skip

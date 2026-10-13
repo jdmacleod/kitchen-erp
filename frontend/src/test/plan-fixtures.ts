@@ -9,8 +9,14 @@ import { adminUser, memberUser } from "./helpers";
 export const kitchen = homeBase;
 export const kitchenId = homeBaseId;
 export const planHealth = { status: "ok", features: ["catalog", "shop", "cook", "plan"] };
-export const settings: Settings = { current_home_base_id: kitchenId, suggested_home_base_id: kitchenId };
-export const noKitchenSettings: Settings = { current_home_base_id: null, suggested_home_base_id: null };
+export const settings: Settings = {
+  current_home_base_id: kitchenId,
+  suggested_home_base_id: kitchenId,
+};
+export const noKitchenSettings: Settings = {
+  current_home_base_id: null,
+  suggested_home_base_id: null,
+};
 
 export const me: UserBrief = { id: adminUser.id, display_name: adminUser.display_name };
 export const other: UserBrief = { id: memberUser.id, display_name: memberUser.display_name };
@@ -18,8 +24,20 @@ export const other: UserBrief = { id: memberUser.id, display_name: memberUser.di
 export const openListId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7001";
 export const archivedListId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7002";
 
-function ingredient(id: string, name: string, over: Partial<IngredientSummary> = {}): IngredientSummary {
-  return { id, name, canonical_unit: "g", active: true, category: "pantry", category_key: "pantry", ...over };
+function ingredient(
+  id: string,
+  name: string,
+  over: Partial<IngredientSummary> = {},
+): IngredientSummary {
+  return {
+    id,
+    name,
+    canonical_unit: "g",
+    active: true,
+    category: "pantry",
+    category_key: "pantry",
+    ...over,
+  };
 }
 
 export function item(over: Partial<ShoppingItem> & { id: string }): ShoppingItem {
@@ -81,7 +99,10 @@ export const oatMilk = item({
 /** From a recipe, deferrable, with a minimum quality and a note. */
 export const bayLeaves = item({
   id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7203",
-  ingredient: ingredient("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7103", "bay leaves", { category: "spices", category_key: "spices" }),
+  ingredient: ingredient("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7103", "bay leaves", {
+    category: "spices",
+    category_key: "spices",
+  }),
   note: "the fresh kind",
   deferrable: true,
   min_quality: 4,
@@ -93,7 +114,10 @@ export const bayLeaves = item({
 
 export const onions = item({
   id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7204",
-  ingredient: ingredient("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7104", "yellow onions", { category: "produce", category_key: "produce" }),
+  ingredient: ingredient("0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7104", "yellow onions", {
+    category: "produce",
+    category_key: "produce",
+  }),
   amounts: [{ seq: 1, amount: "3", unit: "each" }],
   checked_by: other,
   checked_at: "2026-10-11T08:00:00Z",
@@ -120,8 +144,12 @@ export const archivedList: ShoppingList = list({
   status: "archived",
   created_at: "2026-10-01T08:00:00Z",
   archived_at: "2026-10-08T18:00:00Z",
-  unchecked: [item({ ...chickpeas, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7211", list_id: archivedListId })],
-  checked: [item({ ...onions, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7212", list_id: archivedListId })],
+  unchecked: [
+    item({ ...chickpeas, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7211", list_id: archivedListId }),
+  ],
+  checked: [
+    item({ ...onions, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7212", list_id: archivedListId }),
+  ],
 });
 
 export const archivedSummary: ListSummary = {

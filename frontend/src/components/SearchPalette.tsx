@@ -4,7 +4,13 @@ import { useHealth } from "../api/queries";
 import { SEARCH_MAX, useSearch, type SearchResult, type SearchResults } from "../api/search";
 import { useCurrentUser } from "../auth/context";
 import { useCurrentKitchen } from "../lib/kitchen";
-import { availableActions, commonActions, kitchenActions, matchActions, type PaletteAction } from "../lib/paletteActions";
+import {
+  availableActions,
+  commonActions,
+  kitchenActions,
+  matchActions,
+  type PaletteAction,
+} from "../lib/paletteActions";
 import { readRecents, rememberRecent } from "../lib/searchRecents";
 import { useDebouncedValue } from "../lib/useDebouncedValue";
 import { CategoryChip } from "./CategoryChip";
@@ -62,10 +68,16 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   // With Plan built, "Switch to {kitchen}" for each other kitchen (17, 4A).
   const kitchen = useCurrentKitchen();
   const available = useMemo(
-    () => [...availableActions(features, admin), ...(kitchen.built ? kitchenActions(kitchen.kitchens, kitchen.currentId) : [])],
+    () => [
+      ...availableActions(features, admin),
+      ...(kitchen.built ? kitchenActions(kitchen.kitchens, kitchen.currentId) : []),
+    ],
     [features, admin, kitchen.built, kitchen.kitchens, kitchen.currentId],
   );
-  const actions = useMemo(() => (typed ? matchActions(q, available) : commonActions(available)), [typed, q, available]);
+  const actions = useMemo(
+    () => (typed ? matchActions(q, available) : commonActions(available)),
+    [typed, q, available],
+  );
 
   // Groups in their fixed order, empty ones hidden; one flat list for the keys.
   // Search results are shown only when they answer the text in the field, so an
@@ -73,14 +85,22 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const groups = useMemo(() => {
     const entities: { key: string; label: string; items: PaletteItem[] }[] = typed
       ? current
-        ? GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter((g) => g.items.length > 0)
+        ? GROUPS.map((g) => ({ ...g, items: search.data?.[g.key] ?? [] })).filter(
+            (g) => g.items.length > 0,
+          )
         : []
       : recents.length > 0
         ? [{ key: "recent", label: "Recent", items: recents }]
         : [];
-    const shown = actions.length > 0 ? [...entities, { key: "actions", label: "Actions", items: actions }] : entities;
+    const shown =
+      actions.length > 0
+        ? [...entities, { key: "actions", label: "Actions", items: actions }]
+        : entities;
     // Each group's offset into the flat list the arrow keys walk.
-    return shown.map((g, i) => ({ ...g, start: shown.slice(0, i).reduce((n, prev) => n + prev.items.length, 0) }));
+    return shown.map((g, i) => ({
+      ...g,
+      start: shown.slice(0, i).reduce((n, prev) => n + prev.items.length, 0),
+    }));
   }, [search.data, typed, current, recents, actions]);
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const [active, setActive] = useState(0);
@@ -128,7 +148,14 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
   const nothingFound = typed && current && !search.isError && flat.length === 0;
 
   return (
-    <Dialog open onClose={onClose} labelledBy={`${ids}-title`} placement="screen" initialFocus={input} returnFocus={returnFocus}>
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={`${ids}-title`}
+      placement="screen"
+      initialFocus={input}
+      returnFocus={returnFocus}
+    >
       <h2 id={`${ids}-title`} className="sr-only">
         Search
       </h2>
@@ -166,7 +193,10 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         {!typed && recents.length === 0 ? (
           <p className={`px-2 py-3 ${muted}`}>Type a product, ingredient, vendor or barcode.</p>
         ) : typed && search.isError ? (
-          <div role="alert" className="flex flex-wrap items-center justify-between gap-2 px-2 py-3 text-sm">
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-2 px-2 py-3 text-sm"
+          >
             <span>Search isn&apos;t working right now.</span>
             <Button variant="secondary" onClick={() => void search.refetch()}>
               Try again
@@ -179,7 +209,11 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         ) : nothingFound ? (
           <p role="status" className={`flex flex-wrap items-center gap-2 px-2 py-3 ${muted}`}>
             <span>No matches for &lsquo;{q.trim()}&rsquo;.</span>
-            <Link to="/catalog/products" onClick={onClose} className={`rounded font-medium underline ${focusRing}`}>
+            <Link
+              to="/catalog/products"
+              onClick={onClose}
+              className={`rounded font-medium underline ${focusRing}`}
+            >
               Add product
             </Link>
           </p>
@@ -188,7 +222,10 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
           <div id={`${ids}-listbox`} role="listbox" aria-label="Search results">
             {groups.map((g) => (
               <div key={g.key} role="group" aria-labelledby={`${ids}-${g.key}`} className="py-1">
-                <p id={`${ids}-${g.key}`} className="px-2 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+                <p
+                  id={`${ids}-${g.key}`}
+                  className="px-2 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400"
+                >
                   {g.label}
                 </p>
                 {g.items.map((r, j) => {
@@ -228,7 +265,9 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         ) : null}
       </div>
 
-      <p className={`hidden border-t border-neutral-200 px-4 py-2 text-xs lg:block dark:border-neutral-800 ${muted}`}>
+      <p
+        className={`hidden border-t border-neutral-200 px-4 py-2 text-xs lg:block dark:border-neutral-800 ${muted}`}
+      >
         ↑ ↓ to move · Enter to open · Esc to close
       </p>
     </Dialog>

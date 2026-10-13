@@ -21,7 +21,15 @@ interface PinPickerProps {
  * being of another ingredient. Opens with the ingredient's products listed, so
  * ArrowDown and Enter pin without typing (UI-7.12); Escape puts it away.
  */
-export function PinPicker({ id, ingredientId, ingredientName, onPick, onCancel, disabled, inputRef }: PinPickerProps) {
+export function PinPicker({
+  id,
+  ingredientId,
+  ingredientName,
+  onPick,
+  onCancel,
+  disabled,
+  inputRef,
+}: PinPickerProps) {
   const [text, setText] = useState("");
   const debounced = useDebouncedValue(text, 200);
   const products = useProducts({ ingredientId, q: debounced.trim() || undefined, limit: 10 });
@@ -30,7 +38,8 @@ export function PinPicker({ id, ingredientId, ingredientName, onPick, onCancel, 
   let status: string | undefined;
   if (products.isError) status = errorMessage(products.error);
   else if (!settled) status = "Searching…";
-  else if (items.length === 0) status = `No products of ${ingredientName}${text.trim() ? " match" : " yet"}.`;
+  else if (items.length === 0)
+    status = `No products of ${ingredientName}${text.trim() ? " match" : " yet"}.`;
 
   return (
     <div
@@ -62,7 +71,9 @@ export function PinPicker({ id, ingredientId, ingredientName, onPick, onCancel, 
           <span className="flex flex-wrap items-baseline gap-x-2">
             <span className="font-medium">{productTitle(p)}</span>
             {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) ? (
-              <span className="text-xs text-neutral-600 dark:text-neutral-400">{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}
+              </span>
             ) : null}
           </span>
         )}

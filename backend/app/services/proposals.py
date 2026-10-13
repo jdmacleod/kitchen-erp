@@ -138,7 +138,7 @@ async def create_capture(
     existing = await _pending_proposal_for(db, digest)
     if existing is not None:
         capture = await db.get(ProductCapture, existing.capture_id)
-        assert capture is not None
+        assert capture is not None  # noqa: S101
         return CaptureResult(capture, existing, created=False)
     capture = ProductCapture(
         id=new_id(),

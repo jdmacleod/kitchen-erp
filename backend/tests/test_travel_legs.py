@@ -220,7 +220,7 @@ class FakeOsrm:
 def osrm(monkeypatch: pytest.MonkeyPatch) -> Iterator[FakeOsrm]:
     fake = FakeOsrm()
     monkeypatch.setattr(travel, "http_transport", httpx.MockTransport(fake.handler))
-    yield fake
+    yield fake  # noqa: PT022
 
 
 def coord(point: tuple[str, str]) -> str:
@@ -530,7 +530,7 @@ async def test_cli_recompute_reports_counts(no_network: None):
         ([], "dropped 2 legs; 0 from the engine, 2 estimated"),
         (["--all"], "dropped 2 legs; 0 from the engine, 2 estimated"),
     ):
-        done = subprocess.run(
+        done = subprocess.run(  # noqa: S603
             [sys.executable, "-m", "app.cli", "travel-legs", "recompute", *flag],
             cwd=BACKEND_ROOT,
             env=env,

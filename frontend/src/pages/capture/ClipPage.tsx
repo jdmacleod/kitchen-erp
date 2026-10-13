@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, api, errorMessage, isApiError, newIdempotencyKey } from "../../api/client";
 import { useVendors } from "../../api/geo";
-import { useLogin, useMe } from "../../api/queries";
 import type { KnownProduct, Proposal } from "../../api/proposals";
+import { useLogin, useMe } from "../../api/queries";
 import { Alert, Button, Field, focusRing } from "../../components/ui";
 import { CLIP_VERSION } from "../../lib/bookmarklet";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -21,23 +21,37 @@ export interface ClipPayload {
   clip_version: number;
 }
 
-const isHttp = (u: unknown): u is string => typeof u === "string" && u.length <= 2048 && /^https?:\/\//i.test(u);
-const strings = (v: unknown, max: number): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, max) : []);
+const isHttp = (u: unknown): u is string =>
+  typeof u === "string" && u.length <= 2048 && /^https?:\/\//i.test(u);
+const strings = (v: unknown, max: number): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, max) : [];
 
 /** The page from a message, or null when it is not one the bookmarklet would send. */
 export function readClip(data: unknown): ClipPayload | null {
-  if (typeof data !== "object" || data === null || (data as { type?: unknown }).type !== "kerp-clip") return null;
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    (data as { type?: unknown }).type !== "kerp-clip"
+  )
+    return null;
   const p = (data as { payload?: unknown }).payload;
   if (typeof p !== "object" || p === null) return null;
   const raw = p as Record<string, unknown>;
   if (!isHttp(raw.page_url)) return null;
   const meta: Record<string, string> = {};
   if (typeof raw.meta === "object" && raw.meta !== null) {
-    for (const [k, v] of Object.entries(raw.meta as Record<string, unknown>).slice(0, 300)) if (typeof v === "string") meta[k] = v.slice(0, 4000);
+    for (const [k, v] of Object.entries(raw.meta as Record<string, unknown>).slice(0, 300))
+      if (typeof v === "string") meta[k] = v.slice(0, 4000);
   }
   const images = Array.isArray(raw.images)
     ? raw.images
-        .filter((i): i is { url: string; data_base64: string } => typeof i === "object" && i !== null && isHttp((i as { url?: unknown }).url) && typeof (i as { data_base64?: unknown }).data_base64 === "string")
+        .filter(
+          (i): i is { url: string; data_base64: string } =>
+            typeof i === "object" &&
+            i !== null &&
+            isHttp((i as { url?: unknown }).url) &&
+            typeof (i as { data_base64?: unknown }).data_base64 === "string",
+        )
         .slice(0, 4)
     : [];
   return {
@@ -49,7 +63,10 @@ export function readClip(data: unknown): ClipPayload | null {
     dom_text: typeof raw.dom_text === "string" ? raw.dom_text : "",
     image_urls: strings(raw.image_urls, 12).filter(isHttp),
     images,
-    clip_version: typeof raw.clip_version === "number" && Number.isInteger(raw.clip_version) ? raw.clip_version : 0,
+    clip_version:
+      typeof raw.clip_version === "number" && Number.isInteger(raw.clip_version)
+        ? raw.clip_version
+        : 0,
   };
 }
 
@@ -81,7 +98,9 @@ export function ClipPage() {
   usePageTitle("Save this product");
   const me = useMe();
   const signedIn = Boolean(me.data);
-  const [state, setState] = useState<State>(() => (window.opener ? { kind: "waiting" } : { kind: "no_opener" }));
+  const [state, setState] = useState<State>(() =>
+    window.opener ? { kind: "waiting" } : { kind: "no_opener" },
+  );
   const accepted = useRef(false);
 
   // Ready handshake (F9): say so once signed in (again after a sign-in), then take
@@ -113,11 +132,13 @@ export function ClipPage() {
       {state.kind === "no_opener" ? (
         // Said even when signed out: signing in could not reconnect a cut-off page.
         <Alert tone="info">
-          This window isn't connected to a store page. Open the product's page and click Save to Kitchen ERP there, or paste its address in Add product.
+          This window isn't connected to a store page. Open the product's page and click Save to
+          Kitchen ERP there, or paste its address in Add product.
         </Alert>
       ) : state.kind === "no_answer" ? (
         <Alert tone="info">
-          The store page didn't answer. Reload it and click Save to Kitchen ERP again, or paste its address in Add product.
+          The store page didn't answer. Reload it and click Save to Kitchen ERP again, or paste its
+          address in Add product.
         </Alert>
       ) : me.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -134,7 +155,11 @@ export function ClipPage() {
       ) : state.kind === "saved" ? (
         <Saved proposal={state.proposal} already={state.already} />
       ) : (
-        <Preview clip={state.clip} onSaved={(proposal, already) => setState({ kind: "saved", proposal, already })} onTooLarge={() => setState({ kind: "too_large" })} />
+        <Preview
+          clip={state.clip}
+          onSaved={(proposal, already) => setState({ kind: "saved", proposal, already })}
+          onTooLarge={() => setState({ kind: "too_large" })}
+        />
       )}
     </main>
   );
@@ -152,8 +177,24 @@ function SignIn() {
     <form onSubmit={onSubmit} className="flex flex-col gap-3" aria-label="Sign in">
       <p className="text-sm">Sign in to save this page.</p>
       {login.isError ? <Alert tone="error">{errorMessage(login.error)}</Alert> : null}
-      <Field id="clip-email" label="Email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      <Field id="clip-password" label="Password" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+      <Field
+        id="clip-email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <Field
+        id="clip-password"
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       <Button type="submit" disabled={login.isPending}>
         {login.isPending ? "Signing in…" : "Sign in"}
       </Button>
@@ -161,7 +202,15 @@ function SignIn() {
   );
 }
 
-function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p: Proposal, already: boolean) => void; onTooLarge: () => void }) {
+function Preview({
+  clip,
+  onSaved,
+  onTooLarge,
+}: {
+  clip: ClipPayload;
+  onSaved: (p: Proposal, already: boolean) => void;
+  onTooLarge: () => void;
+}) {
   const [preview, setPreview] = useState<AddressPreview | null>(null);
   const [vendorId, setVendorId] = useState<string>("");
   const [withoutStore, setWithoutStore] = useState(false);
@@ -172,7 +221,10 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
 
   useEffect(() => {
     let live = true;
-    api<AddressPreview>("/product-captures/address", { method: "POST", body: { page_url: clip.page_url } })
+    api<AddressPreview>("/product-captures/address", {
+      method: "POST",
+      body: { page_url: clip.page_url },
+    })
       .then((p) => live && setPreview(p))
       .catch((e) => live && setError(e));
     return () => {
@@ -196,7 +248,11 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
       const response = await fetch("/api/v1/product-captures", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", Accept: "application/json", "Idempotency-Key": key.current },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          "Idempotency-Key": key.current,
+        },
         body: JSON.stringify(body),
       });
       if (response.status === 413) {
@@ -206,7 +262,12 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
       const payload = await response.json();
       if (!response.ok) {
         const err = payload?.error ?? {};
-        throw new ApiError(response.status, err.code ?? "http_error", err.message ?? "", err.details);
+        throw new ApiError(
+          response.status,
+          err.code ?? "http_error",
+          err.message ?? "",
+          err.details,
+        );
       }
       onSaved(payload as Proposal, response.status === 200);
     } catch (e) {
@@ -223,7 +284,8 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
         <p className="font-medium">{clip.title || preview?.title || "Untitled page"}</p>
         {clip.clip_version < CLIP_VERSION ? (
           <p className="text-amber-900 dark:text-amber-200">
-            This bookmark is an older version. Reinstall it from Settings → Capture to save prices and better photos.
+            This bookmark is an older version. Reinstall it from Settings → Capture to save prices
+            and better photos.
           </p>
         ) : null}
         <p className="break-all text-neutral-600 dark:text-neutral-400">{clip.page_url}</p>
@@ -258,7 +320,12 @@ function Preview({ clip, onSaved, onTooLarge }: { clip: ClipPayload; onSaved: (p
             </select>
           </label>
           <label className="inline-flex min-h-11 items-center gap-2">
-            <input type="checkbox" checked={withoutStore} onChange={(e) => setWithoutStore(e.target.checked)} className={`size-4 ${focusRing}`} />
+            <input
+              type="checkbox"
+              checked={withoutStore}
+              onChange={(e) => setWithoutStore(e.target.checked)}
+              className={`size-4 ${focusRing}`}
+            />
             Save without a store (no listing or price)
           </label>
         </div>
@@ -285,7 +352,8 @@ const NEXT = "Try again, or paste the address in Add product.";
  * what to do next instead.
  */
 export function clipErrorMessage(e: unknown): string {
-  if (e instanceof TypeError) return "Couldn't reach Kitchen ERP. Check the connection and save again.";
+  if (e instanceof TypeError)
+    return "Couldn't reach Kitchen ERP. Check the connection and save again.";
   if (!isApiError(e)) return `Couldn't save this page. ${NEXT}`;
   switch (e.code) {
     case "unauthenticated":
@@ -302,7 +370,9 @@ export function clipErrorMessage(e: unknown): string {
     case "validation_error":
       return "Couldn't save this page: it sent something Kitchen ERP can't read. Reload the store page and click Save to Kitchen ERP again, or paste the address in Add product.";
     default:
-      return e.status >= 500 ? `Couldn't save this page: something went wrong in Kitchen ERP. ${NEXT}` : `Couldn't save this page. ${NEXT}`;
+      return e.status >= 500
+        ? `Couldn't save this page: something went wrong in Kitchen ERP. ${NEXT}`
+        : `Couldn't save this page. ${NEXT}`;
   }
 }
 
@@ -311,7 +381,12 @@ function KnownNotice({ known }: { known: KnownProduct }) {
   return (
     <Alert tone="info">
       Already in your catalog:{" "}
-      <a href={`/catalog/products/${known.product_id}`} target="_blank" rel="noreferrer" className={`rounded font-medium underline ${focusRing}`}>
+      <a
+        href={`/catalog/products/${known.product_id}`}
+        target="_blank"
+        rel="noreferrer"
+        className={`rounded font-medium underline ${focusRing}`}
+      >
         {known.name}
       </a>
       . Saving opens an update to it.
@@ -324,7 +399,12 @@ function Saved({ proposal, already }: { proposal: Proposal; already: boolean }) 
   return (
     <Alert tone="success">
       {already ? "Already saved · " : "Saved · "}
-      <a href={review} target="_blank" rel="noreferrer" className={`rounded font-medium underline ${focusRing}`}>
+      <a
+        href={review}
+        target="_blank"
+        rel="noreferrer"
+        className={`rounded font-medium underline ${focusRing}`}
+      >
         {already ? "Open it" : "Review it in Needs you"}
       </a>
     </Alert>

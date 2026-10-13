@@ -421,7 +421,7 @@ async def _by_code(
     return codes
 
 
-async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:
+async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:  # noqa: C901, PLR0912, PLR0915
     """Run the ladder for one item line. Mutates the line; does not commit."""
     vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
     norm = normalize_receipt_text(line.raw_text or "")
@@ -895,9 +895,9 @@ async def void_for_purchase(db: AsyncSession, purchase: Purchase) -> list[uuid.U
 __all__ = [
     "PriceObservationVoid",
     "apply_to_identify",
-    "queued_line_ids",
     "commit_purchase",
     "decide_line",
+    "queued_line_ids",
     "reopen_purchase",
     "resolve_line",
     "resolve_purchase",

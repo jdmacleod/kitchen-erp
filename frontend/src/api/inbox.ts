@@ -4,7 +4,21 @@ import type { Trust } from "./purchases";
 
 /** The unified inbox (docs/spec/09, Unified inbox). */
 
-export type InboxKind = "receipt" | "receipt_held" | "receipt_failed" | "identify" | "bridge" | "vendor_suggestions" | "link" | "usda" | "new_product" | "product_update" | "reread" | "duplicates" | "posted_prices" | "recipe";
+export type InboxKind =
+  | "receipt"
+  | "receipt_held"
+  | "receipt_failed"
+  | "identify"
+  | "bridge"
+  | "vendor_suggestions"
+  | "link"
+  | "usda"
+  | "new_product"
+  | "product_update"
+  | "reread"
+  | "duplicates"
+  | "posted_prices"
+  | "recipe";
 
 export interface InboxItem {
   kind: InboxKind;
@@ -72,7 +86,8 @@ function counted(n: number, one: string, many: string): string | null {
 /** "Reading 4 of 12 receipts", while a batch of several is being read (issue 122). */
 function receiptsPart(reading: InboxReading): string | null {
   const of = reading.batch_of ?? 0;
-  if (reading.count > 0 && of > 1) return `${Math.min((reading.batch_done ?? 0) + 1, of)} of ${of} receipts`;
+  if (reading.count > 0 && of > 1)
+    return `${Math.min((reading.batch_done ?? 0) + 1, of)} of ${of} receipts`;
   return counted(reading.count, "receipt", "receipts");
 }
 
@@ -87,8 +102,10 @@ export function readingSentence(reading: InboxReading): string {
     counted(reading.photos ?? 0, "product photo", "product photos"),
     counted(reading.pages ?? 0, "product page", "product pages"),
   ].filter((p): p is string => p !== null);
-  const list = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
+  const list =
+    parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
   const minutes = reading.count > 0 ? reading.minutes_left : null;
-  if (minutes) return `Reading ${list} · about ${minutes} ${minutes === 1 ? "minute" : "minutes"} left`;
+  if (minutes)
+    return `Reading ${list} · about ${minutes} ${minutes === 1 ? "minute" : "minutes"} left`;
   return `Reading ${list}…`;
 }

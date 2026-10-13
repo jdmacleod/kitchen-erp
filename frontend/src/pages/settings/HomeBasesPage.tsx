@@ -1,6 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { errorMessage } from "../../api/client";
-import { formatLatLon, geoErrorMessage, useCreateHomeBase, useDeleteHomeBase, useHomeBases, useUpdateHomeBase, type HomeBase } from "../../api/geo";
+import {
+  formatLatLon,
+  geoErrorMessage,
+  useCreateHomeBase,
+  useDeleteHomeBase,
+  useHomeBases,
+  useUpdateHomeBase,
+  type HomeBase,
+} from "../../api/geo";
 import { DraftPointControl } from "../../components/geo/DraftPointControl";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
@@ -21,7 +29,13 @@ export function HomeBasesPage() {
   // keeps its own text when the pin is cleared, to spare a half-typed pair.
   const [formRound, setFormRound] = useState(0);
 
-  const pins: MapPin[] = (homeBases.data ?? []).map((h) => ({ id: h.id, lat: h.lat, lon: h.lon, kind: "home", label: `${h.name} (kitchen)` }));
+  const pins: MapPin[] = (homeBases.data ?? []).map((h) => ({
+    id: h.id,
+    lat: h.lat,
+    lon: h.lon,
+    kind: "home",
+    label: `${h.name} (kitchen)`,
+  }));
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -35,7 +49,12 @@ export function HomeBasesPage() {
     }
     setInvalid(null);
     create.mutate(
-      { name: name.trim(), lat: draft.lat, lon: draft.lon, ...(label.trim() ? { label: label.trim() } : {}) },
+      {
+        name: name.trim(),
+        lat: draft.lat,
+        lon: draft.lon,
+        ...(label.trim() ? { label: label.trim() } : {}),
+      },
       {
         onSuccess: () => {
           setDraft(null);
@@ -49,25 +68,67 @@ export function HomeBasesPage() {
 
   return (
     <>
-      <PageHeader title="Kitchens" description="The places you cook from, so nearby shops and the nearest kitchen can be found." />
+      <PageHeader
+        title="Kitchens"
+        description="The places you cook from, so nearby shops and the nearest kitchen can be found."
+      />
       <div className="flex flex-col gap-6">
         <Card>
-          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-home-heading" noValidate>
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4"
+            aria-labelledby="create-home-heading"
+            noValidate
+          >
             <h2 id="create-home-heading" className="text-lg font-medium">
               Add a kitchen
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              Click the map where the base is, or give its coordinates, then name it. New vendor locations default to the nearest base.
+              Click the map where the base is, or give its coordinates, then name it. New vendor
+              locations default to the nearest base.
             </p>
-            {tilesPresent === false ? <Alert tone="info">Map tiles are missing; see docs/tiles.md. Pins are still placed at their coordinates.</Alert> : null}
+            {tilesPresent === false ? (
+              <Alert tone="info">
+                Map tiles are missing; see docs/tiles.md. Pins are still placed at their
+                coordinates.
+              </Alert>
+            ) : null}
             {mapError ? <Alert tone="error">{mapError}</Alert> : null}
-            <MapView label="Kitchens" className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800" pins={pins} placing draft={draft} onMapClick={(lat, lon) => setDraft({ lat, lon })} onTilesStatus={setTilesPresent} onMapError={setMapError} />
-            <DraftPointControl key={formRound} draft={draft} onPoint={setDraft} disabled={create.isPending} />
+            <MapView
+              label="Kitchens"
+              className="h-72 overflow-hidden rounded-md border border-neutral-200 dark:border-neutral-800"
+              pins={pins}
+              placing
+              draft={draft}
+              onMapClick={(lat, lon) => setDraft({ lat, lon })}
+              onTilesStatus={setTilesPresent}
+              onMapError={setMapError}
+            />
+            <DraftPointControl
+              key={formRound}
+              draft={draft}
+              onPoint={setDraft}
+              disabled={create.isPending}
+            />
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
             {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field id="new-home-name" label="Name" autoComplete="off" required value={name} onChange={(e) => setName(e.target.value)} />
-              <Field id="new-home-label" label="Label" autoComplete="off" value={label} onChange={(e) => setLabel(e.target.value)} hint="Optional, e.g. “weekday” or “weekend place”." />
+              <Field
+                id="new-home-name"
+                label="Name"
+                autoComplete="off"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <Field
+                id="new-home-label"
+                label="Label"
+                autoComplete="off"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                hint="Optional, e.g. “weekday” or “weekend place”."
+              />
             </div>
             <div>
               <Button type="submit" disabled={create.isPending || !draft}>
@@ -88,7 +149,10 @@ export function HomeBasesPage() {
           ) : homeBases.data.length === 0 ? (
             <EmptyState title="No kitchens yet" />
           ) : (
-            <ul aria-label="Kitchens" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            <ul
+              aria-label="Kitchens"
+              className="divide-y divide-neutral-200 dark:divide-neutral-800"
+            >
               {homeBases.data.map((h) => (
                 <HomeBaseRow key={h.id} home={h} />
               ))}
@@ -114,7 +178,10 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
   const save = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!name.trim()) return;
-    update.mutate({ id: home.id, name: name.trim(), label: label.trim() || null }, { onSuccess: () => setEditing(false) });
+    update.mutate(
+      { id: home.id, name: name.trim(), label: label.trim() || null },
+      { onSuccess: () => setEditing(false) },
+    );
   };
 
   return (
@@ -123,25 +190,49 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
         <div className="min-w-0">
           <p className="font-medium">
             {home.name}
-            {ownLabel ? <span className="text-neutral-600 dark:text-neutral-400"> · {ownLabel}</span> : null}
+            {ownLabel ? (
+              <span className="text-neutral-600 dark:text-neutral-400"> · {ownLabel}</span>
+            ) : null}
           </p>
-          <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">{formatLatLon(home.lat, home.lon)}</p>
+          <p className="font-mono text-xs text-neutral-600 dark:text-neutral-400">
+            {formatLatLon(home.lat, home.lon)}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setEditing((v) => !v)} aria-expanded={editing} aria-label={`Edit ${home.name}`}>
+          <Button
+            variant="secondary"
+            className="min-h-11 lg:min-h-8 px-2 text-xs"
+            onClick={() => setEditing((v) => !v)}
+            aria-expanded={editing}
+            aria-label={`Edit ${home.name}`}
+          >
             Edit
           </Button>
           {confirming ? (
             <span className="flex gap-2" role="group" aria-label={`Confirm deleting ${home.name}`}>
-              <Button variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" disabled={remove.isPending} onClick={() => remove.mutate(home.id, { onSettled: () => setConfirming(false) })}>
+              <Button
+                variant="danger"
+                className="min-h-11 lg:min-h-8 px-2 text-xs"
+                disabled={remove.isPending}
+                onClick={() => remove.mutate(home.id, { onSettled: () => setConfirming(false) })}
+              >
                 {remove.isPending ? "Deleting…" : "Confirm delete"}
               </Button>
-              <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(false)}>
+              <Button
+                variant="secondary"
+                className="min-h-11 lg:min-h-8 px-2 text-xs"
+                onClick={() => setConfirming(false)}
+              >
                 Cancel
               </Button>
             </span>
           ) : (
-            <Button variant="danger" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setConfirming(true)} aria-label={`Delete ${home.name}`}>
+            <Button
+              variant="danger"
+              className="min-h-11 lg:min-h-8 px-2 text-xs"
+              onClick={() => setConfirming(true)}
+              aria-label={`Delete ${home.name}`}
+            >
               Delete
             </Button>
           )}
@@ -153,11 +244,28 @@ function HomeBaseRow({ home }: { home: HomeBase }) {
         </Alert>
       ) : null}
       {editing ? (
-        <form onSubmit={save} className="mt-3 flex flex-col gap-3" aria-label={`Edit kitchen ${home.name}`}>
+        <form
+          onSubmit={save}
+          className="mt-3 flex flex-col gap-3"
+          aria-label={`Edit kitchen ${home.name}`}
+        >
           {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field id={`home-${home.id}-name`} label="Name" autoComplete="off" required value={name} onChange={(e) => setName(e.target.value)} />
-            <Field id={`home-${home.id}-label`} label="Label" autoComplete="off" value={label} onChange={(e) => setLabel(e.target.value)} />
+            <Field
+              id={`home-${home.id}-name`}
+              label="Name"
+              autoComplete="off"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <Field
+              id={`home-${home.id}-label`}
+              label="Label"
+              autoComplete="off"
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+            />
           </div>
           <div className="flex gap-2">
             <Button type="submit" disabled={update.isPending}>

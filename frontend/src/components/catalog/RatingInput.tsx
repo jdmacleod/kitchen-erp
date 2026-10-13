@@ -11,7 +11,14 @@ interface RatingInputProps {
 }
 
 /** Quality rating 1–5 as native radios, plus "none". Stars are decoration only. */
-export function RatingInput({ name, legend = "Quality rating", value, onChange, hint, disabled }: RatingInputProps) {
+export function RatingInput({
+  name,
+  legend = "Quality rating",
+  value,
+  onChange,
+  hint,
+  disabled,
+}: RatingInputProps) {
   const hintId = `${name}-hint`;
   return (
     <fieldset className="flex flex-col gap-1" aria-describedby={hint ? hintId : undefined}>

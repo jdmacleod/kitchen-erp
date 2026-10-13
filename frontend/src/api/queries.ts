@@ -1,18 +1,6 @@
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api, isApiError, newIdempotencyKey } from "./client";
-import type {
-  ApiToken,
-  ApiTokenCreated,
-  Health,
-  ListResponse,
-  Role,
-  User,
-} from "./types";
+import type { ApiToken, ApiTokenCreated, Health, ListResponse, Role, User } from "./types";
 
 export const queryKeys = {
   me: ["auth", "me"] as const,
@@ -133,7 +121,8 @@ export interface EditUserInput {
 export function useEditUser() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: EditUserInput }) => api<User>(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: input }),
+    mutationFn: ({ id, input }: { id: string; input: EditUserInput }) =>
+      api<User>(`/users/${encodeURIComponent(id)}`, { method: "PATCH", body: input }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.users }),
   });
 }
@@ -141,14 +130,19 @@ export function useEditUser() {
 /** An admin sets a new password for another member, signing them out everywhere. */
 export function useSetUserPassword() {
   return useMutation({
-    mutationFn: ({ id, password }: { id: string; password: string }) => api<User>(`/users/${encodeURIComponent(id)}/password`, { method: "POST", body: { password } }),
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api<User>(`/users/${encodeURIComponent(id)}/password`, {
+        method: "POST",
+        body: { password },
+      }),
   });
 }
 
 /** Change your own password; this session stays, every other one ends. */
 export function useChangePassword() {
   return useMutation({
-    mutationFn: (input: { current_password: string; new_password: string }) => api<void>("/auth/password", { method: "POST", body: input }),
+    mutationFn: (input: { current_password: string; new_password: string }) =>
+      api<void>("/auth/password", { method: "POST", body: input }),
   });
 }
 

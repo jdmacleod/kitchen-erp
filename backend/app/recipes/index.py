@@ -151,7 +151,7 @@ def resemblance(missing: StoredRecipe, candidate: DiskFile) -> tuple[float, str]
     return None
 
 
-def plan(
+def plan(  # noqa: C901, PLR0912, PLR0915
     stored: list[StoredRecipe] | tuple[StoredRecipe, ...],
     on_disk: list[DiskFile] | tuple[DiskFile, ...],
     *,
@@ -240,7 +240,7 @@ def plan(
 
     for path in sorted(appeared):
         f = appeared[path]
-        assert f.content_hash is not None
+        assert f.content_hash is not None  # noqa: S101
         relink = proposals.get(path)
         actions.append(
             Create(

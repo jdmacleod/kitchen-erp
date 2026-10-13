@@ -97,7 +97,7 @@ def normalize_v3(raw: str) -> str:
 def _load_0030() -> Any:
     path = Path(__file__).resolve().parent / "0030_normalize_v2.py"
     spec = importlib.util.spec_from_file_location("migration_0030_for_0049", path)
-    assert spec is not None and spec.loader is not None
+    assert spec is not None and spec.loader is not None  # noqa: S101
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     # This module's own copy: alembic's loaded 0030 is a different object and is

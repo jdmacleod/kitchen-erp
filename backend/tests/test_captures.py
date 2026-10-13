@@ -279,7 +279,7 @@ async def test_without_a_vision_model_tesseract_then_the_text_model_reads_it(
     assert fields["title"]["value"] == "Cut green beans" and fields["title"]["source"] == "model"
     assert fields["title"]["confidence"] == "0.6"  # capped for text
     assert fields["pack"]["value"] == {"qty": "14.5", "unit": "oz"}
-    label = [p for p in proposal["photos"] if p["role"] == "label_ingredients"][0]
+    label = [p for p in proposal["photos"] if p["role"] == "label_ingredients"][0]  # noqa: RUF015
     assert label["ocr_text"] == "Ingredients: green beans, water, salt"
     [request] = transport.requests
     assert "images" not in request["body"]["messages"][1]

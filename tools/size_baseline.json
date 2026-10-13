@@ -11,9 +11,11 @@
   "backend/app/services/recipe_resolution.py": 837,
   "backend/app/services/resolution.py": 907,
   "backend/app/services/trip_planner.py": 1131,
-  "frontend/src/api/catalog.ts": 874,
-  "frontend/src/api/purchases.ts": 862,
-  "frontend/src/components/purchases/ReviewPurchase.tsx": 1493,
-  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1029,
-  "frontend/src/pages/geo/MapPage.tsx": 841
+  "frontend/src/api/catalog.ts": 936,
+  "frontend/src/api/purchases.ts": 961,
+  "frontend/src/components/purchases/ReviewPurchase.tsx": 1916,
+  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1365,
+  "frontend/src/pages/geo/MapPage.tsx": 1145,
+  "frontend/src/pages/geo/VendorDetailPage.tsx": 1074,
+  "frontend/src/pages/purchases/ShelfPricePage.tsx": 912
 }

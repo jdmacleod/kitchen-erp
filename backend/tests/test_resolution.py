@@ -284,7 +284,7 @@ async def test_commit_with_unresolved_lines_queues_them_and_identify_applies_to_
         ],
     )
     body = await resolve(admin_client, p1, db_session)
-    l1, l2 = body["lines"]
+    l1, l2 = body["lines"]  # noqa: RUF059
     await admin_client.post(
         f"/api/v1/purchases/{p1}/lines/{l1['id']}/resolve", json={"product_id": rig["id"]}
     )

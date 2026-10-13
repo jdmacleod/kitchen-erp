@@ -98,7 +98,7 @@ def _value(buf: bytes) -> str | int | float | bool | None:
     return None
 
 
-def points(tile: bytes, layers: set[str]) -> list[TilePoint]:
+def points(tile: bytes, layers: set[str]) -> list[TilePoint]:  # noqa: C901, PLR0912
     """Every point feature in the named layers of an uncompressed tile."""
     found: list[TilePoint] = []
     for field, _wire, layer_buf in _fields(tile):

@@ -10,7 +10,10 @@ import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
 vi.mock("maplibre-gl", () => import("./maplibre-stub"));
 
-function routes(vendor: () => Vendor, extra: Record<string, Parameters<typeof mockApi>[0][string]> = {}) {
+function routes(
+  vendor: () => Vendor,
+  extra: Record<string, Parameters<typeof mockApi>[0][string]> = {},
+) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -38,9 +41,15 @@ describe("posted prices on a vendor's page", () => {
 
     expect(await screen.findByRole("heading", { name: "Posted prices" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Off" })).toBeChecked();
-    expect(screen.getByText(/Some stores only work through Save to Kitchen ERP/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Some stores only work through Save to Kitchen ERP/),
+    ).toBeInTheDocument();
     await user.click(screen.getByRole("radio", { name: "On" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ fetch_policy: "server_fetch" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+        fetch_policy: "server_fetch",
+      }),
+    );
     await waitFor(() => expect(screen.getByRole("radio", { name: "On" })).toBeChecked());
     expect(screen.queryByRole("button", { name: "Check now" })).not.toBeInTheDocument();
   });
@@ -63,10 +72,14 @@ describe("posted prices on a vendor's page", () => {
     const user = userEvent.setup();
     renderApp(`/catalog/vendors/${chainVendorId}`);
 
-    expect(await screen.findByText(/Posted prices haven't been reachable since/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Posted prices haven't been reachable since/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/checking again/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Check now" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/check-prices"))).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/check-prices"))).toBe(true),
+    );
     expect(await screen.findByText("Asked the lookup helper for 3 pages.")).toBeInTheDocument();
     expect(screen.queryByText(/haven't been reachable/)).not.toBeInTheDocument();
   });
@@ -74,7 +87,9 @@ describe("posted prices on a vendor's page", () => {
   it("says nothing is checked when the store's pages are never saved", async () => {
     mockApi(routes(() => ({ ...chainVendor, fetch_policy: "none" })));
     renderApp(`/catalog/vendors/${chainVendorId}`);
-    expect(await screen.findByText("Pages from this store aren't saved or checked.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Pages from this store aren't saved or checked."),
+    ).toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: "On" })).not.toBeInTheDocument();
   });
 });

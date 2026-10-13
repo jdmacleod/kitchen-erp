@@ -341,7 +341,7 @@ def identifier_in_text(identifier: str, text: str) -> bool:
     return re.search(pattern, text, flags=re.IGNORECASE) is not None
 
 
-async def match_location(
+async def match_location(  # noqa: C901, PLR0912
     db: AsyncSession,
     *,
     document_id: uuid.UUID,

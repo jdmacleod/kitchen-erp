@@ -4,7 +4,12 @@ import type { Purchase } from "../api/purchases";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { manualPurchase, outlierLine, receiptPurchase, receiptPurchaseId } from "./purchase-fixtures";
+import {
+  manualPurchase,
+  outlierLine,
+  receiptPurchase,
+  receiptPurchaseId,
+} from "./purchase-fixtures";
 
 /**
  * Issue 121, ruling R2: a draft whose lines miss its printed total by a wide
@@ -32,14 +37,16 @@ function mount(path: string, purchase: Purchase) {
     "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     "GET /products/search": () => jsonResponse(200, { items: [] }),
     [`GET /purchases/${receiptPurchaseId}`]: () => jsonResponse(200, purchase),
-    "GET /purchases": () => jsonResponse(200, { items: [purchase, manualPurchase], next_cursor: null }),
+    "GET /purchases": () =>
+      jsonResponse(200, { items: [purchase, manualPurchase], next_cursor: null }),
     "GET /inbox": () =>
       jsonResponse(200, {
         items: [
           {
             kind: "receipt_held",
             title: "The Sep 20 receipt needs a careful look",
-            detail: "Its lines add up to 38.20, but the receipt says 12.00. The flagged lines are shown first.",
+            detail:
+              "Its lines add up to 38.20, but the receipt says 12.00. The flagged lines are shown first.",
             action_label: "Review",
             action_route: `/shop/purchases/${receiptPurchaseId}`,
             created_at: "2026-09-20T18:06:00Z",
@@ -56,9 +63,15 @@ describe("a receipt held for a careful look", () => {
     mount(`/purchases/${receiptPurchaseId}`, held);
     await screen.findByTestId("review");
     expect(screen.getByText("This receipt needs a careful look")).toBeInTheDocument();
-    expect(screen.getByText(/Lines add up to \$38\.20; the receipt says \$12\.00\. The line most likely to explain it is shown first\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Lines add up to \$38\.20; the receipt says \$12\.00\. The line most likely to explain it is shown first\./,
+      ),
+    ).toBeInTheDocument();
     // The ordinary mismatch line would say the same thing twice.
-    expect(screen.queryByText(/The receipt says \$12\.00 but the lines add up to/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/The receipt says \$12\.00 but the lines add up to/),
+    ).not.toBeInTheDocument();
     const rows = screen.getAllByTestId("review-line");
     expect(within(rows[0]).getByText("CSTLN WHOLE MILK GAL")).toBeInTheDocument();
     expect(rows[0]).toHaveAttribute("aria-selected", "true");
@@ -71,7 +84,9 @@ describe("a receipt held for a careful look", () => {
     mount(`/purchases/${receiptPurchaseId}`, { ...held, held: false });
     await screen.findByTestId("review");
     expect(screen.queryByText("This receipt needs a careful look")).not.toBeInTheDocument();
-    expect(screen.getByText(/The receipt says \$12\.00 but the lines add up to/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The receipt says \$12\.00 but the lines add up to/),
+    ).toBeInTheDocument();
   });
 
   it("is a squash row in Needs you", async () => {

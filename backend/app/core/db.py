@@ -48,7 +48,7 @@ def get_engine() -> AsyncEngine:
 
 def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     get_engine()
-    assert _state.sessionmaker is not None
+    assert _state.sessionmaker is not None  # noqa: S101
     return _state.sessionmaker
 
 

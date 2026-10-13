@@ -68,7 +68,7 @@ def parse_front_matter_block(lines: list[str], first_line: int) -> FrontMatter |
     """
     text = "\n".join(lines)
     try:
-        loaded = yaml.load(text, Loader=_VerbatimLoader)  # a SafeLoader subclass
+        loaded = yaml.load(text, Loader=_VerbatimLoader)  # a SafeLoader subclass  # noqa: S506
     except yaml.YAMLError as exc:
         fallback = _key_value_lines(lines, first_line)
         if isinstance(fallback, ParseError):
@@ -88,7 +88,7 @@ def parse_front_matter_block(lines: list[str], first_line: int) -> FrontMatter |
     if not isinstance(loaded, dict):
         return _key_value_lines(lines, first_line)
     result = _stringify(loaded)
-    assert isinstance(result, dict)
+    assert isinstance(result, dict)  # noqa: S101
     return result
 
 

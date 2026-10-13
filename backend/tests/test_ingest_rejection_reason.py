@@ -7,7 +7,7 @@ import json
 from app.ingest.llm import rejection_reason
 from app.ingest.schemas import ReceiptLines
 
-SECRET = "QUAYSIDE OAT MILK"  # stands in for receipt text that must not reach the log
+SECRET = "QUAYSIDE OAT MILK"  # stands in for receipt text that must not reach the log  # noqa: S105
 
 
 def test_names_the_field_and_the_error_type():

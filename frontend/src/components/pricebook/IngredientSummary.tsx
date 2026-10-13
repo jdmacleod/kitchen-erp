@@ -1,5 +1,5 @@
-import type { Ingredient } from "../../api/catalog";
 import type { UseQueryResult } from "@tanstack/react-query";
+import type { Ingredient } from "../../api/catalog";
 import type { IngredientPriceHistory, IngredientPricePoint } from "../../api/pricebook";
 import { formatDate } from "../../lib/format";
 import { formatUnitPrice } from "./PriceAge";
@@ -29,7 +29,12 @@ export function bestRecent(points: IngredientPricePoint[]): IngredientPricePoint
  * The hub's summary strip. Built only from the 90-day history, so the price
  * table's filters (quality, stale, sale) never change what it says.
  */
-export function IngredientSummary({ history }: { ingredient: Ingredient; history: UseQueryResult<IngredientPriceHistory> }) {
+export function IngredientSummary({
+  history,
+}: {
+  ingredient: Ingredient;
+  history: UseQueryResult<IngredientPriceHistory>;
+}) {
   const points = history.data?.points ?? [];
   const best = bestRecent(points);
   const unit = history.data?.display_unit ?? null;
@@ -37,7 +42,10 @@ export function IngredientSummary({ history }: { ingredient: Ingredient; history
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {/* Olive marks the cheapest price (spec 08). */}
-      <section aria-labelledby="best-price" className={`${card} border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950`}>
+      <section
+        aria-labelledby="best-price"
+        className={`${card} border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950`}
+      >
         <h2 id="best-price" className="text-sm font-medium text-green-900 dark:text-green-200">
           Best recent price
         </h2>
@@ -47,17 +55,24 @@ export function IngredientSummary({ history }: { ingredient: Ingredient; history
           </p>
         ) : best ? (
           <>
-            <p className="font-display mt-1 text-2xl tabular-nums">{formatUnitPrice(best.display_unit_price, best.display_unit)}</p>
+            <p className="font-display mt-1 text-2xl tabular-nums">
+              {formatUnitPrice(best.display_unit_price, best.display_unit)}
+            </p>
             <p className="text-sm text-green-900 dark:text-green-200">
               {best.product_name} · {best.vendor_name} · {formatDate(best.observed_at)}
             </p>
           </>
         ) : (
-          <p className="mt-1 text-sm text-green-900 dark:text-green-200">No comparable price in the last {WINDOW_DAYS} days.</p>
+          <p className="mt-1 text-sm text-green-900 dark:text-green-200">
+            No comparable price in the last {WINDOW_DAYS} days.
+          </p>
         )}
       </section>
 
-      <section aria-labelledby="last-days" className={`${card} border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900`}>
+      <section
+        aria-labelledby="last-days"
+        className={`${card} border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900`}
+      >
         <h2 id="last-days" className="text-sm font-medium">
           Last {WINDOW_DAYS} days
         </h2>
@@ -79,7 +94,10 @@ export function IngredientSummary({ history }: { ingredient: Ingredient; history
             {/* A line needs two points; one price is said by the range alone (D22). */}
             {points.length >= 2 ? (
               <div className="mt-2">
-                <Sparkline points={points} label={`Cheapest price each day over the last ${WINDOW_DAYS} days`} />
+                <Sparkline
+                  points={points}
+                  label={`Cheapest price each day over the last ${WINDOW_DAYS} days`}
+                />
               </div>
             ) : null}
           </>

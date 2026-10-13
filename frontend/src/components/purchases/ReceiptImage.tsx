@@ -23,8 +23,15 @@ export function ReceiptImage({ documentId, alt, width, className = "", link }: R
   const [attempt, setAttempt] = useState(0);
   if (failedFor === documentId) {
     return (
-      <div role="status" className={`flex flex-col items-start gap-1 rounded-md border border-dashed border-neutral-300 p-2 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-400 ${className}`}>
-        <span>{width ? "No preview" : "The receipt image couldn't be shown. The lines were still read from it."}</span>
+      <div
+        role="status"
+        className={`flex flex-col items-start gap-1 rounded-md border border-dashed border-neutral-300 p-2 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-400 ${className}`}
+      >
+        <span>
+          {width
+            ? "No preview"
+            : "The receipt image couldn't be shown. The lines were still read from it."}
+        </span>
         <button
           type="button"
           onClick={() => {
@@ -38,10 +45,24 @@ export function ReceiptImage({ documentId, alt, width, className = "", link }: R
       </div>
     );
   }
-  const img = <img key={attempt} src={receiptImageUrl(documentId, width)} alt={alt} onError={() => setFailedFor(documentId)} className={className} />;
+  const img = (
+    <img
+      key={attempt}
+      src={receiptImageUrl(documentId, width)}
+      alt={alt}
+      onError={() => setFailedFor(documentId)}
+      className={className}
+    />
+  );
   if (!link) return img;
   return (
-    <a href={receiptImageUrl(documentId)} target="_blank" rel="noopener" aria-label={link.label} className={`shrink-0 rounded-md ${focusRing}`}>
+    <a
+      href={receiptImageUrl(documentId)}
+      target="_blank"
+      rel="noopener"
+      aria-label={link.label}
+      className={`shrink-0 rounded-md ${focusRing}`}
+    >
       {img}
     </a>
   );

@@ -1,13 +1,56 @@
 // Synthetic catalog records for tests. Names are invented; ids are fixed v7-shaped UUIDs.
-import type { Ingredient, Measure, Product, SearchHit, Unit, IngredientMatch } from "../api/catalog";
+import type {
+  Ingredient,
+  Measure,
+  Product,
+  SearchHit,
+  Unit,
+  IngredientMatch,
+} from "../api/catalog";
 
 export const units: Unit[] = [
-  { code: "g", dimension: "mass", to_base_factor: "1", system: "metric", aliases: ["gram", "grams"] },
-  { code: "kg", dimension: "mass", to_base_factor: "1000", system: "metric", aliases: ["kilogram"] },
-  { code: "oz", dimension: "mass", to_base_factor: "28.349523125", system: "us", aliases: ["ounce"] },
-  { code: "lb", dimension: "mass", to_base_factor: "453.59237", system: "us", aliases: ["lbs", "pound"] },
-  { code: "ml", dimension: "volume", to_base_factor: "1", system: "metric", aliases: ["millilitre"] },
-  { code: "cup", dimension: "volume", to_base_factor: "236.5882365", system: "us", aliases: ["cups"] },
+  {
+    code: "g",
+    dimension: "mass",
+    to_base_factor: "1",
+    system: "metric",
+    aliases: ["gram", "grams"],
+  },
+  {
+    code: "kg",
+    dimension: "mass",
+    to_base_factor: "1000",
+    system: "metric",
+    aliases: ["kilogram"],
+  },
+  {
+    code: "oz",
+    dimension: "mass",
+    to_base_factor: "28.349523125",
+    system: "us",
+    aliases: ["ounce"],
+  },
+  {
+    code: "lb",
+    dimension: "mass",
+    to_base_factor: "453.59237",
+    system: "us",
+    aliases: ["lbs", "pound"],
+  },
+  {
+    code: "ml",
+    dimension: "volume",
+    to_base_factor: "1",
+    system: "metric",
+    aliases: ["millilitre"],
+  },
+  {
+    code: "cup",
+    dimension: "volume",
+    to_base_factor: "236.5882365",
+    system: "us",
+    aliases: ["cups"],
+  },
   { code: "each", dimension: "count", to_base_factor: "1", system: "count", aliases: ["ea"] },
 ];
 
@@ -50,7 +93,14 @@ export const flourProductId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d01";
 
 export const flourProduct: Product = {
   id: flourProductId,
-  ingredient: { id: flourId, name: flour.name, canonical_unit: "g", active: true, category: "pantry", category_key: "pantry" },
+  ingredient: {
+    id: flourId,
+    name: flour.name,
+    canonical_unit: "g",
+    active: true,
+    category: "pantry",
+    category_key: "pantry",
+  },
   brand: "Millstone",
   name: "All-Purpose Flour",
   pack_qty: "5",
@@ -88,14 +138,24 @@ export const hits: SearchHit[] = [
     pack_qty: "2",
     pack_unit: "kg",
     quality_rating: null,
-    ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b02", name: "bread flour", canonical_unit: "g", active: true, category: "Baking", category_key: "pantry" },
+    ingredient: {
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b02",
+      name: "bread flour",
+      canonical_unit: "g",
+      active: true,
+      category: "Baking",
+      category_key: "pantry",
+    },
     match: "ingredient",
     score: "0.6",
   },
 ];
 
 /** An ingredient as `GET /ingredients/search` returns it (1G). */
-export function ingredientMatch(i: Ingredient, extra: Partial<IngredientMatch> = {}): IngredientMatch {
+export function ingredientMatch(
+  i: Ingredient,
+  extra: Partial<IngredientMatch> = {},
+): IngredientMatch {
   return {
     kind: "ingredient",
     id: i.id,

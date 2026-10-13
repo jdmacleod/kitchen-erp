@@ -368,7 +368,7 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-async def run_stage(
+async def run_stage(  # noqa: PLR0915
     db: AsyncSession,
     job: IngestJob,
     *,
@@ -404,7 +404,7 @@ async def run_stage(
         except Exception as exc:
             await db.rollback()
             job = await db.get(IngestJob, job_id, populate_existing=True)
-            assert job is not None
+            assert job is not None  # noqa: S101
             duration_ms = int((time.perf_counter() - started) * 1000)
             code = exc.code if isinstance(exc, IngestError) else "unexpected_error"
             detail = exc.detail if isinstance(exc, IngestError) else None

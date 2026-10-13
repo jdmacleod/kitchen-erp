@@ -5,10 +5,10 @@ tool checks each rule. Most of the code is written by agents working in parallel
 branches, so the rules live in tools wherever possible and this file explains
 them. A rule no tool checks is marked as a guideline.
 
-Some rules arrive with the formatting PR (#336), a single change that reformats
-the tree when no other pull requests are open. Until it merges they are the
-standard for new code but nothing fails on them; each is marked "(enforced from
-the formatting PR)".
+Existing code that breaks a rule is listed in a baseline (`# noqa` comments,
+`eslint-suppressions.json`, `tools/size_baseline.json`) that may only shrink; new
+code meets the rules. The baselines were taken by the formatting PR (#336) on
+2026-10-13, which also reformatted the frontend with Prettier.
 
 ## 1. Purpose and precedence
 
@@ -27,21 +27,29 @@ Fastest first. Each catches what the one before it cannot.
 
 | Layer | When | What runs | Configured in |
 |---|---|---|---|
-| Format hook | After every Claude Code edit | `ruff format` and import sorting on the edited Python file | `.claude/settings.json`, `tools/format_edited.sh` |
-| Pre-commit | Every commit, staged files | Hygiene, gitleaks, ruff, the size check, actionlint, the PII scanner | `.pre-commit-config.yaml` |
-| CI | Every push and pull request | Full lint, tests, size, types (advisory), repo hygiene, e2e, PII safeguards, CodeQL | `.github/workflows/` |
+| Format hook | After every Claude Code edit | `ruff format` and import sorting on the edited Python file; Prettier on the edited frontend or e2e file | `.claude/settings.json`, `tools/format_edited.sh` |
+| Pre-commit | Every commit, staged files | Hygiene, gitleaks, ruff, Prettier, ESLint, the size check, actionlint, zizmor, markdownlint, shellcheck, hadolint, the PII scanner | `.pre-commit-config.yaml` |
+| CI | Every push and pull request | Full lint and format checks, type checks, tests, size, types (advisory), repo hygiene, e2e, PII safeguards, CodeQL | `.github/workflows/` |
 
 The format hook reads the edited path from the hook's JSON, formats `backend/` and
 `tools/` Python from the repository root (so the result matches pre-commit), stays
 silent, and always exits 0: a formatter that cannot run never blocks an edit.
-Frontend and e2e files get Prettier the same way (enforced from the formatting PR).
+Frontend and e2e TypeScript, CSS and JSON files get Prettier the same way, from
+the version pinned in `frontend/`.
+
+Prettier and ESLint run in pre-commit from the packages' own `node_modules`
+(through `tools/pnpm_hook.sh`), so run `corepack pnpm install` in `frontend/` and
+`e2e/` once before committing there. The ESLint hook lints only the changed
+files, with the package's suppressions; when a fix makes a suppression unused, it
+fails until you run `corepack pnpm exec eslint --prune-suppressions` in that
+package.
 
 The commands, from the repository root:
 
 | Command | Does |
 |---|---|
-| `make fmt` | Format: ruff over `backend/` and `tools/`; Prettier over `frontend/` and `e2e/` (enforced from the formatting PR) |
-| `make lint` | `ruff check` over `backend/` and `tools/`, ESLint over `frontend/` |
+| `make fmt` | Format: ruff over `backend/` and `tools/`; Prettier over `frontend/` and `e2e/` |
+| `make lint` | ruff check and format check over `backend/` and `tools/`; Prettier check, ESLint and `tsc` over `frontend/` and `e2e/` |
 | `make types` | ty over the backend; reports, never fails |
 | `make size` | The size check; `make size-report` lists files over the preferred size; `make size-update` lowers the baseline |
 | `make check` | The safeguards, the size check and every pre-commit hook over all files |
@@ -54,13 +62,27 @@ restructure the code, or raise it in the pull request.
 ## 3. Python
 
 - **Formatting:** ruff format, line length 100, double quotes
-  (`backend/pyproject.toml`, `[tool.ruff]`). `tools/` uses ruff's defaults today
-  and the backend's configuration from the formatting PR, through a
-  `tools/ruff.toml` that extends it.
-- **Lint:** ruff check with `E, F, I, B, UP, C4, SIM, PLW`. The formatting PR
-  widens it to add `W, PLE, PLR0912, PLR0915, C90, RUF, ASYNC, PT, S, TID, PTH, ERA`
-  (`S101` allowed in tests), with today's complexity offenders listed by
-  `# noqa` comments that may only be removed (enforced from the formatting PR).
+  (`backend/pyproject.toml`, `[tool.ruff]`). `tools/` uses the same configuration
+  through `tools/ruff.toml`, which extends it.
+- **Lint:** ruff check with `E, F, W, I, B, UP, C4, SIM, PLW, PLE, PLR0912,
+  PLR0915, C90, RUF, ASYNC, PT, S, TID, PTH, ERA`. Narrowed where a rule would
+  only have produced noise:
+  - `PT018` (one condition per assert) is off: about 930 test asserts combine
+    conditions, and splitting them buys nothing.
+  - In `backend/tests/`: `S101` (assert) and `S608` (SQL built from strings; the
+    tests compose fixed fragments) are allowed. `S608` is also allowed in
+    `alembic/versions/`, whose DDL and backfills are built from constants.
+  - `ASYNC2xx` (blocking file and process calls in async functions) is allowed in
+    tests, `app/cli.py` and `scripts/`: it matters on the server's event loop,
+    not in one-shot commands. It would have added about 40 noqa comments.
+  - `RUF001`–`RUF003` accept the typographic characters receipts and recipes use
+    (`×`, `–`, `−`, curly quotes, `ʼ`, `´`, `⁄`; `allowed-confusables`).
+- **Baseline:** the findings that predate these rules carry `# noqa: <code>`
+  comments, added to 179 lines on 2026-10-13 (173 in `backend/`, 6 in `tools/`; mostly
+  `C901`/`PLR0912`/`PLR0915` complexity, `S101` asserts in app code, `RUF012`,
+  `RUF059`, `PT011` and `S603`). They may only be removed: fix the code, then
+  delete the comment (ruff's `RUF100` flags one that no longer suppresses
+  anything). Never add one to get a new change through.
 - **Imports:** absolute, from `app.` (`from app.services.catalog import ...`), never
   relative; sorted by ruff's `I` rules.
 - **Naming:** `snake_case` functions and modules, `PascalCase` classes,
@@ -99,23 +121,38 @@ in `backend/pyproject.toml`. It runs in `make types` and in the CI job
 
 ## 4. TypeScript and React
 
-- **Formatting:** Prettier with `printWidth` 100, double quotes and trailing
-  commas everywhere, from one `.prettierrc.json` shared by `frontend/` and `e2e/`
-  (enforced from the formatting PR). Until then, match the file you are in.
-- **Lint today:** ESLint flat config in `frontend/eslint.config.js`:
-  `@eslint/js` recommended, `typescript-eslint` recommended, `react-hooks`.
-- **Lint from the formatting PR:** `strictTypeChecked` and `stylisticTypeChecked`
-  with `parserOptions.projectService`, `jsx-a11y`, `import-x` ordering, and
-  `eslint-config-prettier` last; `pnpm lint` runs with `--max-warnings=0`; today's
-  violations are held in `eslint-suppressions.json`, which may only shrink
-  (enforced from the formatting PR). `e2e/` gets its own `tsconfig.json` and
-  ESLint config (enforced from the formatting PR).
+- **Formatting:** Prettier 3.9.10 (pinned exactly in both packages) with
+  `printWidth` 100, double quotes and trailing commas everywhere, from one
+  `.prettierrc.json` at the root shared by `frontend/` and `e2e/`;
+  `.prettierignore` leaves out lockfiles, ESLint's suppressions, build and test
+  output, screenshots and Markdown. `pnpm format` writes, `pnpm format:check`
+  checks.
+- **Lint (frontend):** ESLint flat config in `frontend/eslint.config.js`:
+  `@eslint/js` recommended, typescript-eslint `strictTypeChecked` and
+  `stylisticTypeChecked` with `parserOptions.projectService`, `react-hooks`,
+  `jsx-a11y` recommended, `import-x/order` (alphabetized, no blank lines between
+  groups), and `eslint-config-prettier` last. Two options relax the strict set to
+  how React code is written here: `no-confusing-void-expression` allows arrow
+  shorthand (`onClick={() => setOpen(false)}`), and
+  `restrict-template-expressions` allows numbers. `pnpm lint` runs with
+  `--max-warnings=0`; `pnpm typecheck` runs `tsc --noEmit`.
+- **Lint (e2e):** `e2e/eslint.config.js`: typescript-eslint
+  `recommendedTypeChecked` and `eslint-plugin-playwright` recommended (its
+  warnings raised to errors), `eslint-config-prettier` last; `e2e/tsconfig.json`
+  is strict. Scripts `lint`, `typecheck`, `format:check`.
+- **Baseline:** findings that predate these rules are held in
+  `frontend/eslint-suppressions.json` (595 findings in 163 files on 2026-10-13:
+  mostly non-null assertions, function length, unnecessary conditions and
+  complexity) and `e2e/eslint-suppressions.json` (54 in 9 files: conditional
+  expects, conditional skips, `networkidle`). They may only shrink: after fixing
+  one, run `corepack pnpm exec eslint --prune-suppressions` in that package.
+  Never run `--suppress-all` or `--suppress-rule` to get a new change through.
 - **Types:** `frontend/tsconfig.json` is `strict` with no unused locals or
-  parameters; `tsc --noEmit` runs in `pnpm build`. The formatting PR adds
-  `noUncheckedIndexedAccess` and `noImplicitOverride`, ratcheted if they produce
-  many errors.
-- **`any`:** not without a comment saying why (guideline today; ESLint from the
-  formatting PR).
+  parameters and `noImplicitOverride`. `noUncheckedIndexedAccess` is not on yet:
+  it raised 521 errors on 2026-10-13, too many for one change; it is a later
+  ratchet (section 10).
+- **`any`:** not without a comment saying why; `strictTypeChecked`'s
+  `no-unsafe-*` and `no-explicit-any` rules enforce it.
 - **Visual rules:** colours, type and components follow `DESIGN.md`; do not
   restate them in code comments.
 
@@ -140,10 +177,13 @@ Long files are where agents lose track of what a module does. `tools/check_size.
   under the limit, and never raises one.
 - It runs in pre-commit on staged files, in `make check`, and in the CI backend
   job. `make size-report` lists everything over the preferred size, biggest first.
-- **Functions** (enforced from the formatting PR): ruff `C901` max-complexity 12,
-  `PLR0915` max-statements 50, `PLR0912` max-branches 15; ESLint `complexity` 15,
-  `max-lines-per-function` 120 (components count), `max-depth` 4. Existing
-  offenders are baselined.
+- **Functions:** ruff `C901` max-complexity 12, `PLR0915` max-statements 50,
+  `PLR0912` max-branches 15; ESLint `complexity` 15, `max-lines-per-function` 120
+  (blank lines and comments skipped; components count), `max-depth` 4. Existing
+  offenders are baselined by `# noqa` comments and the ESLint suppressions.
+- Prettier lengthened seven frontend files on 2026-10-13 (it breaks long JSX and
+  call chains over several lines); their counts in the size baseline were taken
+  after it ran.
 
 When a file is flagged, split it by responsibility, the way the code is already
 split into routers, services and schemas: a service per concept, a component per
@@ -172,12 +212,22 @@ into `part1`/`part2`, and do not squeeze lines to get under a limit.
   `check-json`). `check-yaml` skips the pnpm lockfiles (several documents) and
   `compose.demo.yaml`/`compose.e2e.yaml` (Compose's `!override` tag).
 - **Workflows:** actionlint, which also runs shellcheck over `run:` blocks
-  (pre-commit and the CI "Repo hygiene" job), and zizmor (CI). Actions are pinned
+  (pre-commit and the CI "Repo hygiene" job), and zizmor (both). Actions are pinned
   to a commit SHA with the exact version in a comment; checkouts set
   `persist-credentials: false`; `${{ }}` values reach scripts through `env:`.
 - **Markdown:** sentence-case headings, no emoji, prose without hard line-length
-  limits; markdownlint with a relaxed config (enforced from the formatting PR).
-- **Shell and Docker:** shellcheck and hadolint (enforced from the formatting PR).
+  limits; markdownlint-cli2 with a relaxed config (`.markdownlint-cli2.yaml`):
+  off are line length, inline HTML, ordered-list numbering, emphasis as a
+  heading, fence languages, table pipe spacing, the first-line heading (the PR
+  template), and `MD037`/`MD038`, whose fixes change meaning (`MS* > EV-*`, the
+  `XMP ` chunk name). Repeated headings are allowed under different parents.
+- **Shell and Docker:** shellcheck, and hadolint (`.hadolint.yaml`), which allows
+  unpinned distribution packages (`DL3008`, `DL3018`): the base images are pinned,
+  and mirrors drop old package versions.
+- **Editorconfig:** editorconfig-checker in CI (`.editorconfig-checker.json`)
+  checks line endings, final newlines, trailing whitespace and tabs. Indent width
+  and line length are left to the formatters: its indent check misreads
+  docstrings, SQL and other multi-line strings.
 
 ## 8. Commits and pull requests
 
@@ -210,3 +260,5 @@ Not enforced yet, and planned:
 - Coverage floors: `pytest-cov` and Vitest thresholds, ratcheted up.
 - Dead-code reports: knip for the frontend, vulture for Python.
 - ty as a gate, at the review point in section 3.
+- `noUncheckedIndexedAccess` in `frontend/tsconfig.json` (521 errors on
+  2026-10-13), once the count is small enough to fix in one change.

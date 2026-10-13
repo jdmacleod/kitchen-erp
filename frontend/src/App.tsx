@@ -5,19 +5,23 @@ import { RequireAuth } from "./auth/RequireAuth";
 import { AppShell } from "./components/AppShell";
 import { FOOTER_SECTIONS, MAIN_SECTIONS } from "./components/Nav";
 import { RedirectTo } from "./components/RedirectTo";
+import { ClipPage } from "./pages/capture/ClipPage";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientLinkPage } from "./pages/catalog/IngredientLinkPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
 import { PhotographProductPage } from "./pages/catalog/PhotographProductPage";
 import { PostedPricesPage } from "./pages/catalog/PostedPricesPage";
-import { ProductReviewPage } from "./pages/catalog/ProductReviewPage";
 import { ProductDetailPage } from "./pages/catalog/ProductDetailPage";
+import { ProductReviewPage } from "./pages/catalog/ProductReviewPage";
 import { ProductsPage } from "./pages/catalog/ProductsPage";
 import { RecipeDetailPage } from "./pages/cook/RecipeDetailPage";
 import { RecipesPage } from "./pages/cook/RecipesPage";
 import { ResolveRecipesPage } from "./pages/cook/ResolveRecipesPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
+import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 import { ListPage } from "./pages/plan/ListPage";
 import { StopPage } from "./pages/plan/StopPage";
 import { TripDetailPage } from "./pages/plan/TripDetailPage";
@@ -26,17 +30,13 @@ import { ComparePage } from "./pages/pricebook/ComparePage";
 import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
 import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
-import { RereadPage } from "./pages/purchases/RereadPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
 import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
+import { RereadPage } from "./pages/purchases/RereadPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
 import { ToIdentifyPage } from "./pages/purchases/ToIdentifyPage";
-import { ClipPage } from "./pages/capture/ClipPage";
 import { CapturePage } from "./pages/settings/CapturePage";
 import { HomeBasesPage } from "./pages/settings/HomeBasesPage";
-import { HomePage } from "./pages/HomePage";
-import { LoginPage } from "./pages/LoginPage";
-import { NotFoundPage } from "./pages/NotFoundPage";
 import { SystemPage } from "./pages/settings/SystemPage";
 import { TokensPage } from "./pages/settings/TokensPage";
 import { UsersPage } from "./pages/settings/UsersPage";
@@ -69,9 +69,10 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
  * A section's own path ("/settings", typed or trimmed from a URL) opens the
  * section's first page, the same place its sidebar entry goes, instead of Not found.
  */
-export const SECTION_ROOTS: { from: string; to: string }[] = [...MAIN_SECTIONS, ...FOOTER_SECTIONS].flatMap((section) =>
-  section.prefix ? [{ from: section.prefix, to: section.to }] : [],
-);
+export const SECTION_ROOTS: { from: string; to: string }[] = [
+  ...MAIN_SECTIONS,
+  ...FOOTER_SECTIONS,
+].flatMap((section) => (section.prefix ? [{ from: section.prefix, to: section.to }] : []));
 
 /**
  * Route table (docs/spec/09-information-architecture.md, Routes). Mounted inside a

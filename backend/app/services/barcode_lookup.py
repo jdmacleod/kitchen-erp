@@ -73,12 +73,12 @@ async def _label(
     if location is None:
         # Never guess the store (PR10b): its layout decides what the digits mean.
         parsed = parse_random_weight(code)
-        assert parsed is not None
+        assert parsed is not None  # noqa: S101
         return Lookup(result="label", label=_label_out(parsed), needs_store=True)
     vendor = await db.get(Vendor, location.vendor_id)
-    assert vendor is not None
+    assert vendor is not None  # noqa: S101
     parsed = parse_random_weight(code, RwLayout.from_json(vendor.rw_layout))
-    assert parsed is not None
+    assert parsed is not None  # noqa: S101
     owner = (
         await db.execute(
             select(ProductIdentifier.product_id).where(

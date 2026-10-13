@@ -27,7 +27,8 @@ describe("app shell", () => {
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
-      "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
+      "GET /inbox": () =>
+        jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
       "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
     });
   const tabs = () => screen.getByRole("navigation", { name: "Tabs" });
@@ -39,7 +40,11 @@ describe("app shell", () => {
 
     const bar = within(tabs());
     expect(bar.getAllByRole("link").map((l) => l.textContent)).toEqual(["Home", "Purchases"]);
-    expect(bar.getAllByRole("button").map((b) => b.textContent)).toEqual(["Capture", "Search", "More"]);
+    expect(bar.getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Capture",
+      "Search",
+      "More",
+    ]);
     expect(bar.getByRole("link", { name: "Purchases" })).toHaveAttribute("aria-current", "page");
     expect(bar.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
     expect(screen.queryByRole("button", { name: "Menu" })).toBeNull();
@@ -59,8 +64,22 @@ describe("app shell", () => {
     expect(more).toHaveAttribute("aria-expanded", "true");
 
     // Shop's other pages, Catalog and Settings (UI-4.9); Purchases has its own tab.
-    const links = within(sheet).getAllByRole("link").map((l) => l.textContent);
-    expect(links).toEqual(["Receipts", "Shelf prices", "Compare prices", "Ingredients", "Products", "Vendors", "Kitchens", "Users", "API tokens", "Capture", "System"]);
+    const links = within(sheet)
+      .getAllByRole("link")
+      .map((l) => l.textContent);
+    expect(links).toEqual([
+      "Receipts",
+      "Shelf prices",
+      "Compare prices",
+      "Ingredients",
+      "Products",
+      "Vendors",
+      "Kitchens",
+      "Users",
+      "API tokens",
+      "Capture",
+      "System",
+    ]);
     expect(within(sheet).getByRole("button", { name: "Log out" })).toBeInTheDocument();
 
     await user.keyboard("{Escape}");
@@ -75,11 +94,17 @@ describe("app shell", () => {
     await screen.findByText("No purchases yet");
 
     await user.click(within(tabs()).getByRole("button", { name: "More" }));
-    await user.click(within(await screen.findByRole("dialog", { name: "More" })).getByRole("link", { name: "Receipts" }));
+    await user.click(
+      within(await screen.findByRole("dialog", { name: "More" })).getByRole("link", {
+        name: "Receipts",
+      }),
+    );
 
     expect(await screen.findByRole("heading", { level: 1, name: "Receipts" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
-    expect(within(tabs()).getByRole("link", { name: "Purchases" })).not.toHaveAttribute("aria-current");
+    expect(within(tabs()).getByRole("link", { name: "Purchases" })).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("opens Capture and Search from the tab bar", async () => {
@@ -97,7 +122,11 @@ describe("app shell", () => {
     expect(screen.queryByRole("dialog", { name: "Capture" })).toBeNull();
 
     // A phone has no Escape key, so the full-screen palette has its own Cancel.
-    await user.click(within(screen.getByRole("dialog", { name: "Search" })).getByRole("button", { name: "Cancel" }));
+    await user.click(
+      within(screen.getByRole("dialog", { name: "Search" })).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
     expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
   });
 

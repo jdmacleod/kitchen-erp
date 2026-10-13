@@ -1,4 +1,10 @@
-import { useId, useState, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import {
+  useId,
+  useState,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 import { focusRing } from "../ui";
 
 /** The input chrome shared by Field, selects, and textareas. */
@@ -14,7 +20,14 @@ type SelectFieldProps = SelectHTMLAttributes<HTMLSelectElement> & {
   children: ReactNode;
 };
 
-export function SelectField({ id, label, hint, className = "", children, ...rest }: SelectFieldProps) {
+export function SelectField({
+  id,
+  label,
+  hint,
+  className = "",
+  children,
+  ...rest
+}: SelectFieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   return (
     <div className={`flex min-w-0 flex-col gap-1 ${className}`}>
@@ -72,14 +85,25 @@ interface RadioGroupProps<V extends string> {
 }
 
 /** A row of native radios inside a fieldset; the legend is the accessible name. */
-export function RadioGroup<V extends string>({ name, legend, options, value, onChange, hint, disabled }: RadioGroupProps<V>) {
+export function RadioGroup<V extends string>({
+  name,
+  legend,
+  options,
+  value,
+  onChange,
+  hint,
+  disabled,
+}: RadioGroupProps<V>) {
   const hintId = useId();
   return (
     <fieldset className="flex flex-col gap-1" aria-describedby={hint ? hintId : undefined}>
       <legend className={labelClass}>{legend}</legend>
       <div className="flex flex-wrap gap-x-4 gap-y-2">
         {options.map((option) => (
-          <label key={option.value} className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
+          <label
+            key={option.value}
+            className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm"
+          >
             <input
               type="radio"
               name={name}
@@ -117,9 +141,19 @@ const badgeTones = {
 export type BadgeTone = keyof typeof badgeTones;
 
 /** `wrap` lets a long label break across lines, for badges inside a narrow table column. */
-export function Badge({ tone = "neutral", wrap = false, children }: { tone?: BadgeTone; wrap?: boolean; children: ReactNode }) {
+export function Badge({
+  tone = "neutral",
+  wrap = false,
+  children,
+}: {
+  tone?: BadgeTone;
+  wrap?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${wrap ? "whitespace-normal" : "whitespace-nowrap"} ${badgeTones[tone]}`}>
+    <span
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${wrap ? "whitespace-normal" : "whitespace-nowrap"} ${badgeTones[tone]}`}
+    >
       {children}
     </span>
   );
@@ -136,7 +170,14 @@ interface DisclosureProps {
 }
 
 /** A native details/summary block: keyboard and screen-reader behaviour for free. */
-export function Disclosure({ summary, children, defaultOpen = false, open, onOpenChange, className = "" }: DisclosureProps) {
+export function Disclosure({
+  summary,
+  children,
+  defaultOpen = false,
+  open,
+  onOpenChange,
+  className = "",
+}: DisclosureProps) {
   const [internal, setInternal] = useState(defaultOpen);
   const isOpen = open ?? internal;
   return (
@@ -150,7 +191,9 @@ export function Disclosure({ summary, children, defaultOpen = false, open, onOpe
       }}
       className={className}
     >
-      <summary className={`cursor-pointer rounded-md py-3 text-sm lg:py-2 font-medium select-none ${focusRing}`}>
+      <summary
+        className={`cursor-pointer rounded-md py-3 text-sm lg:py-2 font-medium select-none ${focusRing}`}
+      >
         {summary}
       </summary>
       {isOpen ? <div className="mt-2 flex flex-col gap-4">{children}</div> : null}
@@ -170,7 +213,11 @@ export function ConfirmedBadge({ confirmed }: { confirmed: boolean }) {
 export function QualityStars({ rating }: { rating: number | null }) {
   if (rating === null) return <span aria-label="Unrated">—</span>;
   return (
-    <span role="img" aria-label={`${rating} of 5 stars`} className="tracking-tight whitespace-nowrap text-neutral-800 dark:text-neutral-200">
+    <span
+      role="img"
+      aria-label={`${rating} of 5 stars`}
+      className="tracking-tight whitespace-nowrap text-neutral-800 dark:text-neutral-200"
+    >
       {"★".repeat(rating)}
       <span className="text-neutral-300 dark:text-neutral-700">{"★".repeat(5 - rating)}</span>
     </span>

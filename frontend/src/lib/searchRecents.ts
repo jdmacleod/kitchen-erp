@@ -50,7 +50,10 @@ export function readRecents(): SearchResult[] {
 export function rememberRecent(result: SearchResult): void {
   try {
     const { kind, id, label, detail, route, category_key } = result;
-    const next = [{ kind, id, label, detail, route, category_key }, ...readRecents().filter((r) => !(r.kind === kind && r.id === id))];
+    const next = [
+      { kind, id, label, detail, route, category_key },
+      ...readRecents().filter((r) => !(r.kind === kind && r.id === id)),
+    ];
     localStorage.setItem(KEY, JSON.stringify(next.slice(0, RECENT_LIMIT)));
   } catch {
     // Private mode or storage disabled: search simply has no recents.

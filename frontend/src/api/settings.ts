@@ -34,7 +34,8 @@ export function setSettings(client: QueryClient, settings: Settings): void {
 export function useSetCurrentKitchen() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (homeBaseId: string | null) => api<Settings>("/me/settings", { method: "PUT", body: { current_home_base_id: homeBaseId } }),
+    mutationFn: (homeBaseId: string | null) =>
+      api<Settings>("/me/settings", { method: "PUT", body: { current_home_base_id: homeBaseId } }),
     onSuccess: (settings) => {
       setSettings(client, settings);
       void client.invalidateQueries({ queryKey: settingsKeys.me });

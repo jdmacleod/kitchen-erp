@@ -132,7 +132,9 @@ export function Combobox<T>({
         aria-autocomplete="list"
         aria-expanded={expanded}
         aria-controls={listId}
-        aria-activedescendant={hasPopup && active >= 0 && active < items.length ? `${id}-option-${active}` : undefined}
+        aria-activedescendant={
+          hasPopup && active >= 0 && active < items.length ? `${id}-option-${active}` : undefined
+        }
         aria-describedby={hintId}
         placeholder={placeholder}
         disabled={disabled}
@@ -185,7 +187,11 @@ export function Combobox<T>({
               const headingId = `${id}-group-${segment.entries[0].index}`;
               return (
                 <li key={headingId} role="presentation">
-                  <div id={headingId} role="presentation" className="border-t border-neutral-200 px-3 pt-2 pb-1 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
+                  <div
+                    id={headingId}
+                    role="presentation"
+                    className="border-t border-neutral-200 px-3 pt-2 pb-1 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400"
+                  >
                     {segment.heading}
                   </div>
                   <ul role="group" aria-labelledby={headingId}>
