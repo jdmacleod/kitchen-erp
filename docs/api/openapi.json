@@ -282,6 +282,72 @@
         "title": "AmountOut",
         "type": "object"
       },
+      "Annotation": {
+        "additionalProperties": true,
+        "description": "``amount`` is money and ``minutes`` a duration, both as strings; ``reason``\naccompanies ``unsourceable``.",
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount"
+          },
+          "item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Id"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "Annotation",
+        "type": "object"
+      },
       "AnswerOut": {
         "additionalProperties": false,
         "properties": {
@@ -1508,6 +1574,21 @@
           "status"
         ],
         "title": "Check",
+        "type": "object"
+      },
+      "ChooseIn": {
+        "additionalProperties": false,
+        "properties": {
+          "variant_id": {
+            "format": "uuid",
+            "title": "Variant Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "variant_id"
+        ],
+        "title": "ChooseIn",
         "type": "object"
       },
       "CodeOffer": {
@@ -15739,6 +15820,235 @@
         "title": "StatusCounts",
         "type": "object"
       },
+      "StopItemOut": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Price"
+          },
+          "actual_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Qty"
+          },
+          "actual_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Unit"
+          },
+          "forced": {
+            "title": "Forced",
+            "type": "boolean"
+          },
+          "got_here": {
+            "title": "Got Here",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "line_cost": {
+            "title": "Line Cost",
+            "type": "string"
+          },
+          "list_item_id": {
+            "format": "uuid",
+            "title": "List Item Id",
+            "type": "string"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "pack_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Price"
+          },
+          "packs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packs"
+          },
+          "price_stale": {
+            "title": "Price Stale",
+            "type": "boolean"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "product_name": {
+            "title": "Product Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "list_item_id",
+          "product_id",
+          "product_name",
+          "packs",
+          "pack_price",
+          "line_cost",
+          "observation_id",
+          "price_stale",
+          "forced",
+          "actual_price",
+          "actual_qty",
+          "actual_unit",
+          "got_here"
+        ],
+        "title": "StopItemOut",
+        "type": "object"
+      },
+      "StopOut": {
+        "additionalProperties": false,
+        "description": "``leg_seconds`` and ``leg_meters`` are the free-flow leg that reaches the\nstop; ``multiplier`` and ``arrive_at`` are what the planner applied at its\nprojected departure.",
+        "properties": {
+          "arrive_at": {
+            "format": "date-time",
+            "title": "Arrive At",
+            "type": "string"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
+          "hours_known": {
+            "title": "Hours Known",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StopItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "leg_meters": {
+            "title": "Leg Meters",
+            "type": "integer"
+          },
+          "leg_seconds": {
+            "title": "Leg Seconds",
+            "type": "integer"
+          },
+          "leg_source": {
+            "enum": [
+              "osrm",
+              "estimate"
+            ],
+            "title": "Leg Source",
+            "type": "string"
+          },
+          "multiplier": {
+            "title": "Multiplier",
+            "type": "string"
+          },
+          "overhead_min": {
+            "title": "Overhead Min",
+            "type": "integer"
+          },
+          "purchase_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Id"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "subtotal": {
+            "title": "Subtotal",
+            "type": "string"
+          },
+          "vendor_location_id": {
+            "format": "uuid",
+            "title": "Vendor Location Id",
+            "type": "string"
+          },
+          "vendor_location_name": {
+            "title": "Vendor Location Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "seq",
+          "vendor_location_id",
+          "vendor_location_name",
+          "leg_seconds",
+          "leg_meters",
+          "leg_source",
+          "multiplier",
+          "arrive_at",
+          "overhead_min",
+          "subtotal",
+          "hours_known",
+          "done_at",
+          "purchase_id",
+          "items"
+        ],
+        "title": "StopOut",
+        "type": "object"
+      },
       "StoreCodeOfferOut": {
         "additionalProperties": false,
         "description": "A store code review may remember on the purchase's location (1F, design D10).",
@@ -16071,6 +16381,26 @@
         "title": "SuggestionVendorCount",
         "type": "object"
       },
+      "Trade": {
+        "additionalProperties": false,
+        "description": "The marginal trade against ``balanced``: more (positive) or less money\nout of pocket (items plus mileage), and more or fewer minutes.",
+        "properties": {
+          "minutes": {
+            "title": "Minutes",
+            "type": "string"
+          },
+          "money": {
+            "title": "Money",
+            "type": "string"
+          }
+        },
+        "required": [
+          "money",
+          "minutes"
+        ],
+        "title": "Trade",
+        "type": "object"
+      },
       "TravelLegOut": {
         "additionalProperties": false,
         "description": "A stored free-flow leg; ``estimate`` means the routing engine did not answer\nfor this pair and the figures are haversine times a road factor.",
@@ -16133,6 +16463,405 @@
           "computed_at"
         ],
         "title": "TravelLegOut",
+        "type": "object"
+      },
+      "TripCreate": {
+        "additionalProperties": false,
+        "description": "Plan a trip from the kitchen's open list. Origin defaults to the kitchen's\nplace, destination to the origin, value of time to the household setting,\noverhead to ten minutes.",
+        "properties": {
+          "destination_place_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination Place Id"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "max_stops": {
+            "default": 3,
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Stops",
+            "type": "integer"
+          },
+          "mileage_rate": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,4}|(?=[\\d.]{1,9}0*$)\\d{0,4}\\.\\d{0,4}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mileage Rate"
+          },
+          "origin_place_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Place Id"
+          },
+          "planned_at": {
+            "format": "date-time",
+            "title": "Planned At",
+            "type": "string"
+          },
+          "stop_overhead_min": {
+            "anyOf": [
+              {
+                "maximum": 32767.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Overhead Min"
+          },
+          "value_of_time_per_hour": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,6}|(?=[\\d.]{1,9}0*$)\\d{0,6}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Of Time Per Hour"
+          }
+        },
+        "required": [
+          "home_base_id",
+          "planned_at"
+        ],
+        "title": "TripCreate",
+        "type": "object"
+      },
+      "TripOut": {
+        "additionalProperties": false,
+        "properties": {
+          "chosen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen At"
+          },
+          "chosen_variant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen Variant Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "format": "uuid",
+            "title": "Created By",
+            "type": "string"
+          },
+          "destination_place_id": {
+            "format": "uuid",
+            "title": "Destination Place Id",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "list_id": {
+            "format": "uuid",
+            "title": "List Id",
+            "type": "string"
+          },
+          "max_stops": {
+            "title": "Max Stops",
+            "type": "integer"
+          },
+          "mileage_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mileage Rate"
+          },
+          "origin_place_id": {
+            "format": "uuid",
+            "title": "Origin Place Id",
+            "type": "string"
+          },
+          "planned_at": {
+            "format": "date-time",
+            "title": "Planned At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "underway",
+              "done",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stop_overhead_min": {
+            "title": "Stop Overhead Min",
+            "type": "integer"
+          },
+          "value_of_time_per_hour": {
+            "title": "Value Of Time Per Hour",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantOut"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "list_id",
+          "home_base_id",
+          "origin_place_id",
+          "destination_place_id",
+          "planned_at",
+          "value_of_time_per_hour",
+          "max_stops",
+          "mileage_rate",
+          "stop_overhead_min",
+          "status",
+          "chosen_variant_id",
+          "created_by",
+          "created_at",
+          "chosen_at",
+          "finished_at",
+          "variants"
+        ],
+        "title": "TripOut",
+        "type": "object"
+      },
+      "TripSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "chosen_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen At"
+          },
+          "chosen_variant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen Variant Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "format": "uuid",
+            "title": "Created By",
+            "type": "string"
+          },
+          "destination_place_id": {
+            "format": "uuid",
+            "title": "Destination Place Id",
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "list_id": {
+            "format": "uuid",
+            "title": "List Id",
+            "type": "string"
+          },
+          "max_stops": {
+            "title": "Max Stops",
+            "type": "integer"
+          },
+          "mileage_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mileage Rate"
+          },
+          "origin_place_id": {
+            "format": "uuid",
+            "title": "Origin Place Id",
+            "type": "string"
+          },
+          "planned_at": {
+            "format": "date-time",
+            "title": "Planned At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "underway",
+              "done",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stop_overhead_min": {
+            "title": "Stop Overhead Min",
+            "type": "integer"
+          },
+          "value_of_time_per_hour": {
+            "title": "Value Of Time Per Hour",
+            "type": "string"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/VariantSummary"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "list_id",
+          "home_base_id",
+          "origin_place_id",
+          "destination_place_id",
+          "planned_at",
+          "value_of_time_per_hour",
+          "max_stops",
+          "mileage_rate",
+          "stop_overhead_min",
+          "status",
+          "chosen_variant_id",
+          "created_by",
+          "created_at",
+          "chosen_at",
+          "finished_at",
+          "variants"
+        ],
+        "title": "TripSummary",
+        "type": "object"
+      },
+      "TripsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TripSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TripsOut",
         "type": "object"
       },
       "UnitList": {
@@ -16808,6 +17537,150 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VariantOut": {
+        "additionalProperties": false,
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/Annotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "driving_seconds": {
+            "title": "Driving Seconds",
+            "type": "integer"
+          },
+          "estimated": {
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_cost": {
+            "title": "Item Cost",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "fastest",
+              "cheapest",
+              "balanced"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "mileage_cost": {
+            "title": "Mileage Cost",
+            "type": "string"
+          },
+          "stop_count": {
+            "title": "Stop Count",
+            "type": "integer"
+          },
+          "stop_seconds": {
+            "title": "Stop Seconds",
+            "type": "integer"
+          },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/StopOut"
+            },
+            "title": "Stops",
+            "type": "array"
+          },
+          "total_cost": {
+            "title": "Total Cost",
+            "type": "string"
+          },
+          "trade": {
+            "$ref": "#/components/schemas/Trade"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "item_cost",
+          "driving_seconds",
+          "stop_seconds",
+          "mileage_cost",
+          "total_cost",
+          "estimated",
+          "trade",
+          "stop_count",
+          "annotations",
+          "stops"
+        ],
+        "title": "VariantOut",
+        "type": "object"
+      },
+      "VariantSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "driving_seconds": {
+            "title": "Driving Seconds",
+            "type": "integer"
+          },
+          "estimated": {
+            "title": "Estimated",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "item_cost": {
+            "title": "Item Cost",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "fastest",
+              "cheapest",
+              "balanced"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "mileage_cost": {
+            "title": "Mileage Cost",
+            "type": "string"
+          },
+          "stop_count": {
+            "title": "Stop Count",
+            "type": "integer"
+          },
+          "stop_seconds": {
+            "title": "Stop Seconds",
+            "type": "integer"
+          },
+          "total_cost": {
+            "title": "Total Cost",
+            "type": "string"
+          },
+          "trade": {
+            "$ref": "#/components/schemas/Trade"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "item_cost",
+          "driving_seconds",
+          "stop_seconds",
+          "mileage_cost",
+          "total_cost",
+          "estimated",
+          "trade",
+          "stop_count"
+        ],
+        "title": "VariantSummary",
         "type": "object"
       },
       "VendorColumn": {
@@ -21821,6 +22694,268 @@
           }
         },
         "summary": "Get Lists",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips": {
+      "get": {
+        "description": "The kitchen's plans, newest first, with each variant's totals.",
+        "operationId": "list_trips_api_v1_plan_trips_get",
+        "parameters": [
+          {
+            "description": "the kitchen; never inferred",
+            "in": "query",
+            "name": "home_base_id",
+            "required": true,
+            "schema": {
+              "description": "the kitchen; never inferred",
+              "format": "uuid",
+              "title": "Home Base Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Trips",
+        "tags": [
+          "plan"
+        ]
+      },
+      "post": {
+        "description": "Plan a trip from the kitchen's open list: the three variants, their stops\nand what to buy at each. An empty list is 422 ``empty_list``.",
+        "operationId": "create_trip_api_v1_plan_trips_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Trip",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}": {
+      "delete": {
+        "description": "Remove an unchosen plan; a chosen one is 409 ``plan_chosen``.",
+        "operationId": "delete_trip_api_v1_plan_trips__plan_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Trip",
+        "tags": [
+          "plan"
+        ]
+      },
+      "get": {
+        "operationId": "get_trip_api_v1_plan_trips__plan_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Trip",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}/abandon": {
+      "post": {
+        "description": "End a planned or underway plan.",
+        "operationId": "abandon_trip_api_v1_plan_trips__plan_id__abandon_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Abandon Trip",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}/choose": {
+      "post": {
+        "description": "Freeze one variant as the prediction; a second choice is 409 ``already_chosen``.",
+        "operationId": "choose_variant_api_v1_plan_trips__plan_id__choose_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChooseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Choose Variant",
         "tags": [
           "plan"
         ]

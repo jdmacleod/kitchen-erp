@@ -19,6 +19,7 @@ from app.core import config
 from app.schemas.plan import (
     ArchiveIn,
     ArchiveOut,
+    ChooseIn,
     FromRecipeIn,
     FromRecipeOut,
     ItemCreate,
@@ -32,8 +33,11 @@ from app.schemas.plan import (
     SettingsIn,
     SettingsOut,
     TravelLegOut,
+    TripCreate,
+    TripOut,
+    TripsOut,
 )
-from app.services import shopping_lists, travel, user_settings
+from app.services import shopping_lists, travel, trip_planner, user_settings
 
 router = APIRouter(tags=["plan"])
 
@@ -188,3 +192,57 @@ async def recompute_travel_legs(
         db, config.get_settings(), only_estimates=payload.only_estimates
     )
     return RecomputeLegsOut(dropped=counts.dropped, osrm=counts.osrm, estimated=counts.estimated)
+
+
+# --- trip plans (17, 4B) --------------------------------------------------------------------
+
+
+@router.post("/plan/trips", response_model=TripOut, status_code=status.HTTP_201_CREATED)
+async def create_trip(
+    payload: TripCreate, user: CurrentUser, db: DbSession, guard: Idempotency
+) -> JSONResponse:
+    """Plan a trip from the kitchen's open list: the three variants, their stops
+    and what to buy at each. An empty list is 422 ``empty_list``."""
+    if guard.replay is not None:
+        return guard.replay
+    plan = await trip_planner.create_plan(db, user, payload, config.get_settings())
+    return await guard.commit(201, trip_planner.trip_out(plan).model_dump(mode="json"))
+
+
+@router.get("/plan/trips", response_model=TripsOut)
+async def list_trips(_: CurrentUser, db: DbSession, home_base_id: HomeBaseId) -> TripsOut:
+    """The kitchen's plans, newest first, with each variant's totals."""
+    plans = await trip_planner.list_plans(db, home_base_id)
+    return TripsOut(items=[trip_planner.trip_summary(p) for p in plans])
+
+
+@router.get("/plan/trips/{plan_id}", response_model=TripOut)
+async def get_trip(plan_id: uuid.UUID, _: CurrentUser, db: DbSession) -> TripOut:
+    return trip_planner.trip_out(await trip_planner.get_plan(db, plan_id))
+
+
+@router.post("/plan/trips/{plan_id}/choose", response_model=TripOut)
+async def choose_variant(
+    plan_id: uuid.UUID, payload: ChooseIn, _: CurrentUser, db: DbSession, guard: Idempotency
+) -> JSONResponse:
+    """Freeze one variant as the prediction; a second choice is 409 ``already_chosen``."""
+    if guard.replay is not None:
+        return guard.replay
+    plan = await trip_planner.get_plan(db, plan_id)
+    plan = await trip_planner.choose(db, plan, payload.variant_id)
+    return await guard.commit(200, trip_planner.trip_out(plan).model_dump(mode="json"))
+
+
+@router.post("/plan/trips/{plan_id}/abandon", response_model=TripOut)
+async def abandon_trip(plan_id: uuid.UUID, _: CurrentUser, db: DbSession) -> TripOut:
+    """End a planned or underway plan."""
+    plan = await trip_planner.get_plan(db, plan_id)
+    return trip_planner.trip_out(await trip_planner.abandon(db, plan))
+
+
+@router.delete("/plan/trips/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_trip(plan_id: uuid.UUID, _: CurrentUser, db: DbSession) -> Response:
+    """Remove an unchosen plan; a chosen one is 409 ``plan_chosen``."""
+    plan = await trip_planner.get_plan(db, plan_id)
+    await trip_planner.delete_plan(db, plan)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
