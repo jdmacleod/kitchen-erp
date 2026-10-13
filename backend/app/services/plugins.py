@@ -13,6 +13,10 @@ I/O; its answer is untrusted like any other evidence and becomes candidates
 with source ``adapter`` only for fields the merge knows. An item
 ``{"field": "image", "value": "https://…"}`` names a photo the page shows: it is
 kept as an address, never fetched here, and only an absolute https address counts.
+An item ``{"field": "page_photos", "value": "own"}`` says the adapter has named
+the page's own product photos, possibly none: the page's other images are other
+products' (a "frequently bought together" strip, a placeholder), so the clip's
+page-wide image list is not used for it (QA 2026-10-13).
 
 A missing or failing adapter is logged and skipped, and health lists which
 loaded. An adapter that raises during a capture is recorded on the stage
@@ -109,6 +113,13 @@ def _candidate(item: Any) -> merging.Candidate | None:
     return candidate
 
 
+def _own_photos(item: Any) -> bool:
+    """Whether an item says the adapter named the page's own photos (its images, or none)."""
+    if not isinstance(item, dict):
+        return False
+    return item.get("field") == "page_photos" and item.get("value") == "own"
+
+
 def _image(item: Any) -> str | None:
     """An adapter's ``image`` item as an absolute https address, or None."""
     if not isinstance(item, dict) or item.get("field") != "image":
@@ -125,6 +136,9 @@ class Run:
     candidates: list[merging.Candidate]
     images: list[str]  # photo addresses the adapters read off the page, at most MAX_IMAGES
     records: list[dict[str, Any]]  # one per adapter, for the stage result
+    # An adapter named the page's own photos (perhaps none): the page's other images
+    # are not this product's.
+    own_photos: bool = False
 
 
 def run(page: dict[str, Any]) -> Run:
@@ -132,6 +146,7 @@ def run(page: dict[str, Any]) -> Run:
     candidates: list[merging.Candidate] = []
     images: list[str] = []
     records: list[dict[str, Any]] = []
+    own_photos = False
     for loaded in adapters():
         if loaded.adapter is None:
             records.append({"adapter": loaded.name, "status": loaded.status})
@@ -151,5 +166,8 @@ def run(page: dict[str, Any]) -> Run:
         if shown:
             record["images"] = len(shown)
             images.extend(url for url in shown if url not in images)
+        if any(_own_photos(item) for item in items):
+            record["own_photos"] = True
+            own_photos = True
         records.append(record)
-    return Run(candidates, images[:MAX_IMAGES], records)
+    return Run(candidates, images[:MAX_IMAGES], records, own_photos)
