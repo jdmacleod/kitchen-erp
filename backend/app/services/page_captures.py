@@ -233,9 +233,10 @@ async def capture_page(
             )
         if data.dom_text.strip() or plugins.adapters():
             db.add(ProductJob(id=new_id(), kind="extract", product_capture_id=result.capture.id))
-        if not images and data.image_urls:
+        if not images and data.image_urls and not plugins.adapters():
             # The browser could read none of the page's images, or none that can be
-            # stored: the helper may fetch them.
+            # stored: the helper may fetch them. With adapters installed the extract
+            # job decides, since an adapter may know which images are this product's.
             await lookups.queue_page_images(db, result.proposal, data.image_urls)
     await db.commit()
     await db.refresh(result.proposal)
@@ -245,16 +246,26 @@ async def capture_page(
 # --- the extract job ---------------------------------------------------------------
 
 
-async def _queue_adapter_images(
-    db: AsyncSession, proposal: ProductProposal, image_urls: list[str]
+async def _queue_page_photos(
+    db: AsyncSession, proposal: ProductProposal, capture: ProductCapture, adapted: plugins.Run
 ) -> int:
-    """Photos an adapter read off the page go to the helper to fetch, as a clip's own
-    image addresses do, unless the proposal already has a photo. Nothing is fetched here."""
+    """The photos the helper may fetch for a clip, unless the proposal already has one.
+
+    An adapter that named the page's own photos decides alone, even when it found
+    none: the page's other images are other products' or a placeholder, and offering
+    them put a neighbour's picture on the proposal (QA 2026-10-13). Otherwise the
+    adapter's photos come first, then the images the clip window collected.
+    Nothing is fetched here.
+    """
     photos = select(func.count()).where(ProductImage.proposal_id == proposal.id)
-    has_photo = await db.scalar(photos)
-    if has_photo:
+    if await db.scalar(photos):
         return 0
-    return await lookups.queue_page_images(db, proposal, image_urls)
+    if adapted.own_photos:
+        urls = adapted.images
+    else:
+        page_images = capture.payload.get("image_urls") or []
+        urls = adapted.images + [u for u in page_images if u not in adapted.images]
+    return await lookups.queue_page_images(db, proposal, urls)
 
 
 async def run_job(db: AsyncSession, job: ProductJob) -> None:
@@ -281,8 +292,9 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:
     adapted = plugins.run(page)
     found = adapted.candidates
     output["adapters"] = adapted.records
-    if adapted.images:
-        output["images_queued"] = await _queue_adapter_images(db, proposal, adapted.images)
+    queued = await _queue_page_photos(db, proposal, capture, adapted)
+    if queued:
+        output["images_queued"] = queued
     text = page["dom_text"].strip()
     await db.commit()  # before any model call (F11-2)
     if text:

@@ -20,6 +20,7 @@ from tests import test_products_helper as tph
 
 helper = tph.helper
 store = tpc.store
+no_network = tpc.no_network
 post_answer = tph.post_answer
 IMAGES = [f"https://cdn.juniper-market.example.test/img/oats-{n}.jpg" for n in range(6)]
 
@@ -129,3 +130,62 @@ def test_an_unusable_page_image_is_named_by_its_refusal():
     assert product_photos.unusable(base64.b64decode(SVG)) == "unsupported_image"
     assert product_photos.unusable(b"") == "empty"
     assert product_photos.unusable(base64.b64decode(jpeg())) is None
+
+
+# --- an adapter that names the page's own photos (QA 2026-10-13) -------------------------
+# A storefront page shows other products beside this one, and a placeholder when this
+# one has no photo. An adapter that knows which image is this product's says so, and
+# the clip's page-wide images are not offered for it.
+
+OWN = "https://cdn.juniper-market.example.test/img/rolled-oats-front.jpg"
+
+
+@pytest.fixture
+def adapter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from app.services import plugins
+
+    def install(items: list[dict]) -> None:
+        folder = tmp_path / "plugins"
+        folder.mkdir(exist_ok=True)
+        name = f"kerp_test_own_photos_{uuid.uuid4().hex[:8]}"
+        (folder / f"{name}.py").write_text(f"def read(page):\n    return {items!r}\n")
+        monkeypatch.setattr(get_settings(), "plugins_path", str(folder))
+        monkeypatch.setattr(get_settings(), "product_adapters", [f"{name}:read"])
+        plugins._cache.clear()
+
+    yield install
+    plugins._cache.clear()
+
+
+async def _clip_and_work(admin_client) -> None:
+    from tests.test_captures import work
+
+    r = await admin_client.post("/api/v1/product-captures", json=clip())
+    assert r.status_code == 201, r.text
+    await work()
+
+
+async def test_an_adapter_that_names_the_pages_photo_is_the_only_one_asked_for(
+    admin_client, store, helper, adapter, no_network
+):
+    # Regression: QA 2026-10-13: neighbouring products' images were fetched for a clip
+    adapter([{"field": "image", "value": OWN}, {"field": "page_photos", "value": "own"}])
+    await _clip_and_work(admin_client)
+    assert [i["value"] for i in await queue(helper)] == [OWN]
+
+
+async def test_an_adapter_that_found_no_photo_of_its_own_asks_for_none(
+    admin_client, store, helper, adapter, no_network
+):
+    # The product has no photo on the page: nothing else on it is this product's.
+    adapter([{"field": "page_photos", "value": "own"}])
+    await _clip_and_work(admin_client)
+    assert await queue(helper) == []
+
+
+async def test_an_adapter_that_does_not_vouch_puts_its_photos_first(
+    admin_client, store, helper, adapter, no_network
+):
+    adapter([{"field": "image", "value": OWN}])
+    await _clip_and_work(admin_client)
+    assert [i["value"] for i in await queue(helper)] == [OWN, *IMAGES[:3]]

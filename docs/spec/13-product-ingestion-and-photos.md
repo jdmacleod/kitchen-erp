@@ -341,7 +341,7 @@ class FieldCandidate:
    - `chain_storefront`: title with weight suffix ("Pork Shoulder Bone In - 7.25 Pound"), per-lb price, "avg/ea" price, product number (→ GTIN or random-weight UPC), item number, case size, breadcrumb category, and the store scope `store/<n>` from the URL.
    - `instacart_storefront`: product id and slug from `/store/<retailer>/products/<id>-<slug>`, title, price and unit text, size text from the rendered DOM. Capture-only.
    - `grocer_spa`: SKU from the URL suffix (`-061528`), title, price, size, and ingredients from the rendered DOM.
-   Confidence 0.85. Adapters are versioned. A version bump re-runs extraction only on demand (`kerp captures reextract --platform <p>`).
+   Confidence 0.85. An adapter may also say it has named the page's own photos, `{"field": "page_photos", "value": "own"}`, with its `image` items or none: a storefront page shows other products beside this one, and a placeholder when this one has no photo, so the clip's page-wide images are then not offered for it. Photo requests to the helper are made once, after the adapters run: an adapter's own photos alone when it vouches, otherwise its photos first, then the images the clip window collected (amendment, 2026-10-13). Adapters are versioned. A version bump re-runs extraction only on demand (`kerp captures reextract --platform <p>`).
 4. **LLM fallback.** Runs only for fields still missing after steps 1–3. It calls the local Ollama model (`OLLAMA_BASE_URL`, configured model) over a cleaned `dom_text` excerpt, with a strict JSON schema and recorded responses in fixtures. Its output may only fill missing fields, never override. Confidence is capped at 0.6.
 5. **URL slug.** Last resort for title and SKU. Confidence 0.3.
 
