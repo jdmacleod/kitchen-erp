@@ -177,7 +177,8 @@ _IMAGE_HEADERS = {"Cache-Control": "private, max-age=86400", "X-Content-Type-Opt
     responses={
         200: {
             "description": "The receipt as a browser can show it: the stored original, "
-            "or page 1 rendered to PNG (always PNG when `width` is given).",
+            "or a rendering of it: page 1 of a PDF as PNG, anything else as JPEG "
+            "(always a rendering when `width` is given).",
             "content": {"image/png": {}, "image/jpeg": {}, "image/webp": {}},
         },
         404: {"description": "No such receipt, or its stored file is missing."},
@@ -192,9 +193,10 @@ async def get_receipt_image(
         int | None, Query(ge=receipt_images.THUMB_MIN, le=receipt_images.THUMB_MAX)
     ] = None,
 ) -> FileResponse | Response:
-    """The receipt as a browser can show it: the original, or page 1 as PNG (#30).
+    """The receipt as a browser can show it: the original, or a rendering (#30).
 
-    `width` asks for a PNG no wider than that, for a thumbnail in a list (#28).
+    `width` asks for an image no wider than that, for a thumbnail in a list (#28):
+    PNG for a PDF page, JPEG for a photograph.
     """
     document = await ingest.get_document(db, document_id)
     job = await ingest.job_for_document(db, document.id)
