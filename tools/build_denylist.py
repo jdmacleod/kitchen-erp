@@ -44,8 +44,8 @@ MASKED_CARD = re.compile(r"[*Xx#]{4,}[ -]?\d{4}\b")
 
 
 def is_ignored(path: Path) -> bool:
-    result = subprocess.run(
-        ["git", "check-ignore", "-q", str(path)],
+    result = subprocess.run(  # noqa: S603
+        ["git", "check-ignore", "-q", str(path)],  # noqa: S607
         cwd=REPO_ROOT,
         capture_output=True,
         check=False,
@@ -69,8 +69,7 @@ def harvest(text: str) -> dict[str, set[str]]:
     found["zip_plus_four"].update(ZIP_PLUS_FOUR.findall(text))
     found["masked_card"].update(m[-4:] for m in MASKED_CARD.findall(text))
     return {
-        k: {v for v in vs if len(v) >= MIN_LENGTH or k == "masked_card"}
-        for k, vs in found.items()
+        k: {v for v in vs if len(v) >= MIN_LENGTH or k == "masked_card"} for k, vs in found.items()
     }
 
 
