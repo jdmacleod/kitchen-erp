@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.names import normalize_name, plural
 from app.catalog.standard import standard_list
+from app.catalog.usda_fit import fits
 from app.core.errors import ApiError
 from app.core.ids import new_id
 from app.core.logging import get_logger
@@ -179,6 +180,31 @@ class VocabularyReport:
     absent_references: list[tuple[str, str]] = field(default_factory=list)
     # (standard key, FDC id) for standard-list references the release doesn't have.
     absent_standard: list[tuple[str, int]] = field(default_factory=list)
+    # (ingredient, FDC id, verdict, reason) for preferred references whose USDA
+    # record doesn't look like the ingredient (#343).
+    unfit_references: list[tuple[str, str, str, str]] = field(default_factory=list)
+
+
+def report_lines(report: VocabularyReport) -> list[str]:
+    """What ``kerp ingredients check`` prints, a line at a time."""
+    out = [f"Plurals skipped because another ingredient has them: {len(report.skipped_plurals)}"]
+    out += [
+        f"  {s.ingredient}: “{s.plural}” belongs to {s.held_by}" for s in report.skipped_plurals
+    ]
+    out.append(f"Ingredients without a USDA reference: {len(report.without_reference)}")
+    out += [f"  {name}" for name in report.without_reference]
+    if not report.usda_loaded:
+        out.append("USDA data isn't loaded, so references weren't checked against it.")
+        return out
+    out.append(f"USDA references not in the loaded release: {len(report.absent_references)}")
+    out += [f"  {name}: {fdc_id}" for name, fdc_id in report.absent_references]
+    standard = report.absent_standard
+    out.append(f"Standard-list references not in the loaded release: {len(standard)}")
+    out += [f"  {key}: {fdc_id}" for key, fdc_id in standard]
+    unfit = report.unfit_references
+    out.append(f"USDA references that don't look like their ingredient: {len(unfit)}")
+    out += [f"  {n}: {fdc_id} ({verdict}: {reason})" for n, fdc_id, verdict, reason in unfit]
+    return out
 
 
 async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
@@ -216,4 +242,15 @@ async def vocabulary_report(db: AsyncSession) -> VocabularyReport:
         report.absent_standard = sorted(
             (key, fdc) for fdc, key in wanted.items() if fdc not in present
         )
+        preferred = await db.execute(
+            select(Ingredient.name, IngredientRef.external_id, FdcFood.description)
+            .join(Ingredient, Ingredient.id == IngredientRef.ingredient_id)
+            .join(FdcFood, cast(FdcFood.fdc_id, Text) == IngredientRef.external_id)
+            .where(Ingredient.active, IngredientRef.system == "fdc", IngredientRef.is_preferred)
+            .order_by(Ingredient.name)
+        )
+        for name, fdc_id, description in preferred:
+            fit = fits(name, description)
+            if fit.verdict != "fits":
+                report.unfit_references.append((name, fdc_id, fit.verdict, fit.reason))
     return report

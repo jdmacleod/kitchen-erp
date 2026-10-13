@@ -37,8 +37,15 @@ from sqlalchemy.orm import selectinload
 from app.catalog import standard
 from app.catalog.names import normalize_name
 from app.catalog.standard_match import match_entry
+from app.catalog.usda_fit import fits
 from app.core.errors import ApiError
-from app.models.catalog import Ingredient, IngredientAlias, IngredientMeasure, IngredientRef
+from app.models.catalog import (
+    FdcFood,
+    Ingredient,
+    IngredientAlias,
+    IngredientMeasure,
+    IngredientRef,
+)
 from app.schemas.ingredient_interchange import (
     FORMAT,
     FORMATS,
@@ -215,6 +222,7 @@ class _Row:
     created: bool
     changes: list[FieldChange] = field(default_factory=list)
     conflicts: list[FieldConflict] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
     def write(self, name: str, value: Any, *, label: str | None = None) -> str:
         """One field through the edit-wins rule; records what happened."""
@@ -260,6 +268,7 @@ class _Row:
             outcome=outcome,  # type: ignore[arg-type]
             changes=self.changes,
             conflicts=self.conflicts,
+            reason="; ".join(self.notes) or None,
         )
 
 
@@ -359,7 +368,23 @@ async def _usda(row: _Row) -> None:
     have = {r.external_id for r in refs}
     preferred = next((r.external_id for r in refs if r.is_preferred), None)
     wanted = str(row.entry.fdc[0])
-    if preferred is None:
+    food = await db.get(FdcFood, row.entry.fdc[0])
+    fit = fits(ingredient.name, food.description) if food is not None else None
+    if preferred is None and fit is not None and fit.verdict != "fits":
+        # A record that names another food is kept for a person to look at, never
+        # made the ingredient's USDA food (#343).
+        row.notes.append(f"USDA food {wanted} ({food.description}) was not linked: {fit.reason}")
+        if wanted not in have:
+            db.add(
+                IngredientRef(
+                    ingredient_id=ingredient.id,
+                    system="fdc",
+                    external_id=wanted,
+                    is_preferred=False,
+                )
+            )
+            have.add(wanted)
+    elif preferred is None:
         await set_preferred_fdc(db, ingredient.id, row.entry.fdc[0])
         have.add(wanted)
         if not row.created:

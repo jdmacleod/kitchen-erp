@@ -311,7 +311,7 @@ async def _usda_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[Res
     """
     stripped = strip_prep(name_norm)
     text = stripped.remainder if stripped is not None else name_norm
-    foods = await usda.candidates(db, text, limit=USDA_PROPOSALS)
+    foods = await usda.candidates(db, text, limit=USDA_PROPOSALS, fit_name=text)
     return [
         ResolveProposal(
             tier="usda",

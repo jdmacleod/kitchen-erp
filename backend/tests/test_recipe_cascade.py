@@ -236,6 +236,22 @@ async def test_usda_tier_proposes_foods_to_create_an_ingredient_from(
     assert await notes_of("diced lanternfruit") == ["diced; ripe"]
 
 
+async def test_usda_tier_never_offers_a_food_that_names_another_food(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    await seed_foods(
+        (900011, "sr_legacy_food", "Lanternmelon, raw", 9),
+        (900012, "sr_legacy_food", "Lantern, powder", 5),
+        (900013, "sr_legacy_food", "Lantern, raw", 1),
+    )
+    recipes_repo.write("broth.cook", "Simmer @lantern{2}.\n")
+    await rescan(admin_client)
+    items = {i["name_norm"]: i for i in (await queue(admin_client))["items"]}
+    # The melon never names the food; the powder is another form, offered last.
+    assert [p["fdc_id"] for p in items["lantern"]["proposals"]] == [900013, 900012]
+
+
 # --- the model tier -------------------------------------------------------------------
 
 

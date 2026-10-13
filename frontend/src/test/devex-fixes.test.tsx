@@ -1,10 +1,14 @@
-import { render } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { formatPack, productTitle, unitLabel } from "../api/catalog";
 import { HitRow } from "../components/catalog/ProductTypeahead";
-import { hits } from "./catalog-fixtures";
+import { flour, flourId, flourProduct, flourProductId, hits, units } from "./catalog-fixtures";
+import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
 // Found by /devex-review on 2026-10-05, with invented products.
+// Imports stay at the top: importing the app inside a test counts its cold
+// module load against that test's 5 s timeout (#328).
 
 describe("product titles and units", () => {
   it("names the brand once when the name already starts with it", () => {
@@ -40,13 +44,12 @@ describe("a product search hit", () => {
 
 describe("looking a product up from its page", () => {
   it("sends its barcode, or a pasted page, to the lookup helper", async () => {
-    const { screen, waitFor, within } = await import("@testing-library/react");
-    const userEvent = (await import("@testing-library/user-event")).default;
-    const { adminUser, jsonResponse, mockApi, renderApp } = await import("./helpers");
-    const { flourProduct, flourProductId, units } = await import("./catalog-fixtures");
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /inbox": () =>
+        jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
+      [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
       "GET /units": () => jsonResponse(200, { items: units }),
       "GET /products-helper": () => jsonResponse(200, { configured: true }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
@@ -64,9 +67,11 @@ describe("looking a product up from its page", () => {
     });
     const user = userEvent.setup();
     renderApp(`/catalog/products/${flourProductId}`);
-    const card = (await screen.findByRole("heading", { name: "Look this up online" })).closest(
-      "section, div",
-    )!.parentElement!;
+    // This is the file's first render of the whole app, so the wait covers its
+    // cold start (about 1.1 s alone on a loaded machine), past findBy's 1 s default.
+    const card = (
+      await screen.findByRole("heading", { name: "Look this up online" }, { timeout: 4000 })
+    ).closest("section, div")!.parentElement!;
     await user.click(within(card).getByRole("button", { name: "Look up its barcode" }));
     expect(
       await within(card).findByText(/The lookup helper will look up the barcode/),
