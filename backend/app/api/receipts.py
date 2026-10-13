@@ -128,17 +128,8 @@ async def list_upload_batches(
     limit: Annotated[int, Query(ge=1, le=50)] = 10,
 ) -> UploadBatchList:
     """Recent uploads, newest first, each with what its receipts came to."""
-    cursor_id = None
-    if cursor:
-        try:
-            cursor_id = uuid.UUID(cursor)
-        except ValueError:
-            raise ApiError(422, "validation_error", "Invalid cursor.") from None
-    batches, next_cursor = await upload_batches.list_batches(db, cursor=cursor_id, limit=limit)
-    return UploadBatchList(
-        items=[_summary(b) for b in batches],
-        next_cursor=None if next_cursor is None else str(next_cursor),
-    )
+    batches, next_cursor = await upload_batches.list_batches(db, cursor=cursor, limit=limit)
+    return UploadBatchList(items=[_summary(b) for b in batches], next_cursor=next_cursor)
 
 
 def _summary(summary: upload_batches.BatchSummary) -> UploadBatchSummaryOut:

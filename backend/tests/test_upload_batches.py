@@ -240,3 +240,38 @@ async def test_a_receipt_row_and_a_purchase_carry_trust_and_gap(admin_client, ad
         "0.3000",
         False,
     )
+
+
+async def test_newest_first_even_when_an_older_batch_has_a_random_id(
+    admin_client, receipts_dir: Path, owner_conn: asyncpg.Connection
+):
+    # Regression: ISSUE-003 — migration-grouped batches have random ids and listed above newer ones
+    # Found by /qa on 2026-10-12
+    # Report: QA run 2026-10-12, kept outside the repository (it was run on household data)
+    older = await send(admin_client, "older")
+    newer = await send(admin_client, "newer")
+    # The older upload's batch as the grouping migration made them: a random id,
+    # here the largest possible, opened two days ago.
+    backfilled = uuid.UUID("ffffffff-ffff-4fff-bfff-ffffffffffff")
+    await owner_conn.execute(
+        "INSERT INTO upload_batch (id, created_by, file_count, created_at) "
+        "VALUES ($1, NULL, 1, now() - interval '2 days')",
+        backfilled,
+    )
+    await owner_conn.execute(
+        "UPDATE upload_batch_receipt SET batch_id = $1 WHERE batch_id = $2",
+        backfilled,
+        uuid.UUID(older["batch_id"]),
+    )
+    assert [b["id"] for b in await batches(admin_client)] == [newer["batch_id"], str(backfilled)]
+
+    # Paging walks the same order.
+    first = (await admin_client.get("/api/v1/upload-batches", params={"limit": 1})).json()
+    assert [b["id"] for b in first["items"]] == [newer["batch_id"]]
+    second = (
+        await admin_client.get(
+            "/api/v1/upload-batches", params={"limit": 1, "cursor": first["next_cursor"]}
+        )
+    ).json()
+    assert [b["id"] for b in second["items"]] == [str(backfilled)]
+    assert second["next_cursor"] is None
