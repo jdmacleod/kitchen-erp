@@ -1,0 +1,5 @@
+# Dependency build scripts pnpm may run. unrs-resolver (through
+# eslint-plugin-import-x) ships prebuilt binaries as optional dependencies, so
+# its postinstall is not needed.
+allowBuilds:
+  unrs-resolver: false
