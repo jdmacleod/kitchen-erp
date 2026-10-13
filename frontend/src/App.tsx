@@ -19,6 +19,7 @@ import { ResolveRecipesPage } from "./pages/cook/ResolveRecipesPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
 import { ListPage } from "./pages/plan/ListPage";
+import { TripDetailPage } from "./pages/plan/TripDetailPage";
 import { TripsPage } from "./pages/plan/TripsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
 import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
@@ -101,9 +102,10 @@ export function App() {
             <Route path="/shop/receipts/identify" element={<ToIdentifyPage />} />
             <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />
 
-            {/* Plan (17, 4A). Trips and the stop screen fill in with 4B and 4C. */}
+            {/* Plan (17, 4A–4B). The stop screen fills in with 4C. */}
             <Route path="/plan/list" element={<ListPage />} />
             <Route path="/plan/trips" element={<TripsPage />} />
+            <Route path="/plan/trips/:id" element={<TripDetailPage />} />
             <Route path="/plan/compare" element={<ComparePage />} />
 
             {/* Catalog */}

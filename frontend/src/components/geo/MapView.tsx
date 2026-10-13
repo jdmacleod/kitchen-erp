@@ -10,7 +10,7 @@ import {
 } from "maplibre-gl";
 import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { labelsWithCustomTheme, namedTheme, noLabelsWithCustomTheme } from "protomaps-themes-base";
-import { basemapColours, basemapLabelColours } from "../../lib/palette";
+import { HEX, basemapColours, basemapLabelColours } from "../../lib/palette";
 import { Protocol } from "pmtiles";
 import { useEffect, useRef, useState } from "react";
 import type { VendorKind } from "../../api/geo";
@@ -60,7 +60,8 @@ export function mapUnavailableMessage(error: unknown): string {
   return `The map could not start in this browser, which usually means WebGL is turned off or unavailable. Everything else works, and a location can still be placed by typing its coordinates. (map_error: ${detail})`;
 }
 
-export type PinKind = VendorKind | "home";
+/** `stop` is a numbered walnut circle: a trip's stop in order (10, Trip page; UI-8.16). */
+export type PinKind = VendorKind | "home" | "stop";
 
 export interface MapPin {
   id: string;
@@ -68,6 +69,8 @@ export interface MapPin {
   lon: string;
   kind: PinKind;
   label: string;
+  /** The number drawn inside a `stop` pin. */
+  number?: number;
   inactive?: boolean;
   /** A short text drawn under the pin, e.g. a price per unit. */
   priceLabel?: string;
@@ -105,9 +108,23 @@ export interface MapViewProps {
   centerOn?: { lat: string; lon: string; zoom?: number } | null;
   /** The map's centre and zoom after every move, e.g. to search near what is on screen. */
   onViewChange?: (view: { lat: string; lon: string; zoom: number }) => void;
+  /**
+   * Points joined by straight dashed segments in order: a picture of a trip's
+   * stops, not a route (UI-8.16). Two or more points draw; fewer draw nothing.
+   */
+  path?: { lat: string; lon: string }[] | null;
 }
 
-const PIN_KINDS: readonly PinKind[] = ["chain", "independent", "market", "stand", "home"];
+const PIN_KINDS: readonly PinKind[] = ["chain", "independent", "market", "stand", "home", "stop"];
+const PATH_SOURCE = "kerp-path";
+const PATH_LAYER = "kerp-path-line";
+
+/** The one GeoJSON shape the path source holds: a line through the points. */
+interface PathFeature {
+  type: "Feature";
+  properties: Record<string, never>;
+  geometry: { type: "LineString"; coordinates: number[][] };
+}
 
 let protocolRegistered = false;
 
@@ -219,7 +236,7 @@ function fix(value: number): string {
  * own origin, and when the extract is missing draws a plain ground instead.
  * Nothing here ever reaches another origin.
  */
-export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null, onViewChange }: MapViewProps) {
+export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null, onViewChange, path = null }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const draftRef = useRef<Marker | null>(null);
@@ -323,6 +340,8 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       el.classList.toggle("kerp-pin--stale", Boolean(pin.stale));
       const text = el.querySelector<HTMLElement>(".kerp-pin__label");
       if (text) text.textContent = pin.priceLabel ? (pin.stale ? `${pin.priceLabel} (stale)` : pin.priceLabel) : "";
+      const shape = el.querySelector<HTMLElement>(".kerp-pin__shape");
+      if (shape && pin.kind === "stop") shape.textContent = pin.number === undefined ? "" : String(pin.number);
       el.setAttribute("aria-label", pin.label);
       el.setAttribute("aria-pressed", pin.id === selectedId ? "true" : "false");
     }
@@ -348,6 +367,37 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       }
     }
   }, [ready, pins, selectedId]);
+
+  // The straight segments between a trip's stops, as one GeoJSON line. The
+  // source is added once the style can take it and its data replaced after.
+  useEffect(() => {
+    const map = ready;
+    if (!map) return;
+    const points = path ?? [];
+    const data: PathFeature = {
+      type: "Feature",
+      properties: {},
+      geometry: { type: "LineString", coordinates: points.length >= 2 ? points.map((p) => [num(p.lon), num(p.lat)]) : [] },
+    };
+    const apply = () => {
+      const source = map.getSource(PATH_SOURCE) as { setData?: (d: PathFeature) => void } | undefined;
+      if (source?.setData) {
+        source.setData(data);
+        return;
+      }
+      if (points.length < 2) return;
+      map.addSource(PATH_SOURCE, { type: "geojson", data });
+      map.addLayer({
+        id: PATH_LAYER,
+        type: "line",
+        source: PATH_SOURCE,
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": prefersDark() ? HEX["neutral-200"] : HEX["neutral-800"], "line-width": 3, "line-dasharray": [1.5, 1.5], "line-opacity": 0.85 },
+      });
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
+  }, [ready, path]);
 
   // Move to a point chosen away from the map. Held as the two values rather than
   // the object so a caller that rebuilds it each render does not re-centre the

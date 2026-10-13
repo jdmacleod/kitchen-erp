@@ -150,7 +150,7 @@ export function Disclosure({ summary, children, defaultOpen = false, open, onOpe
       }}
       className={className}
     >
-      <summary className={`cursor-pointer rounded-md py-2 text-sm font-medium select-none ${focusRing}`}>
+      <summary className={`cursor-pointer rounded-md py-3 text-sm lg:py-2 font-medium select-none ${focusRing}`}>
         {summary}
       </summary>
       {isOpen ? <div className="mt-2 flex flex-col gap-4">{children}</div> : null}

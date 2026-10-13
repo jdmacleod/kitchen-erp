@@ -57,6 +57,28 @@ export class MapStub {
   getContainer() {
     return this.container;
   }
+  /** Sources and layers added, keyed by id, so a test can read a trip's path line. */
+  sources = new globalThis.Map<string, { type: string; data: unknown }>();
+  layers: { id: string; type: string; source?: string }[] = [];
+  isStyleLoaded() {
+    return true;
+  }
+  once(type: string, handler: Handler) {
+    return this.on(type, handler);
+  }
+  addSource(id: string, spec: { type: string; data: unknown }) {
+    this.sources.set(id, { ...spec });
+    return this;
+  }
+  getSource(id: string) {
+    const source = this.sources.get(id);
+    if (!source) return undefined;
+    return { setData: (data: unknown) => void (source.data = data) };
+  }
+  addLayer(layer: { id: string; type: string; source?: string }) {
+    this.layers.push(layer);
+    return this;
+  }
 }
 
 export class Marker {
