@@ -42,6 +42,8 @@ export const PALETTE_ACTIONS: PaletteAction[] = [
   action("add-ingredient", "Add ingredient", "/catalog/ingredients?new=1", ["new", "create", "ingredient"], { feature: "catalog" }),
   action("add-vendor", "Add vendor", "/catalog/vendors?new=1", ["new", "create", "store", "shop", "market"], { feature: "catalog" }),
   // "Rescan recipes" carries `?rescan=1`, which the list consumes and runs (UI-7.17).
+  // "Plan a trip" carries `?new=1`, which the trips page reads to open its drawer (UI-8.12).
+  action("plan-trip", "Plan a trip", "/plan/trips?new=1", ["new", "plan", "trip", "stores", "route", "shopping"], { feature: "plan" }),
   action("rescan-recipes", "Rescan recipes", "/cook/recipes?rescan=1", ["scan", "refresh", "index", "cook", "repository"], { feature: "cook" }),
   // Pages to go to.
   action("home", "Home", "/", ["inbox", "needs you", "start"]),

@@ -60,3 +60,20 @@ export function formatRelative(iso: string | null | undefined, now: number = Dat
   if (days < 31) return `${days} ${days === 1 ? "day" : "days"} ago`;
   return dateOnly.format(new Date(then));
 }
+
+/**
+ * Whole minutes for a duration in seconds, e.g. "14 min"; under a minute reads
+ * "<1 min" so a short leg never shows as nothing.
+ */
+export function formatMinutes(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return "—";
+  const minutes = Math.round(seconds / 60);
+  if (seconds > 0 && minutes === 0) return "<1 min";
+  return `${minutes} min`;
+}
+
+/** A distance in metres as kilometres to one place, e.g. "4.2 km". */
+export function formatKm(meters: number | null | undefined): string {
+  if (meters === null || meters === undefined || Number.isNaN(meters)) return "—";
+  return `${(meters / 1000).toFixed(1)} km`;
+}
