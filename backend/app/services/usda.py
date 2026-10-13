@@ -21,6 +21,7 @@ from pathlib import Path
 from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog import usda_fit
 from app.core.ids import new_id
 from app.models.catalog import FdcFood, FdcRelease, RefUsdaPortion
 from app.schemas.catalog import DensitySuggestion, MeasureSuggestion, UsdaSuggestion
@@ -461,7 +462,9 @@ def uncooked_text(description: str) -> str:
 TEXT_SIMILARITY = 0.2
 
 
-async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcFood]:
+async def candidates(
+    db: AsyncSession, query: str, limit: int = 15, *, fit_name: str | None = None
+) -> list[FdcFood]:
     """USDA foods a person might pick as an ingredient's reference.
 
     ``query`` is an FDC id or text. For an id, the candidates are its raw or dry
@@ -471,6 +474,9 @@ async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcF
     text, they are Foundation and SR Legacy foods resembling it, used ones
     first. ``kerp ingredients usda-candidates`` prints them so a person can swap
     a cooked reference for the record of what is bought (03, 1G).
+
+    With ``fit_name``, a food that never names that ingredient's food is left out
+    and one that names it in another form comes after the ones that fit (#343).
     """
     core = FdcFood.data_type.in_(("foundation_food", "sr_legacy_food"))
     lowered = func.lower(FdcFood.description)
@@ -486,6 +492,7 @@ async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcF
             .where(core, lowered.startswith(head), raw, FdcFood.fdc_id != food.fdc_id)
             .order_by(func.similarity(lowered, target).desc(), FdcFood.fndds_uses.desc())
         )
+        found = list((await db.execute(stmt.limit(limit))).scalars())
     else:
         q = query.strip().lower()
         sim = func.similarity(lowered, q)
@@ -502,8 +509,11 @@ async def candidates(db: AsyncSession, query: str, limit: int = 15) -> list[FdcF
         await _trigram_threshold(db, str(TEXT_SIMILARITY))
         found = list((await db.execute(stmt.limit(limit))).scalars())
         await _trigram_threshold(db, prior)
+    if fit_name is None:
         return found
-    return list((await db.execute(stmt.limit(limit))).scalars())
+    verdicts = {f.fdc_id: usda_fit.fits(fit_name, f.description).verdict for f in found}
+    kept = [f for f in found if verdicts[f.fdc_id] != "misfit"]
+    return sorted(kept, key=lambda f: verdicts[f.fdc_id] != "fits")
 
 
 async def _trigram_threshold(db: AsyncSession, value: str) -> None:
