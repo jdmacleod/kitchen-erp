@@ -19,6 +19,7 @@ import { ResolveRecipesPage } from "./pages/cook/ResolveRecipesPage";
 import { VendorDetailPage } from "./pages/geo/VendorDetailPage";
 import { VendorsPage } from "./pages/geo/VendorsPage";
 import { ListPage } from "./pages/plan/ListPage";
+import { StopPage } from "./pages/plan/StopPage";
 import { TripDetailPage } from "./pages/plan/TripDetailPage";
 import { TripsPage } from "./pages/plan/TripsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
@@ -106,6 +107,7 @@ export function App() {
             <Route path="/plan/list" element={<ListPage />} />
             <Route path="/plan/trips" element={<TripsPage />} />
             <Route path="/plan/trips/:id" element={<TripDetailPage />} />
+            <Route path="/plan/trips/:id/stop/:seq" element={<StopPage />} />
             <Route path="/plan/compare" element={<ComparePage />} />
 
             {/* Catalog */}
