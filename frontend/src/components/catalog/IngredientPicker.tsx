@@ -68,7 +68,7 @@ export async function ingredientIdFor(choice: IngredientChoice): Promise<string>
   return (await api<{ id: string }>("/ingredients", { method: "POST", body: input.ingredient })).id;
 }
 
-/** True while a new ingredient still lacks the category it must have (#344). */
+/** True while a new ingredient still lacks the category it must have (issue 344). */
 export function needsCategory(choice: IngredientChoice | null | undefined): boolean {
   return choice?.kind === "new" && !choice.category?.trim();
 }
@@ -121,7 +121,7 @@ interface IngredientPickerProps {
   /** The combobox's input, so a page can move focus to the next line that needs one (UI-7.12). */
   inputRef?: RefObject<HTMLInputElement | null>;
   autoFocus?: boolean;
-  /** A product proposal being reviewed: its captured category informs a new one's (#344). */
+  /** A product proposal being reviewed: its captured category informs a new one's (issue 344). */
   proposalId?: string;
 }
 

@@ -19,7 +19,7 @@ export function suggestedHint(source: CategorySource | null): string | undefined
 
 /**
  * A form's category for a new ingredient: what the person chose, or until they
- * choose, the likeliest one for the name typed (#344).
+ * choose, the likeliest one for the name typed (issue 344).
  */
 export function useSuggestedCategory(name: string, chosen: string, touched: boolean) {
   const suggestion = useCategorySuggestion(name);
@@ -31,7 +31,7 @@ const keyOf = (value: string): CategoryKey | null =>
   (CATEGORY_KEYS as readonly string[]).includes(value) ? (value as CategoryKey) : null;
 
 /**
- * The category of an ingredient about to be created (#344). Every new ingredient
+ * The category of an ingredient about to be created (issue 344). Every new ingredient
  * has one, so it is asked for here, prefilled with the likeliest category and
  * shown as a chip: confirming it costs nothing, changing it is one click.
  */

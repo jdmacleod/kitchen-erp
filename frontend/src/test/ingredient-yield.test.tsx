@@ -144,6 +144,8 @@ describe("yield in the add drawer", () => {
       "GET /units": () => jsonResponse(200, { items: units }),
       "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
       "GET /usda/suggestions": () => jsonResponse(200, { items: [], loaded: false }),
+      "GET /ingredients/category-suggestion": () =>
+        jsonResponse(200, { category: "produce", source: "standard" }),
       "POST /ingredients": () => jsonResponse(201, created),
     });
     const user = userEvent.setup();
@@ -153,6 +155,7 @@ describe("yield in the add drawer", () => {
     await user.click(screen.getAllByRole("button", { name: "Add ingredient" })[0]);
     await screen.findByRole("dialog", { name: "Add ingredient" });
     await user.type(screen.getByLabelText("Name"), "leeks");
+    await waitFor(() => expect(screen.getByLabelText("Category")).toHaveValue("produce"));
     await user.click(screen.getByText("More: density, yield, perishability, notes"));
     await user.type(screen.getByLabelText("Yield (%)"), "60");
     await user.click(
@@ -165,6 +168,7 @@ describe("yield in the add drawer", () => {
     expect(calls.find((c) => c.method === "POST")?.body).toEqual({
       name: "leeks",
       canonical_unit: "g",
+      category: "produce",
       yield_pct: "0.6",
     });
   });

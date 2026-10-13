@@ -155,7 +155,7 @@ describe("ingredient picker (1G)", () => {
   });
 });
 
-describe("a new ingredient's category (#344)", () => {
+describe("a new ingredient's category (issue 344)", () => {
   async function chooseNew(user: ReturnType<typeof userEvent.setup>, name: string) {
     renderApp("/catalog/products");
     const form = await openAddDrawer(user);

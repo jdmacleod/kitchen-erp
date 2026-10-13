@@ -174,6 +174,8 @@ describe("manual purchase entry", () => {
     };
     const calls = mockApi({
       ...baseRoutes(),
+      "GET /ingredients/category-suggestion": () =>
+        jsonResponse(200, { category: "pantry", source: "standard" }),
       "POST /products": () => jsonResponse(201, created),
       [`GET /products/${created.id}/last-purchase-unit`]: () =>
         errorResponse(404, "not_found", "no purchases"),
@@ -191,13 +193,17 @@ describe("manual purchase entry", () => {
     const form = within(second).getByRole("group", { name: "New product" });
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "rolled oats");
     await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
+    await within(form).findByTestId(/category-chip$/);
     await user.type(within(form).getByLabelText("Name"), "Rolled Oats{Enter}");
 
     await waitFor(() =>
       expect(within(second).getByTestId(/product-choice$/)).toHaveTextContent("Rolled Oats"),
     );
     const post = calls.find((c) => c.method === "POST" && c.path === "/products");
-    expect(post?.body).toEqual({ name: "Rolled Oats", ingredient: { name: "rolled oats" } });
+    expect(post?.body).toEqual({
+      name: "Rolled Oats",
+      ingredient: { name: "rolled oats", category: "pantry" },
+    });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
     // Enter inside the inline form created the product; it did not save the purchase.
     expect(calls.some((c) => c.method === "POST" && c.path === "/purchases")).toBe(false);

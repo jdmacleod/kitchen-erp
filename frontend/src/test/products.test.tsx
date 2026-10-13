@@ -22,7 +22,7 @@ function baseRoutes(products: () => Product[]) {
     "GET /products": () => jsonResponse(200, { items: products(), next_cursor: null }),
     "GET /products/search": () => jsonResponse(200, { items: hits }),
     "GET /ingredients/search": () => jsonResponse(200, { items: [] }),
-    // A new ingredient's likeliest category (#344).
+    // A new ingredient's likeliest category (issue 344).
     "GET /ingredients/category-suggestion": () =>
       jsonResponse(200, { category: "pantry", source: "catalog" }),
   };
@@ -73,7 +73,7 @@ describe("products", () => {
     const option = await within(form).findByRole("option", { name: /Create new ingredient/ });
     await user.click(option);
     expect(screen.getByTestId("new-product-ingredient-choice")).toHaveTextContent("rolled oats");
-    // The new ingredient's category is prefilled and shown as a chip (#344).
+    // The new ingredient's category is prefilled and shown as a chip (issue 344).
     const chip = await screen.findByTestId("new-product-ingredient-category-chip");
     expect(chip).toHaveTextContent("pantry");
     expect(chip).toHaveTextContent("like similar ingredients");

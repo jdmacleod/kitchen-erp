@@ -3,7 +3,7 @@ import type { CategoryKey } from "../components/CategoryChip";
 import { qs } from "./catalog";
 import { api } from "./client";
 
-/** Where a suggested category came from, shown under the chip (#344). */
+/** Where a suggested category came from, shown under the chip (issue 344). */
 export type CategorySource = "standard" | "usda" | "clip" | "catalog";
 
 export interface CategorySuggestion {
@@ -11,7 +11,7 @@ export interface CategorySuggestion {
   source: CategorySource | null;
 }
 
-/** The likeliest category for a new ingredient's name, to prefill its chip (#344). */
+/** The likeliest category for a new ingredient's name, to prefill its chip (issue 344). */
 export function useCategorySuggestion(
   name: string,
   context: { proposalId?: string; fdcId?: number } = {},

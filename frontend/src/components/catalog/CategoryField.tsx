@@ -24,7 +24,7 @@ export function CategoryField({
   onChange: (value: string) => void;
   disabled?: boolean;
   hint?: string;
-  /** A new ingredient must have one (#344): no "No category" choice. */
+  /** A new ingredient must have one (issue 344): no "No category" choice. */
   required?: boolean;
 }) {
   const known = (CATEGORY_KEYS as readonly string[]).includes(value.trim().toLowerCase());

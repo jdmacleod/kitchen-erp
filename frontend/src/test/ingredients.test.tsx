@@ -14,7 +14,7 @@ function baseRoutes(items: () => Ingredient[]) {
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /ingredients": () => jsonResponse(200, { items: items(), next_cursor: null }),
     "GET /usda/suggestions": () => jsonResponse(200, { items: [], loaded: false }),
-    // A new ingredient's likeliest category (#344): the standard list's, here.
+    // A new ingredient's likeliest category (issue 344): the standard list's, here.
     "GET /ingredients/category-suggestion": (call: RecordedCall) =>
       jsonResponse(200, suggestionFor(call.query.get("name") ?? "")),
   };
@@ -60,7 +60,7 @@ describe("ingredients", () => {
 
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "cumin");
-    // The category is prefilled from the standard list, and says so (#344).
+    // The category is prefilled from the standard list, and says so (issue 344).
     await waitFor(() => expect(screen.getByLabelText("Category")).toHaveValue("spices"));
     expect(screen.getByText("Suggested from the standard list.")).toBeInTheDocument();
     await user.click(

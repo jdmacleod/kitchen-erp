@@ -359,7 +359,7 @@ describe("product review", () => {
     });
     const calls = mockApi(
       routes(withPieces, {
-        // The proposal's captured category prefills the new ingredient's (#344).
+        // The proposal's captured category prefills the new ingredient's (issue 344).
         "GET /ingredients/category-suggestion": (call) =>
           jsonResponse(200, {
             category: call.query.get("proposal_id") === proposalId ? "pantry" : null,
