@@ -2,18 +2,18 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import { useLocations, type HomeBase } from "../../api/geo";
-import { useCreateTrip, type Trip, type TripCreateInput } from "../../api/trips";
+import { useCreateTrip, type PlanDefaults, type Trip, type TripCreateInput } from "../../api/trips";
 import { Disclosure, SelectField } from "../catalog/fields";
 import { Drawer } from "../Drawer";
 import { Alert, Field, focusRing } from "../ui";
 import { isNonNegativeDecimal } from "../../lib/decimal";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 
-/** The documented default of `PLAN_VALUE_OF_TIME_PER_HOUR` (17, P4), used until a plan has been made. */
+/** The documented default of `PLAN_VALUE_OF_TIME_PER_HOUR` (17, P4), used only if `/plan/defaults` cannot be read. */
 export const DEFAULT_VALUE_OF_TIME = "20.00";
 export const DEFAULT_MAX_STOPS = 3;
 
-/** The inputs a drawer starts from: a Replan's (UI-8.15), or just the value of time the last plan used. */
+/** The inputs a drawer starts from: a Replan's (UI-8.15); a new plan starts from the household defaults. */
 export type TripPrefill = Partial<Pick<Trip, "origin_place_id" | "destination_place_id" | "planned_at" | "value_of_time_per_hour" | "max_stops" | "mileage_rate" | "stop_overhead_min">>;
 
 interface PlanTripDrawerProps {
@@ -21,6 +21,8 @@ interface PlanTripDrawerProps {
   kitchen: HomeBase;
   kitchens: HomeBase[];
   prefill?: TripPrefill | null;
+  /** The household's planning defaults (`GET /plan/defaults`); a field the prefill leaves out starts here. */
+  defaults?: PlanDefaults | null;
   onClose: () => void;
   onPlanned: (trip: Trip) => void;
 }
@@ -54,7 +56,7 @@ interface FormState {
   overhead: string;
 }
 
-function initialState(prefill: TripPrefill | null | undefined, options: PlaceOption[]): FormState {
+function initialState(prefill: TripPrefill | null | undefined, defaults: PlanDefaults | null | undefined, options: PlaceOption[]): FormState {
   const byPlace = (placeId: string | null | undefined) => options.find((o) => o.placeId !== null && o.placeId === placeId)?.value;
   const origin = byPlace(prefill?.origin_place_id) ?? KITCHEN;
   const destination = prefill?.destination_place_id && prefill.destination_place_id !== prefill.origin_place_id ? (byPlace(prefill.destination_place_id) ?? SAME) : SAME;
@@ -64,8 +66,8 @@ function initialState(prefill: TripPrefill | null | undefined, options: PlaceOpt
     origin,
     destination,
     when,
-    value: prefill?.value_of_time_per_hour ?? DEFAULT_VALUE_OF_TIME,
-    maxStops: String(prefill?.max_stops ?? DEFAULT_MAX_STOPS),
+    value: prefill?.value_of_time_per_hour ?? defaults?.value_of_time_per_hour ?? DEFAULT_VALUE_OF_TIME,
+    maxStops: String(prefill?.max_stops ?? defaults?.max_stops_default ?? DEFAULT_MAX_STOPS),
     mileage: prefill?.mileage_rate ?? "",
     overhead: prefill?.stop_overhead_min === null || prefill?.stop_overhead_min === undefined ? "" : String(prefill.stop_overhead_min),
   };
@@ -77,11 +79,11 @@ function initialState(prefill: TripPrefill | null | undefined, options: PlaceOpt
  * per stop. The server plans from the kitchen's open list and answers with the
  * three variants; an empty list is refused with a link to it.
  *
- * Places are chosen by their `place_id`. A kitchen or location the API lists
- * without one cannot be named, so the kitchen itself is sent as "nothing", which
- * the server reads as the kitchen's place (17, Endpoints).
+ * Places are chosen by their `place_id`: the current kitchen, the household's
+ * other kitchens and every vendor location. The current kitchen is sent as
+ * "nothing", which the server reads as the kitchen's place (17, Endpoints).
  */
-export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, onClose, onPlanned }: PlanTripDrawerProps) {
+export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, defaults = null, onClose, onPlanned }: PlanTripDrawerProps) {
   const locations = useLocations({});
   const options = useMemo<PlaceOption[]>(() => {
     const out: PlaceOption[] = [{ value: KITCHEN, label: `${kitchen.name} (kitchen)`, placeId: kitchen.place_id ?? null }];
@@ -105,7 +107,7 @@ export function PlanTripDrawer({ homeBaseId, kitchen, kitchens, prefill = null, 
 
   // The initial state is fixed on first render: the options only grow, and a
   // form that re-seeded itself would discard typed input.
-  const [initial] = useState(() => initialState(prefill, options));
+  const [initial] = useState(() => initialState(prefill, defaults, options));
   const [form, setForm] = useState<FormState>(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateTrip();

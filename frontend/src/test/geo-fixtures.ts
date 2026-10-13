@@ -8,10 +8,16 @@ export const marketVendorId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5f02";
 export const chainLocationId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6001";
 export const marketLocationId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6002";
 export const stallLocationId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6003";
+// Place nodes: what a trip's start and end name (17, 4B).
+export const homePlaceId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7001";
+export const chainPlaceId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7002";
+export const marketPlaceId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7003";
+export const stallPlaceId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7004";
 
 export const homeBase: HomeBase = {
   id: homeBaseId,
   name: "Harbour flat",
+  place_id: homePlaceId,
   lat: "33.400000",
   lon: "-120.600000",
   label: null,
@@ -74,6 +80,7 @@ const base = {
 export const chainLocation: VendorLocation = {
   ...base,
   id: chainLocationId,
+  place_id: chainPlaceId,
   key: "millstone-market/millstone-harbour",
   vendor: { id: chainVendorId, name: chainVendor.name, kind: "chain", price_scope: "chain" },
   name: "Millstone Harbour",
@@ -87,6 +94,7 @@ export const chainLocation: VendorLocation = {
 export const marketLocation: VendorLocation = {
   ...base,
   id: marketLocationId,
+  place_id: marketPlaceId,
   key: "pier-farmers-market/pier-farmers-market",
   vendor: { id: marketVendorId, name: marketVendor.name, kind: "market", price_scope: "location" },
   name: "Pier Farmers Market",
@@ -100,6 +108,7 @@ export const marketLocation: VendorLocation = {
 export const stallLocation: VendorLocation = {
   ...base,
   id: stallLocationId,
+  place_id: stallPlaceId,
   key: "sandys-stone-fruit/stall",
   vendor: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5f03", name: "Sandy's Stone Fruit", kind: "stand", price_scope: "location" },
   name: "Sandy's Stone Fruit",
