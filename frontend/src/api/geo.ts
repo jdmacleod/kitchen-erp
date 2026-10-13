@@ -37,6 +37,8 @@ export interface HomeBase {
   lon: string;
   label: string | null;
   created_at: string;
+  /** The shared place node a trip's origin names (17, 4B), once the API sends it. */
+  place_id?: string | null;
 }
 
 /** Where a field's current value came from (1F). A field a person entered has none. */
@@ -110,6 +112,8 @@ export interface VendorLocation {
   is_open: boolean | null;
   distance_m: string | null;
   created_at: string;
+  /** The shared place node a trip's origin names (17, 4B), once the API sends it. */
+  place_id?: string | null;
 }
 
 export interface VendorLocationDetail extends VendorLocation {

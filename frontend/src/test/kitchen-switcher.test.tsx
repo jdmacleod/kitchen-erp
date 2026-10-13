@@ -76,7 +76,7 @@ describe("the Plan section (UI-8.1)", () => {
     await waitFor(() => expect(labels()).toEqual(["Home", "Cook", "Plan", "Shop"]));
     expect(within(nav).getByRole("link", { name: "Shopping list" })).toHaveAttribute("href", "/plan/list");
     expect(within(nav).getByRole("link", { name: "Compare prices" })).toHaveAttribute("href", "/plan/compare");
-    expect(screen.getByText("Trips come with the next update")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Plan a trip" })).toBeInTheDocument();
     unmount();
 
     mount({}, "/settings/system", cookHealth);

@@ -105,6 +105,19 @@
   background: var(--pin-fill);
   clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
+/* stop: a numbered circle, walnut with the number in the edge colour; the shape
+   is a little larger than the others so two digits stay legible */
+.kerp-pin--stop .kerp-pin__shape {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  background: var(--pin-fill);
+  border: 2px solid var(--pin-edge);
+  border-radius: 50%;
+  color: var(--pin-edge);
+  font: 700 12px/1 var(--font-sans);
+}
 /* kitchen: house glyph (an inline SVG) */
 .kerp-pin--home .kerp-pin__shape {
   width: 26px;
