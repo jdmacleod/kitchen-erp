@@ -67,7 +67,7 @@ export function ComparePage() {
                 {chosen.map((i) => (
                   <li key={i.id} className="inline-flex items-center gap-1 rounded-md border border-neutral-300 bg-neutral-50 py-1 pr-1 pl-2 text-sm dark:border-neutral-700 dark:bg-neutral-900">
                     {i.name}
-                    <Button variant="ghost" className="min-h-6 px-1.5 text-xs" aria-label={`Remove ${i.name}`} onClick={() => setChosen(chosen.filter((c) => c.id !== i.id))}>
+                    <Button variant="ghost" className="min-h-11 lg:min-h-6 px-1.5 text-xs" aria-label={`Remove ${i.name}`} onClick={() => setChosen(chosen.filter((c) => c.id !== i.id))}>
                       ×
                     </Button>
                   </li>

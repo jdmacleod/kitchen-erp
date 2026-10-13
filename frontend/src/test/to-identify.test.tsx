@@ -52,6 +52,26 @@ describe("to-identify queue", () => {
     expect(await screen.findByText("Applied to 2 lines.")).toBeInTheDocument();
   });
 
+  it("offers no apply-to-all choice for a group of one line", async () => {
+    // Regression: ISSUE-005 — a one-line group offered "Apply to all 1", a choice that changed nothing
+    // Found by /qa on 2026-10-13
+    const one: ToIdentifyGroup = { ...group, line_count: 1, lines: [group.lines[0]] };
+    const calls = mockApi({ ...baseRoutes(), "GET /to-identify": () => jsonResponse(200, { items: [one] }) });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify");
+    const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
+    expect(within(card).queryByRole("checkbox")).toBeNull();
+
+    await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
+    await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
+    const post = await waitFor(() => {
+      const found = calls.find((c) => c.method === "POST" && c.path === "/to-identify/apply");
+      expect(found).toBeDefined();
+      return found;
+    });
+    expect(post?.body).toEqual({ vendor_id: chainLocation.vendor.id, raw_text_norm: "RVRBND BREAD FLR", product_id: hits[1].id });
+  });
+
   it("ignores only the chosen line when apply-to-all is off", async () => {
     const calls = mockApi(baseRoutes());
     const user = userEvent.setup();

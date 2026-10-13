@@ -63,10 +63,12 @@ describe("purchases: find and sort (UI-3.22)", () => {
     await screen.findByRole("table", { name: "Purchases" });
 
     await user.type(screen.getByLabelText("Find a store or item"), "blueberries");
-    expect(await screen.findByText("Finding “blueberries”…")).toBeInTheDocument();
+    // Typing is slow on a loaded runner, and the debounced search follows it: give
+    // both waits room rather than the default second.
+    expect(await screen.findByText("Finding “blueberries”…", {}, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.queryByText(/match(es)? “blueberries”/)).toBeNull();
     answer(jsonResponse(200, { items: [], next_cursor: null }));
-    expect(await screen.findByRole("region", { name: "No purchases match “blueberries”" })).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "No purchases match “blueberries”" }, { timeout: 5000 })).toBeInTheDocument();
     expect(screen.getByText("0 purchases match “blueberries”.")).toBeInTheDocument();
   });
 

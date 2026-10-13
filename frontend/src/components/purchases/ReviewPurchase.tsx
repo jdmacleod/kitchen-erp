@@ -1061,7 +1061,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
                 <Badge>{kindLabel(s)}</Badge>
                 {s.brand_note ? <span className="text-neutral-600 dark:text-neutral-400">{s.brand_note}</span> : null}
                 <span className="text-neutral-600 dark:text-neutral-400 tabular-nums">{s.score}</span>
-                <Button variant="secondary" className="min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
+                <Button variant="secondary" className="min-h-11 lg:min-h-7 px-2 text-xs" disabled={busy} onClick={() => onAccept(s)}>
                   {s === top ? "Accept (Enter)" : "Accept"}
                 </Button>
               </li>
@@ -1094,7 +1094,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
 
 /** Choose, Ignore, Re-resolve, Edit and Delete. 44px on a card, compact in the table. */
 function LineActions({ line, picking, editing, busy, onOpenPicker, onIgnore, onReResolve, onEdit, onDelete, touch }: LinePartProps & { touch?: boolean }) {
-  const size = touch ? "min-h-11 px-3 text-sm" : "min-h-7 px-2 text-xs whitespace-nowrap";
+  const size = touch ? "min-h-11 px-3 text-sm" : "min-h-11 lg:min-h-7 px-2 text-xs whitespace-nowrap";
   const resolution = line.resolution as Resolution | null;
   // A line that reached the price book asks first: deleting it voids its
   // price (#72, D12). One that never did still goes in one click.

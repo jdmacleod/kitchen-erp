@@ -35,7 +35,7 @@ export function ShoppingListPanel() {
           </span>
           <KitchenTag name={name} />
         </h2>
-        <Link to="/plan/list" className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}>
+        <Link to="/plan/list" className={`${tapTarget} shrink-0 whitespace-nowrap rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}>
           Open list
         </Link>
       </div>
