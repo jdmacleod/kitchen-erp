@@ -52,6 +52,15 @@ x-e2e-env: &e2e-env
   INGEST_LOCATION_RADIUS_M: "300"
   COOKIE_SECURE: "false"
   LOG_LEVEL: INFO
+  # No routing engine: every leg is an estimate, so plans read "estimated" (17, 4B).
+  ROUTING_URL: ""
+  ROUTING_TIMEOUT_S: "5"
+  PLAN_ESTIMATE_ROAD_FACTOR: "1.3"
+  PLAN_ESTIMATE_SPEED_BANDS: "3:30,15:40,:60"
+  PLAN_TRAFFIC_MULTIPLIERS: "weekday=06-10:1.35,10-15:1.15,15-20:1.45;weekend=09-19:1.15"
+  PLAN_VALUE_OF_TIME_PER_HOUR: "20.00"
+  PLAN_CANDIDATE_RADIUS_KM: "25"
+  PLAN_MAX_CANDIDATES: "15"
 
 services:
   db:

@@ -1,7 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
-import { login } from "./helpers";
+import { login, nextTag } from "./helpers";
+import { makeChosenTrip, makeTripWorld } from "./trip-setup";
 
 /**
  * UI-1.12: text contrast of at least 4.5:1 in both themes (docs/spec/08).
@@ -28,6 +29,10 @@ const PAGES = [
   { name: "Shopping list", path: "/plan/list" },
   { name: "Trips", path: "/plan/trips" },
   { name: "Compare prices", path: "/plan/compare" },
+  // A trip page and its first stop screen, on a chosen plan made here
+  // (trip-setup.ts: invented stores on the synthetic grid).
+  { name: "Trip page", path: "", trip: "" },
+  { name: "Stop screen", path: "", trip: "/stop/1" },
 ] as const;
 
 for (const scheme of ["light", "dark"] as const) {
@@ -41,12 +46,19 @@ for (const scheme of ["light", "dark"] as const) {
     for (const entry of PAGES) {
       const { name, path } = entry;
       const follow = "follow" in entry ? entry.follow : undefined;
+      const trip = "trip" in entry ? entry.trip : undefined;
       test(`${name} passes axe colour contrast`, async ({ page }) => {
         if (follow) {
           // The example recipes are mounted on the e2e stack; one scan indexes them.
           expect((await page.request.post("/api/v1/recipes/rescan")).status()).toBe(200);
         }
-        await page.goto(path);
+        if (trip !== undefined) {
+          const planId = await makeChosenTrip(page.request, await makeTripWorld(page.request, nextTag()));
+          await page.goto(`/plan/trips/${planId}${trip}`);
+          await expect(page.getByTestId(trip ? "stop-item" : "variant-card").first()).toBeVisible();
+        } else {
+          await page.goto(path);
+        }
         if (follow) {
           await page.getByTestId(follow).first().getByRole("link").first().click();
           await expect(page.getByRole("table", { name: "Cost by line" })).toBeVisible();
