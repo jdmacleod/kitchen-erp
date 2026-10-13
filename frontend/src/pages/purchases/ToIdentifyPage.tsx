@@ -190,10 +190,14 @@ function GroupCard({ group, index, onAnswered }: { group: ToIdentifyGroup; index
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-          <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} className={`size-4 ${focusRing}`} />
-          Apply to all {group.line_count}
-        </label>
+        {/* A group of one line has nothing else to apply to: "Apply to all 1"
+            offered a choice that changed nothing (QA 2026-10-13). */}
+        {group.line_count > 1 ? (
+          <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} className={`size-4 ${focusRing}`} />
+            Apply to all {group.line_count}
+          </label>
+        ) : null}
         {!all && group.lines.length > 1 ? (
           <SelectField id={`${id}-line`} label="Only this line" value={lineId} onChange={(e) => setLineId(e.target.value)} className="w-56">
             {group.lines.map((l) => (
