@@ -407,7 +407,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         </Alert>
       ) : null}
 
-      <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,3fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]" : ""}`}>
+      {/* From lg the lines are a table, which needs the width: the receipt image
+          stacks above it until xl, where there is room for both side by side.
+          Beside it at lg the table had under 500px and the receipt text a few
+          characters (QA 2026-10-12). */}
+      <div className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]" : ""}`}>
         {purchase.receipt_document_id ? (
           <Disclosure summary="Receipt image" defaultOpen className="md:sticky md:top-4 md:self-start">
             <ReceiptImage
@@ -469,7 +473,18 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                   <p className={`py-4 ${hintClass}`}>Nothing here needs you. Every line is matched or ignored.</p>
                 ) : wide ? (
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm" aria-label="Receipt lines">
+                    {/* Fixed layout with set widths: left to size itself, the table
+                        let a suggestion or a flag widen Product or # until the
+                        receipt text had a few characters and Actions scrolled out
+                        of the card (#35, #61, QA 2026-10-12). Cells wrap instead. */}
+                    <table className="w-full table-fixed text-sm" aria-label="Receipt lines">
+                      <colgroup>
+                        <col className="w-10" />
+                        <col />
+                        <col className="w-32" />
+                        <col className="w-[30%]" />
+                        <col className="w-24" />
+                      </colgroup>
                       <thead>
                         <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
                           <th className="py-2 pr-2">#</th>
@@ -882,18 +897,33 @@ function LineTags({ line }: { line: PurchaseLine }) {
   );
 }
 
+/** In the table, a line's kind and flags sit under its receipt text, not under its number. */
+function LineFlags({ line }: { line: PurchaseLine }) {
+  if (line.line_kind === "item" && line.flags.length === 0) return null;
+  return (
+    <span className="mt-1 flex flex-wrap gap-1">
+      {line.line_kind !== "item" ? <Badge>{line.line_kind}</Badge> : null}
+      {line.flags.map((f) => (
+        <Badge key={f} tone="warn" wrap>
+          {flagLabel(f)}
+        </Badge>
+      ))}
+    </span>
+  );
+}
+
 /** What the receipt says, verbatim and normalized; one truncated line when compact. */
 function LineRaw({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
   if (compact) {
     return (
-      <span className="block max-w-[20rem] truncate font-mono text-xs" title={line.raw_text ?? undefined}>
+      <span className="block truncate font-mono text-xs" title={line.raw_text ?? undefined}>
         {line.raw_text ?? "—"}
       </span>
     );
   }
   return (
     <>
-      <span className="font-mono text-xs break-all">{line.raw_text ?? "—"}</span>
+      <span className="font-mono text-xs break-words">{line.raw_text ?? "—"}</span>
       {line.raw_text_norm && line.raw_text_norm !== line.raw_text ? (
         <span className="block text-[11px] text-neutral-600 dark:text-neutral-400">{line.raw_text_norm}</span>
       ) : null}
@@ -1064,7 +1094,7 @@ function LineProduct({ line, itemLines, picking, busy, onAccept, onClosePicker, 
 
 /** Choose, Ignore, Re-resolve, Edit and Delete. 44px on a card, compact in the table. */
 function LineActions({ line, picking, editing, busy, onOpenPicker, onIgnore, onReResolve, onEdit, onDelete, touch }: LinePartProps & { touch?: boolean }) {
-  const size = touch ? "min-h-11 px-3 text-sm" : "min-h-7 px-2 text-xs";
+  const size = touch ? "min-h-11 px-3 text-sm" : "min-h-7 px-2 text-xs whitespace-nowrap";
   const resolution = line.resolution as Resolution | null;
   // A line that reached the price book asks first: deleting it voids its
   // price (#72, D12). One that never did still goes in one click.
@@ -1159,18 +1189,14 @@ function ReviewLine(props: ReviewLineProps) {
       aria-selected={current}
       className={`align-top ${focusRing} ${current ? "bg-neutral-100 dark:bg-neutral-900" : ""} ${quiet ? "text-neutral-600 dark:text-neutral-400" : ""} ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}
     >
-      <td className={`${pad} pr-2 pl-1`}>
-        <LineTags line={line} />
-      </td>
-      {/* max-w-0 + w-full: this column takes what the others leave and the
-          compact text truncates inside it. Without it each truncated (nowrap)
-          line set the column's minimum, and Product and Actions scrolled away. */}
-      <td className={`${pad} pr-2 w-full max-w-0`}>
+      <td className={`${pad} pr-2 pl-1 tabular-nums`}>{line.seq}</td>
+      <td className={`${pad} pr-2`}>
         <LineRaw line={line} compact={compact} />
+        <LineFlags line={line} />
       </td>
-      <td className={`${pad} pr-2 whitespace-nowrap`}>
+      <td className={`${pad} pr-2`}>
         {editing ? (
-          <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
+          <span className={hintClass}>Editing below</span>
         ) : (
           <>
             <LineParsed line={line} compact={compact} />
@@ -1206,6 +1232,22 @@ function ReviewLine(props: ReviewLineProps) {
       </td>
     </tr>
   );
+  if (editing) {
+    // The editor's fields need more room than the Parsed column has: like the
+    // picker, it gets a row of its own under its line.
+    return (
+      <>
+        {row}
+        <tr data-testid="review-edit-row" className={`bg-neutral-100 dark:bg-neutral-900 ${attention ? "border-l-4 border-l-amber-400" : "border-l-4 border-l-transparent"}`}>
+          <td colSpan={5} className="pb-3 pl-1 pr-2">
+            <div className="max-w-md">
+              <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
+            </div>
+          </td>
+        </tr>
+      </>
+    );
+  }
   if (!picking) return row;
   // The picker gets a row of its own, the full width of the table, under the
   // line it is for. In the Product cell it made the table wider than its column
