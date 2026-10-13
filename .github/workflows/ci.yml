@@ -39,14 +39,14 @@ jobs:
           PGPASSWORD=ci-owner-pw psql -h 127.0.0.1 -p 5433 -U kerp_owner -d kerp \
             -c "CREATE ROLE kerp_app LOGIN PASSWORD 'ci-app-pw'" \
             -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC"
+      # tools/ shares the backend's ruff configuration through tools/ruff.toml.
       - name: Lint
         working-directory: backend
         run: |
           uv sync --frozen
-          uv run ruff check .
-          uv run ruff format --check .
-      # Size limits (CODING_STANDARDS.md). tools/ is linted by pre-commit with ruff's
-      # defaults; it joins the backend's configuration here with the formatting PR.
+          uv run ruff check . ../tools
+          uv run ruff format --check . ../tools
+      # Size limits (CODING_STANDARDS.md).
       - name: File size limits
         run: python3 -m tools.check_size
       - name: Test
@@ -85,13 +85,25 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: frontend/pnpm-lock.yaml
-      - name: Install, lint, test, build
+      - name: Install
         working-directory: frontend
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm lint
-          pnpm test
-          pnpm build
+        run: pnpm install --frozen-lockfile
+      - name: Format
+        working-directory: frontend
+        run: pnpm format:check
+      # --max-warnings=0, with today's findings in eslint-suppressions.json.
+      - name: Lint
+        working-directory: frontend
+        run: pnpm lint
+      - name: Type-check
+        working-directory: frontend
+        run: pnpm typecheck
+      - name: Test
+        working-directory: frontend
+        run: pnpm test
+      - name: Build
+        working-directory: frontend
+        run: pnpm build
 
   e2e:
     name: Browser tests
@@ -113,6 +125,14 @@ jobs:
           node-version: 22
           cache: pnpm
           cache-dependency-path: e2e/pnpm-lock.yaml
+      # Before the stack: a lint or type error fails in seconds, not minutes.
+      - name: Lint, type-check and format-check the browser tests
+        working-directory: e2e
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm lint
+          pnpm typecheck
+          pnpm format:check
       - name: Start the stack
         # Compose cannot run git, so the build identity is resolved here. Without
         # it every CI image reports "dev" and the build-identity e2e spec fails.
@@ -191,3 +211,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uvx zizmor@1.30.1 --format=github .github/workflows
+      # The rest at the versions .pre-commit-config.yaml pins, with their configs
+      # (.markdownlint-cli2.yaml, .hadolint.yaml, .editorconfig-checker.json).
+      - name: markdownlint
+        run: uvx pre-commit@4.6.0 run markdownlint-cli2 --all-files --show-diff-on-failure
+      - name: shellcheck
+        run: uvx pre-commit@4.6.0 run shellcheck --all-files --show-diff-on-failure
+      - name: hadolint
+        run: uvx pre-commit@4.6.0 run hadolint --all-files --show-diff-on-failure
+      - name: editorconfig
+        run: uvx pre-commit@4.6.0 run editorconfig-checker --hook-stage manual --all-files --show-diff-on-failure

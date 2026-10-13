@@ -1,0 +1,7 @@
+{
+  "Exclude": ["\\.lock$", "pnpm-lock\\.yaml$", "eslint-suppressions\\.json$", "\\.svg$"],
+  "Disable": {
+    "IndentSize": true,
+    "MaxLineLength": true
+  }
+}

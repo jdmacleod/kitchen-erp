@@ -1,0 +1,6 @@
+# hadolint (CODING_STANDARDS.md, shell and Docker). The base images are pinned by
+# tag; the distribution packages installed on them are not, because Debian and
+# Alpine mirrors drop old package versions and a pinned build would break.
+ignored:
+  - DL3008 # apt-get install without versions
+  - DL3018 # apk add without versions
