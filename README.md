@@ -305,6 +305,36 @@ links reach outside the deployment, and only when switched on.
 - **Map tiles**: a PMTiles extract of your region under `data/tiles/`. See
   `docs/tiles.md` for how to cut one and for the attribution it carries.
 
+## Drive times with OSRM (optional)
+
+The trip planner (Plan → Trips) needs the drive time between your kitchen and
+each shop. Without a routing engine it estimates each leg from straight-line
+distance (× `PLAN_ESTIMATE_ROAD_FACTOR` at the speed of the distance's band) and
+marks the plan "estimated"; nothing refuses to run. For real road times, run
+OSRM behind the `routing` Compose profile over an OpenStreetMap extract of your
+own region, prepared once on the host:
+
+```bash
+mkdir -p data/routing
+curl -L -o data/routing/socal.osm.pbf \
+  https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf
+make routing-prepare                      # clip, extract, partition, customize
+docker compose --profile routing up -d    # osrm-routed on 127.0.0.1:5000
+```
+
+Then set `ROUTING_URL=http://routing:5000` in `.env` and restart `api` and
+`worker`. `make routing-prepare` clips the extract to `ROUTING_BBOX`
+(`min_lon,min_lat,max_lon,max_lat`) with `osmium` when it is installed, which
+keeps preprocessing within a laptop's memory; without `osmium` or a box it
+prepares the whole extract and says so. Everything lives under `data/routing/`,
+which is gitignored, and the bounding box is set only in your `.env`: a box
+drawn around your kitchen and your shops is your geography, so it is never
+tracked, never put in `.env.example`, and never read by a container. Legs are
+stored once per pair of places; estimates made while the engine was off are
+replaced the next time it answers, and `kerp travel-legs recompute` (or
+Settings for an administrator) recomputes them on demand. The extract is ODbL
+data and OSRM is BSD-2-Clause; see `docs/licensing.md`.
+
 ## Receipts, imports, and backups
 
 - **Receipts** are uploaded from the web UI (or the capture API) and pass through

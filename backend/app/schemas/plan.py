@@ -198,3 +198,34 @@ class ArchiveIn(ApiModel):
 class ArchiveOut(ApiModel):
     archived: ListOut
     list: ListOut  # the new open list
+
+
+# --- drive times (17, 4B) ----------------------------------------------------------------
+
+LegSource = Literal["osrm", "estimate"]
+
+
+class TravelLegOut(ApiModel):
+    """A stored free-flow leg; ``estimate`` means the routing engine did not answer
+    for this pair and the figures are haversine times a road factor."""
+
+    from_place_id: uuid.UUID
+    to_place_id: uuid.UUID
+    seconds: int
+    meters: int
+    source: LegSource
+    profile: str
+    engine_version: str | None
+    computed_at: datetime
+
+
+class RecomputeLegsIn(ApiModel):
+    """``only_estimates`` drops and recomputes estimated legs; false drops every leg."""
+
+    only_estimates: bool = True
+
+
+class RecomputeLegsOut(ApiModel):
+    dropped: int
+    osrm: int
+    estimated: int

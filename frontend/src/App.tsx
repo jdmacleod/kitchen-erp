@@ -24,6 +24,7 @@ import { ComparePage } from "./pages/pricebook/ComparePage";
 import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
 import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
+import { RereadPage } from "./pages/purchases/RereadPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
 import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
@@ -95,6 +96,7 @@ export function App() {
             <Route path="/shop/purchases" element={<PurchasesPage />} />
             <Route path="/shop/purchases/new" element={<NewPurchasePage />} />
             <Route path="/shop/purchases/:id" element={<PurchaseDetailPage />} />
+            <Route path="/shop/purchases/:id/reread" element={<RereadPage />} />
             <Route path="/shop/receipts" element={<ReceiptsPage />} />
             <Route path="/shop/receipts/identify" element={<ToIdentifyPage />} />
             <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />

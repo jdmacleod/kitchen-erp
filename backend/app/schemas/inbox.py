@@ -16,6 +16,7 @@ InboxKind = Literal[
     "usda",
     "new_product",
     "product_update",
+    "reread",
     "duplicates",
     "posted_prices",
     "recipe",

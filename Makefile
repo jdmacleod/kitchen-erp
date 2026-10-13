@@ -18,7 +18,7 @@ help:  ## Show this help
 
 setup:  ## Install git hooks and create the local data directories
 	pre-commit install
-	@mkdir -p data/receipts data/tiles data/usda data/imports
+	@mkdir -p data/receipts data/tiles data/usda data/imports data/routing
 	@echo
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."
 	@echo "It also writes tools/denylist.salt and refreshes tools/denylist.hashes."
@@ -30,8 +30,8 @@ up:  ## Start the stack with build identity baked in, then migrate (use this, no
 	@for i in $$(seq 1 30); do docker compose exec -T api kerp migrate && exit 0; sleep 2; done; echo "migrate never succeeded: see docker compose logs api" >&2; exit 1
 	@echo "built $(BUILD_VERSION) ($(BUILD_COMMIT))"
 
-down:  ## Stop the stack (and Ollama, if started with the llm profile); data is kept
-	docker compose --profile llm down
+down:  ## Stop the stack (and Ollama or OSRM, if started with their profiles); data is kept
+	docker compose --profile llm --profile routing down
 
 # The example recipes (examples/recipes, MIT) copied into the default mount so a
 # fresh deployment has something to cost. Only the host writes to data/recipes:
@@ -45,6 +45,36 @@ seed-examples:  ## Copy the example recipes into data/recipes (never over a repo
 	@cp -R examples/recipes/. data/recipes/
 	@echo "Copied $$(find examples/recipes -name '*.cook' | wc -l | tr -d ' ') example recipes into data/recipes/."
 	@echo "The worker indexes them on its next scan; to index them now: docker compose exec api kerp recipes rescan"
+
+# Drive times (17, 4B). The routing graph is built on the host from a regional
+# OpenStreetMap extract (ODbL) clipped to ROUTING_BBOX, with osmium if it is
+# installed and OSRM's own tools from the pinned image. Everything stays under
+# data/routing/ (gitignored); the box is read from .env and never tracked.
+OSRM_IMAGE := ghcr.io/project-osrm/osrm-backend:v5.27.1
+ROUTING_BBOX ?= $(shell grep -E '^ROUTING_BBOX=' .env 2>/dev/null | cut -d= -f2-)
+ROUTING_DIR := data/routing
+OSRM_RUN := docker run --rm -t -v "$(CURDIR)/$(ROUTING_DIR):/data" $(OSRM_IMAGE)
+
+routing-prepare:  ## Build the OSRM graph under data/routing/ from region.osm.pbf (clips to ROUTING_BBOX when osmium is installed)
+	@mkdir -p $(ROUTING_DIR)
+	@if [ ! -f $(ROUTING_DIR)/socal.osm.pbf ]; then \
+		echo "$(ROUTING_DIR)/socal.osm.pbf is missing. Download the Geofabrik Southern California extract first:" >&2; \
+		echo "  curl -L -o $(ROUTING_DIR)/socal.osm.pbf https://download.geofabrik.de/north-america/us/california/socal-latest.osm.pbf" >&2; \
+		exit 1; fi
+	@if [ -z "$(ROUTING_BBOX)" ]; then \
+		echo "ROUTING_BBOX is unset: preparing the whole extract, which needs several GB of memory. Set it in .env (min_lon,min_lat,max_lon,max_lat) to clip."; \
+		cp $(ROUTING_DIR)/socal.osm.pbf $(ROUTING_DIR)/region.osm.pbf; \
+	elif command -v osmium >/dev/null 2>&1; then \
+		echo "Clipping to ROUTING_BBOX with osmium…"; \
+		osmium extract --overwrite -b "$(ROUTING_BBOX)" -o $(ROUTING_DIR)/region.osm.pbf $(ROUTING_DIR)/socal.osm.pbf; \
+	else \
+		echo "osmium is not installed (brew install osmium-tool / apt install osmium-tool): skipping the clip and preparing the whole extract."; \
+		cp $(ROUTING_DIR)/socal.osm.pbf $(ROUTING_DIR)/region.osm.pbf; \
+	fi
+	$(OSRM_RUN) osrm-extract -p /opt/car.lua /data/region.osm.pbf
+	$(OSRM_RUN) osrm-partition /data/region.osrm
+	$(OSRM_RUN) osrm-customize /data/region.osrm
+	@echo "Routing graph ready. Start it with: docker compose --profile routing up -d; then set ROUTING_URL=http://routing:5000 in .env and restart api and worker."
 
 check-compose-env:  ## Every documented setting must reach a container
 	$(PY) -m tools.check_compose_env

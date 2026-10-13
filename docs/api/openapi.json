@@ -3819,6 +3819,7 @@
               "usda",
               "new_product",
               "product_update",
+              "reread",
               "duplicates",
               "posted_prices",
               "recipe"
@@ -9535,6 +9536,31 @@
         "title": "OfferList",
         "type": "object"
       },
+      "OpenRereadRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "OpenRereadRef",
+        "type": "object"
+      },
       "OpeningHoursValidateIn": {
         "additionalProperties": false,
         "properties": {
@@ -12661,6 +12687,16 @@
             ],
             "title": "Removed Line Count"
           },
+          "reread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "restore_blocked": {
             "anyOf": [
               {
@@ -13986,6 +14022,43 @@
         "title": "RecipesStatus",
         "type": "object"
       },
+      "RecomputeLegsIn": {
+        "additionalProperties": false,
+        "description": "``only_estimates`` drops and recomputes estimated legs; false drops every leg.",
+        "properties": {
+          "only_estimates": {
+            "default": true,
+            "title": "Only Estimates",
+            "type": "boolean"
+          }
+        },
+        "title": "RecomputeLegsIn",
+        "type": "object"
+      },
+      "RecomputeLegsOut": {
+        "additionalProperties": false,
+        "properties": {
+          "dropped": {
+            "title": "Dropped",
+            "type": "integer"
+          },
+          "estimated": {
+            "title": "Estimated",
+            "type": "integer"
+          },
+          "osrm": {
+            "title": "Osrm",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dropped",
+          "osrm",
+          "estimated"
+        ],
+        "title": "RecomputeLegsOut",
+        "type": "object"
+      },
       "RecomputeOut": {
         "additionalProperties": false,
         "properties": {
@@ -14622,6 +14695,31 @@
           "flags"
         ],
         "title": "RereadSide",
+        "type": "object"
+      },
+      "RereadState": {
+        "additionalProperties": false,
+        "description": "What \"Re-read lines\" can offer on a receipt purchase (04, 2S).",
+        "properties": {
+          "can_recheck": {
+            "title": "Can Recheck",
+            "type": "boolean"
+          },
+          "open": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenRereadRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "can_recheck"
+        ],
+        "title": "RereadState",
         "type": "object"
       },
       "ResolveAskIn": {
@@ -15971,6 +16069,70 @@
           "count"
         ],
         "title": "SuggestionVendorCount",
+        "type": "object"
+      },
+      "TravelLegOut": {
+        "additionalProperties": false,
+        "description": "A stored free-flow leg; ``estimate`` means the routing engine did not answer\nfor this pair and the figures are haversine times a road factor.",
+        "properties": {
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "engine_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Version"
+          },
+          "from_place_id": {
+            "format": "uuid",
+            "title": "From Place Id",
+            "type": "string"
+          },
+          "meters": {
+            "title": "Meters",
+            "type": "integer"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "seconds": {
+            "title": "Seconds",
+            "type": "integer"
+          },
+          "source": {
+            "enum": [
+              "osrm",
+              "estimate"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "to_place_id": {
+            "format": "uuid",
+            "title": "To Place Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_place_id",
+          "to_place_id",
+          "seconds",
+          "meters",
+          "source",
+          "profile",
+          "engine_version",
+          "computed_at"
+        ],
+        "title": "TravelLegOut",
         "type": "object"
       },
       "UnitList": {
@@ -18686,6 +18848,106 @@
         "summary": "List Brand Families",
         "tags": [
           "brands"
+        ]
+      }
+    },
+    "/api/v1/geo/travel-legs": {
+      "get": {
+        "description": "One free-flow leg, computed if missing: from the engine when it answers,\notherwise an estimate marked so.",
+        "operationId": "get_travel_leg_api_v1_geo_travel_legs_get",
+        "parameters": [
+          {
+            "description": "the origin place",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "the origin place",
+              "format": "uuid",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "description": "the destination place",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "the destination place",
+              "format": "uuid",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TravelLegOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Travel Leg",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/geo/travel-legs/recompute": {
+      "post": {
+        "description": "Drop estimated legs (every leg with ``only_estimates`` false) and compute\nthem again; what the engine does not answer is estimated.",
+        "operationId": "recompute_travel_legs_api_v1_geo_travel_legs_recompute_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecomputeLegsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecomputeLegsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Recompute Travel Legs",
+        "tags": [
+          "plan"
         ]
       }
     },

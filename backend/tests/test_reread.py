@@ -300,3 +300,31 @@ async def test_a_voided_purchase_cannot_be_reread(
     assert r.status_code == 200, r.text
     r = await _check(admin_client, purchase_id)
     assert (r.status_code, r.json()["error"]["code"]) == (409, "voided")
+
+
+async def test_the_purchase_says_what_rereading_can_offer(
+    admin_client, receipts_dir, recorded, monkeypatch, owner_conn
+):
+    purchase_id, job_id, _ = await _first_reading(admin_client, recorded, monkeypatch)
+    assert (await _purchase(admin_client, purchase_id))["reread"] == {
+        "can_recheck": True,
+        "open": None,
+    }
+    made = (await _check(admin_client, purchase_id)).json()
+    assert (await _purchase(admin_client, purchase_id))["reread"]["open"] == {
+        "id": made["id"],
+        "status": "ready",
+    }
+    await admin_client.post(f"/api/v1/rereads/{made['id']}/dismiss")
+    await owner_conn.execute(
+        "INSERT INTO ingest_stage_result (id, job_id, stage, adapter, adapter_version, output, "
+        "duration_ms) SELECT $1, job_id, stage, adapter, adapter_version, "
+        "output - 'read_lines', duration_ms FROM ingest_stage_result "
+        "WHERE job_id = $2 AND stage = 'lines'",
+        uuid.uuid4(),
+        uuid.UUID(job_id),
+    )
+    assert (await _purchase(admin_client, purchase_id))["reread"] == {
+        "can_recheck": False,
+        "open": None,
+    }

@@ -200,36 +200,70 @@ def _uuid(value: Any) -> uuid.UUID | None:
     return None if value is None else uuid.UUID(str(value))
 
 
+@dataclass
+class LinesRead:
+    """What the reader made of a receipt's text, before any pass."""
+
+    result: ReceiptLines | None
+    parser: str
+    parser_version: str
+    attempts: int = 0
+    reason: str | None = None
+    unread_parts: list[int] = field(default_factory=list)
+    part_count: int = 1
+
+
+async def read_receipt_lines(
+    llm: LlmClient, text: str, vendor_id: uuid.UUID | None, vendor_name: str | None
+) -> LinesRead:
+    """The vendor's parser when one reads the text, otherwise the model.
+
+    The lines stage and Read again (04, 2S) both read through here. An
+    unreachable model server raises, as it does in the stage, so the caller
+    waits and tries again.
+    """
+    vendor_parser = parsers.find(vendor_id, vendor_name)
+    if vendor_parser is not None:
+        result = vendor_parser.parse(text)
+        if result is not None:
+            return LinesRead(result, vendor_parser.name, vendor_parser.version)
+    reading = await readers.read_lines(llm, text, deadline_at=readers.stage_deadline_at())
+    return LinesRead(
+        reading.lines,
+        lines_stage.GENERIC_PARSER,
+        lines_stage.GENERIC_PARSER_VERSION,
+        reading.attempts,
+        reading.reason,
+        list(reading.unread_parts),
+        reading.part_count,
+    )
+
+
+def receipt_vendor(header: dict[str, Any]) -> tuple[uuid.UUID | None, str | None]:
+    """The vendor the header stage matched, and its name, for choosing a parser."""
+    location = header.get("location") or {}
+    vendor_id = _uuid(location.get("vendor_id"))
+    for candidate in location.get("candidates") or []:
+        if candidate.get("vendor_id") == location.get("vendor_id"):
+            return vendor_id, candidate.get("vendor_name")
+    return vendor_id, None
+
+
 async def stage_lines(ctx: StageContext) -> StageOutcome:
     text = ctx.receipt_text()
     header = ctx.latest_output("header") or {}
     location = header.get("location") or {}
     vendor_location_id = _uuid(location.get("vendor_location_id"))
-    vendor_id = _uuid(location.get("vendor_id"))
-    vendor_name = None
-    for candidate in location.get("candidates") or []:
-        if candidate.get("vendor_id") == location.get("vendor_id"):
-            vendor_name = candidate.get("vendor_name")
-            break
+    vendor_id, vendor_name = receipt_vendor(header)
 
-    parser_name, parser_version, attempts = (
-        lines_stage.GENERIC_PARSER,
-        lines_stage.GENERIC_PARSER_VERSION,
-        0,
+    lines_read = await read_receipt_lines(ctx.llm, text, vendor_id, vendor_name)
+    result, reason = lines_read.result, lines_read.reason
+    parser_name, parser_version = lines_read.parser, lines_read.parser_version
+    attempts, unread_parts, part_count = (
+        lines_read.attempts,
+        lines_read.unread_parts,
+        lines_read.part_count,
     )
-    result: ReceiptLines | None = None
-    reason: str | None = None
-    vendor_parser = parsers.find(vendor_id, vendor_name)
-    if vendor_parser is not None:
-        result = vendor_parser.parse(text)
-        if result is not None:
-            parser_name, parser_version = vendor_parser.name, vendor_parser.version
-    unread_parts: list[int] = []
-    part_count = 1
-    if result is None:
-        reading = await readers.read_lines(ctx.llm, text, deadline_at=readers.stage_deadline_at())
-        result, attempts, reason = reading.lines, reading.attempts, reading.reason
-        unread_parts, part_count = reading.unread_parts, reading.part_count
     printed_total = _decimal(header.get("total"))
     header_tax = _decimal(header.get("tax"))
 

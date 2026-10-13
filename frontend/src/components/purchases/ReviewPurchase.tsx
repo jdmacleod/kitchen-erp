@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router";
+import { RereadLines } from "./RereadLines";
 import { CorrectLines } from "./CorrectLines";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { errorMessage } from "../../api/client";
@@ -446,6 +447,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                     Correct the lines
                   </Button>
                 )}
+                {correcting ? null : <RereadLines purchase={purchase} disabled={busy} />}
               </span>
             </div>
             {correcting ? (
@@ -852,7 +854,7 @@ function QuantityMerge({ line, mergeInto, busy, onMerge }: { line: PurchaseLine;
   );
 }
 
-function flagLabel(flag: string): string {
+export function flagLabel(flag: string): string {
   return FLAG_LABELS[flag] ?? flag.replaceAll("_", " ");
 }
 

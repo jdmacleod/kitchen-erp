@@ -61,6 +61,7 @@ from app.services import (
     proposals,
     purchases,
     removal,
+    reread,
     resolution,
     review,
     store_codes,
@@ -356,6 +357,7 @@ async def purchase_out(
             else None
         ),
         removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
+        reread=await reread.state(db, purchase) if detail else None,  # type: ignore[arg-type]
     )
 
 

@@ -22,6 +22,7 @@ import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purc
 import { RemovedLinesCaption, RemovePurchase, RestorePurchase } from "../../components/purchases/RemovePurchase";
 import { BestBy } from "../../components/purchases/BestBy";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
+import { RereadLines } from "../../components/purchases/RereadLines";
 import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing, tapTarget } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
@@ -241,7 +242,10 @@ function CommittedPurchase({
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Lines</h2>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-medium">Lines</h2>
+            <RereadLines purchase={p} />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Lines">
               <thead>

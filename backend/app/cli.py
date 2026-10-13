@@ -27,6 +27,8 @@ import_cli = typer.Typer(
 cli.add_typer(import_cli, name="import")
 receipts_cli = typer.Typer(help="Stored receipt files.", no_args_is_help=True)
 cli.add_typer(receipts_cli, name="receipts")
+travel_legs_cli = typer.Typer(help="Drive-time legs between places (17, 4B).", no_args_is_help=True)
+cli.add_typer(travel_legs_cli, name="travel-legs")
 cli.add_typer(recipes_cli, name="recipes")  # `kerp recipes …` lives in app/cli_recipes.py
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
@@ -947,6 +949,30 @@ def recompute_costs() -> None:
     asyncio.run(_run())
 
 
+@travel_legs_cli.command("recompute")
+def travel_legs_recompute(
+    all_legs: bool = typer.Option(
+        False, "--all", help="Drop the engine's legs too, not only the estimates."
+    ),
+) -> None:
+    """Drop estimated legs and compute them again from the routing engine, or
+    estimate them again when it is off (17, 4B)."""
+    from app.core.config import get_settings
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.travel import recompute_legs
+
+    async def _run() -> None:
+        async with get_sessionmaker()() as db:
+            counts = await recompute_legs(db, get_settings(), only_estimates=not all_legs)
+        await dispose_engine()
+        typer.echo(
+            f"dropped {counts.dropped} legs; {counts.osrm} from the engine, "
+            f"{counts.estimated} estimated"
+        )
+
+    asyncio.run(_run())
+
+
 OUT_OPTION = typer.Option(..., "--out", file_okay=False, resolve_path=True)
 FROM_OPTION = typer.Option(..., "--from", exists=True, file_okay=False, resolve_path=True)
 FORCE_OPTION = typer.Option(False, "--force", help="overwrite a non-empty database")
@@ -1296,6 +1322,73 @@ def export_openapi(out: Path = OPENAPI_OUT) -> None:
     helper = out.parent / "kitchen-erp-products-1.schema.json"
     helper.write_text(json.dumps(contract_schema(), indent=2, sort_keys=True) + "\n")
     typer.echo(f"wrote {helper}")
+
+
+REREAD_AS = typer.Option(..., "--as", help="email of the user recorded as asking for the re-reads")
+
+
+@receipts_cli.command("reread")
+def reread_receipts(
+    user_email: str = REREAD_AS,
+    mode: str = typer.Option(
+        "check",
+        "--mode",
+        help="check: run today's line passes over each reader's kept answer (no model). "
+        "read: ask the reader again, through the worker.",
+    ),
+    since: str | None = typer.Option(
+        None, "--since", help="Only receipts bought on or after this day (YYYY-MM-DD)."
+    ),
+) -> None:
+    """Make a re-read proposal for every receipt purchase (04, 2S)."""
+    from datetime import date, time
+
+    from sqlalchemy import select
+
+    from app.core.config import get_settings
+    from app.core.db import dispose_engine, get_sessionmaker
+    from app.models import AppUser
+    from app.services import reread
+
+    if mode not in ("check", "read"):
+        typer.echo("error: --mode is check or read", err=True)
+        raise typer.Exit(code=2)
+    start = None
+    if since is not None:
+        try:
+            day = date.fromisoformat(since)
+        except ValueError:
+            typer.echo("error: --since is a day, YYYY-MM-DD", err=True)
+            raise typer.Exit(code=2) from None
+        zone = ZoneInfo(get_settings().household_timezone)
+        start = datetime.combine(day, time(), tzinfo=zone)
+
+    async def _run() -> dict[str, int]:
+        try:
+            async with get_sessionmaker()() as db:
+                user = (
+                    await db.execute(select(AppUser).where(AppUser.email == user_email.lower()))
+                ).scalar_one_or_none()
+                if user is None:
+                    typer.echo(f"error: no user {user_email}", err=True)
+                    raise typer.Exit(code=1)
+                return await reread.request_many(db, user, mode, since=start)
+        finally:
+            await dispose_engine()
+
+    counts = asyncio.run(_run())
+    if mode == "check":
+        typer.echo(f"{counts['ready']} receipt(s) would change: review them from the inbox.")
+        typer.echo(f"{counts['no_changes']} already read as today's passes read them.")
+        if counts["not_stored"]:
+            typer.echo(
+                f"{counts['not_stored']} skipped: read before the reader's answer was kept. "
+                "Use --mode read for those."
+            )
+    else:
+        typer.echo(f"{counts['pending']} receipt(s) queued to be read again by the worker.")
+    if counts["already_open"]:
+        typer.echo(f"{counts['already_open']} skipped: a re-read is already open.")
 
 
 @receipts_cli.command("strip-metadata")
