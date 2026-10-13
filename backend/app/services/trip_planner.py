@@ -88,6 +88,12 @@ PairKey = tuple[uuid.UUID, uuid.UUID]
 IsOpen = Callable[[uuid.UUID, datetime], bool | None]
 
 
+def _dollars(amount: Decimal) -> str:
+    """Money as a note's sentence reads it, "$8.59"; the ``amount`` field keeps
+    the exact figure."""
+    return f"${amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)}"
+
+
 def enumeration_bound(candidates: int, max_stops: int) -> tuple[int, int]:
     """(sets, orderings) the search visits at most: C(n,1..k) and P(n,1..k)."""
     sizes = range(1, min(max_stops, candidates) + 1)
@@ -607,7 +613,8 @@ def plan(
                 notes.append(
                     _note(
                         "defer_suggestion",
-                        f"Defer {names} to skip this stop: saves {saving} and {minutes} minutes.",
+                        f"Defer {names} to skip this stop: "
+                        f"saves {_dollars(saving)} and {minutes} minutes.",
                         item_id=next(iter(dropped)) if len(dropped) == 1 else None,
                         location_id=stop.location_id,
                         amount=saving,
@@ -618,7 +625,7 @@ def plan(
             sum((o.line_cost for s in variant.stops for o in s.items if o.stale), Decimal(0))
         )
         if stale_amount > 0:
-            text = f"{stale_amount} of the item cost rests on stale prices."
+            text = f"{_dollars(stale_amount)} of the item cost rests on stale prices."
             if kind == "cheapest":
                 same = without is not None and _same_stops(without["cheapest"], variant)
                 text += (

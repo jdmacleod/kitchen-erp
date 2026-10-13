@@ -447,7 +447,7 @@ def test_a_deferrable_item_alone_at_its_stop_suggests_deferring_with_the_saving(
     assert defer["item_id"] == str(ITEM_IDS["dates"])
     assert defer["location_id"] == str(LOCATIONS["B"])
     assert (defer["amount"], defer["minutes"]) == ("10.2500", "15.75")
-    assert "dates" in defer["text"]
+    assert "dates" in defer["text"] and "saves $10.25 and 15.75 minutes" in defer["text"]
     assert not notes(result.variants["fastest"], "defer_suggestion")
     assert not notes(result.variants["balanced"], "defer_suggestion")
 
@@ -484,6 +484,7 @@ def test_a_saving_that_rests_on_a_stale_price_is_said_so():
     )
     (note,) = notes(again.variants["cheapest"], "stale_dependent")
     assert note["amount"] == "2.0000" and "stays cheapest" in note["text"]
+    assert note["text"].startswith("$2.00 of the item cost")
 
 
 # --- unsourceable items, estimates, nothing to buy ---------------------------------------------
@@ -836,6 +837,32 @@ async def test_packs_round_up_counts_round_by_pack_count_and_cant_convert_is_uns
     }
     assert notes_[items["tea"]["id"]]["reason"] == "cant_convert"
     assert not [a for a in variant(plan, "balanced")["annotations"] if a["kind"] == "forced_stop"]
+
+
+async def test_an_item_with_no_amount_buys_one_pack(
+    admin_client: httpx.AsyncClient, kitchen: dict, shops: dict, no_network: None
+):
+    """Phase 4 build, 2026-10-13: "Basil" with no amount buys one pack; with
+    neither an amount nor a pack size there is nothing to buy by, so the item
+    is unsourceable (cant_convert) rather than free."""
+    basil = await make_product(admin_client, "Basil", "Basil bunch", pack_qty="30", pack_unit="g")
+    loose = await make_product(admin_client, "Sorrel", "Sorrel loose")  # no pack size
+    north = shops["north"]["id"]
+    await shelf(admin_client, basil["id"], north, "2.50")
+    await shelf(admin_client, loose["id"], north, "1.00", qty="1", unit="kg")
+    bunch = await add_item(admin_client, kitchen, ingredient_id=basil["ingredient"]["id"])
+    sorrel = await add_item(admin_client, kitchen, ingredient_id=loose["ingredient"]["id"])
+    plan = await plan_trip(admin_client, kitchen, max_stops=1)
+    lines = item_lines(plan, "balanced")
+    line = lines[bunch["id"]]
+    assert (line["packs"], line["pack_price"], line["line_cost"]) == ("1", "2.5000", "2.5000")
+    assert sorrel["id"] not in lines
+    (note,) = [
+        a
+        for a in variant(plan, "balanced")["annotations"]
+        if a["kind"] == "unsourceable" and a["item_id"] == sorrel["id"]
+    ]
+    assert note["reason"] == "cant_convert"
 
 
 async def test_min_quality_narrows_an_ingredient_item(

@@ -304,7 +304,9 @@ convert makes that product unusable (`cant_convert`), and an item no candidate
 can fill is `unsourceable`. Packs round up through `_pack_canonical_qty` and
 `_basket`, moved from `recipe_costing` to `services/packs.py`; without a pack
 size, cost is quantity times unit price with `packs` null; a price older than
-`stale_after_days` is used and marked `price_stale`. As built, the query runs
+`stale_after_days` is used and marked `price_stale`. An item with no amount
+buys one pack; with neither an amount nor a pack size it is `cant_convert`
+(Phase 4 build, 2026-10-13). As built, the query runs
 over `offer_applicable` with the committed-purchase restriction and
 `DISTINCT ON (product_id, applies_to_location_id)`, not over `ingredient_offer`,
 which is the latest row per (product, location) without that restriction
