@@ -184,3 +184,43 @@ class UserSetting(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
+
+
+# --- drive times (17, 4B) ----------------------------------------------------------------
+
+LEG_SOURCES = ("osrm", "estimate")
+
+
+class TravelLeg(Base):
+    """The free-flow time and distance from one place to another (migration 0052).
+
+    One row per ordered pair; no multiplier is stored, because time of day is
+    applied when a plan is made. ``source`` is ``osrm`` when the routing engine
+    answered and ``estimate`` when the leg is haversine times a road factor; an
+    estimate is replaced when the engine next answers, never the reverse.
+    Derived and rebuildable: ``TRUNCATABLE`` in ``app/core/grants.py``.
+    """
+
+    __tablename__ = "travel_leg"
+    __table_args__ = (
+        CheckConstraint("from_place_id <> to_place_id", name="ck_travel_leg_distinct"),
+        CheckConstraint("seconds >= 0", name="ck_travel_leg_seconds"),
+        CheckConstraint("meters >= 0", name="ck_travel_leg_meters"),
+        CheckConstraint("source IN ('osrm', 'estimate')", name="ck_travel_leg_source"),
+        Index("ix_travel_leg_to_place_id", "to_place_id"),
+    )
+
+    from_place_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("place.id", ondelete="CASCADE"), primary_key=True
+    )
+    to_place_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("place.id", ondelete="CASCADE"), primary_key=True
+    )
+    seconds: Mapped[int] = mapped_column(Integer, nullable=False)
+    meters: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(16), nullable=False)
+    profile: Mapped[str] = mapped_column(String(16), nullable=False, default="car")
+    engine_version: Mapped[str | None] = mapped_column(String(80))
+    computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

@@ -14,7 +14,8 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Response, status
 from fastapi.responses import JSONResponse
 
-from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.api.deps import CurrentAdmin, CurrentUser, DbSession, Idempotency
+from app.core import config
 from app.schemas.plan import (
     ArchiveIn,
     ArchiveOut,
@@ -26,10 +27,13 @@ from app.schemas.plan import (
     ListOut,
     ListsOut,
     ListStatus,
+    RecomputeLegsIn,
+    RecomputeLegsOut,
     SettingsIn,
     SettingsOut,
+    TravelLegOut,
 )
-from app.services import shopping_lists, user_settings
+from app.services import shopping_lists, travel, user_settings
 
 router = APIRouter(tags=["plan"])
 
@@ -156,3 +160,31 @@ async def check_item(item_id: uuid.UUID, user: CurrentUser, db: DbSession) -> It
 async def uncheck_item(item_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ItemOut:
     item = await shopping_lists.get_item(db, item_id)
     return shopping_lists.item_out(await shopping_lists.uncheck(db, item))
+
+
+# --- drive times (17, 4B) -----------------------------------------------------------------
+
+
+@router.get("/geo/travel-legs", response_model=TravelLegOut)
+async def get_travel_leg(
+    _: CurrentUser,
+    db: DbSession,
+    from_: Annotated[uuid.UUID, Query(alias="from", description="the origin place")],
+    to: Annotated[uuid.UUID, Query(description="the destination place")],
+) -> TravelLegOut:
+    """One free-flow leg, computed if missing: from the engine when it answers,
+    otherwise an estimate marked so."""
+    leg = await travel.leg_between(db, from_, to, config.get_settings())
+    return TravelLegOut.model_validate(leg)
+
+
+@router.post("/geo/travel-legs/recompute", response_model=RecomputeLegsOut)
+async def recompute_travel_legs(
+    payload: RecomputeLegsIn, _: CurrentAdmin, db: DbSession
+) -> RecomputeLegsOut:
+    """Drop estimated legs (every leg with ``only_estimates`` false) and compute
+    them again; what the engine does not answer is estimated."""
+    counts = await travel.recompute_legs(
+        db, config.get_settings(), only_estimates=payload.only_estimates
+    )
+    return RecomputeLegsOut(dropped=counts.dropped, osrm=counts.osrm, estimated=counts.estimated)

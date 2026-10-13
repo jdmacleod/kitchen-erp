@@ -40,6 +40,8 @@ NOT_FORWARDED = {
     "WEB_PORT": "host port binding, not application configuration",
     "WEB_BIND": "host bind address, not application configuration",
     "RECIPES_PATH": "a host path compose mounts; the container sees /data/recipes",
+    "ROUTING_BBOX": "read by `make routing-prepare` on the host to clip the extract; "
+    "the application never sees a bounding box (17, 4B)",
 }
 
 VARIABLE = re.compile(r"\$\{([A-Z0-9_]+)")
