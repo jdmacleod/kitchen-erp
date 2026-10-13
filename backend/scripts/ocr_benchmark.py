@@ -179,7 +179,7 @@ def load_expected(path: Path | None) -> dict[str, str]:
 
 async def real(directory: Path, show_totals: bool, expected_path: Path | None) -> int:
     kinds = (".pdf", ".jpg", ".jpeg", ".png")
-    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in kinds)  # noqa: ASYNC240
+    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in kinds)
     expected = load_expected(expected_path)
     client = LlmClient()
     present = collections.Counter()

@@ -87,8 +87,12 @@ max-statements = 50
 max-branches = 15
 
 [tool.ruff.lint.per-file-ignores]
-# Tests assert, and build their SQL from fixed fragments.
-"tests/**" = ["S101", "S608"]
+# Tests assert, and build their SQL from fixed fragments. Blocking file and
+# process calls (ASYNC2xx) only matter on the server's event loop, not in a test,
+# a one-shot `kerp` command or a script.
+"tests/**" = ["S101", "S608", "ASYNC2"]
+"app/cli.py" = ["ASYNC2"]
+"scripts/**" = ["ASYNC2"]
 # Migrations compose DDL and backfills from constants in the migration itself.
 "alembic/versions/**" = ["S608"]
 
