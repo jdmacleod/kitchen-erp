@@ -37,6 +37,7 @@ dev = [
     "pytest-asyncio>=1.0",
     "hypothesis>=6.100",
     "ruff>=0.16,<0.17",
+    "ty==0.0.86",
 ]
 
 [build-system]
@@ -62,3 +63,9 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "C4", "SIM", "PLW"]
+
+# ty is advisory (CODING_STANDARDS.md, Python): `make types` and the CI job
+# "Types (advisory)" report its findings without failing anything.
+[tool.ty.environment]
+# The repository root, so tests that import the stdlib-only `tools` package resolve.
+extra-paths = [".."]
