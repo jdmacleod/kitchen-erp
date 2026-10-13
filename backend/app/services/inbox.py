@@ -20,12 +20,14 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
                      or a linked ingredient has suggestions (1G)
     new_product      pending new-product proposals (2L)             one aggregate row
     product_update   pending product-update proposals (2N)          one aggregate row
+    reread           re-read proposals ready with changes (04, 2S)  one aggregate row
     posted_prices    refreshed posted prices awaiting a person (2N) one aggregate row
     recipe           recipe_resolution.queue_counts: recipe names    one aggregate row
                      that resolve to no ingredient (07, 3C)
 
-Receipts, product photos and product pages still being read are not items: they
-come back as ``reading`` so Home can show one line above the list.
+Receipts (and receipts being read again, 2S), product photos and product pages
+still being read are not items: they come back as ``reading`` so Home can show
+one line above the list.
 
 The identify and bridge kinds reuse the queries behind their own pages rather
 than restating them, so the inbox can never count something those pages do not
@@ -45,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.models import LineReread
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
@@ -102,7 +105,11 @@ _READING_SQL = text(
     """
     SELECT count(*) AS n, min(created_at) AS oldest_at,
            (SELECT max(created_at) FROM ingest_stage_result) AS last_progress_at
-    FROM ingest_job WHERE status IN ('pending', 'running')
+    FROM (
+        SELECT created_at FROM ingest_job WHERE status IN ('pending', 'running')
+        UNION ALL  -- a receipt being read again counts as one being read (04, 2S)
+        SELECT created_at FROM line_reread WHERE status IN ('pending', 'running')
+    ) AS reading
     """
 )
 
@@ -408,6 +415,30 @@ async def _product_updates(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _rereads(db: AsyncSession) -> list[InboxItem]:
+    """Re-read proposals ready with changes, one aggregate row (04, 2S)."""
+    rows = (
+        await db.execute(
+            select(LineReread.id, LineReread.purchase_id, LineReread.created_at)
+            .where(LineReread.status == "ready")
+            .order_by(LineReread.created_at)
+        )
+    ).all()
+    if not rows:
+        return []
+    noun = "re-read receipt" if len(rows) == 1 else "re-read receipts"
+    return [
+        InboxItem(
+            kind="reread",
+            title=f"{len(rows)} {noun} to review",
+            detail="Today's reading would change their lines. Nothing changes until you apply it.",
+            action_label="Review",
+            action_route=f"/shop/purchases/{rows[0].purchase_id}/reread",
+            created_at=rows[0].created_at,
+        )
+    ]
+
+
 async def _duplicates(db: AsyncSession) -> list[InboxItem]:
     pairs = await product_duplicates.find_duplicates(db)
     if not pairs:
@@ -512,6 +543,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("usda", _usda),
     ("new_product", _new_products),
     ("product_update", _product_updates),
+    ("reread", _rereads),
     ("duplicates", _duplicates),
     ("posted_prices", _posted_prices),
     ("recipe", _recipes),
