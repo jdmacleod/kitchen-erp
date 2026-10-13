@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useState } from "react";
-import { Link } from "react-router";
-import { formatPack, productTitle } from "../../api/catalog";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "react-router";
+import { formatPack, productTitle, useUnits } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { bridgeFixLink, normStatusText, useNeedsBridge } from "../../api/pricebook";
 import { Badge } from "../../components/catalog/fields";
@@ -14,6 +14,7 @@ import {
   PageHeader,
   focusRing,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -29,6 +30,19 @@ export function NeedsBridgePage() {
   const [editing, setEditing] = useState<string | null>(null);
   const products = new Set(items.map((i) => i.product.id)).size;
   const packIds = items.filter((i) => i.status === "no_pack").map((i) => i.product.id);
+  const densities = items.filter((i) => i.status === "no_density").length;
+  const units = useUnits().data ?? [];
+  const counted = (unit: string | null) =>
+    units.find((u) => u.code === unit)?.dimension === "count";
+  const location = useLocation();
+  const section = useRef<HTMLElement>(null);
+
+  // Home's bridge row links to #products, past the USDA suggestions above.
+  useEffect(() => {
+    if (location.hash === "#products" && list.data) {
+      section.current?.scrollIntoView({ block: "start" });
+    }
+  }, [location.hash, list.data]);
 
   // On a phone the table scrolls sideways, and "Set the pack" sits at its far
   // right; bring it back to the start so the editor and the product name show.
@@ -54,132 +68,148 @@ export function NeedsBridgePage() {
         description="Products whose prices can't be compared until they have a density, a measure or a pack size."
       />
       <UsdaReviewSection />
-      {list.isPending ? (
-        <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
-          Loading…
-        </p>
-      ) : list.isError ? (
-        <Alert tone="error">{errorMessage(list.error)}</Alert>
-      ) : items.length === 0 ? (
-        <EmptyState
-          title="Every price is normalized"
-          action={
-            <Link to="/" className={secondaryLinkClass}>
-              Back to Home
-            </Link>
-          }
-        >
-          Nothing is waiting on a density, a measure, or a pack size.
-        </EmptyState>
-      ) : (
-        <Card>
-          <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-            {products === 1 ? "1 product" : `${products} products`}
-            {packIds.length
-              ? ` · ${packIds.length} ${packIds.length === 1 ? "needs" : "need"} a pack size`
-              : ""}
+      <section
+        id="products"
+        ref={section}
+        aria-labelledby="products-heading"
+        className="scroll-mt-4"
+      >
+        <h2 id="products-heading" className={`${sectionHeading} mb-3`}>
+          Products
+        </h2>
+        {list.isPending ? (
+          <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
+            Loading…
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" aria-label="Needs a bridge">
-              <thead>
-                <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
-                  <th className="py-2 pr-3">Ingredient</th>
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Missing</th>
-                  <th className="py-2 pr-3 text-right">Prices</th>
-                  <th className="py-2 pr-3">Latest</th>
-                  <th className="py-2">Fix</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                {items.map((item) => {
-                  const fix = bridgeFixLink(item.status, item.ingredient.id, item.product.id);
-                  const title = productTitle(item.product);
-                  const quickPack = item.status === "no_pack";
-                  const open = quickPack && editing === item.product.id;
-                  return (
-                    <Fragment key={`${item.product.id}-${item.status}`}>
-                      <tr data-testid="needs-bridge">
-                        <td className="py-2 pr-3">
-                          <Link
-                            to={`/catalog/ingredients/${item.ingredient.id}`}
-                            className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
-                          >
-                            {item.ingredient.name}
-                          </Link>
-                          <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                            {" "}
-                            · {item.ingredient.canonical_unit}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-3">
-                          <Link
-                            to={`/catalog/products/${item.product.id}`}
-                            className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
-                          >
-                            {title}
-                          </Link>
-                          {formatPack(item.product.pack_qty, item.product.pack_unit) ? (
+        ) : list.isError ? (
+          <Alert tone="error">{errorMessage(list.error)}</Alert>
+        ) : items.length === 0 ? (
+          <EmptyState
+            title="Every price is normalized"
+            action={
+              <Link to="/" className={secondaryLinkClass}>
+                Back to Home
+              </Link>
+            }
+          >
+            Nothing is waiting on a density, a measure, or a pack size.
+          </EmptyState>
+        ) : (
+          <Card>
+            <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+              {products === 1 ? "1 product" : `${products} products`}
+              {packIds.length
+                ? ` · ${packIds.length} ${packIds.length === 1 ? "needs" : "need"} a pack size`
+                : ""}
+              {densities ? ` · ${densities} ${densities === 1 ? "needs" : "need"} a density` : ""}
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" aria-label="Needs a bridge">
+                <thead>
+                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
+                    <th className="py-2 pr-3">Ingredient</th>
+                    <th className="py-2 pr-3">Product</th>
+                    <th className="py-2 pr-3">Missing</th>
+                    <th className="py-2 pr-3 text-right">Prices</th>
+                    <th className="py-2 pr-3">Latest</th>
+                    <th className="py-2">Fix</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {items.map((item) => {
+                    const fix = bridgeFixLink(item.status, item.ingredient.id, item.product.id);
+                    const title = productTitle(item.product);
+                    const quickPack = item.status === "no_pack";
+                    const open = quickPack && editing === item.product.id;
+                    return (
+                      <Fragment key={`${item.product.id}-${item.status}`}>
+                        <tr data-testid="needs-bridge">
+                          <td className="py-2 pr-3">
+                            <Link
+                              to={`/catalog/ingredients/${item.ingredient.id}`}
+                              className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
+                            >
+                              {item.ingredient.name}
+                            </Link>
                             <span className="text-xs text-neutral-600 dark:text-neutral-400">
                               {" "}
-                              · {formatPack(item.product.pack_qty, item.product.pack_unit)}
+                              · {item.ingredient.canonical_unit}
                             </span>
-                          ) : null}
-                        </td>
-                        <td className="py-2 pr-3">
-                          <Badge tone="warn">{normStatusText[item.status]}</Badge>
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">
-                          {item.observation_count}
-                        </td>
-                        <td className="py-2 pr-3 whitespace-nowrap">
-                          {formatDate(item.latest_observed_at)}
-                        </td>
-                        <td className="py-2">
-                          {quickPack ? (
-                            <Button
-                              variant="secondary"
-                              className="whitespace-nowrap"
-                              aria-expanded={open}
-                              aria-controls={open ? `pack-row-${item.product.id}` : undefined}
-                              onClick={() => setEditing(open ? null : item.product.id)}
-                            >
-                              Set the pack
-                            </Button>
-                          ) : (
+                          </td>
+                          <td className="py-2 pr-3">
                             <Link
-                              to={fix.to}
-                              className={`rounded-sm font-medium underline ${focusRing}`}
+                              to={`/catalog/products/${item.product.id}`}
+                              className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                             >
-                              {fix.text}
+                              {title}
                             </Link>
-                          )}
-                        </td>
-                      </tr>
-                      {open ? (
-                        <tr id={`pack-row-${item.product.id}`}>
-                          <td colSpan={6} className="pb-3">
-                            {/* Sticky so the editor stays in view when the table scrolls sideways on a phone. */}
-                            <div className="sticky left-0 max-w-[calc(100vw-4rem)] px-0.5 lg:max-w-none">
-                              <QuickPackEditor
-                                key={item.product.id}
-                                productId={item.product.id}
-                                title={title}
-                                onSaved={() => saved(item.product.id, title)}
-                                onCancel={() => setEditing(null)}
-                              />
-                            </div>
+                            {formatPack(item.product.pack_qty, item.product.pack_unit) ? (
+                              <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                                {" "}
+                                · {formatPack(item.product.pack_qty, item.product.pack_unit)}
+                              </span>
+                            ) : null}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <Badge tone="warn">
+                              {quickPack && counted(item.product.pack_unit)
+                                ? "pack has no weight"
+                                : normStatusText[item.status]}
+                            </Badge>
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums">
+                            {item.observation_count}
+                          </td>
+                          <td className="py-2 pr-3 whitespace-nowrap">
+                            {formatDate(item.latest_observed_at)}
+                          </td>
+                          <td className="py-2">
+                            {quickPack ? (
+                              <Button
+                                variant="secondary"
+                                className="whitespace-nowrap"
+                                aria-expanded={open}
+                                aria-controls={open ? `pack-row-${item.product.id}` : undefined}
+                                onClick={() => setEditing(open ? null : item.product.id)}
+                              >
+                                Set the pack
+                              </Button>
+                            ) : (
+                              <Link
+                                to={fix.to}
+                                className={`rounded-sm font-medium underline ${focusRing}`}
+                              >
+                                {fix.text}
+                              </Link>
+                            )}
                           </td>
                         </tr>
-                      ) : null}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+                        {open ? (
+                          <tr id={`pack-row-${item.product.id}`}>
+                            <td colSpan={6} className="pb-3">
+                              {/* Sticky so the editor stays in view when the table scrolls sideways on a phone. */}
+                              <div className="sticky left-0 max-w-[calc(100vw-4rem)] px-0.5 lg:max-w-none">
+                                <QuickPackEditor
+                                  key={item.product.id}
+                                  productId={item.product.id}
+                                  title={title}
+                                  canonicalUnit={item.ingredient.canonical_unit}
+                                  onSaved={() => saved(item.product.id, title)}
+                                  onCancel={() => setEditing(null)}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </section>
     </>
   );
 }

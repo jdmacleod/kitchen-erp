@@ -14,6 +14,7 @@ import {
   type Ingredient,
   type Measure,
 } from "../../api/catalog";
+import { useMeasureCheck } from "../../lib/measureCheck";
 import { Alert, Button, Card, Field, sectionHeading } from "../ui";
 import { ConfirmedBadge, SelectField } from "./fields";
 
@@ -274,12 +275,14 @@ function MeasureRow({
   const update = useUpdateMeasure(ingredientId);
   const confirm = useConfirmMeasure(ingredientId);
   const remove = useDeleteMeasure(ingredientId);
+  const check = useMeasureCheck(unit);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [label, setLabel] = useState(measure.label);
   const [qty, setQty] = useState(measure.canonical_qty);
   const [source, setSource] = useState<BridgeSource>(measure.source);
   const [invalid, setInvalid] = useState<string | null>(null);
+  const [warned, setWarned] = useState<string | null>(null);
   const busy = update.isPending || confirm.isPending || remove.isPending;
   const error = update.error ?? confirm.error ?? remove.error;
 
@@ -288,6 +291,7 @@ function MeasureRow({
     setQty(measure.canonical_qty);
     setSource(measure.source);
     setInvalid(null);
+    setWarned(null);
     update.reset();
     setEditing(true);
   };
@@ -303,6 +307,11 @@ function MeasureRow({
       return;
     }
     setInvalid(null);
+    const odd = check(label.trim(), qty.trim());
+    if (odd && warned !== odd) {
+      setWarned(odd);
+      return;
+    }
     const input: { id: string; label?: string; canonical_qty?: string; source?: BridgeSource } = {
       id: measure.id,
     };
@@ -324,6 +333,7 @@ function MeasureRow({
             aria-label={`Edit measure ${measure.label}`}
           >
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
+            {warned ? <Alert tone="warn">{warned} Save again to keep it.</Alert> : null}
             {update.isError ? (
               <Alert tone="error">{catalogErrorMessage(update.error)}</Alert>
             ) : null}
@@ -368,7 +378,10 @@ function MeasureRow({
 
   return (
     <tr className="border-t border-neutral-200 align-top dark:border-neutral-800">
-      <td className="py-2 pr-3 font-medium">{measure.label}</td>
+      <td className="py-2 pr-3">
+        <span className="font-medium">{measure.label}</span>
+        <OddMeasure problem={check(measure.label, measure.canonical_qty)} />
+      </td>
       <td className="py-2 pr-3 whitespace-nowrap">
         {trimDecimal(measure.canonical_qty)} {unit}
       </td>
@@ -442,12 +455,20 @@ function MeasureRow({
   );
 }
 
+/** Why a saved measure looks wrong, under its label; nothing when it looks fine. */
+function OddMeasure({ problem }: { problem: string | null }) {
+  if (!problem) return null;
+  return <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">{problem}</p>;
+}
+
 function AddMeasureForm({ ingredientId, unit }: { ingredientId: string; unit: string }) {
   const add = useAddMeasure(ingredientId);
   const [label, setLabel] = useState("");
   const [qty, setQty] = useState("");
   const [source, setSource] = useState<BridgeSource>("measured");
   const [invalid, setInvalid] = useState<string | null>(null);
+  const [warned, setWarned] = useState<string | null>(null);
+  const check = useMeasureCheck(unit);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -460,6 +481,13 @@ function AddMeasureForm({ ingredientId, unit }: { ingredientId: string; unit: st
       return;
     }
     setInvalid(null);
+    // Ask once before saving a measure no food could have; a second Add keeps it.
+    const odd = check(label.trim(), qty.trim());
+    if (odd && warned !== odd) {
+      setWarned(odd);
+      return;
+    }
+    setWarned(null);
     add.mutate(
       { label: label.trim(), canonical_qty: qty.trim(), source },
       {
@@ -482,6 +510,7 @@ function AddMeasureForm({ ingredientId, unit }: { ingredientId: string; unit: st
         Add measure
       </h4>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
+      {warned ? <Alert tone="warn">{warned} Add it again to keep it.</Alert> : null}
       {add.isError ? <Alert tone="error">{catalogErrorMessage(add.error)}</Alert> : null}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field

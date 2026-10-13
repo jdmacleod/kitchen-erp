@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { NeedsBridgeItem, Offer, ProductPrices } from "../api/pricebook";
 import { flour, flourId, flourProduct, flourProductId, hits, units } from "./catalog-fixtures";
 import {
@@ -384,7 +384,10 @@ describe("needs a bridge", () => {
       ...baseRoutes(),
       "GET /price-book/needs-bridge": () => jsonResponse(200, { items }),
     });
-    renderApp("/catalog/bridges");
+    // jsdom has no scrollIntoView; Home's bridge row lands on #products.
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    renderApp("/catalog/bridges#products");
 
     const table = await screen.findByRole("table", { name: "Needs a bridge" });
     const rows = within(table).getAllByTestId("needs-bridge");
@@ -399,7 +402,11 @@ describe("needs a bridge", () => {
       "aria-expanded",
       "false",
     );
-    expect(screen.getByText("2 products · 1 needs a pack size")).toBeInTheDocument();
+    expect(
+      screen.getByText("2 products · 1 needs a pack size · 1 needs a density"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Products" })).toContainElement(table);
+    expect(scrolled).toHaveBeenCalled();
   });
 
   it("sets a pack in place, then opens the next product waiting on one", async () => {
@@ -454,7 +461,7 @@ describe("needs a bridge", () => {
     expect(screen.getByText("1 product · 1 needs a pack size")).toBeInTheDocument();
   });
 
-  it("checks the pack before saving and closes on Escape", async () => {
+  it("checks the pack before saving, refuses a pack in pieces, and closes on Escape", async () => {
     const user = userEvent.setup();
     const items: NeedsBridgeItem[] = [
       {
@@ -467,8 +474,8 @@ describe("needs a bridge", () => {
           id: hits[1].id,
           name: "Bread Flour",
           brand: null,
-          pack_qty: null,
-          pack_unit: null,
+          pack_qty: "24",
+          pack_unit: "each",
         },
         status: "no_pack",
         observation_count: 1,
@@ -481,7 +488,10 @@ describe("needs a bridge", () => {
     });
     renderApp("/catalog/bridges");
 
-    await user.click(await screen.findByRole("button", { name: "Set the pack" }));
+    const row = await screen.findByTestId("needs-bridge");
+    expect(row).toHaveTextContent("Bread Flour · 24 each");
+    expect(row).toHaveTextContent("pack has no weight");
+    await user.click(within(row).getByRole("button", { name: "Set the pack" }));
     const form = screen.getByRole("form", { name: "Pack for Bread Flour" });
     await user.click(within(form).getByRole("button", { name: "Save pack" }));
     expect(
@@ -490,6 +500,11 @@ describe("needs a bridge", () => {
     await user.type(within(form).getByLabelText("Pack quantity"), "2");
     await user.click(within(form).getByRole("button", { name: "Save pack" }));
     expect(within(form).getByText("Choose a pack unit.")).toBeInTheDocument();
+    await user.selectOptions(within(form).getByLabelText("Pack unit"), "each");
+    await user.click(within(form).getByRole("button", { name: "Save pack" }));
+    expect(
+      within(form).getByText(/A pack counted in pieces can't be priced per g\./),
+    ).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
 
     await user.keyboard("{Escape}");
