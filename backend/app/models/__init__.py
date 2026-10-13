@@ -30,6 +30,10 @@ from app.models.plan import (
     ShoppingListItem,
     ShoppingListItemQty,
     TravelLeg,
+    TripPlan,
+    TripPlanStop,
+    TripPlanStopItem,
+    TripPlanVariant,
     UserSetting,
 )
 from app.models.proposals import ProductCapture, ProductProposal
@@ -123,6 +127,10 @@ __all__ = [
     "ShoppingListItem",
     "ShoppingListItemQty",
     "TravelLeg",
+    "TripPlan",
+    "TripPlanStop",
+    "TripPlanStopItem",
+    "TripPlanVariant",
     "UnitRow",
     "UserSetting",
 ]

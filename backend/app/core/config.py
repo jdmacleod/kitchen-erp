@@ -171,8 +171,14 @@ class Settings(BaseSettings):
     # The household's value of an hour, which the planner trades against money
     # (P4); a plan may override it.
     plan_value_of_time_per_hour: Decimal = Decimal("20.00")
+    # Candidates for a trip: active vendor locations within this straight-line
+    # radius of the kitchen, at most this many nearest (17, 4B).
+    plan_candidate_radius_km: Decimal = Decimal("25")
+    plan_max_candidates: int = 15
 
-    @field_validator("plan_estimate_road_factor", "plan_value_of_time_per_hour")
+    @field_validator(
+        "plan_estimate_road_factor", "plan_value_of_time_per_hour", "plan_candidate_radius_km"
+    )
     @classmethod
     def _positive(cls, value: Decimal, info: ValidationInfo) -> Decimal:
         if not value.is_finite() or value <= 0:
@@ -189,6 +195,13 @@ class Settings(BaseSettings):
     @classmethod
     def _multipliers(cls, value: str) -> str:
         travel_tables.multipliers(value)
+        return value
+
+    @field_validator("plan_max_candidates")
+    @classmethod
+    def _max_candidates(cls, value: int) -> int:
+        if not 1 <= value <= 15:
+            raise ValueError("plan_max_candidates must be between 1 and 15 (the enumeration bound)")
         return value
 
     @field_validator("routing_timeout_s")

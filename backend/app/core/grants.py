@@ -40,8 +40,17 @@ DECISION_ONLY = {
 
 # Derived data the runtime role may empty wholesale before a rebuild (0005;
 # the recipe cost tables since 0045, for `kerp recompute-costs`; drive-time legs
-# since 0052, for `kerp travel-legs recompute --all`).
-TRUNCATABLE = ("price_norm", "recipe_cost_snapshot", "recipe_cost_line", "travel_leg")
+# since 0052, for `kerp travel-legs recompute --all`; a plan's variants, stops
+# and stop items since 0053, derived until the plan is chosen).
+TRUNCATABLE = (
+    "price_norm",
+    "recipe_cost_snapshot",
+    "recipe_cost_line",
+    "travel_leg",
+    "trip_plan_variant",
+    "trip_plan_stop",
+    "trip_plan_stop_item",
+)
 
 
 def statements() -> tuple[str, ...]:

@@ -24,11 +24,11 @@ of 1 reads as "assumed").
 
 Consumed cost is canonical quantity times unit price. Basket cost rounds the
 line up to whole packs of the product used times that product's pack price
-(unit price times the pack's canonical quantity); a product without a pack, or
-whose pack cannot be expressed in the canonical unit, contributes its consumed
-cost. Ranges carry a low and a high for both. Costs are quantized to four
-places, ROUND_HALF_EVEN, the price book's rounding rule; an average unit price
-to six, as ``price_norm`` stores one.
+(unit price times the pack's canonical quantity; ``services/packs``, shared with
+the trip planner); a product without a pack, or whose pack cannot be expressed
+in the canonical unit, contributes its consumed cost. Ranges carry a low and a
+high for both. Costs are quantized to four places, ROUND_HALF_EVEN, the price
+book's rounding rule; an average unit price to six, as ``price_norm`` stores one.
 
 Statuses, in the order they are decided: ``negligible`` (no quantity, text
 quantity, the negligible list, or a name marked not an ingredient),
@@ -45,7 +45,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
-from decimal import ROUND_CEILING, ROUND_HALF_EVEN, Context, Decimal
+from decimal import ROUND_HALF_EVEN, Decimal
 from typing import Literal
 
 from sqlalchemy import delete, select, text
@@ -62,21 +62,19 @@ from app.models import (
     RecipeIngredient,
     RecipePin,
 )
+from app.services.packs import CTX as _CTX
+from app.services.packs import basket as _basket
+from app.services.packs import money as _money
+from app.services.packs import pack_canonical_qty as _pack_canonical_qty
 from app.services.pricebook_views import stale_after_days
 from app.services.units import build_context
-from app.units import ConversionContext, ConversionFailure, ProductContext, convert
+from app.units import ConversionContext, ConversionFailure, convert
 
 Basis = Literal["latest", "average", "cheapest"]
 BASES: tuple[Basis, ...] = ("latest", "average", "cheapest")
 
-_CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 _FOUR = Decimal("0.0001")
 _SIX = Decimal("0.000001")
-_ONE = Decimal("1")
-
-
-def _money(value: Decimal) -> Decimal:
-    return value.quantize(_FOUR, rounding=ROUND_HALF_EVEN)
 
 
 # --- qualifying prices ----------------------------------------------------------------
@@ -237,35 +235,6 @@ def grosses_up(line: RecipeIngredient, from_unit: str, context: ConversionContex
         return False
     unit = context.units.get(from_unit)
     return unit is not None and unit.dimension in ("mass", "volume")
-
-
-def _pack_canonical_qty(product: Product, context: ConversionContext) -> Decimal | None:
-    """How much of the canonical unit one pack of the product holds, or None."""
-    if product.pack_qty is None or product.pack_unit is None:
-        return None
-    if context.canonical_unit == "each" and product.pack_count:
-        return Decimal(product.pack_count)
-    inner = context.product
-    without_pack = replace(
-        context,
-        measures=(),
-        product=replace(inner, pack=None) if inner is not None else ProductContext(),
-    )
-    result = convert(product.pack_qty, product.pack_unit, without_pack)
-    if isinstance(result, ConversionFailure) or result.qty <= 0:
-        return None
-    return result.qty
-
-
-def _basket(
-    qty: Decimal, unit_price: Decimal, pack_qty: Decimal | None
-) -> tuple[Decimal, Decimal | None]:
-    """Basket cost and packs for one quantity: whole packs times the pack price."""
-    if pack_qty is None:
-        return _money(_CTX.multiply(qty, unit_price)), None
-    packs = _CTX.divide(qty, pack_qty).to_integral_value(rounding=ROUND_CEILING)
-    pack_price = _money(_CTX.multiply(unit_price, pack_qty))
-    return _money(_CTX.multiply(packs, pack_price)), packs
 
 
 async def cost_line(
