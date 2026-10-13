@@ -72,6 +72,11 @@ async def _items(db: AsyncSession, list_id: uuid.UUID) -> list[ShoppingListItem]
     return list((await db.execute(_items_query(list_id))).unique().scalars())
 
 
+async def unchecked_items(db: AsyncSession, list_id: uuid.UUID) -> list[ShoppingListItem]:
+    """The items still to buy, with their amounts, oldest first (what a trip plans for)."""
+    return [i for i in await _items(db, list_id) if i.checked_at is None]
+
+
 async def get_item(db: AsyncSession, item_id: uuid.UUID) -> ShoppingListItem:
     stmt = (
         select(ShoppingListItem)

@@ -1,4 +1,4 @@
-"""Shopping lists and the current kitchen (17, Phase 4A).
+"""Shopping lists, the current kitchen, drive times and trip plans (17, Phase 4).
 
 Amounts cross the wire as strings and come back as (amount, unit) pairs; an
 item names an ingredient or a product, never both or neither, which the
@@ -229,3 +229,139 @@ class RecomputeLegsOut(ApiModel):
     dropped: int
     osrm: int
     estimated: int
+
+
+# --- trip plans (17, 4B) -------------------------------------------------------------------
+
+PlanStatus = Literal["planned", "underway", "done", "abandoned"]
+VariantKind = Literal["fastest", "cheapest", "balanced"]
+Money = Annotated[Decimal, Field(ge=0, max_digits=12, decimal_places=4)]
+
+
+class TripCreate(ApiModel):
+    """Plan a trip from the kitchen's open list. Origin defaults to the kitchen's
+    place, destination to the origin, value of time to the household setting,
+    overhead to ten minutes."""
+
+    home_base_id: uuid.UUID
+    origin_place_id: uuid.UUID | None = None
+    destination_place_id: uuid.UUID | None = None
+    planned_at: datetime
+    value_of_time_per_hour: Money | None = None
+    max_stops: Annotated[int, Field(ge=1, le=4)] = 3
+    mileage_rate: Annotated[Decimal, Field(ge=0, max_digits=8, decimal_places=4)] | None = None
+    stop_overhead_min: Annotated[int, Field(ge=0, le=32767)] | None = None
+
+
+class Annotation(ApiModel):
+    """``amount`` is money and ``minutes`` a duration, both as strings; ``reason``
+    accompanies ``unsourceable``."""
+
+    model_config = ApiModel.model_config | {"extra": "allow"}
+
+    kind: str
+    item_id: uuid.UUID | None = None
+    location_id: uuid.UUID | None = None
+    amount: DecimalStr | None = None
+    minutes: DecimalStr | None = None
+    text: str
+
+
+class StopItemOut(ApiModel):
+    id: uuid.UUID
+    list_item_id: uuid.UUID
+    product_id: uuid.UUID
+    product_name: str
+    packs: DecimalStr | None
+    pack_price: DecimalStr | None
+    line_cost: DecimalStr
+    observation_id: uuid.UUID
+    price_stale: bool
+    forced: bool
+    actual_price: DecimalStr | None
+    actual_qty: DecimalStr | None
+    actual_unit: str | None
+    got_here: bool
+
+
+class StopOut(ApiModel):
+    """``leg_seconds`` and ``leg_meters`` are the free-flow leg that reaches the
+    stop; ``multiplier`` and ``arrive_at`` are what the planner applied at its
+    projected departure."""
+
+    id: uuid.UUID
+    seq: int
+    vendor_location_id: uuid.UUID
+    vendor_location_name: str
+    leg_seconds: int
+    leg_meters: int
+    leg_source: LegSource
+    multiplier: DecimalStr
+    arrive_at: datetime
+    overhead_min: int
+    subtotal: DecimalStr
+    hours_known: bool
+    done_at: datetime | None
+    purchase_id: uuid.UUID | None
+    items: list[StopItemOut]
+
+
+class Trade(ApiModel):
+    """The marginal trade against ``balanced``: more (positive) or less money
+    out of pocket (items plus mileage), and more or fewer minutes."""
+
+    money: DecimalStr
+    minutes: DecimalStr
+
+
+class VariantSummary(ApiModel):
+    id: uuid.UUID
+    kind: VariantKind
+    item_cost: DecimalStr
+    driving_seconds: int
+    stop_seconds: int
+    mileage_cost: DecimalStr
+    total_cost: DecimalStr
+    estimated: bool
+    trade: Trade
+    stop_count: int
+
+
+class VariantOut(VariantSummary):
+    annotations: list[Annotation]
+    stops: list[StopOut]
+
+
+class TripBase(ApiModel):
+    id: uuid.UUID
+    list_id: uuid.UUID
+    home_base_id: uuid.UUID
+    origin_place_id: uuid.UUID
+    destination_place_id: uuid.UUID
+    planned_at: datetime
+    value_of_time_per_hour: DecimalStr
+    max_stops: int
+    mileage_rate: DecimalStr | None
+    stop_overhead_min: int
+    status: PlanStatus
+    chosen_variant_id: uuid.UUID | None
+    created_by: uuid.UUID
+    created_at: datetime
+    chosen_at: datetime | None
+    finished_at: datetime | None
+
+
+class TripSummary(TripBase):
+    variants: list[VariantSummary]
+
+
+class TripOut(TripBase):
+    variants: list[VariantOut]
+
+
+class TripsOut(ApiModel):
+    items: list[TripSummary]
+
+
+class ChooseIn(ApiModel):
+    variant_id: uuid.UUID
