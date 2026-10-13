@@ -19,9 +19,14 @@ export const ADMIN = {
 export const nextTag = (): string => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 export async function login(page: Page): Promise<void> {
+  await loginAs(page, ADMIN.email, ADMIN.password);
+}
+
+/** Signs in as any user; the Plan specs make a member of their own per run. */
+export async function loginAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(ADMIN.email);
-  await page.getByLabel("Password").fill(ADMIN.password);
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).not.toHaveURL(/\/login$/);
 }
@@ -53,4 +58,68 @@ export async function vendorsAction(page: Page, name: string): Promise<void> {
   } else {
     await page.getByRole("button", { name, exact: true }).click();
   }
+}
+
+/**
+ * A page that scrolls sideways on a phone is a bug, and it is the one class of
+ * bug the rest of this suite cannot see: every assertion here passes at desktop
+ * width. The purchase form shipped overflowing because its Location `select`
+ * sized itself to the longest option and grid children default to
+ * `min-width: auto`, so the column could not shrink. `phone` runs at 390px and
+ * stayed green; the overflow started below ~427px. Hence `phone-375`.
+ */
+export async function expectNoSidewaysScroll(page: Page, where: string): Promise<void> {
+  // Measure against the configured device width, NOT window.innerWidth. Under
+  // Playwright's mobile emulation the page carries a meta viewport, so an
+  // overflowing layout makes the browser zoom out and grow innerWidth to match
+  // the content: innerWidth reported 460 on a 375px device while the form ran
+  // off the screen, and `scrollWidth <= innerWidth` was satisfied the whole
+  // time. Comparing to the real device width is what makes this fail.
+  const deviceWidth = page.viewportSize()?.width;
+  expect(deviceWidth, "the project must declare a viewport").toBeTruthy();
+
+  const { scrollWidth, innerWidth, widest } = await page.evaluate(() => {
+    const doc = document.documentElement;
+    let widest: { tag: string; cls: string; width: number } | null = null;
+    for (const el of document.querySelectorAll("main *")) {
+      const width = el.getBoundingClientRect().width;
+      if (!widest || width > widest.width) {
+        widest = { tag: el.tagName, cls: String(el.className).slice(0, 80), width: Math.round(width) };
+      }
+    }
+    return { scrollWidth: doc.scrollWidth, innerWidth: window.innerWidth, widest };
+  });
+
+  expect(
+    scrollWidth,
+    `${where} is ${scrollWidth}px wide on a ${deviceWidth}px device` +
+      ` (innerWidth ${innerWidth}px — inflated by zoom-out when content overflows)` +
+      (widest ? `; widest element in main: <${widest.tag} class="${widest.cls}"> at ${widest.width}px` : ""),
+  ).toBeLessThanOrEqual(deviceWidth as number);
+}
+
+/** Every rendered control under `scope` smaller than 44×44, described for the failure message. */
+export async function controlsUnder44(page: Page, scope: string): Promise<string[]> {
+  return page.evaluate((scope) => {
+    const found: string[] = [];
+    const selectors = ["a", "button", "input", "select", "textarea", "[role=option]"];
+    const controls = document.querySelectorAll<HTMLElement>(
+      scope
+        .split(",")
+        .flatMap((root) => selectors.map((sel) => `${root.trim()} ${sel}`))
+        .join(", "),
+    );
+    for (const el of controls) {
+      const box = el.getBoundingClientRect();
+      if (box.width === 0 && box.height === 0) continue; // not rendered
+      // A checkbox or radio is sized by its label, which is the target.
+      const target = el.matches("input[type=checkbox], input[type=radio]") ? (el.closest("label") ?? el) : el;
+      const t = target.getBoundingClientRect();
+      // Half a pixel of slack: map markers sit on subpixel transforms.
+      if (t.width < 43.5 || t.height < 43.5) {
+        found.push(`<${el.tagName.toLowerCase()}> "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 40)}" ${Math.round(t.width)}×${Math.round(t.height)}`);
+      }
+    }
+    return found;
+  }, scope);
 }
