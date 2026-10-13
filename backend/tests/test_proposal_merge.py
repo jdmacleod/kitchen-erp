@@ -133,3 +133,38 @@ def test_merged_fields_round_trip_to_candidates():
     ]
     fields = merge(original)
     assert merge(candidates_of(fields)) == fields
+
+
+@pytest.mark.parametrize("nothing", ["null", "None", "N/A", "unknown", " ", "-"])
+def test_an_answer_that_only_says_nothing_fills_nothing(nothing):
+    fields = merge(
+        [
+            Candidate("brand", nothing, "model", D("0.6")),
+            Candidate("category", nothing, "adapter"),
+            Candidate("title", "Oat drink", "model", D("0.6")),
+        ]
+    )
+    assert set(fields) == {"title"}
+
+
+def test_a_null_like_answer_never_stands_as_an_alternative():
+    fields = merge(
+        [Candidate("brand", "Harbor Light", "page_data"), Candidate("brand", "null", "model")]
+    )
+    assert fields["brand"]["value"] == "Harbor Light" and fields["brand"]["alternatives"] == []
+
+
+def test_a_brand_that_contains_such_a_word_is_kept():
+    fields = merge([Candidate("brand", "Null Island Pickles", "model", D("0.6"))])
+    assert fields["brand"]["value"] == "Null Island Pickles"
+
+
+def test_a_stored_null_like_value_drops_out_on_the_next_merge():
+    stored = {
+        "brand": {"value": "null", "source": "model", "confidence": "0.6", "alternatives": []}
+    }
+    assert "brand" not in merge(candidates_of(stored))
+
+
+def test_what_a_person_types_is_kept_as_typed():
+    assert merge([Candidate("brand", "None", "person")])["brand"]["value"] == "None"
