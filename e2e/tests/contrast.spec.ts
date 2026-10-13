@@ -50,6 +50,7 @@ for (const scheme of ["light", "dark"] as const) {
       const { name, path } = entry;
       const follow = "follow" in entry ? entry.follow : undefined;
       const trip = "trip" in entry ? entry.trip : undefined;
+
       test(`${name} passes axe colour contrast`, async ({ page }) => {
         if (follow) {
           // The example recipes are mounted on the e2e stack; one scan indexes them.

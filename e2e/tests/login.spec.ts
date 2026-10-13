@@ -21,7 +21,7 @@ test("admin logs in and lands on the home route with no external requests", asyn
   // assert the set-up branch deterministically.
   // The phone projects replace the sidebar with the tab bar, so the main landmark is
   // the one marker of the authenticated shell that holds at both viewports.
-  await expect(page).toHaveURL(new URL("/", baseURL!).toString());
+  await expect(page).toHaveURL(new URL("/", baseURL).toString());
   await expect(page.getByRole("main")).toBeVisible();
   expect(external).toEqual([]);
 });
