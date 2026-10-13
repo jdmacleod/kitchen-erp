@@ -408,10 +408,17 @@ async def _line_for(
     return LineIn(product_id=item.product_id, qty=qty, unit=unit, line_total=total)
 
 
+async def lock_plan(db: AsyncSession, plan_id: uuid.UUID) -> None:
+    """Hold the plan's row for this transaction, so two phones pressing "Done
+    here" on one stop record it once: the second waits, then finds it done."""
+    await db.execute(select(TripPlan.id).where(TripPlan.id == plan_id).with_for_update())
+
+
 async def done(
     db: AsyncSession, user: AppUser, plan_row: TripPlan, seq: int, payload: StopDoneIn
 ) -> StopDoneOut:
-    """Record the stop (S1); the router replays a retried key before reaching here."""
+    """Record the stop (S1); the router replays a retried key before reaching
+    here, and takes ``lock_plan`` before loading the plan."""
     variant = _chosen(plan_row)
     stop = _stop(variant, seq)
     _open(plan_row, stop)
@@ -482,7 +489,9 @@ async def done(
     if all(s.done_at is not None for s in variant.stops):
         plan_row.status = "done"
         plan_row.finished_at = now
-    await db.commit()
+    # Flushed, not committed: the router commits it with the Idempotency key, so a
+    # retried key never finds the stop done without its stored answer.
+    await db.flush()
     return StopDoneOut(
         plan_id=plan_row.id,
         stop_id=stop.id,
