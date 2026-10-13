@@ -11,7 +11,7 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Query, Response, status
+from fastapi import APIRouter, Path, Query, Response, status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentAdmin, CurrentUser, DbSession, Idempotency
@@ -22,6 +22,7 @@ from app.schemas.plan import (
     ChooseIn,
     FromRecipeIn,
     FromRecipeOut,
+    GetHereIn,
     ItemCreate,
     ItemOut,
     ItemPatch,
@@ -32,12 +33,16 @@ from app.schemas.plan import (
     RecomputeLegsOut,
     SettingsIn,
     SettingsOut,
+    StopDoneIn,
+    StopDoneOut,
+    StopPriceIn,
+    StopScreenOut,
     TravelLegOut,
     TripCreate,
     TripOut,
     TripsOut,
 )
-from app.services import shopping_lists, travel, trip_planner, user_settings
+from app.services import shopping_lists, travel, trip_planner, trip_stops, user_settings
 
 router = APIRouter(tags=["plan"])
 
@@ -246,3 +251,87 @@ async def delete_trip(plan_id: uuid.UUID, _: CurrentUser, db: DbSession) -> Resp
     plan = await trip_planner.get_plan(db, plan_id)
     await trip_planner.delete_plan(db, plan)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# --- at the store (17, 4C) ------------------------------------------------------------------
+
+StopSeq = Annotated[int, Path(ge=1, le=32)]
+STOP_PRICE = "/plan/trips/{plan_id}/stops/{seq}/items/{item_id}/price"
+
+
+@router.get("/plan/trips/{plan_id}/stops/{seq}", response_model=StopScreenOut)
+async def get_stop(
+    plan_id: uuid.UUID, seq: StopSeq, _: CurrentUser, db: DbSession
+) -> StopScreenOut:
+    """One stop of the chosen variant: what to get here, what a later stop's
+    items would cost here ("Cheaper at stop {m}"), and the cost here. A plan
+    with no chosen variant is 409 ``plan_not_chosen``."""
+    plan = await trip_planner.get_plan(db, plan_id)
+    return await trip_stops.stop_screen(db, plan, seq, config.get_settings())
+
+
+@router.put(STOP_PRICE, response_model=StopScreenOut)
+async def edit_stop_price(
+    plan_id: uuid.UUID,
+    seq: StopSeq,
+    item_id: uuid.UUID,
+    payload: StopPriceIn,
+    _: CurrentUser,
+    db: DbSession,
+) -> StopScreenOut:
+    """Hold a price read in the aisle on the stop item; it records nothing until
+    "Done here". A done stop is 409 ``stop_done``."""
+    plan = await trip_planner.get_plan(db, plan_id)
+    return await trip_stops.edit_price(db, plan, seq, item_id, payload, config.get_settings())
+
+
+@router.delete(STOP_PRICE, response_model=StopScreenOut)
+async def clear_stop_price(
+    plan_id: uuid.UUID, seq: StopSeq, item_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> StopScreenOut:
+    """Drop an edited price; the item goes back to the plan's price."""
+    plan = await trip_planner.get_plan(db, plan_id)
+    return await trip_stops.edit_price(db, plan, seq, item_id, None, config.get_settings())
+
+
+@router.post("/plan/trips/{plan_id}/stops/{seq}/get-here", response_model=StopScreenOut)
+async def get_here(
+    plan_id: uuid.UUID,
+    seq: StopSeq,
+    payload: GetHereIn,
+    _: CurrentUser,
+    db: DbSession,
+    guard: Idempotency,
+) -> JSONResponse:
+    """Move a later stop's item here, re-priced at this location's offer or the
+    price given; with neither it is 422 ``not_offered_here``."""
+    if guard.replay is not None:
+        return guard.replay
+    plan = await trip_planner.get_plan(db, plan_id)
+    out = await trip_stops.get_here(db, plan, seq, payload, config.get_settings())
+    return await guard.commit(200, out.model_dump(mode="json"))
+
+
+@router.post("/plan/trips/{plan_id}/stops/{seq}/done", response_model=StopDoneOut)
+async def stop_done(
+    plan_id: uuid.UUID,
+    seq: StopSeq,
+    payload: StopDoneIn,
+    user: CurrentUser,
+    db: DbSession,
+    guard: Idempotency,
+) -> JSONResponse:
+    """ "Done here" (S1), in one transaction: one committed manual purchase for the
+    checked items, linked to the plan, its lines at the planned price flagged
+    ``planned_price``; a shelf observation for each price edited but not bought;
+    the list items checked; the stop done and the plan moved on. The same key
+    replays; a stop already done is 409 ``stop_done``, an unchosen plan 409
+    ``plan_not_chosen``."""
+    if guard.replay is not None:
+        return guard.replay
+    await trip_stops.lock_plan(db, plan_id)
+    plan = await trip_planner.get_plan(db, plan_id)
+    out = await trip_stops.done(db, user, plan, seq, payload)
+    if guard.key is None:
+        await db.commit()
+    return await guard.commit(200, out.model_dump(mode="json"))

@@ -37,6 +37,7 @@ from app.models.base import Base, UUIDPrimaryKey
 from app.models.catalog import Ingredient, Product
 from app.models.geo import HomeBase, VendorLocation
 from app.models.identity import AppUser
+from app.models.purchases import Purchase
 
 LIST_STATUSES = ("open", "archived")
 ITEM_KINDS = ("ingredient", "product")
@@ -371,6 +372,9 @@ class TripPlanStop(UUIDPrimaryKey, Base):
 
     variant: Mapped[TripPlanVariant] = relationship(back_populates="stops")
     location: Mapped[VendorLocation] = relationship(lazy="joined")
+    # The purchase "Done here" recorded (4C); loaded with the plan for predicted
+    # against actual, and never written from here.
+    purchase: Mapped[Purchase | None] = relationship(foreign_keys=[purchase_id], viewonly=True)
     items: Mapped[list[TripPlanStopItem]] = relationship(
         back_populates="stop",
         cascade="all, delete-orphan",
