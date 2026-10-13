@@ -72,9 +72,20 @@ docker compose exec api kerp migrate
 docker compose exec api kerp seed units
 docker compose exec api pytest
 docker compose exec api pytest -m llm   opt-in, needs a live model
+make fmt lint                         format, then lint backend, tools and frontend
+make types                            ty over the backend (advisory, never fails)
+make size                             file size limits; make size-report lists the biggest
 ```
 
 On macOS, run Ollama natively on the host rather than in Docker, because containers cannot use the GPU there; set `OLLAMA_BASE_URL=http://host.docker.internal:11434`.
+
+## Code standards
+
+Read `CODING_STANDARDS.md` before writing code; it names the tool behind every rule.
+Before finishing, run `make fmt lint` or `pre-commit run --files <changed>`.
+Never hand-format against the formatter; restructure the code instead.
+A file past 400 lines is a signal to split it by responsibility; the size check fails new files past 800.
+Formatting-only changes go in their own pull request.
 
 ## Working agreements
 
