@@ -971,7 +971,8 @@ async def test_choose_freezes_the_variant_and_a_list_change_makes_a_new_plan_onl
         f"{TRIPS}/{fresh['id']}/choose", json={"variant_id": str(uuid.uuid4())}
     )
     assert bad.status_code == 404
-    assert (await admin_client.delete(f"{TRIPS}/{fresh['id']}")).status_code == 204
+    deleted = await admin_client.delete(f"{TRIPS}/{fresh['id']}")
+    assert deleted.status_code == 204
     assert (await admin_client.get(f"{TRIPS}/{fresh['id']}")).status_code == 404
     listed = await admin_client.get(TRIPS, params={"home_base_id": kitchen["id"]})
     assert [p["id"] for p in listed.json()["items"]] == [plan["id"]]
