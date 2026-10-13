@@ -112,3 +112,23 @@ async def test_invalid_layout_and_code_position_refused(admin_client: httpx.Asyn
     bad_codes = vendor("invented-mart", "Invented Mart", code_position={**CODES, "min_len": 9})
     r = await post(admin_client, v2(bad_codes), dry_run=True)
     assert r.status_code == 422
+
+
+async def test_an_online_shop_address_round_trips_as_v2(
+    admin_client: httpx.AsyncClient, owner_conn: asyncpg.Connection
+):
+    """A vendor's online shop on another host (13, 3.4) is a /2 field."""
+    shop = "https://cardinal-foods.storefronts.example.test"
+    entry = vendor("cardinal-foods", "Cardinal Foods", shop_url=shop)
+    r = await post(admin_client, document(entry), dry_run=True)
+    assert r.status_code == 422 and "kitchen-erp-vendors/2" in r.text
+    await imported(admin_client, v2(entry))
+    assert (
+        await owner_conn.fetchval("SELECT shop_url FROM vendor WHERE slug = 'cardinal-foods'")
+        == shop
+    )
+    out = await export_json(admin_client)
+    assert out["format"] == "kitchen-erp-vendors/2"
+    assert next(v for v in out["vendors"] if v["key"] == "cardinal-foods")["shop_url"] == shop
+    again = await imported(admin_client, v2(entry))
+    assert again["counts"]["updated"] == 0

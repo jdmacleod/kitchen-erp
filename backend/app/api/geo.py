@@ -223,6 +223,7 @@ async def create_vendor(
         kind=payload.kind,
         price_scope=payload.price_scope,
         website=payload.website,
+        shop_url=payload.shop_url,
         notes=payload.notes,
         brand=payload.brand,
         wikidata=payload.wikidata,

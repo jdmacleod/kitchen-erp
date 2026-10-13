@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlsplit
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import proposals as merging
@@ -42,16 +42,24 @@ async def listing_for_page(
 
 
 async def match_vendor(db: AsyncSession, page_url: str) -> Vendor | None:
-    """The household's vendor whose website is on the page's host, if one is."""
+    """The household's vendor whose website or online shop is on the page's host.
+
+    A vendor that sells through another site, such as a storefront on a delivery
+    platform, names it as its shop: a page clipped there is still its (13, 3.4).
+    """
     host = page_host(page_url)
     if not host:
         return None
-    for vendor in (await db.execute(select(Vendor).where(Vendor.website.is_not(None)))).scalars():
-        site = page_host(
-            vendor.website if "//" in (vendor.website or "") else f"//{vendor.website}"
-        )
-        if site and (host == site or host.endswith(f".{site}")):
-            return vendor
+    vendors = await db.execute(
+        select(Vendor).where(or_(Vendor.website.is_not(None), Vendor.shop_url.is_not(None)))
+    )
+    for vendor in vendors.scalars():
+        for address in (vendor.website, vendor.shop_url):
+            if not address:
+                continue
+            site = page_host(address if "//" in address else f"//{address}")
+            if site and (host == site or host.endswith(f".{site}")):
+                return vendor
     return None
 
 

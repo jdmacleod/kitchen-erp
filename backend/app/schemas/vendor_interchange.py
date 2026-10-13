@@ -128,12 +128,14 @@ class VendorEntry(_Strict):
     fetch_policy: Literal["server_fetch", "capture_only", "none"] | None = None
     rw_layout: RwLayoutEntry | None = None
     code_position: CodePositionEntry | None = None
+    # /2: where it sells online when that is another site (13, 3.4).
+    shop_url: Text | None = None
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
     locations: list[LocationEntry] = Field(default_factory=list)
     household: HouseholdVendor | None = None
 
 
-V2_VENDOR_FIELDS = ("platform", "fetch_policy", "rw_layout", "code_position")
+V2_VENDOR_FIELDS = ("platform", "fetch_policy", "rw_layout", "code_position", "shop_url")
 
 
 def uses_v2(vendors: list[VendorEntry]) -> bool:

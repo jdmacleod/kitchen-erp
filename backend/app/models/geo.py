@@ -110,6 +110,9 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     kind: Mapped[str] = mapped_column(String(16), nullable=False)
     price_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="location")
     website: Mapped[str | None] = mapped_column(String(500))
+    # Where it sells online when that is another site, such as a storefront on a
+    # delivery platform: a clipped page on either host is this vendor's (13, 3.4).
+    shop_url: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # {field: {source, ref, checked_at, imported}}; see services.geo.write_unless_edited.

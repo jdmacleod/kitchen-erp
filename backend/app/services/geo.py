@@ -298,6 +298,7 @@ async def create_vendor(
     kind: str,
     price_scope: str = "location",
     website: str | None = None,
+    shop_url: str | None = None,
     notes: str | None = None,
     brand: str | None = None,
     wikidata: str | None = None,
@@ -308,6 +309,7 @@ async def create_vendor(
         kind=kind,
         price_scope=price_scope,
         website=website,
+        shop_url=shop_url,
         notes=notes,
         brand=brand,
         wikidata=wikidata,
@@ -323,6 +325,7 @@ async def create_vendor_row(
     kind: str,
     price_scope: str = "location",
     website: str | None = None,
+    shop_url: str | None = None,
     notes: str | None = None,
     brand: str | None = None,
     wikidata: str | None = None,
@@ -336,6 +339,7 @@ async def create_vendor_row(
         kind=kind,
         price_scope=price_scope,
         website=_clean(website),
+        shop_url=_clean(shop_url),
         notes=notes,
         brand=_clean(brand),
         wikidata=_clean(wikidata),
@@ -436,8 +440,9 @@ def apply_vendor_changes(vendor: Vendor, changes: dict[str, Any]) -> None:
     for field in ("kind", "price_scope"):
         if field in changes:
             setattr(vendor, field, changes[field])
-    if "website" in changes:
-        vendor.website = _clean(changes["website"])
+    for field in ("website", "shop_url"):
+        if field in changes:
+            setattr(vendor, field, _clean(changes[field]))
     for field in ("brand", "wikidata"):
         if field in changes:
             setattr(vendor, field, _clean(changes[field]))

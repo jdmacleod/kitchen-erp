@@ -85,6 +85,7 @@ class VendorCreate(ApiModel):
     kind: VendorKind
     price_scope: PriceScope = "location"
     website: str | None = Field(default=None, max_length=500)
+    shop_url: str | None = Field(default=None, max_length=500)
     notes: str | None = None
     brand: Brand | None = None
     wikidata: Wikidata | None = None
@@ -95,6 +96,7 @@ class VendorUpdate(ApiModel):
     kind: VendorKind | None = None
     price_scope: PriceScope | None = None
     website: str | None = Field(default=None, max_length=500)
+    shop_url: str | None = Field(default=None, max_length=500)
     notes: str | None = None
     brand: Brand | None = None
     wikidata: Wikidata | None = None
@@ -121,6 +123,7 @@ class VendorRef(ApiModel):
 class VendorOut(VendorRef):
     slug: str
     website: str | None
+    shop_url: str | None = None
     brand: str | None
     wikidata: str | None
     notes: str | None
@@ -141,6 +144,7 @@ class VendorOut(VendorRef):
             **base,
             slug=vendor.slug,
             website=vendor.website,
+            shop_url=vendor.shop_url,
             brand=vendor.brand,
             wikidata=vendor.wikidata,
             notes=vendor.notes,
