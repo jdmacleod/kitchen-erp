@@ -67,6 +67,7 @@ from app.schemas.plan import (
     Annotation,
     StopItemOut,
     StopOut,
+    SummaryStop,
     Trade,
     TripCreate,
     TripOut,
@@ -1097,9 +1098,14 @@ def _base(plan_row: TripPlan) -> dict[str, Any]:
 
 def trip_summary(plan_row: TripPlan) -> TripSummary:
     variants, balanced = _ordered(plan_row)
+    shown = chosen_variant(plan_row) or balanced
     return TripSummary(
         **_base(plan_row),
         variants=[VariantSummary(**_variant_summary(v, balanced)) for v in variants],
+        stops=[
+            SummaryStop(seq=s.seq, vendor_location_id=s.vendor_location_id, name=s.location.name)
+            for s in shown.stops
+        ],
     )
 
 

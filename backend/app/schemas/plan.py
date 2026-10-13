@@ -360,8 +360,19 @@ class TripBase(ApiModel):
     actual_item_cost: DecimalStr | None = None
 
 
+class SummaryStop(ApiModel):
+    """One store of a trip summary, in visiting order."""
+
+    seq: int
+    vendor_location_id: uuid.UUID
+    name: str
+
+
 class TripSummary(TripBase):
     variants: list[VariantSummary]
+    # The chosen variant's stops in order, or the balanced variant's while
+    # nothing is chosen: what a trips-list row names.
+    stops: list[SummaryStop]
 
 
 class TripOut(TripBase):
@@ -370,6 +381,15 @@ class TripOut(TripBase):
 
 class TripsOut(ApiModel):
     items: list[TripSummary]
+
+
+class PlanDefaultsOut(ApiModel):
+    """The household's planning defaults (17, P4): what the Plan a trip
+    drawer starts from."""
+
+    value_of_time_per_hour: DecimalStr
+    max_stops_default: int
+    candidate_radius_km: DecimalStr
 
 
 class ChooseIn(ApiModel):

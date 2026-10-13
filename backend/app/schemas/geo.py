@@ -56,6 +56,7 @@ class HomeBaseUpdate(ApiModel):
 class HomeBaseOut(ApiModel):
     id: uuid.UUID
     name: str
+    place_id: uuid.UUID  # the trip planner's origin and destination key
     lat: DecimalStr
     lon: DecimalStr
     label: str | None
@@ -66,6 +67,7 @@ class HomeBaseOut(ApiModel):
         return cls(
             id=home_base.id,
             name=home_base.name,
+            place_id=home_base.place_id,
             lat=home_base.place.lat,
             lon=home_base.place.lon,
             label=home_base.place.label,
@@ -224,6 +226,7 @@ class VendorLocationOut(ApiModel):
     vendor: VendorRef
     name: str
     key: str
+    place_id: uuid.UUID  # the trip planner's origin and destination key
     lat: DecimalStr
     lon: DecimalStr
     address: str | None
@@ -258,6 +261,7 @@ class VendorLocationOut(ApiModel):
             vendor=VendorRef.model_validate(location.vendor),
             name=location.name,
             key=location.key,
+            place_id=location.place_id,
             lat=location.place.lat,
             lon=location.place.lon,
             address=location.address,

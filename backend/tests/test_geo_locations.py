@@ -26,6 +26,7 @@ LOCATION_KEYS = {
     "vendor",
     "name",
     "key",
+    "place_id",
     "lat",
     "lon",
     "address",

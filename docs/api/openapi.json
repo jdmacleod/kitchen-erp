@@ -3629,11 +3629,17 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "place_id": {
+            "format": "uuid",
+            "title": "Place Id",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
+          "place_id",
           "lat",
           "lon",
           "label",
@@ -10303,6 +10309,31 @@
           "large"
         ],
         "title": "PhotoUrls",
+        "type": "object"
+      },
+      "PlanDefaultsOut": {
+        "additionalProperties": false,
+        "description": "The household's planning defaults (17, P4): what the Plan a trip\ndrawer starts from.",
+        "properties": {
+          "candidate_radius_km": {
+            "title": "Candidate Radius Km",
+            "type": "string"
+          },
+          "max_stops_default": {
+            "title": "Max Stops Default",
+            "type": "integer"
+          },
+          "value_of_time_per_hour": {
+            "title": "Value Of Time Per Hour",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value_of_time_per_hour",
+          "max_stops_default",
+          "candidate_radius_km"
+        ],
+        "title": "PlanDefaultsOut",
         "type": "object"
       },
       "PriceChangeDecided": {
@@ -17107,6 +17138,32 @@
         "title": "SuggestionVendorCount",
         "type": "object"
       },
+      "SummaryStop": {
+        "additionalProperties": false,
+        "description": "One store of a trip summary, in visiting order.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "vendor_location_id": {
+            "format": "uuid",
+            "title": "Vendor Location Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "vendor_location_id",
+          "name"
+        ],
+        "title": "SummaryStop",
+        "type": "object"
+      },
       "Trade": {
         "additionalProperties": false,
         "description": "The marginal trade against ``balanced``: more (positive) or less money\nout of pocket (items plus mileage), and more or fewer minutes.",
@@ -17583,6 +17640,13 @@
             "title": "Stop Overhead Min",
             "type": "integer"
           },
+          "stops": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryStop"
+            },
+            "title": "Stops",
+            "type": "array"
+          },
           "value_of_time_per_hour": {
             "title": "Value Of Time Per Hour",
             "type": "string"
@@ -17612,7 +17676,8 @@
           "created_at",
           "chosen_at",
           "finished_at",
-          "variants"
+          "variants",
+          "stops"
         ],
         "title": "TripSummary",
         "type": "object"
@@ -19315,6 +19380,11 @@
             ],
             "title": "Phone"
           },
+          "place_id": {
+            "format": "uuid",
+            "title": "Place Id",
+            "type": "string"
+          },
           "publishable": {
             "title": "Publishable",
             "type": "boolean"
@@ -19360,6 +19430,7 @@
           "vendor",
           "name",
           "key",
+          "place_id",
           "lat",
           "lon",
           "address",
@@ -19551,6 +19622,11 @@
             ],
             "title": "Phone"
           },
+          "place_id": {
+            "format": "uuid",
+            "title": "Place Id",
+            "type": "string"
+          },
           "publishable": {
             "title": "Publishable",
             "type": "boolean"
@@ -19589,6 +19665,7 @@
           "vendor",
           "name",
           "key",
+          "place_id",
           "lat",
           "lon",
           "address",
@@ -23009,6 +23086,28 @@
         "tags": [
           "geo",
           "osm"
+        ]
+      }
+    },
+    "/api/v1/plan/defaults": {
+      "get": {
+        "description": "What a new plan starts from when the request leaves a field out.",
+        "operationId": "plan_defaults_api_v1_plan_defaults_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanDefaultsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Plan Defaults",
+        "tags": [
+          "plan"
         ]
       }
     },

@@ -984,6 +984,71 @@ async def test_choose_freezes_the_variant_and_a_list_change_makes_a_new_plan_onl
     assert twice.status_code == 409 and twice.json()["error"]["code"] == "plan_ended"
 
 
+async def test_the_drawer_reads_places_defaults_and_the_rows_name_the_stores(
+    admin_client: httpx.AsyncClient, kitchen: dict, shops: dict, no_network: None
+):
+    """Kitchens and locations publish their place, the defaults are readable, a
+    plan may start at a store, and a trips-list row names its stores in order."""
+    assert kitchen["place_id"]
+    kitchens = (await admin_client.get("/api/v1/home-bases")).json()["items"]
+    assert {k["id"]: k["place_id"] for k in kitchens}[kitchen["id"]] == kitchen["place_id"]
+    loc = (await admin_client.get(f"/api/v1/vendor-locations/{shops['stall']['id']}")).json()
+    assert loc["place_id"] == shops["stall"]["place_id"] != kitchen["place_id"]
+
+    defaults = await admin_client.get("/api/v1/plan/defaults")
+    assert defaults.status_code == 200, defaults.text
+    settings = get_settings()
+    assert defaults.json() == {
+        "value_of_time_per_hour": str(settings.plan_value_of_time_per_hour),
+        "max_stops_default": 3,
+        "candidate_radius_km": str(settings.plan_candidate_radius_km),
+    }
+
+    barley = await make_product(admin_client, "Barley", "Barley bag", pack_qty="1", pack_unit="kg")
+    await shelf(admin_client, barley["id"], shops["north"]["id"], "4.00")
+    await add_item(
+        admin_client,
+        kitchen,
+        ingredient_id=barley["ingredient"]["id"],
+        amounts=[{"amount": "1", "unit": "kg"}],
+    )
+    plan = await plan_trip(
+        admin_client,
+        kitchen,
+        max_stops=1,
+        origin_place_id=shops["stall"]["place_id"],
+        destination_place_id=kitchen["place_id"],
+    )
+    assert plan["origin_place_id"] == shops["stall"]["place_id"]
+    assert plan["destination_place_id"] == kitchen["place_id"]
+
+    def row() -> dict:
+        return next(p for p in listed.json()["items"] if p["id"] == plan["id"])
+
+    listed = await admin_client.get(TRIPS, params={"home_base_id": kitchen["id"]})
+    balanced = variant(plan, "balanced")
+    expected = [
+        {
+            "seq": s["seq"],
+            "vendor_location_id": s["vendor_location_id"],
+            "name": s["vendor_location_name"],
+        }
+        for s in balanced["stops"]
+    ]
+    assert (
+        row()["stops"]
+        == expected
+        == [{"seq": 1, "vendor_location_id": shops["north"]["id"], "name": "Harbor Chain north"}]
+    )
+    cheapest = variant(plan, "cheapest")
+    r = await admin_client.post(f"{TRIPS}/{plan['id']}/choose", json={"variant_id": cheapest["id"]})
+    assert r.status_code == 200, r.text
+    listed = await admin_client.get(TRIPS, params={"home_base_id": kitchen["id"]})
+    assert [s["vendor_location_id"] for s in row()["stops"]] == [
+        s["vendor_location_id"] for s in cheapest["stops"]
+    ]
+
+
 async def test_an_empty_list_and_a_kitchen_without_shops_are_422(
     admin_client: httpx.AsyncClient, kitchen: dict, no_network: None
 ):
@@ -1014,6 +1079,7 @@ async def test_an_empty_list_and_a_kitchen_without_shops_are_422(
 async def test_the_endpoints_take_a_session_only(client: httpx.AsyncClient):
     assert (await client.get(TRIPS, params={"home_base_id": str(uuid.uuid4())})).status_code == 401
     assert (await client.post(TRIPS, json={})).status_code == 401
+    assert (await client.get("/api/v1/plan/defaults")).status_code == 401
 
 
 # --- the migration and the grants -----------------------------------------------------------
