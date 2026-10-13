@@ -340,6 +340,7 @@ async def purchase_out(
         source=purchase.source,
         flags=purchase.flags,
         ledger_txn_ref=purchase.ledger_txn_ref,
+        trip_plan_id=purchase.trip_plan_id,
         lines=lines,
         created_at=purchase.created_at,
         updated_at=purchase.updated_at,
@@ -366,6 +367,9 @@ async def list_purchases(
     _: CurrentUser,
     db: DbSession,
     vendor_location_id: uuid.UUID | None = None,
+    trip_plan_id: Annotated[
+        uuid.UUID | None, Query(description='the purchases "Done here" recorded for one plan')
+    ] = None,
     status_filter: str | None = Query(default=None, alias="status"),
     source: str | None = None,
     q: str | None = Query(default=None, max_length=200),
@@ -377,6 +381,7 @@ async def list_purchases(
     rows, next_cursor = await purchases.list_purchases(
         db,
         vendor_location_id=vendor_location_id,
+        trip_plan_id=trip_plan_id,
         status=status_filter,
         source=source,
         q=q,

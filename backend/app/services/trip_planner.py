@@ -53,7 +53,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import Settings
 from app.core.errors import ApiError
 from app.core.ids import new_id
-from app.models import AppUser
+from app.models import AppUser, Purchase
 from app.models.geo import HomeBase, Place, VendorLocation
 from app.models.plan import (
     ShoppingListItem,
@@ -74,7 +74,7 @@ from app.schemas.plan import (
     VariantOut,
     VariantSummary,
 )
-from app.services import shopping_lists, travel, travel_tables, trip_offers
+from app.services import purchases, shopping_lists, travel, travel_tables, trip_offers
 from app.services.opening_hours import is_open_at
 from app.services.packs import CTX, money
 from app.services.trip_offers import Offer, OfferBook
@@ -907,12 +907,13 @@ async def create_plan(
 
 
 def _plan_query():
+    stops = selectinload(TripPlan.variants).selectinload(TripPlanVariant.stops)
     return (
         select(TripPlan)
         .options(
-            selectinload(TripPlan.variants)
-            .selectinload(TripPlanVariant.stops)
-            .selectinload(TripPlanStop.items)
+            stops.selectinload(TripPlanStop.items),
+            # The purchase "Done here" recorded, with its lines, for actual against predicted.
+            stops.selectinload(TripPlanStop.purchase).selectinload(Purchase.lines),
         )
         .execution_options(populate_existing=True)
     )
@@ -999,7 +1000,19 @@ def _variant_summary(variant: TripPlanVariant, balanced: TripPlanVariant) -> dic
     }
 
 
+def stop_actual(stop: TripPlanStop) -> tuple[Decimal | None, int | None]:
+    """(what the stop's purchase came to, its line count) once the stop is done;
+    a done stop with nothing bought, or whose purchase was removed, is (0, 0)."""
+    if stop.done_at is None:
+        return None, None
+    purchase = stop.purchase
+    if purchase is None or purchase.status == "voided":
+        return Decimal("0.0000"), 0
+    return purchases.computed_total(purchase), len(purchase.lines)
+
+
 def _stop_out(stop: TripPlanStop) -> StopOut:
+    actual_cost, lines_recorded = stop_actual(stop)
     return StopOut(
         id=stop.id,
         seq=stop.seq,
@@ -1015,6 +1028,8 @@ def _stop_out(stop: TripPlanStop) -> StopOut:
         hours_known=stop.hours_known,
         done_at=stop.done_at,
         purchase_id=stop.purchase_id,
+        actual_cost=actual_cost,
+        lines_recorded=lines_recorded,
         items=[
             StopItemOut(
                 id=i.id,
@@ -1042,8 +1057,25 @@ def _ordered(plan_row: TripPlan) -> tuple[list[TripPlanVariant], TripPlanVariant
     return [by_kind[k] for k in KINDS if k in by_kind], by_kind["balanced"]
 
 
+def chosen_variant(plan_row: TripPlan) -> TripPlanVariant | None:
+    return next((v for v in plan_row.variants if v.id == plan_row.chosen_variant_id), None)
+
+
+def _actuals(plan_row: TripPlan) -> tuple[Decimal | None, Decimal | None]:
+    """The chosen variant's item cost beside the sum of its stops' purchases,
+    once any stop is done (criterion 26)."""
+    chosen = chosen_variant(plan_row)
+    if chosen is None or not any(s.done_at is not None for s in chosen.stops):
+        return None, None
+    actual = sum((stop_actual(s)[0] or Decimal(0) for s in chosen.stops), Decimal(0))
+    return chosen.item_cost, money(actual)
+
+
 def _base(plan_row: TripPlan) -> dict[str, Any]:
+    predicted, actual = _actuals(plan_row)
     return {
+        "predicted_item_cost": predicted,
+        "actual_item_cost": actual,
         "id": plan_row.id,
         "list_id": plan_row.list_id,
         "home_base_id": plan_row.home_base_id,
