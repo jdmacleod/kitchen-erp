@@ -306,6 +306,18 @@ async def test_with_a_vision_model_it_reads_the_photos(
     assert request["body"]["think"] is False
 
 
+async def test_a_model_that_answers_null_for_the_brand_leaves_it_empty(
+    admin_client, recorded, monkeypatch, no_network
+):
+    monkeypatch.setattr(get_settings(), "vision_model", "test-vl:8b")
+    recorded({"ProductReading": {"name": "Oat drink", "brand": "null", "category": "None"}})
+    r = await post_photos(admin_client, photo())
+    await work()
+    proposal = await proposal_of(admin_client, r.json()["id"])
+    assert proposal["fields"]["title"]["value"] == "Oat drink"
+    assert "brand" not in proposal["fields"] and "category" not in proposal["fields"]
+
+
 async def test_an_answer_that_does_not_validate_fills_nothing(
     admin_client, recorded, ocr_text, no_network
 ):

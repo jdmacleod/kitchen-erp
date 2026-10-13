@@ -9,7 +9,8 @@ A model's answer can only fill a field: it ranks below every other source, and
 its confidence is capped (0.6 for text, 0.5 for a photo). Identity conflicts are
 flagged and never resolved silently: two different GTINs, or two pack sizes
 more than 5% apart. A person's choice settles a conflict, because it is not
-silent.
+silent. An answer that only says "nothing" ("null", "none", "n/a", "unknown",
+"-") is no answer: it fills nothing, whatever its source but a person (#342).
 
 Values are JSON-safe: decimals as strings (never floats), a pack as
 ``{"qty": "400", "unit": "g"}``, the pieces it holds as ``{"count": "4", "name": "link"}``
@@ -144,6 +145,16 @@ def _price_dimension(value: Any) -> str | None:
     return _UNITS[basis["unit"]].dimension if basis else None
 
 
+# Text a model, a page or a helper gives when it has nothing to say. A person's
+# typing is taken as typed.
+NULL_LIKE = frozenset({"null", "none", "n/a", "na", "nil", "unknown", "-", "--"})
+
+
+def is_null_like(value: Any) -> bool:
+    """True for text that says there is no value: empty, or a word for nothing."""
+    return isinstance(value, str) and value.strip().casefold() in NULL_LIKE | {""}
+
+
 def _rank(candidate: Candidate) -> tuple[int, Decimal]:
     order = PRECEDENCE[candidate.field]
     return (order.index(candidate.source), -(candidate.confidence or Decimal(0)))
@@ -239,6 +250,8 @@ def merge(candidates: Iterable[Candidate]) -> dict[str, dict[str, Any]]:
     by_field: dict[str, list[Candidate]] = {}
     for c in candidates:
         _check(c)
+        if c.source != "person" and is_null_like(c.value):
+            continue
         by_field.setdefault(c.field, []).append(c)
     out: dict[str, dict[str, Any]] = {}
     for field in FIELDS:
