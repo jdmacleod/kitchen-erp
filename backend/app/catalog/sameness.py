@@ -177,29 +177,37 @@ def _packs_disagree(pa: dict[str, Any], pb: dict[str, Any]) -> bool:
     return packs_disagree(pa, pb)
 
 
+@dataclass(frozen=True)
+class WordSets:
+    """A product's side of the words test: ``need`` must all be in the other's ``cover``."""
+
+    need: frozenset[str]
+    cover: frozenset[str]
+
+
+def word_sets(facts: Facts) -> WordSets:
+    """The name key's words less a brand written at the end of a brandless name (need),
+    and what answers for another name's words (cover): the key's words, the brand's words
+    ("Organic" in "Fernhill Organic", which the other name lost to its brand) and the
+    numbers of a printed size ("10" against '10"')."""
+    key = name_key(facts.name, facts.brand)
+    return WordSets(
+        need=key.words - _tail(facts),
+        cover=key.words | frozenset(_words(facts.brand or "")) | key.size_numbers,
+    )
+
+
+def words_agree(a: WordSets, b: WordSets) -> bool:
+    """Neither name has a word the other can't answer for: compare's words test, and so
+    true of every pair it calls ``same``."""
+    return a.need <= b.cover and b.need <= a.cover
+
+
 def compare(a: Facts, b: Facts) -> Verdict:
     """The verdict on two products, symmetric in its kind."""
-    ka, kb = name_key(a.name, a.brand), name_key(b.name, b.brand)
-    # A word of the other product's brand ("Organic" in "Fernhill Organic") is not a
-    # difference: that product's name lost it to its brand.
-    # A brand written at the end of a brandless name is not a difference either, nor is a
-    # bare number the other name prints as part of a size ("10" against '10"').
-    brand_a, brand_b = set(_words(a.brand or "")), set(_words(b.brand or ""))
-    tail_a, tail_b = _tail(a), _tail(b)
-    only_a = tuple(
-        sorted(
-            w
-            for w in ka.words - kb.words
-            if w not in brand_b and w not in tail_a and w not in kb.size_numbers
-        )
-    )
-    only_b = tuple(
-        sorted(
-            w
-            for w in kb.words - ka.words
-            if w not in brand_a and w not in tail_b and w not in ka.size_numbers
-        )
-    )
+    wa, wb = word_sets(a), word_sets(b)
+    only_a = tuple(sorted(wa.need - wb.cover))
+    only_b = tuple(sorted(wb.need - wa.cover))
     if only_a or only_b:
         if all(w in DISTINGUISHING for w in only_a + only_b):
             return Verdict("variant", ("words",), only_a, only_b)

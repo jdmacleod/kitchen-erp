@@ -7,8 +7,10 @@ from decimal import Decimal
 from pathlib import Path
 
 import asyncpg
+from sqlalchemy import event
 
 from app.core.ids import new_id
+from app.services import inbox, usda_review
 from app.services.usda import import_usda
 from tests.catalog_helpers import make_ingredient, write_usda_fixture
 from tests.pricebook_helpers import make_location, make_product, shelf
@@ -222,3 +224,37 @@ async def test_the_inbox_row_waits_for_linking_unless_a_linked_ingredient_has_su
         uuid.UUID(garlic["id"]),
     )
     assert len(usda_rows((await admin_client.get("/api/v1/inbox")).json()["items"])) == 1
+
+
+async def test_the_list_and_its_inbox_row_cost_the_same_queries_for_three_or_thirty(
+    admin_client, db_session, owner_conn, tmp_path
+):
+    """#327: the list is read in a fixed number of queries, not three per ingredient."""
+    await _load(db_session, tmp_path)
+
+    async def link(names: list[str]) -> None:
+        for i, name in enumerate(names):
+            ing = await make_ingredient(admin_client, name)
+            await _ref(owner_conn, ing["id"], (1001, 1002, 1004)[i % 3])
+
+    async def queries(compute) -> int:
+        count = 0
+
+        def tick(*_):
+            nonlocal count
+            count += 1
+
+        engine = db_session.bind.sync_engine
+        event.listen(engine, "before_cursor_execute", tick)
+        try:
+            await compute(db_session)
+        finally:
+            event.remove(engine, "before_cursor_execute", tick)
+        return count
+
+    await link(["Flour", "Garlic", "Milk"])
+    few = (await queries(usda_review.review_list), await queries(inbox._usda))
+    await link([f"Tarn flour {i}" for i in range(27)])
+    many = (await queries(usda_review.review_list), await queries(inbox._usda))
+    assert len((await usda_review.review_list(db_session)).groups) == 30
+    assert many == few
