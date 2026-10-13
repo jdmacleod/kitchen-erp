@@ -5,10 +5,10 @@ tool checks each rule. Most of the code is written by agents working in parallel
 branches, so the rules live in tools wherever possible and this file explains
 them. A rule no tool checks is marked as a guideline.
 
-Some rules arrive with the formatting PR, a single change that reformats the tree
-when no other pull requests are open. Until it merges they are the standard for
-new code but nothing fails on them; each is marked "(enforced from the formatting
-PR)".
+Some rules arrive with the formatting PR (#336), a single change that reformats
+the tree when no other pull requests are open. Until it merges they are the
+standard for new code but nothing fails on them; each is marked "(enforced from
+the formatting PR)".
 
 ## 1. Purpose and precedence
 
