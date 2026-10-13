@@ -1382,6 +1382,103 @@
         "title": "CapturedImage",
         "type": "object"
       },
+      "CheaperElsewhereItem": {
+        "additionalProperties": false,
+        "description": "An item assigned to a later stop that this location could also fill:\n``id`` is its stop item there, ``at_seq`` that stop, ``line_cost_there`` the\nplan's figure and ``line_cost_here`` this location's offer; ``difference``\nis here minus there, so \"+0.80 here\" when it costs more here.",
+        "properties": {
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/AmountOut"
+            },
+            "title": "Amounts",
+            "type": "array"
+          },
+          "at_location_name": {
+            "title": "At Location Name",
+            "type": "string"
+          },
+          "at_seq": {
+            "title": "At Seq",
+            "type": "integer"
+          },
+          "difference": {
+            "title": "Difference",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "line_cost_here": {
+            "title": "Line Cost Here",
+            "type": "string"
+          },
+          "line_cost_there": {
+            "title": "Line Cost There",
+            "type": "string"
+          },
+          "list_item_id": {
+            "format": "uuid",
+            "title": "List Item Id",
+            "type": "string"
+          },
+          "pack_price_here": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Price Here"
+          },
+          "packs_here": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packs Here"
+          },
+          "price_stale_here": {
+            "title": "Price Stale Here",
+            "type": "boolean"
+          },
+          "product_here": {
+            "$ref": "#/components/schemas/ProductBrief"
+          },
+          "product_there": {
+            "$ref": "#/components/schemas/ProductBrief"
+          }
+        },
+        "required": [
+          "id",
+          "list_item_id",
+          "label",
+          "amounts",
+          "at_seq",
+          "at_location_name",
+          "product_there",
+          "line_cost_there",
+          "product_here",
+          "packs_here",
+          "pack_price_here",
+          "line_cost_here",
+          "price_stale_here",
+          "difference"
+        ],
+        "title": "CheaperElsewhereItem",
+        "type": "object"
+      },
       "CheapestOut": {
         "additionalProperties": false,
         "properties": {
@@ -3123,6 +3220,59 @@
           "existing_items"
         ],
         "title": "FromRecipeOut",
+        "type": "object"
+      },
+      "GetHereIn": {
+        "additionalProperties": false,
+        "description": "Move a later stop's item to this stop: ``item_id`` is its stop item\nthere. It is re-priced at this location's offer, or at ``price`` for\n``qty unit`` when given (required when this location has no offer).",
+        "properties": {
+          "item_id": {
+            "format": "uuid",
+            "title": "Item Id",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Qty"
+          },
+          "unit": {
+            "default": "each",
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "item_id"
+        ],
+        "title": "GetHereIn",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -12824,6 +12974,18 @@
             "title": "Total",
             "type": "string"
           },
+          "trip_plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Plan Id"
+          },
           "trust": {
             "anyOf": [
               {
@@ -15820,6 +15982,120 @@
         "title": "StatusCounts",
         "type": "object"
       },
+      "StopDoneIn": {
+        "additionalProperties": false,
+        "description": "The stop items ticked in the basket; empty records the stop as done with\nnothing bought.",
+        "properties": {
+          "checked_item_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 500,
+            "title": "Checked Item Ids",
+            "type": "array"
+          }
+        },
+        "title": "StopDoneIn",
+        "type": "object"
+      },
+      "StopDoneOut": {
+        "additionalProperties": false,
+        "description": "What \"Done here\" recorded: the purchase (null when nothing was checked),\nits lines' observation ids, the shelf observations for prices edited but not\nbought, the list items checked, the plan's status after, and the next stop.",
+        "properties": {
+          "checked": {
+            "title": "Checked",
+            "type": "integer"
+          },
+          "done_at": {
+            "format": "date-time",
+            "title": "Done At",
+            "type": "string"
+          },
+          "lines_recorded": {
+            "title": "Lines Recorded",
+            "type": "integer"
+          },
+          "next_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Seq"
+          },
+          "observation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Observation Ids",
+            "type": "array"
+          },
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "purchase_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Id"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "shelf_observation_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Shelf Observation Ids",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "planned",
+              "underway",
+              "done",
+              "abandoned"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "stop_id": {
+            "format": "uuid",
+            "title": "Stop Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "stop_id",
+          "seq",
+          "status",
+          "done_at",
+          "purchase_id",
+          "lines_recorded",
+          "observation_ids",
+          "shelf_observation_ids",
+          "checked",
+          "next_seq"
+        ],
+        "title": "StopDoneOut",
+        "type": "object"
+      },
       "StopItemOut": {
         "additionalProperties": false,
         "properties": {
@@ -15938,10 +16214,58 @@
         "title": "StopItemOut",
         "type": "object"
       },
+      "StopLocation": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "vendor_name",
+          "address"
+        ],
+        "title": "StopLocation",
+        "type": "object"
+      },
       "StopOut": {
         "additionalProperties": false,
-        "description": "``leg_seconds`` and ``leg_meters`` are the free-flow leg that reaches the\nstop; ``multiplier`` and ``arrive_at`` are what the planner applied at its\nprojected departure.",
+        "description": "``leg_seconds`` and ``leg_meters`` are the free-flow leg that reaches the\nstop; ``multiplier`` and ``arrive_at`` are what the planner applied at its\nprojected departure. Once \"Done here\" ran, ``actual_cost`` is what its\npurchase came to (``0`` when nothing was bought) beside ``subtotal``, the\nprediction, and ``lines_recorded`` counts the purchase's lines (4C).",
         "properties": {
+          "actual_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Cost"
+          },
           "arrive_at": {
             "format": "date-time",
             "title": "Arrive At",
@@ -15990,6 +16314,17 @@
             ],
             "title": "Leg Source",
             "type": "string"
+          },
+          "lines_recorded": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Recorded"
           },
           "multiplier": {
             "title": "Multiplier",
@@ -16047,6 +16382,397 @@
           "items"
         ],
         "title": "StopOut",
+        "type": "object"
+      },
+      "StopPriceIn": {
+        "additionalProperties": false,
+        "description": "A price read in the aisle: ``price`` for ``qty`` ``unit`` of the item's\nproduct, one pack (\"1 each\") unless said otherwise. Held on the stop item;\nwhat it records is decided by \"Done here\".",
+        "properties": {
+          "price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Price"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "1",
+            "title": "Qty"
+          },
+          "unit": {
+            "default": "each",
+            "maxLength": 16,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "price"
+        ],
+        "title": "StopPriceIn",
+        "type": "object"
+      },
+      "StopScreenItem": {
+        "additionalProperties": false,
+        "description": "One item to get at this stop. ``line_cost`` rests on the plan's price\n(``pack_price`` per pack, ``packs`` of them; or quantity times unit price\nwhen the product has no pack size), observed ``planned_observed_at`` and\nmarked ``price_stale`` when older than the stale window. ``actual_*`` is a\nprice edited in the aisle: ``actual_price`` for ``actual_qty actual_unit``\nof the product; ``edited`` says so and ``effective_cost`` is what the item\ncomes to with it (``packs`` of the edited price). ``checked_at`` is the\nlist's own check, set by \"Done here\" or on the list page.",
+        "properties": {
+          "actual_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Price"
+          },
+          "actual_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Qty"
+          },
+          "actual_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Unit"
+          },
+          "amounts": {
+            "items": {
+              "$ref": "#/components/schemas/AmountOut"
+            },
+            "title": "Amounts",
+            "type": "array"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "checked_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "claimed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "edited": {
+            "title": "Edited",
+            "type": "boolean"
+          },
+          "effective_cost": {
+            "title": "Effective Cost",
+            "type": "string"
+          },
+          "forced": {
+            "title": "Forced",
+            "type": "boolean"
+          },
+          "got_here": {
+            "title": "Got Here",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "line_cost": {
+            "title": "Line Cost",
+            "type": "string"
+          },
+          "list_item_id": {
+            "format": "uuid",
+            "title": "List Item Id",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "observation_id": {
+            "format": "uuid",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "pack_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Price"
+          },
+          "packs": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packs"
+          },
+          "planned_observed_at": {
+            "format": "date-time",
+            "title": "Planned Observed At",
+            "type": "string"
+          },
+          "price_stale": {
+            "title": "Price Stale",
+            "type": "boolean"
+          },
+          "product": {
+            "$ref": "#/components/schemas/ProductBrief"
+          }
+        },
+        "required": [
+          "id",
+          "list_item_id",
+          "label",
+          "amounts",
+          "note",
+          "product",
+          "packs",
+          "pack_price",
+          "line_cost",
+          "observation_id",
+          "planned_observed_at",
+          "price_stale",
+          "forced",
+          "got_here",
+          "actual_price",
+          "actual_qty",
+          "actual_unit",
+          "edited",
+          "effective_cost",
+          "claimed_by",
+          "checked_at",
+          "checked_by"
+        ],
+        "title": "StopScreenItem",
+        "type": "object"
+      },
+      "StopScreenOut": {
+        "additionalProperties": false,
+        "description": "One stop of a chosen plan (UI-4.8, UI-8.17). ``predicted_cost`` is the\nstop's frozen subtotal; ``estimated_here`` re-sums the items with their\nedited prices. Once done: ``done_at``, ``purchase_id``, ``lines_recorded``\nand ``actual_cost``.",
+        "properties": {
+          "actual_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Cost"
+          },
+          "arrive_at": {
+            "format": "date-time",
+            "title": "Arrive At",
+            "type": "string"
+          },
+          "cheaper_elsewhere": {
+            "items": {
+              "$ref": "#/components/schemas/CheaperElsewhereItem"
+            },
+            "title": "Cheaper Elsewhere",
+            "type": "array"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
+          "estimated_here": {
+            "title": "Estimated Here",
+            "type": "string"
+          },
+          "home_base_id": {
+            "format": "uuid",
+            "title": "Home Base Id",
+            "type": "string"
+          },
+          "home_base_name": {
+            "title": "Home Base Name",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StopScreenItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "lines_recorded": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lines Recorded"
+          },
+          "list_id": {
+            "format": "uuid",
+            "title": "List Id",
+            "type": "string"
+          },
+          "location": {
+            "$ref": "#/components/schemas/StopLocation"
+          },
+          "next_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Seq"
+          },
+          "plan_id": {
+            "format": "uuid",
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "plan_status": {
+            "enum": [
+              "planned",
+              "underway",
+              "done",
+              "abandoned"
+            ],
+            "title": "Plan Status",
+            "type": "string"
+          },
+          "predicted_cost": {
+            "title": "Predicted Cost",
+            "type": "string"
+          },
+          "purchase_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purchase Id"
+          },
+          "seq": {
+            "title": "Seq",
+            "type": "integer"
+          },
+          "stop_count": {
+            "title": "Stop Count",
+            "type": "integer"
+          },
+          "stop_id": {
+            "format": "uuid",
+            "title": "Stop Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "plan_id",
+          "plan_status",
+          "list_id",
+          "home_base_id",
+          "home_base_name",
+          "stop_id",
+          "seq",
+          "stop_count",
+          "location",
+          "arrive_at",
+          "predicted_cost",
+          "estimated_here",
+          "done_at",
+          "purchase_id",
+          "lines_recorded",
+          "actual_cost",
+          "next_seq",
+          "items",
+          "cheaper_elsewhere"
+        ],
+        "title": "StopScreenOut",
         "type": "object"
       },
       "StoreCodeOfferOut": {
@@ -16566,6 +17292,17 @@
       "TripOut": {
         "additionalProperties": false,
         "properties": {
+          "actual_item_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Item Cost"
+          },
           "chosen_at": {
             "anyOf": [
               {
@@ -16656,6 +17393,17 @@
             "format": "date-time",
             "title": "Planned At",
             "type": "string"
+          },
+          "predicted_item_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Item Cost"
           },
           "status": {
             "enum": [
@@ -16708,6 +17456,17 @@
       "TripSummary": {
         "additionalProperties": false,
         "properties": {
+          "actual_item_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual Item Cost"
+          },
           "chosen_at": {
             "anyOf": [
               {
@@ -16798,6 +17557,17 @@
             "format": "date-time",
             "title": "Planned At",
             "type": "string"
+          },
+          "predicted_item_cost": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Item Cost"
           },
           "status": {
             "enum": [
@@ -22961,6 +23731,329 @@
         ]
       }
     },
+    "/api/v1/plan/trips/{plan_id}/stops/{seq}": {
+      "get": {
+        "description": "One stop of the chosen variant: what to get here, what a later stop's\nitems would cost here (\"Cheaper at stop {m}\"), and the cost here. A plan\nwith no chosen variant is 409 ``plan_not_chosen``.",
+        "operationId": "get_stop_api_v1_plan_trips__plan_id__stops__seq__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maximum": 32,
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopScreenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Stop",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}/stops/{seq}/done": {
+      "post": {
+        "description": "\"Done here\" (S1), in one transaction: one committed manual purchase for the\nchecked items, linked to the plan, its lines at the planned price flagged\n``planned_price``; a shelf observation for each price edited but not bought;\nthe list items checked; the stop done and the plan moved on. The same key\nreplays; a stop already done is 409 ``stop_done``, an unchosen plan 409\n``plan_not_chosen``.",
+        "operationId": "stop_done_api_v1_plan_trips__plan_id__stops__seq__done_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maximum": 32,
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopDoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopDoneOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Done",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}/stops/{seq}/get-here": {
+      "post": {
+        "description": "Move a later stop's item here, re-priced at this location's offer or the\nprice given; with neither it is 422 ``not_offered_here``.",
+        "operationId": "get_here_api_v1_plan_trips__plan_id__stops__seq__get_here_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maximum": 32,
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetHereIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopScreenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Here",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
+    "/api/v1/plan/trips/{plan_id}/stops/{seq}/items/{item_id}/price": {
+      "delete": {
+        "description": "Drop an edited price; the item goes back to the plan's price.",
+        "operationId": "clear_stop_price_api_v1_plan_trips__plan_id__stops__seq__items__item_id__price_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maximum": 32,
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopScreenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Clear Stop Price",
+        "tags": [
+          "plan"
+        ]
+      },
+      "put": {
+        "description": "Hold a price read in the aisle on the stop item; it records nothing until\n\"Done here\". A done stop is 409 ``stop_done``.",
+        "operationId": "edit_stop_price_api_v1_plan_trips__plan_id__stops__seq__items__item_id__price_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "seq",
+            "required": true,
+            "schema": {
+              "maximum": 32,
+              "minimum": 1,
+              "title": "Seq",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Item Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StopPriceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopScreenOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Stop Price",
+        "tags": [
+          "plan"
+        ]
+      }
+    },
     "/api/v1/price-book/cheapest": {
       "get": {
         "operationId": "cheapest_api_v1_price_book_cheapest_get",
@@ -24999,6 +26092,25 @@
                 }
               ],
               "title": "Vendor Location Id"
+            }
+          },
+          {
+            "description": "the purchases \"Done here\" recorded for one plan",
+            "in": "query",
+            "name": "trip_plan_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the purchases \"Done here\" recorded for one plan",
+              "title": "Trip Plan Id"
             }
           },
           {
