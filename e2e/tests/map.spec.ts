@@ -7,7 +7,6 @@ import { login, watchExternalRequests, nextTag } from "./helpers";
 // SECURITY.md (lat 33–34, lon -121 to -120); ?center= opens the map there so a
 // click on it lands in the box whatever else the dev database holds.
 const stamp = nextTag();
-const BOX = "/catalog/vendors?view=map&center=33.500000,-120.500000&zoom=12";
 
 // The household zone; the open-at instants below are Saturdays 09:00 there.
 test.use({ timezoneId: "America/Los_Angeles" });
