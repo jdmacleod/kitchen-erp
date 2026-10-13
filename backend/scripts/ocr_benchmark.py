@@ -45,14 +45,14 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from decimal import Decimal  # noqa: E402
+from decimal import Decimal
 
-from app.ingest.errors import IngestError, InvalidModelOutput  # noqa: E402
-from app.ingest.header import HEADER_TASK  # noqa: E402
-from app.ingest.llm import LlmClient  # noqa: E402
-from app.ingest.ocr import TESSERACT_CONFIG  # noqa: E402
-from app.ingest.raster import PDF_RENDER_DPI  # noqa: E402
-from app.ingest.schemas import ReceiptHeader  # noqa: E402
+from app.ingest.errors import IngestError, InvalidModelOutput
+from app.ingest.header import HEADER_TASK
+from app.ingest.llm import LlmClient
+from app.ingest.ocr import TESSERACT_CONFIG
+from app.ingest.raster import PDF_RENDER_DPI
+from app.ingest.schemas import ReceiptHeader
 
 FIXTURES = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "receipts"
 PRICE = re.compile(r"\b\d{1,4}\.\d{2}\b")
@@ -84,8 +84,8 @@ class MeasurementError(RuntimeError):
 def tesseract(image: Image.Image, args: tuple[str, ...]) -> str:
     with tempfile.NamedTemporaryFile(suffix=".png") as f:
         image.save(f.name)
-        done = subprocess.run(
-            ["tesseract", f.name, "stdout", "-l", "eng", *args],
+        done = subprocess.run(  # noqa: S603
+            ["tesseract", f.name, "stdout", "-l", "eng", *args],  # noqa: S607
             capture_output=True,
             text=True,
             timeout=120,
@@ -115,7 +115,7 @@ def render(text: str, size: int = 22) -> Image.Image:
 def degrade(
     image: Image.Image, seed: int, scale: float, blur: float, tilt: float, quality: int
 ) -> Image.Image:
-    rnd = random.Random(seed)
+    rnd = random.Random(seed)  # noqa: S311
     out = image.resize((int(image.width * scale), int(image.height * scale)), Image.BILINEAR)
     out = out.filter(ImageFilter.GaussianBlur(blur)).rotate(tilt, expand=True, fillcolor=235)
     out = out.point(lambda p: min(255, int(p * 0.85 + 30)))  # thermal-paper grey
@@ -179,7 +179,7 @@ def load_expected(path: Path | None) -> dict[str, str]:
 
 async def real(directory: Path, show_totals: bool, expected_path: Path | None) -> int:
     kinds = (".pdf", ".jpg", ".jpeg", ".png")
-    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in kinds)
+    files = sorted(p for p in directory.iterdir() if p.suffix.lower() in kinds)  # noqa: ASYNC240
     expected = load_expected(expected_path)
     client = LlmClient()
     present = collections.Counter()

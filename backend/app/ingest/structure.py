@@ -858,9 +858,9 @@ def quantity_from_text(lines: list[ParsedLine], receipt_text: str) -> None:
 __all__ = [
     "STRUCTURE_FLAGS",
     "PostPasses",
-    "flag_footer_rows",
     "continuation_rows",
     "deposit_rows",
+    "flag_footer_rows",
     "items_read_as_discounts",
     "payment_rows",
     "points_not_money",

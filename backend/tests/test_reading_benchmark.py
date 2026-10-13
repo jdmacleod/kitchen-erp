@@ -612,7 +612,7 @@ def test_the_command_runs_only_the_arms_asked_for(monkeypatch: pytest.MonkeyPatc
 
     async def run(selection, options, echo=print):
         seen["options"] = options
-        return bench.RunResult("r", Path("."), [], bench.decide([], 1), {}, "summary")
+        return bench.RunResult("r", Path(), [], bench.decide([], 1), {}, "summary")
 
     monkeypatch.setattr(bench, "run", run)
     result = _cli(monkeypatch, _one_receipt(), False, "--arms", "b", "--text-model", "t1, t2")
@@ -637,7 +637,7 @@ def test_uploaded_since_is_midnight_where_the_household_is(monkeypatch: pytest.M
     monkeypatch.setattr(get_settings(), "household_timezone", "America/Los_Angeles")
 
     async def run(selection, options, echo=print):
-        return bench.RunResult("r", Path("."), [], bench.decide([], 1), {}, "summary")
+        return bench.RunResult("r", Path(), [], bench.decide([], 1), {}, "summary")
 
     monkeypatch.setattr(bench, "run", run)
     result = _cli(monkeypatch, _one_receipt(), False, "--uploaded-since", "2026-10-07")
