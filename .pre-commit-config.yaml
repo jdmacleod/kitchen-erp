@@ -10,6 +10,19 @@ repos:
       - id: check-merge-conflict
       - id: end-of-file-fixer
       - id: trailing-whitespace
+      - id: mixed-line-ending
+        args: ["--fix=no"]
+      - id: check-yaml
+        # Lockfiles are multi-document YAML and the compose overrides use Compose's
+        # own !override tag; neither is hand-edited YAML this hook is for.
+        exclude: ^(frontend/pnpm-lock\.yaml|e2e/pnpm-lock\.yaml|compose\.(demo|e2e)\.yaml)$
+      - id: check-toml
+      - id: check-json
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
 
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
@@ -37,3 +50,11 @@ repos:
         entry: python3 -m tools.scan_pii
         language: system
         pass_filenames: true
+
+      # Size limits (CODING_STANDARDS.md, size and complexity): fails a new file
+      # past the fail limit or a baselined file that grew; warns past the warning size.
+      - id: size
+        name: file size limits
+        entry: python3 -m tools.check_size --files
+        language: system
+        types_or: [python, ts, tsx]
