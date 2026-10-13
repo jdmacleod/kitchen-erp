@@ -68,12 +68,15 @@ export function useModal(
       }
     };
     document.addEventListener("keydown", onKey);
+    // returnFocus is a flag the page sets while the dialog is open ("this close
+    // navigated"), not a DOM node, so the cleanup must read its value at close.
+    const navigatedFlag = returnFocus;
     return () => {
       document.removeEventListener("keydown", onKey);
       // A dismissal returns focus to the opener. A close that navigated (a
       // search result, a Capture mode) sends it to the new page's content, so
       // keyboard and screen-reader users start where they arrived.
-      if (returnFocus && !returnFocus.current) document.getElementById("main")?.focus();
+      if (navigatedFlag && !navigatedFlag.current) document.getElementById("main")?.focus();
       else if (opener?.isConnected) opener.focus();
     };
   }, [open, initialFocus, panel, returnFocus]);

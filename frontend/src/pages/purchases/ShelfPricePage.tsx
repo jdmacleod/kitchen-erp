@@ -675,7 +675,7 @@ function RecentAtStore({
   onPick: (p: ProductRef) => void;
 }) {
   const observations = useObservations({ vendor_location_id: storeId }, 50, Boolean(storeId));
-  const pages = observations.data?.pages ?? [];
+  const pages = useMemo(() => observations.data?.pages ?? [], [observations.data?.pages]);
   const recent = useMemo(() => {
     const seen = new Set<string>();
     const out: ProductRef[] = [];
