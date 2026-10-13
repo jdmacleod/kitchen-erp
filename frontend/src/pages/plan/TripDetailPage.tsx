@@ -257,7 +257,12 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
             <TripStops variant={shown} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} wide={wide} />
           </div>
           <div className="lg:sticky lg:top-4 lg:self-start">
-            <TripMap kitchen={tripKitchen} stops={shown.stops} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} />
+            {/* The map waits for the kitchen and the locations, so its first fit takes in every pin. */}
+            {kitchen.ready && !locations.isPending ? (
+              <TripMap kitchen={tripKitchen} stops={shown.stops} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} />
+            ) : (
+              <div role="status" aria-label="Loading the map" className="h-80 rounded-lg border border-neutral-200 bg-white lg:h-[28rem] dark:border-neutral-800 dark:bg-neutral-900" />
+            )}
           </div>
         </div>
       ) : (

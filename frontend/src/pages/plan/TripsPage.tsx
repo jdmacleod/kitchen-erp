@@ -136,7 +136,8 @@ function TripsView({ kitchen, kitchens, planning, onPlan, onClosePlan }: TripsVi
         </ul>
       )}
 
-      {planning ? (
+      {/* The drawer waits for the list, whose last plan seeds the value of time. */}
+      {planning && !trips.isPending ? (
         <PlanTripDrawer
           homeBaseId={kitchen.id}
           kitchen={kitchen}
