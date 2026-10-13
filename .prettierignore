@@ -2,8 +2,9 @@
 # The scripts run it from those directories with `--ignore-path ../.prettierignore`,
 # so these patterns are resolved against the repository root.
 
-# Lockfiles are written by pnpm.
+# Lockfiles and ESLint's suppressions are written by their tools.
 **/pnpm-lock.yaml
+**/eslint-suppressions.json
 
 # Build output, dependencies and test output.
 **/node_modules/
