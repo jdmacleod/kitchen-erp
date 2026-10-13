@@ -358,7 +358,12 @@ async def test_attached_discount_and_deposit_affect_the_observation_correctly(
     r = await admin_client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"category": "pantry", "name": "Sparkling water", "canonical_unit": "ml"},
+            "ingredient": {
+                "category": "pantry",
+                "keep_name": True,
+                "name": "Sparkling water",
+                "canonical_unit": "ml",
+            },
             "name": "Sparkling water 1 l",
             "pack_qty": "1",
             "pack_unit": "l",

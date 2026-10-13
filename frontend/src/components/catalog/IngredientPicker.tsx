@@ -3,18 +3,18 @@ import {
   useIngredientSearch,
   useIngredientsInText,
   type CanonicalUnit,
-  type IngredientCreateInput,
   type IngredientMatch,
   type IngredientSummary,
 } from "../../api/catalog";
 import { api, errorMessage } from "../../api/client";
-import type { CategorySource } from "../../api/ingredientCategory";
+import type { CategorySource, NewIngredientInput } from "../../api/newIngredient";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { CategoryChip, type CategoryKey } from "../CategoryChip";
 import { Button } from "../ui";
 import { Combobox } from "./Combobox";
 import { Badge, labelClass } from "./fields";
 import { NewIngredientCategory } from "./NewIngredientCategory";
+import { NewIngredientName } from "./NewIngredientName";
 
 /**
  * An existing ingredient, the name of one to create, or a standard-list entry
@@ -23,7 +23,15 @@ import { NewIngredientCategory } from "./NewIngredientCategory";
  */
 export type IngredientChoice =
   | { kind: "existing"; ingredient: IngredientSummary; matchedSpelling?: string | null }
-  | { kind: "new"; name: string; category?: string; categorySource?: CategorySource | null }
+  | {
+      kind: "new";
+      /** The name to save: the typed one conformed to the 1G rules, unless kept (issue 345). */
+      name: string;
+      typed?: string;
+      keepName?: boolean;
+      category?: string;
+      categorySource?: CategorySource | null;
+    }
   | {
       kind: "standard";
       key: string;
@@ -53,12 +61,16 @@ export function choiceUnit(choice: IngredientChoice): CanonicalUnit {
 /** The product request fields that name this ingredient: an id, or one to create. */
 export function choiceInput(
   choice: IngredientChoice,
-): { ingredient_id: string } | { ingredient: IngredientCreateInput } {
+): { ingredient_id: string } | { ingredient: NewIngredientInput } {
   if (choice.kind === "existing") return { ingredient_id: choice.ingredient.id };
   if (choice.kind === "standard")
     return { ingredient: { name: choice.name, standard_key: choice.key } };
   const category = choice.category?.trim();
-  return { ingredient: category ? { name: choice.name, category } : { name: choice.name } };
+  const ingredient: NewIngredientInput = category
+    ? { name: choice.name, category }
+    : { name: choice.name };
+  if (choice.keepName) ingredient.keep_name = true;
+  return { ingredient };
 }
 
 /** The chosen ingredient's id, creating a new or standard one first. */
@@ -245,6 +257,18 @@ export function IngredientPicker({
           >
             {note}
           </p>
+        ) : null}
+        {value.kind === "new" ? (
+          <NewIngredientName
+            id={`${id}-name`}
+            typed={value.typed ?? value.name}
+            name={value.name}
+            kept={Boolean(value.keepName)}
+            disabled={disabled}
+            onChange={(name, keepName) =>
+              onChange({ ...value, name, keepName, typed: value.typed ?? value.name })
+            }
+          />
         ) : null}
         {value.kind === "new" ? (
           <NewIngredientCategory

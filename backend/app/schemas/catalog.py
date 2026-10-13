@@ -10,6 +10,7 @@ from pydantic import Field, computed_field, field_validator, model_validator
 from app.catalog import categories, keep
 from app.catalog.attributes import ProductKind
 from app.catalog.categories import CategoryKey
+from app.catalog.conform import conform
 from app.catalog.identifiers import Symbology as BarcodeSymbology
 from app.catalog.keep import Place as StoragePlace
 from app.catalog.perishability import Perishability
@@ -72,6 +73,8 @@ class IngredientCreate(_DensityPair):
     # None: the standard entry's value, or the default for the category.
     perishability: Perishability | None = None
     notes: str | None = None
+    # Save the name exactly as typed rather than conformed to the 1G rules (#345).
+    keep_name: bool = Field(default=False, exclude=True)
 
     _category = field_validator("category")(categories.stored)
 
@@ -80,7 +83,16 @@ class IngredientCreate(_DensityPair):
         # A new ingredient always has a category (#344); a standard entry brings its own.
         if self.standard_key is None and self.category is None:
             raise ValueError("category_required: choose a category for the new ingredient")
+        if self.standard_key is None and not self.keep_name:
+            self.name = conform(self.name).name or self.name
         return self
+
+
+class ConformedNameOut(ApiModel):
+    """A typed ingredient name as it would be saved, and why it changed (#345)."""
+
+    name: str
+    changes: list[str]
 
 
 class CategorySuggestionOut(ApiModel):
@@ -104,11 +116,15 @@ class IngredientUpdate(ApiModel):
     keep_fridge_days: int | None = Field(default=None, ge=0, le=3650)
     keep_freezer_days: int | None = Field(default=None, ge=0, le=3650)
     notes: str | None = None
+    # A rename is conformed to the 1G rules unless kept as typed (#345).
+    keep_name: bool = Field(default=False, exclude=True)
 
     _category = field_validator("category")(categories.stored)
 
     @model_validator(mode="after")
     def _pair(self):
+        if self.name is not None and not self.keep_name:
+            self.name = conform(self.name).name or self.name
         if (self.density_g_per_ml is None) != (self.density_source is None):
             raise ValueError("density_g_per_ml and density_source must be given together")
         if self.clear_density and self.density_g_per_ml is not None:

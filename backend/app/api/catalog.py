@@ -13,6 +13,7 @@ from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.catalog.categories import CategoryKey
 from app.schemas.catalog import (
     CategorySuggestionOut,
+    ConformedNameOut,
     ConvertIn,
     ConvertOut,
     DistinctIn,
@@ -38,6 +39,7 @@ from app.schemas.catalog import (
 from app.services import (
     catalog,
     ingredient_category,
+    ingredient_names,
     product_duplicates,
     product_merge,
     proposals,
@@ -89,6 +91,15 @@ async def search_ingredients(
     """Ingredients by name or other spelling, best first; standard names on request (1G)."""
     items = await catalog.search_ingredients(db, q, include_standard=include_standard, limit=limit)
     return IngredientSearchOut(items=items)
+
+
+@router.get("/ingredients/conformed-name", response_model=ConformedNameOut)
+async def conformed_name(
+    db: DbSession, _: CurrentUser, name: str = Query(..., min_length=1, max_length=200)
+) -> ConformedNameOut:
+    """A typed ingredient name as the 1G rules write it, and why, for the form's preview (#345)."""
+    found = await ingredient_names.preview(db, name)
+    return ConformedNameOut(name=found.name, changes=found.changes)
 
 
 @router.get("/ingredients/category-suggestion", response_model=CategorySuggestionOut)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useCategorySuggestion, type CategorySource } from "../../api/ingredientCategory";
+import { useCategorySuggestion, type CategorySource } from "../../api/newIngredient";
 import { CATEGORY_KEYS, CategoryChip, type CategoryKey } from "../CategoryChip";
 import { Button } from "../ui";
 import { CategoryField } from "./CategoryField";

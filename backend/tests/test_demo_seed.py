@@ -26,8 +26,8 @@ async def test_the_demo_seed_fills_the_first_kitchens_list(client: httpx.AsyncCl
     assert lst["home_base_name"] == "Harbour Flat"
     assert len(lst["unchecked"]) == 8 and len(lst["checked"]) == 1
     by_name = {(i["ingredient"] or i["product"])["name"]: i for i in lst["unchecked"]}
-    assert by_name["Eggs"]["claimed_by"]["display_name"] == "Second Cook"
-    assert by_name["Yellow onions"]["deferrable"] is True
-    assert by_name["Lemons"]["note"] == "for the sorbet"
-    assert [a["unit"] for a in by_name["Whole milk"]["amounts"]] == ["l"]
+    assert by_name["eggs"]["claimed_by"]["display_name"] == "Second Cook"
+    assert by_name["yellow onions"]["deferrable"] is True
+    assert by_name["lemons"]["note"] == "for the sorbet"
+    assert [a["unit"] for a in by_name["whole milk"]["amounts"]] == ["l"]
     assert any(i["kind"] == "product" for i in lst["unchecked"])

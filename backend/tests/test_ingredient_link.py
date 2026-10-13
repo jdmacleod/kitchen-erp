@@ -354,7 +354,12 @@ async def test_a_typed_in_ingredient_the_list_knows_is_offered_at_once(admin_cli
     r = await admin_client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"category": "pantry", "name": "large eggs", "canonical_unit": "each"},
+            "ingredient": {
+                "category": "pantry",
+                "keep_name": True,
+                "name": "large eggs",
+                "canonical_unit": "each",
+            },
             "name": "Hen eggs",
         },
     )

@@ -30,7 +30,7 @@ async def test_density_pair_validation(admin_client, db_session):
     await seed_units_via_service(db_session)
     r = await admin_client.post(
         "/api/v1/ingredients",
-        json={"category": "pantry", "name": "Honey", "density_g_per_ml": "1.42"},
+        json={"category": "pantry", "keep_name": True, "name": "Honey", "density_g_per_ml": "1.42"},
     )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "validation_error"
