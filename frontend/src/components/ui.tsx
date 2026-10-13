@@ -25,6 +25,13 @@ const buttonVariants = {
 export const tapTarget =
   "inline-flex min-h-11 min-w-11 items-center lg:inline lg:min-h-0 lg:min-w-0";
 
+/**
+ * A section heading (08): Fraunces 20px, weight 600. Every page section, card,
+ * drawer and sheet title uses this one string, so the headings cannot drift
+ * apart again (issue 314). Labels, table headers and body text stay Inter.
+ */
+export const sectionHeading = "font-display text-xl font-semibold";
+
 /** The primary button's look, for a link that acts as the page's primary action. */
 export const primaryLinkClass = `inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
 
@@ -181,7 +188,7 @@ export function EmptyState({
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section
-      className={`rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900 ${className}`}
+      className={`rounded-lg border border-neutral-200 bg-white p-4 shadow-card dark:border-neutral-800 dark:bg-neutral-900 ${className}`}
     >
       {children}
     </section>

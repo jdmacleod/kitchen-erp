@@ -15,7 +15,7 @@ import {
 } from "../../api/productPhotos";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
-import { Alert, Button, Card, focusRing } from "../ui";
+import { Alert, Button, Card, focusRing, sectionHeading } from "../ui";
 import { Badge } from "./fields";
 import { ProductThumb } from "./ProductThumb";
 
@@ -50,7 +50,7 @@ export function ProductPhotosCard({ product }: { product: Product }) {
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">Photos</h2>
+        <h2 className={sectionHeading}>Photos</h2>
         <div className="flex flex-wrap items-center gap-3">
           {hidden.length > 0 ? (
             <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
@@ -417,7 +417,7 @@ export function ProductLabelsCard({ product }: { product: Product }) {
   if (labels.length === 0) return null;
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Labels</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Labels</h2>
       <ul
         aria-label="Labels"
         className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800"

@@ -10,7 +10,7 @@ import {
   type RemovedPurchase,
 } from "../../api/purchases";
 import { formatDate } from "../../lib/format";
-import { alertTones, Button, focusRing } from "../ui";
+import { alertTones, Button, focusRing, sectionHeading } from "../ui";
 
 /**
  * "Remove this purchase", at the foot of the purchase page (#74; spec 10,
@@ -62,7 +62,7 @@ export function RemovePurchase({
       // foot; the padding lets this section scroll fully clear of both (D19).
       className="mt-2 border-t border-neutral-200 pt-6 pb-[calc(11rem+env(safe-area-inset-bottom))] lg:pb-0 dark:border-neutral-800"
     >
-      <h2 id={`${headingId}-section`} className="text-lg font-medium">
+      <h2 id={`${headingId}-section`} className={sectionHeading}>
         Remove this purchase
       </h2>
       {reading || raced ? (
@@ -181,7 +181,7 @@ export function RestorePurchase({
       aria-labelledby={`${headingId}-section`}
       className="mt-2 border-t border-neutral-200 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 dark:border-neutral-800"
     >
-      <h2 id={`${headingId}-section`} className="text-lg font-medium">
+      <h2 id={`${headingId}-section`} className={sectionHeading}>
         Restore this purchase
       </h2>
       <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">

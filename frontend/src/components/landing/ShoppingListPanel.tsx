@@ -7,7 +7,7 @@ import { AddItemRow } from "../plan/AddItemRow";
 import { formatAmounts } from "../plan/amounts";
 import { ClaimChip } from "../plan/ClaimChip";
 import { KitchenTag } from "../plan/KitchenTag";
-import { Alert, focusRing, tapTarget } from "../ui";
+import { Alert, focusRing, tapTarget, sectionHeading } from "../ui";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -35,7 +35,7 @@ export function ShoppingListPanel() {
       <div className="flex items-baseline justify-between gap-3">
         <h2
           id="shopping-list-panel"
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 font-display text-lg"
+          className={`${sectionHeading} flex flex-wrap items-center gap-x-3 gap-y-1`}
         >
           <span>
             {name} list{list.data ? ` · ${count} to get` : ""}
@@ -44,7 +44,7 @@ export function ShoppingListPanel() {
         </h2>
         <Link
           to="/plan/list"
-          className={`${tapTarget} shrink-0 whitespace-nowrap rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
+          className={`${tapTarget} shrink-0 whitespace-nowrap rounded-sm text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
         >
           Open list
         </Link>

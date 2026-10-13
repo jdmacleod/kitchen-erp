@@ -219,7 +219,7 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
           <>
             <Link
               to={`/catalog/ingredients/${ingredient.ingredient_id}`}
-              className={`${tapTarget} self-start rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+              className={`${tapTarget} self-start rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
             >
               {ingredient.ingredient_name}
             </Link>
@@ -449,7 +449,7 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
 
 /** The row states, each in words (10, Row states; UI-7.9). */
 function RowWords({ line }: { line: CostLine }) {
-  const link = `rounded font-medium underline ${focusRing}`;
+  const link = `rounded-sm font-medium underline ${focusRing}`;
   switch (line.status) {
     case "unmapped":
       return <span className={muted}>Needs an ingredient</span>;

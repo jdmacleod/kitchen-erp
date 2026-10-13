@@ -158,7 +158,7 @@ export function ComparePage() {
                       <th scope="row" className="py-2 pr-3 text-left font-medium">
                         <Link
                           to={`/catalog/ingredients/${row.ingredient_id}`}
-                          className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                          className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                         >
                           {row.ingredient_name}
                         </Link>

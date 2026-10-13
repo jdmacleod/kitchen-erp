@@ -10,7 +10,7 @@ import {
 } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { useNotice } from "../Notice";
-import { Alert, Button, Card, EmptyState, focusRing } from "../ui";
+import { Alert, Button, Card, EmptyState, focusRing, sectionHeading } from "../ui";
 import { ProductMergePanel } from "./ProductMergePanel";
 import { ProductThumb } from "./ProductThumb";
 
@@ -27,7 +27,7 @@ export function DuplicatePairs({ onClose }: { onClose: () => void }) {
   return (
     <section aria-labelledby="duplicates-heading" className="mb-6 flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="duplicates-heading" className="text-lg font-medium">
+        <h2 id="duplicates-heading" className={sectionHeading}>
           Possible duplicates
         </h2>
         <button
@@ -98,7 +98,7 @@ function PairCard({ pair }: { pair: DuplicatePair }) {
               <div className="flex min-w-0 flex-col gap-1 text-sm">
                 <Link
                   to={`/catalog/products/${p.id}`}
-                  className={`rounded font-medium underline ${focusRing}`}
+                  className={`rounded-sm font-medium underline ${focusRing}`}
                 >
                   {productTitle(p)}
                 </Link>

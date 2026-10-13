@@ -7,7 +7,7 @@ import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
 import { RecentPurchases } from "../components/landing/RecentPurchases";
 import { ShoppingListPanel } from "../components/landing/ShoppingListPanel";
-import { Alert, Button, PageHeader } from "../components/ui";
+import { Alert, Button, PageHeader, sectionHeading } from "../components/ui";
 import { usePlanBuilt } from "../lib/kitchen";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -108,7 +108,7 @@ export function HomePage() {
 
       <div className="grid gap-8 lg:grid-cols-[1.65fr_1fr]">
         <section aria-labelledby="needs-you">
-          <h2 id="needs-you" className="font-display mb-3 text-lg">
+          <h2 id="needs-you" className={`${sectionHeading} mb-3`}>
             Needs you
           </h2>
           <ReadingLine />

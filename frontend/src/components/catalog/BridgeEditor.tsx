@@ -14,7 +14,7 @@ import {
   type Ingredient,
   type Measure,
 } from "../../api/catalog";
-import { Alert, Button, Card, Field } from "../ui";
+import { Alert, Button, Card, Field, sectionHeading } from "../ui";
 import { ConfirmedBadge, SelectField } from "./fields";
 
 /**
@@ -25,7 +25,7 @@ import { ConfirmedBadge, SelectField } from "./fields";
 export function BridgeEditor({ ingredient }: { ingredient: Ingredient }) {
   return (
     <Card>
-      <h2 className="mb-1 text-lg font-medium">Bridges</h2>
+      <h2 className={`${sectionHeading} mb-1`}>Bridges</h2>
       <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
         How volumes, counts, and measures turn into {ingredient.canonical_unit}. Nothing here is
         guessed: a conversion with no bridge fails and says why.

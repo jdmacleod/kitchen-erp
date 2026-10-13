@@ -95,7 +95,7 @@ export function HealthStatus() {
             // dev build is a choice rather than a fault.
             <span
               data-testid="build-dev-badge"
-              className="mr-1 rounded bg-neutral-200 px-1 py-px text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200"
+              className="mr-1 rounded-sm bg-neutral-200 px-1 py-px text-[10px] font-semibold text-neutral-700 dark:bg-neutral-700 dark:text-neutral-200"
             >
               dev
             </span>

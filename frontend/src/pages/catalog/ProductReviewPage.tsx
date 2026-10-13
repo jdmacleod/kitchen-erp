@@ -38,14 +38,23 @@ import { whose } from "../../components/catalog/StoreBrandBadge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { Alert, Button, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  sectionHeading,
+} from "../../components/ui";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
+import { defaultMain, PhotoSize, pixels } from "./reviewPhotos";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
-const sectionHeading = "font-display mb-2 text-lg";
+const reviewHeading = `${sectionHeading} mb-2`;
 const ROLE_OPTIONS = Object.entries(ROLE_LABELS) as [PhotoRole, string][];
 const KIND_OPTIONS = (Object.entries(KIND_LABELS) as [ProductKind, string][]).map(
   ([value, label]) => ({ value, label }),
@@ -470,7 +479,7 @@ function Review({ proposal }: { proposal: Proposal }) {
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-5 w-2/3 animate-pulse rounded bg-neutral-200 dark:bg-neutral-800"
+                  className="h-5 w-2/3 animate-pulse rounded-sm bg-neutral-200 dark:bg-neutral-800"
                 />
               ))}
             </div>
@@ -480,7 +489,7 @@ function Review({ proposal }: { proposal: Proposal }) {
           ) : null}
 
           <fieldset ref={matchRef} disabled={readOnly}>
-            <legend className={sectionHeading}>Match</legend>
+            <legend className={reviewHeading}>Match</legend>
             <div className="flex flex-col gap-1">
               {matchOptions(proposal, strongProduct.data?.name).map((o) => (
                 <RadioRow
@@ -538,7 +547,7 @@ function Review({ proposal }: { proposal: Proposal }) {
           </fieldset>
 
           <section aria-labelledby={`${id}-summary`}>
-            <h2 id={`${id}-summary`} className={sectionHeading}>
+            <h2 id={`${id}-summary`} className={reviewHeading}>
               Summary
             </h2>
             <p data-testid="review-summary" className="text-sm">
@@ -636,7 +645,7 @@ function Review({ proposal }: { proposal: Proposal }) {
 
           {isNew ? (
             <section aria-labelledby={`${id}-ingredient`}>
-              <h2 id={`${id}-ingredient`} className={sectionHeading}>
+              <h2 id={`${id}-ingredient`} className={reviewHeading}>
                 Ingredient
               </h2>
               <IngredientPicker
@@ -651,7 +660,7 @@ function Review({ proposal }: { proposal: Proposal }) {
 
           {proposal.photos.length > 0 ? (
             <fieldset disabled={readOnly}>
-              <legend className={sectionHeading}>Images</legend>
+              <legend className={reviewHeading}>Images</legend>
               <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 {currentMain ? (
                   <CurrentMainTile
@@ -686,7 +695,7 @@ function Review({ proposal }: { proposal: Proposal }) {
 
           {isNew ? (
             <section aria-labelledby={`${id}-kind`}>
-              <h2 id={`${id}-kind`} className={sectionHeading}>
+              <h2 id={`${id}-kind`} className={reviewHeading}>
                 Kind
               </h2>
               <SegmentedControl
@@ -710,7 +719,7 @@ function Review({ proposal }: { proposal: Proposal }) {
 
           {proposal.price ? (
             <section aria-labelledby={`${id}-price`}>
-              <h2 id={`${id}-price`} className={sectionHeading}>
+              <h2 id={`${id}-price`} className={reviewHeading}>
                 Price
               </h2>
               <p className="text-sm">
@@ -803,7 +812,7 @@ function Review({ proposal }: { proposal: Proposal }) {
                       {vendor.name} has no stores yet, so no price is recorded.{" "}
                       <Link
                         to={`/catalog/vendors/${vendor.id}`}
-                        className={`rounded font-medium underline ${focusRing}`}
+                        className={`rounded-sm font-medium underline ${focusRing}`}
                       >
                         Add one
                       </Link>
@@ -1052,7 +1061,7 @@ function TakenPanel({
         Barcode {code} already belongs to{" "}
         <Link
           to={`/catalog/products/${taken.product_id}`}
-          className={`rounded font-medium underline ${focusRing}`}
+          className={`rounded-sm font-medium underline ${focusRing}`}
         >
           {name}
         </Link>
@@ -1089,33 +1098,6 @@ function EvidencePhoto({ photo }: { photo: ProductPhoto }) {
       alt="The captured product"
       className={`aspect-square w-full max-lg:max-h-30 ${photo.has_cutout ? "object-contain cutout-shadow" : "rounded-md bg-neutral-100 object-contain dark:bg-neutral-800"}`}
     />
-  );
-}
-
-/**
- * The main photo preselected on review: the first product photo that arrived, or on an
- * update, the product's current main photo unless a photo with more pixels arrived.
- */
-function defaultMain(arrived: ProductPhoto[], current: PhotoSummary | null): string | null {
-  if (!current) return arrived[0]?.id ?? null;
-  const have = pixels(current) ?? Infinity;
-  const larger = arrived
-    .filter((p) => (pixels(p) ?? 0) > have)
-    .sort((x, y) => (pixels(y) ?? 0) - (pixels(x) ?? 0));
-  return larger[0]?.id ?? current.id;
-}
-
-/** Width × height, or null when the photo's size isn't known yet. */
-function pixels(photo: PhotoSummary | null): number | null {
-  return photo?.width && photo.height ? photo.width * photo.height : null;
-}
-
-function PhotoSize({ photo }: { photo: PhotoSummary }) {
-  if (!photo.width || !photo.height) return null;
-  return (
-    <span className={`text-xs tabular-nums ${muted}`}>
-      {photo.width} × {photo.height} px
-    </span>
   );
 }
 
@@ -1266,7 +1248,7 @@ function StatusNotice({ proposal }: { proposal: Proposal }) {
             {" · "}
             <Link
               to={`/catalog/products/review/${newer}`}
-              className={`rounded font-medium underline ${focusRing}`}
+              className={`rounded-sm font-medium underline ${focusRing}`}
             >
               Open it
             </Link>
@@ -1284,7 +1266,7 @@ function StatusNotice({ proposal }: { proposal: Proposal }) {
             {" · "}
             <Link
               to={`/catalog/products/${proposal.product_id}`}
-              className={`rounded font-medium underline ${focusRing}`}
+              className={`rounded-sm font-medium underline ${focusRing}`}
             >
               Open {product.data?.name ?? "the product"}
             </Link>
@@ -1345,7 +1327,7 @@ function LookUp({ proposal }: { proposal: Proposal }) {
     return (
       <p className="rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
         No answer yet ·{" "}
-        <Link to="/settings/system" className={`rounded font-medium underline ${focusRing}`}>
+        <Link to="/settings/system" className={`rounded-sm font-medium underline ${focusRing}`}>
           Check System
         </Link>
       </p>

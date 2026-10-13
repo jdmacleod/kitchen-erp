@@ -2,7 +2,16 @@ import { useState, type FormEvent } from "react";
 import { errorMessage } from "../../api/client";
 import { useCreateToken, useRevokeToken, useTokens } from "../../api/queries";
 import type { ApiToken } from "../../api/types";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  focusRing,
+  PageHeader,
+  sectionHeading,
+} from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -92,7 +101,7 @@ export function TokensPage() {
             className="flex flex-col gap-4"
             aria-labelledby="create-token-heading"
           >
-            <h2 id="create-token-heading" className="text-lg font-medium">
+            <h2 id="create-token-heading" className={sectionHeading}>
               Create a token
             </h2>
             {create.isError ? <Alert tone="error">{errorMessage(create.error)}</Alert> : null}
@@ -143,7 +152,7 @@ export function TokensPage() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Your tokens</h2>
+          <h2 className={`${sectionHeading} mb-3`}>Your tokens</h2>
           {tokens.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…
@@ -190,7 +199,7 @@ function NewTokenPanel({ reveal, onDismiss }: { reveal: Reveal; onDismiss: () =>
       aria-labelledby="new-token-heading"
       className="rounded-lg border border-green-300 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950"
     >
-      <h2 id="new-token-heading" className="text-lg font-medium text-green-900 dark:text-green-100">
+      <h2 id="new-token-heading" className={`${sectionHeading} text-green-900 dark:text-green-100`}>
         Token “{reveal.name}” created
       </h2>
       <p className="mt-1 text-sm text-green-900 dark:text-green-100">

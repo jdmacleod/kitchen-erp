@@ -38,7 +38,7 @@ export function NewVersionNotice() {
         <div
           role="status"
           data-testid="new-version"
-          className={`mb-6 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-sm ${alertTones.info}`}
+          className={`mb-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-3 text-sm ${alertTones.info}`}
         >
           <span>A new version is ready.</span>
           <span className="flex items-center gap-1">

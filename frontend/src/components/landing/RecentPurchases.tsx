@@ -2,7 +2,7 @@ import { Link } from "react-router";
 import type { Purchase } from "../../api/purchases";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
-import { focusRing, tapTarget } from "../ui";
+import { focusRing, sectionHeading, tapTarget } from "../ui";
 
 /**
  * Home's right column: the last few committed purchases (G12, G13).
@@ -16,12 +16,12 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
   return (
     <section aria-labelledby="recent-purchases">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id="recent-purchases" className="font-display text-lg">
+        <h2 id="recent-purchases" className={sectionHeading}>
           Recent purchases
         </h2>
         <Link
           to="/shop/purchases"
-          className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
+          className={`${tapTarget} rounded-sm text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
         >
           All purchases
         </Link>
@@ -35,7 +35,7 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
           >
             <Link
               to={`/shop/purchases/${p.id}`}
-              className={`${tapTarget} min-w-0 flex-1 rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+              className={`${tapTarget} min-w-0 flex-1 rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
             >
               {p.vendor_location?.vendor.name ?? "Receipt"}
             </Link>

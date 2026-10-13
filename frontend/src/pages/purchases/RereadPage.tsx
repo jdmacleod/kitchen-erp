@@ -16,7 +16,15 @@ import {
 } from "../../api/rereads";
 import { useNavigateWithNotice } from "../../components/Notice";
 import { flagLabel } from "../../components/purchases/ReviewPurchase";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  focusRing,
+  PageHeader,
+  sectionHeading,
+} from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -320,7 +328,7 @@ export function RereadPage() {
           <Summary reread={reread} />
         </Card>
         <Card>
-          <h2 className="mb-1 text-lg font-medium">Changes</h2>
+          <h2 className={`${sectionHeading} mb-1`}>Changes</h2>
           <ol aria-label="Changes" className="flex flex-col">
             {p.changes.map((change, at) => (
               <Change key={change.line_id ?? `new-${at}`} change={change} />
@@ -328,7 +336,7 @@ export function RereadPage() {
           </ol>
         </Card>
         {/* Below lg, Apply sits in the thumb zone just above the tab bar (G18). */}
-        <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95">
+        <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-card backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95">
           {actions}
         </div>
       </div>

@@ -225,7 +225,7 @@ export function PlanTripDrawer({
             {emptyList ? (
               <>
                 Nothing on the list to plan for.{" "}
-                <Link to="/plan/list" className={`rounded underline ${focusRing}`}>
+                <Link to="/plan/list" className={`rounded-sm underline ${focusRing}`}>
                   Open the list
                 </Link>
               </>

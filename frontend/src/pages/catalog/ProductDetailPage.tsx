@@ -24,7 +24,15 @@ import { MoreActionsDialog, type MoreAction } from "../../components/MoreActions
 import { useNotice } from "../../components/Notice";
 import { PriceRecords } from "../../components/pricebook/PriceRecords";
 import { ProductPrices } from "../../components/pricebook/ProductPrices";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  sectionHeading,
+} from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -147,7 +155,7 @@ function ProductDetail({ product }: { product: Product }) {
           />
         ) : null}
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/catalog/products" className={`rounded underline ${focusRing}`}>
+          <Link to="/catalog/products" className={`rounded-sm underline ${focusRing}`}>
             All products
           </Link>
           <span aria-hidden="true">·</span>
@@ -155,7 +163,7 @@ function ProductDetail({ product }: { product: Product }) {
             Ingredient{" "}
             <Link
               to={`/catalog/ingredients/${product.ingredient.id}`}
-              className={`rounded font-medium underline ${focusRing}`}
+              className={`rounded-sm font-medium underline ${focusRing}`}
             >
               {product.ingredient.name}
             </Link>{" "}
@@ -181,7 +189,7 @@ function ProductDetail({ product }: { product: Product }) {
 
         {product.density_override !== null ? (
           <Card>
-            <h2 className="mb-1 text-lg font-medium">Density override</h2>
+            <h2 className={`${sectionHeading} mb-1`}>Density override</h2>
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
               <p data-testid="density-override-summary">
                 <span className="font-medium">{trimDecimal(product.density_override)} g/ml</span>
@@ -230,7 +238,7 @@ function MergedInto({ survivorId }: { survivorId: string }) {
       Merged into{" "}
       <Link
         to={`/catalog/products/${survivorId}`}
-        className={`rounded font-medium underline ${focusRing}`}
+        className={`rounded-sm font-medium underline ${focusRing}`}
       >
         {name}
       </Link>

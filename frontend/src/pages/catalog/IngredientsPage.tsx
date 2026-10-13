@@ -122,7 +122,7 @@ export function IngredientsPage() {
           skipped when linking ·{" "}
           <Link
             to="/catalog/ingredients/link"
-            className={`rounded font-medium underline ${focusRing}`}
+            className={`rounded-sm font-medium underline ${focusRing}`}
           >
             Review
           </Link>
@@ -420,7 +420,7 @@ export function AddIngredientDrawer({
                 <button
                   type="button"
                   aria-label={`Remove ${m.label}`}
-                  className={`rounded px-1 hover:bg-neutral-200 dark:hover:bg-neutral-800 ${focusRing}`}
+                  className={`rounded-sm px-1 hover:bg-neutral-200 dark:hover:bg-neutral-800 ${focusRing}`}
                   onClick={() => setQueued((list) => list.filter((x) => x !== m))}
                 >
                   ×

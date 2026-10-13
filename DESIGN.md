@@ -63,7 +63,7 @@ scale values themselves are in `theme.css`.
 | Text selection | `blue-100` | `blue-900` | `theme.css` `::selection` |
 | Caret, accent, scrollbar | `blue-600`, `neutral-300` | `neutral-700` | `theme.css` `:root` |
 | Radius | `--radius-sm` 6px, `-md` 10px, `-lg` 16px, `-xl` 20px | | `theme.css` |
-| Card shadow | `--shadow-card` (two walnut layers at 5%) | | `theme.css`; see §12, unused |
+| Card shadow | `--shadow-card` (two walnut layers at 5%) | | `theme.css`, class `shadow-card` (`Card`, the sticky action bars) |
 | Cutout shadow | `--shadow-cutout` 12% | 45% | `theme.css`, class `cutout-shadow` |
 | Fonts | `--font-sans` Inter Variable, `--font-display` Fraunces Variable | | `theme.css`; loaded in `main.tsx` from `@fontsource-variable` |
 
@@ -108,8 +108,9 @@ Adoption: `<CategoryChip` 11 uses in 10 files, `<ProductCategory` 1.
 
 - `h1` is Fraunces by a base rule in `theme.css` (weight 600, `opsz 72`, `SOFT 50`, tracking −0.015em).
   `PageHeader` sizes it `text-3xl md:text-[2.5rem]`: 30px on phone, 40px from `md`.
-- Everything else is Inter via `html { font-family: var(--font-sans) }` with `cv11` and `ss01`. Section and
-  card headings opt into Fraunces with `font-display` (19 uses); most do not (§12).
+- Everything else is Inter via `html { font-family: var(--font-sans) }` with `cv11` and `ss01`. Section,
+  card, drawer and sheet headings use `sectionHeading` from `ui.tsx` (`font-display text-xl font-semibold`,
+  Fraunces 20px/600): 66 `h2`s, plus the product review page's headings through its own `reviewHeading`.
 - `font-mono` appears 21 times, for paths, env names and OpenStreetMap syntax.
 
 ### Observed scale
@@ -147,12 +148,14 @@ Counts of size utilities across `frontend/src/**/*.tsx`:
 
 ## 5. Shape, depth and spacing
 
-- Radius tokens: `rounded-md` (10px) for buttons, inputs and nav items, 130 uses; `rounded-lg` (16px) for
-  cards and the segmented track, 31; `rounded-xl` (20px) for drawers and dialogs, 4; `rounded-full` for pills
-  and avatars, 15. Off-token: bare `rounded` (stock 4px) 81 uses and `rounded-2xl` (stock 16px) 6, see §12.
-- Shadows: stock `shadow` 16 (photo tiles), `shadow-sm` 4 (raised selected segment, active nav item),
-  `shadow-xl` 2 (Drawer, Dialog), `shadow-lg` 2 (the raised Capture button). The theme's `--shadow-card` has 0
-  class uses; `cutout-shadow` 3 (`ProductThumb.tsx`, `ProductPhotosCard.tsx`).
+- Radius tokens: `rounded-sm` (6px) for small inline elements (text links' focus outline, `kbd`, `code`,
+  skeleton bars), 85 uses; `rounded-md` (10px) for buttons, inputs and nav items, 143; `rounded-lg` (16px) for
+  cards, notices and the segmented track, 49; `rounded-xl` (20px) for drawers, dialogs and the sheet's top
+  corners, 4; `rounded-full` for pills and avatars, 18. Bare `rounded` and `rounded-2xl` are gone (§12).
+- Shadows: `shadow-card` on `Card` and the three sticky action bars (review, re-read, naming);
+  `shadow-sm` 2 (raised selected segment, active nav item); `shadow-md` 2 (the kitchen switcher and combobox
+  popovers); `shadow-xl` 2 (Drawer, Dialog); `shadow-lg` 1 (the raised Capture button); `cutout-shadow`
+  (`ProductThumb.tsx`, `ProductPhotosCard.tsx`).
 - Spacing primitives in use: `gap-2` 237, `gap-3` 115, `gap-1` 88, `gap-4` 45, `gap-6` 14; `py-2` 156, `px-2`
   72, `px-3` 62, `px-4` 27, `py-3` 18; `p-3` 26, `p-4` 13 (Card), `p-5` 4 (dialog bodies). Nothing finer than
   0.5 is used.
@@ -252,7 +255,7 @@ aria-label={title}>` with one sentence and the way out: a filtered-empty list na
   action={<Button variant="secondary" onClick={clearFilters}>Clear filters</Button>} />
 ```
 
-`Card` (53 in 34) is a `<section>` with `rounded-lg border border-neutral-200 bg-white p-4` and no shadow;
+`Card` (58 in 36) is a `<section>` with `rounded-lg border border-neutral-200 bg-white p-4 shadow-card`;
 `Centered` (3) frames the login and error pages.
 
 ### `Drawer` (`Drawer.tsx`)
@@ -279,7 +282,8 @@ Adoption: 8 in 7 files, including the shelf-price, vendor import and suggestion 
 focus moves in, Tab wraps inside `FOCUSABLE`, Escape calls back, and on close focus returns to the opener, or
 to `#main` when `returnFocus.current` is false because the close navigated. `Dialog` renders the scrim and
 panel with `placement` `center` (default, `max-w-[40rem] rounded-xl`), `sheet` (rises from the bottom below
-`lg`, `rounded-t-2xl`, a small centred dialog from `lg`) or `screen` (full screen below `lg`, for Search).
+`lg`, `rounded-t-xl`, a small centred dialog from `lg`) or `screen` (full screen below `lg`, for Search).
+The purchase review's "Commit this purchase?" confirmation is a `sheet` `Dialog`.
 
 ```tsx
 // components/MoreActionsDialog.tsx
@@ -312,7 +316,7 @@ Adoption: 9 in 7 files (purchase status, vendor kind, list/map, and so on).
 
 The one shared confirmation (D18). `NoticeProvider` sits inside `main` in `AppShell`; `NoticeRegion` is an
 always-present `aria-live="polite" aria-atomic` div, and the notice inside it is `role="status"` in
-`alertTones[tone]` (`success`, `info`, `error`) with `rounded-2xl`, an optional action `Link` and a 44px
+`alertTones[tone]` (`success`, `info`, `error`) with `rounded-lg`, an optional action `Link` and a 44px
 Dismiss button. `useNotice()` returns `show`, `update`, `dismiss`; `useNavigateWithNotice()` navigates with
 the notice in router state, and the provider picks it up on the destination, replaces the history entry and
 drops it from state, so Back and reload do not replay it. One at a time; it belongs to the pathname it was
@@ -343,12 +347,12 @@ sentence, or a neutral "!" when the inbox could not be checked (D6).
 
 ## 8. Motion
 
-Almost none. `grep -rhoE "transition(-[a-z]+)?|animate-[a-z-]+|duration-[0-9]+" frontend/src` finds
-`transition-colors` once (`Button`), `transition-transform` once (a disclosure chevron in
-`ShelfPricePage.tsx`) and `animate-pulse` twice (loading skeletons in `landing/InboxList.tsx` and
-`ProductReviewPage.tsx`). Drawers, sheets and dialogs mount and unmount with no transition.
-`prefers-reduced-motion` is not referenced anywhere in `frontend/src` or `e2e`; the two skeleton pulses are
-the only thing it would affect (§12).
+Almost none. Drawers, sheets and dialogs open with a 150 ms CSS animation from `theme.css`: the panel of a
+`Drawer` slides in from the right (`overlay-drawer`), and a `Dialog` and both scrims fade in
+(`overlay-dialog`, `overlay-scrim`). They sit inside `@media (prefers-reduced-motion: no-preference)`, so
+nothing moves for someone who asks for reduced motion. Closing is immediate: the overlay unmounts, so focus
+return is unchanged. Otherwise `transition-colors` once (`Button`), `transition-transform` once (a
+disclosure chevron in `ShelfPricePage.tsx`) and `animate-pulse` twice (loading skeletons).
 
 ## 9. Value formatting
 
@@ -424,37 +428,24 @@ here.
    `orange`, `purple`, `sky`, `teal`, `cyan`, `violet`, `fuchsia`, `pink`, `lime`, `yellow`): RESOLVED, 0
    hits; `theme.test.ts` enforces it. Open: stock `black` and `white` alpha tints, which the remap does not
    cover: `hover:bg-black/5` 2 and `dark:hover:bg-white/10` 2 (the Dismiss buttons in `Notice.tsx` and
-   `NewVersionNotice.tsx`), `bg-black/40` 1 (the hand-rolled overlay in `purchases/ReviewPurchase.tsx` line
-   517, which should be a `Dialog`).
+   `NewVersionNotice.tsx`). The hand-rolled `bg-black/40` overlay in `purchases/ReviewPurchase.tsx` is now a
+   `Dialog` (issue 314).
 3. Toasts: RESOLVED. `grep -rni toast frontend/src` finds only the comment in `Notice.tsx`. `alert(` appears
    once, in `lib/bookmarklet.ts`, which runs inside the retailer's page where the app's chrome does not exist.
 4. All-caps labels: RESOLVED. `grep -rn uppercase frontend/src` finds one `first-letter:uppercase` in
    `settings/SystemPage.tsx`, a capital letter, not a caps label.
 5. Native `<select>`: by design, not drift. 15 in 12 files (plus one test), all styled by `inputClass` through
    `SelectField` or directly. 08 asks for no custom listbox; revisit only if the OS popover becomes a problem.
-6. Radius off the token scale: open. Bare `rounded` (stock 4px, below `--radius-sm`) has 81 uses, mostly
-   `kbd`, `code`, inline links and skeleton bars; `rounded-2xl` (stock 16px, numerically `--radius-lg`) has 6,
-   including the `Notice`; `rounded-t-2xl` and `rounded-none` one each. Converge `rounded-2xl` to `rounded-lg`
-   and bare `rounded` to `rounded-sm` when touching a file; add no new ones.
-7. `--shadow-card`: open. Defined in `theme.css` and given 0 uses; the 16 bare `shadow` uses are the photo
-   tiles. Use it on primary surfaces as 08 asks, or drop the token.
-8. Section headings: open. 08 says "Section heading: Fraunces 19–21px, weight 600, via `font-display`". The
-   code's `h2` classes are `text-lg font-medium` (43, Inter 18px/500) against 6 `font-display` ones (drawer
-   and sheet titles). Decide which stands and change the other.
-9. Primary button height: open on paper only. 08's component line says "44px minimum height" with no
-   breakpoint; `Button` is `min-h-11 lg:min-h-10` (40px from 1024px), following 08's accessibility floor,
-   which scopes 44px to phone and tablet. Amend the component line.
-10. Motion: open. 08 says "transitions are limited to drawers, sheets and dialogs opening and closing" and
-    "Respect `prefers-reduced-motion`". The code has no overlay transitions and no reduced-motion query (§8).
-    Either add a `motion-reduce:animate-none` to the two skeleton pulses, or amend 08 to say there is nothing
-    to reduce.
-11. Fonts: 08 says "Import both in `main.tsx`, latin subset only"; `main.tsx` imports
-    `@fontsource-variable/fraunces/full.css` (every axis, needed for `opsz` and `SOFT`) and
-    `@fontsource-variable/inter/index.css`. Amend 08.
-12. `docs/design/`: a historical handoff, superseded by 08–11. Its `theme.css` and `CategoryChip.tsx` came
-    with the Market handoff (#38, 2026-09-25); that `CategoryChip.tsx` has its own `SYNONYMS` map, which D12
-    forbids. `kitchen-erp-ui-spec.zip` sits beside them locally but is gitignored (`*.zip`). Nothing imports
-    from the directory; delete it in a later PR and do not read it as a reference.
+6. Radius off the token scale: RESOLVED (issue 314). Bare `rounded` became `rounded-sm` (all small inline
+   elements) and `rounded-2xl` became `rounded-lg` (the same 16px); the sheet's top corners are `rounded-t-xl`.
+7. `--shadow-card`: RESOLVED (issue 314). `Card` and the sticky action bars use `shadow-card`.
+8. Section headings: RESOLVED (issue 314). Fraunces, as 08 says, through the shared `sectionHeading`.
+9. Primary button height: RESOLVED (issue 314). 08 now says 44px below 1024px and 40px at desktop width.
+10. Motion: RESOLVED (issue 314). Overlays open with a short transition behind the reduced-motion query (§8);
+    08 now says closing is immediate.
+11. Fonts: RESOLVED (issue 314). 08 now names Fraunces `full.css` for its axes and Inter's `index.css`.
+12. `docs/design/`: RESOLVED (issue 314). The superseded handoff's tracked files were deleted; a local
+    `kitchen-erp-ui-spec.zip` copy may remain, gitignored (`*.zip`).
 
 _Maintenance: this file is hand-derived from the code. When you change a token in `frontend/src/theme.css`,
 a primitive in `frontend/src/components/`, `lib/palette.ts`, `lib/format.ts`, `lib/decimal.ts` or

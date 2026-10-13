@@ -44,9 +44,10 @@ import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { CategoryChip } from "../CategoryChip";
 import { useWidePage } from "../chrome";
+import { Dialog } from "../Dialog";
 import { useNotice } from "../Notice";
 import { SegmentedControl } from "../SegmentedControl";
-import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
+import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from "../ui";
 import { BestBy } from "./BestBy";
 import { CorrectLines } from "./CorrectLines";
 import { ProductPicker } from "./ProductPicker";
@@ -124,6 +125,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const [picking, setPicking] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const commitButton = useRef<HTMLButtonElement>(null);
   // "Correct the lines" (issue 182): the whole draft in one table, saved at once.
   const [correcting, setCorrecting] = useState(false);
   const notice = useNotice();
@@ -404,7 +406,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         {SHORTCUTS.map(([key, what]) => (
           <div key={key} className="inline-flex items-center gap-1">
             <dt>
-              <kbd className="rounded border border-neutral-300 bg-neutral-100 px-1 font-mono text-[11px] dark:border-neutral-700 dark:bg-neutral-800">
+              <kbd className="rounded-sm border border-neutral-300 bg-neutral-100 px-1 font-mono text-[11px] dark:border-neutral-700 dark:bg-neutral-800">
                 {key}
               </kbd>
             </dt>
@@ -518,7 +520,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
           <Card>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-lg font-medium">Lines</h2>
+              <h2 className={sectionHeading}>Lines</h2>
               <span className="flex flex-wrap items-center gap-2">
                 <span className={hintClass}>
                   {itemLines.length} items · {unresolved} to identify
@@ -608,7 +610,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           </Card>
 
           {/* Below lg, Commit sits in the thumb zone just above the tab bar (G18). */}
-          <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
+          <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-card backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
             <Button
               onClick={() => setConfirming(true)}
               disabled={busy || correcting}
@@ -627,50 +629,46 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         </div>
       </div>
 
-      {confirming ? (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
-          onMouseDown={() => setConfirming(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="commit-dialog-title"
-            className="w-full max-w-md rounded-lg border border-neutral-200 bg-white p-4 shadow-lg dark:border-neutral-800 dark:bg-neutral-900"
-            onMouseDown={(e) => e.stopPropagation()}
+      {/* The shared Dialog: focus stays inside, Escape or the scrim cancels, and
+          focus returns to Commit purchase (issue 314). */}
+      <Dialog
+        open={confirming}
+        onClose={() => setConfirming(false)}
+        labelledBy="commit-dialog-title"
+        placement="sheet"
+        initialFocus={commitButton}
+        className="p-5"
+      >
+        <h2 id="commit-dialog-title" className={sectionHeading}>
+          Commit this purchase?
+        </h2>
+        <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+          {emitting} {emitting === 1 ? "line emits" : "lines emit"} a price observation now.
+          {unresolved > 0
+            ? ` ${unresolved} unidentified ${unresolved === 1 ? "line waits" : "lines wait"} in the to-identify queue.`
+            : ""}
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button
+            ref={commitButton}
+            disabled={commit.isPending}
+            onClick={() =>
+              commit.mutate(undefined, {
+                onSuccess: (committed) => {
+                  setConfirming(false);
+                  void announceCommit(committed);
+                },
+                onError: () => setConfirming(false),
+              })
+            }
           >
-            <h2 id="commit-dialog-title" className="text-lg font-medium">
-              Commit this purchase?
-            </h2>
-            <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
-              {emitting} {emitting === 1 ? "line emits" : "lines emit"} a price observation now.
-              {unresolved > 0
-                ? ` ${unresolved} unidentified ${unresolved === 1 ? "line waits" : "lines wait"} in the to-identify queue.`
-                : ""}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                autoFocus
-                disabled={commit.isPending}
-                onClick={() =>
-                  commit.mutate(undefined, {
-                    onSuccess: (committed) => {
-                      setConfirming(false);
-                      void announceCommit(committed);
-                    },
-                    onError: () => setConfirming(false),
-                  })
-                }
-              >
-                {commit.isPending ? "Committing…" : "Commit"}
-              </Button>
-              <Button variant="secondary" onClick={() => setConfirming(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
+            {commit.isPending ? "Committing…" : "Commit"}
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
         </div>
-      ) : null}
+      </Dialog>
     </div>
   );
 }
@@ -726,7 +724,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
   return (
     <div className="flex flex-col gap-3" role="group" aria-label="Purchase header">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">Header</h2>
+        <h2 className={sectionHeading}>Header</h2>
         <span className={hintClass}>
           Lines add up to{" "}
           {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}
@@ -859,7 +857,7 @@ function RememberStoreCode({ purchase }: { purchase: Purchase }) {
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
       <p className={hintClass}>
         Printed on this receipt:{" "}
-        <span className="rounded bg-neutral-100 px-1 font-mono text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
+        <span className="rounded-sm bg-neutral-100 px-1 font-mono text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100">
           {printed_line}
         </span>
       </p>
@@ -1267,7 +1265,7 @@ function LineProduct({
         <>
           <Link
             to={`/catalog/products/${line.product.id}`}
-            className={`${touch ? tapTarget : ""} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+            className={`${touch ? tapTarget : ""} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
           >
             {productTitle(line.product)}
           </Link>{" "}

@@ -21,9 +21,10 @@ import {
   Alert,
   Button,
   EmptyState,
-  PageHeader,
   focusRing,
+  PageHeader,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
@@ -105,7 +106,7 @@ function Skeleton() {
       {[0, 1, 2].map((i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="size-7 rounded-full bg-neutral-200 dark:bg-neutral-800" />
-          <span className="h-4 w-40 rounded bg-neutral-200 dark:bg-neutral-800" />
+          <span className="h-4 w-40 rounded-sm bg-neutral-200 dark:bg-neutral-800" />
         </div>
       ))}
       <span className="sr-only">Loading…</span>
@@ -305,7 +306,7 @@ function ListBody({
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="to-get">
-        <h2 id="to-get" className="font-display text-lg">
+        <h2 id="to-get" className={sectionHeading}>
           To get ({list.unchecked.length})
         </h2>
         {archived ? null : (
@@ -439,7 +440,7 @@ function PreviousLists({ homeBaseId }: { homeBaseId: string }) {
             >
               <Link
                 to={`/plan/list?list_id=${l.id}`}
-                className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+                className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
               >
                 Archived {formatDate(l.archived_at)}
               </Link>

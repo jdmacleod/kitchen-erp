@@ -6,7 +6,7 @@ import type { ShelfPriceState } from "../pages/purchases/ShelfPricePage";
 import { Dialog } from "./Dialog";
 import { rememberLocation } from "./purchases/LocationSelect";
 import { StoreChip, useStoreGuess } from "./purchases/StoreChip";
-import { Button, focusRing } from "./ui";
+import { Button, focusRing, sectionHeading } from "./ui";
 
 const MODES = [
   {
@@ -88,7 +88,7 @@ export function CaptureSheet({
         aria-hidden="true"
         className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-300 lg:hidden dark:bg-neutral-700"
       />
-      <h2 id={titleId} className="font-display mb-2 text-xl">
+      <h2 id={titleId} className={`${sectionHeading} mb-2`}>
         Capture
       </h2>
       {/* With no guess there is nothing to say here; the mode asks for the store. */}

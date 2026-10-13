@@ -132,7 +132,10 @@ export function RecipesPage() {
           data-testid="names-waiting-line"
         >
           {waiting.title} ·{" "}
-          <Link to={waiting.action_route} className={`rounded font-medium underline ${focusRing}`}>
+          <Link
+            to={waiting.action_route}
+            className={`rounded-sm font-medium underline ${focusRing}`}
+          >
             {waiting.action_label}
           </Link>
         </p>

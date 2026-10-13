@@ -6,7 +6,16 @@ import type { User } from "../../api/types";
 import { useCurrentUser } from "../../auth/context";
 import { Drawer } from "../../components/Drawer";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  sectionHeading,
+} from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -44,7 +53,7 @@ export function UsersPage() {
       <PageHeader title="Users" description="The people in this household who can sign in." />
       <div className="flex flex-col gap-6">
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Household members</h2>
+          <h2 className={`${sectionHeading} mb-3`}>Household members</h2>
           {users.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…
@@ -122,7 +131,7 @@ export function UsersPage() {
             className="flex flex-col gap-4"
             aria-labelledby="create-user-heading"
           >
-            <h2 id="create-user-heading" className="text-lg font-medium">
+            <h2 id="create-user-heading" className={sectionHeading}>
               Add a member
             </h2>
             {createError ? <Alert tone="error">{createError}</Alert> : null}

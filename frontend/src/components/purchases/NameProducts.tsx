@@ -279,7 +279,7 @@ export function NameProducts() {
           />
         ))}
       </ul>
-      <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-sm backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
+      <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-3 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-card backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
         <Button
           onClick={submit}
           disabled={create.isPending || ticked.length === 0}

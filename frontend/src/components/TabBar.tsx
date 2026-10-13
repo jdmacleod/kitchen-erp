@@ -6,7 +6,7 @@ import { Dialog } from "./Dialog";
 import { HealthStatus } from "./HealthStatus";
 import { FOOTER_SECTIONS, InboxBadge, MAIN_SECTIONS, visibleSections } from "./Nav";
 import { KitchenSwitcherRow } from "./plan/KitchenSwitcher";
-import { Button, focusRing } from "./ui";
+import { Button, focusRing, sectionHeading } from "./ui";
 
 /** Stroke icons for the tabs, drawn on a 24px grid. */
 const ICONS = {
@@ -191,7 +191,7 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
         aria-hidden="true"
         className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-700"
       />
-      <h2 id={titleId} className="font-display mb-2 text-xl">
+      <h2 id={titleId} className={`${sectionHeading} mb-2`}>
         More
       </h2>
       <nav aria-label="More" className="min-h-0 flex-1 overflow-y-auto">

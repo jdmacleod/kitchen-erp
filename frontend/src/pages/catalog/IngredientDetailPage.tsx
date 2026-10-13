@@ -50,10 +50,11 @@ import {
   Card,
   EmptyState,
   Field,
-  PageHeader,
   focusRing,
+  PageHeader,
   primaryLinkClass,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { usePlanBuilt } from "../../lib/kitchen";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
@@ -182,7 +183,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
         <span>Catalog</span> <span aria-hidden="true">/</span>{" "}
         <Link
           to="/catalog/ingredients"
-          className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+          className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
         >
           Ingredients
         </Link>
@@ -380,7 +381,7 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
         aria-labelledby="edit-ingredient-heading"
         noValidate
       >
-        <h2 id="edit-ingredient-heading" className="text-lg font-medium">
+        <h2 id="edit-ingredient-heading" className={sectionHeading}>
           Edit details
         </h2>
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
@@ -482,7 +483,7 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
       aria-labelledby="ingredient-products"
       className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
     >
-      <h2 id="ingredient-products" className="font-display mb-3 text-lg">
+      <h2 id="ingredient-products" className={`${sectionHeading} mb-3`}>
         Products
       </h2>
       {products.isPending ? (

@@ -5,7 +5,7 @@ import { formatMoney, mul } from "../../lib/decimal";
 import { formatDateTime, formatKm, formatMinutes, formatTime } from "../../lib/format";
 import { navigateHref } from "../../lib/navigateLink";
 import { Badge, Disclosure } from "../catalog/fields";
-import { Button, secondaryLinkClass } from "../ui";
+import { Button, secondaryLinkClass, sectionHeading } from "../ui";
 
 interface TripStopsProps {
   variant: Variant;
@@ -43,7 +43,7 @@ export function TripStops({
 }: TripStopsProps) {
   return (
     <section aria-labelledby="trip-stops-heading" className="flex flex-col gap-3">
-      <h2 id="trip-stops-heading" className="font-display text-lg">
+      <h2 id="trip-stops-heading" className={sectionHeading}>
         Stops · {variantLabel[variant.kind]}
       </h2>
       {variant.stops.length === 0 ? (
@@ -130,7 +130,7 @@ function StopBody({
             className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
           >
             <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-              <Link to={`/catalog/products/${item.product_id}`} className="rounded underline">
+              <Link to={`/catalog/products/${item.product_id}`} className="rounded-sm underline">
                 {item.product_name}
               </Link>
               <span className={`tabular-nums ${muted}`}>
@@ -164,7 +164,7 @@ function StopBody({
           {stop.purchase_id ? (
             <>
               {" · "}
-              <Link to={`/shop/purchases/${stop.purchase_id}`} className="rounded underline">
+              <Link to={`/shop/purchases/${stop.purchase_id}`} className="rounded-sm underline">
                 Open the purchase
               </Link>
             </>

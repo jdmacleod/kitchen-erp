@@ -169,7 +169,7 @@ export function ReadingLine() {
         {formatTime(reading.lookups_since)} ·{" "}
         <Link
           to="/settings/system"
-          className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+          className={`${tapTarget} rounded-sm font-medium underline ${focusRing}`}
         >
           Check System
         </Link>
@@ -187,7 +187,7 @@ export function ReadingLine() {
           Reading is taking longer than usual ·{" "}
           <Link
             to="/settings/system"
-            className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+            className={`${tapTarget} rounded-sm font-medium underline ${focusRing}`}
           >
             Check System
           </Link>

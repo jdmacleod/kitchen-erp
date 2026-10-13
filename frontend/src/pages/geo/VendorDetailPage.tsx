@@ -46,15 +46,18 @@ import {
   Card,
   EmptyState,
   Field,
-  PageHeader,
   focusRing,
+  PageHeader,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { parseLatLon } from "../../lib/latlon";
 import { describeOpeningHours } from "../../lib/openingHours";
 import { describeSource, fieldLabel, phoneError } from "../../lib/sources";
 import { usePageTitle } from "../../lib/usePageTitle";
+
+const textLink = `rounded-sm underline ${focusRing}`; // an underlined text link
 
 export function VendorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -112,7 +115,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
       </PageHeader>
       <div className="flex flex-col gap-6">
         <p className="flex flex-wrap items-center gap-2 text-sm text-neutral-700 dark:text-neutral-300">
-          <Link to="/catalog/vendors" className={`rounded underline ${focusRing}`}>
+          <Link to="/catalog/vendors" className={textLink}>
             All vendors
           </Link>
           <span aria-hidden="true">·</span>
@@ -126,7 +129,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
                 href={vendor.website}
                 rel="noreferrer noopener"
                 target="_blank"
-                className={`rounded underline ${focusRing}`}
+                className={textLink}
               >
                 website
               </a>
@@ -139,7 +142,7 @@ function VendorDetail({ vendor }: { vendor: Vendor }) {
                 href={vendor.shop_url}
                 rel="noreferrer noopener"
                 target="_blank"
-                className={`rounded underline ${focusRing}`}
+                className={textLink}
               >
                 online shop
               </a>
@@ -205,7 +208,7 @@ function PostedPrices({ vendor }: { vendor: Vendor }) {
   return (
     <Card>
       <div className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Posted prices</h2>
+        <h2 className={sectionHeading}>Posted prices</h2>
         {vendor.fetch_policy === "none" ? (
           <p className="text-sm text-neutral-700 dark:text-neutral-300">
             Pages from this store aren't saved or checked.
@@ -299,7 +302,7 @@ function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void
         aria-labelledby="edit-vendor-heading"
         noValidate
       >
-        <h2 id="edit-vendor-heading" className="text-lg font-medium">
+        <h2 id="edit-vendor-heading" className={sectionHeading}>
           Edit vendor
         </h2>
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
@@ -405,7 +408,7 @@ function VendorLocations({ vendor }: { vendor: Vendor }) {
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-medium">Locations</h2>
+        <h2 className={sectionHeading}>Locations</h2>
         <div className="flex flex-wrap items-center gap-3">
           <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
             <input
@@ -663,10 +666,7 @@ function LocationCard({
             {location.phone ? (
               <>
                 {" · "}
-                <a
-                  href={`tel:${location.phone.replace(/[^0-9+]/g, "")}`}
-                  className={`rounded underline ${focusRing}`}
-                >
+                <a href={`tel:${location.phone.replace(/[^0-9+]/g, "")}`} className={textLink}>
                   {location.phone}
                 </a>
               </>

@@ -81,7 +81,7 @@ export function useNameDecision({
         <span aria-hidden="true">·</span>
         <button
           type="button"
-          className={`rounded font-medium underline ${focusRing}`}
+          className={`rounded-sm font-medium underline ${focusRing}`}
           onClick={() => setCollision(null)}
         >
           Choose another

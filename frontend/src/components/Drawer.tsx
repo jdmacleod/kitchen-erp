@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import { useModal } from "./Dialog";
-import { Button } from "./ui";
+import { Button, sectionHeading } from "./ui";
 
 interface DrawerProps {
   title: string;
@@ -66,7 +66,7 @@ export function Drawer({
       <div
         aria-hidden="true"
         data-testid="drawer-backdrop"
-        className="absolute inset-0 bg-neutral-950/40"
+        className="overlay-scrim absolute inset-0 bg-neutral-950/40"
         onClick={requestClose}
       />
       <div
@@ -75,10 +75,10 @@ export function Drawer({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative flex h-full w-full flex-col bg-white shadow-xl outline-none sm:m-2 sm:h-[calc(100%-1rem)] sm:w-[460px] sm:rounded-xl dark:bg-neutral-900"
+        className="overlay-drawer relative flex h-full w-full flex-col bg-white shadow-xl outline-none sm:m-2 sm:h-[calc(100%-1rem)] sm:w-[460px] sm:rounded-xl dark:bg-neutral-900"
       >
         <header className="border-b border-neutral-200 px-5 py-4 dark:border-neutral-800">
-          <h2 id={titleId} className="font-display text-xl">
+          <h2 id={titleId} className={sectionHeading}>
             {title}
           </h2>
         </header>

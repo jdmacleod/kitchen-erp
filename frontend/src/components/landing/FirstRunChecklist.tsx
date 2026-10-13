@@ -113,7 +113,7 @@ export function FirstRunChecklist({ hasLocation }: { hasLocation: boolean }) {
         action="New purchase"
       >
         Type it in, or{" "}
-        <Link to="/shop/receipts" className={`rounded underline ${focusRing}`}>
+        <Link to="/shop/receipts" className={`rounded-sm underline ${focusRing}`}>
           upload receipts
         </Link>{" "}
         and their lines are read for you. Products, and the ingredients behind them, are created as

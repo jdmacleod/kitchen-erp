@@ -12,7 +12,15 @@ import {
 import { DraftPointControl } from "../../components/geo/DraftPointControl";
 import { LazyMapView as MapView } from "../../components/geo/LazyMapView";
 import type { MapPin } from "../../components/geo/MapView";
-import { Alert, Button, Card, EmptyState, Field, PageHeader } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  sectionHeading,
+} from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 export function HomeBasesPage() {
@@ -80,7 +88,7 @@ export function HomeBasesPage() {
             aria-labelledby="create-home-heading"
             noValidate
           >
-            <h2 id="create-home-heading" className="text-lg font-medium">
+            <h2 id="create-home-heading" className={sectionHeading}>
               Add a kitchen
             </h2>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -139,7 +147,7 @@ export function HomeBasesPage() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Your kitchens</h2>
+          <h2 className={`${sectionHeading} mb-3`}>Your kitchens</h2>
           {homeBases.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…

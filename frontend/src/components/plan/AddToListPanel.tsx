@@ -5,7 +5,7 @@ import { servingsText, type Recipe } from "../../api/recipes";
 import { useAddFromRecipe, useAddItem } from "../../api/shoppingList";
 import { useCurrentKitchen, type CurrentKitchen } from "../../lib/kitchen";
 import { useNotice } from "../Notice";
-import { Alert, Button, Card, Field, focusRing } from "../ui";
+import { Alert, Button, Card, Field, focusRing, sectionHeading } from "../ui";
 import { fromRecipeSentence } from "./AddFromRecipeDrawer";
 import { AmountRows, type AmountRow } from "./AmountRows";
 import { amountsInput, halfFilledAmount, positiveAmount } from "./amounts";
@@ -26,7 +26,7 @@ function KitchenLine({ kitchen }: { kitchen: CurrentKitchen }) {
     return (
       <Alert tone="info">
         No kitchen yet. Add one under{" "}
-        <Link to="/settings/kitchens" className={`rounded font-medium underline ${focusRing}`}>
+        <Link to="/settings/kitchens" className={`rounded-sm font-medium underline ${focusRing}`}>
           Settings → Kitchens
         </Link>{" "}
         and the list opens there.
@@ -92,7 +92,7 @@ export function AddIngredientToListPanel({
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Add {ingredient.name} to the list</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Add {ingredient.name} to the list</h2>
       <form
         id={formId}
         onSubmit={onSubmit}
@@ -183,7 +183,7 @@ export function AddRecipeToListPanel({
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Add {recipe.title} to the list</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Add {recipe.title} to the list</h2>
       <form
         id={formId}
         onSubmit={(e) => {

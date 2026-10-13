@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { Product } from "../../api/catalog";
 import { api, errorMessage } from "../../api/client";
 import { useProductsHelper } from "../../api/proposals";
-import { Alert, Button, Card, Field } from "../ui";
+import { Alert, Button, Card, Field, sectionHeading } from "../ui";
 
 /**
  * "Look this up online" for a product the household already has (2N): its barcode,
@@ -39,7 +39,7 @@ export function ProductLookUpCard({ product }: { product: Product }) {
   const address = page.trim();
   return (
     <Card>
-      <h2 className="mb-1 text-lg font-medium">Look this up online</h2>
+      <h2 className={`${sectionHeading} mb-1`}>Look this up online</h2>
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
         A photo, the name and the size from the barcode or a store's page
         {product.barcode || !product.brand ? "" : ", or a search by name"}. What the helper finds

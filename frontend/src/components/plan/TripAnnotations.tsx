@@ -1,5 +1,6 @@
 import { annotationLabel, type Annotation } from "../../api/trips";
 import { Badge } from "../catalog/fields";
+import { sectionHeading } from "../ui";
 
 interface TripAnnotationsProps {
   annotations: Annotation[];
@@ -15,7 +16,7 @@ interface TripAnnotationsProps {
 export function TripAnnotations({ annotations, locationName }: TripAnnotationsProps) {
   return (
     <section aria-labelledby="trip-notes-heading" className="flex flex-col gap-2">
-      <h2 id="trip-notes-heading" className="font-display text-lg">
+      <h2 id="trip-notes-heading" className={sectionHeading}>
         Notes
       </h2>
       {annotations.length === 0 ? (

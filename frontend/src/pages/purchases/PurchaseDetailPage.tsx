@@ -31,12 +31,13 @@ import { RereadLines } from "../../components/purchases/RereadLines";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import {
   Alert,
+  alertTones,
   Button,
   Card,
   EmptyState,
-  PageHeader,
-  alertTones,
   focusRing,
+  PageHeader,
+  sectionHeading,
   tapTarget,
 } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
@@ -249,7 +250,7 @@ function CommittedPurchase({
                 <>
                   <Link
                     to={`/catalog/vendors/${p.vendor_location.vendor.id}`}
-                    className={`${tapTarget} rounded underline ${focusRing}`}
+                    className={`${tapTarget} rounded-sm underline ${focusRing}`}
                   >
                     {p.vendor_location.vendor.name}
                   </Link>
@@ -287,7 +288,7 @@ function CommittedPurchase({
 
         <Card>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-medium">Lines</h2>
+            <h2 className={sectionHeading}>Lines</h2>
             <RereadLines purchase={p} />
           </div>
           <div className="overflow-x-auto">
@@ -315,7 +316,7 @@ function CommittedPurchase({
           {p.lines.some((l) => l.line_kind === "item" && l.resolution === "unmatched") ? (
             <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
               Unidentified lines wait in the{" "}
-              <Link to="/shop/receipts/identify" className={`rounded underline ${focusRing}`}>
+              <Link to="/shop/receipts/identify" className={`rounded-sm underline ${focusRing}`}>
                 to-identify queue
               </Link>
               .
@@ -357,7 +358,7 @@ function LineRow({
           <>
             <Link
               to={`/catalog/products/${line.product.id}`}
-              className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+              className={`${tapTarget} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
             >
               {productTitle(line.product)}
             </Link>

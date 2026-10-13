@@ -54,7 +54,7 @@ function Breadcrumb() {
       <span>Cook</span> <span aria-hidden="true">/</span>{" "}
       <Link
         to="/cook/recipes"
-        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+        className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
       >
         Recipes
       </Link>
@@ -229,7 +229,7 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
         {titles.map((r, i) => (
           <span key={r.id}>
             {i > 0 ? ", " : ""}
-            <Link to={`/cook/recipes/${r.id}`} className={`rounded underline ${focusRing}`}>
+            <Link to={`/cook/recipes/${r.id}`} className={`rounded-sm underline ${focusRing}`}>
               {r.title}
             </Link>
           </span>

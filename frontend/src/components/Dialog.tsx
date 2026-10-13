@@ -107,7 +107,7 @@ export function Dialog({
     center: "items-start justify-center pt-[12vh] px-4",
   }[placement];
   const shape = {
-    sheet: "w-full rounded-t-2xl lg:w-[28rem] lg:rounded-xl",
+    sheet: "w-full rounded-t-xl lg:w-[28rem] lg:rounded-xl",
     screen:
       "flex h-dvh w-full flex-col pt-[env(safe-area-inset-top)] lg:block lg:h-auto lg:max-w-[40rem] lg:rounded-xl lg:pt-0",
     center: "w-full max-w-[40rem] rounded-xl",
@@ -115,14 +115,18 @@ export function Dialog({
 
   return (
     <div className={`fixed inset-0 z-50 flex ${position}`}>
-      <div aria-hidden="true" className="absolute inset-0 bg-neutral-950/40" onClick={onClose} />
+      <div
+        aria-hidden="true"
+        className="overlay-scrim absolute inset-0 bg-neutral-950/40"
+        onClick={onClose}
+      />
       <div
         ref={panel}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
         tabIndex={-1}
-        className={`relative bg-white shadow-xl outline-none dark:bg-neutral-900 ${shape} ${className}`}
+        className={`overlay-dialog relative bg-white shadow-xl outline-none dark:bg-neutral-900 ${shape} ${className}`}
       >
         {children}
       </div>

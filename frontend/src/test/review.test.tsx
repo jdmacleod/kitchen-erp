@@ -577,7 +577,14 @@ describe("receipt review", () => {
     const rows = await openReview();
     rows[1].focus();
     await user.keyboard("c");
-    await screen.findByRole("dialog", { name: "Commit this purchase?" });
+    const dialog = await screen.findByRole("dialog", { name: "Commit this purchase?" });
+    // The shared Dialog keeps Tab inside (issue 314): Commit, Cancel, then Commit again.
+    const commitButton = within(dialog).getByRole("button", { name: "Commit" });
+    expect(commitButton).toHaveFocus();
+    await user.tab();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.tab();
+    expect(commitButton).toHaveFocus();
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(calls.some((c) => c.method === "POST")).toBe(false);
