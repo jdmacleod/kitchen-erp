@@ -34,6 +34,14 @@ kitchen's stores:
 
 ![A kitchen's shopping list: the add row, then the items to get with their amounts, one deferrable, one with a minimum quality, each with "I'll get it"](docs/screenshots/plan-list.png)
 
+From the list it plans a trip: which stores to visit, in what order, as
+Fastest, Cheapest and Balanced plans that state what each trades in money and
+minutes. At each stop a phone screen ticks items into the basket, takes the
+shelf price when it differs, and records the purchase with "Done here"; the
+trip then shows what was predicted beside what was paid:
+
+![A trip page: the chosen Balanced plan with its cost, minutes and stores in order, the stops with their items and subtotals, and the map with numbered stops](docs/screenshots/plan-trip.png)
+
 Every screenshot above is the synthetic demo household, not anyone's real data.
 You can run exactly that yourself — see **Try it first** below.
 

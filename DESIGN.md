@@ -386,7 +386,7 @@ Reality check:
 ## 11. Screenshots index
 
 `docs/screenshots/` is recaptured from the demo stack by `e2e/capture/screenshots.spec.ts` (`make
-screenshots`), never from real data. The README embeds the first four.
+screenshots`), never from real data. The README embeds six of them.
 
 | File | Shows |
 | --- | --- |
@@ -400,6 +400,9 @@ screenshots`), never from real data. The README embeds the first four.
 | `recipe-cost-phone.png` | The recipe page at 390px, the cost table as stacked blocks. |
 | `recipes-resolve.png` | Resolve recipe names: the queue of unmatched ingredient names. |
 | `recipes-resolve-phone.png` | The resolve page at 390px, rows stacked with the count strip pinned. |
+| `plan-trip.png` | A trip page: the chosen plan, its stops with items and subtotals, and the map. |
+| `plan-trip-phone.png` | The trip page at 390px, cards stacked with Balanced first. |
+| `plan-stop-phone.png` | At the store at 390px: the items to get, one in the basket, Done here anchored at the foot. |
 
 ## 12. Known drift and convergence
 

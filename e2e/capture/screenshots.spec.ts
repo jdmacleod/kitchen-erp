@@ -179,10 +179,12 @@ test("capture the Plan screenshots", async ({ page }) => {
 
 /**
  * Trips (17, 4B and 4C): a plan for the first kitchen's list, made and chosen
- * here through the API, since the seed plans nothing. The demo stack has no
- * routing engine, so the legs are estimates and the cards say so. The trip
- * page at desktop width and at 390px, then its first stop on the phone with
- * one item in the basket.
+ * here through the API, since the seed plans nothing. Two shelf prices noticed
+ * at the Saturday produce stall (invented, like the rest of the demo) give the
+ * Cheapest plan a second stop, so the page shows a trade and a route. The demo
+ * stack has no routing engine, so the legs are estimates and the cards say so.
+ * The trip page at desktop width and at 390px, then its first stop on the
+ * phone with one item in the basket.
  */
 test("capture the Trip screenshots", async ({ page }) => {
   await signIn(page);
@@ -191,17 +193,32 @@ test("capture the Trip screenshots", async ({ page }) => {
   const kitchens = (await (await page.request.get("/api/v1/home-bases")).json()) as { items: { id: string; name: string }[] };
   const kitchen = kitchens.items.find((k) => k.name === "Harbour Flat");
   expect(kitchen, "the demo's first kitchen").toBeTruthy();
-  // Tomorrow at 10:00 in the household's zone (17:00 UTC in summer): a Saturday-morning sort of trip.
+  const locations = (await (await page.request.get("/api/v1/vendor-locations")).json()) as { items: { id: string; name: string }[] };
+  const stall = locations.items.find((l) => l.name === "Bramble Row Produce");
+  expect(stall, "the demo's produce stall").toBeTruthy();
+  for (const [query, price] of [
+    ["Lemons", "1.20"],
+    ["Basil", "1.10"],
+  ] as const) {
+    const found = (await (await page.request.get(`/api/v1/products?q=${encodeURIComponent(query)}`)).json()) as { items: { id: string }[] };
+    expect(found.items.length, query).toBeGreaterThan(0);
+    const noted = await page.request.post("/api/v1/price-observations", {
+      data: { product_id: found.items[0].id, vendor_location_id: stall!.id, price, unit: "each" },
+    });
+    expect(noted.status(), await noted.text()).toBe(201);
+  }
+  // The coming Saturday at 10:00 in the household's zone (17:00 UTC in summer), when the stall is open.
   const when = new Date();
-  when.setUTCDate(when.getUTCDate() + 1);
+  when.setUTCDate(when.getUTCDate() + ((6 - when.getUTCDay() + 7) % 7 || 7));
   when.setUTCHours(17, 0, 0, 0);
   const made = await page.request.post("/api/v1/plan/trips", {
-    data: { home_base_id: kitchen!.id, planned_at: when.toISOString(), max_stops: 3, mileage_rate: "0.67" },
+    data: { home_base_id: kitchen!.id, planned_at: when.toISOString(), max_stops: 3, value_of_time_per_hour: "5.00", mileage_rate: "0.67" },
   });
   expect(made.status(), await made.text()).toBe(201);
-  const plan = (await made.json()) as { id: string; variants: { id: string; kind: string }[] };
-  const balanced = plan.variants.find((v) => v.kind === "balanced")!;
-  const chosen = await page.request.post(`/api/v1/plan/trips/${plan.id}/choose`, { data: { variant_id: balanced.id } });
+  const plan = (await made.json()) as { id: string; variants: { id: string; kind: string; stop_count: number }[] };
+  const cheapest = plan.variants.find((v) => v.kind === "cheapest")!;
+  expect(cheapest.stop_count, "the Cheapest plan visits the stall too").toBe(2);
+  const chosen = await page.request.post(`/api/v1/plan/trips/${plan.id}/choose`, { data: { variant_id: cheapest.id } });
   expect(chosen.status(), await chosen.text()).toBe(200);
 
   await page.setViewportSize({ width: 1280, height: 800 });
