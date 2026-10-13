@@ -151,6 +151,20 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** A design for ingredient-level photos and their attribution
 
+## Plan
+
+### Calibrate the traffic multipliers from observed trips
+
+**What:** Compare each done stop's planned arrival with when "Done here" was pressed at the stop before, fit per-band corrections to `PLAN_TRAFFIC_MULTIPLIERS`, and propose the new table to an admin rather than applying it.
+
+**Why:** The multipliers are a fixed time-of-day table; the household's real drive times are the better evidence once enough trips are done.
+
+**Context:** `05` (drive times) names calibration from observed trips as the later mitigation after the multiplier; Phase 4 (`17`, 4B, P2) shipped the table as a setting with the draft's defaults. Noted at the Phase 4 build (2026-10-13). Arrival is only approximated by stop timestamps, so it needs enough done trips per band before a correction means anything.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Enough done trips to fill each band
+
 ## Completed
 
 - **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).
