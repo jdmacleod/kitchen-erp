@@ -84,6 +84,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
 ## Re-read the lines (04, 2S, #272)
 
 Route `/shop/purchases/{id}/reread`.
+
 - **Breadcrumb:** Shop / Purchases / Receipt, {date}.
 - **Header:** title "Re-read lines", description "What today's reading would change. Nothing changes until you apply it." Primary "Apply changes"; secondary "Discard".
 - **Waiting (Read again):** "Reading the receipt again…" with the reading line's progress; the page updates on its own when the proposal is ready. Failed: a tomato Alert with the reason and "Try again".
@@ -100,6 +101,7 @@ Route `/shop/purchases/{id}/reread`.
 Behaviour is in 04, 2H; this is what the screens say. The server's `removal` preview drives every sentence, so the page never predicts on its own.
 
 **Remove purchase, at the foot of the purchase page.**
+
 - A quiet section after the lines, headed "Remove this purchase". The header keeps Edit and Reopen on committed purchases, and review keeps Commit in its sticky bar.
 - **A committed purchase's header line (issue 247)** says what its actions do. A purchase entered by hand: "Edit corrects it here and records again any price that changes. Reopen sends it back to review before you commit it again." Others: "Reopen sends it back to review, where you can correct its lines and commit it again." Its Status reads the badge, then how it came in: "Committed · entered by hand", "· read from a receipt" or "· imported".
 - **Touch targets (issue 246):** the summary's location link and each line's product link have a 44px hit area below `lg`.
@@ -117,6 +119,7 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 - **After a void:** the page stays and becomes the voided view, and focus moves to its Notice.
 
 **Voided purchase.**
+
 - Read-only, with a neutral "Voided" badge and no Edit, Reopen, Commit or Remove; Restore is the one action.
 - The first element is an info Notice (`role="status"`): "Removed {date} by {name}. Its {n} prices no longer count in the price book."
 - The lines table is read-only, and its Observation column reads "voided".
@@ -126,11 +129,13 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
   - When `restore_blocked` is `read_again`, the line reads "Its receipt was uploaded again, so it already has a newer purchase. This one stays removed." and there is no button.
 
 **Removed lines.**
+
 - **Review:** Delete stays one click for a line that was never recorded. A recorded line asks inline in its row, "Delete line {n}? Its price is voided.", with Delete (tomato) and Keep it. Focus goes to Keep it, and back to the row on cancel. No keyboard shortcut deletes.
 - **Manual edit form:** when removed lines include recorded ones, a squash line above Save reads "Saving voids {n} price(s) from removed lines." The Notice after saving reads "Saved. {n} price(s) from removed lines were voided."
 - A muted caption, "{n} line(s) removed", sits under the lines table on the committed, voided and review views.
 
 **Receipts.**
+
 - **Upload history** replaces the flat Jobs list (issue 122). Uploads are listed newest first, each headed by its date and time and a line such as "12 receipts · 2 uploaded before · 4 being read". Under that are three counts: Add up, To check, Couldn't read. A zero shows as a dash, in neutral, never a warning colour.
 - Each receipt row shows its thumbnail, status, trust badge, upload date (the last upload, so a receipt read again shows that day), and once read its store, total and line count ("Gullwing Grocer · $9.80 · 3 lines"). A file seen before reads "uploaded before".
 - **Trust badge** (also on Purchases and Needs you): a mark and words, never colour alone. "Adds up" is olive with a tick. "Check the lines · off by $0.30" is squash. A held draft reads "Careful look · off by $5.60", also squash. "Couldn't read" is tomato with a cross. A purchase entered by hand has none.
@@ -140,6 +145,7 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 **Price records.** A voided price from a purchase shows "Voided: {reason}" and a link, "Open the purchase". The removal reasons are fixed text ("purchase removed", "line removed") and are not typed, by design.
 
 **Phone (below 1024px).**
+
 - The section starts with a divider and an h2, "Remove this purchase".
 - Its bottom padding is at least the sticky Commit bar plus the tab bar, so it scrolls fully clear.
 - Its buttons are full-width at 44px and stacked, with "Keep it" below "Remove purchase", nearest the thumb.
@@ -149,6 +155,7 @@ Behaviour is in 04, 2H; this is what the screens say. The server's `removal` pre
 Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a mounted repository that the application never edits, so no Cook page has a create drawer; the one primary action is "Rescan recipes", which runs the scan inline and answers when it is done. Costing is household-wide, so nothing here chooses a kitchen; Phase 4 adds that filter with the switcher.
 
 **Recipes list** (`/cook/recipes`).
+
 - **Header:** "Recipes", with the description "What each dish costs from the price book, and how much of that figure is known." Primary "Rescan recipes": while it runs the button reads "Rescanning…", and the Notice afterwards reads "Rescanned: 2 recipes changed." or "Rescanned. Nothing changed."
 - **Names waiting:** while recipe names are unresolved, a line above the list reads "14 recipe names to resolve · Resolve", linking to the resolve page, as the Ingredients list does for skipped rows (DV14).
 - **Controls:** a search field matching title and path; a status segmented control, All, Can't read, Missing, with counts; and a completeness control, All, Complete, Incomplete. Both are kept in the URL (`?status=`, `?completeness=`), and `/cook/costing` redirects to `?completeness=incomplete`.
@@ -161,6 +168,7 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
   - Error: a tomato alert "Couldn't load recipes" with Try again; never the empty state.
 
 **Recipe page** (`/cook/recipes/:id`).
+
 - **Breadcrumb:** Cook / Recipes.
 - **Header:** the title, with its badges; a meta line of the path in monospace, servings as written, and when it was indexed. Primary "Rescan recipes". A missing recipe adds a tomato-text secondary "Remove recipe".
 - **Layout:** two columns at 1024px and wider, the rendered recipe on the left and the cost table on the right, roughly 1 : 1.4; the cost table takes the wider column because it is the thing you came for.
@@ -182,6 +190,7 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
   - Error: a tomato alert; never an empty page.
 
 **Resolve recipe names** (`/cook/recipes/resolve`; reached from the inbox and the list's waiting line; no nav item).
+
 - **Header:** "Resolve recipe names", with the description "Say once which ingredient each name means. It's remembered for every recipe." A count strip below reads "14 names · in 9 recipes".
 - **Rows,** most-used first, divided lines as on the link page. Each shows the name as written (and its normalized form when it differs, in a caption), "in 3 recipes" with the titles as links (two, then "+1 more"), and then its proposals as soft buttons, up to three, each with a neutral badge naming its tier: "standard list", "without 'minced'", "USDA", "model". A model's guess carries a squash outline, as on product review. After them: the ingredient picker labelled "Choose an ingredient" (standard names allowed, which creates one on choice), and "Not an ingredient".
 - One decision applies to every recipe using the name and writes one spelling. The row leaves, focus moves to the next row's first proposal or its picker, and a polite live region says "Resolved 'minced garlic' as garlic in 3 recipes. 13 left." (DV12).
@@ -197,6 +206,7 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
 **Inbox row.** Badge "Recipe", title "14 recipe names to resolve", detail "In 9 recipes", action Resolve. One row however many names wait (G6).
 
 **Phone, below 1024px.**
+
 - The list's rows stack: title and badges, the path caption, then cost and known on one line; the controls scroll sideways as chips.
 - The recipe page is one column: the totals strip and basis control first, then the cost table, then the rendered recipe, with "Jump to recipe" in the header.
 - At 390px each cost-table line is a block: the text as written, the ingredient or its picker, quantity and price on one line, and the cost right-aligned. The table never scrolls sideways (`07` criterion 32). Pickers and "Pin product…" are 44px.
@@ -207,6 +217,7 @@ Written at the Phase 3 review (2026-10-09) for `07`, 3E. Recipes are files in a 
 Written at the Phase 4 review (2026-10-12) for `17`. Plan is the household's weekly loop between Cook and Shop: a shared list per kitchen (4A), a trip planned from it (4B), and the stops of a chosen plan worked through in the aisle (4C). Every page here is kitchen-scoped and carries the kitchen's name as a neutral tag; nothing else in the app does. Nothing in Plan is blue except actions; stale and estimated marks are squash; the cheapest variant's figures are not coloured. Each block is marked with the sub-phase that builds it.
 
 **The kitchen switcher (4A; Phase 4 review, 2026-10-12, L3 and L7).**
+
 - **Sidebar:** in the footer, above the signed-in user: a neutral chip reading the current kitchen's name with a small chevron. It is a menu button; the menu lists every kitchen with a check beside the current one, and choosing one writes the server setting and refetches the scoped panels on screen. It is shown only with two or more kitchens; with one, nothing is there and no page carries a tag.
 - **More sheet (phone):** the same chip as the first row of the More sheet, full width at 44px, with the kitchens as a radio list that opens in place. The List tab's header names the kitchen, so the current one is visible without opening More.
 - **Palette:** "Switch to {kitchen}" for each other kitchen in the Actions group, section "Plan".
@@ -214,6 +225,7 @@ Written at the Phase 4 review (2026-10-12) for `17`. Plan is the household's wee
 - **Compare prices** (now `/plan/compare`; `/shop/compare` and `/compare` redirect with their parameters): the header gains "Kitchen: All · {name}" as a segmented control, All by default and kept in the URL (`?home_base_id=`); with a kitchen chosen, only prices at that kitchen's locations are shown and the tag appears. The recipe page's cost table gains the same control beside its basis control, computed on demand and never snapshotted.
 
 **Shopping list** (`/plan/list`; 4A).
+
 - **Header:** "{Kitchen} list" as the h1 (the kitchen tag is the title itself here), the description "What this kitchen needs next. Anyone can add, claim and check." and the primary action "Add item", which puts focus in the inline add row rather than opening a drawer, since adding is the page's whole work. Secondary: "Add from recipe" (a drawer) and "Start a fresh list".
 - **Inline add:** a row at the top of the unchecked group: the 1G ingredient picker labelled "What do you need?"; the picker matches ingredients only, and "Use product…" switches it to the product typeahead (name, brand and barcode), which adds a product item (package 4, 2026-10-12); an optional amount and unit (the unit select offers the ingredient's dimension first); "Add". Enter adds and keeps focus in the picker, so a list can be typed through. Chips under the picker: "Deferrable" and "Minimum quality" (stars; ingredient items only), both off by default; a note field opens from "Add a note".
 - **Items, in two groups:** "To get ({n})" then "Checked ({n})", divided lines, never cards. A row shows: a 28px check circle at the left with a 44px hit area; the name (the ingredient, or the product with its pack in a caption; the brief carries no brand (package 4, 2026-10-12)); the amounts as written, each (amount, unit) pair in its own figure ("2 lb · 1 bunch"), shown per lb, oz or fl oz as the unit-display rule says, never summed across units that do not convert; a "deferrable" caption and the minimum quality as walnut stars when set; "from recipe" as a caption linking to the recipe on recipe items (the item carries `recipe_id` only (package 4, 2026-10-12)); a claim chip; and the note. Unchecked items are oldest first; checked items newest first, with who checked them and when in a caption, and "Uncheck".
@@ -229,12 +241,14 @@ Written at the Phase 4 review (2026-10-12) for `17`. Plan is the household's wee
 **"Add to list" on an ingredient and a recipe** (4A). The ingredient hub's header gains "Add to list" as a secondary action (no longer dormant): it opens a small inline panel under the header with amount, unit and "Deferrable", and "Add" confirms through the Notice "Added {ingredient} to the {kitchen} list · Open list". The recipe page's header gains "Add to list" with the same panel plus the Scale field; the Notice reports the counts afterwards, as the drawer does (package 4, 2026-10-12). Both name the current kitchen in the panel, so a person at the wrong kitchen sees it before adding.
 
 **Trips** (`/plan/trips`; 4B).
+
 - **Header:** "Trips", with the description "Where to shop for the list, in what order, and what the alternatives cost." Primary "Plan a trip" opens the inputs in a right-side drawer.
 - **Drawer, "Plan a trip":** Starting from (a place select, default the kitchen), Ending at (default the start), When (date and time, default the next hour), Value of your time (per hour, pre-filled from the household setting with the hint "What an hour of driving and shopping is worth to you"), Stops at most (1–4, default 3), and a collapsed "More": mileage rate and minutes per stop. Footer: Cancel and "Plan". The drawer follows the unsaved-input rule. An empty list refuses with "Nothing on the list to plan for" and a link to it.
 - **List:** rows newest first: the planned time, the status badge (Planned neutral, Underway neutral, Done olive, Abandoned neutral), the chosen variant's stores in order or "Not chosen yet", its cost and minutes, and after a trip "predicted ${x} · actual ${y}". Each row opens the trip page.
 - **States:** empty: "No trips yet. Plan one from the {kitchen} list." with Plan a trip; error: a tomato alert with Try again.
 
 **Trip page** (`/plan/trips/:id`; 4B, with 4C's actuals).
+
 - **Breadcrumb:** Plan / Trips. **Header:** "Trip, {planned time}" with the status badge and the kitchen tag; a meta line of the start and end places, the value of time and the stop limit. Primary: "Choose" lives on the variant cards until one is chosen; afterwards the primary is "Replan", which makes a new plan from the same inputs and the list as it is now (P1), and "Abandon" is a quiet tomato-text secondary that confirms inline. As built, once a plan is chosen the primary is "Start the trip" (or "Continue at stop {n}" after a stop is done), going to the first stop not yet done, with Replan secondary; Replan is primary again once every stop is done (Phase 4 build, 2026-10-13).
 - **Three variant cards side by side** (stacked below 1024px), headed Fastest, Cheapest and Balanced, each with: item cost, driving and shopping minutes, mileage when a rate was given, and the total; the marginal trade against Balanced stated in both currencies, "$3.20 more, 14 minutes less" or "the same as Balanced"; the stores in order with their subtotals; and a "Choose" button. "estimated" in squash on a card with any estimated leg, with the hint "Drive times are estimates: the routing engine wasn't available." Once chosen, the other two cards fold to their headline figures behind "Show the other plans" and the chosen card reads "Chosen {time}". The Cheapest card's heading carries an olive "cheapest" badge with its word, as olive marks the cheapest price elsewhere; the figures themselves are tabular and never coloured.
 - **Stops:** for the chosen variant (or Balanced until one is chosen), each stop as a section: "Stop {seq} · {store}", the leg before it ("{n} min · {km} km · arrive {time}", "estimated" in squash where the leg was), the overhead minutes, each item with its product, packs and line cost ("stale" in squash on an old price), the subtotal, "Navigate" (opens the phone's maps application in a new tab) and, once chosen, "Open this stop" to the at-the-store screen. After a stop is done: "Done {time} · predicted ${x} · actual ${y}" and a link to the purchase; the header's meta line sums predicted beside actual for the whole trip.
@@ -245,6 +259,7 @@ Written at the Phase 4 review (2026-10-12) for `17`. Plan is the household's wee
 **At the store** (`/plan/trips/:id/stop/:seq`; 4C). Laid out under Phone below, since it is a phone screen first; on desktop it renders in one centred column of the same layout.
 
 **Phone, below 1024px.**
+
 - The List tab opens `/plan/list` with the kitchen's name in its header (L7); the add row sits under the header and the picker opens the keyboard; rows stack the name line, then amounts and chips, with the 28px circle at the left and "I'll get it" as a 44px button; the Checked group is folded with its count. "Add from recipe" is a full-screen sheet; "Start a fresh list" is under a "More actions" sheet with the archived lists.
 - Trips rows stack the time and status, then the stores line, then the figures. The Plan drawer is a full-screen sheet with 44px fields.
 - The trip page stacks the three cards, Balanced first, each full width with its "Choose" at 44px; the stops follow; the map comes last at a fixed height; at 390px nothing scrolls sideways (`17` criterion 20).
@@ -280,6 +295,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 **Words (DV16).** The list is "the standard list"; one entry is a "standard name". Row actions are Link, Rename, Merge (only when needed) and Skip; states are To review, Linked, Merged and Skipped. "Confirm" stays reserved for bridges. Ingredient names are lowercase, except proper nouns.
 
 **Ingredient picker (DV9, DV22–DV24).**
+
 - Rows, in order: an exact name or spelling match, other catalog matches, a "From the standard list" group, then "Create new ingredient “…”".
   - A spelling match shows "matches green onion" and is read aloud as "green onion, another name for scallion".
   - One row per ingredient, however many of its spellings match.
@@ -290,6 +306,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - Choosing a standard name creates nothing until the form saves (DV22). After a choice, the field shows "scallion · g" with the hint "matched green onion", or "New, from the standard list" (DV24). A `409` or `422` shows at the field.
 
 **Link page** (`/catalog/ingredients/link`; no nav item; DV1, DV3–DV5, DV10–DV17, DV25).
+
 - Header: "Link ingredients to the standard list", with the description "Give each ingredient its standard name so spellings and USDA data line up." A count strip below reads "13 to review · 4 skipped".
 - Rows, likely duplicates first. Each row shows the ingredient's name, canonical unit and product count; the suggested standard name ("→ scallion"), or "No standard name fits"; the USDA food it would link to; and the actions Link, Rename… and Skip. "Choose another standard name" opens a search of the standard list only (DV4).
 - Rename is an inline field with Save and Cancel. A name another ingredient has shows "scallion already exists · Merge into it" (DV13).
@@ -310,6 +327,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - Phone, below 1024px (DV11): each row stacks the name line, the "→ scallion" line with the USDA food, then Link, Rename and Skip as a row of 44px buttons. The count strip stays pinned under the header.
 
 **USDA suggestions on Needs a bridge (DV2, DV6–DV8, DV18–DV21).**
+
 - A first section, "USDA suggestions", sits above the existing table on Needs a bridge. There is no separate page.
 - Grouped rows, never cards (DV8). Each group shows:
   - the ingredient, its unit and the USDA food it is linked to;
@@ -324,6 +342,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - With no USDA data loaded, the section says "USDA data isn't loaded yet. Whoever runs this Kitchen ERP can load it with kerp import usda." and no inbox row appears (DV6).
 
 **Setting packs on Needs a bridge (#186).**
+
 - Above the table, a count line: "71 products · 64 need a pack size". It drops as packs are set.
 - A row missing a pack offers "Set the pack" (secondary). It opens an editor in a full-width row under the line, with Pack quantity, Pack unit and, for a mass or volume unit, "Pieces (optional)". Save pack is primary; Cancel and Escape close it.
 - Saving uses the ordinary product update, which re-prices the product. The Notice says "Saved the pack for Bread Flour.", and the editor for the next product waiting on a pack opens with focus on its quantity, so a batch can be worked through from the keyboard.
@@ -333,6 +352,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - Phone, below 1024px: the editor stays in view while the table scrolls sideways, its fields stack, and its buttons are 44px.
 
 **Inbox rows (DV1, DV7).**
+
 - Badge "Link", title "13 ingredients to link to the standard list", action "Review", while any ingredient is To review.
 - Badge "USDA", title "9 ingredients have USDA densities to review", linking to the section above. It appears once no ingredient is To review, or when a linked ingredient has suggestions. The link page's finish Notice points to it.
 
@@ -349,6 +369,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - **States (G11):** a filtered-empty list reads "No products match 'oat' in Dairy · Clear filters"; the No category filter alone with nothing in it reads "Every product has a category"; a truly empty list reads "Add your first product".
 
 **Add product drawer.**
+
 - **Fields, in order:**
   - Start from a web address (optional, PD20). Name and item number taken from the address carry the hint "From the address", and a pasted address counts as typed input for the discard rule. With the products helper set up, the Notice after saving reads "Added {name}. Details from the page will arrive in Needs you"; without it, the field says "This page can't be read from here. Use Save to Kitchen ERP on the page."
   - Ingredient: search, with the hint "no match creates a new ingredient".
@@ -366,6 +387,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
   - Otherwise the Notice reads "Added {name} · Open it", with focus on the link (G10).
 
 **Product page: photos and labels (PD4, PD16).**
+
 - A Photos card sits right after the meta line. It shows the main photo at 480px (its cutout on the card surface when it has one) and the other photos as thumbnails.
   - Per photo: "Use as main photo" and "Hide". "Show hidden (n)" brings hidden photos back, like "Show voided".
   - "Cutout | Original" is a segmented control, shown only when a cutout exists.
@@ -379,6 +401,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - In Price records, a posted price reads "Posted online, not counted in cheapest".
 
 **Product page: merging a duplicate (#179).**
+
 - The header's secondary actions are "Merge into…" and Deactivate (or Activate); below 1024px they share one "More actions" sheet, as on Vendors.
 - "Merge into…" opens a card under the meta line: a product typeahead labelled "Product to keep". Choosing the product itself says "Choose another product to keep."
 - Choosing another product opens a tomato confirmation panel, as the ingredient merge's: "Merge {this} into {kept}?", what goes there ("3 prices, 1 code and 1 receipt wording go to {kept}."), any unit warnings in a squash box (the packs' units differ; prices that wait on a density), "This can't be undone here.", then Merge (danger) and Cancel, with focus on Cancel. "Choose another product" goes back to the typeahead.
@@ -386,6 +409,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - **Merged product:** a neutral notice under the header, "Merged into {kept}. Its prices, codes, photos and receipt wordings are there now.", linking to the kept product. The header has no actions.
 
 **Product page: price records (#73).**
+
 - A "Price records" card sits under the prices chart and lists every current price for the product: amount per quantity, location, date, and whether it was a shelf price or came from a purchase.
 - **Shelf price:** a "Void" action (tomato, secondary weight) opens an inline form under the row. A reason is required ("Why is it wrong?") and is kept with the voided price. Confirming voids it; it leaves the chart, cheapest and compare, and the original stays for audit.
 - **Price from a purchase:** no Void. The row links to "Correct in its purchase", because voiding it on its own would leave the purchase saying the line was observed.
@@ -428,6 +452,7 @@ Reached from the inbox at `/catalog/products/review/:id`; no nav item. Laid out 
 ## Clip window (2M; PD9, PD21)
 
 A small window, about 420×560, with no app chrome. h1 "Save this product".
+
 - **Shows:**
   - the page title and address as text;
   - how many images came along;
@@ -446,6 +471,7 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 ## Settings: capture (2M; PD19)
 
 `/settings/capture`.
+
 - A draggable link styled as a secondary button, "Save to Kitchen ERP". It is not herb, because clicking it here does nothing.
 - One sentence on dragging it to the bookmarks bar.
 - The address it is tied to, with "Reinstall if this address changes".
@@ -488,6 +514,7 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 ## Settings: users and passwords (#75)
 
 **Users (admins only).**
+
 - The members table has an "Edit" button per row, which opens a right-side drawer. The drawer follows 08's unsaved-input rule (D5).
 - **Drawer form:** Display name, Email, and Role (Member, or Admin: also manages members and tokens). "Save changes" sends only what changed.
 - **Signing in:**
@@ -513,6 +540,7 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
 ## Sidebar (Sidebar)
 
 As specified in 09. Visual details:
+
 - Oat background with a `neutral-200` right border.
 - The active section is an herb-tinted pill in weight 600; the active sub-page is a warm-white pill.
 - Count badges are squash.
@@ -525,6 +553,7 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 **Tab bar (Phone tab bar).** 84px including the home-indicator area. Five tabs as specified in 09; Capture is a 56px herb circle raised above the bar.
 
 **Home (Phone: home).**
+
 - The "Kitchen ERP" wordmark top left, where the kitchen pill used to be (G13), and the avatar top right.
 - The greeting title.
 - The top three inbox items as 64px tappable rows, with "See all" expanding the list in place (G6).
@@ -533,23 +562,27 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 **Purchases (Phone: purchases).** A drafts banner ("2 drafts to finish") above the purchase list; each row shows where, the date and line count, the total and a status pill. Once `plan` is a feature the second tab is List, and Purchases is reached from More with the same layout (L6).
 
 **Capture sheet (Phone: capture sheet).**
+
 - A bottom sheet over a scrim with a drag handle and the title "Capture".
 - The detected store: "Near {vendor}", or "Last used: {vendor} · change" in a squash outline when location is unavailable (G2).
 - Four 76px option rows, each with an icon tile, title and one-line description: Log a shelf price, Scan a receipt, Enter a purchase, Photograph a product (PD12).
 
 **Photograph a product (PD11, PD12).**
+
 - Opens the camera.
 - After the first photo, it offers "Add another photo of this product" (up to four), each with a role.
 - Sending shows a determinate upload bar, then the Notice "Photo saved. It'll appear in Needs you once it's identified."
 - Errors are inline and keep the photo: "This photo is over 50 megapixels." and "This file isn't a photo we can read."
 
 **Product review (Phone, PD17).**
+
 - One column: a 120px photo band, then Match, the summary, Ingredient, Images (two-column tiles), Kind and Price.
 - Alternatives open as full-width radio lists.
 - Reject and Accept (56px) are anchored at the bottom.
 - Cancel at the bottom.
 
 **Shelf price (Phone: shelf price).**
+
 - **Header:** a back button and the title.
 - **Store:** shown as a tappable chip, labelled as a guess when it is one (G2).
 - **Entry (G3):** one field accepts a barcode or a product name. Before typing, it lists the last five products logged at this store. Camera scanning is deferred (S1).
@@ -563,12 +596,14 @@ All phone screens are 390px wide at design time and must work from 360px. Leave 
 - **Lookup states:** pending shows a spinner in the field; an error shows inline with Retry.
 
 **At the store (Phone: at the store).** The brief from 2026-09-25 (T4), built with 4C (17; Phase 4 review, 2026-10-12). This screen is one stop of a chosen trip plan, at `/plan/trips/:id/stop/:seq`, reached from the trip page's stop and from "Next stop":
+
 - **Header:** "Stop 1 of 2 · {kitchen} list", the store name, basket progress and the estimated cost here.
 - **"Get here" list:** 28px check circles. Each row's price is a 44px button, and editing it records a shelf price observation; edited prices show a neutral tint.
 - **"Cheaper at stop 2":** lists deferred items, with a "Get here" override.
 - **Footer:** an anchored "Done here · record purchase" button creates a purchase linked to the trip plan.
 
 The 4C layout, with the brief's semantics made exact (S1):
+
 - **Header:** a back link to the trip, "Stop {seq} of {n} · {kitchen} list" as the h1, the store name and address line, then a progress strip: "{checked} of {m} in the basket" and "About ${x} here", which re-sums as prices are edited and items checked. A stop already done shows "Done {time} · {n} lines recorded" with a link to its purchase and no controls.
 - **This stop's items** ("Get here"): one row per item planned here, oldest first, with a 28px check circle at the left (44px hit area), the item's name and the amounts as written ("2 lb · 1 bunch"), the planned packs ("2 packs of 16 oz"), the product in a caption, and the price as a 44px button at the right. A claimed item shows its claim chip. "stale" in squash marks a planned price older than the stale window.
   - **Editing a price** opens a row beneath: price, quantity and unit, with a decimal keypad, Save and Cancel. A saved edit tints the row neutral and reads "edited"; the plan's figure stays visible as a caption ("planned $4.29"). Editing records nothing by itself: what it records is decided by "Done here".

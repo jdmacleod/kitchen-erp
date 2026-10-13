@@ -4,7 +4,6 @@
 
 Handoff from a claude.ai design session. This package covers the **canonical ingredient vocabulary**: seeding it from USDA FoodData Central (FDC), conforming existing Cooklang recipes to it, and suggesting canonical names while authoring.
 
-
 ## Package contents
 
 | path | what |
@@ -51,6 +50,7 @@ These are the rules the resolver, the LLM prompts and human review all enforce.
 These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks for the importer.
 
 **Data types**
+
 - Foundation: 469
 - SR Legacy: 7,793
 - FNDDS survey foods: 5,432
@@ -59,11 +59,13 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 - Foundation supporting rows (`sub_sample_food`, `market_acquistion` [sic], `sample_food`, `agricultural_acquisition`): these are not foods for our purposes.
 
 **Recipe-usage signal.** FNDDS defines survey foods as recipes of SR/Foundation inputs, via `input_food.csv`. Counting how often each food appears as an input ranks how "ingredient-like" it is.
+
 - 1,674 SR foods are used at least once; 431 are used at least 5 times; 111 at least 20 times.
 - 38 Foundation foods are used.
 - 624 inputs are FNDDS-only ingredient codes with no FDC record.
 
 **Noise in that signal:**
+
 - Cooked-state variants rank separately. "Onions, raw" has 200 uses and "Onions, cooked, boiled…" has 111, so they must be collapsed.
 - The ranking reflects the average American diet. Gerber water, Nestlé syrup and condensed soup all rank.
 - FNDDS codes include nutrient pseudo-ingredients ("Vitamin D as ingredient", "Iron as ingredient", "Folic acid", "Fiber") and composites ("Cheese as ingredient in sandwiches"). Exclude these.
@@ -72,6 +74,7 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 **Categories to exclude from seeding:** Baby Foods, Fast Foods, Restaurant Foods, Meals/Entrees/Side Dishes, and American Indian/Alaska Native Foods (0 used). Beef has 954 SR rows, of which only 9 are used 5 or more times. Most of SR is noise for a home-kitchen vocabulary.
 
 **FoodOn is in the CSVs,** as rows in `food_attribute.csv` rather than as a column.
+
 - Attribute names include "FoodOn Ontology ID / Name For FDC Item" (Foundation) and "FoodOn Ontology ID / Name #1 [#2] For FDC Item" (SR).
 - About 4,126 SR foods and all Foundation foods have one.
 - The same rows also carry NCBI Taxon, NCBI Taxon Parent and Scientific Name.
@@ -79,10 +82,12 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 - FoodOn labels are sometimes wrong: cornstarch → "corn flour", bread flour → "white bread", lemon juice from concentrate → "lime juice". Honey carries an UBERON ID. Never accept FoodOn names without review.
 
 **Portions / density.**
+
 - 7,649 of 8,262 core foods have `food_portion` rows, including 1,661 of the 1,674 FNDDS-used SR foods.
 - `measure_unit` is almost always "undetermined". The real unit is free text in `modifier` ("cup, chopped", "tbsp", "medium", "slice", "cup (8 fl oz)"), so it needs a parser (the 1C importer's, #99).
 
 **Branded.**
+
 - 2.0M rows, 449 `branded_food_category` values, and a 954 MB CSV that is mostly label ingredient text.
 - Import only a slim lookup table for barcode resolution.
 - The categories read like store aisles, which suits the aisle axis rather than the ingredient taxonomy.
@@ -102,12 +107,14 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 The seed has 146 concrete ingredients plus 7 abstract parents: butter, milk, cheese, chicken, vinegar, bell pepper, cooking oil. The cut-off was about 9 or more combined FNDDS uses, after collapsing variants.
 
 The columns are:
+
 - `slug`, `name`, `parent`
 - `fdc_category`, `fdc_id`, `foodon_id`
 - `collapsed_fdc_ids`, `fndds_uses`
 - `review_note`
 
 **Known review items:**
+
 - **Cooked references.** Many references point at cooked FDC records, because FNDDS models food as eaten: ground beef, chicken parts, pork loin, rice, pasta, dried beans, bacon. Swap each to the raw or dry sibling record. The `review_note` column flags every one.
 - **No FDC reference yet:** vegetable oil, olive oil, mushroom. Milk NFS maps to the `milk` parent.
 - **Wrong FoodOn labels** are noted per row.
@@ -120,6 +127,7 @@ The columns are:
 ## 7. Sequencing principle
 
 **The household's own recipes define the long tail; USDA supplies the IDs.**
+
 1. Run the extraction over `cooklang-recipes` early (task T6).
 2. Intersect that vocabulary with Tier A. This confirms which staples to seed.
 3. The unmatched names are the "gourmet gap" (guanciale, fish sauce, Bomba, and so on). Each one gets a canonical entry and an FDC reference through the review queue.

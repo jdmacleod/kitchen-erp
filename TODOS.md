@@ -48,6 +48,7 @@ source is named so it can be traced back.
 **Why:** A skipped or misread line is a common cause of a total that doesn't add up, and a second look may catch it.
 
 **Context:** Accepted on the vision-reading scope board (VX3), then deferred by the outside voice (OV6a, 2026-10-01). The re-ask can tempt a model to invent the missing line, and with only about 12 receipts its value can't be measured before Phase 1. The design is settled; build it as decided:
+
 - VD6: last resort only; never removes the first reading.
 - D13: skipped when the OCR total disagrees.
 - D14: works without consensus.

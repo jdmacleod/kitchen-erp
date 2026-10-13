@@ -31,14 +31,17 @@ Mode: Builder
 | Household switch | **switched early on 2026-10-07**; hold-out confirmation run due about 2026-11-06 | 2O rollout |
 
 **Next steps, in order:**
+
 1. **Collect receipts until about 2026-11-06.** Check each receipt's total against its photo before committing. The hold-out's truth comes from drafts this reader wrote, and a total accepted unchecked would flatter it.
 2. **Run the hold-out** once 10 or more receipts uploaded since 2026-10-07 are committed. Keep the Ollama laptop awake (`caffeinate -dis`), then:
+
    ```
    docker compose stop worker
    docker compose run -d --name kerp-bench api kerp reading-benchmark --uploaded-since 2026-10-07 --arms b --text-model qwen2.5:14b
    docker logs -f kerp-bench
    docker compose start worker
    ```
+
    Read only `summary.txt` and `reading.csv` under `data/benchmarks/`. About a minute per receipt.
 3. **Decide.** It holds if it reconciles within one receipt of 83% on those receipts: keep it. If not, roll back: take `vision` out of `OCR_ADAPTERS`, set `LLM_MODEL=gpt-oss:20b`, restart the worker, and keep the benchmark for the next model (2O, Rollout).
 4. **Afterwards, if wanted:** the line-pass follow-ups seen in readings:
@@ -48,6 +51,7 @@ Mode: Builder
    The deferred plan items (re-ask, per-number provenance, long-receipt slices) are in TODOS.md.
 
 **Facts worth knowing before touching it** (details under "Build notes" and "Model survey"):
+
 - **The two models don't share the GPU:** `qwen2.5:14b` takes 12.2 GB at 8k context and evicts glm-ocr, so each receipt swaps twice (a few seconds).
 - **Ollama 0.34's repeat-limit abort** is a 500 ("token repeat limit reached"), or an error inside a stream. The client treats it as out of room, and `transcribe()` streams so it keeps the rows before the abort (#193).
 - **glm-ocr loops at the end** of most receipts until its 4,096-token cap; `drop_repeated_tail` cuts the loop. The calls are recorded as `out_of_room`, which is expected.
@@ -59,6 +63,7 @@ Mode: Builder
 **Earlier status (2026-10-02).** Phase 0's code was complete and the household run (T5) was next; the steps above replace that list.
 
 **Where the code is.**
+
 - `backend/app/services/reading_benchmark.py`: the command's logic.
 - `kerp reading-benchmark` in `backend/app/cli.py`, with options `--models`, `--arms`, `--resume`, `--expected`, `--uploaded-since` (a hold-out batch, 2O), `--force`, `--out`, `--ocr-model` and `--text-model` (several, comma-separated, each its own arm (a) and (b) configuration).
 - `backend/app/ingest/`: `readers.py`, `witness.py`, `raster.py` (`render_page`, `vision_png`), and `llm.py` (`extract(images=…)`, `transcribe`, `VISION_RETRY`, `CallLedger`).
@@ -67,6 +72,7 @@ Mode: Builder
   - `test_ingest_golden.py`, whose expected files regenerate with `KERP_UPDATE_GOLDEN=1`, only on purpose.
 
 **Facts learned while building** (details in "Build notes (ET5)" and "Model survey"):
+
 - `glm-ocr` needs its own transcription system prompt; the JSON prompt gave 0 of 21 lines. It loops until its output cap, so its output is capped at 4,096 tokens and the repeated tail is cut.
 - The default `qwen3-vl` tags are thinking models and ignore `think: false`; use the `-instruct` tags.
 - One model can use about 16.2 GB of the host's GPU memory.
@@ -74,6 +80,7 @@ Mode: Builder
 **Original status (2026-10-01).** Reviewed by office hours, CEO, eng and design, with 0 unresolved decisions.
 
 **Read in this order:**
+
 1. This section.
 2. "Phase 0: `kerp reading-benchmark`", then "Model survey (2026-10-01, MS1–MS6)" right after it.
 3. "Phase 1-B" (including "Review: pick one of these and crops").
@@ -102,6 +109,7 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 | arm (d) pairs with "the other family" | the best (c) model from another family (Qwen, Gemma or MiniCPM) | MS5 |
 
 **Build order (Phase 0 first; Phase 1 only after Phase 0's decision rule and the spec 04 amendment):**
+
 1. **T1:** a short spec 04 note allowing the benchmark, the behaviour-preserving extraction and image parts in `llm.py` (OV10). It needs the user's approval (PR comment) before T2.
 2. **ET2 (T2):** extract today's text reader into `ingest/readers.py` with an absolute deadline. Golden test: stage outputs identical on all 12 fixtures.
 3. **ET1 (T3)**, all in `llm.py`:
@@ -131,6 +139,7 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 8. Apply the decision rule, then T6 (the spec 04 amendment for the winner, including spec 10 and 11 per DT3), then Phase 1: ET7, T7–T11, DT1–DT2.
 
 **Hard rules while building:**
+
 - Never read `data/`.
 - Fixtures and test values are synthetic: invent both numbers and item words.
 - Docs use placeholder Ollama hosts.
@@ -138,6 +147,7 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 - Small PRs, each leaving the suite green.
 
 **Measured on the LAN Ollama 0.34.4 host (2026-10-01):**
+
 - **Models** (the MS2 probe adds `qwen3.5:9b` 5.81 GB at 39 tok/s, `gemma4:12b` 9.28 GB at 27 tok/s, and `qwen3.6:27b` 17.62 GB with 15.73 GB on the GPU at 12–13 tok/s):
   - qwen3-vl:8b is 6.55 GB at 16k context and runs at about 36 tok/s;
   - minicpm-v4.5:8b is 10.29 GB at 16k;
@@ -147,15 +157,17 @@ The long middle (Reviewer Concerns R2-*, the CEO ledger and registries) is the r
 - **Plan timings:** about 150 s per 60-line reading; per-stage cap 480 s (0.8 × the 600 s lock); 900 s budget per receipt.
 
 **Where the rest lives:**
+
 - **CEO summary:** `~/.gstack/projects/kitchen-erp/ceo-plans/2026-10-01-vision-receipt-reading.md`.
 - **QA test plan:** `~/.gstack/projects/kitchen-erp/*-main-eng-review-test-plan-*.md` (newest).
 - **Task JSONL:** `~/.gstack/projects/kitchen-erp/tasks-{ceo,eng,design}-review-*.jsonl`.
-- **Decision board:** https://claude.ai/artifact/5QqX5niEY59LvPjKi6Asua. Batches: vision (VX/VH), vision-design (VD), vision-outside (OV), vision-eng (EV), vision-ui (UI). Read them back with `read_db` on `decisions`.
+- **Decision board:** <https://claude.ai/artifact/5QqX5niEY59LvPjKi6Asua>. Batches: vision (VX/VH), vision-design (VD), vision-outside (OV), vision-eng (EV), vision-ui (UI). Read them back with `read_db` on `decisions`.
 - **TODOS.md:** re-ask once when a receipt doesn't add up; show where each number came from; read long receipts in overlapping slices.
 
 ## Problem Statement
 
 Receipt reading misses the printed total too often to trust. In the most recent dogfood run (issue #121), 9 of 12 real receipts failed to reconcile.
+
 - Tesseract (`--psm 6`, 200 dpi) drops prices and decimal points.
 - The text model (`gpt-oss:20b`) reads the OCR text in 25-row parts and takes 30–140 s for the lines stage.
 - It never fills `qty` for plain item lines.
@@ -169,17 +181,20 @@ The goal (D3) is **totals reconcile, and review becomes a glance and a confirm.*
 ## What Makes This Cool
 
 A receipt carries three kinds of evidence about its own reading:
+
 1. the printed total;
 2. each row's own arithmetic (weight × rate = amount, count × unit = amount);
 3. a second, independent reading.
 
 Four open-source receipt projects were read for this session (source read on GitHub, 2026-09-30). **None uses a second reader** (corrects R2-3):
+
 - **Rudd-O/beanhand** is a vision model that writes ledger text, with no arithmetic check.
 - **Endle/beanbeaver-core** is OCR plus rules, with per-row arithmetic and total checks.
 - **natelandau/cartlog** is a vision model with a line-sum check against the total, and has no tax field.
 - **vpopovec/Grocery-Tracker** has a vision model asked to "verify its math". The code never checks it.
 
 Here a vision model reads the photo, and everything else is evidence about that reading:
+
 - code does all the math;
 - a second vision model from another family reads it too;
 - OCR text acts as a soft, decimal-tolerant witness;
@@ -230,6 +245,7 @@ Here a vision model reads the photo, and everything else is evidence about that 
 ## Approaches
 
 All outcomes start with the same benchmark (Phase 0).
+
 - **A, vision as OCR adapter (effort S).** The `vision` `OcrAdapter` described in `ocr.py:8-12`: a vision model transcribes the image, and the text pipeline is unchanged.
 - **B, vision reader with OCR witness (effort M), chosen in D9.** A vision reader fills `ReceiptHeader` and `ReceiptLines` from the image, and every deterministic post-pass runs unchanged.
 - **C, consensus (effort L), accepted into Phase 1 as VX4 and gated by Phase 0 (VD1).** B plus a second vision model from another family. OCR amounts supply per-line candidates, and the printed total picks among them.
@@ -251,11 +267,13 @@ docker compose start worker          # afterwards
 - Screening runs one configuration over every receipt before the next, so swaps don't dominate. Only arm (d) interleaves models per receipt, as production would.
 
 **It writes nothing to the app database (R2-7).**
+
 - It calls the readers, the OCR adapters, header parsing and the pure post-passes (`refine_line`, `merge_quantity_lines`, `fold_regular_prices`, `check_prices`, `reconcile`) directly. It never calls `stage_*`, `run_stage` or `upsert_draft_purchase` (N2-3).
 - Its database access is SELECT only: committed purchases, their lines and aliases. It runs inside a transaction that is always rolled back.
 - A test asserts that the row counts of `ingest_stage_result`, `purchase`, `purchase_line`, `price_observation` and `receipt_alias` are unchanged after a run on fixtures.
 
 **Paths (R2-8).** Inside the container `./data` is mounted at `/data` (compose.yaml:61), so everything lives under `/data/benchmarks/`:
+
 - `reading-runs/<RUN_ID>/readings.jsonl`: per-reading checkpoint, used to resume.
 - `reading-runs/<RUN_ID>/summary.txt`: the aggregate table.
 - `reading.csv`: one aggregate row per configuration per run. The columns are `run_id, started_at, receipt_set_hash, arm, model, second_model, model_digest, prompt_version, long_side, variant, n, reconcile_share, consensus_share, runaway_share, header_total_exact, item_count_mad, alias_hit_rate, ocr_support, ocr_support_tolerant, false_support, vlm_agreement, box_valid_share, box_iou50_share, seconds_p50, seconds_max, tokens_p50, load_seconds_p50, model_tag, line_amount_exact_share, wrong_preselection_count, ci80_low, ci80_high`.
@@ -267,6 +285,7 @@ Per-receipt files stay under `data/` and are never read by the assistant.
 **Extraction first (N3-2).** Today's text reading (`_read_lines_in_parts` and its parts and re-ask logic) and the header total rule (`printed_total_line` plus the `total_from_text` override) move out of `stage_lines` and `stage_header` into pure functions in `ingest/readers.py`. The stages call them, and a test asserts that stage output is unchanged for every receipt fixture. Arm (a) calls the same functions, so it is today's pipeline exactly.
 
 **Which receipts, and what counts as the truth (VX1, C1-5, C3-2).**
+
 - **Receipts scored:** purchases with `status = 'committed'` and a `receipt_document_id`. Voided purchases are excluded.
 - **Expected total:** `purchase.total`. These purchases are excluded:
   - those flagged `total_missing`, because their total was computed rather than printed;
@@ -280,12 +299,14 @@ Per-receipt files stay under `data/` and are never read by the assistant.
 - **Qty fill rate:** measured only by the live synthetic suite (Success Criteria), not on real receipts.
 
 **Arms.**
+
 - (a) today's pipeline;
 - (b) vision-as-OCR: a vision model transcribes, then the current text lines stage runs;
 - (c) vision reader (B);
 - (d) vision reader plus consensus (B+C), using a second model from another family (VD1, VD2).
 
 **Two steps (OV3).**
+
 - **Step 1** builds and runs arms (a), (b) and (c) only.
 - **Step 2:** the consensus engine (alignment, candidates, search) and arm (d) are built and run only if (c) ships under the rule below and still leaves more than 1 in 5 eligible receipts unreconciled.
 - Otherwise consensus goes to TODOS.md with the step 1 table.
@@ -293,6 +314,7 @@ Per-receipt files stay under `data/` and are never read by the assistant.
 Arm (c) runs in two variants: one call for header and lines, and separate calls.
 
 **Grid (OV4, reduced).**
+
 - Candidates: ~~one per family, the instruct tags of `qwen3-vl:8b` and `minicpm-v4.5:8b` (OV9)~~ superseded by MS4: `qwen3.5:9b`, `qwen3-vl:8b-instruct`, `gemma4:12b`, `minicpm-v4.5:8b`, `qwen3.6:27b` and `gemma4:26b-a4b`. Instruct or `think: false` only (OV9). `glm-ocr` runs in arm (b) only.
 - Long-side cap: 2000 px only.
 - Arm (c) runs only the separate-calls variant. The one-call variant is dropped unless a later run shows it is much faster.
@@ -300,6 +322,7 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 - Arm (d), in step 2 only, pairs the best (c) model with the best (c) model from another family (MS5).
 
 **Staged runs (VD11, R2-6).**
+
 - **Order:** arms (a), (b) and (c) first; arm (d) after the best (c) configuration is known.
 - **Screening:** every configuration runs once.
 - **One run per configuration (EV6, superseding the ×3 confirmations from VD11 and N3-4).** Every call is at temperature 0, so repeats would return almost the same answer. The time goes to receipts instead: before Phase 0 the household is encouraged to commit more receipts or add `expected.csv` rows. The 80% intervals (OV4) and the hold-out batch remain the checks on chance.
@@ -308,6 +331,7 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 - Estimated time is printed before starting: configurations × n × p50 seconds, with arm (d) counted at twice the per-receipt time plus about 4 s of swaps.
 
 **Scores (aggregates only).**
+
 - **Reconcile share (R2-2):** first-reading lines, discounts, tax and fees summing to the **expected** total within 0.02. One run per configuration (EV6).
 - **Arm (d)'s headline (N2-4)** is the share whose preselected consensus combination, or its first reading when nothing is preselected, sums to the expected total within 0.02. Re-ask results are excluded. Arm (d) also reports:
   - the share reconciled by consensus;
@@ -327,6 +351,7 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 - Run time is printed and estimated before starting. As an example, from the measured speed (E2: about 36 tok/s, about 150 s per reading; EV9): step 1 is about 6 configurations × 12 receipts × 150 s, roughly 3 hours. Step 2, if it runs, adds about 1 hour for arm (d).
 
 **Decision rule (R2-4, VD1, VD9, VD10).** Steps 1 and 2 apply within an arm; the rest compares arms.
+
 1. **Pick each arm's configuration.** It is the one with the highest mean reconcile share. Ties go to the higher alias hit rate, then fewer seconds.
 2. **Margin (OV4).** A difference counts only if it exceeds the larger of 3 receipts and 1/n. Anything inside the margin is "no decision" between the two.
 3. **Bars (OV1).** Drop any of (b) and (c) that fails any of these:
@@ -351,6 +376,7 @@ Arm (c) runs in two variants: one call for header and lines, and separate calls.
 `backend/scripts/ocr_benchmark.py` stays as it is; the new command replaces it for vision work.
 
 **Build notes (ET5, 2026-10-02).** These record how the command was built. Each one follows from an approved rule or from a measurement; none is a new behaviour choice.
+
 - **Reads, then models.** Everything the run needs (receipts, committed lines, aliases) is read up front, in one read-only transaction that is rolled back before any model is called. That keeps "SELECT only, always rolled back" (R2-7) without holding a transaction open for hours.
 - **Worker guard.** The worker names its database connections `kerp-worker` (`application_name`), and the command looks for them in `pg_stat_activity`. Only a worker built from this code is seen, so rebuild the stack (`make up`) before the first run.
 - **Arm (b) and `glm-ocr`**, measured on synthetic fixtures:
@@ -373,6 +399,7 @@ The user asked for a survey of the Ollama vision catalogue as of October 2026, f
 **Hardware correction (MS1).** On the LAN host (Ollama 0.34.4), one model can hold up to about 16.2 GB in GPU memory. That is consistent with macOS's default GPU limit on a 24 GB Apple silicon machine, about two-thirds of RAM. The earlier "10.6–12.8 GB usable" came from which *pairs* of models stayed resident, not from a single model's ceiling. A model larger than about 16 GB at 16k context still loads, but its excess layers run on the CPU and generation slows to 8–13 tok/s. Raising the limit (`sudo sysctl iogpu.wired_limit_mb=20480`, reset at reboot) should let a 27B model fit entirely, at the cost of memory for everything else. Nothing in the plan assumes it; only the household can decide to do that, and it is not tested.
 
 **Probe (MS2).** Method:
+
 - Three synthetic fixtures (`supermarket_loyalty`, `discount_grocer_terse`, `warehouse_codes`) were rendered with the test helper.
 - Each model got one call per fixture: JSON-schema `format`, temperature 0, 16k context, 8192 output cap, `think: false` where the model supports thinking.
 - The score is the printed line amounts recovered (24 in total across the three fixtures), the amounts invented (extra), and whether the total was read correctly.
@@ -396,6 +423,7 @@ These are clean renders of short receipts, so accuracy here only screens out bro
 | `ibm/granite3.3-vision:2b` | — | — | — | — | — | — | 500 on every call with a JSON-schema `format` ("Unexpected empty grammar stack") |
 
 Two findings change how the benchmark runs:
+
 - **Thinking (confirms OV9).** The default `qwen3-vl` tags are the thinking variants and ignore `think: false`. `qwen3-vl:8b` spent its whole 4,096-token budget thinking on 2 of 3 receipts. Pin `-instruct` tags for that family. The Qwen 3.5, 3.6 and 3.8 hybrids, Gemma 4 and MiniCPM-V 4.5 all honoured `think: false` (0 thinking characters).
 - **Output size.** A transcribed line costs about 30–35 output tokens without boxes. A 60-line receipt is therefore about 2,000 tokens; the 4,000–5,000 estimate with boxes (E2) is still unverified. At 12.6 tok/s, `qwen3.6:27b` takes about 160 s for 60 lines without boxes, but about 400 s at 5,000 tokens. That is over the 300 s call timeout, so with boxes a 27B model only fits the budget if the GPU limit is raised.
 
@@ -439,6 +467,7 @@ Published scores, for context only: Qwen3.6-27B has OCRBench 89.4 and CC-OCR 81.
 **Arm (d) pairing (MS5).** Consensus needs a second model from another family. Gemma joins Qwen and MiniCPM as an option, so arm (d) pairs the best (c) model with the best (c) model from a different family. A pair that can't be resident together costs a swap per receipt (E2), and the 27B models can't share the GPU with anything.
 
 **Benchmark handling (MS6).** These refine ET1 and ET5.
+
 - A model that fails to load, like the "unknown model architecture" 500 above, is listed as skipped (load failed), just as a text-only model is skipped as not multimodal (D3). The model is not scored as zero.
 - A 500 from the grammar engine on a schema `format` counts as a failed reading, toward the retry and then the fallback, like any other invalid reply. If every reading of a configuration fails that way, the configuration is listed as skipped (schema unsupported).
 - `reading.csv` already records `model_tag` and `model_digest`, so a re-pulled tag shows up as a different digest.
@@ -582,6 +611,7 @@ Sources: [Ollama vision models](https://ollama.com/search?c=vision), [qwen3.6 ta
 ### Review: "pick one of these" and crops (VD5, VD7; screen design from the design review, UI1–UI13)
 
 **Data rules (unchanged).**
+
 - **Picking.** Picking a candidate updates the draft line (draft lines are editable; facts are written only at commit) and records `chosen_by_person`.
 - **Boxes (VD7).**
   - `ReceiptLine` gains an optional `box`: `[x0, y0, x1, y1]` as integers 0–1000 (per-mille) of the upright first page, validated with `0 ≤ x0 < x1 ≤ 1000` and `0 ≤ y0 < y1 ≤ 1000`.
@@ -592,11 +622,13 @@ Sources: [Ollama vision models](https://ollama.com/search?c=vision), [qwen3.6 ta
 - **Disputed total (D18).** Choosing a total sets the header Total, records `total_confirmed_by_person`, clears `total_witness_mismatch`, and reruns the pure search on the confirmed total in the request. The header Total stays editable.
 
 **Page order (UI1).** Alerts above the lines appear in this fixed order:
+
 1. error;
 2. disputed total;
 3. everything else (decimals, part unread, date, total missing).
 
 The mismatch alert is not shown on vision readings; the gap line (UI3) replaces it. Notes about where the reading came from are one neutral caption under the header's meta line, not alerts:
+
 - "Read from the text scan only. Check amounts against the photo." (`read_fallback`, `vision_model_not_multimodal`)
 - "No text scan to check against." (`no_witness`)
 - "Only page 1 was read." (`pages_truncated`)
@@ -619,23 +651,27 @@ The mismatch alert is not shown on vision readings; the gap line (UI3) replaces 
 ```
 
 **Disputed-total alert (UI2, UI12, UI8).**
+
 - A new `warning` tone in `alertTones`: amber-50 fill, amber-800 text, plus the dark pair, at 4.5:1 contrast. It is used only for "the system is unsure; a person must choose".
 - Copy: "The receipt total reads $48.27 one way and $43.27 another. Which does the photo show?" Buttons "It's $48.27" and "It's $43.27", in the order the amounts appear on the receipt, top to bottom.
 - While it is open, each line's choices carry the caption "Pick the total first". They stay clickable.
 - After you choose, the rerun never changes a line you picked (`chosen_by_person`). It reports inline: "4 lines now match the total" or "No single combination matches. Pick below."
 
 **Gap line (UI3, UI11).**
+
 - It sits in the Lines card header, beside the item and identify counts.
 - Text: "Off by $5.00" in squash text; "Adds up to the receipt total" in olive; "Every reading is settled" once nothing is left to pick.
 - The server recomputes it after each pick, and a polite live region announces it.
 
 **Commit (UI4).**
+
 - The header meta gains "7 had two readings · 5 matched the total · 2 to pick".
 - The line filter gains a "Two readings n" segment.
 - If any line still has an open choice, Commit asks inline: "2 lines have two readings you haven't picked. Commit with the first reading? · Review them". "Review them" has focus and moves to the first open line.
 - Lines the total matched don't block commit.
 
 **A line with two readings (UI5, UI6, UI7).**
+
 - **Collapsed row:** a neutral "2 readings" tag in the # column.
 - **Current row:** opens a full-width sub-row, like the product picker row. The crop is on the left, padded about 15%, with an `alt` naming the line ("Photo of the line CHKN THIGH"). The choices are on the right.
 - **The choices:** the existing `SegmentedControl` (radio semantics; the selected segment is raised and neutral), one segment per amount. A caption under it reads "matched the total" (neutral-600) when the system chose, or "your pick" after you choose.
@@ -643,11 +679,13 @@ The mismatch alert is not shown on vision readings; the gap line (UI3) replaces 
 - **On a phone card (G18):** the crop runs full width under the receipt text, then the choices, at least 44px tall and wrapping.
 
 **Extra lines and other line kinds (UI10).**
+
 - A line only one reading saw is a muted row: "Only one reading saw this line", with Include and Leave out.
 - A line the total search added reads "added: matched the total", with Leave out.
 - Disagreeing discounts, tax and fees use the same segmented choice as item lines.
 
 **Labels (UI9, UI12).** `FLAG_LABELS` gains:
+
 - `ocr_unsupported` → "not in the text scan";
 - `consensus_open` → "readings disagree";
 - `consensus_too_wide` → "too many differences to compare";
@@ -665,6 +703,7 @@ The mismatch alert is not shown on vision readings; the gap line (UI3) replaces 
 | Gap line | Last value | Last value plus row error | "Adds up…" / "Every reading is settled" | "Off by $x" |
 
 **Keys (UI13).**
+
 - 1, 2 and 3 pick the current row's choices, and are added to the shortcut list.
 - After a pick, the next line with a choice becomes the current row, so j and k keep working.
 - The live region says "Line 7 set to $3.49. Adds up to the receipt total."
@@ -733,6 +772,7 @@ The gap-stating re-ask is not built in Phase 1. It is in TODOS.md, to be built w
 ## Scope decided by the CEO review (board, 2026-10-01)
 
 **Accepted:**
+
 - VX1, expected values from committed purchases;
 - VX2, `kerp reading-benchmark`;
 - VX4, consensus, gated by Phase 0 (VD1);
@@ -740,6 +780,7 @@ The gap-stating re-ask is not built in Phase 1. It is in TODOS.md, to be built w
 - VX7, the call ledger.
 
 **Deferred to TODOS.md:**
+
 - VX3, the re-ask (reopened by the outside voice, OV6a: deferred until production shows the need);
 - VX6, per-number provenance;
 - VH1, slicing long receipts.
@@ -747,10 +788,12 @@ The gap-stating re-ask is not built in Phase 1. It is in TODOS.md, to be built w
 **Design calls VD1–VD11:** all taken as recommended (board, 2026-10-01). They are applied in the sections above.
 
 ## Open Questions
+
 - How good is client-supplied OCR text as a witness? Phase 0 measures it only for receipts uploaded with it.
 - Does a lines-stage retry under the one-call variant cost too much on long receipts? Phase 0's p50 and max decide.
 
 ## Success Criteria
+
 - **Real receipts.**
   - The chosen configuration meets the Phase 0 decision rule. It holds within one receipt of its reconcile share on a hold-out batch of 10 or more new receipts.
 - **Synthetic receipts, live.** The live `pytest -m llm` image arm reconciles every synthetic fixture that the text arm reconciles. It fills `qty` for at least 90% of expected lines that carry a quantity, measured against the fixtures' `expected_lines`. Recorded responses in the default suite only guard against regressions.
@@ -763,9 +806,11 @@ The gap-stating re-ask is not built in Phase 1. It is in TODOS.md, to be built w
 Synthetic image fixtures test wiring and regressions: each YAML's `ocr_text` rendered as an image, plus degraded variants (blur, 3° skew, low contrast, thermal fade, perspective warp), plus the injection image. Accuracy claims rest only on the real-receipt benchmark.
 
 ## Distribution Plan
+
 Vision ships in the existing Docker image and is switched on in `.env`. There is no new service. `.env.example` and the README's Ollama section document the settings with placeholder hosts. The README states that vision sends whole receipt images, which can include loyalty barcodes and card digits, to `OLLAMA_BASE_URL`, so that must be a host you control (Section 3).
 
 ## Next Steps
+
 0. Get the short spec 04 note approved (OV10).
 1. Build `kerp reading-benchmark` with its fixtures: the no-writes test, the expected-values test and the resume test.
 2. The household runs Phase 0 and the assistant reads only the aggregate table.
@@ -775,6 +820,7 @@ Vision ships in the existing Docker image and is switched on in `.env`. There is
 6. Confirm on the hold-out dogfood batch. If consensus was deferred, rerun the benchmark when a new model ships.
 
 ## What I noticed about how you think
+
 - Asked for the coolest version, you picked "totals reconcile" over "snap from phone, done". You chose the measurable win over the flashy one.
 - You chose "Bake-off first" over shipping the adapter, so the model choice rests on your own receipts, not demos.
 - When the cold read attacked P3, you revised it rather than defending the original framing.
@@ -791,6 +837,7 @@ Vision ships in the existing Docker image and is switched on in `.env`. There is
 | Hour 6+, Phase 1 | Spec 04 amendment, then the reader seam, consensus, re-ask, witness pass, review buttons and crops, and synthetic image fixtures including degraded and rotated ones. The implementer will want the per-stage time cap and the call ledger tested first. | 2–3 weeks | 1–2 days |
 
 Feasibility blockers, each decided in the sections below:
+
 - N3-1, fallback time inside a stage (Section 2);
 - N3-3, extra lines in the total search (Section 4);
 - N3-10, confirming a disputed total in review (Section 11).
@@ -1054,6 +1101,7 @@ Mode: SELECTIVE EXPANSION (D11). Review depth: implementation-ready.
 | OV11 (user) | Digit-run witness can false-match | board answer applied (see body) | on only if false support < 5% | approved | Board OV11=apply (2026-10-01) |
 
 **Approval readiness: PASS.** Checked rows:
+
 - D3, D4, D6/D8, D9, D10, D11 (terminal answers);
 - VX1–VX7 and VH1 (scope board), with VX3 later reopened and deferred by OV6a;
 - VD1–VD11 (design board);
@@ -1065,16 +1113,19 @@ Other changes (the round-2 and round-3 spec fixes, and GAP-2 and the Sections 3�
 ## NOT in scope
 
 **Deferred (also in TODOS.md):**
+
 - **VH1, slicing long receipts.** Board: defer. Whole images first; build it only if Phase 0 shows long receipts fail.
 - **VX6, per-number provenance.** Board: defer. Existing line flags cover most of it.
 - **VX3, the re-ask.** Board: add, then OV6a: defer. Its value can't be measured on about 12 receipts. Build it after 30 receipts on B if more than 1 in 5 stay unreconciled.
 
 **Conditional, decided by evidence rather than cut:**
+
 - Consensus (VX4) is built only under Phase 0 step 2 and shipped only past its gates (VD1, OV2, OV3).
 - Crops (VX5) ship only with valid boxes on at least 80% of lines (D14).
 - If A or neither wins, both go to TODOS.md (VD9).
 
 **Rejected or not taken:**
+
 - Cloud vision models (premise P1, D6).
 - Dropping OCR entirely (D6 option not taken).
 - Phone capture, naming at read time, and few-shot examples from the same store (held back on the scope board; never requested).
@@ -1151,6 +1202,7 @@ There are 8 modes and 0 critical gaps.
 ## Scope Expansion Decisions
 
 The full record is in `~/.gstack/projects/kitchen-erp/ceo-plans/2026-10-01-vision-receipt-reading.md`.
+
 - **Accepted:** VX1, VX2, VX4 (conditional), VX5 (conditional), VX7.
 - **Deferred:** VX3 (via OV6a), VX6, VH1.
 - **Skipped:** none.
@@ -1188,6 +1240,7 @@ The full record is in `~/.gstack/projects/kitchen-erp/ceo-plans/2026-10-01-visio
 ```
 
 ### Stale diagram audit
+
 `ingest/stages.py` has the stage order in its docstring (`captured → ocr → header → lines → resolve → review → committed`). It stays accurate, because no stage is added. `ocr.py:8-12` describes the vision seam and needs updating in Phase 1 to point at the reader seam. That's T9 below.
 
 ## Implementation Tasks
@@ -1282,6 +1335,7 @@ Synthesized from this review's findings. Each task derives from a specific findi
 ```
 
 ### Unresolved Decisions
+
 None. Every question asked in this review was answered.
 
 ## Eng Review (2026-10-01)
@@ -1289,6 +1343,7 @@ None. Every question asked in this review was answered.
 Target: `docs/designs/vision-receipt-reading.md` (named in the CEO review handoff). The report file is this file.
 
 ### Scope record
+
 - **Feature answers:** D1 = "A) Include Phase 1 now". This review approves T1–T11.
 - **Structure:** D2 = "Smaller arrangement".
   - New modules: `ingest/readers.py`, `ingest/witness.py`, `ingest/consensus.py`, `services/reading_benchmark.py`.
@@ -1299,6 +1354,7 @@ Target: `docs/designs/vision-receipt-reading.md` (named in the CEO review handof
 - **Scope Challenge result:** scope accepted as-is.
 
 ### Scope Challenge findings
+
 - **SC-1 (correction)** [P2] (confidence: 9/10) `app/ingest/raster.py:48` `def pdf_to_png(source: Path, target: Path) -> Path` renders page 1 only. The approved `VISION_MAX_PAGES` and `pages_truncated` contract needs a multi-page render. That was carried into T7 as a necessary implementation, then **superseded by EV7** (`VISION_MAX_PAGES=1`), so no multi-page renderer is built.
 - **SC-2.** TODOS.md already holds the re-ask, provenance and slicing entries, and none blocks this plan.
 - **SC-3.** No new distributable artifact: the command ships in the existing image.
@@ -1307,6 +1363,7 @@ Target: `docs/designs/vision-receipt-reading.md` (named in the CEO review handof
   - **[Layer 2]** Ollama `format` (JSON schema) together with `images`. Support varies by model, which Phase 0 measures.
 
 ### Section 1: Architecture (corrections carried forward under approved decisions)
+
 - **A1** [P1] (confidence: 9/10) Implementing D16 (one stage clock):
   - `stages.py:214-215` `deadline = lines_stage.lines_deadline_seconds()` / `started = time.monotonic()` start a fresh clock inside `_read_lines_in_parts`.
   - `stages.py:146` `await ctx.llm.extract(ReceiptHeader, header_stage.HEADER_TASK, text)` passes no deadline.
@@ -1328,6 +1385,7 @@ Target: `docs/designs/vision-receipt-reading.md` (named in the CEO review handof
 ### Section 2: Code quality
 
 #### E1: a text-only model configured as `VISION_MODEL`
+
 Finding: [P1] (confidence: 9/10) `app/ingest/llm.py:215-218`
 `if response.status_code != 200: ... raise ModelUnavailable(detail=f"http_{response.status_code}")`.
 The live probe on 2026-10-01 against the LAN Ollama 0.34.4 host, sending a synthetic 1×1 PNG to `llama3.1:8b`, returned `400 {"error":"…Multimodal data provided, but model does not support multimodal requests…"}`. Reviewer: eng review.
@@ -1364,9 +1422,11 @@ Accepted scope: `chat()` raises `ModelMissing` for a 400 whose body says the mod
 History: none
 
 #### E2: context size for vision calls
+
 Finding: [P1] (confidence: 8/10) `app/ingest/llm.py:47-48` `NUM_CTX = 8192` / `NUM_PREDICT = 8192`, shared by every call. Reviewer: eng review.
 Plan baseline: vision calls reuse `extract()` with the same options (A2). The plan reads whole images (VH1 deferred) and adds boxes (VX5).
 Runtime evidence (probe 2026-10-01, blank synthetic PNGs, `think: false`):
+
 - qwen3-vl:8b used 1,588 prompt tokens for 800×2000 and 2,927 for 1000×3000;
 - minicpm-v4.5:8b used 612 for both, because it downscales internally.
 
@@ -1396,6 +1456,7 @@ Effort S, no work. Vision shares today's constants; overflow becomes model_out_o
 State: approved
 Actual answer: The user replied (D4, 2026-10-01): "Test the hardware the Ollama instance is running on to determine if 16k context is possible. Only set a 16k limit if the underlying hardware can support that reliably." The hardware test passed (evidence below), so option A applies under the user's condition.
 Hardware evidence (LAN Ollama 0.34.4, `/api/ps` after each load, synthetic prompts only):
+
 - **qwen3-vl:8b** used 5.87 GB at 8k, 6.55 GB at 16k and 7.91 GB at 32k, every time fully in GPU memory (`size_vram` = `size`).
 - **minicpm-v4.5:8b** used 10.29 GB at 16k, fully in GPU memory.
 - **Long generation at 16k** with an 800×2000 image:
@@ -1407,6 +1468,7 @@ Accepted scope: vision calls use `VISION_NUM_CTX = 16384` and `VISION_NUM_PREDIC
 History: `VISION_NUM_PREDICT` was later lowered from 12288 to 8192 by EV2 (board, 2026-10-01), so a runaway reply ends as out-of-room within the 300 s call timeout.
 
 #### Section 2: other findings (corrections under approved decisions)
+
 - **Q1** [P2] (confidence: 8/10) One call ledger per job, shared by both clients. `LlmClient.__init__` (llm.py:157-176) holds per-client state such as `last_done_reason`, and the second reader needs its own client because it uses a different model. So the VX7 ledger must be a `CallLedger` object passed to both clients, or the second reader's calls would be missing from the budget sum (D8 counts all vision calls).
 - **Q2** [P2] (confidence: 8/10) The second reader may be squeezed out by the stage clock. At about 36 tok/s (E2), a 100-line receipt takes about 250 s per reading, so primary plus second plus a swap can pass the 480 s stage cap (D12/D16). The second reader is an optional call: if it won't fit in the stage time left, or it times out, it is skipped with `second_reader_skipped`, and the primary reading stands. The fit estimate is specified by **EV3** (the primary's output tokens ÷ its measured tok/s, plus the swap). This follows from D16 and the approved meaning of optional calls.
 - **Q3** No shared-code extraction is proposed. `scripts/ocr_benchmark.py` and `kerp reading-benchmark` differ in contract (OCR configuration against reading arms), and the plan keeps the old script as it is. Rubric: no two callers with equivalent behaviour.
@@ -1452,6 +1514,7 @@ QUALITY of existing reused coverage: ★★★ 2, ★★ 1. GAPS: 31 (1 E2E, 1 e
 ```
 
 Every gap above is the required proof of an approved behaviour (CEO ledger, D1–D4), so no new test-scope choice is pending. The two **CRITICAL** regressions:
+
 1. The extracted text reader must leave stage output byte-identical on all 12 receipt fixtures. Value: protects=the text path while it moves into readers.py; fails_when=the extraction changes parts, retries or flags; why_new=no golden of stage output exists today; seam=none.
 2. The text path's non-200 handling must be unchanged apart from the two `ModelMissing` bodies. Value: protects=a waiting job on a bare 404 or 5xx; fails_when=E1/N2-8 widen the match; why_new=test_ingest_llm_options.py doesn't cover 404 bodies; seam=none.
 
@@ -1460,6 +1523,7 @@ Every gap above is the required proof of an approved behaviour (CEO ledger, D1�
 **Tests made obsolete:** none. `scripts/ocr_benchmark.py` keeps its own role.
 
 ### Section 4: Performance
+
 - **P1** [P2] (confidence: 8/10) The benchmark's run time comes from measured throughput (E2: about 36 tok/s, about 150 s per reading).
   - Step 1 grid: about 6 screening configurations × 12 receipts × 150 s ≈ 3 h, plus confirmations (3 arms × 2 × 12 × 150 s ≈ 3 h), so about 6 h.
   - Arm (d) adds swaps (2–4 s each) and twice the reading time.
@@ -1471,12 +1535,15 @@ Every gap above is the required proof of an approved behaviour (CEO ledger, D1�
 - **P4.** Slowest paths: the vision lines stage (p50 about 150 s at 60 lines), consensus (about 2× that plus a swap) and the text fallback. All are bounded by D16.
 
 ### Outside voice (Claude subagent, in-host; Codex not installed)
+
 11 findings, EV-1 to EV-11; the full text is in the session transcript. The claims were verified against the code, and the EV-4 swap was measured on 2026-10-01:
+
 - gpt-oss:20b loads in 3.9–4.4 s;
 - the vision model reloads in 2.7 s;
 - so about 8 s per receipt, small next to a 150 s reading.
 
 **Corrections applied, no behaviour choice (EV-4, EV-8, EV-9, EV-11):**
+
 - **EV-4.** The wording now says every receipt pays the ranker's gpt-oss swap, measured at about 4 s.
 - **EV-8.** `READ_ADAPTERS`, `VISION_*` and `WITNESS_DIGIT_RUNS` are forwarded in compose.yaml's `app-env` block (compose.yaml:45-47 requires it), and a drift test checks every setting in `.env.example` is forwarded.
 - **EV-9.** Stale numbers are recomputed from the E2 measurements.
@@ -1495,10 +1562,13 @@ Every gap above is the required proof of an approved behaviour (CEO ledger, D1�
 | EV10 | Grayscale prep | grayscale converters | colour vision path, 200 dpi | approved (board EV10=apply, 2026-10-01) |
 
 ### TODOS
+
 No new TODO proposals from the eng review. EV7 removed multi-page support as a cut, not a deferral. The CEO review's three deferred entries (re-ask, provenance, slicing) are already in TODOS.md.
 
 ### Approval readiness (eng): PASS
+
 Checked:
+
 - D1 "A) Include Phase 1 now";
 - D2 "Smaller arrangement";
 - E1 → D3 "A) Fall back with a flag";
@@ -1509,13 +1579,16 @@ Checked:
 The corrections (SC-1, A1–A4, Q1–Q4, EV4, EV8, EV9, EV11) are factual or required implementation of approved contracts, with no new behaviour. Nothing unapproved is in accepted work.
 
 ### NOT in scope (eng additions)
+
 - **Multi-page vision reading:** cut by EV7. A till receipt is one page, and more pages can't fit the stage clock.
 - **Consensus on receipts over about 60 lines:** skipped by design (EV3), with `second_reader_skipped`.
 - **Confirmation repeats:** cut by EV6, in favour of more receipts.
 - **Raising the job lock:** not taken (EV3 kept D12).
 
 ### What already exists (eng view)
+
 These are reused rather than rebuilt:
+
 - `extract()`'s shared deadline and retry loop (llm.py:230-288), extended with an image list, a retry policy and usage;
 - `_read_lines_in_parts` (stages.py:202-280), moved into readers.py with an absolute deadline;
 - `RecordedTransport` (replay.py), extended with model-keyed routing and usage fields;
@@ -1525,6 +1598,7 @@ These are reused rather than rebuilt:
 - compose.yaml's `app-env` forwarding block.
 
 ### Failure modes (eng)
+
 | Path | Realistic failure | Handling | Test | User sees |
 |---|---|---|---|---|
 | vision call | text-only model configured | `ModelMissing`, then text with a flag (D3) | recorded 400 body | `vision_model_not_multimodal` note |
@@ -1538,6 +1612,7 @@ These are reused rather than rebuilt:
 There are 0 critical gaps.
 
 ### Worktree parallelization strategy
+
 | Step | Modules touched | Depends on |
 |---|---|---|
 | S1 spec 04 note (T1) | docs/spec | — |
@@ -1559,6 +1634,7 @@ There are 0 critical gaps.
 - **Conflict flags:** `backend/app/cli.py` (S5 and S9) and `ingest/` (S2, S3, S6, S7) are sequential within their lanes.
 
 ## Implementation Tasks (eng review)
+
 Synthesized from this review's findings. They refine T1–T11 above. Run with Claude Code or Codex; checkbox as you ship.
 
 - [x] **ET1 (P1, human: ~1 day / CC: ~45min)** — llm — images in extract(), vision system prompt, ModelMissing (404 body and 400 multimodal), last_usage with load_seconds, think:false, retry-policy argument, VISION_NUM_CTX=16384 / VISION_NUM_PREDICT=8192, shared CallLedger
@@ -1591,6 +1667,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
   - Verify: a fake slow model keeps the stage under 0.8 × lock; the skip test passes
 
 ### Completion summary (eng)
+
 - Step 0: Scope Challenge: scope accepted as-is (smaller arrangement, D2)
 - Architecture Review: 4 issues found (A1–A4), all required implementation
 - Code Quality Review: 4 issues found (E1, E2, Q1, Q2)
@@ -1611,6 +1688,7 @@ Synthesized from this review's findings. They refine T1–T11 above. Run with Cl
 Target: the Phase 1 receipt-review changes in this plan (VD5, VD7/D14, D17, D18, and the read-without-vision and shrinking-gap items). There is no DESIGN.md; spec 08 ("Market") is the design system. No mockups were made: the gstack designer needs an `OPENAI_API_KEY`, and running it returned "set OPENAI_API_KEY environment variable". The review is text-based, with ASCII wireframes.
 
 A Claude subagent gave an independent design read (in-host; Codex isn't installed), with 11 findings, DV-1 to DV-11. These were verified against the code:
+
 - `alertTones` has no warning tone (ui.tsx:84-90);
 - compact rows collapse (ReviewPurchase.tsx:1048);
 - the Parsed column is `whitespace-nowrap` (ReviewPurchase.tsx:1066);
@@ -1631,9 +1709,11 @@ Starting ratings:
 Pending decisions (board batch "vision-ui", UI1–UI13): alert order, warning tone, gap line, commit with unchecked lines, candidate control, compact and phone layout, crop or highlight, order of work, flag labels, extra lines, states, copy, keyboard.
 
 ### Design review: decisions (board batch "vision-ui", 2026-10-01; all 13 as recommended, no notes)
+
 UI1 order, UI2 warning, UI3 lines-header, UI4 summary, UI5 segmented, UI6 subrow, UI7 both, UI8 order, UI9 labels, UI10 include, UI11 all, UI12 plain, UI13 keys. Each is applied in "Review: pick one of these and crops" above.
 
 ### Journey storyboard (Pass 3)
+
 | Step | User does | User feels | Plan specifies |
 |---|---|---|---|
 | 1 | Opens a vision-read draft | "Did it work?" | Header meta: "7 had two readings · 5 matched the total · 2 to pick"; gap line in the Lines header |
@@ -1646,6 +1726,7 @@ UI1 order, UI2 warning, UI3 lines-header, UI4 summary, UI5 segmented, UI6 subrow
 On the good path (everything matched), steps 2–4 vanish. The screen is the meta line, the "Adds up…" gap line and Commit: a glance and a confirm (D3). At five seconds the gap line answers "is it right?". At five minutes the work has a clear order. Over five years, picks are never overwritten.
 
 ### Pass ratings after decisions
+
 | Pass | Before | After | Why |
 |---|---|---|---|
 | 1. Information architecture | 4 | 9 | Fixed alert order, notes as one caption, gap line in place, order of work set |
@@ -1659,11 +1740,14 @@ On the good path (everything matched), steps 2–4 vanish. The screen is the met
 Overall (the lowest pass): 3 before, 8 after.
 
 ### NOT in scope (design)
+
 - **Generated mockups:** not made. The gstack designer needs an `OPENAI_API_KEY`. Run `/design-review` on the built screen instead.
 - **Choosing among four candidates:** moot, since the re-ask is deferred (3 at most).
 
 ### What already exists (design)
+
 These are reused:
+
 - `SegmentedControl` (components/SegmentedControl.tsx);
 - the picker sub-row pattern (ReviewPurchase.tsx:1112);
 - `DecimalFix` and `QuantityMerge` inline fixes (as precedent);
@@ -1675,9 +1759,11 @@ These are reused:
 - spec 08 tokens (squash, olive, herb focus, neutral selection).
 
 ### TODOS (design)
+
 None proposed. Every approved fix is in the tasks below.
 
 ## Implementation Tasks (design review)
+
 Synthesized from this review's findings. Run with Claude Code or Codex; checkbox as you ship.
 
 - [ ] **DT1 (P2, human: ~1h / CC: ~10min)** — ui — Add the `warning` tone to `alertTones` (amber-50/amber-800 plus the dark pair, 4.5:1); document it in spec 08 Core components
@@ -1694,6 +1780,7 @@ Synthesized from this review's findings. Run with Claude Code or Codex; checkbox
   - Verify: the user approves the amendment
 
 ### Design review completion summary
+
 ```
   +====================================================================+
   |         DESIGN PLAN REVIEW — COMPLETION SUMMARY                    |

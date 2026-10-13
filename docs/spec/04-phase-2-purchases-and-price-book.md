@@ -103,6 +103,7 @@ Every human confirmation writes or updates an alias. Accepting a suggestion, cho
 The review screen shows the receipt image beside the parsed purchase. The header is editable, with ranked location candidates when matching was not confident. Each line shows its raw text, its parsed fields, its resolution and how it was reached, and any flags. Lines that resolved by confirmed alias are visually quiet; attention is drawn to suggestions, unmatched lines, and flags. The reviewer can accept, change, or create a product with the same typeahead and inline creation as manual entry, can mark a line ignored, can correct parsed quantities and prices, can reattach a discount to a different item, and can add or delete lines. Deleting a line that reached the price book follows 2H. The whole screen is keyboard-operable: move between lines, accept the top suggestion, open the typeahead, mark ignore, commit.
 
 **Correcting the lines in one go (#182).** A badly read receipt can be retyped in one table instead of line by line. `PUT /purchases/{id}/lines` takes every line of a purchase that is not committed, in order, each as receipt text, quantity, unit, line total and kind. A row with an `id` edits that saved line; a row without one is a new line; a saved line left out is removed as Delete removes it (2H). A discount or deposit names the item it belongs to by `attach_to`, that item's position in the same list. The rules:
+
 - One transaction with the purchase locked, as every review edit takes it. A row that names a line of another purchase, names a line twice, attaches to anything but an item, or uses an unknown unit is refused with 422 and nothing changes. A committed purchase is refused with 409 `committed`: it is reopened first, or corrected through the void-and-redo path.
 - A line whose values did not change is left alone, so its product, resolution and flags survive. A changed quantity or unit clears the quantity flags, and a changed amount the price flags, as the single-line edit does. A printed rate is kept while it still makes the line's amount.
 - New lines, and lines whose wording changed or that became items, are resolved again. A line whose product a person already chose (or chose to ignore) keeps that choice; when its wording changed, the alias is learned under the corrected wording, as if the person had confirmed it again. Aliases learned afterwards use the corrected wording too.
@@ -185,12 +186,14 @@ Phase 2 is the first phase that holds data someone would be sorry to lose. Provi
 Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and keep their purchase line as provenance, so nothing an observation points at is ever deleted. Everything else can be.
 
 **Removing a line (#72).** One service function, `remove_line`, is used by review's Delete and by the manual edit form.
+
 - A line that never produced an observation is deleted, and any discount or deposit attached to it is detached.
 - A line that did has its live observation voided with the reason "line removed". It gets `removed_at` and `removed_by`, its children are detached, and it disappears from every reader of the purchase's lines (02).
 - New lines take the next `seq` across all lines, removed ones included. Review's insert-after shift moves removed lines too.
 - The manual edit form sends each line's id. A line present in the purchase but missing from the request is removed. An id not on the purchase is refused with `422 unknown_line`. A request that names none of a purchase's saved lines is refused with `422 line_ids_required`, so a client still matching by position cannot void every price by accident.
 
 **Removing a purchase (#74).** One action, `POST /purchases/{id}/remove`, with no body. `removal_plan(purchase)` decides the outcome, and both the preview (below) and the action use it.
+
 - It answers `200` with `{outcome: delete, photo_deleted}` after a delete, or `{outcome: void, purchase}` with the voided purchase after a void.
 - A purchase that no longer exists is `404`, which the client treats as already removed.
 - **Delete:** when none of the purchase's lines ever produced an observation, the purchase and its lines are deleted. Its ingest job, if any, gets `purchase_id = NULL` and `status = discarded`, and its receipt image file is deleted. The `receipt_document` row and stage results stay (append-only).
@@ -199,23 +202,27 @@ Added by the #72/#74 reviews of 2026-09-28. Observations are append-only and kee
 - The database changes happen in one transaction; void and observe flush, and the caller commits. The image file is deleted only after the commit succeeds, because a rollback cannot restore a file. If that deletion fails, the removal still stands and the failure is logged. The leftover file is served by nothing, and re-uploading the receipt overwrites it.
 
 **Restoring a removed purchase (#210).** `POST /purchases/{id}/restore` takes a voided purchase back to `reviewed`.
+
 - It locks the purchase, then its receipt's ingest job, the order removal takes them in.
 - `voided_at` and `voided_by` are cleared. The voided observations stay voided, since observations are append-only, and nothing is recorded by the restore itself. Committing it afterwards records a new observation for each resolved item line, as any commit does, and it can be removed again.
 - A purchase that isn't voided is `409 not_voided`.
 - When its receipt was uploaded again and its job now belongs to a newer purchase, the restore is `409 read_again`, because the same receipt would otherwise reach the price book twice. A single voided purchase's response carries `restore_blocked: null | read_again` so the page can say so before anyone asks.
 
 **Removing a failed read.** `POST /ingest-jobs/{id}/remove` accepts only a `failed` job.
+
 - It discards the job and, after the commit, deletes its image, as above. It answers `200` with `{photo_deleted}`.
 - If the job already has a draft purchase, the draft is deleted by the same plan. A draft cannot have recorded lines; if the plan says void, the request is refused with that outcome.
 - A `pending` or `running` job gets `409 still_reading`. Any other status gets `409 not_failed`.
 - `retry` and `to-manual` refuse a discarded job with `409 receipt_removed`. Uploading the file again is the only way back.
 
 **Discarded jobs.**
+
 - `GET /ingest-jobs` leaves them out, and `GET /ingest-jobs/{id}` returns `404 receipt_removed` for one.
 - Uploading the same file again revives the job. It returns to `pending` at stage `captured`, the image is written again if missing, and the response says `revived: true`. New stage results append to the old ones.
 - The same holds for a finished read whose purchase was removed (voided): uploading the file again revives its job with `purchase_id` cleared, so it is read into a new draft, and the voided purchase stays as the record of the prices it voided.
 
 **What the client is told.** A single-purchase response (GET and every mutation returning one purchase) carries:
+
 - `removal: {outcome: delete | void, prices, photo, blocked: null | still_reading}` from `removal_plan`;
 - `removed_line_count`;
 - a `recorded` flag on each line.
@@ -244,6 +251,7 @@ Added by #88 and the board rulings N1–N5 of 2026-09-30. A household's first re
 **Where (N1).** The to-identify page gains a mode, "Name the new products", offered while at least three groups wait. It lists every waiting group as one row. It is not a nav item and not a new page.
 
 **What a row shows (N2, N4).** The line's wording, how many lines the group holds, and three fields, each prefilled and editable:
+
 - **Name**: the normalized wording in sentence case, with a pack size read from it removed ("RVRBND BREAD FLR 2KG" → "Rvrbnd bread flr").
 - **Ingredient**: an ingredient the wording names outright (`GET /ingredients/in-text`: catalog first, then standard names), or empty.
 - **Pack**: a size printed in the wording ("2KG" → 2 kg, "12CT" → 12 each, "16 OZ" → 16 oz), read through the unit table, or empty. Conversion never guesses: a token the unit table doesn't know is left in the name.
@@ -253,6 +261,7 @@ Brand is not in the row; it is edited on the product later. `GET /to-identify/na
 **Model suggestions (N2, N3).** "Suggest names with the model" asks the local model about the rows the wording couldn't name (no ingredient found). It runs as a background job in the worker, not in the request. The page shows "Asking the model about 14 lines…" and fills each row as its answer arrives, and the page stays usable meanwhile. A reply is accepted only if it validates against its schema, and its ingredient only if it is an existing catalog ingredient or a standard-list key; anything else is dropped (non-negotiable 7). A model suggestion fills the fields of its row that a person hasn't edited (the name, and the ingredient when the wording found none) and never overwrites what a person typed. A failed answer can be asked for again; an answered one is kept.
 
 **Confirming (N5).** Rows start unticked. Editing a row ticks it, and so does its own tick box. "Create N products" sends the ticked rows to `POST /to-identify/name-products`. Each row is handled on its own:
+
 - its ingredient is resolved (an existing id, a standard key, or a new name; a standard key or name another row just created is reused, not duplicated);
 - the product is created with the name and pack;
 - the product is applied to every line in the group, which writes the vendor's alias and emits each line's observation, as `POST /to-identify/apply` does.
@@ -298,6 +307,7 @@ Allowed now:
 Added 2026-10-01 with Phase 1 sub-phases 1H and 1I (`13-product-ingestion-and-photos.md` keeps the record). Warehouse-style receipts print an item code before the name, and weighed items print their label's code. Once a product carries that code (1H), a line can resolve by it.
 
 **The first rung widens.** The barcode rung (2D) becomes the identifier rung, still the first. It matches, for the receipt's vendor:
+
 - a 12–14 digit code with a valid check digit, as a GTIN;
 - a weighed-item label, as its `rw_item`;
 - a code in the position the vendor prints them (`vendor.code_position`, for example the leading token), as a `vendor_sku`, `rw_item` or `plu`.
@@ -319,6 +329,7 @@ The code is read before normalization strips leading codes from `raw_text_norm`,
 A product can now start from a photo, a scanned barcode, a vendor page (2M) or a lookup (2N). Each arrives as a **proposal** that a person reviews. Nothing becomes a product, identifier, listing, photo or price without that person's accept.
 
 **What a proposal holds.** A capture (`product_capture`) is the evidence. A proposal (`product_proposal`) is what the evidence says:
+
 - field candidates with their source;
 - matches against the catalog;
 - photos (`product_image` rows pointing at the proposal);
@@ -336,6 +347,7 @@ Captures are deduplicated by a hash of their payload, without the capture time, 
 | ingredients text | person > manufacturer > adapter > model |
 
 **Where the evidence comes from in this sub-phase.**
+
 - **Photos.** Photos come through Capture's "Photograph a product" (09). One request carries up to four photos with their roles, and becomes one proposal.
   - With a barcode in a photo, it is treated as a barcode capture.
   - Without one, the configured vision model reads it, using the same setting as vision receipt reading (2J).
@@ -351,6 +363,7 @@ Captures are deduplicated by a hash of their payload, without the capture time, 
 **Matching.** An identifier or a known listing gives a strong match, and the review preselects "Update {product}". Otherwise trigram similarity over title and brand offers up to eight candidates, and the local model may pick one or answer "new". An id outside the shortlist is rejected.
 
 **Accept.** Accept runs in one transaction:
+
 - it locks the proposal;
 - it creates or updates the product, its identifiers, listing and photos (merging a photo the product already has);
 - it runs the main-photo choice and the stock-photo check;
@@ -368,6 +381,7 @@ A barcode another product holds answers `409 identifier_taken` with that product
 **Live-model checks.** The opt-in `pytest -m llm` suite gains product cases: invented captures and label photos generated at test time. It reports field accuracy per model beside the receipt cases and never runs in CI.
 
 **Inbox and background lines.** Proposals appear in Needs you as one row per kind (09):
+
 - "5 products to review";
 - product updates;
 - "4 posted prices changed" (2N).
@@ -391,6 +405,7 @@ The reading line also counts product pages and photos being read, and says when 
 ## 2M — Capturing a vendor page
 
 **The bookmarklet.** Settings → Capture (09) serves a bookmarklet tied to the app's address. On a vendor page it collects:
+
 - the page and canonical addresses;
 - the title and meta tags;
 - each structured-data block as its raw text;
@@ -402,6 +417,7 @@ It also tries to read up to four of those images itself (5 MB each), keeping one
 The images that come with a capture are evidence, not uploads. One the server can't store as a photo (an SVG logo, an unreadable file, one over the pixel limit, an empty one) is skipped and recorded on the capture as `images_skipped`, each with its address and the refusal's code; the page is saved all the same. When none of them can be stored, the page's image addresses go to the helper exactly as when the browser could read none. A photo a person uploads is still refused when it can't be stored. (Added 2026-10-07: a page whose only readable image was its SVG logo was refused whole.)
 
 **The clip window.** The bookmarklet opens `/capture/clip`:
+
 1. The window says it is ready, and only then does the page send its message.
 2. The window accepts one message, only from the window that opened it, and validates it.
 3. It shows what will be saved and saves only on the person's click.
@@ -427,6 +443,7 @@ If the person is signed out, they sign in inside the window and the exchange rep
 ## 2N — The products helper contract
 
 Outbound work for products (Open Food Facts and USDA lookups, fetching pages, downloading listing photos, refreshing listings, retailer-specific scraping, background removal) lives outside this application, in a separate private repository, `kitchen-erp-products`. This application makes none of those calls. It exposes only:
+
 - **A lookup queue (`lookup_request`).** It holds:
   - the barcodes and pages a person asked about with "Look this up online" (for a proposal, or on a product's own page: its barcode, or a store page pasted there) or by pasting an address in Add product (for the product it created);
   - `name` requests: "Search by name" on the page of a branded product that has no GTIN. The value is the product's public facts only, `{"brand", "name", "pack_qty"?, "pack_unit"?}` as JSON. The helper answers with the one match it is sure of (its barcode, name, size and photos), which waits as a Product update like any late answer; accepting it sets the GTIN-14 identifier and photo, and a barcode another product holds is refused as `identifier_taken` (PR6). A product without a brand, or with a GTIN, is refused with `nothing_to_look_up` or `has_barcode`. (Added 2026-10-06, #184.)
@@ -454,6 +471,7 @@ Outbound work for products (Open Food Facts and USDA lookups, fetching pages, do
     - `products:read` still reads the queue and nothing else.
 
 The app shows what it handed out and when. "Look this up online" is hidden when no helper token exists. The helper repository specifies its own behaviour, each part with a test:
+
 - HTTP and HTTPS only;
 - refusing loopback, private, link-local and multicast addresses, re-checked after each redirect;
 - size and type limits;
@@ -515,6 +533,7 @@ This sub-phase is built just before the helper itself.
 A catalog of a few hundred products from several vendors collects two kinds of near match, and they need opposite answers. A **duplicate** is the same purchasable thing entered twice, often through two vendors' pages; it should be merged (03, #179). A **sibling** is a different size, flavour or colour of something already in the catalog; it stays its own product, because a product is one purchasable size (06), and its prices must not be mixed with its sibling's. Trigram similarity alone can't tell these apart: "Pepper Jack, 8 oz" and "Pepper Jack, 16 oz" are more alike by trigram than two spellings of the same cheese.
 
 **The sameness rules.** A pure module (`app/catalog/sameness.py`, no I/O, property-tested like `app/units/`) compares two products, or a proposal and a product, by their facts: name, brand, pack, piece count, GTIN and ingredient.
+
 - **The name key.** A name is lowercased and Unicode-normalized; trademark signs and punctuation are dropped. A printed size ("10 oz", "8 ct", a size in inches) is taken out of the name and kept apart. A leading brand equal to the product's brand and a short list of filler words ("made with", "fresh", "original") are dropped. What remains is a set of words.
 - **The verdict**, one of four, with its reasons:
   - *the same product*: the word sets agree, or differ only by filler or by a word of the other product's brand; the packs agree within 5%, or one is unknown; the brands agree, or one is empty. Two entries of one product filed under different ingredients are still the same product, with the difference reported, since a merge settles it;
@@ -552,12 +571,14 @@ A receipt keeps the lines it was first read with. Retry runs only a failed job, 
 **What the lines stage keeps from now on.** Its output gains `read_lines`: the validated `ReceiptLines` the vendor parser or the model returned, before any deterministic pass (`app.ingest.structure.post_passes`). Results written before this amendment do not have it.
 
 **Two ways to re-read.**
+
 - **Re-check the lines** re-runs today's passes, reconciliation and line flags over the stored `read_lines` and the stored receipt text. It makes no model call and answers in the request. It is offered only when the latest reading has `read_lines`; otherwise the API refuses with 409 `not_stored`.
 - **Read again** asks the reader afresh over the stored receipt text, through the worker, exactly as the lines stage would (vendor parser first, then the model under the stage's deadline and part splitting). It is the only way to re-read a receipt read before this amendment. An unreachable model server leaves it waiting and retrying as an ingest job does (2O); an answer that never validates ends it `failed` with the stage's reason. The receipt text is not read again: OCR and the header are as they were.
 
 Both use the purchase's own total and tax, as a person may have corrected them, not the header stage's. Neither changes the header, the location, or the date.
 
 **The proposal.** A re-read never writes lines. It produces a proposal: the new reading compared with the purchase's lines.
+
 - **Matching.** The purchase's present lines and the new lines are aligned in receipt order by normalized text and kind. Equal runs pair up; inside a run that differs, lines pair in order while their kinds agree. A paired line whose quantity, unit, unit price, line total, kind, attachment or wording differs is *changed*; an unpaired new line is *added*; an unpaired present line is *removed*.
 - **What a person did stays.** The reader's last applied reading is the latest `lines` stage result. A present line is the person's when it differs from what that reading wrote for its id, or no reading wrote it (a person added it). The person's lines are kept exactly, and the new line paired with one is dropped. A line the reading wrote that a person removed (2H) or that no longer exists stays gone: a new line pairing with it is not added back. The proposal lists both under "Kept as you left them".
 - **Products stay with their lines.** A paired line keeps its id, product and resolution, whoever decided them. A line that stops being an item loses its product, as the constraint requires.
@@ -566,6 +587,7 @@ Both use the purchase's own total and tax, as a person may have corrected them, 
 - **Untrusted.** The new reading is model or parser output validated against `ReceiptLines`, as the lines stage takes it. The proposal stores values, never markup, and the page renders them as text.
 
 **Applying.**
+
 - One open re-read per purchase: requesting another while one is pending, running or ready is refused with 409 `reread_open`. A voided purchase cannot be re-read (409 `voided`).
 - The proposal records the purchase's status and a fingerprint of its lines (ids and update times) when made. Applying after either has changed is refused with 409 `reread_stale`; the page offers to re-check or read again.
 - On a draft, applying sends the merged lines through the same path as "Correct the lines" (`PUT /purchases/{id}/lines`, #182): paired lines keep their ids, so their products and decisions survive; removed lines go as Delete removes them (2H); added lines and lines whose wording changed are resolved again. The purchase's line-reading flags become the proposal's "after" set, and a `lines` stage result is appended with the applied lines and `reread_id`, so the next re-read compares against it.
@@ -577,6 +599,7 @@ Both use the purchase's own total and tax, as a person may have corrected them, 
 **Inbox.** Ready proposals with changes are one aggregate row, "3 re-read receipts to review", whose action opens the oldest. Pending and running re-reads count in the reading line as receipts being read.
 
 **API.**
+
 - `POST /purchases/{id}/rereads` with `{"mode": "check" | "read"}` returns 201 and the re-read: `check` already `ready` or `no_changes`, `read` `pending`.
 - `GET /purchases/{id}/rereads/latest` and `GET /rereads/{id}` return its `status` (`pending`, `running`, `ready`, `no_changes`, `failed`, `applied`, `dismissed`), `mode`, `reason` when failed, and when ready the proposal: `changes` (each `{action: changed | added | removed | kept, line_id?, before?, after?, why?}`, in receipt order) and `before`/`after` reconciliation and flags.
 - `POST /rereads/{id}/apply` and `POST /rereads/{id}/dismiss`. All of them take the same sign-in as the other purchase endpoints.

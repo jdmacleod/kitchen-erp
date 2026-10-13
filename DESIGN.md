@@ -101,6 +101,7 @@ without a label), `categoryClass(key)` (`"cat cat-dairy"` or `"cat"`), `CATEGORY
 // pages/catalog/IngredientsPage.tsx
 <CategoryChip category={ingredient.category} categoryKey={ingredient.category_key} />
 ```
+
 Adoption: `<CategoryChip` 11 uses in 10 files, `<ProductCategory` 1.
 
 ## 4. Typography and figures
@@ -205,6 +206,7 @@ the same look.
 // pages/geo/VendorsPage.tsx
 <Button variant="secondary" onClick={a.open}>{a.label}</Button>
 ```
+
 Adoption: `<Button` 275 in 70 files (`secondary` 159, `ghost` 38, `danger` 21, `dangerFill` 3); raw `<button`
 29, all in the shell, tab bar, Notice and list rows where the primitive's padding does not fit.
 
@@ -220,6 +222,7 @@ same `inputClass`, `labelClass` and `hintClass` for `SelectField` (a native `<se
 <Field id="new-ingredient-name" label="Name" autoComplete="off" required
   value={form.name} onChange={(e) => set("name", e.target.value)} />
 ```
+
 Adoption: `<Field` 82 in 28 files; raw `<input` 53 (checkboxes, the combobox, line-entry cells, all on
 `inputClass`). Native `<select>` 15 in 12 files, every one through `SelectField` or `inputClass`; there is no
 custom listbox and 08 does not ask for one.
@@ -234,6 +237,7 @@ happened.
 // pages/LoginPage.tsx
 {login.isError ? <Alert tone="error">{errorMessage(login.error)}</Alert> : null}
 ```
+
 Adoption: 181 in 55 files. An error is never shown as an empty state.
 
 ### `PageHeader`, `EmptyState`, `Card`, `Centered` (`ui.tsx`)
@@ -266,6 +270,7 @@ the squash "Discard this {thing}?" bar and focus "Keep editing".
   <ProductForm layout="drawer" formId="add-product" … />
 </Drawer>
 ```
+
 Adoption: 8 in 7 files, including the shelf-price, vendor import and suggestion drawers.
 
 ### `Dialog` and `useModal` (`Dialog.tsx`)
@@ -283,6 +288,7 @@ panel with `placement` `center` (default, `max-w-[40rem] rounded-xl`), `sheet` (
   …
 </Dialog>
 ```
+
 Adoption: 7 sites (`MoreActionsDialog`, `MoreSheet`, `CaptureSheet`, `SearchPalette`, `LinkOsmDialog`, two in
 `VendorsPage.tsx`). One hand-rolled overlay remains: `ReviewPurchase.tsx` line 517 (`fixed inset-0 …
 bg-black/40`), see §12. `MoreActionsDialog.tsx` is the sheet that holds a page's secondary actions below `lg`
@@ -299,6 +305,7 @@ oat `bg-neutral-200 rounded-lg p-0.5` track; the selected segment is `bg-white s
 <SegmentedControl label="View" value={view} onChange={(v) => setParam("view", v === "map" ? "map" : null)}
   options={[{ value: "list", label: "List" }, { value: "map", label: "Map" }]} />
 ```
+
 Adoption: 9 in 7 files (purchase status, vendor kind, list/map, and so on).
 
 ### `Notice` (`Notice.tsx`)
@@ -316,6 +323,7 @@ shown on; `timeoutMs` auto-clears (the shelf-price "Saved" uses 3 s, G4).
 notice.show({ tone: "success", message: `Added ${productTitle(product)}.`,
   action: { label: "Open it", to: `/catalog/products/${product.id}` }, focusAction: true });
 ```
+
 Adoption: `useNotice()` 32 call sites, `useNavigateWithNotice()` 7. Floating toasts: `grep -rni toast
 frontend/src` finds only the comment in `Notice.tsx` saying there are none.
 

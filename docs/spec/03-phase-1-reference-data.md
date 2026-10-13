@@ -121,6 +121,7 @@ Added 2026-09-29 after a /devex-review found the household's vendor list held li
 - **The file is a contribution candidate.** A person reads the public export and opens the pull request to the public repository themselves.
 
 **Linking to OpenStreetMap.** Adoption (1D) creates a new location, so an existing location could never gain its OSM facts. A location can now be linked to an OSM object:
+
 - `POST /api/v1/vendor-locations/{id}/link-osm` takes `{osm_type, osm_id}` from the candidates near the location's pin, and records the id and the `osm_*` snapshots.
 - A linked location refreshes like an adopted one.
 - The candidate query also captures `phone`, `website`, `brand` and `brand:wikidata` from OSM tags.
@@ -129,6 +130,7 @@ Added 2026-09-29 after a /devex-review found the household's vendor list held li
 **Remembering a store code.** When a reviewer confirms a receipt's location and the header read a store identifier that the location does not have, review offers "Remember store code {code}". Accepting it appends the code to the location's `receipt_identifiers`, so the next receipt from that store matches on it. Nothing is added without that click.
 
 **Provenance.** Vendors and locations carry `field_source`, which records for each field where its value came from:
+
 - `source` is `osm`, `observed`, `import`, or `enriched:<tool>`;
 - `ref` is an OSM object or a source URL;
 - `checked_at` records when the value was checked;
@@ -229,6 +231,7 @@ The header stage already reads the printed phone and address. `match_location` s
 Added 2026-09-30 from a design-session handoff (`12-ingredient-vocabulary.md` keeps the record) and its CEO, engineering, design and outside-voice reviews. Ingredient names drift: "scallions", "green onions" and "scallion" end up as three ingredients with three price histories, and none has a USDA reference. This sub-phase gives each identity one canonical ingredient that any of its spellings reaches, a standard list to start from, and USDA references and suggestions reviewed by a person. Recipe work (extracting names from `cooklang-recipes`, conforming, linting) belongs to Phase 3 (`07`). The application never writes to the recipes repository.
 
 **Naming rules.** These rules apply to the standard list, to review, and to anything that later proposes names:
+
 1. Culinary word order, lowercase: "yellow onion", "ground cumin", "parmesan". Proper nouns keep their capitals (Parmigiano-Reggiano, Italian sausage).
 2. The natural recipe form of the noun: singular for count nouns (egg, onion), plural only where a cook writes it (green beans, almonds). Other inflections are spellings of the same ingredient.
 3. A form that changes what you buy is its own ingredient: garlic and garlic powder; whole and ground cumin; dried and canned beans; salted and unsalted butter; sesame oil and toasted sesame oil.
@@ -249,6 +252,7 @@ Ingredients stay flat in 1G. A hierarchy (cheese → parmesan) is deferred (TODO
 **Creating from the standard list.** Choosing a standard name in the picker creates nothing until the form saves. On save, `IngredientCreate.standard_key` creates the ingredient, its spellings, its USDA reference and its measures in the form's own transaction, with the standard key as its slug and `reconcile_state = linked`. A taken name returns `409 ingredient_name_taken`; an unknown key returns `422 unknown_standard_entry`. Measures from the list are stored as `source = usda` or `manual` and unconfirmed.
 
 **Linking existing ingredients.** Ingredients created before 1G start `unreviewed`. So does an ingredient typed in later (not chosen from the list) whose name a standard entry matches; one that no entry matches starts `not_applicable` (#189). The likely standard name comes from one pure matcher, `app/catalog/standard_match.py`. It splits a name into a head noun and qualifiers: the last word, or the first part's last word when the name is written the USDA way, noun first ("butter, unsalted"). An entry matches on an exact name, spelling or plural. Otherwise it matches when its head noun is the name's (singular or plural), every one of its qualifiers is among the name's, and the name's other qualifiers only describe how the food was bought ("organic", "large"). The most specific match wins, and two equally specific matches offer nothing. It never guesses by similarity: "wine vinegar" is offered no vinegar rather than the wrong one (#188). `kerp ingredients recheck` puts `not_applicable` ingredients that a standard entry now matches back to `unreviewed`, for ingredients typed in before #189 and for names a later list or matcher learns; nothing is linked by it. A link page (`/catalog/ingredients/link`, reached from an inbox row, with no nav item) pairs each with its likely standard name and USDA food. Per row, a person can:
+
 - **Link**: take the standard name, slug, spellings and USDA reference. A name that changes is kept as a `legacy` spelling.
 - **Rename**: give the ingredient a new name. The old name is kept as a `legacy` spelling.
 - **Skip**: leave it as it is. Skipped rows can be reopened.
@@ -256,6 +260,7 @@ Ingredients stay flat in 1G. A hierarchy (cheese → parmesan) is deferred (TODO
 `GET /api/v1/ingredients/link/summary` returns the counts of rows to review and skipped rows for the page and the Ingredients list.
 
 **Merging.** When a Link or Rename would give an ingredient a name another active ingredient already has, the page offers a merge instead. The person picks which ingredient survives, defaulting to the one with more products. The merge runs in one transaction with a single commit:
+
 1. The loser is renamed "<name> (merged into <survivor>)", then flushed, because the unique name index covers inactive rows.
 2. The survivor takes the standard name and slug, then is flushed.
 3. Products move to the survivor. The loser's spellings and references move, and its old name becomes a `legacy` spelling of the survivor.
@@ -270,6 +275,7 @@ A merge across canonical units is allowed. The confirmation names the unit chang
 **USDA suggestions.** Once an ingredient has a USDA reference, its portions become suggestions reviewed on the Needs a bridge page (`10`). `GET /api/v1/usda/review` lists ingredients with unreviewed suggestions, grouped per ingredient. Suggestions are left out when they are densities for an ingredient that already has one, measures whose label (compared lowercase) it already has, or densities for an ingredient counted in `each`. An `each` ingredient with no measures to offer never appears. `POST /api/v1/usda/review/{ingredient_id}` takes `{density_portion?, measures[], skip}`. Accepted values go through the existing density and measure write paths as `source = usda`, unconfirmed, and trigger a recompute. The request records `usda_reviewed_fdc_id`, so a reviewed ingredient leaves the list until its reference changes. There is no accept-all. If a density was set since the list was read, the request returns `409` with the current value.
 
 **Inbox.** Two kinds join the unified inbox (`09`):
+
 - **Link**: "n ingredients to link to the standard list", while any are `unreviewed`.
 - **USDA**: "n ingredients have USDA densities to review", once no ingredient is `unreviewed` or a linked ingredient has suggestions, and only when USDA data is loaded.
 
@@ -308,6 +314,7 @@ The file follows the vendor file's reading rules (§1F), through the same module
 - **Merged ingredients.** These carry `merged_into`, the key of the ingredient kept.
 
 **Import.** Each entry is matched by key, then by name, then by a spelling. An entry that is merged in the file, or that matches an ingredient merged here, is skipped: merging is a person's act. Fields are written by the 1F edit-wins rule, kept per field in `ingredient.field_source` (migration 0033):
+
 - **Written:** a field that is empty, or that still holds what a file last wrote there. A field never set by a file counts as the household's.
 - **Kept and reported:** any other field that differs, as a conflict.
 - **Created by the import:** such an ingredient counts as the file's own until a person edits it.
@@ -341,6 +348,7 @@ Added 2026-10-01 from a design-session handoff (`13-product-ingestion-and-photos
 **Build order.** The product sub-phases are built in this order, each landing on its own: 1H, then 1I, then 2L, then 2M, then 2K, then 2N just before the products helper. 2K moved after 2M on 2026-10-01: a count of the household's receipts found item codes on 3 of 166 lines (04, 2K).
 
 **Identifiers.** `product_identifier` (`02`) holds one row per code:
+
 - `gtin`: barcodes, stored as GTIN-14 with a valid check digit. UPC-A, EAN-13, EAN-8 and GTIN-14 normalize to the same value; UPC-E expands to UPC-A first. An 8-digit code that is valid both as EAN-8 and as UPC-E is read by the symbology the client reports; typed without one, the form asks "Is this EAN-8 or UPC-E?".
 - `plu`, `vendor_sku`, `rw_item`: produce codes, a store's own item numbers, and the item code inside a weighed-item label. All three belong to one vendor; the same code may sit on each vendor's own product.
 - `other`: a code that is none of the above, kept exactly as entered and matched exactly.
@@ -350,6 +358,7 @@ One pure module, `app/catalog/identifiers.py`, normalizes and validates codes an
 **The barcode field stays.** The API keeps `barcode` and `clear_barcode` on product create, update and read, `barcode` on search hits, and `?barcode=` on the product list. They read and write the product's barcode identifier: its earliest `gtin` or `other` identifier, shown in display form (a GTIN-14 shortened to 8, 12 or 13 digits). PATCH replaces that identifier and leaves any others. The list parameter, search and the receipt rung normalize the query before matching, and a code another product holds still answers `409 barcode_taken`. An 8, 12, 13 or 14 digit code with a wrong check digit is refused with `422 invalid_gtin`; any other code is stored as `other`. The capture contract (04, 2F) does not change.
 
 **Moving existing barcodes.** One reversible migration moves `product.barcode` into `product_identifier` and drops the column. Each moved row keeps the original string as `legacy_value` and `source = migrated_barcode`:
+
 - valid GTIN forms become `gtin`;
 - an 8-digit value valid both ways becomes `other` and is listed;
 - a 4–5 digit value becomes a `plu` scoped to the product's exclusive vendor, or `other` when the product has none;
@@ -370,6 +379,7 @@ One pure module, `app/catalog/identifiers.py`, normalizes and validates codes an
 The migration sets kinds from evidence: an exclusive vendor gives Market stall; a brand or a barcode gives Branded; anything else is Loose. The kind stays editable.
 
 **Attributes.** `product.attributes` holds kind-specific details, validated by a Pydantic model chosen from the kind and the ingredient's category. Only meat and seafood have one in 1H:
+
 - species;
 - primal and cut, as free text;
 - bone (bone-in or boneless);
@@ -382,6 +392,7 @@ Other categories accept an empty object.
 **Whose value wins.** `product.field_source` records where each field came from, as `vendor.field_source` does (1F). When a person accepts a proposal (04, 2L), what they chose is written. Only an answer the lookup helper sends after a proposal was decided (04, 2N) uses 1F's rule, and then a person's edit always wins.
 
 **Vendor facts for products.** These facts sit on `vendor`:
+
 - `platform`: which storefront software its pages run on.
 - `fetch_policy`: whether anything may fetch its pages.
   - `capture_only` is the default.
@@ -391,6 +402,7 @@ Other categories accept an empty object.
 - `code_position`: where its receipts print item codes.
 
 `vendor_location.platform_store_ref` maps a storefront's own store id to one of the household's locations. The interchange format becomes `kitchen-erp-vendors/2`, which carries these fields:
+
 - Import reads `/1` and `/2`.
 - Export writes `/1` when the new fields are empty and `/2` otherwise.
 - The `kitchen-erp-vendors` repository's checks learn `/2` in the same change.
@@ -413,6 +425,7 @@ Other categories accept an empty object.
 Added 2026-10-01 with 1H. Every product gets a main photo: the household's own, a manufacturer's, or one from a vendor page, with a placeholder when there is none. The household's own photos look consistent because the product can be lifted off its background (a cutout) and shown on the card surface in either theme. Photos can be added to existing products here; photos that start a new product arrive with proposals (04, 2L).
 
 **Storage.**
+
 - **Originals** are kept under `MEDIA_PATH` (default `/data/media`) at `originals/<aa>/<bb>/<sha256>.<ext>`:
   - every original is stored with all metadata, including GPS, removed;
   - it is oriented upright and converted to sRGB;
@@ -427,6 +440,7 @@ Added 2026-10-01 with 1H. Every product gets a main photo: the household's own, 
 **Jobs.** Product work runs in `product_job`, with each stage's output recorded in `product_stage_result` (append-only, protected like `ingest_stage_result`). The worker claims receipts first, then product jobs, then name suggestions. It commits before any model call.
 
 **Main photo.** `select_primary` is a pure function that runs on every insert, hide, use-as-main and unset. The person's choice wins. Otherwise the order is:
+
 1. The household's photo with a cutout.
 2. The household's photo without one.
 3. A manufacturer's or Open Food Facts photo.
@@ -441,6 +455,7 @@ Within that order, higher resolution comes first, then the newest. A vendor-page
 **Cutouts.** A cutout comes from a mask. The Phase 6 app will send one; until then the optional products helper (04, 2N) sends one made by a background-removal model. The helper finds photos without a cutout through `cutout` lookup requests, queued automatically because the photo never leaves the machine (04, 2N). Its licence must allow this use (u2net is Apache-2.0, BiRefNet is MIT; isnet-general-use and BRIA RMBG-2.0 are refused), and the choice is recorded in `docs/licensing.md`. Without a mask, a photo simply has no cutout.
 
 **Adding photos.** `POST /api/v1/product-photos` with `product_id` adds up to four photos to an existing product, each with a role:
+
 - Product;
 - Front label;
 - Nutrition;

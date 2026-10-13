@@ -27,6 +27,7 @@ Reference data (ingredients, products, vendors) is the foundation under the loop
 | Settings | exists | Kitchens, Users, API tokens, Capture, System | System holds health detail and "log out everywhere" (T10). |
 
 **Phase gating.** The sidebar shows only sections whose phase is built. Today those are Home, Shop and Catalog, plus Settings; Cook joins them, before Shop, once the Phase 3 migration is applied (Phase 3 review, 2026-10-09), and Plan joins between Cook and Shop once the 4A migration is applied (Phase 4 review, 2026-10-12), so the order is Home, Cook, Plan, Shop.
+
 - **Source:** the authenticated `GET /api/v1/health` response carries a `features` list derived from the migration head (S4). It carries that list even when the response status is 503. The list is `catalog` (0003), `shop` (0005), `cook` (0042, the migration that creates the recipe tables) and `plan` (0050, the 4A migration that creates the shopping-list tables; 17).
 - **While loading (D11):** the navigation renders the Phase 1–2 sections at once, and also while `/health` is pending or failing. `features` can only add sections, never remove them. A section added later takes its fixed place in the order above.
 - **No placeholders:** empty sections are never shown.
@@ -83,6 +84,7 @@ The sidebar, top to bottom:
 "New purchase" is not a nav item; it lives under Capture and as the primary action on Shop pages.
 
 **Inbox badge (G6, G16):**
+
 - It counts inbox rows, and an aggregate row counts once.
 - It stays hidden until the first inbox response arrives.
 - On an inbox error it shows a neutral "!" labelled "Couldn't check what needs you" (D6).
@@ -92,11 +94,13 @@ The sidebar, top to bottom:
 The kitchen switcher and the per-user current-kitchen preference were deferred on 2026-09-25 (S3) and return with sub-phase 4A (17; Phase 4 review, 2026-10-12, L3 and L7). The current kitchen is a per-user server setting (`GET`/`PUT /api/v1/me/settings`), so it follows a person across devices; the client sends it on scoped calls and never relies on the server to remember it. The switcher is a neutral chip in the sidebar footer, above the signed-in user, and the top row of the More sheet on phones; it is shown only with two or more kitchens, and the palette offers "Switch to <kitchen>" for each other kitchen. The List tab's header names the kitchen.
 
 What is scoped (L3):
+
 - Shopping lists and trip plans belong to a kitchen and take an explicit `home_base_id`. Each kitchen-scoped panel carries the kitchen's name as a neutral tag.
 - Compare prices and the recipe cost table get an optional kitchen filter, off by default, which restricts prices to that kitchen's vendor locations. The per-kitchen cost view is computed on demand and never snapshotted; `recipe_cost_snapshot` stays household-wide (`07`, 3D).
 - Find nearby keeps its own kitchen picker, pre-set to the current kitchen; choosing the nearest kitchen when creating a location is unchanged; Capture's no-geolocation fallback keeps the remembered location.
 
 Everything else stays household-wide. Two rules stand:
+
 - Scoped endpoints take an explicit `home_base_id`; the server never infers scope from a hidden session value. `GET /plan/list` without one is a 422.
 - Switching kitchens never hides price data recorded at the other kitchen's vendors: purchases, observations, offers and costing are household-wide, and switching changes no figure on a page without the filter.
 
@@ -149,6 +153,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Recipe | Distinct normalized recipe names that resolve to no ingredient and are not ignored, one aggregate row like Identify (07, 3C; Phase 3 review, 2026-10-09). The detail names how many recipes they touch | "14 recipe names to resolve" | Resolve → `/cook/recipes/resolve` |
 
 API (T5): `GET /api/v1/inbox`.
+
 - **Rows:** items with `kind`, `title`, `detail`, `action_label`, `action_route` and `created_at`, oldest first. Each kind is computed from existing tables; no inbox table is required.
 - **Reading line:** the response also carries `reading: {count, oldest_at}` for receipts being read (pending or running ingest jobs, and pending or running re-reads, 2S), and the same for product pages and photos (2L). Home shows one line, "Reading 2 receipts and 1 product page…", above the list, and it is not counted in the badge (G1, PD7). While a batch of several is being read, `reading` also carries `batch_done`, `batch_of` and `minutes_left`, and the line reads "Reading 4 of 12 receipts · about 8 minutes left"; with no finished read to go by, it ends "…" with no estimate (issue 122).
 - **Receipt rows** carry `trust` and `gap`, so the row shows "Adds up" or "Check the lines · off by $0.30" beside its title (issue 122). Lookups waiting on the products helper get their own line only when overdue: "3 barcodes waiting for the lookup helper since 2 pm · Check System" (PD7).
