@@ -34,7 +34,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.catalog import standard
+from app.catalog import categories, standard
 from app.catalog.names import normalize_name
 from app.catalog.standard_match import match_entry
 from app.catalog.usda_fit import fits
@@ -466,8 +466,11 @@ async def _apply(ctx: _Context, entry: IngredientEntry) -> ImportItem:
     if ingredient is None:
         ingredient = await _create(db, entry)
     row = _Row(ctx=ctx, ingredient=ingredient, entry=entry, created=created)
-    if entry.category is not None:
-        row.write("category", entry.category)
+    if (category := categories.stored(entry.category)) is not None:
+        row.write("category", category)
+    elif created:
+        # The one way in without a category (#344): the cleanup asks for it later.
+        row.notes.append("no category: choose one for the new ingredient")
     unit = row.write("canonical_unit", entry.unit, label="unit")
     row.write("yield_pct", entry.yield_pct)
     row.write("perishability", entry.perishability)

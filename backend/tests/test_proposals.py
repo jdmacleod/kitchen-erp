@@ -127,7 +127,9 @@ async def test_a_proposal_lists_each_field_with_source_and_alternatives(admin_cl
     assert r.json()["capture"]["channel"] == "clip"
 
     # Accepting with the conflict open is refused; choosing a value settles it.
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     body = {"action": "new", "ingredient_id": ing["id"]}
     r = await admin_client.post(f"/api/v1/product-proposals/{result.proposal.id}/accept", json=body)
     assert r.status_code == 409 and r.json()["error"]["code"] == "unresolved_conflict"
@@ -184,7 +186,9 @@ async def test_accepting_a_new_product_creates_everything_together(
     [photo] = r.json()["photos"]
     assert photo["status"] == "candidate" and photo["product_id"] is None
 
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{result.proposal.id}/accept",
         json={
@@ -232,7 +236,9 @@ async def test_a_failure_mid_accept_leaves_nothing_and_the_proposal_pending(
 ):
     """Criterion 75, second part."""
     result = await capture(user, page_evidence(store))
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     before = {
         t: await owner_conn.fetchval(f"SELECT count(*) FROM {t}")
         for t in ("product", "product_identifier", "vendor_listing", "price_observation")
@@ -268,7 +274,11 @@ async def test_a_code_another_product_holds_answers_409_naming_it(admin_client, 
     """Criterion 75, last part (PR6)."""
     holder = await make_product(admin_client, "Oats", "Porridge oats", barcode=PAGE_GTIN)
     result = await capture(user, page_evidence(store))
-    other = (await admin_client.post("/api/v1/ingredients", json={"name": "Barley"})).json()
+    other = (
+        await admin_client.post(
+            "/api/v1/ingredients", json={"name": "Barley", "category": "pantry"}
+        )
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{result.proposal.id}/accept",
         json={"action": "new", "ingredient_id": other["id"]},
@@ -372,7 +382,11 @@ async def test_accept_then_supersede(admin_client, user, store, monkeypatch):
     """Criterion 76: accept holds the lock first; the newer capture waits and then stays pending."""
     old = await capture(user, page_evidence(store, gtin_value=None))
     ing = uuid.UUID(
-        (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()["id"]
+        (
+            await admin_client.post(
+                "/api/v1/ingredients", json={"name": "Oats", "category": "pantry"}
+            )
+        ).json()["id"]
     )
     gate = Gate("accept:locked")
     monkeypatch.setattr(proposals, "pause", gate)
@@ -395,7 +409,11 @@ async def test_supersede_then_accept(admin_client, user, store, monkeypatch):
     """Criterion 76: the newer capture locks first; the accept then finds it superseded."""
     old = await capture(user, page_evidence(store, gtin_value=None))
     ing = uuid.UUID(
-        (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()["id"]
+        (
+            await admin_client.post(
+                "/api/v1/ingredients", json={"name": "Oats", "category": "pantry"}
+            )
+        ).json()["id"]
     )
     gate = Gate("supersede:locked")
     monkeypatch.setattr(proposals, "pause", gate)
@@ -472,7 +490,9 @@ async def test_a_gtin_given_at_accept_supersedes_the_pending_scan_with_it(admin_
     by_scan = await capture(user, scan, channel="barcode", url=None, payload={"code": SCAN_GTIN})
     photo = Evidence(candidates=[Candidate("title", "Oat tin", "model", Decimal("0.4"))])
     by_photo = await capture(user, photo, channel="photo", url=None, payload={"photos": 2})
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{by_photo.proposal.id}/accept",
         json={"action": "new", "ingredient_id": ing["id"], "edits": {"gtin": SCAN_GTIN}},
@@ -560,7 +580,9 @@ async def test_accept_applies_the_reviewers_photo_choices(admin_client, user, st
         )
     await work()
     first, second, third = (str(i.id) for i in images)
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{result.proposal.id}/accept",
         json={

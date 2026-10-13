@@ -7,12 +7,14 @@ import {
   type IngredientMatch,
   type IngredientSummary,
 } from "../../api/catalog";
-import { errorMessage } from "../../api/client";
+import { api, errorMessage } from "../../api/client";
+import type { CategorySource } from "../../api/ingredientCategory";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { CategoryChip, type CategoryKey } from "../CategoryChip";
 import { Button } from "../ui";
 import { Combobox } from "./Combobox";
 import { Badge, labelClass } from "./fields";
+import { NewIngredientCategory } from "./NewIngredientCategory";
 
 /**
  * An existing ingredient, the name of one to create, or a standard-list entry
@@ -21,7 +23,7 @@ import { Badge, labelClass } from "./fields";
  */
 export type IngredientChoice =
   | { kind: "existing"; ingredient: IngredientSummary; matchedSpelling?: string | null }
-  | { kind: "new"; name: string; category?: string }
+  | { kind: "new"; name: string; category?: string; categorySource?: CategorySource | null }
   | {
       kind: "standard";
       key: string;
@@ -57,6 +59,18 @@ export function choiceInput(
     return { ingredient: { name: choice.name, standard_key: choice.key } };
   const category = choice.category?.trim();
   return { ingredient: category ? { name: choice.name, category } : { name: choice.name } };
+}
+
+/** The chosen ingredient's id, creating a new or standard one first. */
+export async function ingredientIdFor(choice: IngredientChoice): Promise<string> {
+  const input = choiceInput(choice);
+  if ("ingredient_id" in input) return input.ingredient_id;
+  return (await api<{ id: string }>("/ingredients", { method: "POST", body: input.ingredient })).id;
+}
+
+/** True while a new ingredient still lacks the category it must have (#344). */
+export function needsCategory(choice: IngredientChoice | null | undefined): boolean {
+  return choice?.kind === "new" && !choice.category?.trim();
 }
 
 /** A search or suggestion row as the choice picking it makes. */
@@ -107,6 +121,8 @@ interface IngredientPickerProps {
   /** The combobox's input, so a page can move focus to the next line that needs one (UI-7.12). */
   inputRef?: RefObject<HTMLInputElement | null>;
   autoFocus?: boolean;
+  /** A product proposal being reviewed: its captured category informs a new one's (#344). */
+  proposalId?: string;
 }
 
 /**
@@ -132,6 +148,7 @@ export function IngredientPicker({
   hideLabel = false,
   inputRef,
   autoFocus,
+  proposalId,
 }: IngredientPickerProps) {
   const [text, setTextState] = useState("");
   const setText = (next: string) => {
@@ -228,6 +245,19 @@ export function IngredientPicker({
           >
             {note}
           </p>
+        ) : null}
+        {value.kind === "new" ? (
+          <NewIngredientCategory
+            id={`${id}-category`}
+            name={value.name}
+            value={value.category ?? ""}
+            source={value.categorySource}
+            proposalId={proposalId}
+            disabled={disabled}
+            onChange={(category, categorySource) =>
+              onChange({ ...value, category, categorySource })
+            }
+          />
         ) : null}
       </div>
     );

@@ -32,7 +32,11 @@ async def test_inline_ingredient_creation_is_transactional(
     # Same barcode with a new inline ingredient: nothing is created.
     r = await admin_client.post(
         "/api/v1/products",
-        json={"ingredient": {"name": "Penne"}, "name": "Penne", "barcode": "024094070046"},
+        json={
+            "ingredient": {"name": "Penne", "category": "pantry"},
+            "name": "Penne",
+            "barcode": "024094070046",
+        },
     )
     assert r.status_code == 409 and r.json()["error"]["code"] == "barcode_taken"
     listed = await admin_client.get("/api/v1/ingredients", params={"q": "penne"})
@@ -48,7 +52,7 @@ async def test_exactly_one_ingredient_reference(admin_client, db_session):
         json={
             "name": "Both",
             "ingredient_id": str(uuid.uuid4()),
-            "ingredient": {"name": "X"},
+            "ingredient": {"name": "X", "category": "pantry"},
         },
     )
     assert r.status_code == 422

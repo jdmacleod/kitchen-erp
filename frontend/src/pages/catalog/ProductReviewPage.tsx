@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { formatPack, formatPieces, useProduct, useUnits, type Ingredient } from "../../api/catalog";
-import { api, errorMessage, isApiError } from "../../api/client";
+import { formatPack, formatPieces, useProduct, useUnits } from "../../api/catalog";
+import { errorMessage, isApiError } from "../../api/client";
 import {
   ROLE_LABELS,
   type PhotoRole,
@@ -32,7 +32,12 @@ import {
   type ReviewCandidate,
 } from "../../api/proposals";
 import { Badge } from "../../components/catalog/fields";
-import { IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import {
+  IngredientPicker,
+  ingredientIdFor,
+  needsCategory,
+  type IngredientChoice,
+} from "../../components/catalog/IngredientPicker";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
 import { whose } from "../../components/catalog/StoreBrandBadge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
@@ -311,6 +316,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     if (!match) return "Choose whether to update a product or create one";
     if (conflicts.length > 0) return `Choose a ${conflicts[0][1].toLowerCase()} to accept`;
     if (isNew && !ingredient) return "Choose an ingredient to accept";
+    if (isNew && needsCategory(ingredient)) return "Choose a category for the new ingredient";
     if (isNew && !title) return "Give the product a name to accept";
     if (recordPrice && !location) return "Choose the store for the posted price";
     if (recordPrice && !priceValid) return "Give the posted price an amount and what it is for";
@@ -343,16 +349,6 @@ function Review({ proposal }: { proposal: Proposal }) {
       } else if (value.trim() !== "") out[name] = value.trim();
     }
     return out;
-  };
-
-  const ingredientId = async (): Promise<string | undefined> => {
-    if (!ingredient) return undefined;
-    if (ingredient.kind === "existing") return ingredient.ingredient.id;
-    const body =
-      ingredient.kind === "standard"
-        ? { name: ingredient.name, standard_key: ingredient.key }
-        : { name: ingredient.name };
-    return (await api<Ingredient>("/ingredients", { method: "POST", body })).id;
   };
 
   const goNext = async (notice: { message: string; productId?: string }) => {
@@ -394,7 +390,7 @@ function Review({ proposal }: { proposal: Proposal }) {
     };
     if (target === "new") {
       input.kind = kind;
-      input.ingredient_id = await ingredientId();
+      input.ingredient_id = ingredient ? await ingredientIdFor(ingredient) : undefined;
     }
     accept.mutate(input, {
       onSuccess: (done) => {
@@ -654,6 +650,7 @@ function Review({ proposal }: { proposal: Proposal }) {
                 onChange={setIngredient}
                 suggestFrom={title}
                 disabled={readOnly}
+                proposalId={proposal.id}
               />
             </section>
           ) : null}

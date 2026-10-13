@@ -17,12 +17,15 @@ export function CategoryField({
   onChange,
   disabled,
   hint,
+  required = false,
 }: {
   id: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   hint?: string;
+  /** A new ingredient must have one (#344): no "No category" choice. */
+  required?: boolean;
 }) {
   const known = (CATEGORY_KEYS as readonly string[]).includes(value.trim().toLowerCase());
   const [other, setOther] = useState(value.trim() !== "" && !known);
@@ -35,6 +38,7 @@ export function CategoryField({
         value={selected}
         disabled={disabled}
         hint={hint}
+        required={required}
         onChange={(e) => {
           if (e.target.value === OTHER) {
             setOther(true);
@@ -44,7 +48,9 @@ export function CategoryField({
           onChange(e.target.value);
         }}
       >
-        <option value="">No category</option>
+        <option value="" disabled={required}>
+          {required ? "Choose a category" : "No category"}
+        </option>
         {CATEGORY_KEYS.map((key) => (
           <option key={key} value={key}>
             {label(key)}

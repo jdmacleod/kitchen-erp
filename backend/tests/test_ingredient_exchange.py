@@ -117,15 +117,15 @@ async def test_a_field_a_person_edited_is_kept_and_reported():
         ).scalar_one()
         oats.density_g_per_ml = Decimal("0.45")  # a person's measurement
         await db.commit()
-    newer = {**OATS, "category": "grains", "density": {"g_per_ml": "0.5", "source": "usda"}}
+    newer = {**OATS, "category": "bakery", "density": {"g_per_ml": "0.5", "source": "usda"}}
     report = await run(document(newer))
     (item,) = report.items
     assert item.outcome == "conflict"
     assert [(c.field, c.current, c.file) for c in item.conflicts] == [("density", "0.45", "0.5")]
-    assert [(c.field, c.value) for c in item.changes] == [("category", "grains")]
+    assert [(c.field, c.value) for c in item.changes] == [("category", "bakery")]
     oats = await ingredient("lantern oats")
     assert oats is not None
-    assert (oats.density_g_per_ml, oats.category) == (Decimal("0.45"), "grains")
+    assert (oats.density_g_per_ml, oats.category) == (Decimal("0.45"), "bakery")
 
 
 async def test_values_already_here_count_as_the_households():
@@ -257,8 +257,8 @@ async def test_a_usda_food_that_names_another_food_is_kept_but_not_linked():
         await db.commit()
     report = await run(
         document(
-            entry("local.rice-water", "rice water", fdc=[FDC_A]),
-            entry("local.lanternfruit", "lanternfruit", fdc=[FDC_B]),
+            entry("local.rice-water", "rice water", fdc=[FDC_A], category="pantry"),
+            entry("local.lanternfruit", "lanternfruit", fdc=[FDC_B], category="produce"),
         )
     )
     items = {i.name: i for i in report.items}
@@ -268,3 +268,16 @@ async def test_a_usda_food_that_names_another_food_is_kept_but_not_linked():
         refs = (await db.execute(select(IngredientRef))).scalars().all()
     by_id = {r.external_id: r.is_preferred for r in refs}
     assert by_id == {str(FDC_A): False, str(FDC_B): True}
+
+
+async def test_a_category_is_stored_as_its_key_and_a_missing_one_is_reported():
+    report = await run(
+        document(
+            entry("local.lantern-peas", "lantern peas", category="Vegetables"),
+            entry("local.juniper-bran", "juniper bran"),
+        )
+    )
+    items = {i.name: i for i in report.items}
+    assert (await ingredient("lantern peas")).category == "produce"
+    assert items["lantern peas"].reason is None
+    assert items["juniper bran"].reason == "no category: choose one for the new ingredient"

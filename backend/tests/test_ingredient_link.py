@@ -353,7 +353,10 @@ async def test_a_typed_in_ingredient_the_list_knows_is_offered_at_once(admin_cli
     quince = await make_ingredient(admin_client, "Quince paste")
     r = await admin_client.post(
         "/api/v1/products",
-        json={"ingredient": {"name": "large eggs", "canonical_unit": "each"}, "name": "Hen eggs"},
+        json={
+            "ingredient": {"category": "pantry", "name": "large eggs", "canonical_unit": "each"},
+            "name": "Hen eggs",
+        },
     )
     assert r.status_code == 201, r.text
     eggs = r.json()["ingredient"]

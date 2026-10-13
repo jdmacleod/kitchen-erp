@@ -146,7 +146,11 @@ async def test_accepting_one_look_alike_gives_the_other_a_strong_match(admin_cli
     listed = (await admin_client.get("/api/v1/product-proposals")).json()["items"]
     assert {i["id"]: i["look_alikes"] for i in listed}[str(second.id)] == [str(first.id)]
 
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Quince jam"})).json()
+    ing = (
+        await admin_client.post(
+            "/api/v1/ingredients", json={"name": "Quince jam", "category": "pantry"}
+        )
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{second.id}/accept",
         json={"action": "new", "ingredient_id": ing["id"]},

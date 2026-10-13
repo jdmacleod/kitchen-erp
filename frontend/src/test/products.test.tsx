@@ -22,6 +22,9 @@ function baseRoutes(products: () => Product[]) {
     "GET /products": () => jsonResponse(200, { items: products(), next_cursor: null }),
     "GET /products/search": () => jsonResponse(200, { items: hits }),
     "GET /ingredients/search": () => jsonResponse(200, { items: [] }),
+    // A new ingredient's likeliest category (#344).
+    "GET /ingredients/category-suggestion": () =>
+      jsonResponse(200, { category: "pantry", source: "catalog" }),
   };
 }
 
@@ -70,6 +73,10 @@ describe("products", () => {
     const option = await within(form).findByRole("option", { name: /Create new ingredient/ });
     await user.click(option);
     expect(screen.getByTestId("new-product-ingredient-choice")).toHaveTextContent("rolled oats");
+    // The new ingredient's category is prefilled and shown as a chip (#344).
+    const chip = await screen.findByTestId("new-product-ingredient-category-chip");
+    expect(chip).toHaveTextContent("pantry");
+    expect(chip).toHaveTextContent("like similar ingredients");
 
     await user.type(within(form).getByLabelText("Name"), "Rolled Oats");
     await user.type(within(form).getByLabelText("Pack quantity"), "1");
@@ -86,7 +93,7 @@ describe("products", () => {
     const post = calls.find((c) => c.method === "POST" && c.path === "/products");
     expect(post?.body).toEqual({
       name: "Rolled Oats",
-      ingredient: { name: "rolled oats" },
+      ingredient: { name: "rolled oats", category: "pantry" },
       pack_qty: "1",
       pack_unit: "kg",
       quality_rating: 3,

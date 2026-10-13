@@ -104,4 +104,4 @@ async def test_purchase_lines_carry_their_ingredient_category(admin_client):
         admin_client, pier["id"], r.json()["id"], "3.00", datetime(2026, 5, 1, tzinfo=UTC)
     )
     [line] = (await admin_client.get(f"/api/v1/purchases/{bought['id']}")).json()["lines"]
-    assert (line["product"]["category"], line["product"]["category_key"]) == ("Fruit", "produce")
+    assert (line["product"]["category"], line["product"]["category_key"]) == ("produce", "produce")

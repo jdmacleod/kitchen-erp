@@ -201,7 +201,7 @@ async def test_usda_tier_proposes_foods_to_create_an_ingredient_from(
     r = await decide(
         admin_client,
         name_norm="diced lanternfruit",
-        ingredient={"name": "lanternfruit"},
+        ingredient={"name": "lanternfruit", "category": "produce"},
         fdc_id=123,
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "unknown_fdc_id"
@@ -214,7 +214,7 @@ async def test_usda_tier_proposes_foods_to_create_an_ingredient_from(
     r = await decide(
         admin_client,
         name_norm="diced lanternfruit",
-        ingredient={"name": "lanternfruit"},
+        ingredient={"name": "lanternfruit", "category": "produce"},
         fdc_id=900001,
         note="diced",
     )

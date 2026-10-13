@@ -177,7 +177,9 @@ async def test_a_late_answer_opens_a_product_update_or_is_closed(admin_client, h
     """Criterion 90, last part (PR7)."""
     accepted_id = await proposal_from_scan(admin_client)
     asked = await ask(admin_client, accepted_id)
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Flour"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Flour", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{accepted_id}/accept",
         json={"action": "new", "ingredient_id": ing["id"], "edits": {"title": "Bread flour"}},

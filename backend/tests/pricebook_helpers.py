@@ -39,7 +39,11 @@ async def make_product(
     r = await client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"name": ingredient_name, "canonical_unit": canonical_unit},
+            "ingredient": {
+                "category": "pantry",
+                "name": ingredient_name,
+                "canonical_unit": canonical_unit,
+            },
             "name": product_name,
             **extra,
         },

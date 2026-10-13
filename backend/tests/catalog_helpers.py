@@ -15,8 +15,19 @@ async def seed_units_via_service(db_session) -> None:
 
 
 async def make_ingredient(client: httpx.AsyncClient, name: str, **extra) -> dict:
-    r = await client.post("/api/v1/ingredients", json={"name": name, **extra})
+    # Every new ingredient has a category (#344); tests that care pass their own.
+    body = {"name": name, **extra}
+    if "standard_key" not in body:
+        body.setdefault("category", "pantry")
+    r = await client.post("/api/v1/ingredients", json=body)
     assert r.status_code == 201, r.text
+    return r.json()
+
+
+async def clear_category(client: httpx.AsyncClient, ingredient: dict) -> dict:
+    """An ingredient left without a category, as ones made before #344 can be."""
+    r = await client.patch(f"/api/v1/ingredients/{ingredient['id']}", json={"category": None})
+    assert r.status_code == 200, r.text
     return r.json()
 
 

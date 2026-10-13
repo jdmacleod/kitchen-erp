@@ -9,12 +9,12 @@ import {
   type Product,
   type Unit,
 } from "../../api/catalog";
-import { CategoryField } from "../../components/catalog/CategoryField";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import {
   choiceName,
   choiceUnit,
   IngredientPicker,
+  needsCategory,
   type IngredientChoice,
 } from "../../components/catalog/IngredientPicker";
 import { RatingInput } from "../../components/catalog/RatingInput";
@@ -74,6 +74,7 @@ export function productValues(p: Product): ProductFormValues {
 /** Client-side checks that mirror the server's pairing rules. Null when valid. */
 export function validateProductValues(v: ProductFormValues): string | null {
   if (!v.ingredient) return "Choose an ingredient, or create a new one by name.";
+  if (needsCategory(v.ingredient)) return "Choose a category for the new ingredient.";
   if (!v.name.trim()) return "A name is required.";
   const hasQty = v.pack_qty.trim() !== "";
   const hasUnit = v.pack_unit !== "";
@@ -229,17 +230,6 @@ export function ProductForm({
             : undefined
         }
       />
-      {values.ingredient?.kind === "new" ? (
-        <CategoryField
-          id={`${idPrefix}-new-ingredient-category`}
-          value={values.ingredient.category ?? ""}
-          onChange={(category) => {
-            if (values.ingredient?.kind === "new")
-              set("ingredient", { ...values.ingredient, category });
-          }}
-          hint={`For the new ingredient ${values.ingredient.name}: its label on every product of it.`}
-        />
-      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

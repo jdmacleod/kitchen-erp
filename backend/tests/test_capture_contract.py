@@ -77,7 +77,7 @@ async def test_bearer_only_flow_with_retries(client: httpx.AsyncClient, bearer):
 
     # Product with inline ingredient, retried; then found by barcode and by typeahead.
     body = {
-        "ingredient": {"name": "Peaches"},
+        "ingredient": {"name": "Peaches", "category": "pantry"},
         "name": "Stand peaches",
         "barcode": "036000291452",
     }

@@ -94,10 +94,11 @@ async def test_confirmed_rows_become_products_and_identify_their_lines(
          "ingredient": {"name": "broccoli", "standard_key": "broccoli"}},
         # A second row naming the same new ingredient reuses it.
         {"vendor_id": vendor, "raw_text_norm": "RVRBND BREAD FLR 2KG",
-         "name": "Riverbend bread flour", "ingredient": {"name": "bread flour"},
+         "name": "Riverbend bread flour",
+         "ingredient": {"name": "bread flour", "category": "pantry"},
          "pack_qty": "2", "pack_unit": "kg"},
         {"vendor_id": vendor, "raw_text_norm": "BNLS CHKN BRST", "name": "Chicken breast",
-         "ingredient": {"name": "bread flour"}},
+         "ingredient": {"name": "bread flour", "category": "pantry"}},
     ]  # fmt: skip
     r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": rows})
     assert r.status_code == 200, r.text
@@ -128,11 +129,12 @@ async def test_a_failing_row_stands_alone(admin_client, admin, db_session):
         {"vendor_id": vendor, "raw_text_norm": "WT BROCCOLI CROWNS", "name": "Broccoli crowns",
          "ingredient_id": str(uuid.uuid4())},
         {"vendor_id": vendor, "raw_text_norm": "RVRBND BREAD FLR 2KG", "name": "Bread flour",
-         "ingredient": {"name": "bread flour"}, "pack_qty": "2", "pack_unit": "furlong"},
+         "ingredient": {"name": "bread flour", "category": "pantry"},
+         "pack_qty": "2", "pack_unit": "furlong"},
         {"vendor_id": vendor, "raw_text_norm": "NO SUCH LINE", "name": "Nothing",
-         "ingredient": {"name": "bread flour"}},
+         "ingredient": {"name": "bread flour", "category": "pantry"}},
         {"vendor_id": vendor, "raw_text_norm": "BNLS CHKN BRST", "name": "Chicken breast",
-         "ingredient": {"name": "chicken breast"}},
+         "ingredient": {"name": "chicken breast", "category": "pantry"}},
     ]  # fmt: skip
     r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": rows})
     assert r.status_code == 200, r.text

@@ -62,7 +62,11 @@ async def test_every_product_path_stays_on_the_machine(
     assert read["reading"]["path"] == "ocr_text" and read["fields"]["title"]["value"] == "Rye flour"
 
     # Review and accept, with a photo and a main-photo choice.
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Rye flour"})).json()
+    ing = (
+        await admin_client.post(
+            "/api/v1/ingredients", json={"name": "Rye flour", "category": "pantry"}
+        )
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{plain['id']}/accept",
         json={

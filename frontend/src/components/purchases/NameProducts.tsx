@@ -14,6 +14,7 @@ import { hintClass } from "../catalog/fields";
 import {
   choiceFromMatch,
   choiceInput,
+  needsCategory,
   IngredientPicker,
   type IngredientChoice,
 } from "../catalog/IngredientPicker";
@@ -90,6 +91,7 @@ function problemWith(v: RowValue): string | null {
   if (v.use) return null;
   if (!v.name.trim()) return "Give the product a name.";
   if (!v.ingredient) return "Choose an ingredient, or create one by name.";
+  if (needsCategory(v.ingredient)) return "Choose a category for the new ingredient.";
   const hasQty = v.packQty.trim() !== "";
   if (hasQty !== (v.packUnit !== ""))
     return "Give both a pack quantity and a pack unit, or neither.";

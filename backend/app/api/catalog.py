@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from app.api.deps import CurrentUser, DbSession, Idempotency
 from app.catalog.categories import CategoryKey
 from app.schemas.catalog import (
+    CategorySuggestionOut,
     ConvertIn,
     ConvertOut,
     DistinctIn,
@@ -34,7 +35,15 @@ from app.schemas.catalog import (
     SearchOut,
     UsdaSuggestionList,
 )
-from app.services import catalog, product_duplicates, product_merge, proposals, resolution, usda
+from app.services import (
+    catalog,
+    ingredient_category,
+    product_duplicates,
+    product_merge,
+    proposals,
+    resolution,
+    usda,
+)
 
 router = APIRouter(tags=["catalog"])
 
@@ -80,6 +89,19 @@ async def search_ingredients(
     """Ingredients by name or other spelling, best first; standard names on request (1G)."""
     items = await catalog.search_ingredients(db, q, include_standard=include_standard, limit=limit)
     return IngredientSearchOut(items=items)
+
+
+@router.get("/ingredients/category-suggestion", response_model=CategorySuggestionOut)
+async def category_suggestion(
+    db: DbSession,
+    _: CurrentUser,
+    name: str = Query(..., min_length=1, max_length=200),
+    fdc_id: int | None = Query(None, ge=1),
+    proposal_id: uuid.UUID | None = None,
+) -> CategorySuggestionOut:
+    """The likeliest category for a new ingredient, to prefill its picker (#344)."""
+    found = await ingredient_category.suggest(db, name, fdc_id=fdc_id, proposal_id=proposal_id)
+    return CategorySuggestionOut(category=found.category, source=found.source)
 
 
 @router.get("/ingredients/in-text", response_model=IngredientSearchOut)
