@@ -176,3 +176,49 @@ test("capture the Plan screenshots", async ({ page }) => {
   await expect(page.getByRole("table", { name: "Price comparison" })).toBeVisible();
   await shot(page, "plan-compare");
 });
+
+/**
+ * Trips (17, 4B and 4C): a plan for the first kitchen's list, made and chosen
+ * here through the API, since the seed plans nothing. The demo stack has no
+ * routing engine, so the legs are estimates and the cards say so. The trip
+ * page at desktop width and at 390px, then its first stop on the phone with
+ * one item in the basket.
+ */
+test("capture the Trip screenshots", async ({ page }) => {
+  await signIn(page);
+  await assertDemoData(page);
+
+  const kitchens = (await (await page.request.get("/api/v1/home-bases")).json()) as { items: { id: string; name: string }[] };
+  const kitchen = kitchens.items.find((k) => k.name === "Harbour Flat");
+  expect(kitchen, "the demo's first kitchen").toBeTruthy();
+  // Tomorrow at 10:00 in the household's zone (17:00 UTC in summer): a Saturday-morning sort of trip.
+  const when = new Date();
+  when.setUTCDate(when.getUTCDate() + 1);
+  when.setUTCHours(17, 0, 0, 0);
+  const made = await page.request.post("/api/v1/plan/trips", {
+    data: { home_base_id: kitchen!.id, planned_at: when.toISOString(), max_stops: 3, mileage_rate: "0.67" },
+  });
+  expect(made.status(), await made.text()).toBe(201);
+  const plan = (await made.json()) as { id: string; variants: { id: string; kind: string }[] };
+  const balanced = plan.variants.find((v) => v.kind === "balanced")!;
+  const chosen = await page.request.post(`/api/v1/plan/trips/${plan.id}/choose`, { data: { variant_id: balanced.id } });
+  expect(chosen.status(), await chosen.text()).toBe(200);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto(`/plan/trips/${plan.id}`);
+  await expect(page.getByTestId("variant-card").first()).toBeVisible();
+  await expect(page.getByTestId("stop").first()).toBeVisible();
+  await shot(page, "plan-trip");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/plan/trips/${plan.id}`);
+  await expect(page.getByTestId("variant-card").first()).toBeVisible();
+  await shot(page, "plan-trip-phone");
+
+  await page.goto(`/plan/trips/${plan.id}/stop/1`);
+  await expect(page.getByTestId("stop-item").first()).toBeVisible();
+  await page.getByRole("list", { name: "To get here" }).getByRole("checkbox").first().click();
+  await expect(page.getByTestId("stop-progress")).toContainText("1 of");
+  await shot(page, "plan-stop-phone");
+  await page.setViewportSize({ width: 1280, height: 800 });
+});

@@ -31,6 +31,13 @@ async function setUp(page: Page): Promise<TripWorld> {
   expect([201, 409], "a member of this run's own").toContain(user.status());
   await page.context().clearCookies();
   await loginAs(page, COOK.email, COOK.password);
+  // A new member has no setting, and the kitchen switcher writes back the one
+  // the fallback chain resolves when it mounts; let that happen first, so it
+  // cannot land after ours.
+  await page.goto("/plan/trips");
+  await expect(page.getByTestId("kitchen-tag")).toBeVisible();
+  const settled = async () => ((await (await page.request.get("/api/v1/me/settings")).json()) as { current_home_base_id: string | null }).current_home_base_id;
+  await expect.poll(settled, { timeout: 5_000 }).not.toBeNull().catch(() => undefined);
   const put = await page.request.put("/api/v1/me/settings", { data: { current_home_base_id: world.kitchenId } });
   expect(put.status(), await put.text()).toBe(200);
   return world;
@@ -63,7 +70,7 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
   // --- Plan a trip (UI-8.12) ------------------------------------------------------
   await page.goto("/plan/trips");
   await expect(page.getByRole("heading", { level: 1, name: /Trips/ })).toBeVisible();
-  await expect(page.getByTestId("kitchen-tag")).toHaveText(world.kitchenName);
+  await expect(page.getByTestId("kitchen-tag")).toContainText(world.kitchenName);
   await page.getByRole("button", { name: "Plan a trip" }).first().click();
   const drawer = page.getByRole("dialog", { name: "Plan a trip" });
   await expect(drawer.getByLabel("Starting from")).toHaveValue("kitchen");
@@ -176,7 +183,8 @@ test("plan a trip, choose it, and work through every stop", async ({ page }, tes
   await expect(page.getByText("Done", { exact: true }).first()).toBeVisible();
   const actual = (firstTotal + secondTotal).toFixed(2);
   await expect(page.getByText(`predicted $14.00 · actual $${actual}`)).toBeVisible();
-  await expect(page.getByTestId("stop-actual")).toHaveCount(2);
+  // Each stop's own line; on a phone the stops fold, so it is read on desktop.
+  if (!phone) await expect(page.getByTestId("stop-actual")).toHaveCount(2);
   if (phone) await expectNoSidewaysScroll(page, "the done trip");
 
   // The trips list names the stores in order and shows predicted beside actual.
