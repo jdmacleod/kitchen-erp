@@ -84,7 +84,7 @@ function Breadcrumb() {
       <span>Plan</span> <span aria-hidden="true">/</span>{" "}
       <Link
         to="/plan/trips"
-        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+        className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
       >
         Trips
       </Link>

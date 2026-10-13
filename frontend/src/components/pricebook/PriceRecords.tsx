@@ -9,7 +9,7 @@ import {
 } from "../../api/purchases";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
-import { Alert, Button, Card, Field, focusRing, tapTarget } from "../ui";
+import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from "../ui";
 import { PromoBadge } from "./PriceAge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -30,7 +30,7 @@ export function PriceRecords({ productId }: { productId: string }) {
   return (
     <Card>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">Price records</h2>
+        <h2 className={sectionHeading}>Price records</h2>
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
           <input
             type="checkbox"
@@ -136,7 +136,7 @@ function PriceRecord({ record }: { record: Observation }) {
                   {" · "}
                   <Link
                     to={`/shop/purchases/${encodeURIComponent(record.purchase_id)}`}
-                    className={`${tapTarget} rounded underline ${focusRing}`}
+                    className={`${tapTarget} rounded-sm underline ${focusRing}`}
                   >
                     Open the purchase
                   </Link>

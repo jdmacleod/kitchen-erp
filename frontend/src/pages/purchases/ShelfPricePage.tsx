@@ -110,7 +110,7 @@ export function ShelfPricePage() {
         </button>
       </div>
       <PageHeader title="Shelf price" description="A price you saw on the shelf, without buying.">
-        <Link to="/shop/purchases/new" className={`rounded text-sm underline ${focusRing}`}>
+        <Link to="/shop/purchases/new" className={`rounded-sm text-sm underline ${focusRing}`}>
           Enter a purchase instead
         </Link>
       </PageHeader>
@@ -410,7 +410,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
             <label htmlFor="shelf-price" className="text-sm font-medium">
               Price on the shelf
             </label>
-            <div className="flex h-[4.5rem] items-center gap-1 rounded-2xl border-2 border-neutral-300 bg-white px-4 focus-within:border-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-blue-400">
+            <div className="flex h-[4.5rem] items-center gap-1 rounded-lg border-2 border-neutral-300 bg-white px-4 focus-within:border-blue-600 dark:border-neutral-700 dark:bg-neutral-900 dark:focus-within:border-blue-400">
               <span
                 aria-hidden="true"
                 className="font-display text-3xl text-neutral-600 dark:text-neutral-400"
@@ -509,7 +509,7 @@ function ShelfPriceForm({ arrival, variant, formId, onSaved, onStateChange }: Sh
           <Button
             onClick={() => save(false)}
             disabled={busy}
-            className="min-h-14 w-full rounded-2xl text-base lg:min-h-10 lg:w-auto lg:rounded-md lg:text-sm"
+            className="min-h-14 w-full rounded-lg text-base lg:min-h-10 lg:w-auto lg:rounded-md lg:text-sm"
           >
             {busy ? "Saving…" : "Save price"}
           </Button>
@@ -829,7 +829,7 @@ export function ObservationResult({ observation }: { observation: Observation })
       of{" "}
       <Link
         to={`/catalog/products/${product.id}`}
-        className={`rounded font-medium underline ${focusRing}`}
+        className={`rounded-sm font-medium underline ${focusRing}`}
       >
         {productTitle(product)}
       </Link>
@@ -860,7 +860,7 @@ export function ObservationResult({ observation }: { observation: Observation })
   const ingredientLink = (hash: string, text: string) => (
     <Link
       to={`/catalog/ingredients/${product.ingredient.id}#${hash}`}
-      className={`rounded font-medium underline ${focusRing}`}
+      className={`rounded-sm font-medium underline ${focusRing}`}
     >
       {text}
     </Link>
@@ -868,7 +868,7 @@ export function ObservationResult({ observation }: { observation: Observation })
   const productLink = (text: string) => (
     <Link
       to={`/catalog/products/${product.id}`}
-      className={`rounded font-medium underline ${focusRing}`}
+      className={`rounded-sm font-medium underline ${focusRing}`}
     >
       {text}
     </Link>

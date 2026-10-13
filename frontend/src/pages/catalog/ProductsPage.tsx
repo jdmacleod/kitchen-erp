@@ -349,7 +349,7 @@ function ProductTable({ items }: { items: ProductListItem[] }) {
                   <Link
                     id={`product-row-${p.id}`}
                     to={`/catalog/products/${p.id}`}
-                    className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+                    className={`${tapTarget} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
                   >
                     {p.name}
                   </Link>
@@ -587,7 +587,7 @@ function AddProductForm({
                   href={`/catalog/products/${fromAddress.known.product_id}`}
                   target="_blank"
                   rel="noreferrer"
-                  className={`rounded font-medium underline ${focusRing}`}
+                  className={`rounded-sm font-medium underline ${focusRing}`}
                 >
                   {fromAddress.known.name}
                 </a>

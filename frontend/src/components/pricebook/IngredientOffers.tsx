@@ -5,7 +5,7 @@ import { priceScopeLabel } from "../../api/geo";
 import { bridgeFixLink, type Offer, type PriceFilters as Filters } from "../../api/pricebook";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { whose } from "../catalog/StoreBrandBadge";
-import { focusRing } from "../ui";
+import { focusRing, sectionHeading } from "../ui";
 import { PriceAge, PromoBadge, QualityText, formatUnitPrice } from "./PriceAge";
 import { PriceFilters } from "./PriceFilters";
 
@@ -35,7 +35,7 @@ export function IngredientOffers({
       className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
     >
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-        <h2 id="prices-by-vendor" className="font-display text-lg">
+        <h2 id="prices-by-vendor" className={sectionHeading}>
           Prices by vendor
         </h2>
         <PriceFilters id="offers" value={filters} onChange={onFilters} brands />
@@ -75,7 +75,7 @@ export function IngredientOffers({
         </span>
         <Link
           to="/plan/compare"
-          className={`inline-flex min-h-11 items-center lg:min-h-0 rounded text-sm font-medium underline ${focusRing}`}
+          className={`inline-flex min-h-11 items-center lg:min-h-0 rounded-sm text-sm font-medium underline ${focusRing}`}
         >
           Compare prices
         </Link>
@@ -92,7 +92,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
     <>
       <Link
         to={`/catalog/products/${o.product_id}`}
-        className={`inline-flex min-h-11 items-center lg:min-h-0 rounded underline-offset-2 hover:underline ${focusRing}`}
+        className={`inline-flex min-h-11 items-center lg:min-h-0 rounded-sm underline-offset-2 hover:underline ${focusRing}`}
       >
         {o.brand ? `${o.brand} ${o.product_name}` : o.product_name}
       </Link>

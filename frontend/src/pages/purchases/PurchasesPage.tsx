@@ -23,10 +23,11 @@ import {
   Button,
   Card,
   EmptyState,
-  PageHeader,
   focusRing,
+  PageHeader,
   primaryLinkClass,
   secondaryLinkClass,
+  sectionHeading,
   tapTarget,
 } from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
@@ -219,9 +220,7 @@ export function PurchasesPage() {
 
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">
-            {voidedView ? "Voided purchases" : "All purchases"}
-          </h2>
+          <h2 className={sectionHeading}>{voidedView ? "Voided purchases" : "All purchases"}</h2>
           {voidedView ? (
             <Button variant="secondary" onClick={showAll}>
               Back to all
@@ -376,7 +375,7 @@ export function PurchasesPage() {
                         <td className="py-2 pr-3 whitespace-nowrap">
                           <Link
                             to={`/shop/purchases/${p.id}`}
-                            className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+                            className={`${tapTarget} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
                           >
                             {formatDate(p.purchased_at)}
                           </Link>
@@ -490,7 +489,7 @@ export function PurchasesPage() {
           <p className="mt-3 text-sm">
             <Link
               to={`?${new URLSearchParams([...params.entries(), ["status", "voided"]]).toString()}`}
-              className={`${tapTarget} rounded underline ${focusRing}`}
+              className={`${tapTarget} rounded-sm underline ${focusRing}`}
             >
               {/* Without a count when it couldn't be checked: the way in stays. */}
               {voidedCount ? `Show voided (${voidedCount})` : "Show voided"}
@@ -532,7 +531,7 @@ function SortHeading({
       <button
         type="button"
         onClick={() => onSort(column)}
-        className={`inline-flex min-h-9 items-center gap-1 rounded font-semibold hover:text-neutral-900 dark:hover:text-neutral-100 ${active ? "text-neutral-900 dark:text-neutral-100" : ""} ${focusRing}`}
+        className={`inline-flex min-h-9 items-center gap-1 rounded-sm font-semibold hover:text-neutral-900 dark:hover:text-neutral-100 ${active ? "text-neutral-900 dark:text-neutral-100" : ""} ${focusRing}`}
       >
         {/* The arrow sits on the side away from the column's edge, so a right-aligned label lines up with its numbers. */}
         {align === "right" ? arrow : null}
@@ -580,7 +579,7 @@ function ReadingRow({ job }: { job: IngestJob }) {
       <td className="py-2 pr-3 whitespace-nowrap">
         <Link
           to={`/shop/receipts?job=${encodeURIComponent(job.id)}`}
-          className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+          className={`${tapTarget} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
         >
           {uploaded(job)}
         </Link>

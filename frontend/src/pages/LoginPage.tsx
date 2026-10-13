@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router";
 import { errorMessage } from "../api/client";
 import { useLogin, useMe } from "../api/queries";
-import { Alert, Button, Card, Centered, Field } from "../components/ui";
+import { Alert, Button, Card, Centered, Field, sectionHeading } from "../components/ui";
 import { usePageTitle } from "../lib/usePageTitle";
 
 export function LoginPage() {
@@ -35,7 +35,7 @@ export function LoginPage() {
           className="flex flex-col gap-4"
           aria-labelledby="login-heading"
         >
-          <h2 id="login-heading" className="text-lg font-medium">
+          <h2 id="login-heading" className={sectionHeading}>
             Sign in
           </h2>
           {login.isError ? <Alert tone="error">{errorMessage(login.error)}</Alert> : null}

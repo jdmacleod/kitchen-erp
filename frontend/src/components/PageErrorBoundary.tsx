@@ -34,7 +34,7 @@ export class PageErrorBoundary extends Component<Props, State> {
     return (
       <div
         role="alert"
-        className={`flex flex-col gap-3 rounded-2xl border px-4 py-4 text-sm ${alertTones.error}`}
+        className={`flex flex-col gap-3 rounded-lg border px-4 py-4 text-sm ${alertTones.error}`}
       >
         <p className="font-medium">This page couldn&apos;t be shown.</p>
         <p>

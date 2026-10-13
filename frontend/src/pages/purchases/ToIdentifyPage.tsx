@@ -217,7 +217,7 @@ function GroupCard({
           <li key={l.line_id}>
             <Link
               to={`/shop/purchases/${l.purchase_id}`}
-              className={`rounded underline ${focusRing}`}
+              className={`rounded-sm underline ${focusRing}`}
             >
               {formatDate(l.purchased_at)}
             </Link>

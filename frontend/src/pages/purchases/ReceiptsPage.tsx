@@ -18,7 +18,15 @@ import { Badge } from "../../components/catalog/fields";
 import { useNotice } from "../../components/Notice";
 import { ReceiptImage } from "../../components/purchases/ReceiptImage";
 import { TrustBadge } from "../../components/purchases/TrustBadge";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  sectionHeading,
+} from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
@@ -146,7 +154,7 @@ export function ReceiptsPage() {
             className={`flex flex-col gap-3 rounded-md ${dragging ? "outline-2 outline-dashed outline-offset-8 outline-neutral-400" : ""}`}
             noValidate
           >
-            <h2 id="upload-heading" className="text-lg font-medium">
+            <h2 id="upload-heading" className={sectionHeading}>
               Upload receipts
             </h2>
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
@@ -181,7 +189,7 @@ export function ReceiptsPage() {
 
         {pinnedId ? (
           <Card>
-            <h2 className="mb-3 text-lg font-medium">From your inbox</h2>
+            <h2 className={`${sectionHeading} mb-3`}>From your inbox</h2>
             {pinned.isPending ? (
               <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
                 Loading…
@@ -202,7 +210,7 @@ export function ReceiptsPage() {
         ) : null}
 
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Upload history</h2>
+          <h2 className={`${sectionHeading} mb-3`}>Upload history</h2>
           {batches.isPending ? (
             <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
               Loading…
@@ -368,7 +376,7 @@ function JobRow({
           width={96}
           alt=""
           link={{ label: `Open the receipt uploaded ${when ? formatDateTime(when) : ""}`.trim() }}
-          className="h-16 w-12 rounded border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
+          className="h-16 w-12 rounded-sm border border-neutral-200 bg-white object-cover object-top dark:border-neutral-800"
         />
       ) : null}
       <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2">

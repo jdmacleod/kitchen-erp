@@ -3,7 +3,7 @@ import type { Product } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { useProductPrices } from "../../api/pricebook";
 import { formatMoney, stripZeros } from "../../lib/decimal";
-import { Alert, Card, focusRing } from "../ui";
+import { Alert, Card, focusRing, sectionHeading } from "../ui";
 import { PriceAge, PromoBadge, formatUnitPrice } from "./PriceAge";
 import { PriceHistoryChart } from "./PriceHistoryChart";
 
@@ -17,7 +17,7 @@ export function ProductPrices({ product }: { product: Product }) {
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Prices</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Prices</h2>
       {prices.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -44,7 +44,7 @@ export function ProductPrices({ product }: { product: Product }) {
                       <td className="py-2 pr-3">
                         <Link
                           to={`/catalog/vendors?view=map&location=${encodeURIComponent(l.location_id)}`}
-                          className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                          className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                         >
                           {l.location_name === l.vendor_name
                             ? l.location_name

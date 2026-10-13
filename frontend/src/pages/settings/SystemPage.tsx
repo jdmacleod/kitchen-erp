@@ -4,7 +4,7 @@ import { useChangePassword, useHealth, useLogoutEverywhere } from "../../api/que
 import { Badge, type BadgeTone } from "../../components/catalog/fields";
 import { HealthStatus } from "../../components/HealthStatus";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, Card, Field, PageHeader } from "../../components/ui";
+import { Alert, Button, Card, Field, PageHeader, sectionHeading } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 const checkTone: Record<string, BadgeTone> = { ok: "good", degraded: "warn", failed: "danger" };
@@ -81,7 +81,7 @@ function ChangePassword() {
         aria-labelledby="change-password-heading"
       >
         <div>
-          <h2 id="change-password-heading" className="mb-1 text-lg font-medium">
+          <h2 id="change-password-heading" className={`${sectionHeading} mb-1`}>
             Password
           </h2>
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -139,7 +139,7 @@ export function SystemPage() {
       />
       <div className="flex flex-col gap-6">
         <Card>
-          <h2 className="mb-3 text-lg font-medium">Status</h2>
+          <h2 className={`${sectionHeading} mb-3`}>Status</h2>
           <div className="mb-3">
             <HealthStatus />
           </div>
@@ -147,7 +147,7 @@ export function SystemPage() {
         </Card>
         <ChangePassword />
         <Card>
-          <h2 className="mb-1 text-lg font-medium">Sessions</h2>
+          <h2 className={`${sectionHeading} mb-1`}>Sessions</h2>
           <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
             Signs you out on every device, including this one. API tokens keep working; revoke them
             under API tokens.

@@ -10,7 +10,7 @@ import {
 import { Disclosure } from "../catalog/fields";
 import { Drawer } from "../Drawer";
 import { useNotice } from "../Notice";
-import { Alert } from "../ui";
+import { Alert, focusRing } from "../ui";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -229,7 +229,7 @@ export function VendorImportDrawer({ onClose }: { onClose: () => void }) {
             id={inputId}
             type="file"
             accept=".yaml,.yml,.json,application/yaml,application/json"
-            className="min-h-11 text-sm"
+            className={`min-h-11 rounded-md text-sm ${focusRing}`}
             onChange={(e) => void choose(e.target.files?.[0])}
             disabled={apply.isPending}
           />

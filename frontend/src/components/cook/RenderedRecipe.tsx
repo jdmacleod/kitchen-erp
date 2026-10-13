@@ -5,6 +5,7 @@ import {
   type Recipe,
   type RecipeIngredient,
 } from "../../api/recipes";
+import { sectionHeading } from "../ui";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -51,7 +52,7 @@ export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) 
       aria-labelledby={`${id ?? "recipe"}-heading`}
       className="flex min-w-0 flex-col gap-4"
     >
-      <h2 id={`${id ?? "recipe"}-heading`} className="text-lg font-medium">
+      <h2 id={`${id ?? "recipe"}-heading`} className={sectionHeading}>
         Recipe
       </h2>
       {keys.length > 0 ? (

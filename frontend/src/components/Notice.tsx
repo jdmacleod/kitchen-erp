@@ -156,7 +156,7 @@ function NoticeRegion({ notice, onDismiss }: { notice: Shown | null; onDismiss: 
           role="status"
           data-testid="notice"
           data-tone={notice.tone}
-          className={`mb-6 flex flex-wrap items-center justify-between gap-2 rounded-2xl border px-4 py-3 text-sm ${alertTones[notice.tone]}`}
+          className={`mb-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-3 text-sm ${alertTones[notice.tone]}`}
         >
           <span className="flex flex-wrap items-center gap-x-2">
             <span>{notice.message}</span>
@@ -164,7 +164,7 @@ function NoticeRegion({ notice, onDismiss }: { notice: Shown | null; onDismiss: 
               <Link
                 ref={action}
                 to={notice.action.to}
-                className={`rounded font-medium underline ${focusRing}`}
+                className={`rounded-sm font-medium underline ${focusRing}`}
               >
                 {notice.action.label}
               </Link>

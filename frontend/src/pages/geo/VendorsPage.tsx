@@ -38,10 +38,11 @@ import {
   Card,
   EmptyState,
   Field,
-  PageHeader,
   focusRing,
+  PageHeader,
   primaryLinkClass,
   secondaryLinkClass,
+  sectionHeading,
   tapTarget,
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
@@ -309,7 +310,7 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
         <Link
           id={`vendor-row-${vendor.id}`}
           to={`/catalog/vendors/${vendor.id}`}
-          className={`${tapTarget} font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}
+          className={`${tapTarget} font-display rounded-sm text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}
         >
           {vendor.name}
         </Link>
@@ -525,7 +526,7 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
       className="max-h-[80vh] overflow-y-auto p-5"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 id={titleId} className="font-display text-xl">
+        <h2 id={titleId} className={sectionHeading}>
           Export vendors
         </h2>
         <Button variant="ghost" onClick={onClose}>
@@ -578,7 +579,7 @@ function FindNearbyDialog({ onClose }: { onClose: () => void }) {
       className="max-h-[80vh] overflow-y-auto p-5"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 id={titleId} className="font-display text-xl">
+        <h2 id={titleId} className={sectionHeading}>
           Find nearby
         </h2>
         <Button variant="ghost" onClick={onClose}>
@@ -616,7 +617,7 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
         Finding nearby shops starts from one of your kitchens. Add one first, under{" "}
         <Link
           to="/settings/kitchens"
-          className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+          className={`${tapTarget} rounded-sm font-medium underline ${focusRing}`}
         >
           Settings → Kitchens
         </Link>
@@ -628,7 +629,7 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
   const Wrapper = bare ? "div" : Card;
   return (
     <Wrapper>
-      {bare ? null : <h2 className="mb-1 text-lg font-medium">Adopt from OpenStreetMap</h2>}
+      {bare ? null : <h2 className={`${sectionHeading} mb-1`}>Adopt from OpenStreetMap</h2>}
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
         Lists food shops and marketplaces near a kitchen so you can adopt the ones you use.
         Optional; needs the Overpass integration switched on. © OpenStreetMap contributors.

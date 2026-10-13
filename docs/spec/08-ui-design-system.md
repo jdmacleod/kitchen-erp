@@ -110,7 +110,7 @@ The `.cat-edge` class (a category-coloured leading edge on list rows) exists in 
 
 | Role | Face | Where |
 |---|---|---|
-| Display | Fraunces (variable, `opsz` and `SOFT` axes) | `h1` page titles automatically; section and card headings opt in with the `font-display` utility. |
+| Display | Fraunces (variable, `opsz` and `SOFT` axes) | `h1` page titles automatically; section, card, drawer and sheet headings through the shared `sectionHeading` class in `components/ui.tsx` (issue 314). |
 | Body and data | Inter (variable) | Everything else, including tables, forms and navigation. |
 
 Self-host the fonts; the app is self-hosted and makes no runtime requests to Google Fonts:
@@ -119,12 +119,12 @@ Self-host the fonts; the app is self-hosted and makes no runtime requests to Goo
 pnpm add @fontsource-variable/fraunces @fontsource-variable/inter
 ```
 
-Import both in `main.tsx`, latin subset only. The font stacks in `theme.css` already reference `"Fraunces Variable"` and `"Inter Variable"` with system fallbacks. `PageHeader`'s own size and tracking utilities must not override the `h1` rule.
+Import both in `main.tsx`: Fraunces from its `full.css`, because the latin subset file leaves out the `opsz` and `SOFT` axes the `h1` rule sets, and Inter from its default `index.css` (issue 314). The font stacks in `theme.css` already reference `"Fraunces Variable"` and `"Inter Variable"` with system fallbacks. `PageHeader`'s own size and tracking utilities must not override the `h1` rule.
 
 Scale and rules:
 
 - Page title (`h1`): 40px desktop, 30–32px phone, weight 600, tracking −0.015em.
-- Section heading: Fraunces 19–21px, weight 600, via `font-display`.
+- Section heading: Fraunces 20px, weight 600, through `sectionHeading` (`font-display text-xl font-semibold`). Labels, table headers and body text stay Inter.
 - Body: 14–15px. Secondary text: 13px in `neutral-600` (dark: `neutral-400`). Captions: 12px, never lighter than those.
 - Tables, prices, quantities and numeric inputs use tabular figures (set in `theme.css`).
 - Unit prices read per lb, oz or fl oz by default (per kg or L with `UNIT_DISPLAY=metric`), never per gram or millilitre, with 2 decimal places, or 3 under $1: "$4.49/lb", "$0.269/fl oz", "$1.29 each". The server sends the figure and its unit; the page prints them as sent (04, 2E; issue 245).
@@ -143,13 +143,13 @@ Scale and rules:
 
 Radius scales with hierarchy: controls are smaller than the surfaces that contain them.
 
-Depth is quiet. Cards use a 1px `neutral-200` border and, for primary surfaces only, the warm `--shadow-card` shadow. A product cutout sits on the card surface it is shown on (`white`, `neutral-900` in dark) with `--shadow-cutout`, a drop shadow built from `--shadow-card`'s walnut values; photos without a cutout fill square tiles and sit contained on `neutral-100` in a detail view (PD14). Drawers, sheets, dialogs and the search palette get a stronger shadow over a walnut scrim at roughly 32–40% opacity. No gradients.
+Depth is quiet. Cards use a 1px `neutral-200` border and, for primary surfaces only, the warm `--shadow-card` shadow (`shadow-card`: `Card` and the sticky commit and save bars). Controls raised inside a surface, such as the selected segment and the active nav item, keep a small `shadow-sm`. A product cutout sits on the card surface it is shown on (`white`, `neutral-900` in dark) with `--shadow-cutout`, a drop shadow built from `--shadow-card`'s walnut values; photos without a cutout fill square tiles and sit contained on `neutral-100` in a detail view (PD14). Drawers, sheets, dialogs and the search palette get a stronger shadow over a walnut scrim at roughly 32–40% opacity. No gradients.
 
 ## Core components
 
 These are patterns, not a component library; build them as the pages need them.
 
-- **Primary button**: `bg-blue-600 text-white`, 44px minimum height, `rounded-md`, 500 weight. At most one per view region.
+- **Primary button**: `bg-blue-600 text-white`, 44px minimum height below 1024px and 40px at desktop width (the touch-target floor below applies to phone and tablet layouts), `rounded-md`, 500 weight. At most one per view region.
 - **Secondary button**: warm white fill, `neutral-300` border.
 - **Soft action button**: `bg-blue-100 text-blue-800`, used for per-row fixes in lists such as the inbox.
 - **Status badge**: a pill, 12px, 500 weight, always with a text label:
@@ -178,7 +178,7 @@ These are patterns, not a component library; build them as the pages need them.
 - Visible focus on every interactive element: 2px herb outline with a 2px offset.
 - Touch targets of at least 44×44px on phone and tablet layouts.
 - Real `<button>`, `<a href>`, `<label>` and `<input>` elements; no click handlers on non-interactive elements.
-- Respect `prefers-reduced-motion`. The design uses no decorative motion; transitions are limited to drawers, sheets and dialogs opening and closing.
+- Respect `prefers-reduced-motion`. The design uses no decorative motion; transitions are limited to drawers, sheets and dialogs opening: a drawer slides in and a dialog and its scrim fade in over about 150 ms, only under `prefers-reduced-motion: no-preference`. Closing is immediate (issue 314).
 
 ## Map
 

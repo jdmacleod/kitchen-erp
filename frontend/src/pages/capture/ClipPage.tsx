@@ -385,7 +385,7 @@ function KnownNotice({ known }: { known: KnownProduct }) {
         href={`/catalog/products/${known.product_id}`}
         target="_blank"
         rel="noreferrer"
-        className={`rounded font-medium underline ${focusRing}`}
+        className={`rounded-sm font-medium underline ${focusRing}`}
       >
         {known.name}
       </a>
@@ -403,7 +403,7 @@ function Saved({ proposal, already }: { proposal: Proposal; already: boolean }) 
         href={review}
         target="_blank"
         rel="noreferrer"
-        className={`rounded font-medium underline ${focusRing}`}
+        className={`rounded-sm font-medium underline ${focusRing}`}
       >
         {already ? "Open it" : "Review it in Needs you"}
       </a>

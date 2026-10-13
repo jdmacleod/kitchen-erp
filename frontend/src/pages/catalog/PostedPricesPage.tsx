@@ -75,7 +75,7 @@ function ChangeRow({ change }: { change: PriceChange }) {
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <Link
           to={`/catalog/products/${change.product_id}`}
-          className={`rounded font-medium underline ${focusRing}`}
+          className={`rounded-sm font-medium underline ${focusRing}`}
         >
           {change.product_name}
         </Link>

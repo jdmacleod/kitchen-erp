@@ -31,7 +31,7 @@ import {
 } from "../../lib/decimal";
 import { Badge, hintClass, inputClass, labelClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
-import { Alert, Button, Field } from "../ui";
+import { Alert, Button, Field, sectionHeading } from "../ui";
 import { LocationSelect } from "./LocationSelect";
 import { ProductPicker, type ProductRef } from "./ProductPicker";
 
@@ -415,7 +415,7 @@ export function PurchaseForm({
         if (!busy) submit();
       }}
     >
-      <h2 id={headingId} className="text-lg font-medium">
+      <h2 id={headingId} className={sectionHeading}>
         {heading}
       </h2>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}

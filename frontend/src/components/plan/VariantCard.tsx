@@ -2,7 +2,7 @@ import { tradeSentence, variantLabel, type Variant } from "../../api/trips";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime, formatMinutes } from "../../lib/format";
 import { Badge } from "../catalog/fields";
-import { Button } from "../ui";
+import { Button, sectionHeading } from "../ui";
 
 interface VariantCardProps {
   variant: Variant;
@@ -42,7 +42,7 @@ export function VariantCard({
       className={`flex flex-col gap-3 rounded-lg border bg-white p-4 dark:bg-neutral-900 ${chosen ? "border-neutral-400 dark:border-neutral-600" : "border-neutral-200 dark:border-neutral-800"} ${variant.kind === "balanced" ? "max-lg:order-first" : ""}`}
     >
       <header className="flex flex-wrap items-center gap-2">
-        <h2 id={headingId} className="font-display text-lg">
+        <h2 id={headingId} className={sectionHeading}>
           {variantLabel[variant.kind]}
         </h2>
         {variant.kind === "cheapest" ? <Badge tone="good">cheapest</Badge> : null}

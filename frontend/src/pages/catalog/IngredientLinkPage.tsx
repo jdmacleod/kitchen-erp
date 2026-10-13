@@ -314,7 +314,7 @@ function LinkRowView({
             <button
               type="button"
               onClick={() => setMode({ kind: "choose" })}
-              className={`col-span-3 min-h-11 rounded text-left text-sm underline lg:min-h-0 ${focusRing}`}
+              className={`col-span-3 min-h-11 rounded-sm text-left text-sm underline lg:min-h-0 ${focusRing}`}
             >
               Choose another standard name
             </button>
@@ -328,7 +328,7 @@ function LinkRowView({
 function SkippedFold({ rows }: { rows: LinkRow[] }) {
   const action = useLinkAction();
   return (
-    <details className="mt-4 rounded-2xl border border-neutral-200 bg-white px-4 py-2 dark:border-neutral-800 dark:bg-neutral-900">
+    <details className="mt-4 rounded-lg border border-neutral-200 bg-white px-4 py-2 dark:border-neutral-800 dark:bg-neutral-900">
       <summary
         className={`min-h-11 cursor-pointer py-2 text-sm font-medium lg:min-h-0 ${focusRing}`}
       >

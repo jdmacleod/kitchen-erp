@@ -103,7 +103,7 @@ export function NeedsBridgePage() {
                         <td className="py-2 pr-3">
                           <Link
                             to={`/catalog/ingredients/${item.ingredient.id}`}
-                            className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                            className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                           >
                             {item.ingredient.name}
                           </Link>
@@ -115,7 +115,7 @@ export function NeedsBridgePage() {
                         <td className="py-2 pr-3">
                           <Link
                             to={`/catalog/products/${item.product.id}`}
-                            className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                            className={`rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                           >
                             {title}
                           </Link>
@@ -149,7 +149,7 @@ export function NeedsBridgePage() {
                           ) : (
                             <Link
                               to={fix.to}
-                              className={`rounded font-medium underline ${focusRing}`}
+                              className={`rounded-sm font-medium underline ${focusRing}`}
                             >
                               {fix.text}
                             </Link>

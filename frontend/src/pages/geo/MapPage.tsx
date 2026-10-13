@@ -40,6 +40,9 @@ import { formatDateTime } from "../../lib/format";
 import { describeOpeningHours, fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { usePageTitle } from "../../lib/usePageTitle";
 
+/** A text link: underlined, with the small focus radius. */
+const textLink = `rounded-sm underline ${focusRing}`;
+
 type Mode = "browse" | "location" | "home";
 type Selection = { type: "location"; id: string } | { type: "home"; id: string };
 type Point = { lat: string; lon: string };
@@ -719,7 +722,7 @@ function LocationPanel({
     <div data-testid="location-panel">
       <PanelHeader title={l.name} onClose={onClose}>
         <p className="text-neutral-600 dark:text-neutral-400">
-          <Link to={`/catalog/vendors/${l.vendor.id}`} className={`rounded underline ${focusRing}`}>
+          <Link to={`/catalog/vendors/${l.vendor.id}`} className={textLink}>
             {l.vendor.name}
           </Link>{" "}
           · {vendorKindLabel[l.vendor.kind]}
@@ -861,7 +864,7 @@ function LocationPrices({ id }: { id: string }) {
                 >
                   <Link
                     to={`/catalog/products/${r.product_id}`}
-                    className={`min-w-0 truncate rounded underline-offset-2 hover:underline ${focusRing}`}
+                    className={`min-w-0 truncate rounded-sm underline-offset-2 hover:underline ${focusRing}`}
                   >
                     {r.brand ? `${r.brand} ${r.product_name}` : r.product_name}
                   </Link>
@@ -906,7 +909,7 @@ function StallPanel({
       <PanelHeader title={stall.name} onClose={onClose}>
         <p className="text-neutral-600 dark:text-neutral-400">
           Stall at{" "}
-          <button type="button" onClick={onBack} className={`rounded underline ${focusRing}`}>
+          <button type="button" onClick={onBack} className={textLink}>
             {market.name}
           </button>
         </p>
@@ -929,10 +932,7 @@ function StallPanel({
         </dd>
         <dt className="text-neutral-600 dark:text-neutral-400">Vendor</dt>
         <dd>
-          <Link
-            to={`/catalog/vendors/${stall.vendor.id}`}
-            className={`rounded underline ${focusRing}`}
-          >
+          <Link to={`/catalog/vendors/${stall.vendor.id}`} className={textLink}>
             {stall.vendor.name}
           </Link>
         </dd>
@@ -971,7 +971,7 @@ function HomeBasePanel({
         <dt className="text-neutral-600 dark:text-neutral-400">Locations</dt>
         <dd>{count} shown default to this base</dd>
       </dl>
-      <Link to="/settings/kitchens" className={`mt-3 inline-block rounded underline ${focusRing}`}>
+      <Link to="/settings/kitchens" className={`mt-3 inline-block ${textLink}`}>
         Manage kitchens
       </Link>
     </div>

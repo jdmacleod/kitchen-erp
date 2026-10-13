@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { useHealth } from "../../api/queries";
 import { useIngredientRecipes, type IngredientRecipeUse } from "../../api/recipes";
-import { Button, focusRing, tapTarget } from "../ui";
+import { Button, focusRing, sectionHeading, tapTarget } from "../ui";
 import { RecipeBadges } from "./RecipeBadges";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -27,7 +27,7 @@ export function UsedInRecipes({ ingredientId }: { ingredientId: string }) {
       className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
       data-testid="used-in-card"
     >
-      <h2 id="ingredient-used-in" className="font-display mb-3 text-lg">
+      <h2 id="ingredient-used-in" className={`${sectionHeading} mb-3`}>
         Used in
       </h2>
       <ul
@@ -54,7 +54,7 @@ function UseRow({ use }: { use: IngredientRecipeUse }) {
       <span className="flex min-w-0 flex-wrap items-center gap-2">
         <Link
           to={`/cook/recipes/${use.id}`}
-          className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+          className={`${tapTarget} rounded-sm font-medium underline-offset-2 hover:underline ${focusRing}`}
         >
           {use.title}
         </Link>

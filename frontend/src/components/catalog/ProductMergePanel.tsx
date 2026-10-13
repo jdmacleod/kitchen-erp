@@ -10,7 +10,7 @@ import {
   type SearchHit,
 } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
-import { Alert, Button, Card, alertTones } from "../ui";
+import { Alert, Button, Card, alertTones, sectionHeading } from "../ui";
 import { ProductTypeahead } from "./ProductTypeahead";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -83,7 +83,7 @@ export function ProductMergePanel({
 
   return (
     <Card>
-      <h2 className="mb-1 text-lg font-medium">Merge into another product</h2>
+      <h2 className={`${sectionHeading} mb-1`}>Merge into another product</h2>
       <p className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
         For a duplicate of a product you already have. The product you choose is kept, with its own
         name, pack and details; this one becomes inactive and its prices, codes, photos and receipt

@@ -17,10 +17,11 @@ import { CheaperRow, StopItemRow } from "../../components/plan/StopRows";
 import {
   Alert,
   Button,
-  PageHeader,
   focusRing,
+  PageHeader,
   primaryLinkClass,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { add, formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
@@ -66,7 +67,7 @@ function BackToTrip({ planId }: { planId: string }) {
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
       <Link
         to={`/plan/trips/${planId}`}
-        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+        className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
       >
         <span aria-hidden="true">←&nbsp;</span>Back to the trip
       </Link>
@@ -312,7 +313,7 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
               {stop.purchase_id ? (
                 <Link
                   to={`/shop/purchases/${stop.purchase_id}`}
-                  className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+                  className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
                 >
                   Open the purchase
                 </Link>
@@ -347,7 +348,7 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
         </p>
 
         <section aria-labelledby="get-here-heading" className="mb-6">
-          <h2 id="get-here-heading" className="mb-1 font-display text-lg">
+          <h2 id="get-here-heading" className={`${sectionHeading} mb-1`}>
             Get here
           </h2>
           {stop.items.length === 0 ? (
@@ -398,7 +399,7 @@ function StopView({ stop, refetch }: { stop: StopScreen; refetch: () => void }) 
             className="mb-6"
             data-testid="cheaper-section"
           >
-            <h2 id={`cheaper-${at}`} className="font-display text-lg">
+            <h2 id={`cheaper-${at}`} className={sectionHeading}>
               Cheaper at stop {at}
             </h2>
             <p className={`mb-1 text-sm ${muted}`}>

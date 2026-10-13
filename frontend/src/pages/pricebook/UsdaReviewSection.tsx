@@ -8,7 +8,7 @@ import {
   type UsdaReviewGroup,
 } from "../../api/usdaReview";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, Card, focusRing } from "../../components/ui";
+import { Alert, Button, Card, focusRing, sectionHeading } from "../../components/ui";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -42,7 +42,7 @@ export function UsdaReviewSection() {
 
   return (
     <section id="usda" ref={section} aria-labelledby="usda-heading" className="mb-8 scroll-mt-4">
-      <h2 id="usda-heading" className="mb-3 text-lg font-medium">
+      <h2 id="usda-heading" className={`${sectionHeading} mb-3`}>
         USDA suggestions
       </h2>
       {!loaded ? (

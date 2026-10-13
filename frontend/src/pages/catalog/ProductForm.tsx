@@ -19,7 +19,7 @@ import {
 } from "../../components/catalog/IngredientPicker";
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { Alert, Button, Field } from "../../components/ui";
+import { Alert, Button, Field, sectionHeading } from "../../components/ui";
 
 export interface ProductFormValues {
   ingredient: IngredientChoice | null;
@@ -207,7 +207,7 @@ export function ProductForm({
       noValidate
     >
       {layout === "page" ? (
-        <h2 id={headingId} className="text-lg font-medium">
+        <h2 id={headingId} className={sectionHeading}>
           {heading}
         </h2>
       ) : null}

@@ -12,7 +12,7 @@ import {
 } from "../../api/geo";
 import { fieldLabel } from "../../lib/sources";
 import { Dialog } from "../Dialog";
-import { Alert, Button, focusRing } from "../ui";
+import { Alert, Button, focusRing, sectionHeading } from "../ui";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -62,7 +62,7 @@ export function LinkOsmDialog({
       labelledBy={titleId}
       className="max-h-[80vh] overflow-y-auto p-5"
     >
-      <h2 id={titleId} className="mb-1 font-display text-xl">
+      <h2 id={titleId} className={`${sectionHeading} mb-1`}>
         Link {location.name} to OpenStreetMap
       </h2>
       <p className={`mb-3 text-sm ${muted}`}>

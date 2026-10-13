@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { catalogErrorMessage, useUpdateIngredient, type Product } from "../../api/catalog";
-import { Alert, Card } from "../ui";
+import { Alert, Card, sectionHeading } from "../ui";
 import { CategoryField } from "./CategoryField";
 
 /**
@@ -21,7 +21,7 @@ export function ProductCategoryCard({ product }: { product: Product }) {
   };
   return (
     <Card>
-      <h2 className="mb-1 text-lg font-medium">Category</h2>
+      <h2 className={`${sectionHeading} mb-1`}>Category</h2>
       <CategoryField
         id={`product-category-${product.id}`}
         value={value}

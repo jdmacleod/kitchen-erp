@@ -4,7 +4,7 @@ import { useIngredient, type Ingredient, type IngredientSummary } from "../../ap
 import { errorMessage, isApiError } from "../../api/client";
 import { useLinkAction, type MergeNeeded, type StandardEntry } from "../../api/ingredientLink";
 import { useNotice } from "../Notice";
-import { Alert, Button, Card, focusRing } from "../ui";
+import { Alert, Button, Card, focusRing, sectionHeading } from "../ui";
 import { ChooseStandard, IngredientMergePanel } from "./IngredientMergePanel";
 import { IngredientPicker, type IngredientChoice } from "./IngredientPicker";
 
@@ -38,7 +38,7 @@ export function MergedInto({ survivorId }: { survivorId: string }) {
       Merged into{" "}
       <Link
         to={`/catalog/ingredients/${survivorId}`}
-        className={`rounded font-medium underline ${focusRing}`}
+        className={`rounded-sm font-medium underline ${focusRing}`}
       >
         {name}
       </Link>
@@ -79,7 +79,7 @@ function MergeInto({ ingredient, onClose }: { ingredient: Ingredient; onClose: (
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Merge {ingredient.name} into another ingredient</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Merge {ingredient.name} into another ingredient</h2>
       {other && !self ? (
         <IngredientMergePanel
           first={{ id: ingredient.id, name: ingredient.name }}
@@ -145,7 +145,7 @@ function LinkToStandard({ ingredient, onClose }: { ingredient: Ingredient; onClo
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-medium">Link {ingredient.name} to a standard name</h2>
+      <h2 className={`${sectionHeading} mb-3`}>Link {ingredient.name} to a standard name</h2>
       {needed ? (
         <IngredientMergePanel
           first={{ id: ingredient.id, name: ingredient.name }}

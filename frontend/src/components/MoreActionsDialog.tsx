@@ -1,6 +1,6 @@
 import { useId } from "react";
 import { Dialog } from "./Dialog";
-import { Button } from "./ui";
+import { Button, sectionHeading } from "./ui";
 
 export interface MoreAction {
   label: string;
@@ -20,7 +20,7 @@ export function MoreActionsDialog({
   const titleId = useId();
   return (
     <Dialog open onClose={onClose} labelledBy={titleId} placement="sheet" className="p-5">
-      <h2 id={titleId} className="mb-3 font-display text-xl">
+      <h2 id={titleId} className={`${sectionHeading} mb-3`}>
         More actions
       </h2>
       <div className="flex flex-col gap-2">

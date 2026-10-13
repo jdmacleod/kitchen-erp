@@ -9,7 +9,7 @@ import {
   type Ingredient,
   type Provenance,
 } from "../../api/catalog";
-import { Alert, Button, Card, Field } from "../ui";
+import { Alert, Button, Card, Field, sectionHeading } from "../ui";
 import { Badge, ConfirmedBadge, SelectField } from "./fields";
 
 const bridgeLabel: Record<Provenance["bridge_kind"], string> = {
@@ -45,7 +45,7 @@ export function TestBench({ ingredient }: { ingredient: Ingredient }) {
 
   return (
     <Card>
-      <h2 className="mb-1 text-lg font-medium">Test bench</h2>
+      <h2 className={`${sectionHeading} mb-1`}>Test bench</h2>
       <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
         Runs the same conversion a receipt line goes through. Leave the quantity blank to see the
         “no quantity” failure.

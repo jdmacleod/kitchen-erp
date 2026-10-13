@@ -247,7 +247,7 @@ export function OpeningHoursInput({
           <span className="text-neutral-600 dark:text-neutral-400">Writes </span>
           <code
             data-testid={`${idPrefix}-hours-string`}
-            className="rounded bg-neutral-100 px-1 py-0.5 text-xs dark:bg-neutral-800"
+            className="rounded-sm bg-neutral-100 px-1 py-0.5 text-xs dark:bg-neutral-800"
           >
             {value || "(nothing yet)"}
           </code>

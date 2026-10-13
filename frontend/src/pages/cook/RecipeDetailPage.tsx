@@ -27,9 +27,10 @@ import {
   Alert,
   Button,
   EmptyState,
-  PageHeader,
   focusRing,
+  PageHeader,
   secondaryLinkClass,
+  sectionHeading,
 } from "../../components/ui";
 import { formatRelative } from "../../lib/format";
 import { useCurrentKitchen, usePlanBuilt } from "../../lib/kitchen";
@@ -91,7 +92,7 @@ function Breadcrumb() {
       <span>Cook</span> <span aria-hidden="true">/</span>{" "}
       <Link
         to="/cook/recipes"
-        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+        className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
       >
         Recipes
       </Link>
@@ -212,7 +213,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
         </div>
         <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex flex-wrap items-center gap-2 text-lg font-medium">
+            <h2 className={`${sectionHeading} flex flex-wrap items-center gap-2`}>
               <span>Cost</span>
               {scoped ? <KitchenTag name={scoped.name} /> : null}
             </h2>

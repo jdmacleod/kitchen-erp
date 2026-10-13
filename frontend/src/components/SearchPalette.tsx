@@ -184,7 +184,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
         <Button variant="ghost" className="shrink-0 lg:hidden" onClick={onClose}>
           Cancel
         </Button>
-        <kbd className="hidden shrink-0 rounded border border-neutral-300 px-1.5 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400 lg:inline">
+        <kbd className="hidden shrink-0 rounded-sm border border-neutral-300 px-1.5 text-xs text-neutral-600 dark:border-neutral-700 dark:text-neutral-400 lg:inline">
           Esc
         </kbd>
       </div>
@@ -212,7 +212,7 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
             <Link
               to="/catalog/products"
               onClick={onClose}
-              className={`rounded font-medium underline ${focusRing}`}
+              className={`rounded-sm font-medium underline ${focusRing}`}
             >
               Add product
             </Link>
