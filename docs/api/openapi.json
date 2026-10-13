@@ -9524,6 +9524,31 @@
         "title": "OfferList",
         "type": "object"
       },
+      "OpenRereadRef": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "running",
+              "ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "OpenRereadRef",
+        "type": "object"
+      },
       "OpeningHoursValidateIn": {
         "additionalProperties": false,
         "properties": {
@@ -12650,6 +12675,16 @@
             ],
             "title": "Removed Line Count"
           },
+          "reread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RereadState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "restore_blocked": {
             "anyOf": [
               {
@@ -14599,6 +14634,31 @@
           "flags"
         ],
         "title": "RereadSide",
+        "type": "object"
+      },
+      "RereadState": {
+        "additionalProperties": false,
+        "description": "What \"Re-read lines\" can offer on a receipt purchase (04, 2S).",
+        "properties": {
+          "can_recheck": {
+            "title": "Can Recheck",
+            "type": "boolean"
+          },
+          "open": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OpenRereadRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "can_recheck"
+        ],
+        "title": "RereadState",
         "type": "object"
       },
       "ResolveAskIn": {
