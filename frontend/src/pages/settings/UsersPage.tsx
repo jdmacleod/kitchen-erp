@@ -58,11 +58,21 @@ export function UsersPage() {
               <table className="w-full text-sm">
                 <thead className="text-left text-xs text-neutral-600 dark:text-neutral-400">
                   <tr>
-                    <th scope="col" className="py-2 pr-3 font-semibold">Name</th>
-                    <th scope="col" className="py-2 pr-3 font-semibold">Email</th>
-                    <th scope="col" className="py-2 pr-3 font-semibold">Role</th>
-                    <th scope="col" className="py-2 pr-3 font-semibold">Status</th>
-                    <th scope="col" className="py-2 pr-3 font-semibold">Created</th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">
+                      Name
+                    </th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">
+                      Email
+                    </th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">
+                      Role
+                    </th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">
+                      Status
+                    </th>
+                    <th scope="col" className="py-2 pr-3 font-semibold">
+                      Created
+                    </th>
                     <th scope="col" className="py-2 font-semibold">
                       <span className="sr-only">Actions</span>
                     </th>
@@ -79,7 +89,11 @@ export function UsersPage() {
                         <time dateTime={u.created_at}>{formatDateTime(u.created_at)}</time>
                       </td>
                       <td className="py-2 text-right">
-                        <Button variant="secondary" onClick={() => setEditing(u)} aria-label={`Edit ${u.display_name}`}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setEditing(u)}
+                          aria-label={`Edit ${u.display_name}`}
+                        >
                           Edit
                         </Button>
                       </td>
@@ -103,7 +117,11 @@ export function UsersPage() {
         ) : null}
 
         <Card>
-          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-user-heading">
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4"
+            aria-labelledby="create-user-heading"
+          >
             <h2 id="create-user-heading" className="text-lg font-medium">
               Add a member
             </h2>
@@ -154,7 +172,8 @@ const muted = "text-neutral-600 dark:text-neutral-400";
 function userErrorMessage(error: unknown): string {
   if (isApiError(error)) {
     if (error.code === "email_taken") return "A user with that email already exists.";
-    if (error.code === "self_lockout") return "You can't remove your own admin access. Another admin can.";
+    if (error.code === "self_lockout")
+      return "You can't remove your own admin access. Another admin can.";
     if (error.code === "last_admin") return "The household needs at least one active admin.";
   }
   return errorMessage(error);
@@ -165,25 +184,42 @@ function userErrorMessage(error: unknown): string {
  * Your own row can't lose its admin access here, and your own password is
  * changed in Settings, System, with the current one.
  */
-function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => void; onDone: (message: string) => void }) {
+function EditUserDrawer({
+  user,
+  onClose,
+  onDone,
+}: {
+  user: User;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
   const me = useCurrentUser();
   const self = me.id === user.id;
   const edit = useEditUser();
   const access = useEditUser();
   const setPassword = useSetUserPassword();
-  const [form, setForm] = useState({ display_name: user.display_name, email: user.email, role: user.role });
+  const [form, setForm] = useState({
+    display_name: user.display_name,
+    email: user.email,
+    role: user.role,
+  });
   const [password, setPasswordText] = useState("");
   const [confirming, setConfirming] = useState(false);
   // Access and password actions stay in the drawer and say so here: closing it
   // on their success would throw away unsaved edits to the details above.
   const [active, setActive] = useState(user.active);
   const [done, setDone] = useState<string | null>(null);
-  const dirty = form.display_name !== user.display_name || form.email !== user.email || form.role !== user.role || password !== "";
+  const dirty =
+    form.display_name !== user.display_name ||
+    form.email !== user.email ||
+    form.role !== user.role ||
+    password !== "";
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const input: { display_name?: string; email?: string; role?: "admin" | "member" } = {};
-    if (form.display_name.trim() !== user.display_name) input.display_name = form.display_name.trim();
+    if (form.display_name.trim() !== user.display_name)
+      input.display_name = form.display_name.trim();
     if (form.email.trim().toLowerCase() !== user.email) input.email = form.email.trim();
     if (form.role !== user.role) input.role = form.role;
     if (Object.keys(input).length === 0) return onClose();
@@ -197,7 +233,11 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
         onSuccess: (u) => {
           setActive(u.active);
           setConfirming(false);
-          setDone(u.active ? `${u.display_name} can sign in again.` : `${u.display_name} is deactivated and signed out everywhere.`);
+          setDone(
+            u.active
+              ? `${u.display_name} can sign in again.`
+              : `${u.display_name} is deactivated and signed out everywhere.`,
+          );
         },
       },
     );
@@ -214,24 +254,71 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
     );
 
   return (
-    <Drawer title={`Edit ${user.display_name}`} thing="change" dirty={dirty} onClose={onClose} formId="edit-user" primaryLabel="Save changes" busy={edit.isPending} busyLabel="Saving…">
-      <form id="edit-user" onSubmit={onSubmit} className="flex flex-col gap-4" aria-label={`Edit ${user.display_name}`}>
+    <Drawer
+      title={`Edit ${user.display_name}`}
+      thing="change"
+      dirty={dirty}
+      onClose={onClose}
+      formId="edit-user"
+      primaryLabel="Save changes"
+      busy={edit.isPending}
+      busyLabel="Saving…"
+    >
+      <form
+        id="edit-user"
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        aria-label={`Edit ${user.display_name}`}
+      >
         {edit.isError ? <Alert tone="error">{userErrorMessage(edit.error)}</Alert> : null}
-        <Field id="edit-user-name" label="Display name" autoComplete="off" required value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
-        <Field id="edit-user-email" label="Email" type="email" autoComplete="off" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        <Field
+          id="edit-user-name"
+          label="Display name"
+          autoComplete="off"
+          required
+          value={form.display_name}
+          onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+        />
+        <Field
+          id="edit-user-email"
+          label="Email"
+          type="email"
+          autoComplete="off"
+          required
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+        />
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium">Role</legend>
           {(["member", "admin"] as const).map((role) => (
-            <label key={role} className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-8">
-              <input type="radio" name="edit-user-role" value={role} checked={form.role === role} disabled={self} onChange={() => setForm({ ...form, role })} className={`size-4 ${focusRing}`} />
+            <label
+              key={role}
+              className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-8"
+            >
+              <input
+                type="radio"
+                name="edit-user-role"
+                value={role}
+                checked={form.role === role}
+                disabled={self}
+                onChange={() => setForm({ ...form, role })}
+                className={`size-4 ${focusRing}`}
+              />
               {role === "admin" ? "Admin: also manages members and tokens" : "Member"}
             </label>
           ))}
-          {self ? <p className={`text-xs ${muted}`}>You can't remove your own admin access. Another admin can.</p> : null}
+          {self ? (
+            <p className={`text-xs ${muted}`}>
+              You can't remove your own admin access. Another admin can.
+            </p>
+          ) : null}
         </fieldset>
       </form>
 
-      <section className="mt-6 flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800" aria-labelledby="edit-user-access">
+      <section
+        className="mt-6 flex flex-col gap-3 border-t border-neutral-200 pt-4 dark:border-neutral-800"
+        aria-labelledby="edit-user-access"
+      >
         <h3 id="edit-user-access" className="text-sm font-medium">
           Signing in
         </h3>
@@ -251,7 +338,8 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
               confirming ? (
                 <div className="flex flex-col gap-2 rounded-md border border-red-300 p-3 dark:border-red-900">
                   <p className="text-sm">
-                    {user.display_name} is signed out everywhere, and their API tokens stop working. You can reactivate them later; the tokens stay revoked.
+                    {user.display_name} is signed out everywhere, and their API tokens stop working.
+                    You can reactivate them later; the tokens stay revoked.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <Button variant="danger" disabled={access.isPending} onClick={toggleAccess}>
@@ -278,7 +366,9 @@ function EditUserDrawer({ user, onClose, onDone }: { user: User; onClose: () => 
             )}
 
             <div className="flex flex-col gap-2">
-              {setPassword.isError ? <Alert tone="error">{userErrorMessage(setPassword.error)}</Alert> : null}
+              {setPassword.isError ? (
+                <Alert tone="error">{userErrorMessage(setPassword.error)}</Alert>
+              ) : null}
               <Field
                 id="edit-user-password"
                 label="Set a new password"

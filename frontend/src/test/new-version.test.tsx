@@ -11,7 +11,11 @@ function mountWith(...commits: (string | undefined)[]) {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => {
       const commit = commits[Math.min(call++, commits.length - 1)];
-      return jsonResponse(200, { status: "ok", version: "dev", ...(commit === undefined ? {} : { commit }) });
+      return jsonResponse(200, {
+        status: "ok",
+        version: "dev",
+        ...(commit === undefined ? {} : { commit }),
+      });
     },
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });

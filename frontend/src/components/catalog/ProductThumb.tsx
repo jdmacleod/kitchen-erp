@@ -26,7 +26,14 @@ export function ProductThumb({
     const src = size > 160 ? urls.medium : urls.small;
     if (photo.has_cutout && urls.cutout_medium) {
       return (
-        <img src={urls.cutout_medium} alt="" style={box} loading="lazy" decoding="async" className="flex-none object-contain cutout-shadow" />
+        <img
+          src={urls.cutout_medium}
+          alt=""
+          style={box}
+          loading="lazy"
+          decoding="async"
+          className="flex-none object-contain cutout-shadow"
+        />
       );
     }
     return (
@@ -42,7 +49,12 @@ export function ProductThumb({
   }
   const letter = name.trim().charAt(0).toLocaleUpperCase() || "?";
   return (
-    <span aria-hidden="true" data-testid="photo-placeholder" style={{ ...box, fontSize: size * 0.5 }} className={`${categoryClass(categoryKey)} cat-placeholder`}>
+    <span
+      aria-hidden="true"
+      data-testid="photo-placeholder"
+      style={{ ...box, fontSize: size * 0.5 }}
+      className={`${categoryClass(categoryKey)} cat-placeholder`}
+    >
       {letter}
     </span>
   );

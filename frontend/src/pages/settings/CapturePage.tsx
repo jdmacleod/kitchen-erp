@@ -29,20 +29,36 @@ export function CapturePage() {
 
   return (
     <>
-      <PageHeader title="Capture" description="Save a product from a store's web page with one click." />
+      <PageHeader
+        title="Capture"
+        description="Save a product from a store's web page with one click."
+      />
       <Card className="flex flex-col gap-4">
         <div>
           {/* Secondary, not herb: clicking it here does nothing (10). */}
-          <a ref={link} className={secondaryLinkClass} data-testid="bookmarklet" onClick={(e) => e.preventDefault()}>
+          <a
+            ref={link}
+            className={secondaryLinkClass}
+            data-testid="bookmarklet"
+            onClick={(e) => e.preventDefault()}
+          >
             Save to Kitchen ERP
           </a>
         </div>
-        <p className="text-sm">Drag the button above to your browser's bookmarks bar. On a store's product page, click the bookmark to save the product here.</p>
+        <p className="text-sm">
+          Drag the button above to your browser's bookmarks bar. On a store's product page, click
+          the bookmark to save the product here.
+        </p>
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          It is tied to <span className="font-medium text-neutral-900 dark:text-neutral-100">{origin}</span>. Reinstall if this address changes.
+          It is tied to{" "}
+          <span className="font-medium text-neutral-900 dark:text-neutral-100">{origin}</span>.
+          Reinstall if this address changes.
         </p>
         <div className="flex flex-col gap-2">
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Can't drag it (Safari on iPhone)? Copy the code, add any page as a bookmark, then edit that bookmark and paste the code as its address.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Can't drag it (Safari on iPhone)? Copy the code, add any page as a bookmark, then edit
+            that bookmark and paste the code as its address.
+          </p>
           <span className="flex items-center gap-3">
             <Button variant="secondary" onClick={() => void copy()}>
               Copy the code

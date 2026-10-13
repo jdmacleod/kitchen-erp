@@ -85,7 +85,10 @@ export function InboxList() {
         </p>
         <ul aria-hidden="true" className="flex flex-col gap-3">
           {[0, 1, 2].map((i) => (
-            <li key={i} className="h-12 animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800" />
+            <li
+              key={i}
+              className="h-12 animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800"
+            />
           ))}
         </ul>
       </Card>
@@ -97,7 +100,11 @@ export function InboxList() {
       <Alert tone="error">
         <span className="flex flex-wrap items-center justify-between gap-2">
           <span>Couldn&apos;t load what needs you. {errorMessage(inbox.error)}</span>
-          <Button variant="secondary" disabled={inbox.isFetching} onClick={() => void inbox.refetch()}>
+          <Button
+            variant="secondary"
+            disabled={inbox.isFetching}
+            onClick={() => void inbox.refetch()}
+          >
             Try again
           </Button>
         </span>
@@ -126,7 +133,11 @@ export function InboxList() {
       {/* One column for the kind badges, as wide as the widest one shown: no fixed slot (UI-6.1, issue 247). */}
       <ul aria-label="Needs you" className="sm:grid sm:grid-cols-[max-content_1fr_auto] sm:gap-x-3">
         {items.map((item, i) => (
-          <Row key={`${item.kind}-${item.action_route}-${item.created_at}`} item={item} phoneHidden={!expanded && i >= PHONE_ROWS} />
+          <Row
+            key={`${item.kind}-${item.action_route}-${item.created_at}`}
+            item={item}
+            phoneHidden={!expanded && i >= PHONE_ROWS}
+          />
         ))}
       </ul>
       {more > 0 && !expanded ? (
@@ -135,7 +146,8 @@ export function InboxList() {
         </Button>
       ) : null}
       <p className="mt-3 border-t border-neutral-200 pt-3 text-xs text-neutral-600 dark:border-neutral-800 dark:text-neutral-400">
-        Anything the system can&apos;t finish on its own lands here, oldest first, and leaves once it&apos;s done.
+        Anything the system can&apos;t finish on its own lands here, oldest first, and leaves once
+        it&apos;s done.
       </p>
     </Card>
   );
@@ -147,25 +159,39 @@ export function ReadingLine() {
   const reading = inbox.data?.reading;
   if (!reading) return null;
   const overdue = reading.lookups_overdue ?? 0;
-  const lookupLine = overdue > 0 && reading.lookups_since ? (
-    <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
-      {overdue} {overdue === 1 ? "lookup" : "lookups"} waiting for the lookup helper since {formatTime(reading.lookups_since)} ·{" "}
-      <Link to="/settings/system" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
-        Check System
-      </Link>
-    </p>
-  ) : null;
+  const lookupLine =
+    overdue > 0 && reading.lookups_since ? (
+      <p
+        role="status"
+        className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200"
+      >
+        {overdue} {overdue === 1 ? "lookup" : "lookups"} waiting for the lookup helper since{" "}
+        {formatTime(reading.lookups_since)} ·{" "}
+        <Link
+          to="/settings/system"
+          className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+        >
+          Check System
+        </Link>
+      </p>
+    ) : null;
   if (readingTotal(reading) === 0) return lookupLine;
   if (reading.stalled) {
     return (
       <>
-      {lookupLine}
-      <p role="status" className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200">
-        Reading is taking longer than usual ·{" "}
-        <Link to="/settings/system" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
-          Check System
-        </Link>
-      </p>
+        {lookupLine}
+        <p
+          role="status"
+          className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200"
+        >
+          Reading is taking longer than usual ·{" "}
+          <Link
+            to="/settings/system"
+            className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+          >
+            Check System
+          </Link>
+        </p>
       </>
     );
   }

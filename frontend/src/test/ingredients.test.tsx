@@ -27,7 +27,13 @@ async function openAddDrawer(user: ReturnType<typeof userEvent.setup>) {
 describe("ingredients", () => {
   it("creates an ingredient with only a name", async () => {
     let items: Ingredient[] = [];
-    const created: Ingredient = { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09", name: "cumin", category: null, measures: [] };
+    const created: Ingredient = {
+      ...flour,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09",
+      name: "cumin",
+      category: null,
+      measures: [],
+    };
     const calls = mockApi({
       ...baseRoutes(() => items),
       "POST /ingredients": () => {
@@ -40,7 +46,9 @@ describe("ingredients", () => {
 
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "cumin");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
 
     const post = await waitFor(() => {
       const found = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
@@ -59,8 +67,17 @@ describe("ingredients", () => {
   });
 
   it("leaves perishability to the standard list or category unless one is picked", async () => {
-    const created: Ingredient = { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b0a", name: "peas", category: null, measures: [] };
-    const calls = mockApi({ ...baseRoutes(() => []), "POST /ingredients": () => jsonResponse(201, created) });
+    const created: Ingredient = {
+      ...flour,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b0a",
+      name: "peas",
+      category: null,
+      measures: [],
+    };
+    const calls = mockApi({
+      ...baseRoutes(() => []),
+      "POST /ingredients": () => jsonResponse(201, created),
+    });
     const user = userEvent.setup();
     renderApp("/catalog/ingredients");
 
@@ -72,7 +89,9 @@ describe("ingredients", () => {
     expect(screen.getByText("From the standard list, or else the category.")).toBeInTheDocument();
     await user.selectOptions(select, "frozen");
     expect(screen.getByText("Bought and kept frozen.")).toBeInTheDocument();
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
 
     const post = await waitFor(() => {
       const found = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
@@ -109,18 +128,24 @@ describe("ingredients", () => {
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
 
-    await user.click(await screen.findByRole("button", { name: "Use density 0.528 g/ml (from 1 cup)" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Use density 0.528 g/ml (from 1 cup)" }),
+    );
     expect(screen.getByLabelText("Density (g/ml)")).toHaveValue("0.528");
     expect(screen.getByLabelText("Density source")).toHaveValue("usda");
 
     await user.click(screen.getByRole("button", { name: "Add measure cup = 125 g" }));
     expect(screen.getByRole("group", { name: "Measures to add" })).toHaveTextContent("cup = 125 g");
 
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
     // The new row is not in this list, so the Notice links to it (G10).
     const notice = await screen.findByTestId("notice");
     expect(notice).toHaveTextContent(/with 1 measure/);
-    await waitFor(() => expect(within(notice).getByRole("link", { name: "Open it" })).toHaveFocus());
+    await waitFor(() =>
+      expect(within(notice).getByRole("link", { name: "Open it" })).toHaveFocus(),
+    );
 
     const post = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
     expect(post?.body).toEqual({
@@ -129,7 +154,9 @@ describe("ingredients", () => {
       density_g_per_ml: "0.528",
       density_source: "usda",
     });
-    const measure = calls.find((c) => c.method === "POST" && c.path === `/ingredients/${flourId}/measures`);
+    const measure = calls.find(
+      (c) => c.method === "POST" && c.path === `/ingredients/${flourId}/measures`,
+    );
     expect(measure?.body).toEqual({ label: "cup", canonical_qty: "125", source: "usda" });
   });
 
@@ -139,12 +166,19 @@ describe("ingredients", () => {
     renderApp("/catalog/ingredients");
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
-    await waitFor(() => expect(screen.queryByText("Reference suggestions")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText("Reference suggestions")).not.toBeInTheDocument(),
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("searches with a debounced q and can show inactive ingredients", async () => {
-    const inactive: Ingredient = { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b03", name: "old flour", active: false };
+    const inactive: Ingredient = {
+      ...flour,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b03",
+      name: "old flour",
+      active: false,
+    };
     const calls = mockApi({
       ...baseRoutes(() => []),
       "GET /ingredients": (call) =>
@@ -176,7 +210,9 @@ describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
     renderApp("/catalog/ingredients?q=zzqx");
     const empty = await screen.findByRole("region", { name: "No ingredients match ‘zzqx’" });
     await user.click(within(empty).getByRole("button", { name: "Clear search" }));
-    expect(await screen.findByRole("region", { name: "Add your first ingredient" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Add your first ingredient" }),
+    ).toBeInTheDocument();
   });
 
   it("offers the nine known categories as a choice, and Other for free text", async () => {
@@ -186,7 +222,17 @@ describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
     await openAddDrawer(user);
     const field = screen.getByLabelText("Category");
     expect([...field.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
-      "No category", "Produce", "Dairy", "Meat", "Seafood", "Bakery", "Pantry", "Spices", "Beverages", "Frozen", "Other…",
+      "No category",
+      "Produce",
+      "Dairy",
+      "Meat",
+      "Seafood",
+      "Bakery",
+      "Pantry",
+      "Spices",
+      "Beverages",
+      "Frozen",
+      "Other…",
     ]);
     expect(screen.queryByLabelText("Other category")).not.toBeInTheDocument();
     await user.selectOptions(field, "Other…");

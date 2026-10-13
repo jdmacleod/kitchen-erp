@@ -19,7 +19,10 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
         <h2 id="recent-purchases" className="font-display text-lg">
           Recent purchases
         </h2>
-        <Link to="/shop/purchases" className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}>
+        <Link
+          to="/shop/purchases"
+          className={`${tapTarget} rounded text-sm underline underline-offset-2 hover:no-underline ${focusRing}`}
+        >
           All purchases
         </Link>
       </div>
@@ -36,7 +39,9 @@ export function RecentPurchases({ purchases }: { purchases: Purchase[] }) {
             >
               {p.vendor_location?.vendor.name ?? "Receipt"}
             </Link>
-            <span className="text-neutral-600 dark:text-neutral-400">{formatDate(p.purchased_at)}</span>
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {formatDate(p.purchased_at)}
+            </span>
             <span className="tabular-nums">{formatMoney(p.total ?? p.computed_total)}</span>
           </li>
         ))}

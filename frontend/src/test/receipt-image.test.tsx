@@ -22,12 +22,19 @@ describe("the receipt image (#30)", () => {
   });
 
   it("tries again on request, and the fallback is never inside the link", () => {
-    render(<ReceiptImage documentId="doc-3" alt="" width={96} link={{ label: "Open the receipt" }} />);
-    expect(screen.getByRole("link", { name: "Open the receipt" })).toHaveAttribute("href", "/api/v1/receipts/doc-3/image");
+    render(
+      <ReceiptImage documentId="doc-3" alt="" width={96} link={{ label: "Open the receipt" }} />,
+    );
+    expect(screen.getByRole("link", { name: "Open the receipt" })).toHaveAttribute(
+      "href",
+      "/api/v1/receipts/doc-3/image",
+    );
     fireEvent.error(screen.getByRole("link").querySelector("img")!);
 
     expect(screen.queryByRole("link")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(screen.getByRole("link", { name: "Open the receipt" }).querySelector("img")).toHaveAttribute("src", "/api/v1/receipts/doc-3/image?width=96");
+    expect(
+      screen.getByRole("link", { name: "Open the receipt" }).querySelector("img"),
+    ).toHaveAttribute("src", "/api/v1/receipts/doc-3/image?width=96");
   });
 });

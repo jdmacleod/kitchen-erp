@@ -59,7 +59,10 @@ describe("category chips on pages", () => {
   });
 
   it("names a product row's group as the chips do, with the ingredient's own word beside it", async () => {
-    const dry: Product = { ...flourProduct, ingredient: { ...flourProduct.ingredient, category: "Dry goods", category_key: "pantry" } };
+    const dry: Product = {
+      ...flourProduct,
+      ingredient: { ...flourProduct.ingredient, category: "Dry goods", category_key: "pantry" },
+    };
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),

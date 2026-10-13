@@ -5,7 +5,8 @@ export const focusRing =
 
 const buttonVariants = {
   // Dark keeps blue-600: white on the remapped blue-500 is 3.7:1 and fails the 4.5:1 floor.
-  primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-600/50 dark:hover:bg-blue-700",
+  primary:
+    "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-600/50 dark:hover:bg-blue-700",
   secondary:
     "border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-100 disabled:opacity-50 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800",
   danger:
@@ -21,7 +22,8 @@ const buttonVariants = {
  * at lg and wider, where the row it sits in is already dense enough to scan. The
  * width floor is for a short name ("salt" is 27px wide); the text stays left.
  */
-export const tapTarget = "inline-flex min-h-11 min-w-11 items-center lg:inline lg:min-h-0 lg:min-w-0";
+export const tapTarget =
+  "inline-flex min-h-11 min-w-11 items-center lg:inline lg:min-h-0 lg:min-w-0";
 
 /** The primary button's look, for a link that acts as the page's primary action. */
 export const primaryLinkClass = `inline-flex min-h-11 lg:min-h-10 items-center justify-center rounded-md px-3 text-sm font-medium ${buttonVariants.primary} ${focusRing}`;
@@ -41,7 +43,12 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 /** A caller's own minimum height, which replaces the default rather than competing with it. */
 const OWN_MIN_HEIGHT = /(^|\s)(lg:)?min-h-/;
 
-export function Button({ variant = "primary", className = "", type = "button", ...rest }: ButtonProps) {
+export function Button({
+  variant = "primary",
+  className = "",
+  type = "button",
+  ...rest
+}: ButtonProps) {
   // Two min-h utilities on one element are settled by stylesheet order, not by
   // which class came last: "min-h-11 lg:min-h-8" from a caller lost to the
   // default lg:min-h-10, so every compact desktop button was 40px (QA 2026-10-13).
@@ -90,7 +97,8 @@ type AlertProps = {
 };
 
 export const alertTones = {
-  error: "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
+  error:
+    "border-red-300 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200",
   success:
     "border-green-300 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200",
   // Blue means "you can act on this" (spec 08), so information is neutral.
@@ -114,7 +122,17 @@ export function Alert({ tone, children, className = "" }: AlertProps) {
  * The page header (docs/spec/10, Desktop page pattern): the Fraunces title, a
  * one-line description, and the page's actions, the primary one last.
  */
-export function PageHeader({ title, tag, description, children }: { title: string; tag?: ReactNode; description?: ReactNode; children?: ReactNode }) {
+export function PageHeader({
+  title,
+  tag,
+  description,
+  children,
+}: {
+  title: string;
+  tag?: ReactNode;
+  description?: ReactNode;
+  children?: ReactNode;
+}) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0">
@@ -123,7 +141,9 @@ export function PageHeader({ title, tag, description, children }: { title: strin
           <span>{title}</span>
           {tag}
         </h1>
-        {description ? <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{description}</p> : null}
+        {description ? (
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{description}</p>
+        ) : null}
       </div>
       {children}
     </header>

@@ -50,7 +50,10 @@ describe("a backend that is not answering", () => {
   it("recovers through Try again when the backend comes back", async () => {
     let up = false;
     mockApi({
-      "GET /auth/me": () => (up ? jsonResponse(200, adminUser) : errorResponse(502, "bad_gateway", "Request failed with status 502.")),
+      "GET /auth/me": () =>
+        up
+          ? jsonResponse(200, adminUser)
+          : errorResponse(502, "bad_gateway", "Request failed with status 502."),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /vendors": () => jsonResponse(200, { items: [] }),
       "GET /home-bases": () => jsonResponse(200, { items: [] }),

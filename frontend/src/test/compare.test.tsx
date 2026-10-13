@@ -3,7 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { CompareResult } from "../api/pricebook";
 import { flour, flourId, flourProductId, units, ingredientMatch } from "./catalog-fixtures";
-import { chainVendor, chainVendorId, marketVendor, marketVendorId, chainLocationId } from "./geo-fixtures";
+import {
+  chainVendor,
+  chainVendorId,
+  marketVendor,
+  marketVendorId,
+  chainLocationId,
+} from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
 const result: CompareResult = {
@@ -28,7 +34,9 @@ const result: CompareResult = {
           observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7001",
           observed_at: "2026-09-18T15:00:00Z",
           is_promo: false,
-          norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb",
+          norm_unit_price: "0.002200",
+          display_unit_price: "0.998",
+          display_unit: "lb",
           norm_unit: "g",
           stale: false,
           cheapest: true,
@@ -45,7 +53,10 @@ function baseRoutes() {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
-    "GET /ingredients/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? [ingredientMatch(flour)] : [] }),
+    "GET /ingredients/search": (call: RecordedCall) =>
+      jsonResponse(200, {
+        items: call.query.get("q")?.includes("flour") ? [ingredientMatch(flour)] : [],
+      }),
     "POST /price-book/compare": () => jsonResponse(200, result),
   };
 }
@@ -61,8 +72,12 @@ describe("comparison matrix", () => {
     await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));
 
     const table = await screen.findByRole("table", { name: "Price comparison" });
-    expect(within(table).getByRole("columnheader", { name: "Millstone Market" })).toBeInTheDocument();
-    expect(within(table).getByRole("columnheader", { name: "Pier Farmers Market" })).toBeInTheDocument();
+    expect(
+      within(table).getByRole("columnheader", { name: "Millstone Market" }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole("columnheader", { name: "Pier Farmers Market" }),
+    ).toBeInTheDocument();
     const post = calls.find((c) => c.method === "POST" && c.path === "/price-book/compare");
     expect(post?.body).toEqual({ ingredient_ids: [flourId] });
 
@@ -86,19 +101,35 @@ describe("comparison matrix", () => {
     await user.type(await screen.findByRole("combobox", { name: "Add an ingredient" }), "flour");
     await user.click(await screen.findByRole("option", { name: /all-purpose flour/ }));
     await screen.findByRole("table", { name: "Price comparison" });
-    expect(within(screen.getByRole("list", { name: "Chosen ingredients" })).getByText("all-purpose flour")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("list", { name: "Chosen ingredients" })).getByText(
+        "all-purpose flour",
+      ),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("checkbox", { name: "Exclude stale" }));
     await user.selectOptions(screen.getByLabelText("Minimum quality"), "4");
     await waitFor(() => expect(calls.filter((c) => c.method === "POST").length).toBe(3));
-    expect(calls.filter((c) => c.method === "POST").at(-1)?.body).toEqual({ ingredient_ids: [flourId], exclude_stale: true, min_quality: 4 });
+    expect(calls.filter((c) => c.method === "POST").at(-1)?.body).toEqual({
+      ingredient_ids: [flourId],
+      exclude_stale: true,
+      min_quality: 4,
+    });
 
     await user.click(screen.getByRole("button", { name: "Remove all-purpose flour" }));
     expect(await screen.findByText("Pick ingredients to compare")).toBeInTheDocument();
   });
 
   it("says when the chosen ingredients have no prices, and offers a shelf price (G11)", async () => {
-    mockApi({ ...baseRoutes(), "POST /price-book/compare": () => jsonResponse(200, { ...result, vendors: [], rows: result.rows.map((r) => ({ ...r, cells: [] })) }) });
+    mockApi({
+      ...baseRoutes(),
+      "POST /price-book/compare": () =>
+        jsonResponse(200, {
+          ...result,
+          vendors: [],
+          rows: result.rows.map((r) => ({ ...r, cells: [] })),
+        }),
+    });
     const user = userEvent.setup();
     renderApp("/shop/compare");
 
@@ -107,7 +138,10 @@ describe("comparison matrix", () => {
 
     const empty = await screen.findByRole("region", { name: "No prices to compare yet" });
     expect(empty).toHaveTextContent("This ingredient has no prices that pass the filters.");
-    expect(within(empty).getByRole("link", { name: "Log a shelf price" })).toHaveAttribute("href", "/shop/shelf-prices");
+    expect(within(empty).getByRole("link", { name: "Log a shelf price" })).toHaveAttribute(
+      "href",
+      "/shop/shelf-prices",
+    );
     expect(screen.queryByRole("table")).toBeNull();
   });
 });

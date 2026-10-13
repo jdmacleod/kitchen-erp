@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { isPositiveDecimal, unitLabel, useUnits } from "../../api/catalog";
-import { LINE_KINDS, purchaseErrorMessage, useReplaceLines, type LineRowInput, type Purchase } from "../../api/purchases";
+import {
+  LINE_KINDS,
+  purchaseErrorMessage,
+  useReplaceLines,
+  type LineRowInput,
+  type Purchase,
+} from "../../api/purchases";
 import { add, cmp, formatMoney, isDecimal, mul, stripZeros, sub } from "../../lib/decimal";
 import { hintClass, inputClass } from "../catalog/fields";
 import { useNotice } from "../Notice";
@@ -29,7 +35,15 @@ let nextKey = 0;
 const newKey = () => `new-${++nextKey}`;
 
 function blankRow(): Row {
-  return { key: newKey(), rawText: "", kind: "item", qty: "", unit: "", total: "", parentKey: null };
+  return {
+    key: newKey(),
+    rawText: "",
+    kind: "item",
+    qty: "",
+    unit: "",
+    total: "",
+    parentKey: null,
+  };
 }
 
 function rowsOf(purchase: Purchase): Row[] {
@@ -103,7 +117,8 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
 
   const dirty = JSON.stringify(rows.filter((r) => !isBlank(r))) !== JSON.stringify(initial);
 
-  const change = (key: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  const change = (key: string, patch: Partial<Row>) =>
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const insertAt = (at: number) => {
     const row = blankRow();
     setRows((rs) => [...rs.slice(0, at), row, ...rs.slice(at)]);
@@ -119,14 +134,19 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
   const sum = rowsTotal(rows, purchase.tax);
   const gap = totalKnown ? abs(sub(sum, purchase.total!)) : null;
   const addsUp = gap !== null && cmp(gap, "0.02") <= 0;
-  const held = gap !== null && !addsUp && purchase.status === "draft" && cmp(gap, mul(purchase.total!, HOLD_GAP_SHARE)) > 0;
+  const held =
+    gap !== null &&
+    !addsUp &&
+    purchase.status === "draft" &&
+    cmp(gap, mul(purchase.total!, HOLD_GAP_SHARE)) > 0;
 
   const save = () => {
     const kept = rows.filter((r) => !isBlank(r));
     for (const [n, row] of kept.entries()) {
       const label = `Row ${n + 1}`;
       if (!isDecimal(row.total.trim())) return setInvalid(`${label}: a line total is required.`);
-      if (row.qty.trim() !== "" && !isPositiveDecimal(row.qty)) return setInvalid(`${label}: the quantity must be a positive number.`);
+      if (row.qty.trim() !== "" && !isPositiveDecimal(row.qty))
+        return setInvalid(`${label}: the quantity must be a positive number.`);
     }
     setInvalid(null);
     const body: LineRowInput[] = kept.map((row, at) => {
@@ -145,7 +165,10 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
     });
     replace.mutate(body, {
       onSuccess: () => {
-        notice.show({ tone: "success", message: `Lines saved: ${body.length} ${body.length === 1 ? "line" : "lines"}.` });
+        notice.show({
+          tone: "success",
+          message: `Lines saved: ${body.length} ${body.length === 1 ? "line" : "lines"}.`,
+        });
         onDone();
       },
     });
@@ -176,12 +199,22 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
   const cell = `${inputClass} w-full`;
 
   return (
-    <div className="flex flex-col gap-3" role="group" aria-label="Correct the lines" onKeyDown={onKeyDown}>
-      <p className={hintClass}>Tab moves between cells, Enter adds a row below. Nothing changes until you save.</p>
+    <div
+      className="flex flex-col gap-3"
+      role="group"
+      aria-label="Correct the lines"
+      onKeyDown={onKeyDown}
+    >
+      <p className={hintClass}>
+        Tab moves between cells, Enter adds a row below. Nothing changes until you save.
+      </p>
       {replace.error ? <Alert tone="error">{purchaseErrorMessage(replace.error)}</Alert> : null}
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
 
-      <div aria-live="polite" className={`rounded-md border px-3 py-2 text-sm ${held ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900"}`}>
+      <div
+        aria-live="polite"
+        className={`rounded-md border px-3 py-2 text-sm ${held ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" : "border-neutral-200 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-900"}`}
+      >
         Lines add up to {formatMoney(sum)}
         {totalKnown ? (
           <>
@@ -189,7 +222,11 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
             {addsUp ? (
               <span className="font-medium text-green-800 dark:text-green-300">Adds up.</span>
             ) : (
-              <span className="font-medium">{held ? `Off by ${formatMoney(gap)}: still a careful look.` : `Off by ${formatMoney(gap)}.`}</span>
+              <span className="font-medium">
+                {held
+                  ? `Off by ${formatMoney(gap)}: still a careful look.`
+                  : `Off by ${formatMoney(gap)}.`}
+              </span>
             )}
           </>
         ) : (
@@ -203,7 +240,10 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
         </Button>
       </div>
 
-      <div className="hidden gap-2 border-b border-neutral-200 pb-1 text-xs font-semibold text-neutral-600 lg:grid lg:grid-cols-[2rem_minmax(0,1fr)_5rem_7rem_6.5rem_7rem_auto] dark:border-neutral-800 dark:text-neutral-400" aria-hidden="true">
+      <div
+        className="hidden gap-2 border-b border-neutral-200 pb-1 text-xs font-semibold text-neutral-600 lg:grid lg:grid-cols-[2rem_minmax(0,1fr)_5rem_7rem_6.5rem_7rem_auto] dark:border-neutral-800 dark:text-neutral-400"
+        aria-hidden="true"
+      >
         <span>#</span>
         <span>Receipt text</span>
         <span>Qty</span>
@@ -226,17 +266,39 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
               </span>
               <label className="col-span-2 flex min-w-0 flex-col gap-1 lg:col-span-1">
                 <span className={labelClass}>Receipt text, row {n}</span>
-                <input id={cellId(row.key, "text")} className={cell} autoComplete="off" value={row.rawText} onChange={(e) => change(row.key, { rawText: e.target.value })} onKeyDown={onCellKey(at)} />
+                <input
+                  id={cellId(row.key, "text")}
+                  className={cell}
+                  autoComplete="off"
+                  value={row.rawText}
+                  onChange={(e) => change(row.key, { rawText: e.target.value })}
+                  onKeyDown={onCellKey(at)}
+                />
               </label>
               <label className="flex min-w-0 flex-col gap-1">
                 <span className={labelClass}>Quantity, row {n}</span>
-                <input id={cellId(row.key, "qty")} className={cell} inputMode="decimal" autoComplete="off" value={row.qty} onChange={(e) => change(row.key, { qty: e.target.value })} onKeyDown={onCellKey(at)} />
+                <input
+                  id={cellId(row.key, "qty")}
+                  className={cell}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={row.qty}
+                  onChange={(e) => change(row.key, { qty: e.target.value })}
+                  onKeyDown={onCellKey(at)}
+                />
               </label>
               <label className="flex min-w-0 flex-col gap-1">
                 <span className={labelClass}>Unit, row {n}</span>
-                <select id={cellId(row.key, "unit")} className={cell} value={row.unit} onChange={(e) => change(row.key, { unit: e.target.value })}>
+                <select
+                  id={cellId(row.key, "unit")}
+                  className={cell}
+                  value={row.unit}
+                  onChange={(e) => change(row.key, { unit: e.target.value })}
+                >
                   <option value="">—</option>
-                  {row.unit && !(units.data ?? []).some((u) => u.code === row.unit) ? <option value={row.unit}>{row.unit}</option> : null}
+                  {row.unit && !(units.data ?? []).some((u) => u.code === row.unit) ? (
+                    <option value={row.unit}>{row.unit}</option>
+                  ) : null}
                   {(units.data ?? []).map((u) => (
                     <option key={u.code} value={u.code}>
                       {unitLabel(u.code)}
@@ -246,11 +308,24 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
               </label>
               <label className="flex min-w-0 flex-col gap-1">
                 <span className={labelClass}>Line total, row {n}</span>
-                <input id={cellId(row.key, "total")} className={cell} inputMode="decimal" autoComplete="off" value={row.total} onChange={(e) => change(row.key, { total: e.target.value })} onKeyDown={onCellKey(at)} />
+                <input
+                  id={cellId(row.key, "total")}
+                  className={cell}
+                  inputMode="decimal"
+                  autoComplete="off"
+                  value={row.total}
+                  onChange={(e) => change(row.key, { total: e.target.value })}
+                  onKeyDown={onCellKey(at)}
+                />
               </label>
               <label className="flex min-w-0 flex-col gap-1">
                 <span className={labelClass}>Kind, row {n}</span>
-                <select id={cellId(row.key, "kind")} className={cell} value={row.kind} onChange={(e) => change(row.key, { kind: e.target.value })}>
+                <select
+                  id={cellId(row.key, "kind")}
+                  className={cell}
+                  value={row.kind}
+                  onChange={(e) => change(row.key, { kind: e.target.value })}
+                >
                   {LINE_KINDS.map((k) => (
                     <option key={k} value={k}>
                       {k}
@@ -259,10 +334,20 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
                 </select>
               </label>
               <span className="col-span-2 flex gap-1 lg:col-span-1">
-                <Button variant="secondary" className="px-2 text-xs" aria-label={`Add a row below row ${n}`} onClick={() => insertAt(at + 1)}>
+                <Button
+                  variant="secondary"
+                  className="px-2 text-xs"
+                  aria-label={`Add a row below row ${n}`}
+                  onClick={() => insertAt(at + 1)}
+                >
                   Add below
                 </Button>
-                <Button variant="danger" className="px-2 text-xs" aria-label={`Delete row ${n}`} onClick={() => remove(at)}>
+                <Button
+                  variant="danger"
+                  className="px-2 text-xs"
+                  aria-label={`Delete row ${n}`}
+                  onClick={() => remove(at)}
+                >
                   Delete
                 </Button>
               </span>
@@ -270,10 +355,15 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
           );
         })}
       </ol>
-      {rows.length === 0 ? <p className={hintClass}>No lines. Add a row to start typing the receipt.</p> : null}
+      {rows.length === 0 ? (
+        <p className={hintClass}>No lines. Add a row to start typing the receipt.</p>
+      ) : null}
 
       {asking ? (
-        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <div
+          role="alert"
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+        >
           <p>Discard your corrections? What you typed will be lost.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Button ref={keepEditing} variant="secondary" onClick={() => setAsking(false)}>

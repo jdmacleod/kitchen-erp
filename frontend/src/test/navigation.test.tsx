@@ -4,9 +4,22 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it } from "vitest";
 import { REDIRECTS, SECTION_ROOTS } from "../App";
 import type { SearchResults } from "../api/search";
-import { DEFAULT_FEATURES, FOOTER_SECTIONS, MAIN_SECTIONS, visibleSections, type NavSection } from "../components/Nav";
+import {
+  DEFAULT_FEATURES,
+  FOOTER_SECTIONS,
+  MAIN_SECTIONS,
+  visibleSections,
+  type NavSection,
+} from "../components/Nav";
 import { RedirectTo } from "../components/RedirectTo";
-import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RouteHandler } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  renderApp,
+  type RouteHandler,
+} from "./helpers";
 
 const NEVER = () => new Promise<Response>(() => {}) as unknown as Response;
 const quietInbox = { items: [], reading: { count: 0, oldest_at: null, stalled: false } };
@@ -42,7 +55,10 @@ describe("navigation sections (UI-2.1, UI-2.2)", () => {
     mount();
     await screen.findByRole("heading", { name: "System" });
     const nav = sidebar();
-    expect(within(nav).getByRole("link", { name: "System" })).toHaveAttribute("aria-current", "page");
+    expect(within(nav).getByRole("link", { name: "System" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(within(nav).getByRole("link", { name: "Kitchens" })).toBeInTheDocument();
     expect(within(nav).queryByRole("link", { name: "Receipts" })).not.toBeInTheDocument();
     expect(within(nav).queryByRole("link", { name: "Ingredients" })).not.toBeInTheDocument();
@@ -52,16 +68,26 @@ describe("navigation sections (UI-2.1, UI-2.2)", () => {
     mount({}, "/shop/purchases");
     const nav = await waitFor(() => sidebar());
     await within(nav).findByRole("link", { name: "Receipts" });
-    for (const name of ["New purchase", "Needs a bridge", "To identify", "Map", "Log out everywhere"]) {
+    for (const name of [
+      "New purchase",
+      "Needs a bridge",
+      "To identify",
+      "Map",
+      "Log out everywhere",
+    ]) {
       expect(within(nav).queryByRole("link", { name })).not.toBeInTheDocument();
       expect(within(nav).queryByRole("button", { name })).not.toBeInTheDocument();
     }
   });
 
   it("takes features from a 503 health body, and shows its status (D11)", async () => {
-    mount({ "GET /health": () => jsonResponse(503, { status: "failed", features: ["catalog", "shop"] }) });
+    mount({
+      "GET /health": () => jsonResponse(503, { status: "failed", features: ["catalog", "shop"] }),
+    });
     await screen.findByRole("heading", { name: "System" });
-    await waitFor(() => expect(screen.getAllByTestId("health-status")[0]).toHaveTextContent("failed"));
+    await waitFor(() =>
+      expect(screen.getAllByTestId("health-status")[0]).toHaveTextContent("failed"),
+    );
   });
 
   it("lets features add sections in their fixed place, never remove them (UI-7.1, UI-8.1)", () => {
@@ -70,10 +96,29 @@ describe("navigation sections (UI-2.1, UI-2.2)", () => {
     expect(MAIN_SECTIONS.map((s) => s.key)).toEqual(["home", "cook", "plan", "shop"]);
     expect(visibleSections(MAIN_SECTIONS, undefined).map((s) => s.key)).toEqual(["home", "shop"]);
     expect(visibleSections(MAIN_SECTIONS, []).map((s) => s.key)).toEqual(["home", "shop"]);
-    expect(visibleSections(MAIN_SECTIONS, ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
-    expect(visibleSections(MAIN_SECTIONS, ["plan"]).map((s) => s.key)).toEqual(["home", "plan", "shop"]);
-    const later: NavSection = { key: "stock", label: "Stock", to: "/stock", prefix: "/stock", feature: "stock", items: [] };
-    expect(visibleSections([...MAIN_SECTIONS, later], ["cook"]).map((s) => s.key)).toEqual(["home", "cook", "shop"]);
+    expect(visibleSections(MAIN_SECTIONS, ["cook"]).map((s) => s.key)).toEqual([
+      "home",
+      "cook",
+      "shop",
+    ]);
+    expect(visibleSections(MAIN_SECTIONS, ["plan"]).map((s) => s.key)).toEqual([
+      "home",
+      "plan",
+      "shop",
+    ]);
+    const later: NavSection = {
+      key: "stock",
+      label: "Stock",
+      to: "/stock",
+      prefix: "/stock",
+      feature: "stock",
+      items: [],
+    };
+    expect(visibleSections([...MAIN_SECTIONS, later], ["cook"]).map((s) => s.key)).toEqual([
+      "home",
+      "cook",
+      "shop",
+    ]);
     expect(visibleSections(FOOTER_SECTIONS, []).map((s) => s.key)).toEqual(["catalog", "settings"]);
     expect([...DEFAULT_FEATURES]).toEqual(["catalog", "shop"]);
   });
@@ -125,7 +170,14 @@ describe("redirects from the retired paths (UI-2.3)", () => {
 
   it("covers every retired path the spec lists", () => {
     expect(REDIRECTS.map((r) => r.from)).toEqual(
-      expect.arrayContaining(["/map", "/compare", "/shop/compare", "/to-identify", "/price-book/needs-bridge", "/settings/home-bases"]),
+      expect.arrayContaining([
+        "/map",
+        "/compare",
+        "/shop/compare",
+        "/to-identify",
+        "/price-book/needs-bridge",
+        "/settings/home-bases",
+      ]),
     );
   });
 
@@ -152,10 +204,24 @@ describe("redirects from the retired paths (UI-2.3)", () => {
 
 const results: SearchResults = {
   ingredients: [
-    { kind: "ingredient", id: "i1", label: "Basil", detail: "Herbs", route: "/settings/system?from=basil", category_key: "produce" },
+    {
+      kind: "ingredient",
+      id: "i1",
+      label: "Basil",
+      detail: "Herbs",
+      route: "/settings/system?from=basil",
+      category_key: "produce",
+    },
   ],
   products: [
-    { kind: "product", id: "p1", label: "Basil bunch", detail: "Leafwise · Basil", route: "/settings/system?from=bunch", category_key: "produce" },
+    {
+      kind: "product",
+      id: "p1",
+      label: "Basil bunch",
+      detail: "Leafwise · Basil",
+      route: "/settings/system?from=bunch",
+      category_key: "produce",
+    },
   ],
   vendors: [],
 };
@@ -167,7 +233,9 @@ describe("the search palette (UI-2.8)", () => {
     const user = userEvent.setup();
     await user.keyboard("{Control>}k{/Control}");
     const dialog = await screen.findByRole("dialog", { name: "Search" });
-    expect(within(dialog).getByText("Type a product, ingredient, vendor or barcode.")).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Type a product, ingredient, vendor or barcode."),
+    ).toBeInTheDocument();
     expect(within(dialog).getByRole("combobox")).toHaveFocus();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -197,7 +265,10 @@ describe("the search palette (UI-2.8)", () => {
 
     await user.keyboard("{ArrowDown}");
     expect(options[1]).toHaveAttribute("aria-selected", "true");
-    expect(within(dialog).getByRole("combobox")).toHaveAttribute("aria-activedescendant", options[1].id);
+    expect(within(dialog).getByRole("combobox")).toHaveAttribute(
+      "aria-activedescendant",
+      options[1].id,
+    );
     await user.keyboard("{Enter}");
 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -206,19 +277,27 @@ describe("the search palette (UI-2.8)", () => {
   });
 
   it("says when nothing matches, and offers to add a product", async () => {
-    mount({ "GET /search": () => jsonResponse(200, { ingredients: [], products: [], vendors: [] }) });
+    mount({
+      "GET /search": () => jsonResponse(200, { ingredients: [], products: [], vendors: [] }),
+    });
     await screen.findByRole("heading", { name: "System" });
     const user = userEvent.setup();
     await user.keyboard("{Control>}k{/Control}");
     const dialog = await screen.findByRole("dialog", { name: "Search" });
     await user.type(within(dialog).getByRole("combobox"), "zzqx");
     expect(await within(dialog).findByText(/No matches for ‘zzqx’/)).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: "Add product" })).toHaveAttribute("href", "/catalog/products");
+    expect(within(dialog).getByRole("link", { name: "Add product" })).toHaveAttribute(
+      "href",
+      "/catalog/products",
+    );
   });
 
   it("says search isn't working, never 'no matches', when it fails", async () => {
     let up = false;
-    mount({ "GET /search": () => (up ? jsonResponse(200, results) : errorResponse(500, "internal", "boom")) });
+    mount({
+      "GET /search": () =>
+        up ? jsonResponse(200, results) : errorResponse(500, "internal", "boom"),
+    });
     await screen.findByRole("heading", { name: "System" });
     const user = userEvent.setup();
     await user.keyboard("{Control>}k{/Control}");
@@ -254,9 +333,18 @@ describe("Capture (UI-2.10)", () => {
     const opener = screen.getAllByRole("button", { name: "Capture" })[0];
     await user.click(opener);
     const dialog = await screen.findByRole("dialog", { name: "Capture" });
-    expect(within(dialog).getByRole("link", { name: /Log a shelf price/ })).toHaveAttribute("href", "/shop/shelf-prices");
-    expect(within(dialog).getByRole("link", { name: /Scan a receipt/ })).toHaveAttribute("href", "/shop/receipts");
-    expect(within(dialog).getByRole("link", { name: /Enter a purchase/ })).toHaveAttribute("href", "/shop/purchases/new");
+    expect(within(dialog).getByRole("link", { name: /Log a shelf price/ })).toHaveAttribute(
+      "href",
+      "/shop/shelf-prices",
+    );
+    expect(within(dialog).getByRole("link", { name: /Scan a receipt/ })).toHaveAttribute(
+      "href",
+      "/shop/receipts",
+    );
+    expect(within(dialog).getByRole("link", { name: /Enter a purchase/ })).toHaveAttribute(
+      "href",
+      "/shop/purchases/new",
+    );
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(opener).toHaveFocus();
@@ -271,7 +359,9 @@ describe("review follow-ups on the shell", () => {
       "GET /search": () => {
         calls += 1;
         // The first search answers at once; the second never does.
-        return calls === 1 ? jsonResponse(200, results) : new Promise<Response>((r) => (answer = r));
+        return calls === 1
+          ? jsonResponse(200, results)
+          : new Promise<Response>((r) => (answer = r));
       },
     });
     await screen.findByRole("heading", { name: "System" });
@@ -287,7 +377,9 @@ describe("review follow-ups on the shell", () => {
     // Still searching for "basilx": nothing opened, and the old list is not offered.
     expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument();
     expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
-    await waitFor(() => expect(navCalls.filter((c) => c.path.startsWith("/search")).length).toBe(2));
+    await waitFor(() =>
+      expect(navCalls.filter((c) => c.path.startsWith("/search")).length).toBe(2),
+    );
     answer(jsonResponse(200, results));
     expect(await within(dialog).findByRole("listbox")).toBeInTheDocument();
   });
@@ -313,7 +405,19 @@ describe("review follow-ups on the shell", () => {
         "GET /health": () => jsonResponse(200, { status: "ok" }),
         "GET /inbox": () =>
           ok
-            ? jsonResponse(200, { items: [{ kind: "identify", title: "1 receipt line to identify", detail: "", action_label: "Review lines", action_route: "/shop/receipts/identify", created_at: "2026-09-24T18:00:00Z" }], reading: { count: 0, oldest_at: null, stalled: false } })
+            ? jsonResponse(200, {
+                items: [
+                  {
+                    kind: "identify",
+                    title: "1 receipt line to identify",
+                    detail: "",
+                    action_label: "Review lines",
+                    action_route: "/shop/receipts/identify",
+                    created_at: "2026-09-24T18:00:00Z",
+                  },
+                ],
+                reading: { count: 0, oldest_at: null, stalled: false },
+              })
             : errorResponse(500, "internal", "boom"),
       });
       return renderApp("/settings/system");
@@ -323,7 +427,9 @@ describe("review follow-ups on the shell", () => {
     await act(async () => {
       await client.refetchQueries({ queryKey: ["inbox"] });
     });
-    expect((await screen.findAllByRole("img", { name: "Couldn't check what needs you" })).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByRole("img", { name: "Couldn't check what needs you" })).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByLabelText("1 thing needs you")).not.toBeInTheDocument();
   });
 });

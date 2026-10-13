@@ -23,7 +23,9 @@ function page() {
       <img alt="tiny icon" src="https://cdn.example.test/icon.png">
     </main>`;
   const widths = [1200, 800, 1600, 32];
-  document.querySelectorAll("img").forEach((img, n) => Object.defineProperty(img, "naturalWidth", { value: widths[n] }));
+  document
+    .querySelectorAll("img")
+    .forEach((img, n) => Object.defineProperty(img, "naturalWidth", { value: widths[n] }));
 }
 
 afterEach(() => {
@@ -37,18 +39,34 @@ describe("the bookmarklet's payload", () => {
   it("sends microdata, ranks product images first, counts one image once, and says its version", async () => {
     page();
     const win = { postMessage: vi.fn() };
-    vi.stubGlobal("open", vi.fn(() => win));
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("blocked"); }));
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => win),
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("blocked");
+      }),
+    );
     let listener: ((e: MessageEvent) => unknown) | undefined;
     vi.spyOn(window, "addEventListener").mockImplementation((type: string, fn: unknown) => {
       if (type === "message") listener = fn as (e: MessageEvent) => unknown;
     });
 
     new Function(bookmarkletCode(APP))();
-    await listener?.({ origin: APP, source: win, data: { type: "kerp-clip-ready" } } as unknown as MessageEvent);
+    await listener?.({
+      origin: APP,
+      source: win,
+      data: { type: "kerp-clip-ready" },
+    } as unknown as MessageEvent);
 
     const sent = win.postMessage.mock.calls[0][0].payload;
-    expect(sent.meta).toMatchObject({ "og:title": "Canyon Creek Rolled Oats", "itemprop:price": "$3.49", "itemprop:sku": "77123" });
+    expect(sent.meta).toMatchObject({
+      "og:title": "Canyon Creek Rolled Oats",
+      "itemprop:price": "$3.49",
+      "itemprop:sku": "77123",
+    });
     expect(sent.meta["itemprop:color"]).toBeUndefined();
     expect(sent.image_urls).toEqual([
       "https://cdn.example.test/ld/oats-front.jpg",
@@ -67,9 +85,14 @@ describe("the bookmarklet's payload", () => {
       <img alt="" src="https://www.juniper-market.example.test/spinner.gif">
       <img alt="" src="https://www.juniper-market.example.test/img/oats.webp">
       <img alt="" src="https://www.juniper-market.example.test/img/oats-back.jpg">`;
-    document.querySelectorAll("img").forEach((img) => Object.defineProperty(img, "naturalWidth", { value: 400 }));
+    document
+      .querySelectorAll("img")
+      .forEach((img) => Object.defineProperty(img, "naturalWidth", { value: 400 }));
     const win = { postMessage: vi.fn() };
-    vi.stubGlobal("open", vi.fn(() => win));
+    vi.stubGlobal(
+      "open",
+      vi.fn(() => win),
+    );
     // The store serves its "photo" as an SVG under a .jpg name: kept out by its type.
     const types: Record<string, string> = {
       "https://www.juniper-market.example.test/img/oats.webp": "image/webp",
@@ -77,7 +100,10 @@ describe("the bookmarklet's payload", () => {
     };
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: string) => ({ ok: true, blob: async () => new Blob(["x"], { type: types[url] ?? "image/png" }) })),
+      vi.fn(async (url: string) => ({
+        ok: true,
+        blob: async () => new Blob(["x"], { type: types[url] ?? "image/png" }),
+      })),
     );
     let listener: ((e: MessageEvent) => unknown) | undefined;
     vi.spyOn(window, "addEventListener").mockImplementation((type: string, fn: unknown) => {
@@ -85,13 +111,19 @@ describe("the bookmarklet's payload", () => {
     });
 
     new Function(bookmarkletCode(APP))();
-    await listener?.({ origin: APP, source: win, data: { type: "kerp-clip-ready" } } as unknown as MessageEvent);
+    await listener?.({
+      origin: APP,
+      source: win,
+      data: { type: "kerp-clip-ready" },
+    } as unknown as MessageEvent);
 
     const sent = win.postMessage.mock.calls[0][0].payload;
     expect(sent.image_urls).toEqual([
       "https://www.juniper-market.example.test/img/oats.webp",
       "https://www.juniper-market.example.test/img/oats-back.jpg",
     ]);
-    expect(sent.images.map((i: { url: string }) => i.url)).toEqual(["https://www.juniper-market.example.test/img/oats.webp"]);
+    expect(sent.images.map((i: { url: string }) => i.url)).toEqual([
+      "https://www.juniper-market.example.test/img/oats.webp",
+    ]);
   });
 });

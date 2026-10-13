@@ -192,7 +192,13 @@ export interface CheapestResult {
 
 export interface NeedsBridgeItem {
   ingredient: { id: string; name: string; canonical_unit: CanonicalUnit };
-  product: { id: string; name: string; brand: string | null; pack_qty: string | null; pack_unit: string | null };
+  product: {
+    id: string;
+    name: string;
+    brand: string | null;
+    pack_qty: string | null;
+    pack_unit: string | null;
+  };
   status: NormStatus;
   observation_count: number;
   latest_observed_at: string;
@@ -224,7 +230,8 @@ export const priceKeys = {
   offers: (id: string, f: PriceFilters) => ["price-book", "offers", id, f] as const,
   compare: (input: CompareInput) => ["price-book", "compare", input] as const,
   panel: (id: string, days: number) => ["price-book", "panel", id, days] as const,
-  cheapest: (ingredientId: string, f: PriceFilters) => ["price-book", "cheapest", ingredientId, f] as const,
+  cheapest: (ingredientId: string, f: PriceFilters) =>
+    ["price-book", "cheapest", ingredientId, f] as const,
   needsBridge: ["price-book", "needs-bridge"] as const,
 };
 
@@ -245,7 +252,8 @@ export function useIngredientOffers(ingredientId: string | undefined, filters: P
           min_quality: filters.min_quality,
           exclude_stale: filters.exclude_stale,
           exclude_promo: filters.exclude_promo,
-          brand_scope: filters.brand_scope && filters.brand_scope !== "all" ? filters.brand_scope : undefined,
+          brand_scope:
+            filters.brand_scope && filters.brand_scope !== "all" ? filters.brand_scope : undefined,
         })}`,
       ),
     enabled: Boolean(ingredientId),
@@ -286,7 +294,10 @@ export interface IngredientPriceHistory {
 export function useIngredientPriceHistory(ingredientId: string | undefined, days = 90) {
   return useQuery({
     queryKey: ["price-history", ingredientId ?? "", days] as const,
-    queryFn: () => api<IngredientPriceHistory>(`/ingredients/${enc(ingredientId ?? "")}/price-history${qs({ days })}`),
+    queryFn: () =>
+      api<IngredientPriceHistory>(
+        `/ingredients/${enc(ingredientId ?? "")}/price-history${qs({ days })}`,
+      ),
     enabled: Boolean(ingredientId),
   });
 }
@@ -312,7 +323,8 @@ export function useCompare(input: CompareInput) {
 export function useLocationPricePanel(locationId: string | undefined, days: number) {
   return useQuery({
     queryKey: priceKeys.panel(locationId ?? "", days),
-    queryFn: () => api<PricePanel>(`/vendor-locations/${enc(locationId ?? "")}/price-panel${qs({ days })}`),
+    queryFn: () =>
+      api<PricePanel>(`/vendor-locations/${enc(locationId ?? "")}/price-panel${qs({ days })}`),
     enabled: Boolean(locationId),
     placeholderData: (previous) => previous,
   });
@@ -341,9 +353,15 @@ export function useNeedsBridge() {
 // --- formatting -------------------------------------------------------------
 
 /** "today", "1 day", "12 days"; from age_days when given, else from the timestamp. */
-export function formatAge(ageDays: string | number | null | undefined, observedAt?: string): string {
+export function formatAge(
+  ageDays: string | number | null | undefined,
+  observedAt?: string,
+): string {
   // Age is a whole number of days for display only, never money; Number() is safe here.
-  let days: number | null = ageDays === null || ageDays === undefined || ageDays === "" ? null : Math.floor(Number(ageDays));
+  let days: number | null =
+    ageDays === null || ageDays === undefined || ageDays === ""
+      ? null
+      : Math.floor(Number(ageDays));
   if (days !== null && !Number.isFinite(days)) days = null;
   if (days === null && observedAt) {
     const then = new Date(observedAt).getTime();
@@ -355,12 +373,22 @@ export function formatAge(ageDays: string | number | null | undefined, observedA
 }
 
 /** Where a failed normalization is fixed: the ingredient's bridge editor or the product's pack. */
-export function bridgeFixLink(status: NormStatus, ingredientId: string, productId: string): { to: string; text: string } {
+export function bridgeFixLink(
+  status: NormStatus,
+  ingredientId: string,
+  productId: string,
+): { to: string; text: string } {
   switch (status) {
     case "no_density":
-      return { to: `/catalog/ingredients/${enc(ingredientId)}#density-heading`, text: "Add a density" };
+      return {
+        to: `/catalog/ingredients/${enc(ingredientId)}#density-heading`,
+        text: "Add a density",
+      };
     case "unknown_measure":
-      return { to: `/catalog/ingredients/${enc(ingredientId)}#measures-heading`, text: "Add the measure" };
+      return {
+        to: `/catalog/ingredients/${enc(ingredientId)}#measures-heading`,
+        text: "Add the measure",
+      };
     case "no_pack":
       return { to: `/catalog/products/${enc(productId)}`, text: "Set the pack" };
     default:

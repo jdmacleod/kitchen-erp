@@ -18,9 +18,26 @@ const ICONS = {
   more: "M5 12h.01M12 12h.01M19 12h.01",
 } as const;
 
-function Icon({ d, className = "size-6", weight = 1.75 }: { d: string; className?: string; weight?: number }) {
+function Icon({
+  d,
+  className = "size-6",
+  weight = 1.75,
+}: {
+  d: string;
+  className?: string;
+  weight?: number;
+}) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={weight} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={weight}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d={d} />
     </svg>
   );
@@ -29,7 +46,9 @@ function Icon({ d, className = "size-6", weight = 1.75 }: { d: string; className
 // The current tab is herb, as the sidebar's active item is (08: active nav).
 const tabClass = (current: boolean) =>
   `flex min-h-11 min-w-11 flex-1 flex-col items-center justify-center gap-0.5 rounded-md text-xs ${focusRing} ${
-    current ? "font-semibold text-blue-700 dark:text-blue-300" : "font-medium text-neutral-600 dark:text-neutral-400"
+    current
+      ? "font-semibold text-blue-700 dark:text-blue-300"
+      : "font-medium text-neutral-600 dark:text-neutral-400"
   }`;
 
 interface TabBarProps {
@@ -41,8 +60,14 @@ interface TabBarProps {
 }
 
 /** The second tab: Purchases until Plan is built, then the kitchen's list (09, T18; UI-8.10). */
-export function secondTab(features: readonly string[] | undefined): { to: string; label: string; icon: string } {
-  return features?.includes("plan") ? { to: "/plan/list", label: "List", icon: ICONS.list } : { to: "/shop/purchases", label: "Purchases", icon: ICONS.purchases };
+export function secondTab(features: readonly string[] | undefined): {
+  to: string;
+  label: string;
+  icon: string;
+} {
+  return features?.includes("plan")
+    ? { to: "/plan/list", label: "List", icon: ICONS.list }
+    : { to: "/shop/purchases", label: "Purchases", icon: ICONS.purchases };
 }
 
 /**
@@ -74,7 +99,11 @@ export function TabBar({ onCapture, onSearch, onMore, moreOpen }: TabBarProps) {
           </NavLink>
         </li>
         <li className="flex flex-1">
-          <Link to={second.to} aria-current={onSecond ? "page" : undefined} className={tabClass(onSecond)}>
+          <Link
+            to={second.to}
+            aria-current={onSecond ? "page" : undefined}
+            className={tabClass(onSecond)}
+          >
             <Icon d={second.icon} />
             {second.label}
           </Link>
@@ -99,7 +128,13 @@ export function TabBar({ onCapture, onSearch, onMore, moreOpen }: TabBarProps) {
           </button>
         </li>
         <li className="flex flex-1">
-          <button type="button" onClick={onMore} aria-haspopup="dialog" aria-expanded={moreOpen} className={tabClass(underMore)}>
+          <button
+            type="button"
+            onClick={onMore}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            className={tabClass(underMore)}
+          >
             <Icon d={ICONS.more} weight={3} />
             More
           </button>
@@ -152,7 +187,10 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
       returnFocus={returnFocus}
       className="flex max-h-[85dvh] flex-col p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
-      <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-700" />
+      <div
+        aria-hidden="true"
+        className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-neutral-300 dark:bg-neutral-700"
+      />
       <h2 id={titleId} className="font-display mb-2 text-xl">
         More
       </h2>
@@ -160,7 +198,10 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
         <KitchenSwitcherRow />
         {groups.map((g) => (
           <section key={g.key} aria-labelledby={`${titleId}-${g.key}`} className="mb-3">
-            <h3 id={`${titleId}-${g.key}`} className="px-3 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400">
+            <h3
+              id={`${titleId}-${g.key}`}
+              className="px-3 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-400"
+            >
               {g.label}
             </h3>
             <ul className="flex flex-col">
@@ -179,9 +220,16 @@ export function MoreSheet({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between gap-2 px-3 text-sm">
           <span className="min-w-0">
             <span className="block truncate font-medium">{user.display_name}</span>
-            <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">{user.email}</span>
+            <span className="block truncate text-xs text-neutral-600 dark:text-neutral-400">
+              {user.email}
+            </span>
           </span>
-          <Button variant="ghost" className="shrink-0" disabled={logout.isPending} onClick={() => logout.mutate()}>
+          <Button
+            variant="ghost"
+            className="shrink-0"
+            disabled={logout.isPending}
+            onClick={() => logout.mutate()}
+          >
             Log out
           </Button>
         </div>

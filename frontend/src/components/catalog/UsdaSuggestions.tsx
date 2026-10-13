@@ -22,9 +22,16 @@ interface UsdaSuggestionsProps {
  * at all when the table is not loaded or nothing matches: the form must feel
  * identical without it.
  */
-export function UsdaSuggestions({ name, canonicalUnit, onUseDensity, onAddMeasure, queued }: UsdaSuggestionsProps) {
+export function UsdaSuggestions({
+  name,
+  canonicalUnit,
+  onUseDensity,
+  onAddMeasure,
+  queued,
+}: UsdaSuggestionsProps) {
   const suggestions = useUsdaSuggestions(name);
-  if (!suggestions.data || !suggestions.data.loaded || suggestions.data.items.length === 0) return null;
+  if (!suggestions.data || !suggestions.data.loaded || suggestions.data.items.length === 0)
+    return null;
 
   return (
     <section
@@ -84,7 +91,11 @@ function SuggestionRow({
                   className="min-h-11 lg:min-h-8 px-2 text-xs"
                   disabled={already}
                   onClick={() =>
-                    onAddMeasure({ label: m.label, canonical_qty: m.canonical_qty_g, from_portion: m.from_portion })
+                    onAddMeasure({
+                      label: m.label,
+                      canonical_qty: m.canonical_qty_g,
+                      from_portion: m.from_portion,
+                    })
                   }
                 >
                   {already ? "Queued: " : "Add measure "}

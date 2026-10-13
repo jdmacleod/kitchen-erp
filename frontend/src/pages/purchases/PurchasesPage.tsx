@@ -3,10 +3,31 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { jobInFlight, useIngestJobs, type IngestJob } from "../../api/ingest";
-import { itemLines, purchaseKeys, purchaseStatusLabel, purchaseStatusTone, sourceLabel, usePurchases, type Purchase, type PurchaseSort, type PurchaseStatus, type SortDir } from "../../api/purchases";
+import {
+  itemLines,
+  purchaseKeys,
+  purchaseStatusLabel,
+  purchaseStatusTone,
+  sourceLabel,
+  usePurchases,
+  type Purchase,
+  type PurchaseSort,
+  type PurchaseStatus,
+  type SortDir,
+} from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  primaryLinkClass,
+  secondaryLinkClass,
+  tapTarget,
+} from "../../components/ui";
 import { TrustBadge } from "../../components/purchases/TrustBadge";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
@@ -70,12 +91,18 @@ export function PurchasesPage() {
   // Find and sort (spec 10, issue 292), kept in the URL; the default order is left out of it.
   const q = params.get("q")?.trim() ?? "";
   const rawSort = params.get("sort");
-  const sort: PurchaseSort = SORTS.includes(rawSort as PurchaseSort) ? (rawSort as PurchaseSort) : "date";
+  const sort: PurchaseSort = SORTS.includes(rawSort as PurchaseSort)
+    ? (rawSort as PurchaseSort)
+    : "date";
   const rawDir = params.get("dir");
   const dir: SortDir = rawDir === "asc" || rawDir === "desc" ? rawDir : FIRST_DIR[sort];
   const defaultOrder = sort === "date" && dir === "desc";
   const setOrder = (next: PurchaseSort, nextDir: SortDir) =>
-    setParam(next === "date" && nextDir === "desc" ? { sort: null, dir: null } : { sort: next, dir: nextDir });
+    setParam(
+      next === "date" && nextDir === "desc"
+        ? { sort: null, dir: null }
+        : { sort: next, dir: nextDir },
+    );
   const onHeading = (column: PurchaseSort) =>
     setOrder(column, column === sort ? (dir === "asc" ? "desc" : "asc") : FIRST_DIR[column]);
   const [text, setText] = useState(q);
@@ -97,16 +124,26 @@ export function PurchasesPage() {
     setParam({ q: null });
   };
   const status = voidedView ? "voided" : filter === "all" ? "" : filter;
-  const purchases = usePurchases({ status, q: q || undefined, sort: defaultOrder ? undefined : sort, dir: defaultOrder ? undefined : dir });
+  const purchases = usePurchases({
+    status,
+    q: q || undefined,
+    sort: defaultOrder ? undefined : sort,
+    dir: defaultOrder ? undefined : dir,
+  });
   const items = purchases.data?.pages.flatMap((p) => p.items) ?? [];
   // The Drafts count, from the first page of drafts.
   const drafts = usePurchases({ status: "draft" });
   const draftPage = drafts.data?.pages[0];
-  const draftCount = draftPage ? countLabel(draftPage.items.length, Boolean(draftPage.next_cursor)) : null;
+  const draftCount = draftPage
+    ? countLabel(draftPage.items.length, Boolean(draftPage.next_cursor))
+    : null;
   // The same for removed purchases, for the "Show voided" link.
   const voided = usePurchases({ status: "voided" });
   const voidedPage = voided.data?.pages[0];
-  const voidedCount = voidedPage && voidedPage.items.length > 0 ? countLabel(voidedPage.items.length, Boolean(voidedPage.next_cursor)) : null;
+  const voidedCount =
+    voidedPage && voidedPage.items.length > 0
+      ? countLabel(voidedPage.items.length, Boolean(voidedPage.next_cursor))
+      : null;
   // Receipts in flight belong with the drafts they are about to become. Asked
   // for by status, so an old upload still being read is never paged out by
   // newer finished ones.
@@ -114,9 +151,12 @@ export function PurchasesPage() {
   const runningJobs = useIngestJobs("running");
   const inFlight = [...(pendingJobs.data ?? []), ...(runningJobs.data ?? [])].filter(jobInFlight);
   // A job that has already made its draft is listed as that draft.
-  const readingJobs = inFlight.filter((j) => !j.purchase_id).sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+  const readingJobs = inFlight
+    .filter((j) => !j.purchase_id)
+    .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
   // Being read has no date or total yet: those rows lead only the default, unsearched order.
-  const showsReading = !voidedView && (filter === "all" || filter === "draft") && defaultOrder && !q;
+  const showsReading =
+    !voidedView && (filter === "all" || filter === "draft") && defaultOrder && !q;
   const reading = showsReading ? readingJobs : [];
   // Could not check: never claim there is nothing being read (CLAUDE.md: an
   // error is never an empty state).
@@ -131,7 +171,8 @@ export function PurchasesPage() {
     const before = lastReading.current.split(",").filter(Boolean);
     lastReading.current = readingIds;
     const now = new Set(readingIds.split(","));
-    if (before.some((id) => !now.has(id))) void client.invalidateQueries({ queryKey: purchaseKeys.purchases });
+    if (before.some((id) => !now.has(id)))
+      void client.invalidateQueries({ queryKey: purchaseKeys.purchases });
   }, [readingIds, client]);
   // The table at lg and wider, a list below it (G19).
   const wide = useMediaQuery(LG_QUERY);
@@ -148,7 +189,7 @@ export function PurchasesPage() {
             : q
               ? `Finding “${q}”…`
               : // Mention removed purchases only when there is a link to them (issue 247).
-              `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
+                `Everything you've bought, newest first. Drafts wait for you to finish them.${voidedCount ? " Removed purchases are under Show voided." : ""}`
         }
       >
         <div className="flex flex-wrap gap-2">
@@ -169,7 +210,8 @@ export function PurchasesPage() {
           className={`mb-4 flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-amber-400 px-4 text-left text-sm text-amber-900 lg:hidden dark:border-amber-600 dark:text-amber-200 ${focusRing}`}
         >
           <span className="font-medium">
-            {draftCount} {draftPage.items.length === 1 && !draftPage.next_cursor ? "draft" : "drafts"} to finish
+            {draftCount}{" "}
+            {draftPage.items.length === 1 && !draftPage.next_cursor ? "draft" : "drafts"} to finish
           </span>
           <span aria-hidden="true">›</span>
         </button>
@@ -177,7 +219,9 @@ export function PurchasesPage() {
 
       <Card>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-medium">{voidedView ? "Voided purchases" : "All purchases"}</h2>
+          <h2 className="text-lg font-medium">
+            {voidedView ? "Voided purchases" : "All purchases"}
+          </h2>
           {voidedView ? (
             <Button variant="secondary" onClick={showAll}>
               Back to all
@@ -240,7 +284,9 @@ export function PurchasesPage() {
         ) : purchases.isError ? (
           <Alert tone="error">{errorMessage(purchases.error)}</Alert>
         ) : items.length === 0 && reading.length === 0 && jobsFailed ? (
-          <JobsFailed onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])} />
+          <JobsFailed
+            onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])}
+          />
         ) : items.length === 0 && reading.length === 0 && q ? (
           <EmptyState
             title={`No purchases match “${q}”`}
@@ -284,71 +330,110 @@ export function PurchasesPage() {
           <>
             {jobsFailed ? (
               <div className="mb-3">
-                <JobsFailed onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])} />
+                <JobsFailed
+                  onRetry={() => void Promise.all([pendingJobs.refetch(), runningJobs.refetch()])}
+                />
               </div>
             ) : null}
             {wide ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm" aria-label="Purchases">
-                <thead>
-                  <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
-                    <SortHeading column="date" label="Date" sort={sort} dir={dir} onSort={onHeading} />
-                    <SortHeading column="where" label="Where" sort={sort} dir={dir} onSort={onHeading} />
-                    <th className="py-2 pr-3">From</th>
-                    <th className="py-2 pr-3 text-right">Lines</th>
-                    <SortHeading column="total" label="Total" sort={sort} dir={dir} onSort={onHeading} align="right" />
-                    <th className="py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
-                  {reading.map((job) => (
-                    <ReadingRow key={job.id} job={job} />
-                  ))}
-                  {items.map((p) => (
-                    <tr key={p.id}>
-                      <td className="py-2 pr-3 whitespace-nowrap">
-                        <Link to={`/shop/purchases/${p.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
-                          {formatDate(p.purchased_at)}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-3">
-                        {p.vendor_location ? (
-                          <>
-                            {p.vendor_location.vendor.name}
-                            {p.vendor_location.name !== p.vendor_location.vendor.name ? (
-                              <span className="text-neutral-600 dark:text-neutral-400"> — {p.vendor_location.name}</span>
-                            ) : null}
-                          </>
-                        ) : p.status === "committed" ? (
-                          <span className="text-neutral-600 italic dark:text-neutral-400">No location</span>
-                        ) : (
-                          // A draft cannot commit without one; say so where it is missing.
-                          <span className="font-medium text-amber-800 dark:text-amber-300">Location needed</span>
-                        )}
-                      </td>
-                      <td className="py-2 pr-3">{fromLabel(p)}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">{itemLines(p).length}</td>
-                      <td className="py-2 pr-3 text-right tabular-nums">
-                        <Total purchase={p} />
-                      </td>
-                      <td className="py-2">
-                        <StatusBadge purchase={p} />
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm" aria-label="Purchases">
+                  <thead>
+                    <tr className="border-b border-neutral-200 text-left text-xs font-semibold text-neutral-600 dark:text-neutral-400 dark:border-neutral-800">
+                      <SortHeading
+                        column="date"
+                        label="Date"
+                        sort={sort}
+                        dir={dir}
+                        onSort={onHeading}
+                      />
+                      <SortHeading
+                        column="where"
+                        label="Where"
+                        sort={sort}
+                        dir={dir}
+                        onSort={onHeading}
+                      />
+                      <th className="py-2 pr-3">From</th>
+                      <th className="py-2 pr-3 text-right">Lines</th>
+                      <SortHeading
+                        column="total"
+                        label="Total"
+                        sort={sort}
+                        dir={dir}
+                        onSort={onHeading}
+                        align="right"
+                      />
+                      <th className="py-2">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                    {reading.map((job) => (
+                      <ReadingRow key={job.id} job={job} />
+                    ))}
+                    {items.map((p) => (
+                      <tr key={p.id}>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          <Link
+                            to={`/shop/purchases/${p.id}`}
+                            className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+                          >
+                            {formatDate(p.purchased_at)}
+                          </Link>
+                        </td>
+                        <td className="py-2 pr-3">
+                          {p.vendor_location ? (
+                            <>
+                              {p.vendor_location.vendor.name}
+                              {p.vendor_location.name !== p.vendor_location.vendor.name ? (
+                                <span className="text-neutral-600 dark:text-neutral-400">
+                                  {" "}
+                                  — {p.vendor_location.name}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : p.status === "committed" ? (
+                            <span className="text-neutral-600 italic dark:text-neutral-400">
+                              No location
+                            </span>
+                          ) : (
+                            // A draft cannot commit without one; say so where it is missing.
+                            <span className="font-medium text-amber-800 dark:text-amber-300">
+                              Location needed
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 pr-3">{fromLabel(p)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{itemLines(p).length}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">
+                          <Total purchase={p} />
+                        </td>
+                        <td className="py-2">
+                          <StatusBadge purchase={p} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               // Phone: purchases (10). One row per purchase: where, then the date
               // and line count, with the total and status at the right.
-              <ul aria-label="Purchases" className="-mx-1 divide-y divide-neutral-200 dark:divide-neutral-800">
+              <ul
+                aria-label="Purchases"
+                className="-mx-1 divide-y divide-neutral-200 dark:divide-neutral-800"
+              >
                 {reading.map((job) => (
                   <li key={job.id} data-testid="reading-row">
-                    <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}>
+                    <Link
+                      to={`/shop/receipts?job=${encodeURIComponent(job.id)}`}
+                      className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}
+                    >
                       <span className="min-w-0">
                         <span className="block font-medium">Receipt being read</span>
-                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">{uploaded(job)}</span>
+                        <span className="block text-xs text-neutral-600 dark:text-neutral-400">
+                          {uploaded(job)}
+                        </span>
                       </span>
                       <Badge>Reading</Badge>
                     </Link>
@@ -356,7 +441,10 @@ export function PurchasesPage() {
                 ))}
                 {items.map((p) => (
                   <li key={p.id}>
-                    <Link to={`/shop/purchases/${p.id}`} className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}>
+                    <Link
+                      to={`/shop/purchases/${p.id}`}
+                      className={`flex min-h-14 items-center justify-between gap-3 rounded-md px-1 py-2 text-neutral-900 dark:text-neutral-100 ${focusRing}`}
+                    >
                       <span className="min-w-0">
                         <span className="block truncate font-medium">
                           {p.vendor_location ? (
@@ -364,11 +452,14 @@ export function PurchasesPage() {
                           ) : p.status === "committed" ? (
                             "No location"
                           ) : (
-                            <span className="text-amber-800 dark:text-amber-300">Location needed</span>
+                            <span className="text-amber-800 dark:text-amber-300">
+                              Location needed
+                            </span>
                           )}
                         </span>
                         <span className="block text-xs text-neutral-600 dark:text-neutral-400">
-                          {formatDate(p.purchased_at)} · {itemLines(p).length} {itemLines(p).length === 1 ? "line" : "lines"}
+                          {formatDate(p.purchased_at)} · {itemLines(p).length}{" "}
+                          {itemLines(p).length === 1 ? "line" : "lines"}
                         </span>
                       </span>
                       <span className="flex shrink-0 flex-col items-end gap-1">
@@ -384,7 +475,11 @@ export function PurchasesPage() {
             )}
             {purchases.hasNextPage ? (
               <div className="mt-3">
-                <Button variant="secondary" disabled={purchases.isFetchingNextPage} onClick={() => purchases.fetchNextPage()}>
+                <Button
+                  variant="secondary"
+                  disabled={purchases.isFetchingNextPage}
+                  onClick={() => purchases.fetchNextPage()}
+                >
                   {purchases.isFetchingNextPage ? "Loading…" : "Load more"}
                 </Button>
               </div>
@@ -393,7 +488,10 @@ export function PurchasesPage() {
         )}
         {!voidedView && (voidedCount || voided.isError) ? (
           <p className="mt-3 text-sm">
-            <Link to={`?${new URLSearchParams([...params.entries(), ["status", "voided"]]).toString()}`} className={`${tapTarget} rounded underline ${focusRing}`}>
+            <Link
+              to={`?${new URLSearchParams([...params.entries(), ["status", "voided"]]).toString()}`}
+              className={`${tapTarget} rounded underline ${focusRing}`}
+            >
               {/* Without a count when it couldn't be checked: the way in stays. */}
               {voidedCount ? `Show voided (${voidedCount})` : "Show voided"}
             </Link>
@@ -427,7 +525,10 @@ function SortHeading({
     </span>
   );
   return (
-    <th className={`py-1 pr-3 ${align === "right" ? "text-right" : ""}`} aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}>
+    <th
+      className={`py-1 pr-3 ${align === "right" ? "text-right" : ""}`}
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
+    >
       <button
         type="button"
         onClick={() => onSort(column)}
@@ -477,7 +578,10 @@ function ReadingRow({ job }: { job: IngestJob }) {
   return (
     <tr data-testid="reading-row">
       <td className="py-2 pr-3 whitespace-nowrap">
-        <Link to={`/shop/receipts?job=${encodeURIComponent(job.id)}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+        <Link
+          to={`/shop/receipts?job=${encodeURIComponent(job.id)}`}
+          className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+        >
           {uploaded(job)}
         </Link>
       </td>
@@ -498,7 +602,9 @@ function ReadingRow({ job }: { job: IngestJob }) {
  */
 function StatusBadge({ purchase }: { purchase: Purchase }) {
   if (purchase.held) return <TrustBadge trust={purchase.trust} gap={purchase.gap} held />;
-  const status = <Badge tone={purchaseStatusTone[purchase.status]}>{purchaseStatusLabel[purchase.status]}</Badge>;
+  const status = (
+    <Badge tone={purchaseStatusTone[purchase.status]}>{purchaseStatusLabel[purchase.status]}</Badge>
+  );
   // A receipt's reading beside its status, so the drafts that need care stand
   // out before they are opened (issue 122); nothing for one entered by hand.
   if (!purchase.trust || purchase.status === "voided") return status;

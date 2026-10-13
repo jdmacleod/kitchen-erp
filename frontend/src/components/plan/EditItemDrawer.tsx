@@ -1,7 +1,14 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "../../api/client";
-import { itemName, staleItem, usePatchItem, type ShoppingItem, type ShoppingList, type listKeys } from "../../api/shoppingList";
+import {
+  itemName,
+  staleItem,
+  usePatchItem,
+  type ShoppingItem,
+  type ShoppingList,
+  type listKeys,
+} from "../../api/shoppingList";
 import { Drawer } from "../Drawer";
 import { Alert, Field } from "../ui";
 import { AmountRows, type AmountRow } from "./AmountRows";
@@ -24,7 +31,10 @@ interface Form {
 
 function initial(item: ShoppingItem): Form {
   return {
-    amounts: item.amounts.length > 0 ? item.amounts.map((a) => ({ amount: a.amount, unit: a.unit })) : [{ amount: "", unit: "" }],
+    amounts:
+      item.amounts.length > 0
+        ? item.amounts.map((a) => ({ amount: a.amount, unit: a.unit }))
+        : [{ amount: "", unit: "" }],
     note: item.note ?? "",
     deferrable: item.deferrable,
     minQuality: item.min_quality === null ? "" : String(item.min_quality),
@@ -62,7 +72,9 @@ export function EditItemDrawer({ item, listKey, onClose, onNotice }: EditItemDra
           amounts: amountsInput(form.amounts),
           note: note ? note : null,
           deferrable: form.deferrable,
-          ...(item.kind === "ingredient" ? { min_quality: form.minQuality ? Number(form.minQuality) : null } : {}),
+          ...(item.kind === "ingredient"
+            ? { min_quality: form.minQuality ? Number(form.minQuality) : null }
+            : {}),
         },
       },
       {
@@ -91,10 +103,29 @@ export function EditItemDrawer({ item, listKey, onClose, onNotice }: EditItemDra
   };
 
   return (
-    <Drawer title={`Edit ${name}`} thing="change" dirty={dirty} onClose={onClose} formId={formId} primaryLabel="Save" busy={patch.isPending} busyLabel="Saving…">
+    <Drawer
+      title={`Edit ${name}`}
+      thing="change"
+      dirty={dirty}
+      onClose={onClose}
+      formId={formId}
+      primaryLabel="Save"
+      busy={patch.isPending}
+      busyLabel="Saving…"
+    >
       <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        <AmountRows idPrefix={formId} rows={form.amounts} onChange={(amounts) => setForm((f) => ({ ...f, amounts }))} />
-        <Field id={`${formId}-note`} label="Note" value={form.note} maxLength={500} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+        <AmountRows
+          idPrefix={formId}
+          rows={form.amounts}
+          onChange={(amounts) => setForm((f) => ({ ...f, amounts }))}
+        />
+        <Field
+          id={`${formId}-note`}
+          label="Note"
+          value={form.note}
+          maxLength={500}
+          onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+        />
         <ItemFlags
           idPrefix={formId}
           kind={item.kind}
@@ -104,7 +135,9 @@ export function EditItemDrawer({ item, listKey, onClose, onNotice }: EditItemDra
           onMinQuality={(minQuality) => setForm((f) => ({ ...f, minQuality }))}
         />
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-        {patch.isError && !staleItem(patch.error) ? <Alert tone="error">Couldn&apos;t save: {errorMessage(patch.error)}</Alert> : null}
+        {patch.isError && !staleItem(patch.error) ? (
+          <Alert tone="error">Couldn&apos;t save: {errorMessage(patch.error)}</Alert>
+        ) : null}
       </form>
     </Drawer>
   );

@@ -32,9 +32,15 @@ export class PageErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children;
     return (
-      <div role="alert" className={`flex flex-col gap-3 rounded-2xl border px-4 py-4 text-sm ${alertTones.error}`}>
+      <div
+        role="alert"
+        className={`flex flex-col gap-3 rounded-2xl border px-4 py-4 text-sm ${alertTones.error}`}
+      >
         <p className="font-medium">This page couldn&apos;t be shown.</p>
-        <p>If Kitchen ERP was just updated, reloading loads the new version. If it happens again after a reload, the page has a bug.</p>
+        <p>
+          If Kitchen ERP was just updated, reloading loads the new version. If it happens again
+          after a reload, the page has a bug.
+        </p>
         <div>
           <Button variant="secondary" onClick={() => window.location.reload()}>
             Reload

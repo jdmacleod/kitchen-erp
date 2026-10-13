@@ -66,7 +66,9 @@ export function CoordinatesField({
         if (latestValue.current !== valueWhenAsked) return;
         // Refused, unavailable and timed out are the same thing to the person
         // reading this: type or paste the coordinates instead.
-        setGeoError("Could not read this device's position. Type or paste the coordinates instead.");
+        setGeoError(
+          "Could not read this device's position. Type or paste the coordinates instead.",
+        );
       },
       { maximumAge: 5 * 60_000, timeout: 8_000 },
     );
@@ -86,12 +88,21 @@ export function CoordinatesField({
         disabled={disabled}
         hint="Latitude and longitude, separated by a comma. Copy them from a map application, or use this device's position."
       />
-      {unreadable ? <p className="text-xs text-red-700 dark:text-red-300">Not a latitude and longitude yet.</p> : null}
+      {unreadable ? (
+        <p className="text-xs text-red-700 dark:text-red-300">Not a latitude and longitude yet.</p>
+      ) : null}
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={locate} disabled={disabled || locating}>
+        <Button
+          variant="secondary"
+          className="min-h-11 lg:min-h-8 px-2 text-xs"
+          onClick={locate}
+          disabled={disabled || locating}
+        >
           {locating ? "Locating…" : "Use my location"}
         </Button>
-        {geoError ? <span className="text-xs text-red-700 dark:text-red-300">{geoError}</span> : null}
+        {geoError ? (
+          <span className="text-xs text-red-700 dark:text-red-300">{geoError}</span>
+        ) : null}
       </div>
     </div>
   );

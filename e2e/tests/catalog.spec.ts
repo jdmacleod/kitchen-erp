@@ -24,10 +24,15 @@ test("create an ingredient with only a name, then a product for it", async ({ pa
   await drawer.getByLabel(/^name/i).fill(`E2E rigatoni box ${stamp}`);
   const picker = drawer.getByRole("combobox", { name: "Ingredient" });
   await picker.fill(name);
-  await page.getByRole("option", { name: new RegExp(name) }).first().click();
+  await page
+    .getByRole("option", { name: new RegExp(name) })
+    .first()
+    .click();
   await drawer.getByRole("button", { name: "Add product" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   // Found by the server-side search, whichever page it sorts onto (D12).
   await page.getByLabel("Search products").fill(`E2E rigatoni box ${stamp}`);
-  await expect(page.getByRole("table", { name: "Products" }).getByText(`E2E rigatoni box ${stamp}`)).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Products" }).getByText(`E2E rigatoni box ${stamp}`),
+  ).toBeVisible();
 });

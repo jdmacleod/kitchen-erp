@@ -7,10 +7,20 @@ import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "
 
 // Invented ingredients for the picker (1G, UI-5.1, UI-5.2).
 const scallion = ingredientMatch(
-  { ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c01", name: "scallion", category: "produce", category_key: "produce" },
+  {
+    ...flour,
+    id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c01",
+    name: "scallion",
+    category: "produce",
+    category_key: "produce",
+  },
   { matched_spelling: "green onion", exact: true },
 );
-const onionPowder = ingredientMatch({ ...flour, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c02", name: "green onion powder" });
+const onionPowder = ingredientMatch({
+  ...flour,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c02",
+  name: "green onion powder",
+});
 const greenBean: IngredientMatch = {
   kind: "standard",
   id: null,
@@ -24,7 +34,10 @@ const greenBean: IngredientMatch = {
   exact: false,
 };
 
-function routes(search: (call: RecordedCall) => IngredientMatch[], onPost?: (call: RecordedCall) => void) {
+function routes(
+  search: (call: RecordedCall) => IngredientMatch[],
+  onPost?: (call: RecordedCall) => void,
+) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -63,7 +76,9 @@ describe("ingredient picker (1G)", () => {
     expect(options[1]).toHaveTextContent("green onion powder");
     const group = within(listbox).getByRole("group", { name: "From the standard list" });
     expect(within(group).getByRole("option")).toHaveTextContent("green beans");
-    expect(within(listbox).queryByRole("option", { name: /Create new ingredient/ })).not.toBeInTheDocument();
+    expect(
+      within(listbox).queryByRole("option", { name: /Create new ingredient/ }),
+    ).not.toBeInTheDocument();
 
     const search = calls.find((c) => c.path.startsWith("/ingredients/search"));
     expect(search?.query.get("include_standard")).toBe("true");
@@ -75,7 +90,9 @@ describe("ingredient picker (1G)", () => {
     renderApp("/catalog/products");
     const form = await openAddDrawer(user);
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "ramp");
-    expect(await within(form).findByRole("option", { name: /Create new ingredient “ramp”/ })).toBeInTheDocument();
+    expect(
+      await within(form).findByRole("option", { name: /Create new ingredient “ramp”/ }),
+    ).toBeInTheDocument();
   });
 
   it("says which spelling matched once an ingredient is chosen", async () => {
@@ -84,24 +101,37 @@ describe("ingredient picker (1G)", () => {
     renderApp("/catalog/products");
     const form = await openAddDrawer(user);
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "green onion");
-    await user.click(await within(form).findByRole("option", { name: "green onion, another name for scallion" }));
+    await user.click(
+      await within(form).findByRole("option", { name: "green onion, another name for scallion" }),
+    );
     expect(screen.getByTestId("new-product-ingredient-choice")).toHaveTextContent("scallion · g");
-    expect(screen.getByTestId("new-product-ingredient-note")).toHaveTextContent("matched green onion");
+    expect(screen.getByTestId("new-product-ingredient-note")).toHaveTextContent(
+      "matched green onion",
+    );
   });
 
   it("creates nothing until save, then sends the standard key with the product", async () => {
     const posts: RecordedCall[] = [];
-    mockApi(routes(() => [greenBean], (call) => posts.push(call)));
+    mockApi(
+      routes(
+        () => [greenBean],
+        (call) => posts.push(call),
+      ),
+    );
     const user = userEvent.setup();
     renderApp("/catalog/products");
     const form = await openAddDrawer(user);
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "green bea");
     await user.click(await within(form).findByRole("option", { name: /green beans/ }));
-    expect(screen.getByTestId("new-product-ingredient-note")).toHaveTextContent("New, from the standard list");
+    expect(screen.getByTestId("new-product-ingredient-note")).toHaveTextContent(
+      "New, from the standard list",
+    );
     expect(posts).toHaveLength(0);
 
     await user.type(within(form).getByLabelText("Name"), "Bundle");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0].body).toEqual({
       name: "Bundle",

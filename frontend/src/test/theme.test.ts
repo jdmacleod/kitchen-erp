@@ -18,7 +18,10 @@ const raw = import.meta.glob<string>(["../**/*.{ts,tsx,css}", "!../test/**"], {
   import: "default",
   eager: true,
 });
-const files = Object.entries(raw).map(([key, text]) => ({ path: key.replace(/^\.\.\//, ""), text }));
+const files = Object.entries(raw).map(([key, text]) => ({
+  path: key.replace(/^\.\.\//, ""),
+  text,
+}));
 
 describe("theme coverage (spec 08)", () => {
   it("defines every shade of the five scales the app uses", () => {
@@ -26,7 +29,9 @@ describe("theme coverage (spec 08)", () => {
     const missing = new Set<string>();
     for (const { path, text } of files) {
       if (path === "theme.css") continue;
-      for (const m of text.matchAll(/\b(?:[a-z-]+:)*[a-z]+-(neutral|blue|red|amber|green)-(\d{2,3})\b/g)) {
+      for (const m of text.matchAll(
+        /\b(?:[a-z-]+:)*[a-z]+-(neutral|blue|red|amber|green)-(\d{2,3})\b/g,
+      )) {
         const key = `${m[1]}-${m[2]}`;
         if (!defined.has(key)) missing.add(`${key} (${path})`);
       }
@@ -56,7 +61,9 @@ describe("theme coverage (spec 08)", () => {
     expect(secondaryLinkClass).toMatch(/\bdark:text-neutral-100\b/);
     const handRolled = files
       .filter(({ path }) => path !== "components/ui.tsx")
-      .filter(({ text }) => /rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium/.test(text))
+      .filter(({ text }) =>
+        /rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium/.test(text),
+      )
       .map(({ path }) => path);
     expect(handRolled).toEqual([]);
   });
@@ -82,7 +89,9 @@ describe("palette mirrors (lib/palette.ts)", () => {
 
   it("uses theme.css's own values for the neutrals", () => {
     for (const key of Object.keys(OKLCH).filter((k) => k.startsWith("neutral-")) as PaletteKey[]) {
-      expect(`${key} ${parseOklch(OKLCH[key]).join(" ")}`).toBe(`${key} ${defined.get(key)?.join(" ")}`);
+      expect(`${key} ${parseOklch(OKLCH[key]).join(" ")}`).toBe(
+        `${key} ${defined.get(key)?.join(" ")}`,
+      );
     }
   });
 });
@@ -91,6 +100,11 @@ describe("status tones (spec 08)", () => {
   it("gives each purchase status its own meaning", () => {
     // Draft waits on a person (squash), Reviewed is neutral (T14), Committed is done
     // (olive), and Voided is neutral: a removed purchase needs nobody (#74).
-    expect(purchaseStatusTone).toEqual({ draft: "warn", reviewed: "neutral", committed: "good", voided: "neutral" });
+    expect(purchaseStatusTone).toEqual({
+      draft: "warn",
+      reviewed: "neutral",
+      committed: "good",
+      voided: "neutral",
+    });
   });
 });

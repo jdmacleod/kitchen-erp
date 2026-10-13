@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { errorMessage } from "../../api/client";
-import { VENDOR_KINDS, useVendors, vendorKindLabel, type VendorKind, type VendorRef } from "../../api/geo";
+import {
+  VENDOR_KINDS,
+  useVendors,
+  vendorKindLabel,
+  type VendorKind,
+  type VendorRef,
+} from "../../api/geo";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { Button } from "../ui";
 import { Combobox } from "../catalog/Combobox";
 import { Badge, SelectField, labelClass } from "../catalog/fields";
 
 /** Either an existing vendor or one to create in the same request. */
-export type VendorChoice = { kind: "existing"; vendor: VendorRef } | { kind: "new"; name: string; vendorKind: VendorKind };
+export type VendorChoice =
+  { kind: "existing"; vendor: VendorRef } | { kind: "new"; name: string; vendorKind: VendorKind };
 
 type Option = { kind: "existing"; vendor: VendorRef } | { kind: "new"; name: string };
 
@@ -24,7 +31,14 @@ interface VendorPickerProps {
  * Pick a vendor by typing part of its name (GET /vendors?q=), or create one
  * inline; a new vendor needs a kind, chosen right here.
  */
-export function VendorPicker({ id, label = "Vendor", value, onChange, allowCreate = true, disabled }: VendorPickerProps) {
+export function VendorPicker({
+  id,
+  label = "Vendor",
+  value,
+  onChange,
+  allowCreate = true,
+  disabled,
+}: VendorPickerProps) {
   const [text, setText] = useState("");
   const debounced = useDebouncedValue(text, 200);
   const trimmed = text.trim();
@@ -61,7 +75,10 @@ export function VendorPicker({ id, label = "Vendor", value, onChange, allowCreat
             {value.kind === "existing" ? (
               <>
                 <span className="font-medium">{value.vendor.name}</span>
-                <span className="text-neutral-600 dark:text-neutral-400"> · {vendorKindLabel[value.vendor.kind]}</span>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {" "}
+                  · {vendorKindLabel[value.vendor.kind]}
+                </span>
               </>
             ) : (
               <>
@@ -69,7 +86,15 @@ export function VendorPicker({ id, label = "Vendor", value, onChange, allowCreat
               </>
             )}
           </span>
-          <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" disabled={disabled} onClick={() => { setText(""); onChange(null); }}>
+          <Button
+            variant="ghost"
+            className="min-h-11 lg:min-h-8 px-2"
+            disabled={disabled}
+            onClick={() => {
+              setText("");
+              onChange(null);
+            }}
+          >
             Change
           </Button>
         </div>
@@ -112,7 +137,10 @@ export function VendorPicker({ id, label = "Vendor", value, onChange, allowCreat
         o.kind === "existing" ? (
           <span>
             <span className="font-medium">{o.vendor.name}</span>
-            <span className="text-neutral-600 dark:text-neutral-400"> · {vendorKindLabel[o.vendor.kind]}</span>
+            <span className="text-neutral-600 dark:text-neutral-400">
+              {" "}
+              · {vendorKindLabel[o.vendor.kind]}
+            </span>
           </span>
         ) : (
           <span>

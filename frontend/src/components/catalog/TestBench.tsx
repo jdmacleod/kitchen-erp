@@ -103,30 +103,48 @@ export function TestBench({ ingredient }: { ingredient: Ingredient }) {
 function BenchResult({ result }: { result: ConvertResult }) {
   if (!result.ok) {
     return (
-      <div role="status" className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40">
+      <div
+        role="status"
+        className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950/40"
+      >
         <p className="font-medium">
           Failed: <code data-testid="bench-failure-code">{result.failure_code ?? "unknown"}</code>
         </p>
         {result.message ? <p className="mt-1">{result.message}</p> : null}
-        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">convert {result.version}</p>
+        <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
+          convert {result.version}
+        </p>
       </div>
     );
   }
   const p = result.provenance;
   return (
-    <div role="status" className="mt-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm dark:border-green-900 dark:bg-green-950/40">
+    <div
+      role="status"
+      className="mt-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm dark:border-green-900 dark:bg-green-950/40"
+    >
       <p className="text-base font-medium" data-testid="bench-result">
         = {trimDecimal(result.qty ?? "")} {result.unit}
       </p>
       {p ? <ProvenanceView provenance={p} /> : null}
-      <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">convert {result.version}</p>
+      <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
+        convert {result.version}
+      </p>
     </div>
   );
 }
 
-function ProvenanceView({ provenance, nested = false }: { provenance: Provenance; nested?: boolean }) {
+function ProvenanceView({
+  provenance,
+  nested = false,
+}: {
+  provenance: Provenance;
+  nested?: boolean;
+}) {
   return (
-    <dl className={`mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 ${nested ? "border-l-2 border-neutral-300 pl-3 dark:border-neutral-700" : ""}`}>
+    <dl
+      className={`mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 ${nested ? "border-l-2 border-neutral-300 pl-3 dark:border-neutral-700" : ""}`}
+    >
       <dt className="text-neutral-600 dark:text-neutral-400">Bridge</dt>
       <dd>{bridgeLabel[provenance.bridge_kind] ?? provenance.bridge_kind}</dd>
       {provenance.source ? (

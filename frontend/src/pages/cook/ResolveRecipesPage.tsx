@@ -17,7 +17,14 @@ import {
 import { Badge } from "../../components/catalog/fields";
 import { DecisionPicker, useNameDecision } from "../../components/cook/NameDecision";
 import { useNotice } from "../../components/Notice";
-import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -30,7 +37,9 @@ const noTally: Tally = { matched: 0, created: 0, ignored: 0 };
 /** "14 resolved: 11 matched, 2 created, 1 ignored." (10, Finish). */
 export function finishSentence(tally: Tally): string {
   const total = tally.matched + tally.created + tally.ignored;
-  const parts = (["matched", "created", "ignored"] as const).filter((k) => tally[k] > 0).map((k) => `${tally[k]} ${k}`);
+  const parts = (["matched", "created", "ignored"] as const)
+    .filter((k) => tally[k] > 0)
+    .map((k) => `${tally[k]} ${k}`);
   return `${total} resolved: ${parts.join(", ")}.`;
 }
 
@@ -43,7 +52,10 @@ function Breadcrumb() {
   return (
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
       <span>Cook</span> <span aria-hidden="true">/</span>{" "}
-      <Link to="/cook/recipes" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+      <Link
+        to="/cook/recipes"
+        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+      >
         Recipes
       </Link>
     </nav>
@@ -75,7 +87,9 @@ export function ResolveRecipesPage() {
   // After a row leaves, focus goes to the next row's first proposal or its picker (UI-7.12).
   useEffect(() => {
     if (focusNext === null || !list.current) return;
-    const row = list.current.querySelector<HTMLElement>(`[data-resolve-row="${CSS.escape(focusNext)}"]`);
+    const row = list.current.querySelector<HTMLElement>(
+      `[data-resolve-row="${CSS.escape(focusNext)}"]`,
+    );
     const target = row?.querySelector<HTMLElement>("[data-proposal], [role='combobox']");
     target?.focus();
     setFocusNext(null);
@@ -96,11 +110,19 @@ export function ResolveRecipesPage() {
     client.setQueryData<ResolveQueue>(recipeKeys.resolve, (current) => {
       if (!current) return current;
       const remaining = current.items.filter((i) => i.name_norm !== item.name_norm);
-      return { ...current, items: remaining, names: remaining.length, recipes: new Set(remaining.flatMap((i) => i.recipes.map((r) => r.id))).size };
+      return {
+        ...current,
+        items: remaining,
+        names: remaining.length,
+        recipes: new Set(remaining.flatMap((i) => i.recipes.map((r) => r.id))).size,
+      };
     });
     setTally((t) => ({ ...t, [decision.action]: t[decision.action] + 1 }));
     if (decision.remaining > 0) {
-      notice.show({ tone: "success", message: `${resolvedSentence(item.raw_names[0] ?? item.name_norm, decision)} ${decision.remaining} left.` });
+      notice.show({
+        tone: "success",
+        message: `${resolvedSentence(item.raw_names[0] ?? item.name_norm, decision)} ${decision.remaining} left.`,
+      });
       if (next) setFocusNext(next.name_norm);
     }
   };
@@ -108,7 +130,10 @@ export function ResolveRecipesPage() {
   return (
     <>
       <Breadcrumb />
-      <PageHeader title="Resolve recipe names" description="Say once which ingredient each name means. It's remembered for every recipe." />
+      <PageHeader
+        title="Resolve recipe names"
+        description="Say once which ingredient each name means. It's remembered for every recipe."
+      />
 
       {queue.isPending ? (
         <p role="status" className={`text-sm ${muted}`}>
@@ -137,7 +162,11 @@ export function ResolveRecipesPage() {
           >
             {countSentence(queue.data.names, queue.data.recipes)}
           </p>
-          <ul ref={list} aria-label="Recipe names to resolve" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          <ul
+            ref={list}
+            aria-label="Recipe names to resolve"
+            className="divide-y divide-neutral-200 dark:divide-neutral-800"
+          >
             {items.map((item, index) => (
               <ResolveRow
                 key={item.name_norm}
@@ -165,7 +194,11 @@ interface RowProps {
 
 function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: RowProps) {
   const rawName = item.raw_names[0] ?? item.name_norm;
-  const { decide, pending, messages, choice, setChoice } = useNameDecision({ nameNorm: item.name_norm, rawName, onResolved });
+  const { decide, pending, messages, choice, setChoice } = useNameDecision({
+    nameNorm: item.name_norm,
+    rawName,
+    onResolved,
+  });
   const ask = useAskModel();
   const [askedOnce, setAskedOnce] = useState(false);
   const otherSpellings = item.raw_names.slice(1);
@@ -175,11 +208,21 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
   const id = `resolve-${item.name_norm.replace(/[^a-z0-9]+/gi, "-")}`;
 
   return (
-    <li className="flex flex-col gap-2 py-4" data-resolve-row={item.name_norm} data-testid="resolve-row">
+    <li
+      className="flex flex-col gap-2 py-4"
+      data-resolve-row={item.name_norm}
+      data-testid="resolve-row"
+    >
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-semibold">{rawName}</span>
-        {item.name_norm !== rawName.toLowerCase() ? <span className={`text-xs ${muted}`}>({item.name_norm})</span> : null}
-        {otherSpellings.length > 0 ? <span className={`text-xs ${muted}`}>also written {otherSpellings.map((s) => `‘${s}’`).join(", ")}</span> : null}
+        {item.name_norm !== rawName.toLowerCase() ? (
+          <span className={`text-xs ${muted}`}>({item.name_norm})</span>
+        ) : null}
+        {otherSpellings.length > 0 ? (
+          <span className={`text-xs ${muted}`}>
+            also written {otherSpellings.map((s) => `‘${s}’`).join(", ")}
+          </span>
+        ) : null}
       </div>
       <p className={`text-sm ${muted}`}>
         in {item.recipes.length} {item.recipes.length === 1 ? "recipe" : "recipes"}:{" "}
@@ -193,7 +236,11 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
         ))}
         {more > 0 ? ` +${more} more` : ""}
       </p>
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={`Proposals for ${rawName}`}>
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label={`Proposals for ${rawName}`}
+      >
         {shown.map((p) => (
           <Button
             key={`${p.tier}:${p.ingredient_id ?? p.standard_key ?? p.fdc_id ?? p.name}`}
@@ -213,7 +260,9 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
             <Badge>{tierLabel(p)}</Badge>
           </Button>
         ))}
-        {askedOnce && !ask.isPending && shown.length === 0 ? <span className={`text-sm ${muted}`}>No suggestion</span> : null}
+        {askedOnce && !ask.isPending && shown.length === 0 ? (
+          <span className={`text-sm ${muted}`}>No suggestion</span>
+        ) : null}
         {modelConfigured ? (
           <Button
             variant="ghost"
@@ -232,10 +281,19 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
           </Button>
         ) : null}
       </div>
-      {ask.isError ? <Alert tone="error">Couldn&apos;t ask the model: {errorMessage(ask.error)}</Alert> : null}
+      {ask.isError ? (
+        <Alert tone="error">Couldn&apos;t ask the model: {errorMessage(ask.error)}</Alert>
+      ) : null}
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-0 flex-1 basis-56">
-          <DecisionPicker id={id} rawName={rawName} decide={decide} pending={pending} choice={choice} setChoice={setChoice} />
+          <DecisionPicker
+            id={id}
+            rawName={rawName}
+            decide={decide}
+            pending={pending}
+            choice={choice}
+            setChoice={setChoice}
+          />
         </div>
         <Button variant="ghost" disabled={pending} onClick={() => decide({ ignore: true })}>
           Not an ingredient

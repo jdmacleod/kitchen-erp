@@ -29,7 +29,12 @@ export function LoginPage() {
     <Centered>
       <h1 className="mb-6 text-center text-2xl font-semibold tracking-tight">Kitchen ERP</h1>
       <Card>
-        <form onSubmit={onSubmit} noValidate={false} className="flex flex-col gap-4" aria-labelledby="login-heading">
+        <form
+          onSubmit={onSubmit}
+          noValidate={false}
+          className="flex flex-col gap-4"
+          aria-labelledby="login-heading"
+        >
           <h2 id="login-heading" className="text-lg font-medium">
             Sign in
           </h2>

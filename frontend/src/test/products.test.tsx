@@ -2,7 +2,14 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Product } from "../api/catalog";
-import { flour, flourProduct, flourProductId, hits, units, ingredientMatch } from "./catalog-fixtures";
+import {
+  flour,
+  flourProduct,
+  flourProductId,
+  hits,
+  units,
+  ingredientMatch,
+} from "./catalog-fixtures";
 import { adminUser, errorResponse, jsonResponse, mockApi, renderApp } from "./helpers";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -32,7 +39,14 @@ describe("products", () => {
     const created: Product = {
       ...flourProduct,
       id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d09",
-      ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09", name: "rolled oats", canonical_unit: "g", active: true, category: null, category_key: null },
+      ingredient: {
+        id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09",
+        name: "rolled oats",
+        canonical_unit: "g",
+        active: true,
+        category: null,
+        category_key: null,
+      },
       brand: null,
       name: "Rolled Oats",
       pack_qty: "1",
@@ -61,7 +75,9 @@ describe("products", () => {
     await user.type(within(form).getByLabelText("Pack quantity"), "1");
     await user.selectOptions(within(form).getByLabelText("Pack unit"), "kg");
     await user.click(within(form).getByRole("radio", { name: "3" }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
 
     // The drawer closes, and the new row is in the list, so it takes focus (G10).
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -83,7 +99,8 @@ describe("products", () => {
     mockApi({
       ...baseRoutes(() => []),
       "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
-      "POST /products": () => jsonResponse(201, { ...flourProduct, name: "Zucchini flour", brand: null }),
+      "POST /products": () =>
+        jsonResponse(201, { ...flourProduct, name: "Zucchini flour", brand: null }),
     });
     const user = userEvent.setup();
     renderApp("/catalog/products");
@@ -91,7 +108,9 @@ describe("products", () => {
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
     await user.type(within(form).getByLabelText("Name"), "Zucchini flour");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
 
     const notice = await screen.findByTestId("notice");
     expect(notice).toHaveTextContent("Added Zucchini flour.");
@@ -113,9 +132,13 @@ describe("products", () => {
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
     await user.type(within(form).getByLabelText("Name"), "Flour");
     await user.type(within(form).getByLabelText("Pack quantity"), "5");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("both a pack quantity and a pack unit");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "both a pack quantity and a pack unit",
+    );
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });
 
@@ -132,21 +155,36 @@ describe("products", () => {
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
     await user.click(await within(form).findByRole("option", { name: /all-purpose flour/ }));
     await user.type(within(form).getByLabelText("Name"), "Flour");
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Another product already has that barcode.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Another product already has that barcode.",
+    );
   });
 
   it("edits a product, clearing the pack and confirming a density override", async () => {
-    let product: Product = { ...flourProduct, density_override: "0.6", density_override_source: "label" };
+    let product: Product = {
+      ...flourProduct,
+      density_override: "0.6",
+      density_override_source: "label",
+    };
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, product),
-      [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
+      [`GET /products/${flourProductId}/prices`]: () =>
+        jsonResponse(200, { points: [], latest: [] }),
       [`PATCH /products/${flourProductId}`]: () => {
-        product = { ...product, pack_qty: null, pack_unit: null, name: "AP Flour", updated_at: "2026-03-03T00:00:00Z" };
+        product = {
+          ...product,
+          pack_qty: null,
+          pack_unit: null,
+          name: "AP Flour",
+          updated_at: "2026-03-03T00:00:00Z",
+        };
         return jsonResponse(200, product);
       },
       [`POST /products/${flourProductId}/density-override/confirm`]: () => {
@@ -157,7 +195,9 @@ describe("products", () => {
     const user = userEvent.setup();
     renderApp(`/catalog/products/${flourProductId}`);
 
-    expect(await screen.findByRole("heading", { name: "Millstone All-Purpose Flour" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Millstone All-Purpose Flour" }),
+    ).toBeInTheDocument();
     const form = screen.getByRole("form", { name: "Edit product" });
     expect(within(form).getByLabelText("Pack unit")).toHaveValue("lb");
 
@@ -167,13 +207,19 @@ describe("products", () => {
     await user.selectOptions(within(form).getByLabelText("Pack unit"), "");
     await user.click(within(form).getByRole("button", { name: "Save changes" }));
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Millstone AP Flour" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "Millstone AP Flour" })).toBeInTheDocument(),
+    );
     const patch = calls.find((c) => c.method === "PATCH");
     expect(patch?.body).toEqual({ name: "AP Flour", clear_pack: true });
 
     await user.click(screen.getByRole("button", { name: "Confirm density override" }));
-    await waitFor(() => expect(screen.getByTestId("density-override-summary")).toHaveTextContent("confirmed"));
-    expect(screen.queryByRole("button", { name: "Confirm density override" })).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId("density-override-summary")).toHaveTextContent("confirmed"),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Confirm density override" }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -182,17 +228,37 @@ describe("a pasted page with the lookup helper (2M)", () => {
 
   async function addWithAddress(configured: boolean) {
     let products: Product[] = [];
-    const created: Product = { ...flourProduct, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e01", name: "Rolled Oats", brand: null, barcode: null };
+    const created: Product = {
+      ...flourProduct,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e01",
+      name: "Rolled Oats",
+      brand: null,
+      barcode: null,
+    };
     const calls = mockApi({
       ...baseRoutes(() => products),
       "GET /products-helper": () => jsonResponse(200, { configured }),
-      "POST /product-captures/address": () => jsonResponse(200, { vendor: null, canonical_url: PAGE, title: "Rolled oats 1kg", item_number: "4417" }),
+      "POST /product-captures/address": () =>
+        jsonResponse(200, {
+          vendor: null,
+          canonical_url: PAGE,
+          title: "Rolled oats 1kg",
+          item_number: "4417",
+        }),
       "POST /products": () => {
         products = [created];
         return jsonResponse(201, created);
       },
       [`POST /products/${created.id}/look-up`]: () =>
-        jsonResponse(200, { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02", kind: "page", value: PAGE, listing_id: null, status: "open", created_at: "2026-10-05T10:00:00Z", answered_at: null }),
+        jsonResponse(200, {
+          id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e02",
+          kind: "page",
+          value: PAGE,
+          listing_id: null,
+          status: "open",
+          created_at: "2026-10-05T10:00:00Z",
+          answered_at: null,
+        }),
     });
     const user = userEvent.setup();
     renderApp("/catalog/products");
@@ -206,21 +272,33 @@ describe("a pasted page with the lookup helper (2M)", () => {
     expect(within(form).getByText(hint)).toBeInTheDocument();
     await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "rolled oats");
     await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
-    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }));
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     return { calls, created };
   }
 
   it("sends the page to the helper after saving, and says so", async () => {
     const { calls, created } = await addWithAddress(true);
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/products/${created.id}/look-up`)).toBe(true));
-    expect(calls.find((c) => c.path === `/products/${created.id}/look-up`)?.body).toEqual({ page_url: PAGE });
-    expect(await screen.findByTestId("notice")).toHaveTextContent("Added Rolled Oats. The lookup helper will read its page; what it finds will wait on Home for review.");
+    await waitFor(() =>
+      expect(
+        calls.some((c) => c.method === "POST" && c.path === `/products/${created.id}/look-up`),
+      ).toBe(true),
+    );
+    expect(calls.find((c) => c.path === `/products/${created.id}/look-up`)?.body).toEqual({
+      page_url: PAGE,
+    });
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Added Rolled Oats. The lookup helper will read its page; what it finds will wait on Home for review.",
+    );
   });
 
   it("sends nothing without a helper", async () => {
     const { calls } = await addWithAddress(false);
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/products")).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === "/products")).toBe(true),
+    );
     expect(calls.some((c) => c.path.endsWith("/look-up"))).toBe(false);
   });
 
@@ -230,7 +308,13 @@ describe("a pasted page with the lookup helper (2M)", () => {
       ...baseRoutes(() => []),
       "GET /products-helper": () => jsonResponse(200, { configured: false }),
       "POST /product-captures/address": () =>
-        jsonResponse(200, { vendor: null, canonical_url: PAGE, title: "Rolled oats 1kg", item_number: "4417", known: { product_id: knownId, name: "Rolled oats", reason: "identifier" } }),
+        jsonResponse(200, {
+          vendor: null,
+          canonical_url: PAGE,
+          title: "Rolled oats 1kg",
+          item_number: "4417",
+          known: { product_id: knownId, name: "Rolled oats", reason: "identifier" },
+        }),
     });
     const user = userEvent.setup();
     renderApp("/catalog/products");

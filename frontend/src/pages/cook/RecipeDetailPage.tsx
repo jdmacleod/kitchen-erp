@@ -23,7 +23,14 @@ import { SnapshotChart, snapshotPoints } from "../../components/cook/SnapshotCha
 import { useNotice } from "../../components/Notice";
 import { AddRecipeToListPanel } from "../../components/plan/AddToListPanel";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { formatRelative } from "../../lib/format";
 import { useCurrentKitchen, usePlanBuilt } from "../../lib/kitchen";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -82,7 +89,10 @@ function Breadcrumb() {
   return (
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
       <span>Cook</span> <span aria-hidden="true">/</span>{" "}
-      <Link to="/cook/recipes" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+      <Link
+        to="/cook/recipes"
+        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+      >
         Recipes
       </Link>
     </nav>
@@ -147,7 +157,8 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
       ) : null}
       <span aria-hidden="true">·</span>
       <span>
-        Indexed <time dateTime={recipe.last_indexed_at}>{formatRelative(recipe.last_indexed_at)}</time>
+        Indexed{" "}
+        <time dateTime={recipe.last_indexed_at}>{formatRelative(recipe.last_indexed_at)}</time>
       </span>
     </span>
   );
@@ -170,7 +181,11 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
           </a>
           {recipe.status === "missing" ? <RemoveRecipe recipe={recipe} /> : null}
           {plan && recipe.status !== "missing" ? (
-            <Button variant="secondary" onClick={() => setAddingToList((v) => !v)} aria-expanded={addingToList}>
+            <Button
+              variant="secondary"
+              onClick={() => setAddingToList((v) => !v)}
+              aria-expanded={addingToList}
+            >
               Add to list
             </Button>
           ) : null}
@@ -180,7 +195,8 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
 
       {recipe.status === "parse_error" ? (
         <Alert tone="warn" className="mb-4">
-          This file can&apos;t be read: {recipe.parse_error_message ?? "the parser gave no message"}.
+          This file can&apos;t be read: {recipe.parse_error_message ?? "the parser gave no message"}
+          .
         </Alert>
       ) : null}
       {recipe.status === "missing" ? <MissingAlert recipe={recipe} /> : null}
@@ -201,9 +217,22 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
               {scoped ? <KitchenTag name={scoped.name} /> : null}
             </h2>
             <div className="flex flex-wrap items-center gap-2">
-              <SegmentedControl<CostBasis> label="Basis" options={COST_BASES.map((b) => ({ value: b, label: basisLabel[b] }))} value={basis} onChange={setBasis} />
+              <SegmentedControl<CostBasis>
+                label="Basis"
+                options={COST_BASES.map((b) => ({ value: b, label: basisLabel[b] }))}
+                value={basis}
+                onChange={setBasis}
+              />
               {kitchen.built && kitchen.kitchens.length > 0 ? (
-                <SegmentedControl label="Kitchen" value={scoped?.id ?? ""} onChange={setKitchen} options={[{ value: "", label: "All" }, ...kitchen.kitchens.map((k) => ({ value: k.id, label: k.name }))]} />
+                <SegmentedControl
+                  label="Kitchen"
+                  value={scoped?.id ?? ""}
+                  onChange={setKitchen}
+                  options={[
+                    { value: "", label: "All" },
+                    ...kitchen.kitchens.map((k) => ({ value: k.id, label: k.name })),
+                  ]}
+                />
               ) : null}
             </div>
           </div>
@@ -212,7 +241,9 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
               Prices at {scoped.name}&apos;s stores only, worked out now and not kept as a snapshot.
             </p>
           ) : null}
-          {recipe.status === "parse_error" && cost.data ? <p className={`text-sm ${muted}`}>Showing the last version that could be read.</p> : null}
+          {recipe.status === "parse_error" && cost.data ? (
+            <p className={`text-sm ${muted}`}>Showing the last version that could be read.</p>
+          ) : null}
           {cost.isError ? (
             <Alert tone="error">
               <span className="flex flex-wrap items-center justify-between gap-2">
@@ -226,7 +257,13 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
             <>
               <CostTotals cost={cost.data} costing={cost.isPending} />
               {cost.data ? <CostTable cost={cost.data} recipe={recipe} /> : null}
-              {scoped ? null : history.isError ? <Alert tone="error">Couldn&apos;t load the cost history: {errorMessage(history.error)}</Alert> : <SnapshotChart points={points} />}
+              {scoped ? null : history.isError ? (
+                <Alert tone="error">
+                  Couldn&apos;t load the cost history: {errorMessage(history.error)}
+                </Alert>
+              ) : (
+                <SnapshotChart points={points} />
+              )}
             </>
           )}
         </div>
@@ -249,19 +286,27 @@ function MissingAlert({ recipe }: { recipe: Recipe }) {
   return (
     <Alert tone="info" className="mb-4">
       <span className="flex flex-col gap-2">
-        <span>This file is no longer in the repository. Its costs and pins are kept until you remove it.</span>
+        <span>
+          This file is no longer in the repository. Its costs and pins are kept until you remove it.
+        </span>
         {proposal ? (
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid="relink-proposal">
+          <span
+            className="flex flex-wrap items-center gap-x-3 gap-y-1"
+            data-testid="relink-proposal"
+          >
             <span>
-              Is it now ‘{proposal.title}’ (<span className="font-mono text-xs">{proposal.path}</span>)?
+              Is it now ‘{proposal.title}’ (
+              <span className="font-mono text-xs">{proposal.path}</span>)?
             </span>
             <Button
               variant="secondary"
               disabled={busy}
               onClick={() =>
                 relink.mutate(proposal.target_id, {
-                  onSuccess: () => notice.show({ tone: "success", message: `Relinked to ${proposal.title}.` }),
-                  onError: (e) => notice.show({ tone: "error", message: `Couldn't relink: ${errorMessage(e)}` }),
+                  onSuccess: () =>
+                    notice.show({ tone: "success", message: `Relinked to ${proposal.title}.` }),
+                  onError: (e) =>
+                    notice.show({ tone: "error", message: `Couldn't relink: ${errorMessage(e)}` }),
                 })
               }
             >
@@ -270,7 +315,15 @@ function MissingAlert({ recipe }: { recipe: Recipe }) {
             <Button
               variant="ghost"
               disabled={busy}
-              onClick={() => dismiss.mutate(undefined, { onError: (e) => notice.show({ tone: "error", message: `Couldn't dismiss the proposal: ${errorMessage(e)}` }) })}
+              onClick={() =>
+                dismiss.mutate(undefined, {
+                  onError: (e) =>
+                    notice.show({
+                      tone: "error",
+                      message: `Couldn't dismiss the proposal: ${errorMessage(e)}`,
+                    }),
+                })
+              }
             >
               {dismiss.isPending ? "Dismissing…" : "Not the same"}
             </Button>

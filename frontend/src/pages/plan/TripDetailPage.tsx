@@ -53,9 +53,14 @@ export function replanPrefill(trip: Trip): TripPrefill {
 }
 
 /** "predicted $x · actual $y" once a stop is done (10, Trip page: Stops; UI-8.18), else null. */
-export function predictedVsActual(trip: Pick<Trip, "predicted_item_cost" | "actual_item_cost">): string | null {
+export function predictedVsActual(
+  trip: Pick<Trip, "predicted_item_cost" | "actual_item_cost">,
+): string | null {
   if (trip.actual_item_cost === null || trip.actual_item_cost === undefined) return null;
-  const predicted = trip.predicted_item_cost === null || trip.predicted_item_cost === undefined ? "" : `predicted ${formatMoney(trip.predicted_item_cost)} · `;
+  const predicted =
+    trip.predicted_item_cost === null || trip.predicted_item_cost === undefined
+      ? ""
+      : `predicted ${formatMoney(trip.predicted_item_cost)} · `;
   return `${predicted}actual ${formatMoney(trip.actual_item_cost)}`;
 }
 
@@ -66,7 +71,8 @@ export function tripMeta(trip: Trip): string {
     `time at ${formatMoney(trip.value_of_time_per_hour)} an hour`,
     `up to ${trip.max_stops} ${trip.max_stops === 1 ? "stop" : "stops"}`,
   ];
-  if (trip.mileage_rate !== null) parts.push(`mileage at ${formatMoney(trip.mileage_rate, 2, 4)} a mile`);
+  if (trip.mileage_rate !== null)
+    parts.push(`mileage at ${formatMoney(trip.mileage_rate, 2, 4)} a mile`);
   const actuals = predictedVsActual(trip);
   if (actuals) parts.push(actuals);
   return parts.join(" · ");
@@ -76,7 +82,10 @@ function Breadcrumb() {
   return (
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
       <span>Plan</span> <span aria-hidden="true">/</span>{" "}
-      <Link to="/plan/trips" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+      <Link
+        to="/plan/trips"
+        className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+      >
         Trips
       </Link>
     </nav>
@@ -98,9 +107,17 @@ export function TripDetailPage() {
       <>
         <Breadcrumb />
         <PageHeader title="Trip" />
-        <div role="status" aria-label="Planning…" className="grid gap-4 lg:grid-cols-3" data-testid="trip-skeleton">
+        <div
+          role="status"
+          aria-label="Planning…"
+          className="grid gap-4 lg:grid-cols-3"
+          data-testid="trip-skeleton"
+        >
           {VARIANT_KINDS.map((k) => (
-            <div key={k} className="h-56 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900" />
+            <div
+              key={k}
+              className="h-56 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+            />
           ))}
           <span className="sr-only">Planning…</span>
         </div>
@@ -115,7 +132,11 @@ export function TripDetailPage() {
         <PageHeader title="Trip" />
         <Alert tone="error">
           <span className="flex flex-wrap items-center justify-between gap-2">
-            <span>{gone ? "There is no such trip. It may have been deleted." : `Couldn't load the trip: ${errorMessage(trip.error)}`}</span>
+            <span>
+              {gone
+                ? "There is no such trip. It may have been deleted."
+                : `Couldn't load the trip: ${errorMessage(trip.error)}`}
+            </span>
             {gone ? null : (
               <Button variant="secondary" onClick={() => void trip.refetch()}>
                 Try again
@@ -146,33 +167,70 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
   const chosen = chosenVariant(trip);
   const open = planOpen(trip);
   const shown = chosen ?? variantOf(trip, shownKind) ?? trip.variants[0];
-  const ordered = VARIANT_KINDS.map((k) => variantOf(trip, k)).filter((v): v is Variant => v !== undefined);
+  const ordered = VARIANT_KINDS.map((k) => variantOf(trip, k)).filter(
+    (v): v is Variant => v !== undefined,
+  );
   const showMileage = trip.mileage_rate !== null;
 
-  const byId = useMemo(() => new globalThis.Map((locations.data ?? []).map((l) => [l.id, l])), [locations.data]);
-  const locationById = useCallback((lid: string): VendorLocation | undefined => byId.get(lid), [byId]);
-  const locationName = useCallback((lid: string) => byId.get(lid)?.name ?? shown?.stops.find((s) => s.vendor_location_id === lid)?.vendor_location_name ?? null, [byId, shown]);
+  const byId = useMemo(
+    () => new globalThis.Map((locations.data ?? []).map((l) => [l.id, l])),
+    [locations.data],
+  );
+  const locationById = useCallback(
+    (lid: string): VendorLocation | undefined => byId.get(lid),
+    [byId],
+  );
+  const locationName = useCallback(
+    (lid: string) =>
+      byId.get(lid)?.name ??
+      shown?.stops.find((s) => s.vendor_location_id === lid)?.vendor_location_name ??
+      null,
+    [byId, shown],
+  );
 
   const onChoose = (variant: Variant) =>
     choose.mutate(
       { id: trip.id, variantId: variant.id },
       {
-        onSuccess: () => notice.show({ tone: "success", message: `Chose ${variantLabel[variant.kind]}. The plan is kept as it is now.` }),
+        onSuccess: () =>
+          notice.show({
+            tone: "success",
+            message: `Chose ${variantLabel[variant.kind]}. The plan is kept as it is now.`,
+          }),
         onError: (e) => {
           // A second Choose is refused; the page refreshes into the chosen view (UI-8.15).
           if (isApiError(e) && e.status === 409) {
             refetch();
-            notice.show({ tone: "info", message: "A plan was already chosen for this trip; showing it." });
-          } else notice.show({ tone: "error", message: `Couldn't choose ${variantLabel[variant.kind]}: ${errorMessage(e)}` });
+            notice.show({
+              tone: "info",
+              message: "A plan was already chosen for this trip; showing it.",
+            });
+          } else
+            notice.show({
+              tone: "error",
+              message: `Couldn't choose ${variantLabel[variant.kind]}: ${errorMessage(e)}`,
+            });
         },
       },
     );
 
   // Once chosen, the trip is worked stop by stop: the first one not yet done (UI-8.15).
   const startAt = chosen && open ? firstOpenStop(trip) : null;
-  const startLabel = startAt && chosen && startAt.seq !== chosen.stops[0]?.seq ? `Continue at stop ${startAt.seq}` : "Start the trip";
+  const startLabel =
+    startAt && chosen && startAt.seq !== chosen.stops[0]?.seq
+      ? `Continue at stop ${startAt.seq}`
+      : "Start the trip";
 
-  const actions: MoreAction[] = open ? [{ label: "Abandon", variant: "danger", open: () => setAbandonAsk(true), disabled: abandonAsk }] : [];
+  const actions: MoreAction[] = open
+    ? [
+        {
+          label: "Abandon",
+          variant: "danger",
+          open: () => setAbandonAsk(true),
+          disabled: abandonAsk,
+        },
+      ]
+    : [];
 
   return (
     <>
@@ -203,7 +261,10 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
           ) : null}
           {/* Choose lives on the cards until one is chosen; afterwards Replan is the primary (10, Trip page). */}
           {tripKitchen ? (
-            <Button variant={chosen && !startAt ? "primary" : "secondary"} onClick={() => setReplanning(true)}>
+            <Button
+              variant={chosen && !startAt ? "primary" : "secondary"}
+              onClick={() => setReplanning(true)}
+            >
               Replan
             </Button>
           ) : null}
@@ -232,19 +293,31 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
       {chosen ? (
         <div className="flex flex-col gap-3">
           <div className="lg:max-w-md">
-            <VariantCard variant={chosen} showMileage={showMileage} chosenAt={trip.chosen_at} canChoose={false} />
+            <VariantCard
+              variant={chosen}
+              showMileage={showMileage}
+              chosenAt={trip.chosen_at}
+              canChoose={false}
+            />
           </div>
           <Disclosure summary="Show the other plans">
             <ul className="flex flex-col gap-2 text-sm" data-testid="other-plans">
               {ordered
                 .filter((v) => v.id !== chosen.id)
                 .map((v) => (
-                  <li key={v.id} data-testid="other-plan" data-kind={v.kind} className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <li
+                    key={v.id}
+                    data-testid="other-plan"
+                    data-kind={v.kind}
+                    className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+                  >
                     <span className="font-medium">{variantLabel[v.kind]}</span>
                     {v.kind === "cheapest" ? <Badge tone="good">cheapest</Badge> : null}
                     {v.estimated ? <Badge tone="warn">estimated</Badge> : null}
                     <span className="tabular-nums">{formatMoney(v.total_cost)}</span>
-                    {v.kind === "balanced" ? null : <span className={muted}>{tradeSentence(v.trade)}</span>}
+                    {v.kind === "balanced" ? null : (
+                      <span className={muted}>{tradeSentence(v.trade)}</span>
+                    )}
                   </li>
                 ))}
             </ul>
@@ -253,7 +326,14 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
       ) : (
         <div className="grid gap-4 lg:grid-cols-3" data-testid="variant-cards">
           {ordered.map((v) => (
-            <VariantCard key={v.id} variant={v} showMileage={showMileage} canChoose={open} choosing={choose.isPending && choose.variables?.variantId === v.id} onChoose={onChoose} />
+            <VariantCard
+              key={v.id}
+              variant={v}
+              showMileage={showMileage}
+              canChoose={open}
+              choosing={choose.isPending && choose.variables?.variantId === v.id}
+              onChoose={onChoose}
+            />
           ))}
         </div>
       )}
@@ -273,19 +353,38 @@ function TripView({ trip, refetch }: { trip: Trip; refetch: () => void }) {
               />
             )}
             <TripAnnotations annotations={shown.annotations} locationName={locationName} />
-            <TripStops variant={shown} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} wide={wide} openStopsOf={chosen ? trip.id : null} />
+            <TripStops
+              variant={shown}
+              locationById={locationById}
+              selectedId={selectedStop}
+              onSelect={setSelectedStop}
+              wide={wide}
+              openStopsOf={chosen ? trip.id : null}
+            />
           </div>
           <div className="lg:sticky lg:top-4 lg:self-start">
             {/* The map waits for the kitchen and the locations, so its first fit takes in every pin. */}
             {kitchen.ready && !locations.isPending ? (
-              <TripMap kitchen={tripKitchen} stops={shown.stops} locationById={locationById} selectedId={selectedStop} onSelect={setSelectedStop} />
+              <TripMap
+                kitchen={tripKitchen}
+                stops={shown.stops}
+                locationById={locationById}
+                selectedId={selectedStop}
+                onSelect={setSelectedStop}
+              />
             ) : (
-              <div role="status" aria-label="Loading the map" className="h-80 rounded-lg border border-neutral-200 bg-white lg:h-[28rem] dark:border-neutral-800 dark:bg-neutral-900" />
+              <div
+                role="status"
+                aria-label="Loading the map"
+                className="h-80 rounded-lg border border-neutral-200 bg-white lg:h-[28rem] dark:border-neutral-800 dark:bg-neutral-900"
+              />
             )}
           </div>
         </div>
       ) : (
-        <p className={`mt-6 text-sm ${muted}`}>This plan has no variants: the list emptied before it was planned.</p>
+        <p className={`mt-6 text-sm ${muted}`}>
+          This plan has no variants: the list emptied before it was planned.
+        </p>
       )}
 
       {replanning && tripKitchen ? (
@@ -316,7 +415,10 @@ function AbandonConfirm({ trip, onClose }: { trip: Trip; onClose: () => void }) 
   return (
     <Alert tone="warn" className="mb-4">
       <div className="flex flex-col gap-2" data-testid="abandon-confirm">
-        <p>Abandon this trip? It stays in the trips list as Abandoned, and nothing is bought or recorded.</p>
+        <p>
+          Abandon this trip? It stays in the trips list as Abandoned, and nothing is bought or
+          recorded.
+        </p>
         <div className="flex flex-wrap gap-2">
           <Button ref={cancel} variant="secondary" onClick={onClose} disabled={abandon.isPending}>
             Cancel
@@ -336,7 +438,11 @@ function AbandonConfirm({ trip, onClose }: { trip: Trip; onClose: () => void }) 
             {abandon.isPending ? "Abandoning…" : "Abandon trip"}
           </Button>
         </div>
-        {abandon.isError ? <span className="text-red-800 dark:text-red-200">Couldn&apos;t abandon the trip: {errorMessage(abandon.error)}</span> : null}
+        {abandon.isError ? (
+          <span className="text-red-800 dark:text-red-200">
+            Couldn&apos;t abandon the trip: {errorMessage(abandon.error)}
+          </span>
+        ) : null}
       </div>
     </Alert>
   );

@@ -103,7 +103,16 @@ export function basemapLabelColours(dark: boolean) {
   const quiet = dark ? HEX["neutral-300"] : HEX["neutral-700"];
   const strong = dark ? HEX["neutral-100"] : HEX["neutral-900"];
   const halo = dark ? HEX["neutral-950"] : HEX["neutral-50"];
-  const poi = { blue: text, green: text, lapis: text, pink: text, red: text, slategray: text, tangerine: text, turquoise: text };
+  const poi = {
+    blue: text,
+    green: text,
+    lapis: text,
+    pink: text,
+    red: text,
+    slategray: text,
+    tangerine: text,
+    turquoise: text,
+  };
   return {
     roads_label_minor: quiet,
     roads_label_minor_halo: halo,

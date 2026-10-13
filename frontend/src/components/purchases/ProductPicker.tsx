@@ -37,7 +37,11 @@ export function productRefFromHit(hit: SearchHit): ProductRef {
     pack_unit: hit.pack_unit,
     pack_count: hit.pack_count,
     piece_name: hit.piece_name,
-    ingredient: { id: hit.ingredient.id, name: hit.ingredient.name, canonical_unit: hit.ingredient.canonical_unit },
+    ingredient: {
+      id: hit.ingredient.id,
+      name: hit.ingredient.name,
+      canonical_unit: hit.ingredient.canonical_unit,
+    },
   };
 }
 
@@ -50,7 +54,11 @@ export function productRefFromProduct(p: Product): ProductRef {
     pack_unit: p.pack_unit,
     pack_count: p.pack_count,
     piece_name: p.piece_name,
-    ingredient: { id: p.ingredient.id, name: p.ingredient.name, canonical_unit: p.ingredient.canonical_unit },
+    ingredient: {
+      id: p.ingredient.id,
+      name: p.ingredient.name,
+      canonical_unit: p.ingredient.canonical_unit,
+    },
   };
 }
 
@@ -118,10 +126,18 @@ export function ProductPicker({
           <span data-testid={`${id}-choice`} className="min-w-0">
             <span className="font-medium">{productTitle(value)}</span>
             {formatPack(value.pack_qty, value.pack_unit) ? (
-              <span className="text-neutral-600 dark:text-neutral-400"> · {formatPack(value.pack_qty, value.pack_unit)}</span>
+              <span className="text-neutral-600 dark:text-neutral-400">
+                {" "}
+                · {formatPack(value.pack_qty, value.pack_unit)}
+              </span>
             ) : null}
           </span>
-          <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" disabled={disabled} onClick={() => onChange(null)}>
+          <Button
+            variant="ghost"
+            className="min-h-11 lg:min-h-8 px-2"
+            disabled={disabled}
+            onClick={() => onChange(null)}
+          >
             Change
           </Button>
         </div>
@@ -130,7 +146,16 @@ export function ProductPicker({
   }
 
   if (creating) {
-    return <InlineProductCreate id={`${id}-new`} onCreated={pick} onCancel={() => setCreating(false)} disabled={disabled} initialName={typed.trim() || nameFromLine(lineText)} suggestFrom={lineText ?? undefined} />;
+    return (
+      <InlineProductCreate
+        id={`${id}-new`}
+        onCreated={pick}
+        onCancel={() => setCreating(false)}
+        disabled={disabled}
+        initialName={typed.trim() || nameFromLine(lineText)}
+        suggestFrom={lineText ?? undefined}
+      />
+    );
   }
 
   return (
@@ -157,7 +182,12 @@ export function ProductPicker({
             disabled={disabled}
           />
         </div>
-        <Button variant="secondary" disabled={disabled} onClick={() => setCreating(true)} className="whitespace-nowrap">
+        <Button
+          variant="secondary"
+          disabled={disabled}
+          onClick={() => setCreating(true)}
+          className="whitespace-nowrap"
+        >
           New product
         </Button>
       </div>
@@ -183,7 +213,15 @@ interface InlineProductCreateProps {
  * (existing or new by name), brand, name, and pack. Enter creates; Escape
  * cancels. Everything else about the product can be edited later.
  */
-export function InlineProductCreate({ id, onCreated, onCancel, disabled, initialBarcode, initialName = "", suggestFrom }: InlineProductCreateProps) {
+export function InlineProductCreate({
+  id,
+  onCreated,
+  onCancel,
+  disabled,
+  initialBarcode,
+  initialName = "",
+  suggestFrom,
+}: InlineProductCreateProps) {
   const create = useCreateProduct();
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const [brand, setBrand] = useState("");
@@ -198,8 +236,10 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled, initial
     if (!ingredient) return setInvalid("Choose an ingredient, or create a new one by name.");
     if (!name.trim()) return setInvalid("A product name is required.");
     const hasQty = packQty.trim() !== "";
-    if (hasQty !== (packUnit !== "")) return setInvalid("Give both a pack quantity and a pack unit, or neither.");
-    if (hasQty && !isPositiveDecimal(packQty)) return setInvalid("Pack quantity must be a positive number.");
+    if (hasQty !== (packUnit !== ""))
+      return setInvalid("Give both a pack quantity and a pack unit, or neither.");
+    if (hasQty && !isPositiveDecimal(packQty))
+      return setInvalid("Pack quantity must be a positive number.");
     setInvalid(null);
 
     const input: ProductCreateInput = { name: name.trim(), ...choiceInput(ingredient) };
@@ -242,9 +282,22 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled, initial
       </p>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {create.error ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
-      <IngredientPicker id={`${id}-ingredient`} value={ingredient} onChange={setIngredient} disabled={busy} suggestFrom={suggestFrom} />
+      <IngredientPicker
+        id={`${id}-ingredient`}
+        value={ingredient}
+        onChange={setIngredient}
+        disabled={busy}
+        suggestFrom={suggestFrom}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field id={`${id}-brand`} label="Brand" autoComplete="off" value={brand} onChange={(e) => setBrand(e.target.value)} disabled={busy} />
+        <Field
+          id={`${id}-brand`}
+          label="Brand"
+          autoComplete="off"
+          value={brand}
+          onChange={(e) => setBrand(e.target.value)}
+          disabled={busy}
+        />
         <Field
           id={`${id}-name`}
           label="Name"
@@ -277,7 +330,14 @@ export function InlineProductCreate({ id, onCreated, onCancel, disabled, initial
           disabled={busy}
           hint="Both pack fields or neither."
         />
-        <UnitSelect id={`${id}-pack-unit`} label="Pack unit" value={packUnit} onChange={setPackUnit} emptyLabel="No pack" disabled={busy} />
+        <UnitSelect
+          id={`${id}-pack-unit`}
+          label="Pack unit"
+          value={packUnit}
+          onChange={setPackUnit}
+          emptyLabel="No pack"
+          disabled={busy}
+        />
       </div>
       <div className="flex flex-wrap gap-2">
         <Button onClick={submit} disabled={busy}>

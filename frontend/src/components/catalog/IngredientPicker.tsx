@@ -53,15 +53,24 @@ export function choiceInput(
   choice: IngredientChoice,
 ): { ingredient_id: string } | { ingredient: IngredientCreateInput } {
   if (choice.kind === "existing") return { ingredient_id: choice.ingredient.id };
-  if (choice.kind === "standard") return { ingredient: { name: choice.name, standard_key: choice.key } };
+  if (choice.kind === "standard")
+    return { ingredient: { name: choice.name, standard_key: choice.key } };
   const category = choice.category?.trim();
   return { ingredient: category ? { name: choice.name, category } : { name: choice.name } };
 }
 
 /** A search or suggestion row as the choice picking it makes. */
 export function choiceFromMatch(m: IngredientMatch): IngredientChoice {
-  if (m.kind === "ingredient") return { kind: "existing", ingredient: summary(m), matchedSpelling: m.matched_spelling };
-  return { kind: "standard", key: m.key ?? "", name: m.name, canonical_unit: m.canonical_unit, category: m.category, category_key: m.category_key };
+  if (m.kind === "ingredient")
+    return { kind: "existing", ingredient: summary(m), matchedSpelling: m.matched_spelling };
+  return {
+    kind: "standard",
+    key: m.key ?? "",
+    name: m.name,
+    canonical_unit: m.canonical_unit,
+    category: m.category,
+    category_key: m.category_key,
+  };
 }
 
 function summary(m: IngredientMatch): IngredientSummary {
@@ -139,8 +148,14 @@ export function IngredientPicker({
   const settled = debounced === text && !search.isFetching;
 
   const options: Option[] = [
-    ...found.filter((m) => m.kind === "ingredient").map((match): Option => ({ kind: "existing", match })),
-    ...(offerStandard ? found.filter((m) => m.kind === "standard").map((match): Option => ({ kind: "standard", match })) : []),
+    ...found
+      .filter((m) => m.kind === "ingredient")
+      .map((match): Option => ({ kind: "existing", match })),
+    ...(offerStandard
+      ? found
+          .filter((m) => m.kind === "standard")
+          .map((match): Option => ({ kind: "standard", match }))
+      : []),
   ];
   const taken = found.some((m) => m.exact || m.name.toLowerCase() === trimmed.toLowerCase());
   if (allowCreate && trimmed && settled && !taken) {
@@ -180,7 +195,10 @@ export function IngredientPicker({
             ) : (
               <>
                 <span className="font-medium">{choiceName(value)}</span>
-                <span className="text-neutral-600 dark:text-neutral-400"> · {choiceUnit(value)}</span>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {" "}
+                  · {choiceUnit(value)}
+                </span>
                 {value.kind === "existing" && !value.ingredient.active ? (
                   <>
                     {" "}
@@ -203,7 +221,11 @@ export function IngredientPicker({
           </Button>
         </div>
         {note ? (
-          <p id={`${id}-note`} className="text-xs text-neutral-600 dark:text-neutral-400" data-testid={`${id}-note`}>
+          <p
+            id={`${id}-note`}
+            className="text-xs text-neutral-600 dark:text-neutral-400"
+            data-testid={`${id}-note`}
+          >
             {note}
           </p>
         ) : null}
@@ -214,7 +236,11 @@ export function IngredientPicker({
   const select = (o: Option) => {
     setText("");
     if (o.kind === "existing") {
-      onChange({ kind: "existing", ingredient: summary(o.match), matchedSpelling: o.match.matched_spelling });
+      onChange({
+        kind: "existing",
+        ingredient: summary(o.match),
+        matchedSpelling: o.match.matched_spelling,
+      });
     } else if (o.kind === "standard") {
       const m = o.match;
       onChange({
@@ -243,7 +269,13 @@ export function IngredientPicker({
       inputValue={text}
       onInputChange={setText}
       items={options}
-      getKey={(o) => (o.kind === "existing" ? `i:${o.match.id}` : o.kind === "standard" ? `s:${o.match.key}` : "__new__")}
+      getKey={(o) =>
+        o.kind === "existing"
+          ? `i:${o.match.id}`
+          : o.kind === "standard"
+            ? `s:${o.match.key}`
+            : "__new__"
+      }
       groupOf={(o) => (o.kind === "standard" ? "From the standard list" : null)}
       getLabel={(o) =>
         o.kind !== "new" && o.match.matched_spelling
@@ -267,12 +299,19 @@ export function IngredientPicker({
             <span>
               <span className="font-medium">{m.name}</span>
               {o.kind === "existing" ? (
-                <span className="text-neutral-600 dark:text-neutral-400"> · {m.canonical_unit}</span>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {" "}
+                  · {m.canonical_unit}
+                </span>
               ) : null}
             </span>
-            {o.kind === "standard" ? <CategoryChip category={m.category} categoryKey={m.category_key} /> : null}
+            {o.kind === "standard" ? (
+              <CategoryChip category={m.category} categoryKey={m.category_key} />
+            ) : null}
             {m.matched_spelling ? (
-              <span className="text-xs text-neutral-600 dark:text-neutral-400">matches {m.matched_spelling}</span>
+              <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                matches {m.matched_spelling}
+              </span>
             ) : null}
             {o.kind === "existing" && !m.active ? <Badge tone="warn">inactive</Badge> : null}
           </span>
@@ -285,7 +324,11 @@ export function IngredientPicker({
   return (
     <div className="flex flex-col gap-1">
       {combobox}
-      <div role="group" aria-label="Named on the receipt line" className="flex flex-wrap items-center gap-1 text-xs">
+      <div
+        role="group"
+        aria-label="Named on the receipt line"
+        className="flex flex-wrap items-center gap-1 text-xs"
+      >
         <span className="text-neutral-600 dark:text-neutral-400">On the receipt:</span>
         {named.map((m) => (
           <Button
@@ -293,10 +336,18 @@ export function IngredientPicker({
             variant="secondary"
             className="min-h-11 lg:min-h-8 px-2 text-xs"
             disabled={disabled}
-            onClick={() => select(m.kind === "ingredient" ? { kind: "existing", match: m } : { kind: "standard", match: m })}
+            onClick={() =>
+              select(
+                m.kind === "ingredient"
+                  ? { kind: "existing", match: m }
+                  : { kind: "standard", match: m },
+              )
+            }
           >
             {m.name}
-            {m.kind === "standard" ? <span className="text-neutral-600 dark:text-neutral-400">&nbsp;· new</span> : null}
+            {m.kind === "standard" ? (
+              <span className="text-neutral-600 dark:text-neutral-400">&nbsp;· new</span>
+            ) : null}
           </Button>
         ))}
       </div>

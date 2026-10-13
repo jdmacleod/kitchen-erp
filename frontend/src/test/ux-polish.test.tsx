@@ -3,7 +3,14 @@ import { describe, expect, it } from "vitest";
 import type { Product } from "../api/catalog";
 import type { Purchase } from "../api/purchases";
 import { flourProduct, units } from "./catalog-fixtures";
-import { adminUser, jsonResponse, mainRegion, mockApi, renderApp, type RecordedCall } from "./helpers";
+import {
+  adminUser,
+  jsonResponse,
+  mainRegion,
+  mockApi,
+  renderApp,
+  type RecordedCall,
+} from "./helpers";
 import { manualPurchase, purchaseId } from "./purchase-fixtures";
 
 /**
@@ -12,7 +19,11 @@ import { manualPurchase, purchaseId } from "./purchase-fixtures";
  * Capture, a purchase's status wording, and an empty No category list.
  */
 
-const voidedPurchase: Purchase = { ...manualPurchase, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8099", status: "voided" };
+const voidedPurchase: Purchase = {
+  ...manualPurchase,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8099",
+  status: "voided",
+};
 
 function mountPurchases(withVoided: boolean) {
   mockApi({
@@ -20,7 +31,8 @@ function mountPurchases(withVoided: boolean) {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /purchases": (call: RecordedCall) => {
       const status = call.query.get("status");
-      if (status === "voided") return jsonResponse(200, { items: withVoided ? [voidedPurchase] : [], next_cursor: null });
+      if (status === "voided")
+        return jsonResponse(200, { items: withVoided ? [voidedPurchase] : [], next_cursor: null });
       if (status === "draft") return jsonResponse(200, { items: [], next_cursor: null });
       return jsonResponse(200, { items: [manualPurchase], next_cursor: null });
     },
@@ -72,16 +84,21 @@ describe("a committed purchase's page", () => {
     const main = mainRegion();
     expect(within(main).getByText("· read from a receipt")).toBeInTheDocument();
     expect(within(main).queryByText(/Edit corrects it here/)).not.toBeInTheDocument();
-    expect(within(main).getByText(/Reopen sends it back to review, where you can correct its lines/)).toBeInTheDocument();
+    expect(
+      within(main).getByText(/Reopen sends it back to review, where you can correct its lines/),
+    ).toBeInTheDocument();
   });
 
   it("gives the location and product links a 44px hit area below lg (issue 246)", async () => {
     mountPurchase(manualPurchase);
     const table = await screen.findByRole("table", { name: "Lines" });
-    const vendor = within(mainRegion()).getByRole("link", { name: manualPurchase.vendor_location!.vendor.name });
+    const vendor = within(mainRegion()).getByRole("link", {
+      name: manualPurchase.vendor_location!.vendor.name,
+    });
     expect(vendor).toHaveClass("min-h-11", "lg:min-h-0");
     for (const link of within(table).getAllByRole("link")) {
-      if (link.getAttribute("href")?.startsWith("/catalog/products/")) expect(link).toHaveClass("min-h-11", "lg:min-h-0");
+      if (link.getAttribute("href")?.startsWith("/catalog/products/"))
+        expect(link).toHaveClass("min-h-11", "lg:min-h-0");
     }
   });
 });
@@ -110,7 +127,8 @@ describe("Home", () => {
         }),
     });
     renderApp("/");
-    const header = (await screen.findByRole("heading", { level: 1 })).closest("header") ?? mainRegion();
+    const header =
+      (await screen.findByRole("heading", { level: 1 })).closest("header") ?? mainRegion();
     const capture = within(header).getByRole("button", { name: "Capture" });
     expect(capture.className).not.toMatch(/bg-blue-600/);
     // Needs you rows size the badge column to the badges shown, with no fixed slot (UI-6.1).
@@ -130,7 +148,10 @@ describe("Products, filtered to No category with nothing in it", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       "GET /products": (call: RecordedCall) =>
-        jsonResponse(200, { items: call.query.get("category") === "none" ? [] : [labelled], next_cursor: null }),
+        jsonResponse(200, {
+          items: call.query.get("category") === "none" ? [] : [labelled],
+          next_cursor: null,
+        }),
       "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
     });
     renderApp("/catalog/products?category=none");

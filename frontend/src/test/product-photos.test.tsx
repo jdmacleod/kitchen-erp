@@ -3,7 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ProductPhoto, ProductPhotoList } from "../api/productPhotos";
 import { flourProduct, flourProductId, units } from "./catalog-fixtures";
-import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  renderApp,
+  type RecordedCall,
+} from "./helpers";
 
 // 1I: the product page's Photos and Labels cards (10, PD4, PD16; UI-6.8–6.9)
 // and the Products table thumbnail (PD5; UI-6.10).
@@ -47,7 +54,10 @@ const otherId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a02";
 const hiddenId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a03";
 const labelId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a04";
 
-function routes(list: () => ProductPhotoList, extra: Record<string, (c: RecordedCall) => Response> = {}) {
+function routes(
+  list: () => ProductPhotoList,
+  extra: Record<string, (c: RecordedCall) => Response> = {},
+) {
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -79,13 +89,24 @@ describe("product photos", () => {
       routes(
         () => ({
           items: [
-            photo(mainId, { is_main: true, has_cutout: true, urls: urls(sha, maskSha), cutout_source: "tool" }),
-            photo(otherId, { source_kind: "manufacturer", attribution: "Image courtesy of the maker" }),
+            photo(mainId, {
+              is_main: true,
+              has_cutout: true,
+              urls: urls(sha, maskSha),
+              cutout_source: "tool",
+            }),
+            photo(otherId, {
+              source_kind: "manufacturer",
+              attribution: "Image courtesy of the maker",
+            }),
             photo(hiddenId, { status: "hidden" }),
           ],
           primary_image_id: mainId,
         }),
-        { [`POST /product-photos/${otherId}/use-as-main`]: () => jsonResponse(200, photo(otherId, { is_main: true, pinned: true })) },
+        {
+          [`POST /product-photos/${otherId}/use-as-main`]: () =>
+            jsonResponse(200, photo(otherId, { is_main: true, pinned: true })),
+        },
       ),
     );
     const user = userEvent.setup();
@@ -109,17 +130,30 @@ describe("product photos", () => {
     expect(within(tiles).getByRole("button", { name: "Show" })).toBeInTheDocument();
 
     await user.click(within(tiles).getByRole("button", { name: "Use as main photo" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/product-photos/${otherId}/use-as-main`)).toBe(true));
+    await waitFor(() =>
+      expect(
+        calls.some(
+          (c) => c.method === "POST" && c.path === `/product-photos/${otherId}/use-as-main`,
+        ),
+      ).toBe(true),
+    );
   });
 
   it("says when a photo is being prepared or failed, and offers Retry", async () => {
     const calls = mockApi(
       routes(
         () => ({
-          items: [photo(mainId, { is_main: true }), photo(otherId, { status: "processing", urls: null }), photo(hiddenId, { status: "failed", urls: null })],
+          items: [
+            photo(mainId, { is_main: true }),
+            photo(otherId, { status: "processing", urls: null }),
+            photo(hiddenId, { status: "failed", urls: null }),
+          ],
           primary_image_id: mainId,
         }),
-        { [`POST /product-photos/${hiddenId}/retry`]: () => jsonResponse(200, photo(hiddenId, { status: "processing", urls: null })) },
+        {
+          [`POST /product-photos/${hiddenId}/retry`]: () =>
+            jsonResponse(200, photo(hiddenId, { status: "processing", urls: null })),
+        },
       ),
     );
     const user = userEvent.setup();
@@ -127,13 +161,18 @@ describe("product photos", () => {
     expect(await screen.findByText("Preparing photo…")).toBeInTheDocument();
     expect(screen.getByText("Couldn't process this photo")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(calls.some((c) => c.path === `/product-photos/${hiddenId}/retry`)).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.path === `/product-photos/${hiddenId}/retry`)).toBe(true),
+    );
   });
 
   it("lists label photos in the Labels card with the text read from them", async () => {
     mockApi(
       routes(() => ({
-        items: [photo(mainId, { is_main: true }), photo(labelId, { role: "label_nutrition", ocr_text: "Serving size 30 g" })],
+        items: [
+          photo(mainId, { is_main: true }),
+          photo(labelId, { role: "label_nutrition", ocr_text: "Serving size 30 g" }),
+        ],
         primary_image_id: mainId,
       })),
     );
@@ -152,14 +191,20 @@ describe("product photos", () => {
         "POST /product-photos": () =>
           refuse
             ? errorResponse(422, "image_too_large", "This photo is over 50 megapixels.")
-            : jsonResponse(201, { items: [photo(mainId, { status: "processing", urls: null })], primary_image_id: null }),
+            : jsonResponse(201, {
+                items: [photo(mainId, { status: "processing", urls: null })],
+                primary_image_id: null,
+              }),
       }),
     );
     const user = userEvent.setup();
     renderApp(`/catalog/products/${flourProductId}`);
     await user.click(await screen.findByRole("button", { name: "Add photo" }));
     const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
-    await user.upload(input, [new File(["a"], "front.jpg", { type: "image/jpeg" }), new File(["b"], "back.jpg", { type: "image/jpeg" })]);
+    await user.upload(input, [
+      new File(["a"], "front.jpg", { type: "image/jpeg" }),
+      new File(["b"], "back.jpg", { type: "image/jpeg" }),
+    ]);
     const staged = screen.getByRole("list", { name: "Photos to add" });
     await user.selectOptions(within(staged).getByLabelText("Role for back.jpg"), "Nutrition");
 
@@ -168,7 +213,9 @@ describe("product photos", () => {
 
     refuse = false;
     await user.click(screen.getByRole("button", { name: "Upload 2 photos" }));
-    expect(await screen.findByText("Photos saved. They'll be ready in a moment.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Photos saved. They'll be ready in a moment."),
+    ).toBeInTheDocument();
     const posted = calls.filter((c) => c.method === "POST" && c.path === "/product-photos");
     expect(posted).toHaveLength(2);
   });
@@ -176,17 +223,29 @@ describe("product photos", () => {
 
 describe("the products table", () => {
   it("leads each row with a 40px photo or the placeholder", async () => {
-    const withPhoto = { ...flourProduct, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d02", name: "Bread flour", photo: { id: mainId, width: 800, height: 800, has_cutout: false, urls: urls(sha) } };
+    const withPhoto = {
+      ...flourProduct,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d02",
+      name: "Bread flour",
+      photo: { id: mainId, width: 800, height: 800, has_cutout: false, urls: urls(sha) },
+    };
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
-      "GET /products": () => jsonResponse(200, { items: [{ ...flourProduct, photo: null }, withPhoto], next_cursor: null }),
+      "GET /products": () =>
+        jsonResponse(200, {
+          items: [{ ...flourProduct, photo: null }, withPhoto],
+          next_cursor: null,
+        }),
     });
     renderApp("/catalog/products");
     const table = await screen.findByRole("table", { name: "Products" });
     const rows = within(table).getAllByRole("row").slice(1);
-    expect(within(rows[0]).getByTestId("photo-placeholder")).toHaveStyle({ width: "40px", height: "40px" });
+    expect(within(rows[0]).getByTestId("photo-placeholder")).toHaveStyle({
+      width: "40px",
+      height: "40px",
+    });
     const img = rows[1].querySelector("img")!;
     expect(img.getAttribute("src")).toContain("/160-");
     expect(img).toHaveAttribute("alt", "");

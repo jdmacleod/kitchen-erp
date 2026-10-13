@@ -10,7 +10,12 @@ import {
   type Unit,
 } from "../../api/catalog";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { choiceName, choiceUnit, IngredientPicker, type IngredientChoice } from "../../components/catalog/IngredientPicker";
+import {
+  choiceName,
+  choiceUnit,
+  IngredientPicker,
+  type IngredientChoice,
+} from "../../components/catalog/IngredientPicker";
 import { CategoryField } from "../../components/catalog/CategoryField";
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
@@ -76,9 +81,11 @@ export function validateProductValues(v: ProductFormValues): string | null {
   if (hasQty && !isPositiveDecimal(v.pack_qty)) return "Pack quantity must be a positive number.";
   if (v.pack_count.trim()) {
     if (!hasQty) return "Pieces go with a pack quantity and unit.";
-    if (!/^[1-9]\d{0,4}$/.test(v.pack_count.trim())) return "Pieces must be a whole number, like 5.";
+    if (!/^[1-9]\d{0,4}$/.test(v.pack_count.trim()))
+      return "Pieces must be a whole number, like 5.";
   } else if (v.piece_name.trim()) return "Say how many pieces before naming one.";
-  if (v.barcode.trim() && v.barcode.trim().length < 4) return "A barcode needs at least 4 characters.";
+  if (v.barcode.trim() && v.barcode.trim().length < 4)
+    return "A barcode needs at least 4 characters.";
   if (v.density_override.trim() && !isPositiveDecimal(v.density_override)) {
     return "Density override must be a positive number of grams per millilitre.";
   }
@@ -167,13 +174,19 @@ export function ProductForm({
   onIngredientText,
 }: ProductFormProps) {
   const units = useUnits();
-  const existingId = values.ingredient?.kind === "existing" ? values.ingredient.ingredient.id : undefined;
+  const existingId =
+    values.ingredient?.kind === "existing" ? values.ingredient.ingredient.id : undefined;
   const chosen = useIngredient(existingId);
   // Until the chosen ingredient loads, say nothing rather than guess.
   const reason =
     existingId && !chosen.data
       ? null
-      : densityReason(values.pack_unit, values.ingredient, units.data ?? [], chosen.data?.density_g_per_ml != null);
+      : densityReason(
+          values.pack_unit,
+          values.ingredient,
+          units.data ?? [],
+          chosen.data?.density_g_per_ml != null,
+        );
   const [densityOpen, setDensityOpen] = useState(values.density_override !== "");
   const set = <K extends keyof ProductFormValues>(key: K, value: ProductFormValues[K]) =>
     onChange({ ...values, [key]: value });
@@ -221,7 +234,8 @@ export function ProductForm({
           id={`${idPrefix}-new-ingredient-category`}
           value={values.ingredient.category ?? ""}
           onChange={(category) => {
-            if (values.ingredient?.kind === "new") set("ingredient", { ...values.ingredient, category });
+            if (values.ingredient?.kind === "new")
+              set("ingredient", { ...values.ingredient, category });
           }}
           hint={`For the new ingredient ${values.ingredient.name}: its label on every product of it.`}
         />
@@ -297,11 +311,24 @@ export function ProductForm({
         hint="As printed under the bars. Optional."
       />
 
-      <RatingInput name={`${idPrefix}-rating`} value={values.quality_rating} onChange={(v) => set("quality_rating", v)} />
+      <RatingInput
+        name={`${idPrefix}-rating`}
+        value={values.quality_rating}
+        onChange={(v) => set("quality_rating", v)}
+      />
 
-      <TextAreaField id={`${idPrefix}-notes`} label="Notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} />
+      <TextAreaField
+        id={`${idPrefix}-notes`}
+        label="Notes"
+        value={values.notes}
+        onChange={(e) => set("notes", e.target.value)}
+      />
 
-      <Disclosure summary="Density override" open={densityOpen || reason !== null} onOpenChange={setDensityOpen}>
+      <Disclosure
+        summary="Density override"
+        open={densityOpen || reason !== null}
+        onOpenChange={setDensityOpen}
+      >
         {reason ? (
           <p data-testid="density-reason" className="text-sm text-amber-900 dark:text-amber-200">
             {reason}

@@ -36,7 +36,14 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
   const chart = useMemo(() => {
     const usable = points.filter((p) => p.norm_status === "ok" && p.display_unit_price !== null);
     const skipped = points.length - usable.length;
-    if (usable.length === 0) return { series: [] as Series[], skipped, ticksY: [] as number[], ticksX: [] as number[], scale: null };
+    if (usable.length === 0)
+      return {
+        series: [] as Series[],
+        skipped,
+        ticksY: [] as number[],
+        ticksX: [] as number[],
+        scale: null,
+      };
 
     const times = usable.map((p) => new Date(p.observed_at).getTime());
     const prices = usable.map((p) => Number(p.display_unit_price));
@@ -49,16 +56,25 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
     const pMax = Math.max(...prices) * 1.1 || 1;
     const pMin = 0;
     const sx = (t: number) => PAD.left + ((t - tMin) / (tMax - tMin)) * (W - PAD.left - PAD.right);
-    const sy = (v: number) => H - PAD.bottom - ((v - pMin) / (pMax - pMin)) * (H - PAD.top - PAD.bottom);
+    const sy = (v: number) =>
+      H - PAD.bottom - ((v - pMin) / (pMax - pMin)) * (H - PAD.top - PAD.bottom);
 
     const bySeries = new Map<string, Series>();
     for (const p of usable) {
       let s = bySeries.get(p.series);
       if (!s) {
-        s = { key: p.series, name: p.price_scope === "chain" ? p.vendor_name : p.location_name, points: [] };
+        s = {
+          key: p.series,
+          name: p.price_scope === "chain" ? p.vendor_name : p.location_name,
+          points: [],
+        };
         bySeries.set(p.series, s);
       }
-      s.points.push({ ...p, x: sx(new Date(p.observed_at).getTime()), y: sy(Number(p.display_unit_price)) });
+      s.points.push({
+        ...p,
+        x: sx(new Date(p.observed_at).getTime()),
+        y: sy(Number(p.display_unit_price)),
+      });
     }
     for (const s of bySeries.values()) s.points.sort((a, b) => a.x - b.x);
 
@@ -70,7 +86,9 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
   if (!chart.scale) {
     return (
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        {points.length === 0 ? "No prices recorded yet." : "No normalized prices to chart yet; see the needs-a-bridge list."}
+        {points.length === 0
+          ? "No prices recorded yet."
+          : "No normalized prices to chart yet; see the needs-a-bridge list."}
       </p>
     );
   }
@@ -89,14 +107,34 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
         >
           {chart.ticksY.map((v) => (
             <g key={v}>
-              <line x1={PAD.left} x2={W - PAD.right} y1={sy(v)} y2={sy(v)} stroke="currentColor" strokeOpacity="0.15" />
-              <text x={PAD.left - 6} y={sy(v) + 4} textAnchor="end" fontSize="11" fill="currentColor">
+              <line
+                x1={PAD.left}
+                x2={W - PAD.right}
+                y1={sy(v)}
+                y2={sy(v)}
+                stroke="currentColor"
+                strokeOpacity="0.15"
+              />
+              <text
+                x={PAD.left - 6}
+                y={sy(v) + 4}
+                textAnchor="end"
+                fontSize="11"
+                fill="currentColor"
+              >
                 {fmtY(v)}
               </text>
             </g>
           ))}
           {chart.ticksX.map((t, i) => (
-            <text key={t} x={sx(t)} y={H - PAD.bottom + 18} textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"} fontSize="11" fill="currentColor">
+            <text
+              key={t}
+              x={sx(t)}
+              y={H - PAD.bottom + 18}
+              textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"}
+              fontSize="11"
+              fill="currentColor"
+            >
               {formatDate(new Date(t).toISOString())}
             </text>
           ))}
@@ -144,14 +182,27 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
         {chart.series.map((s, i) => (
           <span key={s.key} className="inline-flex items-center gap-1.5">
             <svg width="28" height="10" aria-hidden="true">
-              <line x1="0" x2="28" y1="5" y2="5" stroke={STROKES[i % STROKES.length]} strokeWidth="2" strokeDasharray={DASHES[i % DASHES.length] || undefined} />
+              <line
+                x1="0"
+                x2="28"
+                y1="5"
+                y2="5"
+                stroke={STROKES[i % STROKES.length]}
+                strokeWidth="2"
+                strokeDasharray={DASHES[i % DASHES.length] || undefined}
+              />
             </svg>
             {s.name}
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
           <svg width="14" height="14" aria-hidden="true">
-            <path d="M7,1 L13,7 L7,13 L1,7 Z" fill="var(--color-white)" stroke="currentColor" strokeWidth="1.5" />
+            <path
+              d="M7,1 L13,7 L7,13 L1,7 Z"
+              fill="var(--color-white)"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
           </svg>
           sale price
         </span>

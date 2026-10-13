@@ -11,7 +11,10 @@ import { invalidatePurchases, purchaseKeys } from "../api/purchases";
 describe("invalidatePurchases", () => {
   function spyOn() {
     const client = new QueryClient();
-    return { client, spy: vi.spyOn(client, "invalidateQueries").mockReturnValue(Promise.resolve()) };
+    return {
+      client,
+      spy: vi.spyOn(client, "invalidateQueries").mockReturnValue(Promise.resolve()),
+    };
   }
 
   it("clears only the lists by default", () => {

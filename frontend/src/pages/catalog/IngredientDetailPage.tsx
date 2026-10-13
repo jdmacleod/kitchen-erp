@@ -32,11 +32,29 @@ import { TestBench } from "../../components/catalog/TestBench";
 import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
 import { IngredientOffers } from "../../components/pricebook/IngredientOffers";
 import { IngredientSummary } from "../../components/pricebook/IngredientSummary";
-import { useIngredientOffers, useIngredientPriceHistory, type PriceFilters as PriceFiltersValue } from "../../api/pricebook";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass } from "../../components/ui";
+import {
+  useIngredientOffers,
+  useIngredientPriceHistory,
+  type PriceFilters as PriceFiltersValue,
+} from "../../api/pricebook";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  primaryLinkClass,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { CategoryChip } from "../../components/CategoryChip";
-import { IngredientPageActions, MergedInto, type IngredientPageMode } from "../../components/catalog/IngredientPageActions";
+import {
+  IngredientPageActions,
+  MergedInto,
+  type IngredientPageMode,
+} from "../../components/catalog/IngredientPageActions";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePlanBuilt } from "../../lib/kitchen";
@@ -77,7 +95,11 @@ export function IngredientDetailPage() {
   return <IngredientDetail ingredient={ingredient.data} />;
 }
 
-const NO_FILTERS: PriceFiltersValue = { min_quality: "", exclude_stale: false, exclude_promo: false };
+const NO_FILTERS: PriceFiltersValue = {
+  min_quality: "",
+  exclude_stale: false,
+  exclude_promo: false,
+};
 const muted = "text-neutral-600 dark:text-neutral-400";
 
 /**
@@ -94,7 +116,12 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const history = useIngredientPriceHistory(ingredient.id, 90);
   // "No prices yet" only when nothing was recorded at all: no current offer, and
   // nothing in the history (a deactivated location's prices stay in the history).
-  const noPrices = offers.isSuccess && history.isSuccess && items.length === 0 && unfiltered && history.data.points.length === 0;
+  const noPrices =
+    offers.isSuccess &&
+    history.isSuccess &&
+    items.length === 0 &&
+    unfiltered &&
+    history.data.points.length === 0;
 
   const meta = (
     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -130,9 +157,17 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const actions: MoreAction[] = merged
     ? []
     : [
-        ...(ingredient.active ? [{ label: "Merge into…", open: () => setMode("merge"), disabled: mode === "merge" }] : []),
+        ...(ingredient.active
+          ? [{ label: "Merge into…", open: () => setMode("merge"), disabled: mode === "merge" }]
+          : []),
         ...(ingredient.active && ingredient.reconcile_state !== "linked"
-          ? [{ label: "Link to standard name", open: () => setMode("link"), disabled: mode === "link" }]
+          ? [
+              {
+                label: "Link to standard name",
+                open: () => setMode("link"),
+                disabled: mode === "link",
+              },
+            ]
           : []),
         {
           label: setActive.isPending ? "Saving…" : ingredient.active ? "Deactivate" : "Activate",
@@ -146,7 +181,10 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
     <>
       <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
         <span>Catalog</span> <span aria-hidden="true">/</span>{" "}
-        <Link to="/catalog/ingredients" className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+        <Link
+          to="/catalog/ingredients"
+          className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+        >
           Ingredients
         </Link>
       </nav>
@@ -156,13 +194,22 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
             {editing ? "Close editor" : "Edit details"}
           </Button>
           {plan && !merged && ingredient.active ? (
-            <Button variant="secondary" onClick={() => setAddingToList((v) => !v)} aria-expanded={addingToList}>
+            <Button
+              variant="secondary"
+              onClick={() => setAddingToList((v) => !v)}
+              aria-expanded={addingToList}
+            >
               Add to list
             </Button>
           ) : null}
           {actions.length === 0 ? null : wide ? (
             actions.map((a) => (
-              <Button key={a.label} variant={a.variant ?? "secondary"} disabled={a.disabled} onClick={a.open}>
+              <Button
+                key={a.label}
+                variant={a.variant ?? "secondary"}
+                disabled={a.disabled}
+                onClick={a.open}
+              >
                 {a.label}
               </Button>
             ))
@@ -171,7 +218,11 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
               More actions
             </Button>
           )}
-          <Link to="/shop/shelf-prices" state={{ from: `/catalog/ingredients/${ingredient.id}` }} className={primaryLinkClass}>
+          <Link
+            to="/shop/shelf-prices"
+            state={{ from: `/catalog/ingredients/${ingredient.id}` }}
+            className={primaryLinkClass}
+          >
             Log shelf price
           </Link>
         </div>
@@ -192,11 +243,26 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
 
       <div className="flex flex-col gap-6">
         {ingredient.merged_into ? <MergedInto survivorId={ingredient.merged_into} /> : null}
-        {addingToList ? <AddIngredientToListPanel ingredient={ingredient} onClose={() => setAddingToList(false)} /> : null}
-        <IngredientPageActions ingredient={ingredient} mode={merged ? "idle" : mode} onClose={() => setMode("idle")} />
-        {setActive.isError ? <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert> : null}
-        {ingredient.notes ? <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p> : null}
-        {editing ? <EditDetailsForm ingredient={ingredient} onDone={() => setEditing(false)} /> : null}
+        {addingToList ? (
+          <AddIngredientToListPanel
+            ingredient={ingredient}
+            onClose={() => setAddingToList(false)}
+          />
+        ) : null}
+        <IngredientPageActions
+          ingredient={ingredient}
+          mode={merged ? "idle" : mode}
+          onClose={() => setMode("idle")}
+        />
+        {setActive.isError ? (
+          <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert>
+        ) : null}
+        {ingredient.notes ? (
+          <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p>
+        ) : null}
+        {editing ? (
+          <EditDetailsForm ingredient={ingredient} onDone={() => setEditing(false)} />
+        ) : null}
 
         {offers.isPending ? (
           <p role="status" className={`text-sm ${muted}`}>
@@ -208,7 +274,11 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
           <EmptyState
             title="No prices yet"
             action={
-              <Link to="/shop/shelf-prices" state={{ from: `/catalog/ingredients/${ingredient.id}` }} className={primaryLinkClass}>
+              <Link
+                to="/shop/shelf-prices"
+                state={{ from: `/catalog/ingredients/${ingredient.id}` }}
+                className={primaryLinkClass}
+              >
                 Log shelf price
               </Link>
             }
@@ -262,7 +332,8 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
     notes: ingredient.notes ?? "",
   });
   const [invalid, setInvalid] = useState<string | null>(null);
-  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -274,7 +345,9 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
       setInvalid("Yield is a percentage above 0 and up to 100, such as 85.");
       return;
     }
-    if (KEEP_PLACES.some(({ key }) => form[key].trim() !== "" && !/^\d{1,4}$/.test(form[key].trim()))) {
+    if (
+      KEEP_PLACES.some(({ key }) => form[key].trim() !== "" && !/^\d{1,4}$/.test(form[key].trim()))
+    ) {
       setInvalid("Keep times are whole days, such as 3.");
       return;
     }
@@ -285,8 +358,10 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
       if (value !== (ingredient[key] ?? null)) input[key] = value;
     }
     if (form.name.trim() !== ingredient.name) input.name = form.name.trim();
-    if ((form.category.trim() || null) !== ingredient.category) input.category = form.category.trim() || null;
-    if (form.canonical_unit !== ingredient.canonical_unit) input.canonical_unit = form.canonical_unit;
+    if ((form.category.trim() || null) !== ingredient.category)
+      input.category = form.category.trim() || null;
+    if (form.canonical_unit !== ingredient.canonical_unit)
+      input.canonical_unit = form.canonical_unit;
     const yieldFraction = percentToFraction(form.yield_percent);
     if (yieldFraction !== trimDecimal(ingredient.yield_pct)) input.yield_pct = yieldFraction;
     if (form.perishability !== ingredient.perishability) input.perishability = form.perishability;
@@ -300,15 +375,31 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
 
   return (
     <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="edit-ingredient-heading" noValidate>
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        aria-labelledby="edit-ingredient-heading"
+        noValidate
+      >
         <h2 id="edit-ingredient-heading" className="text-lg font-medium">
           Edit details
         </h2>
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {update.isError ? <Alert tone="error">{catalogErrorMessage(update.error)}</Alert> : null}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="edit-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
-          <CategoryField id="edit-category" value={form.category} onChange={(value) => set("category", value)} />
+          <Field
+            id="edit-name"
+            label="Name"
+            autoComplete="off"
+            required
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+          <CategoryField
+            id="edit-category"
+            value={form.category}
+            onChange={(value) => set("category", value)}
+          />
         </div>
         <RadioGroup
           name="edit-unit"
@@ -350,12 +441,25 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
           <legend className="text-sm font-medium">Keeps, in days</legend>
           <div className="grid gap-4 sm:grid-cols-3">
             {KEEP_PLACES.map(({ key, label }) => (
-              <Field key={key} id={`edit-${key}`} label={label} inputMode="numeric" autoComplete="off" value={form[key]} onChange={(e) => set(key, e.target.value)} />
+              <Field
+                key={key}
+                id={`edit-${key}`}
+                label={label}
+                inputMode="numeric"
+                autoComplete="off"
+                value={form[key]}
+                onChange={(e) => set(key, e.target.value)}
+              />
             ))}
           </div>
           <p className="text-xs text-neutral-600 dark:text-neutral-400">{keepTimesHint}</p>
         </fieldset>
-        <TextAreaField id="edit-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+        <TextAreaField
+          id="edit-notes"
+          label="Notes"
+          value={form.notes}
+          onChange={(e) => set("notes", e.target.value)}
+        />
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={update.isPending}>
             {update.isPending ? "Saving…" : "Save details"}
@@ -375,7 +479,10 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
   const items = products.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
-    <section aria-labelledby="ingredient-products" className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <section
+      aria-labelledby="ingredient-products"
+      className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+    >
       <h2 id="ingredient-products" className="font-display mb-3 text-lg">
         Products
       </h2>
@@ -396,7 +503,11 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
                 className={`inline-flex min-h-11 items-center gap-2 rounded-full border border-neutral-300 px-3 text-sm text-neutral-900 hover:bg-neutral-100 lg:min-h-9 dark:border-neutral-700 dark:text-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
               >
                 {productTitle(p)}
-                {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) ? <span className={`text-xs ${muted}`}>{formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}</span> : null}
+                {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) ? (
+                  <span className={`text-xs ${muted}`}>
+                    {formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name)}
+                  </span>
+                ) : null}
                 {p.active ? null : <Badge tone="warn">inactive</Badge>}
               </Link>
             </li>
@@ -404,16 +515,29 @@ function IngredientProducts({ ingredient }: { ingredient: Ingredient }) {
         </ul>
       )}
       {products.hasNextPage ? (
-        <Button variant="secondary" className="mt-3" disabled={products.isFetchingNextPage} onClick={() => products.fetchNextPage()}>
+        <Button
+          variant="secondary"
+          className="mt-3"
+          disabled={products.isFetchingNextPage}
+          onClick={() => products.fetchNextPage()}
+        >
           {products.isFetchingNextPage ? "Loading…" : "Load more"}
         </Button>
       ) : null}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
-          <input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} className={`size-4 ${focusRing}`} />
+          <input
+            type="checkbox"
+            checked={includeInactive}
+            onChange={(e) => setIncludeInactive(e.target.checked)}
+            className={`size-4 ${focusRing}`}
+          />
           Show inactive
         </label>
-        <Link to={`/catalog/products?ingredient_id=${encodeURIComponent(ingredient.id)}`} className={secondaryLinkClass}>
+        <Link
+          to={`/catalog/products?ingredient_id=${encodeURIComponent(ingredient.id)}`}
+          className={secondaryLinkClass}
+        >
           Add a product
         </Link>
       </div>

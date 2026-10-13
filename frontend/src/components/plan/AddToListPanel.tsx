@@ -20,7 +20,8 @@ import { useCurrentKitchen, type CurrentKitchen } from "../../lib/kitchen";
  */
 
 function KitchenLine({ kitchen }: { kitchen: CurrentKitchen }) {
-  if (!kitchen.ready) return <p className="text-sm text-neutral-600 dark:text-neutral-400">Finding your kitchen…</p>;
+  if (!kitchen.ready)
+    return <p className="text-sm text-neutral-600 dark:text-neutral-400">Finding your kitchen…</p>;
   if (!kitchen.currentId) {
     return (
       <Alert tone="info">
@@ -39,7 +40,13 @@ function KitchenLine({ kitchen }: { kitchen: CurrentKitchen }) {
   );
 }
 
-export function AddIngredientToListPanel({ ingredient, onClose }: { ingredient: { id: string; name: string }; onClose: () => void }) {
+export function AddIngredientToListPanel({
+  ingredient,
+  onClose,
+}: {
+  ingredient: { id: string; name: string };
+  onClose: () => void;
+}) {
   const kitchen = useCurrentKitchen();
   const add = useAddItem();
   const notice = useNotice();
@@ -72,7 +79,12 @@ export function AddIngredientToListPanel({ ingredient, onClose }: { ingredient: 
       {
         onSuccess: () => {
           onClose();
-          notice.show({ tone: "success", message: `Added ${ingredient.name} to the ${name} list.`, action: { label: "Open list", to: "/plan/list" }, focusAction: true });
+          notice.show({
+            tone: "success",
+            message: `Added ${ingredient.name} to the ${name} list.`,
+            action: { label: "Open list", to: "/plan/list" },
+            focusAction: true,
+          });
         },
       },
     );
@@ -81,12 +93,33 @@ export function AddIngredientToListPanel({ ingredient, onClose }: { ingredient: 
   return (
     <Card>
       <h2 className="mb-3 text-lg font-medium">Add {ingredient.name} to the list</h2>
-      <form id={formId} onSubmit={onSubmit} noValidate className="flex flex-col gap-3" aria-label="Add to list">
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        noValidate
+        className="flex flex-col gap-3"
+        aria-label="Add to list"
+      >
         <KitchenLine kitchen={kitchen} />
-        <AmountRows idPrefix={formId} rows={amounts} onChange={setAmounts} disabled={!kitchen.currentId} />
-        <ItemFlags idPrefix={formId} kind="ingredient" deferrable={deferrable} minQuality={minQuality} onDeferrable={setDeferrable} onMinQuality={setMinQuality} disabled={!kitchen.currentId} />
+        <AmountRows
+          idPrefix={formId}
+          rows={amounts}
+          onChange={setAmounts}
+          disabled={!kitchen.currentId}
+        />
+        <ItemFlags
+          idPrefix={formId}
+          kind="ingredient"
+          deferrable={deferrable}
+          minQuality={minQuality}
+          onDeferrable={setDeferrable}
+          onMinQuality={setMinQuality}
+          disabled={!kitchen.currentId}
+        />
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-        {add.isError ? <Alert tone="error">Couldn&apos;t add it: {errorMessage(add.error)}</Alert> : null}
+        {add.isError ? (
+          <Alert tone="error">Couldn&apos;t add it: {errorMessage(add.error)}</Alert>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={!kitchen.currentId || add.isPending}>
             {add.isPending ? "Adding…" : "Add"}
@@ -100,7 +133,13 @@ export function AddIngredientToListPanel({ ingredient, onClose }: { ingredient: 
   );
 }
 
-export function AddRecipeToListPanel({ recipe, onClose }: { recipe: Pick<Recipe, "id" | "title" | "servings" | "servings_text">; onClose: () => void }) {
+export function AddRecipeToListPanel({
+  recipe,
+  onClose,
+}: {
+  recipe: Pick<Recipe, "id" | "title" | "servings" | "servings_text">;
+  onClose: () => void;
+}) {
   const kitchen = useCurrentKitchen();
   const add = useAddFromRecipe();
   const notice = useNotice();
@@ -131,7 +170,10 @@ export function AddRecipeToListPanel({ recipe, onClose }: { recipe: Pick<Recipe,
           notice.show({
             tone: "success",
             message: `${fromRecipeSentence(out, recipe.title).replace(/\.$/, "")} to the ${name} list.`,
-            action: out.skipped.length > 0 ? { label: "Resolve them", to: "/cook/recipes/resolve" } : { label: "Open list", to: "/plan/list" },
+            action:
+              out.skipped.length > 0
+                ? { label: "Resolve them", to: "/cook/recipes/resolve" }
+                : { label: "Open list", to: "/plan/list" },
             focusAction: true,
           });
         },
@@ -161,7 +203,11 @@ export function AddRecipeToListPanel({ recipe, onClose }: { recipe: Pick<Recipe,
           className="w-32"
           value={scale}
           disabled={!kitchen.currentId}
-          hint={servings ? `${servings} servings · ×${scale.trim() || "1"}` : "×1 adds the recipe as written."}
+          hint={
+            servings
+              ? `${servings} servings · ×${scale.trim() || "1"}`
+              : "×1 adds the recipe as written."
+          }
           onChange={(e) => {
             setScale(e.target.value);
             setAlreadyOn(null);
@@ -171,7 +217,8 @@ export function AddRecipeToListPanel({ recipe, onClose }: { recipe: Pick<Recipe,
           <Alert tone="info">
             <span className="flex flex-col gap-2">
               <span data-testid="already-on-list">
-                {recipe.title} is already on the list: {alreadyOn} {alreadyOn === 1 ? "item" : "items"} to get. Nothing was changed.
+                {recipe.title} is already on the list: {alreadyOn}{" "}
+                {alreadyOn === 1 ? "item" : "items"} to get. Nothing was changed.
               </span>
               <span>
                 <Button variant="secondary" disabled={add.isPending} onClick={() => submit(true)}>
@@ -182,9 +229,14 @@ export function AddRecipeToListPanel({ recipe, onClose }: { recipe: Pick<Recipe,
           </Alert>
         ) : null}
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-        {add.isError ? <Alert tone="error">Couldn&apos;t add the recipe: {errorMessage(add.error)}</Alert> : null}
+        {add.isError ? (
+          <Alert tone="error">Couldn&apos;t add the recipe: {errorMessage(add.error)}</Alert>
+        ) : null}
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={!kitchen.currentId || add.isPending || alreadyOn !== null}>
+          <Button
+            type="submit"
+            disabled={!kitchen.currentId || add.isPending || alreadyOn !== null}
+          >
             {add.isPending && alreadyOn === null ? "Adding…" : "Add to list"}
           </Button>
           <Button variant="secondary" onClick={onClose}>

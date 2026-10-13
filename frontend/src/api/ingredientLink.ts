@@ -78,7 +78,8 @@ export const linkKeys = {
   page: ["ingredients", "link"] as const,
   summary: ["ingredients", "link", "summary"] as const,
   standard: (q: string) => ["standard-ingredients", q] as const,
-  preview: (survivor: string, loser: string, target: MergeTarget) => ["ingredients", "merge-preview", survivor, loser, target] as const,
+  preview: (survivor: string, loser: string, target: MergeTarget) =>
+    ["ingredients", "merge-preview", survivor, loser, target] as const,
 };
 
 const enc = encodeURIComponent;
@@ -88,7 +89,10 @@ export function useLinkPage() {
 }
 
 export function useLinkSummary() {
-  return useQuery({ queryKey: linkKeys.summary, queryFn: () => api<LinkSummary>("/ingredients/link/summary") });
+  return useQuery({
+    queryKey: linkKeys.summary,
+    queryFn: () => api<LinkSummary>("/ingredients/link/summary"),
+  });
 }
 
 /** Standard entries by name or spelling, taken or not ("Choose another standard name"). */
@@ -96,7 +100,8 @@ export function useStandardEntries(q: string) {
   const trimmed = q.trim();
   return useQuery({
     queryKey: linkKeys.standard(trimmed),
-    queryFn: () => api<{ items: StandardEntry[] }>(`/standard-ingredients?q=${enc(trimmed)}&limit=10`),
+    queryFn: () =>
+      api<{ items: StandardEntry[] }>(`/standard-ingredients?q=${enc(trimmed)}&limit=10`),
     select: (data) => data.items,
     enabled: trimmed.length > 0,
     placeholderData: (previous) => previous,
@@ -107,7 +112,10 @@ export function useMergePreview(survivorId: string, loserId: string, target: Mer
   return useQuery({
     queryKey: linkKeys.preview(survivorId, loserId, target),
     queryFn: () =>
-      api<MergeResult>("/ingredients/merge/preview", { method: "POST", body: { survivor_id: survivorId, loser_id: loserId, ...target } }),
+      api<MergeResult>("/ingredients/merge/preview", {
+        method: "POST",
+        body: { survivor_id: survivorId, loser_id: loserId, ...target },
+      }),
     staleTime: 0,
   });
 }
@@ -125,9 +133,19 @@ function useInvalidateCatalog() {
 export function useLinkAction() {
   const invalidate = useInvalidateCatalog();
   return useMutation({
-    mutationFn: (input: { id: string; action: "link"; standard_key: string } | { id: string; action: "rename"; name: string } | { id: string; action: "skip" | "reopen" }) => {
+    mutationFn: (
+      input:
+        | { id: string; action: "link"; standard_key: string }
+        | { id: string; action: "rename"; name: string }
+        | { id: string; action: "skip" | "reopen" },
+    ) => {
       const { id, action } = input;
-      const body = input.action === "link" ? { standard_key: input.standard_key } : input.action === "rename" ? { name: input.name } : undefined;
+      const body =
+        input.action === "link"
+          ? { standard_key: input.standard_key }
+          : input.action === "rename"
+            ? { name: input.name }
+            : undefined;
       return api<Ingredient>(`/ingredients/${enc(id)}/${action}`, { method: "POST", body });
     },
     onSuccess: invalidate,
@@ -137,10 +155,20 @@ export function useLinkAction() {
 export function useMerge() {
   const invalidate = useInvalidateCatalog();
   return useMutation({
-    mutationFn: (input: { survivor_id: string; loser_id: string; target: MergeTarget; copy_measures: string[] }) =>
+    mutationFn: (input: {
+      survivor_id: string;
+      loser_id: string;
+      target: MergeTarget;
+      copy_measures: string[];
+    }) =>
       api<MergeResult>("/ingredients/merge", {
         method: "POST",
-        body: { survivor_id: input.survivor_id, loser_id: input.loser_id, copy_measures: input.copy_measures, ...input.target },
+        body: {
+          survivor_id: input.survivor_id,
+          loser_id: input.loser_id,
+          copy_measures: input.copy_measures,
+          ...input.target,
+        },
       }),
     onSuccess: invalidate,
   });

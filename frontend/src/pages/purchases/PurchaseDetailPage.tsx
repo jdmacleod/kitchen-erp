@@ -19,11 +19,24 @@ import {
 } from "../../api/purchases";
 import { Badge } from "../../components/catalog/fields";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
-import { RemovedLinesCaption, RemovePurchase, RestorePurchase } from "../../components/purchases/RemovePurchase";
+import {
+  RemovedLinesCaption,
+  RemovePurchase,
+  RestorePurchase,
+} from "../../components/purchases/RemovePurchase";
 import { BestBy } from "../../components/purchases/BestBy";
 import { ReviewPurchase } from "../../components/purchases/ReviewPurchase";
 import { RereadLines } from "../../components/purchases/RereadLines";
-import { Alert, Button, Card, EmptyState, PageHeader, alertTones, focusRing, tapTarget } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  alertTones,
+  focusRing,
+  tapTarget,
+} from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -56,7 +69,11 @@ export function PurchaseDetailPage() {
       return;
     }
     const photo = removed.photo_deleted ? " Its receipt photo was deleted." : "";
-    navigateWithNotice("/shop/purchases", { tone: "success", message: `Purchase removed.${photo}` }, { replace: true });
+    navigateWithNotice(
+      "/shop/purchases",
+      { tone: "success", message: `Purchase removed.${photo}` },
+      { replace: true },
+    );
   };
 
   if (purchase.isPending) {
@@ -103,7 +120,10 @@ export function PurchaseDetailPage() {
         focusNotice={justVoided}
         onRestored={() => {
           setJustVoided(false);
-          notice.show({ tone: "success", message: "Restored. Commit it to put its prices back in the price book." });
+          notice.show({
+            tone: "success",
+            message: "Restored. Commit it to put its prices back in the price book.",
+          });
         }}
       />
     );
@@ -115,8 +135,13 @@ export function PurchaseDetailPage() {
         <PageHeader title={title}>
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>
-            <span className="text-sm text-neutral-600 dark:text-neutral-400">· {howEntered(p.source)}</span>
-            <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+            <span className="text-sm text-neutral-600 dark:text-neutral-400">
+              · {howEntered(p.source)}
+            </span>
+            <Link
+              to="/shop/purchases"
+              className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}
+            >
               All purchases
             </Link>
           </div>
@@ -151,7 +176,12 @@ function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boole
   const when = p.voided_at ? formatDate(p.voided_at) : "";
   const who = p.voided_by_name ? ` by ${p.voided_by_name}` : "";
   return (
-    <div ref={ref} tabIndex={-1} role="status" className={`rounded-md border px-3 py-2 text-sm ${alertTones.info} ${focusRing}`}>
+    <div
+      ref={ref}
+      tabIndex={-1}
+      role="status"
+      className={`rounded-md border px-3 py-2 text-sm ${alertTones.info} ${focusRing}`}
+    >
       Removed {when}
       {who}.{" "}
       {n === 0
@@ -161,7 +191,6 @@ function VoidedNotice({ purchase: p, focus }: { purchase: Purchase; focus: boole
     </div>
   );
 }
-
 
 /** A committed purchase, or, without the actions but Restore, a voided one (D4). */
 function CommittedPurchase({
@@ -193,11 +222,18 @@ function CommittedPurchase({
             </Button>
           ) : null}
           {!voided ? (
-            <Button variant="secondary" disabled={reopen.isPending} onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}>
+            <Button
+              variant="secondary"
+              disabled={reopen.isPending}
+              onClick={() => reopen.mutate(undefined, { onSuccess: onReopened })}
+            >
               {reopen.isPending ? "Reopening…" : "Reopen"}
             </Button>
           ) : null}
-          <Link to="/shop/purchases" className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}>
+          <Link
+            to="/shop/purchases"
+            className={`inline-flex min-h-11 lg:min-h-10 items-center rounded-md px-2 text-sm underline ${focusRing}`}
+          >
             All purchases
           </Link>
         </div>
@@ -211,10 +247,15 @@ function CommittedPurchase({
             <Item label="Location">
               {p.vendor_location ? (
                 <>
-                  <Link to={`/catalog/vendors/${p.vendor_location.vendor.id}`} className={`${tapTarget} rounded underline ${focusRing}`}>
+                  <Link
+                    to={`/catalog/vendors/${p.vendor_location.vendor.id}`}
+                    className={`${tapTarget} rounded underline ${focusRing}`}
+                  >
                     {p.vendor_location.vendor.name}
                   </Link>
-                  {p.vendor_location.name !== p.vendor_location.vendor.name ? ` — ${p.vendor_location.name}` : ""}
+                  {p.vendor_location.name !== p.vendor_location.vendor.name
+                    ? ` — ${p.vendor_location.name}`
+                    : ""}
                 </>
               ) : (
                 purchaseLocationLabel(p)
@@ -222,10 +263,13 @@ function CommittedPurchase({
             </Item>
             <Item label="Purchased">{formatDateTime(p.purchased_at)}</Item>
             <Item label="Status">
-              <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge> <span>· {howEntered(p.source)}</span>
+              <Badge tone={purchaseStatusTone[p.status]}>{purchaseStatusLabel[p.status]}</Badge>{" "}
+              <span>· {howEntered(p.source)}</span>
             </Item>
             <Item label="Total">{p.total !== null ? formatMoney(p.total) : "—"}</Item>
-            <Item label="Computed total">{p.computed_total !== null ? formatMoney(p.computed_total) : "—"}</Item>
+            <Item label="Computed total">
+              {p.computed_total !== null ? formatMoney(p.computed_total) : "—"}
+            </Item>
             <Item label="Tax">{p.tax !== null ? formatMoney(p.tax) : "—"}</Item>
             {p.flags.length > 0 ? (
               <Item label="Flags">
@@ -294,7 +338,15 @@ function Item({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function LineRow({ purchaseId, line, voided = false }: { purchaseId: string; line: PurchaseLine; voided?: boolean }) {
+function LineRow({
+  purchaseId,
+  line,
+  voided = false,
+}: {
+  purchaseId: string;
+  line: PurchaseLine;
+  voided?: boolean;
+}) {
   const isItem = line.line_kind === "item";
   const resolution = line.resolution as Resolution | null;
   return (
@@ -303,13 +355,22 @@ function LineRow({ purchaseId, line, voided = false }: { purchaseId: string; lin
       <td className="py-2 pr-3">
         {line.product ? (
           <>
-            <Link to={`/catalog/products/${line.product.id}`} className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}>
+            <Link
+              to={`/catalog/products/${line.product.id}`}
+              className={`${tapTarget} rounded font-medium underline-offset-2 hover:underline ${focusRing}`}
+            >
               {productTitle(line.product)}
             </Link>
             {formatPack(line.product.pack_qty, line.product.pack_unit) ? (
-              <span className="text-neutral-600 dark:text-neutral-400"> · {formatPack(line.product.pack_qty, line.product.pack_unit)}</span>
+              <span className="text-neutral-600 dark:text-neutral-400">
+                {" "}
+                · {formatPack(line.product.pack_qty, line.product.pack_unit)}
+              </span>
             ) : null}{" "}
-            <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
+            <CategoryChip
+              category={line.product.category}
+              categoryKey={line.product.category_key}
+            />
           </>
         ) : (
           <span>
@@ -326,12 +387,20 @@ function LineRow({ purchaseId, line, voided = false }: { purchaseId: string; lin
           </span>
         )}
         {line.product && resolution && resolution !== "manual" ? (
-          <span className="ml-1 text-xs text-neutral-600 dark:text-neutral-400">{resolutionLabel[resolution] ?? resolution}</span>
+          <span className="ml-1 text-xs text-neutral-600 dark:text-neutral-400">
+            {resolutionLabel[resolution] ?? resolution}
+          </span>
         ) : null}
       </td>
-      <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}</td>
-      <td className="py-2 pr-3 text-right tabular-nums">{line.unit_price !== null ? formatMoney(line.unit_price, 2, 4) : "—"}</td>
-      <td className="py-2 pr-3 text-right tabular-nums">{line.line_total !== null ? formatMoney(line.line_total) : "—"}</td>
+      <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
+        {line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}
+      </td>
+      <td className="py-2 pr-3 text-right tabular-nums">
+        {line.unit_price !== null ? formatMoney(line.unit_price, 2, 4) : "—"}
+      </td>
+      <td className="py-2 pr-3 text-right tabular-nums">
+        {line.line_total !== null ? formatMoney(line.line_total) : "—"}
+      </td>
       <td className="py-2 pr-3 align-top">
         <BestBy purchaseId={purchaseId} line={line} editable={!voided} />
       </td>
@@ -369,12 +438,18 @@ function EditPurchase({ purchase, onDone }: { purchase: Purchase; onDone: () => 
   // Saved lines taken out of the form that reached the price book: saving
   // voids their prices (#72, D13).
   const kept = new Set(values.lines.filter((l) => !isLineEmpty(l)).map((l) => l.id));
-  const voids = purchase.lines.filter((l) => l.recorded && l.line_kind === "item" && !kept.has(l.id)).length;
+  const voids = purchase.lines.filter(
+    (l) => l.recorded && l.line_kind === "item" && !kept.has(l.id),
+  ).length;
   const prices = (n: number) => `${n} ${n === 1 ? "price" : "prices"}`;
   const save = (input: Parameters<typeof update.mutate>[0]) =>
     update.mutate(input, {
       onSuccess: () => {
-        if (voids > 0) notice.show({ tone: "success", message: `Saved. ${prices(voids)} from removed lines ${voids === 1 ? "was" : "were"} voided.` });
+        if (voids > 0)
+          notice.show({
+            tone: "success",
+            message: `Saved. ${prices(voids)} from removed lines ${voids === 1 ? "was" : "were"} voided.`,
+          });
         onDone();
       },
     });

@@ -56,11 +56,21 @@ describe("merging a product (issue 179)", () => {
       routes(() => product, {
         [`POST /products/${flourProductId}/merge/preview`]: () => jsonResponse(200, preview),
         [`POST /products/${flourProductId}/merge`]: () => {
-          product = { ...product, active: false, merged_into: keepId, updated_at: "2026-10-06T00:00:00Z" };
+          product = {
+            ...product,
+            active: false,
+            merged_into: keepId,
+            updated_at: "2026-10-06T00:00:00Z",
+          };
           return jsonResponse(200, preview);
         },
         [`GET /products/${keepId}`]: () =>
-          jsonResponse(200, { ...flourProduct, id: keepId, brand: "Riverbend", name: "Bread Flour" }),
+          jsonResponse(200, {
+            ...flourProduct,
+            id: keepId,
+            brand: "Riverbend",
+            name: "Bread Flour",
+          }),
       }),
     );
     const user = userEvent.setup();
@@ -71,15 +81,27 @@ describe("merging a product (issue 179)", () => {
     await user.type(box, "flour");
     await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
 
-    const confirm = await screen.findByRole("group", { name: /Merge Millstone All-Purpose Flour into Riverbend Bread Flour/ });
-    expect(await within(confirm).findByTestId("merge-moves")).toHaveTextContent("3 prices, 1 code and 1 receipt wording go to Bread Flour.");
+    const confirm = await screen.findByRole("group", {
+      name: /Merge Millstone All-Purpose Flour into Riverbend Bread Flour/,
+    });
+    expect(await within(confirm).findByTestId("merge-moves")).toHaveTextContent(
+      "3 prices, 1 code and 1 receipt wording go to Bread Flour.",
+    );
     expect(within(confirm).getByTestId("merge-warnings")).toHaveTextContent("They need a density");
-    await waitFor(() => expect(within(confirm).getByRole("button", { name: "Cancel" })).toHaveFocus());
+    await waitFor(() =>
+      expect(within(confirm).getByRole("button", { name: "Cancel" })).toHaveFocus(),
+    );
 
     await user.click(within(confirm).getByRole("button", { name: "Merge" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({ survivor_id: keepId }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({
+        survivor_id: keepId,
+      }),
+    );
     expect(await screen.findByRole("link", { name: "Open Bread Flour" })).toBeInTheDocument();
-    expect(await screen.findByText(/Its prices, codes, photos and receipt wordings are there now/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Its prices, codes, photos and receipt wordings are there now/),
+    ).toBeInTheDocument();
     // A merged product offers neither merge nor reactivation.
     expect(screen.queryByRole("button", { name: "Merge into…" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Activate" })).not.toBeInTheDocument();

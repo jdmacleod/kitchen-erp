@@ -4,14 +4,37 @@ import { describe, expect, it } from "vitest";
 import type { IngestJob } from "../api/ingest";
 import { units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
-import { batchRoutes, ingestJobId, receiptDocumentId, receiptPurchaseId } from "./purchase-fixtures";
+import {
+  batchRoutes,
+  ingestJobId,
+  receiptDocumentId,
+  receiptPurchaseId,
+} from "./purchase-fixtures";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 // attempts mirrors the backend: zeroed whenever a stage succeeds or a job is
 // retried, incremented only by a failed attempt.
-const reviewJob: IngestJob = { id: ingestJobId, receipt_document_id: receiptDocumentId, stage: "review", status: "needs_review", attempts: 0, last_error: null, purchase_id: receiptPurchaseId, created_at: "2026-09-20T18:05:30Z", updated_at: "2026-09-20T18:06:00Z" };
-const failedJob: IngestJob = { ...reviewJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9102", stage: "ocr", status: "failed", attempts: 5, last_error: "ocr_unavailable", purchase_id: null };
+const reviewJob: IngestJob = {
+  id: ingestJobId,
+  receipt_document_id: receiptDocumentId,
+  stage: "review",
+  status: "needs_review",
+  attempts: 0,
+  last_error: null,
+  purchase_id: receiptPurchaseId,
+  created_at: "2026-09-20T18:05:30Z",
+  updated_at: "2026-09-20T18:06:00Z",
+};
+const failedJob: IngestJob = {
+  ...reviewJob,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9102",
+  stage: "ocr",
+  status: "failed",
+  attempts: 5,
+  last_error: "ocr_unavailable",
+  purchase_id: null,
+};
 
 function baseRoutes(jobs: () => IngestJob[]) {
   return {
@@ -41,7 +64,9 @@ describe("receipts", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Choose a receipt photo or PDF.");
 
     // A synthetic image; no real receipt is ever part of the tree.
-    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", { type: "image/png" });
+    const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "slip.png", {
+      type: "image/png",
+    });
     await user.upload(screen.getByLabelText("Receipt photos or PDFs"), file);
     await user.click(screen.getByRole("button", { name: "Upload" }));
 
@@ -54,7 +79,9 @@ describe("receipts", () => {
     // The JSON client is bypassed: no content type is forced, so the browser sets the multipart boundary.
     expect(post?.headers.get("Content-Type")).toBeNull();
     expect(post?.body).toBeUndefined();
-    expect(await screen.findByTestId("notice")).toHaveTextContent("Receipt uploaded. It'll appear in Needs you once it's read.");
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Receipt uploaded. It'll appear in Needs you once it's read.",
+    );
     const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     expect(within(list).getByTestId("ingest-job")).toHaveAttribute("data-status", "pending");
     expect(within(list).getByText("waiting to be read")).toBeInTheDocument();
@@ -69,17 +96,32 @@ describe("receipts", () => {
       ...baseRoutes(() => []),
       "POST /receipts": () => {
         n += 1;
-        const job = { ...reviewJob, id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b0${n}`, stage: "captured", status: "pending", purchase_id: null };
-        return jsonResponse(200, { document: { id: receiptDocumentId }, job, created: false, revived: n === 1 });
+        const job = {
+          ...reviewJob,
+          id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b0${n}`,
+          stage: "captured",
+          status: "pending",
+          purchase_id: null,
+        };
+        return jsonResponse(200, {
+          document: { id: receiptDocumentId },
+          job,
+          created: false,
+          revived: n === 1,
+        });
       },
     });
     const user = userEvent.setup();
     renderApp("/shop/receipts");
     await screen.findByText("No receipts yet");
-    const files = ["a.png", "b.png", "c.png"].map((name) => new File([new Uint8Array([1, 2, 3])], name, { type: "image/png" }));
+    const files = ["a.png", "b.png", "c.png"].map(
+      (name) => new File([new Uint8Array([1, 2, 3])], name, { type: "image/png" }),
+    );
     await user.upload(screen.getByLabelText("Receipt photos or PDFs"), files);
     await user.click(screen.getByRole("button", { name: "Upload" }));
-    expect(await screen.findByTestId("notice")).toHaveTextContent("1 removed before is being read again. It'll appear in Needs you once read. 2 were uploaded before and aren't read again.");
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "1 removed before is being read again. It'll appear in Needs you once read. 2 were uploaded before and aren't read again.",
+    );
   });
 
   it("uploads several receipts in turn and says what happened to all of them", async () => {
@@ -89,23 +131,40 @@ describe("receipts", () => {
       ...baseRoutes(() => []),
       "POST /receipts": () => {
         n += 1;
-        const job = { ...reviewJob, id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a0${n}`, stage: "captured", status: "pending", purchase_id: null };
-        return n === 2 ? jsonResponse(200, { document: { id: receiptDocumentId }, job, created: false }) : jsonResponse(201, { document: { id: receiptDocumentId }, job, created: true });
+        const job = {
+          ...reviewJob,
+          id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9a0${n}`,
+          stage: "captured",
+          status: "pending",
+          purchase_id: null,
+        };
+        return n === 2
+          ? jsonResponse(200, { document: { id: receiptDocumentId }, job, created: false })
+          : jsonResponse(201, { document: { id: receiptDocumentId }, job, created: true });
       },
     });
     const user = userEvent.setup();
     renderApp("/shop/receipts");
     await screen.findByText("No receipts yet");
-    const files = ["a.png", "b.png", "c.pdf"].map((name) => new File([new Uint8Array([1, 2, 3])], name, { type: name.endsWith(".pdf") ? "application/pdf" : "image/png" }));
+    const files = ["a.png", "b.png", "c.pdf"].map(
+      (name) =>
+        new File([new Uint8Array([1, 2, 3])], name, {
+          type: name.endsWith(".pdf") ? "application/pdf" : "image/png",
+        }),
+    );
     await user.upload(screen.getByLabelText("Receipt photos or PDFs"), files);
     await user.click(screen.getByRole("button", { name: "Upload" }));
-    expect(await screen.findByTestId("notice")).toHaveTextContent("Uploaded 2 receipts. They'll appear in Needs you once read. 1 was uploaded before and isn't read again.");
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Uploaded 2 receipts. They'll appear in Needs you once read. 1 was uploaded before and isn't read again.",
+    );
     expect(calls.filter((c) => c.method === "POST" && c.path === "/receipts")).toHaveLength(3);
     // One batch for all three, opened before any is sent (issue 122).
     const opened = calls.filter((c) => c.method === "POST" && c.path === "/upload-batches");
     expect(opened).toHaveLength(1);
     expect(opened[0].body).toEqual({ file_count: 3 });
-    expect(calls.findIndex((c) => c.path === "/upload-batches" && c.method === "POST")).toBeLessThan(calls.findIndex((c) => c.path === "/receipts" && c.method === "POST"));
+    expect(
+      calls.findIndex((c) => c.path === "/upload-batches" && c.method === "POST"),
+    ).toBeLessThan(calls.findIndex((c) => c.path === "/receipts" && c.method === "POST"));
   });
 
   it("offers to view, not review, the purchase of a finished job", async () => {
@@ -114,7 +173,10 @@ describe("receipts", () => {
     const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const [row] = within(list).getAllByTestId("ingest-job");
     expect(row).toHaveTextContent("done");
-    expect(within(row).getByRole("link", { name: "View purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
+    expect(within(row).getByRole("link", { name: "View purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${receiptPurchaseId}`,
+    );
   });
 
   it("links a job that is ready to review to its purchase and offers retry on a failed one", async () => {
@@ -133,15 +195,28 @@ describe("receipts", () => {
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent("ready to review");
-    expect(within(rows[0]).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
+    expect(within(rows[0]).getByRole("link", { name: "Review purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${receiptPurchaseId}`,
+    );
     expect(within(rows[0]).queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
     expect(rows[1]).toHaveTextContent("failed");
     expect(rows[1]).toHaveTextContent("ocr_unavailable");
     expect(within(rows[1]).getByRole("button", { name: "Enter by hand" })).toBeInTheDocument();
 
     await user.click(within(rows[1]).getByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `/ingest-jobs/${failedJob.id}/retry`)).toBe(true));
-    await waitFor(() => expect(within(screen.getByRole("list", { name: "Receipts in this upload" })).getAllByTestId("ingest-job")[1]).toHaveAttribute("data-status", "pending"));
+    await waitFor(() =>
+      expect(
+        calls.some((c) => c.method === "POST" && c.path === `/ingest-jobs/${failedJob.id}/retry`),
+      ).toBe(true),
+    );
+    await waitFor(() =>
+      expect(
+        within(screen.getByRole("list", { name: "Receipts in this upload" })).getAllByTestId(
+          "ingest-job",
+        )[1],
+      ).toHaveAttribute("data-status", "pending"),
+    );
   });
 
   it("pins the job an inbox item names, even when it is not among the newest listed", async () => {
@@ -177,11 +252,14 @@ describe("receipts", () => {
   it("keeps a listed job in the list when the pinned card cannot load it", async () => {
     mockApi({
       ...baseRoutes(() => [reviewJob, failedJob]),
-      [`GET /ingest-jobs/${failedJob.id}`]: () => jsonResponse(500, { error: { code: "internal", message: "Something went wrong." } }),
+      [`GET /ingest-jobs/${failedJob.id}`]: () =>
+        jsonResponse(500, { error: { code: "internal", message: "Something went wrong." } }),
     });
     renderApp(`/shop/receipts?job=${failedJob.id}`);
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
-    expect(await within(pinned.parentElement as HTMLElement).findByRole("alert")).toBeInTheDocument();
+    expect(
+      await within(pinned.parentElement as HTMLElement).findByRole("alert"),
+    ).toBeInTheDocument();
     const list = await screen.findByRole("list", { name: "Receipts in this upload" });
     const rows = within(list).getAllByTestId("ingest-job");
     expect(rows.map((r) => r.getAttribute("data-status"))).toEqual(["needs_review", "failed"]);
@@ -196,7 +274,8 @@ describe("receipts", () => {
       [`GET /ingest-jobs/${failedJob.id}`]: () => {
         reads += 1;
         // Pending on the read after the retry, finished on the next poll.
-        if (job.status === "pending" && reads > 2) job = { ...job, status: "needs_review", stage: "review", purchase_id: receiptPurchaseId };
+        if (job.status === "pending" && reads > 2)
+          job = { ...job, status: "needs_review", stage: "review", purchase_id: receiptPurchaseId };
         return jsonResponse(200, job);
       },
       [`POST /ingest-jobs/${failedJob.id}/retry`]: () => {
@@ -209,18 +288,35 @@ describe("receipts", () => {
     const pinned = await screen.findByRole("heading", { name: "From your inbox" });
     const card = pinned.parentElement as HTMLElement;
     await user.click(await within(card).findByRole("button", { name: "Retry" }));
-    await waitFor(() => expect(within(card).getByTestId("ingest-job")).toHaveAttribute("data-status", "needs_review"), { timeout: 6000 });
-    expect(within(card).getByRole("link", { name: "Review purchase" })).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
+    await waitFor(
+      () =>
+        expect(within(card).getByTestId("ingest-job")).toHaveAttribute(
+          "data-status",
+          "needs_review",
+        ),
+      { timeout: 6000 },
+    );
+    expect(within(card).getByRole("link", { name: "Review purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${receiptPurchaseId}`,
+    );
   }, 10_000);
 
   it("says what a failure means and what to change, keeping the code for a bug report", async () => {
     // A model that was simply given too little time used to read `model_unavailable`,
     // which sends the owner to check a model server that is working (issue #14).
-    const timedOut: IngestJob = { ...failedJob, stage: "lines", last_error: "model_timeout", last_error_detail: "ReadTimeout after 120s" };
+    const timedOut: IngestJob = {
+      ...failedJob,
+      stage: "lines",
+      last_error: "model_timeout",
+      last_error_detail: "ReadTimeout after 120s",
+    };
     mockApi(baseRoutes(() => [timedOut]));
     renderApp("/shop/receipts");
 
-    const row = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getByTestId("ingest-job");
+    const row = within(
+      await screen.findByRole("list", { name: "Receipts in this upload" }),
+    ).getByTestId("ingest-job");
     expect(row).toHaveTextContent("The model server answered too slowly");
     expect(row).toHaveTextContent("LLM_TIMEOUT_SECONDS");
     expect(row).toHaveTextContent("(model_timeout: ReadTimeout after 120s)");
@@ -229,11 +325,24 @@ describe("receipts", () => {
   it("calls a pending job that has already failed an attempt retrying, not queued", async () => {
     // A job looping on a retry used to be indistinguishable from one that had
     // not started (issue #13).
-    const retrying: IngestJob = { ...failedJob, status: "pending", attempts: 3, last_error: "model_unavailable", last_error_detail: "ConnectError" };
-    mockApi(baseRoutes(() => [retrying, { ...failedJob, status: "pending", attempts: 0, last_error: null }]));
+    const retrying: IngestJob = {
+      ...failedJob,
+      status: "pending",
+      attempts: 3,
+      last_error: "model_unavailable",
+      last_error_detail: "ConnectError",
+    };
+    mockApi(
+      baseRoutes(() => [
+        retrying,
+        { ...failedJob, status: "pending", attempts: 0, last_error: null },
+      ]),
+    );
     renderApp("/shop/receipts");
 
-    const rows = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getAllByTestId("ingest-job");
+    const rows = within(
+      await screen.findByRole("list", { name: "Receipts in this upload" }),
+    ).getAllByTestId("ingest-job");
     expect(rows[0]).toHaveTextContent("retrying");
     expect(rows[0]).toHaveTextContent("The model server could not be reached");
     expect(rows[1]).toHaveTextContent("waiting to be read");
@@ -245,19 +354,29 @@ describe("receipts", () => {
     mockApi(baseRoutes(() => [{ ...failedJob, last_error: "a_code_from_the_future" }]));
     renderApp("/shop/receipts");
 
-    const row = within(await screen.findByRole("list", { name: "Receipts in this upload" })).getByTestId("ingest-job");
+    const row = within(
+      await screen.findByRole("list", { name: "Receipts in this upload" }),
+    ).getByTestId("ingest-job");
     expect(row).toHaveTextContent("a_code_from_the_future");
   });
 
   it("tells two failed receipts apart by their own thumbnails (#28)", async () => {
     const otherDocument = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9002";
-    const second: IngestJob = { ...failedJob, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9103", receipt_document_id: otherDocument, created_at: "2026-09-20T18:06:30Z" };
+    const second: IngestJob = {
+      ...failedJob,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9103",
+      receipt_document_id: otherDocument,
+      created_at: "2026-09-20T18:06:30Z",
+    };
     mockApi(baseRoutes(() => [second, failedJob]));
     renderApp("/shop/receipts");
 
     const rows = await screen.findAllByTestId("ingest-job");
     const thumbs = rows.map((row) => row.querySelector("img")?.getAttribute("src"));
-    expect(thumbs).toEqual([`/api/v1/receipts/${otherDocument}/image?width=96`, `/api/v1/receipts/${receiptDocumentId}/image?width=96`]);
+    expect(thumbs).toEqual([
+      `/api/v1/receipts/${otherDocument}/image?width=96`,
+      `/api/v1/receipts/${receiptDocumentId}/image?width=96`,
+    ]);
     const open = within(rows[0]).getByRole("link", { name: /^Open the receipt uploaded/ });
     expect(open).toHaveAttribute("href", `/api/v1/receipts/${otherDocument}/image`);
   });

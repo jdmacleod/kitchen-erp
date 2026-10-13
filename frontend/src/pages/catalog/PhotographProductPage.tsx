@@ -1,5 +1,10 @@
 import { useId, useRef, useState } from "react";
-import { MAX_PHOTOS, ROLE_LABELS, photoErrorMessage, type PhotoRole } from "../../api/productPhotos";
+import {
+  MAX_PHOTOS,
+  ROLE_LABELS,
+  photoErrorMessage,
+  type PhotoRole,
+} from "../../api/productPhotos";
 import { photographProduct } from "../../api/proposals";
 import { inboxKey } from "../../api/inbox";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,7 +41,11 @@ export function PhotographProductPage() {
     for (const file of Array.from(files)) {
       if (next.length >= MAX_PHOTOS) break;
       // The first is the product itself; later ones are usually its labels.
-      next.push({ key: `${file.name}-${file.size}-${next.length}-${Date.now()}`, file, role: next.length === 0 ? "product" : "label_front" });
+      next.push({
+        key: `${file.name}-${file.size}-${next.length}-${Date.now()}`,
+        file,
+        role: next.length === 0 ? "product" : "label_front",
+      });
     }
     setStaged(next);
     setError(null);
@@ -52,7 +61,10 @@ export function PhotographProductPage() {
       );
       setStaged([]);
       void client.invalidateQueries({ queryKey: inboxKey });
-      notice.show({ tone: "success", message: "Photo saved. It'll appear in Needs you once it's identified." });
+      notice.show({
+        tone: "success",
+        message: "Photo saved. It'll appear in Needs you once it's identified.",
+      });
     } catch (e) {
       setError(e);
     } finally {
@@ -62,7 +74,10 @@ export function PhotographProductPage() {
 
   return (
     <>
-      <PageHeader title="Photograph a product" description="A product that isn't in your catalog yet: its front, and its labels if you like." />
+      <PageHeader
+        title="Photograph a product"
+        description="A product that isn't in your catalog yet: its front, and its labels if you like."
+      />
       <Card className="flex flex-col gap-4">
         <input
           ref={input}
@@ -78,7 +93,10 @@ export function PhotographProductPage() {
           }}
         />
         {staged.length === 0 ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Take a photo of the product's front. You can add up to three more, of its labels or shelf tag.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Take a photo of the product's front. You can add up to three more, of its labels or
+            shelf tag.
+          </p>
         ) : (
           <ul aria-label="Photos to send" className="flex flex-col gap-3">
             {staged.map((s, i) => (
@@ -90,7 +108,13 @@ export function PhotographProductPage() {
                 <select
                   id={`${id}-role-${i}`}
                   value={s.role}
-                  onChange={(e) => setStaged(staged.map((x) => (x.key === s.key ? { ...x, role: e.target.value as PhotoRole } : x)))}
+                  onChange={(e) =>
+                    setStaged(
+                      staged.map((x) =>
+                        x.key === s.key ? { ...x, role: e.target.value as PhotoRole } : x,
+                      ),
+                    )
+                  }
                   className={`min-h-11 rounded-md border border-neutral-300 bg-white px-2 text-sm lg:min-h-9 dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
                 >
                   {ROLE_OPTIONS.map(([value, label]) => (
@@ -99,7 +123,11 @@ export function PhotographProductPage() {
                     </option>
                   ))}
                 </select>
-                <Button variant="secondary" disabled={progress !== null} onClick={() => setStaged(staged.filter((x) => x.key !== s.key))}>
+                <Button
+                  variant="secondary"
+                  disabled={progress !== null}
+                  onClick={() => setStaged(staged.filter((x) => x.key !== s.key))}
+                >
                   Remove
                 </Button>
               </li>
@@ -109,19 +137,34 @@ export function PhotographProductPage() {
         {error ? <Alert tone="error">{photoErrorMessage(error)}</Alert> : null}
         {progress !== null ? (
           <div className="flex flex-col gap-1">
-            <progress aria-label="Uploading photos" max={1} value={progress} className="h-2 w-full accent-neutral-700" />
-            <span className="text-xs text-neutral-600 dark:text-neutral-400">Uploading… {Math.round(progress * 100)}%</span>
+            <progress
+              aria-label="Uploading photos"
+              max={1}
+              value={progress}
+              className="h-2 w-full accent-neutral-700"
+            />
+            <span className="text-xs text-neutral-600 dark:text-neutral-400">
+              Uploading… {Math.round(progress * 100)}%
+            </span>
           </div>
         ) : null}
         <div className="flex flex-wrap gap-2">
           {staged.length < MAX_PHOTOS ? (
-            <Button variant="secondary" disabled={progress !== null} onClick={() => input.current?.click()}>
+            <Button
+              variant="secondary"
+              disabled={progress !== null}
+              onClick={() => input.current?.click()}
+            >
               {staged.length === 0 ? "Take a photo" : "Add another photo of this product"}
             </Button>
           ) : null}
           {staged.length > 0 ? (
             <Button disabled={progress !== null} onClick={() => void send()}>
-              {progress !== null ? "Sending…" : staged.length === 1 ? "Send photo" : `Send ${staged.length} photos`}
+              {progress !== null
+                ? "Sending…"
+                : staged.length === 1
+                  ? "Send photo"
+                  : `Send ${staged.length} photos`}
             </Button>
           ) : null}
         </div>

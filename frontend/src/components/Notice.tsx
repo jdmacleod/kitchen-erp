@@ -1,4 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { Link, useLocation, useNavigate, type NavigateOptions, type To } from "react-router";
 import { alertTones, focusRing } from "./ui";
 
@@ -37,7 +46,11 @@ interface NoticeApi {
   dismiss: () => void;
 }
 
-const NoticeContext = createContext<NoticeApi>({ show: () => "", update: () => {}, dismiss: () => {} });
+const NoticeContext = createContext<NoticeApi>({
+  show: () => "",
+  update: () => {},
+  dismiss: () => {},
+});
 
 export function useNotice(): NoticeApi {
   return useContext(NoticeContext);
@@ -53,8 +66,12 @@ export function useNavigateWithNotice() {
   );
 }
 
-function carried(state: unknown): { notice: NoticeData | null; rest: Record<string, unknown> | null } {
-  if (typeof state !== "object" || state === null || !("notice" in state)) return { notice: null, rest: null };
+function carried(state: unknown): {
+  notice: NoticeData | null;
+  rest: Record<string, unknown> | null;
+} {
+  if (typeof state !== "object" || state === null || !("notice" in state))
+    return { notice: null, rest: null };
   const { notice, ...rest } = state as { notice: NoticeData } & Record<string, unknown>;
   return { notice, rest: Object.keys(rest).length > 0 ? rest : null };
 }
@@ -75,7 +92,8 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
     [location.pathname],
   );
   const update = useCallback(
-    (id: string, patch: Partial<NoticeData>) => setShown((current) => (current?.id === id ? { ...current, ...patch } : current)),
+    (id: string, patch: Partial<NoticeData>) =>
+      setShown((current) => (current?.id === id ? { ...current, ...patch } : current)),
     [],
   );
   const dismiss = useCallback(() => setShown(null), []);
@@ -95,13 +113,19 @@ export function NoticeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const { notice, rest } = carried(location.state);
     if (!notice) return;
-    navigate(`${location.pathname}${location.search}${location.hash}`, { replace: true, state: rest });
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: rest,
+    });
   }, [location, navigate]);
 
   // Auto-clear, for the notices that ask for it.
   useEffect(() => {
     if (!shown?.timeoutMs) return;
-    const timer = setTimeout(() => setShown((current) => (current?.id === shown.id ? null : current)), shown.timeoutMs);
+    const timer = setTimeout(
+      () => setShown((current) => (current?.id === shown.id ? null : current)),
+      shown.timeoutMs,
+    );
     return () => clearTimeout(timer);
   }, [shown]);
 
@@ -137,7 +161,11 @@ function NoticeRegion({ notice, onDismiss }: { notice: Shown | null; onDismiss: 
           <span className="flex flex-wrap items-center gap-x-2">
             <span>{notice.message}</span>
             {notice.action ? (
-              <Link ref={action} to={notice.action.to} className={`rounded font-medium underline ${focusRing}`}>
+              <Link
+                ref={action}
+                to={notice.action.to}
+                className={`rounded font-medium underline ${focusRing}`}
+              >
                 {notice.action.label}
               </Link>
             ) : null}
@@ -148,7 +176,14 @@ function NoticeRegion({ notice, onDismiss }: { notice: Shown | null; onDismiss: 
             onClick={onDismiss}
             className={`-my-1 inline-flex size-11 items-center justify-center rounded-md hover:bg-black/5 lg:size-8 dark:hover:bg-white/10 ${focusRing}`}
           >
-            <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <svg
+              viewBox="0 0 16 16"
+              className="size-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>

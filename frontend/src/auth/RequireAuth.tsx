@@ -31,7 +31,8 @@ export function RequireAuth() {
           Loading…
           {slow ? (
             <span className="mt-2 block">
-              Still waiting for the server. If this deployment was just started, it may still be coming up.
+              Still waiting for the server. If this deployment was just started, it may still be
+              coming up.
             </span>
           ) : null}
         </p>

@@ -9,18 +9,27 @@ import { login, nextTag } from "./helpers";
  * to see that they agree.
  */
 async function seedPurchase(page: Page, stamp: string) {
-  const ingredient = await page.request.post("/api/v1/ingredients", { data: { name: `E2E pearl barley ${stamp}` } });
+  const ingredient = await page.request.post("/api/v1/ingredients", {
+    data: { name: `E2E pearl barley ${stamp}` },
+  });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };
   const productName = `E2E barley bag ${stamp}`;
-  const product = await page.request.post("/api/v1/products", { data: { ingredient_id: ingredientId, name: productName } });
+  const product = await page.request.post("/api/v1/products", {
+    data: { ingredient_id: ingredientId, name: productName },
+  });
   expect(product.status()).toBe(201);
   const { id: productId } = (await product.json()) as { id: string };
 
   const storeName = `E2E Quarry Lane Grocer ${stamp}`;
   const location = await page.request.post("/api/v1/vendor-locations", {
     // The synthetic box from SECURITY.md.
-    data: { name: storeName, lat: "33.620000", lon: "-120.510000", vendor: { name: storeName, kind: "independent" } },
+    data: {
+      name: storeName,
+      lat: "33.620000",
+      lon: "-120.510000",
+      vendor: { name: storeName, kind: "independent" },
+    },
     headers: { "Idempotency-Key": `e2e-remove-loc-${stamp}` },
   });
   expect(location.status()).toBe(201);
@@ -48,7 +57,9 @@ test("removing a recorded purchase voids it everywhere at once", async ({ page }
   const section = page.getByRole("region", { name: "Remove this purchase" });
   await expect(section).toContainText("It's in the price book, so its 1 price will be voided.");
   await section.getByRole("button", { name: "Remove purchase" }).click();
-  const confirm = section.getByRole("group", { name: new RegExp(`Remove the ${storeName} purchase from`) });
+  const confirm = section.getByRole("group", {
+    name: new RegExp(`Remove the ${storeName} purchase from`),
+  });
   await expect(confirm.getByRole("button", { name: "Keep it" })).toBeFocused();
   await confirm.getByRole("button", { name: "Remove purchase" }).click();
 

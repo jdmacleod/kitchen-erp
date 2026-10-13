@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
-import { formatPack, productTitle, useDuplicates, useMarkDistinct, type DuplicatePair, type Product } from "../../api/catalog";
+import {
+  formatPack,
+  productTitle,
+  useDuplicates,
+  useMarkDistinct,
+  type DuplicatePair,
+  type Product,
+} from "../../api/catalog";
 import { useNotice } from "../Notice";
 import { Alert, Button, Card, EmptyState, focusRing } from "../ui";
 import { ProductMergePanel } from "./ProductMergePanel";
@@ -23,7 +30,11 @@ export function DuplicatePairs({ onClose }: { onClose: () => void }) {
         <h2 id="duplicates-heading" className="text-lg font-medium">
           Possible duplicates
         </h2>
-        <button type="button" onClick={onClose} className={`min-h-11 rounded-md text-sm underline lg:min-h-0 ${focusRing}`}>
+        <button
+          type="button"
+          onClick={onClose}
+          className={`min-h-11 rounded-md text-sm underline lg:min-h-0 ${focusRing}`}
+        >
           Back to all products
         </button>
       </div>
@@ -35,12 +46,15 @@ export function DuplicatePairs({ onClose }: { onClose: () => void }) {
         <Alert tone="error">{errorMessage(duplicates.error)}</Alert>
       ) : items.length === 0 ? (
         <EmptyState title="No possible duplicates">
-          <p className={`mt-1 text-sm ${muted}`}>Products that look like the same thing entered twice appear here.</p>
+          <p className={`mt-1 text-sm ${muted}`}>
+            Products that look like the same thing entered twice appear here.
+          </p>
         </EmptyState>
       ) : (
         <>
           <p className={`text-sm ${muted}`}>
-            Each pair looks like one product entered twice. Keep one and merge the other into it, or say they are not the same.
+            Each pair looks like one product entered twice. Keep one and merge the other into it, or
+            say they are not the same.
           </p>
           {items.map((pair) => (
             <PairCard key={`${pair.a.id}:${pair.b.id}`} pair={pair} />
@@ -65,7 +79,12 @@ function PairCard({ pair }: { pair: DuplicatePair }) {
         product={other}
         keep={keep}
         onCancel={() => setKeep(null)}
-        onMerged={(done) => notice.show({ tone: "success", message: `Merged ${done.loser_name} into ${done.survivor_name}.` })}
+        onMerged={(done) =>
+          notice.show({
+            tone: "success",
+            message: `Merged ${done.loser_name} into ${done.survivor_name}.`,
+          })
+        }
       />
     );
   }
@@ -77,11 +96,17 @@ function PairCard({ pair }: { pair: DuplicatePair }) {
             <div key={p.id} className="flex items-start gap-3">
               <ProductThumb name={p.name} photo={p.photo} categoryKey={p.ingredient.category_key} />
               <div className="flex min-w-0 flex-col gap-1 text-sm">
-                <Link to={`/catalog/products/${p.id}`} className={`rounded font-medium underline ${focusRing}`}>
+                <Link
+                  to={`/catalog/products/${p.id}`}
+                  className={`rounded font-medium underline ${focusRing}`}
+                >
                   {productTitle(p)}
                 </Link>
                 <span className={muted}>
-                  {[formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) || "No pack", p.ingredient.name].join(" · ")}
+                  {[
+                    formatPack(p.pack_qty, p.pack_unit, p.pack_count, p.piece_name) || "No pack",
+                    p.ingredient.name,
+                  ].join(" · ")}
                 </span>
                 <div>
                   <Button variant="secondary" onClick={() => setKeep(p)}>
@@ -100,7 +125,10 @@ function PairCard({ pair }: { pair: DuplicatePair }) {
             onClick={() =>
               distinct.mutate(
                 { a: pair.a.id, b: pair.b.id },
-                { onSuccess: () => notice.show({ tone: "success", message: `${title} won't be offered again.` }) },
+                {
+                  onSuccess: () =>
+                    notice.show({ tone: "success", message: `${title} won't be offered again.` }),
+                },
               )
             }
           >

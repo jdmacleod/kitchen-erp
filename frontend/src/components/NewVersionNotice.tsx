@@ -30,7 +30,8 @@ export function NewVersionNotice() {
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
   if (loadedWith === null && current !== null) setLoadedWith(current);
 
-  const stale = loadedWith !== null && current !== null && current !== loadedWith && dismissedFor !== current;
+  const stale =
+    loadedWith !== null && current !== null && current !== loadedWith && dismissedFor !== current;
   return (
     <div aria-live="polite" aria-atomic="true">
       {stale ? (
@@ -48,7 +49,14 @@ export function NewVersionNotice() {
               onClick={() => setDismissedFor(current)}
               className={`inline-flex size-11 items-center justify-center rounded-md hover:bg-black/5 lg:size-8 dark:hover:bg-white/10 ${focusRing}`}
             >
-              <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <svg
+                viewBox="0 0 16 16"
+                className="size-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
                 <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
             </button>

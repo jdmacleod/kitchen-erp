@@ -34,7 +34,20 @@ interface DrawerProps {
  * With typed input, Escape, a backdrop click and Cancel do not close it: they show
  * an inline squash bar asking to discard, and focus goes to Keep editing (D5).
  */
-export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, busy = false, busyLabel, primaryDisabled = false, secondaryAction, actions = true, children }: DrawerProps) {
+export function Drawer({
+  title,
+  thing,
+  dirty,
+  onClose,
+  formId,
+  primaryLabel,
+  busy = false,
+  busyLabel,
+  primaryDisabled = false,
+  secondaryAction,
+  actions = true,
+  children,
+}: DrawerProps) {
   const titleId = useId();
   const panel = useRef<HTMLDivElement>(null);
   const keepEditing = useRef<HTMLButtonElement>(null);
@@ -50,7 +63,12 @@ export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, bus
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div aria-hidden="true" data-testid="drawer-backdrop" className="absolute inset-0 bg-neutral-950/40" onClick={requestClose} />
+      <div
+        aria-hidden="true"
+        data-testid="drawer-backdrop"
+        className="absolute inset-0 bg-neutral-950/40"
+        onClick={requestClose}
+      />
       <div
         ref={panel}
         role="dialog"
@@ -67,7 +85,10 @@ export function Drawer({ title, thing, dirty, onClose, formId, primaryLabel, bus
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         <footer className="border-t border-neutral-200 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-neutral-800">
           {asking ? (
-            <div role="alert" className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            <div
+              role="alert"
+              className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+            >
               <p>Discard this {thing}? What you typed will be lost.</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button ref={keepEditing} variant="secondary" onClick={() => setAsking(false)}>

@@ -9,8 +9,7 @@ export function KitchenTag({ name }: { name: string }) {
   return (
     <span data-testid="kitchen-tag">
       <Badge tone="neutral">
-        <span className="sr-only">Kitchen:</span>{" "}
-        {name}
+        <span className="sr-only">Kitchen:</span> {name}
       </Badge>
     </span>
   );

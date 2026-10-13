@@ -7,7 +7,12 @@ import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
 // 2P, part 3: possible duplicates on the Products page (03, criteria 106–107; UI-6.18).
 
-const twin: Product = { ...flourProduct, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d01", name: "strong white flour", brand: null };
+const twin: Product = {
+  ...flourProduct,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d01",
+  name: "strong white flour",
+  brand: null,
+};
 
 function routes(pairs: () => { a: Product; b: Product; reasons: string[] }[]) {
   return {
@@ -35,7 +40,12 @@ describe("possible duplicates", () => {
     const card = await within(section).findByRole("group", { name: /and strong white flour/ });
     expect(within(card).getAllByRole("button", { name: "Keep this one" })).toHaveLength(2);
     await user.click(within(card).getByRole("button", { name: "Not the same" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/products/duplicates/distinct")?.body).toEqual({ a: flourProduct.id, b: twin.id }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.path === "/products/duplicates/distinct")?.body).toEqual({
+        a: flourProduct.id,
+        b: twin.id,
+      }),
+    );
     expect(await within(section).findByText("No possible duplicates")).toBeInTheDocument();
   });
 
@@ -65,7 +75,9 @@ describe("possible duplicates", () => {
     renderApp("/catalog/products?duplicates=1");
     const card = await screen.findByRole("group", { name: /and strong white flour/ });
     await user.click(within(card).getAllByRole("button", { name: "Keep this one" })[0]);
-    expect(await screen.findByRole("heading", { name: /Merge strong white flour into/ })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Merge strong white flour into/ }),
+    ).toBeInTheDocument();
     expect(await screen.findByTestId("merge-moves")).toHaveTextContent("2 prices go to");
   });
 });

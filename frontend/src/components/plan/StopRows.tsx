@@ -18,11 +18,21 @@ export function CheckCircle({ checked }: { checked: boolean }) {
       aria-hidden="true"
       data-testid="check-circle"
       className={`inline-flex size-7 items-center justify-center rounded-full border-2 ${
-        checked ? "border-green-700 bg-green-700 text-white dark:border-green-500 dark:bg-green-500 dark:text-neutral-950" : "border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900"
+        checked
+          ? "border-green-700 bg-green-700 text-white dark:border-green-500 dark:bg-green-500 dark:text-neutral-950"
+          : "border-neutral-400 bg-white dark:border-neutral-500 dark:bg-neutral-900"
       }`}
     >
       {checked ? (
-        <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          viewBox="0 0 16 16"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M3 8.5l3 3 7-7" />
         </svg>
       ) : null}
@@ -33,7 +43,12 @@ export function CheckCircle({ checked }: { checked: boolean }) {
 /** "2 packs of 16 oz", "1 pack", or "by amount" when the product has no pack size. */
 export function plannedPacks(item: Pick<StopScreenItem, "packs" | "product">): string {
   if (item.packs === null) return "by amount";
-  const pack = formatPack(item.product.pack_qty, item.product.pack_unit, item.product.pack_count, item.product.piece_name);
+  const pack = formatPack(
+    item.product.pack_qty,
+    item.product.pack_unit,
+    item.product.pack_count,
+    item.product.piece_name,
+  );
   const n = stripZeros(item.packs);
   return `${n} ${cmp(item.packs, "1") === 0 ? "pack" : "packs"}${pack ? ` of ${pack}` : ""}`;
 }
@@ -63,7 +78,15 @@ interface StopItemRowProps {
  * editor. An edited price tints the row neutral, reads "edited" and keeps the
  * plan's figure as "planned $x" (UI-8.17).
  */
-export function StopItemRow({ item, planId, seq, checked, readOnly, onToggle, onConflict }: StopItemRowProps) {
+export function StopItemRow({
+  item,
+  planId,
+  seq,
+  checked,
+  readOnly,
+  onToggle,
+  onConflict,
+}: StopItemRowProps) {
   const [editing, setEditing] = useState(false);
   const priceButton = useRef<HTMLButtonElement>(null);
   const amounts = formatAmounts(item.amounts);
@@ -102,7 +125,10 @@ export function StopItemRow({ item, planId, seq, checked, readOnly, onToggle, on
 
         <div className="min-w-0 flex-1 pt-2">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-            <span className={`font-medium ${checked ? `line-through ${muted}` : ""}`} data-testid="item-name">
+            <span
+              className={`font-medium ${checked ? `line-through ${muted}` : ""}`}
+              data-testid="item-name"
+            >
               {item.label}
             </span>
             {amounts ? <span className="text-sm tabular-nums">{amounts}</span> : null}
@@ -115,7 +141,9 @@ export function StopItemRow({ item, planId, seq, checked, readOnly, onToggle, on
             {item.price_stale ? <Badge tone="warn">stale</Badge> : null}
             {item.edited ? <Badge tone="neutral">edited</Badge> : null}
             {item.got_here ? <Badge tone="neutral">moved here</Badge> : null}
-            {item.claimed_by ? <Badge tone="neutral">{item.claimed_by.display_name} is getting it</Badge> : null}
+            {item.claimed_by ? (
+              <Badge tone="neutral">{item.claimed_by.display_name} is getting it</Badge>
+            ) : null}
           </div>
           {item.edited ? (
             <p className={`text-xs tabular-nums ${muted}`} data-testid="planned-caption">
@@ -144,7 +172,15 @@ export function StopItemRow({ item, planId, seq, checked, readOnly, onToggle, on
         )}
       </div>
 
-      {editing && !readOnly ? <PriceEditor item={item} planId={planId} seq={seq} onClose={close} onConflict={onConflict} /> : null}
+      {editing && !readOnly ? (
+        <PriceEditor
+          item={item}
+          planId={planId}
+          seq={seq}
+          onClose={close}
+          onConflict={onConflict}
+        />
+      ) : null}
     </li>
   );
 }
@@ -154,11 +190,25 @@ export function StopItemRow({ item, planId, seq, checked, readOnly, onToggle, on
  * Cancel. Saving holds the price on the stop item; it records nothing until
  * "Done here" (10, Editing a price). "Use the planned price" drops a held one.
  */
-function PriceEditor({ item, planId, seq, onClose, onConflict }: { item: StopScreenItem; planId: string; seq: number; onClose: () => void; onConflict: (e: unknown) => void }) {
+function PriceEditor({
+  item,
+  planId,
+  seq,
+  onClose,
+  onConflict,
+}: {
+  item: StopScreenItem;
+  planId: string;
+  seq: number;
+  onClose: () => void;
+  onConflict: (e: unknown) => void;
+}) {
   const base = useId();
   const hold = useHoldStopPrice();
   const clear = useClearStopPrice();
-  const [price, setPrice] = useState(item.actual_price !== null ? stripZeros(item.actual_price, 2) : "");
+  const [price, setPrice] = useState(
+    item.actual_price !== null ? stripZeros(item.actual_price, 2) : "",
+  );
   const [qty, setQty] = useState(item.actual_qty !== null ? stripZeros(item.actual_qty) : "1");
   const [unit, setUnit] = useState(item.actual_unit ?? "each");
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -176,11 +226,19 @@ function PriceEditor({ item, planId, seq, onClose, onConflict }: { item: StopScr
     if (!p || !isNonNegativeDecimal(p)) return setInvalid("Enter the shelf price, such as 4.29.");
     if (q === null) return setInvalid("Enter how much the price is for, such as 1.");
     setInvalid(null);
-    hold.mutate({ id: planId, seq, itemId: item.id, input: { price: p, qty: q, unit } }, { onSuccess: onClose, onError });
+    hold.mutate(
+      { id: planId, seq, itemId: item.id, input: { price: p, qty: q, unit } },
+      { onSuccess: onClose, onError },
+    );
   };
 
   return (
-    <form onSubmit={save} className="mt-2 ml-12 flex flex-col gap-2 rounded-md border border-neutral-300 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900" aria-label={`Price of ${item.label}`} data-testid="price-editor">
+    <form
+      onSubmit={save}
+      className="mt-2 ml-12 flex flex-col gap-2 rounded-md border border-neutral-300 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900"
+      aria-label={`Price of ${item.label}`}
+      data-testid="price-editor"
+    >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Field
           // Focus lands in the price, which opens the decimal keypad.
@@ -194,12 +252,31 @@ function PriceEditor({ item, planId, seq, onClose, onConflict }: { item: StopScr
           onChange={(e) => setPrice(e.target.value)}
           disabled={busy}
         />
-        <Field id={`${base}-qty`} label="For" inputMode="decimal" autoComplete="off" value={qty} onChange={(e) => setQty(e.target.value)} disabled={busy} />
-        <UnitSelect id={`${base}-unit`} label="Unit" value={unit} onChange={setUnit} emptyLabel={null} disabled={busy} />
+        <Field
+          id={`${base}-qty`}
+          label="For"
+          inputMode="decimal"
+          autoComplete="off"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          disabled={busy}
+        />
+        <UnitSelect
+          id={`${base}-unit`}
+          label="Unit"
+          value={unit}
+          onChange={setUnit}
+          emptyLabel={null}
+          disabled={busy}
+        />
       </div>
-      <p className={`text-xs ${muted}`}>One pack is 1 each. Saving holds the price here; Done here decides what it records.</p>
+      <p className={`text-xs ${muted}`}>
+        One pack is 1 each. Saving holds the price here; Done here decides what it records.
+      </p>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-      {failure ? <Alert tone="error">Couldn&apos;t save the price: {errorMessage(failure)}</Alert> : null}
+      {failure ? (
+        <Alert tone="error">Couldn&apos;t save the price: {errorMessage(failure)}</Alert>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={busy}>
           {hold.isPending ? "Saving…" : "Save"}
@@ -208,7 +285,13 @@ function PriceEditor({ item, planId, seq, onClose, onConflict }: { item: StopScr
           Cancel
         </Button>
         {item.edited ? (
-          <Button variant="ghost" disabled={busy} onClick={() => clear.mutate({ id: planId, seq, itemId: item.id }, { onSuccess: onClose, onError })}>
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() =>
+              clear.mutate({ id: planId, seq, itemId: item.id }, { onSuccess: onClose, onError })
+            }
+          >
             {clear.isPending ? "Clearing…" : "Use the planned price"}
           </Button>
         ) : null}
@@ -231,17 +314,25 @@ interface CheaperRowProps {
 export function CheaperRow({ item, busy, notHere, error, readOnly, onGetHere }: CheaperRowProps) {
   const amounts = formatAmounts(item.amounts);
   return (
-    <li data-testid="cheaper-item" data-id={item.id} className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 border-t border-neutral-200 py-2 first:border-t-0 dark:border-neutral-800">
+    <li
+      data-testid="cheaper-item"
+      data-id={item.id}
+      className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 border-t border-neutral-200 py-2 first:border-t-0 dark:border-neutral-800"
+    >
       <div className="min-w-0 flex-1 pt-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <span className="font-medium">{item.label}</span>
           {amounts ? <span className="text-sm tabular-nums">{amounts}</span> : null}
         </div>
         <p className={`text-sm tabular-nums ${muted}`}>
-          <span data-testid="cheaper-difference" className="font-medium text-neutral-900 dark:text-neutral-100">
+          <span
+            data-testid="cheaper-difference"
+            className="font-medium text-neutral-900 dark:text-neutral-100"
+          >
             {differenceHere(item.difference)}
           </span>{" "}
-          · {formatMoney(item.line_cost_here)} here, {formatMoney(item.line_cost_there)} at {item.at_location_name}
+          · {formatMoney(item.line_cost_here)} here, {formatMoney(item.line_cost_there)} at{" "}
+          {item.at_location_name}
         </p>
         <p className={`text-xs ${muted}`}>{item.product_here.name}</p>
         {item.price_stale_here ? (
@@ -249,11 +340,23 @@ export function CheaperRow({ item, busy, notHere, error, readOnly, onGetHere }: 
             <Badge tone="warn">stale</Badge>
           </span>
         ) : null}
-        {notHere ? <p className="mt-1 text-sm text-red-800 dark:text-red-200">Not sold here</p> : null}
-        {error ? <p className="mt-1 text-sm text-red-800 dark:text-red-200">Couldn&apos;t move it: {error}</p> : null}
+        {notHere ? (
+          <p className="mt-1 text-sm text-red-800 dark:text-red-200">Not sold here</p>
+        ) : null}
+        {error ? (
+          <p className="mt-1 text-sm text-red-800 dark:text-red-200">
+            Couldn&apos;t move it: {error}
+          </p>
+        ) : null}
       </div>
       {readOnly || notHere ? null : (
-        <Button variant="secondary" className="shrink-0" disabled={busy} aria-label={`Get ${item.label} here`} onClick={() => onGetHere(item)}>
+        <Button
+          variant="secondary"
+          className="shrink-0"
+          disabled={busy}
+          aria-label={`Get ${item.label} here`}
+          onClick={() => onGetHere(item)}
+        >
           {busy ? "Moving…" : "Get here"}
         </Button>
       )}

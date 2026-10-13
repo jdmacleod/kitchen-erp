@@ -1,5 +1,12 @@
 import { useId, useState, type FormEvent } from "react";
-import { geoErrorMessage, IMPORT_MAX_BYTES, useImportVendors, type ImportCounts, type ImportItem, type ImportReport } from "../../api/geo";
+import {
+  geoErrorMessage,
+  IMPORT_MAX_BYTES,
+  useImportVendors,
+  type ImportCounts,
+  type ImportItem,
+  type ImportReport,
+} from "../../api/geo";
 import { Disclosure } from "../catalog/fields";
 import { Drawer } from "../Drawer";
 import { useNotice } from "../Notice";
@@ -41,10 +48,12 @@ export function countStrip(r: Pick<ImportReport, "counts" | "unresolved_home_bas
 /** The Notice after an import, saying so when the run differed from its preview (D6). */
 export function importNotice(done: ImportCounts, preview: ImportCounts | null): string {
   const parts = [`Imported: ${done.created} created, ${done.updated} updated`];
-  if (done.conflicts + done.unmatched > 0) parts.push(`${done.conflicts + done.unmatched} left for you`);
+  if (done.conflicts + done.unmatched > 0)
+    parts.push(`${done.conflicts + done.unmatched} left for you`);
   let message = `${parts.join(", ")}.`;
   if (preview) {
-    const moved = Math.abs(done.created - preview.created) + Math.abs(done.updated - preview.updated);
+    const moved =
+      Math.abs(done.created - preview.created) + Math.abs(done.updated - preview.updated);
     if (moved > 0) message += ` ${moved} changed since the preview.`;
   }
   return message;
@@ -57,7 +66,9 @@ function itemTitle(item: ImportItem, vendorNames: Map<string, string>): string {
 }
 
 function Report({ report, fileName }: { report: ImportReport; fileName: string }) {
-  const vendorNames = new Map(report.items.filter((i) => i.target === "vendor").map((i) => [i.key, i.name]));
+  const vendorNames = new Map(
+    report.items.filter((i) => i.target === "vendor").map((i) => [i.key, i.name]),
+  );
   const needs = report.items.filter((i) => i.outcome === "conflict" || i.outcome === "unmatched");
   const changing = report.items.filter((i) => i.outcome === "created" || i.outcome === "updated");
   const unchanged = report.items.filter((i) => i.outcome === "unchanged");
@@ -70,7 +81,9 @@ function Report({ report, fileName }: { report: ImportReport; fileName: string }
       <p role="status" className="rounded-md bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-800">
         {countStrip(report)}
       </p>
-      {nothing ? <p className="text-sm font-medium">This file matches what you have. Nothing to import.</p> : null}
+      {nothing ? (
+        <p className="text-sm font-medium">This file matches what you have. Nothing to import.</p>
+      ) : null}
       {needs.length > 0 || report.unresolved_home_bases.length > 0 ? (
         <section aria-labelledby="import-needs-you">
           <h3 id="import-needs-you" className="text-sm font-semibold">
@@ -81,10 +94,13 @@ function Report({ report, fileName }: { report: ImportReport; fileName: string }
             {needs.map((item) => (
               <li key={`${item.target}-${item.key}`} className="py-2 text-sm">
                 <p className="font-medium">{itemTitle(item, vendorNames)}</p>
-                {item.reason ? <p className={`text-xs ${muted}`}>{item.reason} Not imported.</p> : null}
+                {item.reason ? (
+                  <p className={`text-xs ${muted}`}>{item.reason} Not imported.</p>
+                ) : null}
                 {item.conflicts.map((c) => (
                   <p key={c.field} className={`text-xs ${muted}`}>
-                    Your edit is kept: {label(c.field)} ({show(c.current)}). The file says {show(c.file)}.
+                    Your edit is kept: {label(c.field)} ({show(c.current)}). The file says{" "}
+                    {show(c.file)}.
                   </p>
                 ))}
               </li>
@@ -92,7 +108,9 @@ function Report({ report, fileName }: { report: ImportReport; fileName: string }
             {report.unresolved_home_bases.map((name) => (
               <li key={`home-${name}`} className="py-2 text-sm">
                 <p className="font-medium">No kitchen called {name}</p>
-                <p className={`text-xs ${muted}`}>None is created; those locations use the nearest kitchen.</p>
+                <p className={`text-xs ${muted}`}>
+                  None is created; those locations use the nearest kitchen.
+                </p>
               </li>
             ))}
           </ul>
@@ -107,12 +125,17 @@ function Report({ report, fileName }: { report: ImportReport; fileName: string }
             {changing.map((item) => (
               <li key={`${item.target}-${item.key}`} className="py-2 text-sm">
                 <p className="font-medium">
-                  {itemTitle(item, vendorNames)} {item.outcome === "created" ? <span className={`text-xs font-normal ${muted}`}>new</span> : null}
+                  {itemTitle(item, vendorNames)}{" "}
+                  {item.outcome === "created" ? (
+                    <span className={`text-xs font-normal ${muted}`}>new</span>
+                  ) : null}
                 </p>
                 <p className={`text-xs ${muted}`}>
                   {item.outcome === "created"
                     ? item.changes.map((c) => label(c.field)).join(", ")
-                    : item.changes.map((c) => `${label(c.field)}: ${show(c.old)} → ${show(c.new)}`).join(" · ")}
+                    : item.changes
+                        .map((c) => `${label(c.field)}: ${show(c.old)} → ${show(c.new)}`)
+                        .join(" · ")}
                 </p>
               </li>
             ))}
@@ -171,7 +194,10 @@ export function VendorImportDrawer({ onClose }: { onClose: () => void }) {
       { text: file.text, fileName: file.name, dryRun: false },
       {
         onSuccess: (done) => {
-          notice.show({ tone: "success", message: importNotice(done.counts, report?.counts ?? null) });
+          notice.show({
+            tone: "success",
+            message: importNotice(done.counts, report?.counts ?? null),
+          });
           onClose();
         },
       },
@@ -179,10 +205,21 @@ export function VendorImportDrawer({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Drawer title="Import vendors" thing="import" dirty={file !== null} onClose={onClose} formId={formId} primaryLabel="Import" busy={apply.isPending} busyLabel="Importing…" primaryDisabled={!canImport}>
+    <Drawer
+      title="Import vendors"
+      thing="import"
+      dirty={file !== null}
+      onClose={onClose}
+      formId={formId}
+      primaryLabel="Import"
+      busy={apply.isPending}
+      busyLabel="Importing…"
+      primaryDisabled={!canImport}
+    >
       <form id={formId} onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
         <p className={`text-sm ${muted}`}>
-          A kitchen-erp-vendors/1 file, YAML or JSON. You see what it would change before anything is written. Nothing you edited is overwritten, and nothing is deleted.
+          A kitchen-erp-vendors/1 file, YAML or JSON. You see what it would change before anything
+          is written. Nothing you edited is overwritten, and nothing is deleted.
         </p>
         <div className="flex flex-col gap-1">
           <label htmlFor={inputId} className="text-sm font-medium">

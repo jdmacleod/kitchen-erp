@@ -27,7 +27,9 @@ function Checks() {
       {checks.map(([name, check]) => (
         <li key={name} className="flex items-center justify-between gap-3 py-2 text-sm">
           <span className="first-letter:uppercase">{name.replace(/_/g, " ")}</span>
-          <Badge tone={checkTone[check.status ?? ""] ?? "neutral"}>{check.status ?? "unknown"}</Badge>
+          <Badge tone={checkTone[check.status ?? ""] ?? "neutral"}>
+            {check.status ?? "unknown"}
+          </Badge>
         </li>
       ))}
     </ul>
@@ -45,7 +47,8 @@ function ChangePassword() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (form.new_password.length < 8) return setInvalid("The new password needs at least 8 characters.");
+    if (form.new_password.length < 8)
+      return setInvalid("The new password needs at least 8 characters.");
     if (form.new_password !== form.confirm) return setInvalid("The two new passwords don't match.");
     setInvalid(null);
     change.mutate(
@@ -53,27 +56,67 @@ function ChangePassword() {
       {
         onSuccess: () => {
           setForm(emptyPasswords);
-          notice.show({ tone: "success", message: "Password changed. You're signed out on your other devices." });
+          notice.show({
+            tone: "success",
+            message: "Password changed. You're signed out on your other devices.",
+          });
         },
       },
     );
   };
 
-  const error = invalid ?? (change.isError ? (isApiError(change.error) && change.error.code === "wrong_password" ? "The current password is not right." : errorMessage(change.error)) : null);
+  const error =
+    invalid ??
+    (change.isError
+      ? isApiError(change.error) && change.error.code === "wrong_password"
+        ? "The current password is not right."
+        : errorMessage(change.error)
+      : null);
 
   return (
     <Card>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="change-password-heading">
+      <form
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        aria-labelledby="change-password-heading"
+      >
         <div>
           <h2 id="change-password-heading" className="mb-1 text-lg font-medium">
             Password
           </h2>
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Changing it keeps you signed in here and signs you out everywhere else.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Changing it keeps you signed in here and signs you out everywhere else.
+          </p>
         </div>
         {error ? <Alert tone="error">{error}</Alert> : null}
-        <Field id="current-password" label="Current password" type="password" autoComplete="current-password" required value={form.current_password} onChange={(e) => setForm({ ...form, current_password: e.target.value })} />
-        <Field id="new-password" label="New password" type="password" autoComplete="new-password" required value={form.new_password} onChange={(e) => setForm({ ...form, new_password: e.target.value })} hint="At least 8 characters." />
-        <Field id="confirm-password" label="New password again" type="password" autoComplete="new-password" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
+        <Field
+          id="current-password"
+          label="Current password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={form.current_password}
+          onChange={(e) => setForm({ ...form, current_password: e.target.value })}
+        />
+        <Field
+          id="new-password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={form.new_password}
+          onChange={(e) => setForm({ ...form, new_password: e.target.value })}
+          hint="At least 8 characters."
+        />
+        <Field
+          id="confirm-password"
+          label="New password again"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={form.confirm}
+          onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+        />
         <div>
           <Button type="submit" variant="secondary" disabled={change.isPending}>
             {change.isPending ? "Changing…" : "Change password"}
@@ -90,7 +133,10 @@ export function SystemPage() {
   const logoutEverywhere = useLogoutEverywhere();
   return (
     <>
-      <PageHeader title="System" description="How this deployment is doing, and your sessions on it." />
+      <PageHeader
+        title="System"
+        description="How this deployment is doing, and your sessions on it."
+      />
       <div className="flex flex-col gap-6">
         <Card>
           <h2 className="mb-3 text-lg font-medium">Status</h2>
@@ -103,10 +149,17 @@ export function SystemPage() {
         <Card>
           <h2 className="mb-1 text-lg font-medium">Sessions</h2>
           <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-            Signs you out on every device, including this one. API tokens keep working; revoke them under API tokens.
+            Signs you out on every device, including this one. API tokens keep working; revoke them
+            under API tokens.
           </p>
-          {logoutEverywhere.isError ? <Alert tone="error">{errorMessage(logoutEverywhere.error)}</Alert> : null}
-          <Button variant="secondary" disabled={logoutEverywhere.isPending} onClick={() => logoutEverywhere.mutate()}>
+          {logoutEverywhere.isError ? (
+            <Alert tone="error">{errorMessage(logoutEverywhere.error)}</Alert>
+          ) : null}
+          <Button
+            variant="secondary"
+            disabled={logoutEverywhere.isPending}
+            onClick={() => logoutEverywhere.mutate()}
+          >
             Log out everywhere
           </Button>
         </Card>

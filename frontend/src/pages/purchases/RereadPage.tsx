@@ -59,14 +59,21 @@ function show(line: RereadLine, field: RereadField): string {
 
 /** A line read as a whole: what it is and what it comes to. */
 function summary(line: RereadLine): string {
-  const qty = line.qty ? `${line.qty}${line.unit && line.unit !== "each" ? ` ${line.unit}` : ""} · ` : "";
+  const qty = line.qty
+    ? `${line.qty}${line.unit && line.unit !== "each" ? ` ${line.unit}` : ""} · `
+    : "";
   return `${KIND_LABELS[line.line_kind] ?? line.line_kind} · ${qty}${formatMoney(line.line_total)}`;
 }
 
 function Change({ change }: { change: RereadChange }) {
   const line = change.after ?? change.before ?? change.reading;
   const text = line?.raw_text ?? "";
-  const label = { changed: "Changed", added: "Added", removed: "Removed", kept: "Kept as you left it" }[change.action];
+  const label = {
+    changed: "Changed",
+    added: "Added",
+    removed: "Removed",
+    kept: "Kept as you left it",
+  }[change.action];
   const quiet = change.action === "kept";
   return (
     <li
@@ -83,7 +90,9 @@ function Change({ change }: { change: RereadChange }) {
               <dt className="text-neutral-600 dark:text-neutral-400">{FIELD_LABELS[field]}</dt>
               <dd className="min-w-0 break-words">
                 <span className="sr-only">was </span>
-                <s className="text-neutral-600 dark:text-neutral-400">{show(change.before!, field)}</s>
+                <s className="text-neutral-600 dark:text-neutral-400">
+                  {show(change.before!, field)}
+                </s>
                 <span aria-hidden="true"> → </span>
                 <span className="sr-only">, now </span>
                 <span>{show(change.after!, field)}</span>
@@ -92,9 +101,15 @@ function Change({ change }: { change: RereadChange }) {
           ))}
         </dl>
       ) : null}
-      {change.action === "added" && change.after ? <p className="text-sm">{summary(change.after)}</p> : null}
-      {change.action === "removed" && change.before ? <p className="text-sm">{summary(change.before)}</p> : null}
-      {change.action === "kept" && change.why ? <p className="text-sm">{KEPT_WHY[change.why]}. Today's reading differs; yours stays.</p> : null}
+      {change.action === "added" && change.after ? (
+        <p className="text-sm">{summary(change.after)}</p>
+      ) : null}
+      {change.action === "removed" && change.before ? (
+        <p className="text-sm">{summary(change.before)}</p>
+      ) : null}
+      {change.action === "kept" && change.why ? (
+        <p className="text-sm">{KEPT_WHY[change.why]}. Today's reading differs; yours stays.</p>
+      ) : null}
     </li>
   );
 }
@@ -118,7 +133,8 @@ function Summary({ reread }: { reread: Reread }) {
       {after.checked ? (
         after.mismatch ? (
           <p className="text-sm">
-            Off by {money(after.difference)} now{before.mismatch ? ` (was ${money(before.difference)})` : " (adds up as it is)"}.
+            Off by {money(after.difference)} now
+            {before.mismatch ? ` (was ${money(before.difference)})` : " (adds up as it is)"}.
           </p>
         ) : (
           <p className="text-sm font-medium text-green-700 dark:text-green-400">
@@ -143,7 +159,10 @@ export function RereadPage() {
 
   const back = `/shop/purchases/${id}`;
   const backLink = (
-    <Link to={back} className={`inline-flex min-h-11 items-center rounded-md underline lg:min-h-10 ${focusRing}`}>
+    <Link
+      to={back}
+      className={`inline-flex min-h-11 items-center rounded-md underline lg:min-h-10 ${focusRing}`}
+    >
       {purchase.data ? `Receipt, ${formatDate(purchase.data.purchased_at)}` : "Back to the receipt"}
     </Link>
   );
@@ -166,7 +185,8 @@ export function RereadPage() {
 
   const again = (mode: RereadMode) => {
     const start = () => request.mutate(mode, { onSuccess: () => apply.reset() });
-    if (reread && ["pending", "running", "ready"].includes(reread.status)) dismiss.mutate(reread.id, { onSuccess: start });
+    if (reread && ["pending", "running", "ready"].includes(reread.status))
+      dismiss.mutate(reread.id, { onSuccess: start });
     else start();
   };
   const againButtons = (
@@ -184,14 +204,20 @@ export function RereadPage() {
 
   const header = (actions?: ReactNode) => (
     <>
-      <nav aria-label="Breadcrumb" className={`mb-2 flex flex-wrap items-center gap-1 ${hintClass}`}>
+      <nav
+        aria-label="Breadcrumb"
+        className={`mb-2 flex flex-wrap items-center gap-1 ${hintClass}`}
+      >
         <Link to="/shop/purchases" className={`rounded-md underline ${focusRing}`}>
           Purchases
         </Link>
         <span aria-hidden="true">/</span>
         {backLink}
       </nav>
-      <PageHeader title="Re-read lines" description="What today's reading would change. Nothing changes until you apply it.">
+      <PageHeader
+        title="Re-read lines"
+        description="What today's reading would change. Nothing changes until you apply it."
+      >
         {actions}
       </PageHeader>
     </>
@@ -255,7 +281,9 @@ export function RereadPage() {
         }),
     });
   const onDiscard = () =>
-    dismiss.mutate(reread.id, { onSuccess: () => navigateWithNotice(back, { tone: "success", message: "Re-read discarded." }) });
+    dismiss.mutate(reread.id, {
+      onSuccess: () => navigateWithNotice(back, { tone: "success", message: "Re-read discarded." }),
+    });
   const actions = (
     <>
       <Button disabled={busy || stale} onClick={onApply}>
@@ -273,14 +301,21 @@ export function RereadPage() {
       <div className="flex flex-col gap-4">
         {stale ? (
           <Alert tone="warn">
-            <p>The lines changed since this re-read. Re-check or read again to see what would change now.</p>
+            <p>
+              The lines changed since this re-read. Re-check or read again to see what would change
+              now.
+            </p>
             <div className="mt-2">{againButtons}</div>
           </Alert>
         ) : apply.isError ? (
           <Alert tone="error">{errorMessage(apply.error)}</Alert>
         ) : null}
         {dismiss.isError ? <Alert tone="error">{errorMessage(dismiss.error)}</Alert> : null}
-        {committed ? <p className={hintClass}>Applying reopens this purchase. Its prices change when you commit it again.</p> : null}
+        {committed ? (
+          <p className={hintClass}>
+            Applying reopens this purchase. Its prices change when you commit it again.
+          </p>
+        ) : null}
         <Card>
           <Summary reread={reread} />
         </Card>

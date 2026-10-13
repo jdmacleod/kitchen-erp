@@ -58,7 +58,10 @@ export function useUsdaDecision() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ ingredientId, ...body }: UsdaDecision & { ingredientId: string }) =>
-      api<{ saved: number; ingredient: Ingredient }>(`/usda/review/${encodeURIComponent(ingredientId)}`, { method: "POST", body }),
+      api<{ saved: number; ingredient: Ingredient }>(
+        `/usda/review/${encodeURIComponent(ingredientId)}`,
+        { method: "POST", body },
+      ),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: usdaReviewKey });
       void client.invalidateQueries({ queryKey: ["ingredients"] });

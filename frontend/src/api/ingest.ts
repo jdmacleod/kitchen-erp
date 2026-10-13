@@ -125,19 +125,24 @@ export function useUploadBatches(enabled = true) {
     queryFn: () => api<{ items: UploadBatch[] }>("/upload-batches"),
     select: (data) => data.items,
     enabled,
-    refetchInterval: (query) => (query.state.data?.items.some((b) => b.reading > 0) ? 3_000 : false),
+    refetchInterval: (query) =>
+      query.state.data?.items.some((b) => b.reading > 0) ? 3_000 : false,
   });
 }
 
 /** Open a batch before sending its files, so they are counted together. */
 export function createUploadBatch(fileCount: number): Promise<{ id: string }> {
-  return api<{ id: string }>("/upload-batches", { method: "POST", body: { file_count: fileCount } });
+  return api<{ id: string }>("/upload-batches", {
+    method: "POST",
+    body: { file_count: fileCount },
+  });
 }
 
 export function useIngestJob(id: string | undefined, includeOutput = true) {
   return useQuery({
     queryKey: [...ingestKeys.job(id ?? ""), includeOutput],
-    queryFn: () => api<IngestJob>(`/ingest-jobs/${enc(id ?? "")}${qs({ include_output: includeOutput })}`),
+    queryFn: () =>
+      api<IngestJob>(`/ingest-jobs/${enc(id ?? "")}${qs({ include_output: includeOutput })}`),
     enabled: Boolean(id),
     // Poll while it is in flight, as the list does, so a retried job shows its outcome.
     refetchInterval: (query) => (query.state.data && jobInFlight(query.state.data) ? 3_000 : false),
@@ -153,8 +158,10 @@ export function useIngestJob(id: string | undefined, includeOutput = true) {
  */
 export function locationCandidates(job: IngestJob | undefined): LocationCandidate[] {
   const results = job?.stage_results ?? job?.results ?? [];
-  const header = results.find((r) => r.stage === "header" && r.output) ?? results.find((r) => r.output);
-  const output = header?.output as { location?: { candidates?: unknown }; location_candidates?: unknown } | null | undefined;
+  const header =
+    results.find((r) => r.stage === "header" && r.output) ?? results.find((r) => r.output);
+  const output = header?.output as
+    { location?: { candidates?: unknown }; location_candidates?: unknown } | null | undefined;
   const raw = output?.location?.candidates ?? output?.location_candidates;
   if (!Array.isArray(raw)) return [];
   const out: LocationCandidate[] = [];
@@ -162,7 +169,12 @@ export function locationCandidates(job: IngestJob | undefined): LocationCandidat
     const location_id = str(c.location_id ?? c.vendor_location_id);
     const name = str(c.name ?? c.location_name);
     if (!location_id || !name) continue;
-    out.push({ location_id, name, vendor_name: str(c.vendor_name) ?? name, score: str(c.score) ?? "" });
+    out.push({
+      location_id,
+      name,
+      vendor_name: str(c.vendor_name) ?? name,
+      score: str(c.score) ?? "",
+    });
   }
   return out;
 }
@@ -182,7 +194,10 @@ export function useRetryJob() {
 export function useJobToManual() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api<{ job: IngestJob; purchase_id: string }>(`/ingest-jobs/${enc(id)}/to-manual`, { method: "POST" }),
+    mutationFn: (id: string) =>
+      api<{ job: IngestJob; purchase_id: string }>(`/ingest-jobs/${enc(id)}/to-manual`, {
+        method: "POST",
+      }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ingestKeys.jobs });
       // Through the shared helper, not a literal key: it is the one place that
@@ -207,7 +222,9 @@ export function useRemoveJob() {
   return useMutation({
     mutationFn: async (id: string): Promise<{ photo_deleted: boolean }> => {
       try {
-        return await api<{ photo_deleted: boolean }>(`/ingest-jobs/${enc(id)}/remove`, { method: "POST" });
+        return await api<{ photo_deleted: boolean }>(`/ingest-jobs/${enc(id)}/remove`, {
+          method: "POST",
+        });
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return { photo_deleted: false };
         throw e;
@@ -254,8 +271,13 @@ export async function uploadReceipt(input: ReceiptUploadInput): Promise<ReceiptU
   }
   if (!response.ok) {
     const err = (payload as ErrorEnvelope | undefined)?.error;
-    if (err && typeof err.code === "string") throw new ApiError(response.status, err.code, err.message, err.details);
-    throw new ApiError(response.status, "http_error", `Upload failed with status ${response.status}.`);
+    if (err && typeof err.code === "string")
+      throw new ApiError(response.status, err.code, err.message, err.details);
+    throw new ApiError(
+      response.status,
+      "http_error",
+      `Upload failed with status ${response.status}.`,
+    );
   }
   // 201 is a new receipt; 200 is one this deployment already has (#74 revives it).
   return { ...(payload as ReceiptUploadResult), created: response.status === 201 };

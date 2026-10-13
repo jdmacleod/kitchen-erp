@@ -17,7 +17,13 @@ export const observationOk: Observation = {
     brand: "Millstone",
     pack_qty: "5",
     pack_unit: "lb",
-    ingredient: { id: flourId, name: "all-purpose flour", canonical_unit: "g", category: "pantry", category_key: "pantry" },
+    ingredient: {
+      id: flourId,
+      name: "all-purpose flour",
+      canonical_unit: "g",
+      category: "pantry",
+      category_key: "pantry",
+    },
   },
   vendor_location: { id: chainLocationId, name: chainLocation.name, vendor: chainLocation.vendor },
   purchase_line_id: null,
@@ -32,7 +38,9 @@ export const observationOk: Observation = {
     status: "ok",
     canonical_qty: "2267.96185",
     norm_unit: "g",
-    norm_unit_price: "0.002200", display_unit_price: "0.998", display_unit: "lb",
+    norm_unit_price: "0.002200",
+    display_unit_price: "0.998",
+    display_unit: "lb",
     bridge_kind: "pack",
     bridge_source: "label",
     bridge_confirmed: true,
@@ -49,7 +57,9 @@ export const observationNoDensity: Observation = {
     status: "no_density",
     canonical_qty: null,
     norm_unit: null,
-    norm_unit_price: null, display_unit_price: null, display_unit: null,
+    norm_unit_price: null,
+    display_unit_price: null,
+    display_unit: null,
     bridge_kind: null,
     bridge_source: null,
     bridge_confirmed: null,
@@ -78,7 +88,15 @@ export const manualPurchase: Purchase = {
       seq: 1,
       raw_text: null,
       line_kind: "item",
-      product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" },
+      product: {
+        id: flourProductId,
+        name: "All-Purpose Flour",
+        brand: "Millstone",
+        pack_qty: "5",
+        pack_unit: "lb",
+        category: "pantry",
+        category_key: "pantry",
+      },
       parent_line_id: null,
       qty: "2.31",
       unit: "lb",
@@ -93,7 +111,15 @@ export const manualPurchase: Purchase = {
       seq: 2,
       raw_text: null,
       line_kind: "item",
-      product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit, category: hits[1].ingredient.category, category_key: hits[1].ingredient.category_key },
+      product: {
+        id: hits[1].id,
+        name: hits[1].name,
+        brand: hits[1].brand,
+        pack_qty: hits[1].pack_qty,
+        pack_unit: hits[1].pack_unit,
+        category: hits[1].ingredient.category,
+        category_key: hits[1].ingredient.category_key,
+      },
       parent_line_id: null,
       qty: "1",
       unit: "each",
@@ -114,7 +140,15 @@ export const receiptPurchaseId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8003";
 export const receiptDocumentId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9001";
 export const ingestJobId = "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9101";
 
-export const milkProduct: PurchaseLineProduct = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d03", name: "Whole Milk", brand: "Coastline", pack_qty: "1", pack_unit: "gal", category: "Dairy", category_key: "dairy" };
+export const milkProduct: PurchaseLineProduct = {
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d03",
+  name: "Whole Milk",
+  brand: "Coastline",
+  pack_qty: "1",
+  pack_unit: "gal",
+  category: "Dairy",
+  category_key: "dairy",
+};
 
 const receiptLineBase = {
   parent_line_id: null,
@@ -132,7 +166,15 @@ export const aliasLine: PurchaseLine = {
   raw_text: "MLSTN AP FLOUR 5LB",
   raw_text_norm: "MLSTN AP FLOUR",
   line_kind: "item",
-  product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" },
+  product: {
+    id: flourProductId,
+    name: "All-Purpose Flour",
+    brand: "Millstone",
+    pack_qty: "5",
+    pack_unit: "lb",
+    category: "pantry",
+    category_key: "pantry",
+  },
   qty: "1",
   unit: "each",
   unit_price: "4.9900",
@@ -155,8 +197,20 @@ export const unmatchedLine: PurchaseLine = {
   line_total: "6.50",
   resolution: "unmatched",
   suggestions: [
-    { kind: "fuzzy", product_id: hits[1].id, ignore: false, label: "Riverbend Bread Flour", score: "0.710" },
-    { kind: "llm", product_id: flourProductId, ignore: false, label: "Millstone All-Purpose Flour", score: "0.400" },
+    {
+      kind: "fuzzy",
+      product_id: hits[1].id,
+      ignore: false,
+      label: "Riverbend Bread Flour",
+      score: "0.710",
+    },
+    {
+      kind: "llm",
+      product_id: flourProductId,
+      ignore: false,
+      label: "Millstone All-Purpose Flour",
+      score: "0.400",
+    },
   ],
 };
 
@@ -195,7 +249,11 @@ export const outlierLine: PurchaseLine = {
 
 export const receiptPurchase: Purchase = {
   id: receiptPurchaseId,
-  vendor_location: { id: chainLocationId, name: chainLocation.name, vendor: { id: chainLocation.vendor.id, name: chainLocation.vendor.name, kind: "chain" } },
+  vendor_location: {
+    id: chainLocationId,
+    name: chainLocation.name,
+    vendor: { id: chainLocation.vendor.id, name: chainLocation.vendor.name, kind: "chain" },
+  },
   receipt_document_id: receiptDocumentId,
   purchased_at: "2026-09-20T18:05:00Z",
   subtotal: "11.50",
@@ -224,7 +282,17 @@ export function batchOf(jobs: IngestJob[], extra: Partial<UploadBatch> = {}): Up
     adds_up: 0,
     check_lines: 0,
     couldnt_read: jobs.filter((j) => j.status === "failed").length,
-    receipts: jobs.map((job) => ({ job, outcome: "new", store: null, total: null, item_lines: null, lines_total: null, trust: job.status === "failed" ? "couldnt_read" : null, gap: null, held: false })),
+    receipts: jobs.map((job) => ({
+      job,
+      outcome: "new",
+      store: null,
+      total: null,
+      item_lines: null,
+      lines_total: null,
+      trust: job.status === "failed" ? "couldnt_read" : null,
+      gap: null,
+      held: false,
+    })),
     ...extra,
   };
 }
@@ -232,7 +300,13 @@ export function batchOf(jobs: IngestJob[], extra: Partial<UploadBatch> = {}): Up
 /** Mock routes for the batch endpoints: one batch of whatever jobs there are now. */
 export function batchRoutes(jobs: () => IngestJob[]) {
   return {
-    "GET /upload-batches": () => jsonResponse(200, { items: jobs().length > 0 ? [batchOf(jobs())] : [] }),
-    "POST /upload-batches": () => jsonResponse(201, { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fb001", file_count: 1, created_at: "2026-09-20T18:05:00Z" }),
+    "GET /upload-batches": () =>
+      jsonResponse(200, { items: jobs().length > 0 ? [batchOf(jobs())] : [] }),
+    "POST /upload-batches": () =>
+      jsonResponse(201, {
+        id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4fb001",
+        file_count: 1,
+        created_at: "2026-09-20T18:05:00Z",
+      }),
   };
 }

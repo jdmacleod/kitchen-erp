@@ -12,7 +12,9 @@ function mountWith(healthBody: unknown) {
   mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () =>
-      healthBody === null ? errorResponse(503, "unavailable", "down") : jsonResponse(200, healthBody),
+      healthBody === null
+        ? errorResponse(503, "unavailable", "down")
+        : jsonResponse(200, healthBody),
     "GET /purchases": () => jsonResponse(200, { items: [], next_cursor: null }),
   });
   renderApp("/shop/purchases");

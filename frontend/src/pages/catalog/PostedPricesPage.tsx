@@ -4,7 +4,15 @@ import { errorMessage, isApiError } from "../../api/client";
 import { useLocations } from "../../api/geo";
 import { useDecidePriceChange, usePriceChanges, type PriceChange } from "../../api/proposals";
 import { Badge } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -21,7 +29,10 @@ export function PostedPricesPage() {
   const items = changes.data?.items ?? [];
   return (
     <>
-      <PageHeader title="Posted prices" description="Prices the lookup helper saw change on store pages. Accept the ones to record; posted prices are not counted in cheapest." />
+      <PageHeader
+        title="Posted prices"
+        description="Prices the lookup helper saw change on store pages. Accept the ones to record; posted prices are not counted in cheapest."
+      />
       {changes.isPending ? (
         <p role="status" className={`text-sm ${muted}`}>
           Loading…
@@ -62,15 +73,20 @@ function ChangeRow({ change }: { change: PriceChange }) {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <Link to={`/catalog/products/${change.product_id}`} className={`rounded font-medium underline ${focusRing}`}>
+        <Link
+          to={`/catalog/products/${change.product_id}`}
+          className={`rounded font-medium underline ${focusRing}`}
+        >
           {change.product_name}
         </Link>
         <span className="tabular-nums">
-          {formatMoney(change.amount)} / {stripZeros(change.qty)} {change.unit} {change.is_promo ? <Badge tone="good">on sale</Badge> : null}
+          {formatMoney(change.amount)} / {stripZeros(change.qty)} {change.unit}{" "}
+          {change.is_promo ? <Badge tone="good">on sale</Badge> : null}
         </span>
       </div>
       <p className={muted}>
-        {change.vendor_name} · seen <time dateTime={change.seen_at}>{formatDateTime(change.seen_at)}</time>
+        {change.vendor_name} · seen{" "}
+        <time dateTime={change.seen_at}>{formatDateTime(change.seen_at)}</time>
       </p>
       <p className={`break-all text-xs ${muted}`}>{change.canonical_url}</p>
       {needsStore ? (
@@ -96,11 +112,17 @@ function ChangeRow({ change }: { change: PriceChange }) {
         <Button
           variant="secondary"
           disabled={decide.isPending || (needsStore && !store)}
-          onClick={() => decide.mutate({ id: change.id, accept: true, vendor_location_id: store || undefined })}
+          onClick={() =>
+            decide.mutate({ id: change.id, accept: true, vendor_location_id: store || undefined })
+          }
         >
           Accept
         </Button>
-        <Button variant="secondary" disabled={decide.isPending} onClick={() => decide.mutate({ id: change.id, accept: false })}>
+        <Button
+          variant="secondary"
+          disabled={decide.isPending}
+          onClick={() => decide.mutate({ id: change.id, accept: false })}
+        >
           Reject
         </Button>
       </span>

@@ -57,7 +57,9 @@ describe("receipt review: the lines table keeps its columns (QA 2026-10-12)", ()
     row.focus();
     await user.keyboard("e");
     const editRow = await screen.findByTestId("review-edit-row");
-    expect(within(editRow).getByRole("group", { name: `Edit line ${outlierLine.seq}` })).toBeInTheDocument();
+    expect(
+      within(editRow).getByRole("group", { name: `Edit line ${outlierLine.seq}` }),
+    ).toBeInTheDocument();
     expect(within(row).getByText("Editing below")).toBeInTheDocument();
   });
 });

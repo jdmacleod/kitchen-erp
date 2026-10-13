@@ -13,15 +13,33 @@ const tones = {
 /** Small inline marks so the badge never depends on colour alone (08, issue 122). */
 function Mark({ shape }: { shape: "check" | "alert" | "cross" }) {
   return (
-    <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true" focusable="false" className="shrink-0">
-      {shape === "check" ? <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /> : null}
+    <svg
+      viewBox="0 0 16 16"
+      width="12"
+      height="12"
+      aria-hidden="true"
+      focusable="false"
+      className="shrink-0"
+    >
+      {shape === "check" ? (
+        <path
+          d="M3 8.5l3 3 7-7"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ) : null}
       {shape === "alert" ? (
         <>
           <path d="M8 3v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           <circle cx="8" cy="12.5" r="1.25" fill="currentColor" />
         </>
       ) : null}
-      {shape === "cross" ? <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /> : null}
+      {shape === "cross" ? (
+        <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      ) : null}
     </svg>
   );
 }
@@ -49,7 +67,11 @@ export function TrustBadge({ trust, gap, held = false }: TrustBadgeProps) {
         ? (["danger", "cross", "Couldn't read"] as const)
         : (["warn", "alert", held ? "Careful look" : "Check the lines"] as const);
   return (
-    <span data-testid="trust-badge" data-trust={trust} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tones[tone]}`}>
+    <span
+      data-testid="trust-badge"
+      data-trust={trust}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ${tones[tone]}`}
+    >
       <Mark shape={shape} />
       {label}
       {trust === "check_lines" ? off : ""}

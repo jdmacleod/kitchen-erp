@@ -8,7 +8,12 @@ import { observationOk, purchaseId } from "./purchase-fixtures";
 
 // #73: a shelf price can be voided from the product page; a price that came
 // from a purchase is sent to that purchase to be corrected.
-const shelf: Observation = { ...observationOk, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01", price: "4.99", purchase_id: null };
+const shelf: Observation = {
+  ...observationOk,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01",
+  price: "4.99",
+  purchase_id: null,
+};
 const fromPurchase: Observation = {
   ...observationOk,
   id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a02",
@@ -17,10 +22,19 @@ const fromPurchase: Observation = {
   purchase_line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8a02",
   purchase_id: purchaseId,
 };
-const alreadyVoided: Observation = { ...shelf, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03", price: "0.49", voided: true, void_reason: "typed 0.49 for 4.99" };
+const alreadyVoided: Observation = {
+  ...shelf,
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a03",
+  price: "0.49",
+  voided: true,
+  void_reason: "typed 0.49 for 4.99",
+};
 
 function routes(state: { voided: Set<string> }) {
-  const all = () => [shelf, fromPurchase, alreadyVoided].map((o) => (state.voided.has(o.id) ? { ...o, voided: true, void_reason: "wrong shelf" } : o));
+  const all = () =>
+    [shelf, fromPurchase, alreadyVoided].map((o) =>
+      state.voided.has(o.id) ? { ...o, voided: true, void_reason: "wrong shelf" } : o,
+    );
   return {
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
@@ -28,7 +42,10 @@ function routes(state: { voided: Set<string> }) {
     [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
     [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
     "GET /price-observations": (call: RecordedCall) =>
-      jsonResponse(200, { items: call.query.get("include_voided") === "true" ? all() : all().filter((o) => !o.voided), next_cursor: null }),
+      jsonResponse(200, {
+        items: call.query.get("include_voided") === "true" ? all() : all().filter((o) => !o.voided),
+        next_cursor: null,
+      }),
     [`POST /price-observations/${shelf.id}/void`]: () => {
       state.voided.add(shelf.id);
       return jsonResponse(200, { ...shelf, voided: true, void_reason: "wrong shelf" });
@@ -45,7 +62,10 @@ describe("price records on the product page", () => {
     const list = await screen.findByRole("list", { name: "Price records" });
     await waitFor(() => expect(within(list).getAllByTestId("price-record")).toHaveLength(2));
     expect(within(list).queryByText(/\$0\.49/)).not.toBeInTheDocument();
-    expect(within(list).getByRole("link", { name: "Correct in its purchase" })).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
+    expect(within(list).getByRole("link", { name: "Correct in its purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${purchaseId}`,
+    );
     // Only the shelf price offers Void; the purchase price is corrected in its purchase.
     const voidButtons = within(list).getAllByRole("button", { name: /^Void the/ });
     expect(voidButtons).toHaveLength(1);
@@ -57,7 +77,11 @@ describe("price records on the product page", () => {
     await user.type(within(form).getByLabelText("Why is it wrong?"), "wrong shelf");
     await user.click(submit);
 
-    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/void"))?.body).toEqual({ reason: "wrong shelf" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/void"))?.body).toEqual({
+        reason: "wrong shelf",
+      }),
+    );
     await waitFor(() => expect(within(list).getAllByTestId("price-record")).toHaveLength(1));
   });
 
@@ -70,7 +94,9 @@ describe("price records on the product page", () => {
     expect(within(list).queryByText(/typed 0\.49 for 4\.99/)).not.toBeInTheDocument();
     await user.click(screen.getByLabelText("Show voided"));
     expect(await screen.findByText("Voided: typed 0.49 for 4.99")).toBeInTheDocument();
-    const voided = screen.getAllByTestId("price-record").find((r) => r.textContent?.includes("Voided"))!;
+    const voided = screen
+      .getAllByTestId("price-record")
+      .find((r) => r.textContent?.includes("Voided"))!;
     expect(within(voided).queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -84,7 +110,9 @@ describe("price records on the product page", () => {
     await user.click(await within(list).findByRole("button", { name: /^Void the \$4\.99/ }));
     expect(screen.getByLabelText("Why is it wrong?")).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    await waitFor(() => expect(within(list).getByRole("button", { name: /^Void the \$4\.99/ })).toHaveFocus());
+    await waitFor(() =>
+      expect(within(list).getByRole("button", { name: /^Void the \$4\.99/ })).toHaveFocus(),
+    );
   });
 
   it("links a price voided with its purchase to that purchase (#74)", async () => {
@@ -98,11 +126,20 @@ describe("price records on the product page", () => {
     await screen.findByRole("list", { name: "Price records" });
     await user.click(screen.getByLabelText("Show voided"));
     const row = await screen.findByText(/Voided: purchase removed/);
-    expect(within(row).getByRole("link", { name: "Open the purchase" })).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
+    expect(within(row).getByRole("link", { name: "Open the purchase" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${purchaseId}`,
+    );
   });
 
   it("labels a posted web price as left out of cheapest", async () => {
-    const posted: Observation = { ...shelf, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04", price: "3.10", source: "listing", listing_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b04" };
+    const posted: Observation = {
+      ...shelf,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a04",
+      price: "3.10",
+      source: "listing",
+      listing_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b04",
+    };
     mockApi({
       ...routes({ voided: new Set() }),
       "GET /price-observations": () => jsonResponse(200, { items: [posted], next_cursor: null }),

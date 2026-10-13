@@ -141,7 +141,8 @@ export interface OsmCandidate {
   already_adopted: boolean;
 }
 
-export type LinkedField = "name" | "address" | "opening_hours" | "phone" | "website" | "brand" | "wikidata";
+export type LinkedField =
+  "name" | "address" | "opening_hours" | "phone" | "website" | "brand" | "wikidata";
 
 /** An OpenStreetMap object near a location's pin, and what linking it would change (1F). */
 export interface LinkCandidate {
@@ -268,7 +269,8 @@ const knownMessages: Record<string, string> = {
   [INTEGRATION_DISABLED]: "OpenStreetMap adoption is off; set ENABLE_OVERPASS=true.",
   already_linked: "This location is already linked to OpenStreetMap; unlink it first.",
   already_adopted: "That OpenStreetMap place is already linked to another location.",
-  osm_candidate_not_found: "That place is no longer among the OpenStreetMap places near this location.",
+  osm_candidate_not_found:
+    "That place is no longer among the OpenStreetMap places near this location.",
 };
 
 /** A message for a geo mutation error, with known codes spelled out. */
@@ -296,16 +298,20 @@ const enc = encodeURIComponent;
 export const geoKeys = {
   homeBases: ["home-bases"] as const,
   vendors: ["vendors"] as const,
-  vendorList: (q: string, includeInactive: boolean) => ["vendors", "list", { q, includeInactive }] as const,
+  vendorList: (q: string, includeInactive: boolean) =>
+    ["vendors", "list", { q, includeInactive }] as const,
   vendor: (id: string) => ["vendors", "detail", id] as const,
   locations: ["vendor-locations"] as const,
   locationList: (filters: LocationFilters) => ["vendor-locations", "list", filters] as const,
   location: (id: string) => ["vendor-locations", "detail", id] as const,
   isOpen: (id: string, at: string) => ["vendor-locations", "is-open", id, at] as const,
-  osmCandidates: (homeBaseId: string, radius: number) => ["osm", "candidates", homeBaseId, radius] as const,
+  osmCandidates: (homeBaseId: string, radius: number) =>
+    ["osm", "candidates", homeBaseId, radius] as const,
   exportSummary: ["vendors", "export-summary"] as const,
-  linkCandidates: (locationId: string) => ["vendor-locations", "osm-candidates", locationId] as const,
-  mapPlaces: (q: string, near: { lat: string; lon: string } | null) => ["map", "places", q, near] as const,
+  linkCandidates: (locationId: string) =>
+    ["vendor-locations", "osm-candidates", locationId] as const,
+  mapPlaces: (q: string, near: { lat: string; lon: string } | null) =>
+    ["map", "places", q, near] as const,
 };
 
 function invalidateLocations(client: QueryClient) {
@@ -329,7 +335,8 @@ export function useHomeBases(enabled = true) {
 export function useCreateHomeBase() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: HomeBaseInput) => api<HomeBase>("/home-bases", { method: "POST", body: input, headers: idem() }),
+    mutationFn: (input: HomeBaseInput) =>
+      api<HomeBase>("/home-bases", { method: "POST", body: input, headers: idem() }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: geoKeys.homeBases });
       invalidateLocations(client);
@@ -360,7 +367,10 @@ export function useVendors(q = "", includeInactive = false, enabled = true) {
   const trimmed = q.trim();
   return useQuery({
     queryKey: geoKeys.vendorList(trimmed, includeInactive),
-    queryFn: () => api<ListResponse<VendorListItem>>(`/vendors${qs({ q: trimmed, include_inactive: includeInactive })}`),
+    queryFn: () =>
+      api<ListResponse<VendorListItem>>(
+        `/vendors${qs({ q: trimmed, include_inactive: includeInactive })}`,
+      ),
     select: (data) => data.items,
     enabled,
     placeholderData: (previous) => previous,
@@ -378,7 +388,8 @@ export function useVendor(id: string | undefined) {
 export function useCreateVendor() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: VendorCreateInput) => api<Vendor>("/vendors", { method: "POST", body: input, headers: idem() }),
+    mutationFn: (input: VendorCreateInput) =>
+      api<Vendor>("/vendors", { method: "POST", body: input, headers: idem() }),
     onSuccess: () => void client.invalidateQueries({ queryKey: geoKeys.vendors }),
   });
 }
@@ -386,7 +397,8 @@ export function useCreateVendor() {
 export function useUpdateVendor(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: VendorUpdateInput) => api<Vendor>(`/vendors/${enc(id)}`, { method: "PATCH", body: input }),
+    mutationFn: (input: VendorUpdateInput) =>
+      api<Vendor>(`/vendors/${enc(id)}`, { method: "PATCH", body: input }),
     onSuccess: (updated) => {
       client.setQueryData(geoKeys.vendor(id), updated);
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
@@ -409,7 +421,10 @@ export function useBrandFamilies(enabled = true) {
 export function useCheckVendorPrices(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<{ queued: number; vendor: Vendor }>(`/vendors/${enc(id)}/check-prices`, { method: "POST" }),
+    mutationFn: () =>
+      api<{ queued: number; vendor: Vendor }>(`/vendors/${enc(id)}/check-prices`, {
+        method: "POST",
+      }),
     onSuccess: (result) => {
       client.setQueryData(geoKeys.vendor(id), result.vendor);
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
@@ -471,7 +486,11 @@ export function useCreateLocation() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: LocationCreateInput) =>
-      api<VendorLocationDetail>("/vendor-locations", { method: "POST", body: input, headers: idem() }),
+      api<VendorLocationDetail>("/vendor-locations", {
+        method: "POST",
+        body: input,
+        headers: idem(),
+      }),
     onSuccess: () => {
       invalidateLocations(client);
       // An inline vendor may have been created too.
@@ -493,7 +512,10 @@ export function useSetLocationActive(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (active: boolean) =>
-      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/${active ? "activate" : "deactivate"}`, { method: "POST" }),
+      api<VendorLocationDetail>(
+        `/vendor-locations/${enc(id)}/${active ? "activate" : "deactivate"}`,
+        { method: "POST" },
+      ),
     onSuccess: () => invalidateLocations(client),
   });
 }
@@ -501,7 +523,8 @@ export function useSetLocationActive(id: string) {
 export function useRefreshOsm(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/refresh-osm`, { method: "POST" }),
+    mutationFn: () =>
+      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/refresh-osm`, { method: "POST" }),
     // A refresh may fill the vendor's website too.
     onSuccess: () => {
       invalidateLocations(client);
@@ -514,7 +537,8 @@ export function useRefreshOsm(id: string) {
 export function useLinkCandidates(locationId: string, enabled: boolean) {
   return useQuery({
     queryKey: geoKeys.linkCandidates(locationId),
-    queryFn: () => api<ListResponse<LinkCandidate>>(`/vendor-locations/${enc(locationId)}/osm-candidates`),
+    queryFn: () =>
+      api<ListResponse<LinkCandidate>>(`/vendor-locations/${enc(locationId)}/osm-candidates`),
     select: (data) => data.items,
     enabled,
     retry: false,
@@ -526,7 +550,10 @@ export function useLinkOsm(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: { osm_type: OsmType; osm_id: number }) =>
-      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/link-osm`, { method: "POST", body: input }),
+      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/link-osm`, {
+        method: "POST",
+        body: input,
+      }),
     onSuccess: () => {
       invalidateLocations(client);
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
@@ -537,7 +564,8 @@ export function useLinkOsm(id: string) {
 export function useUnlinkOsm(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/unlink-osm`, { method: "POST" }),
+    mutationFn: () =>
+      api<VendorLocationDetail>(`/vendor-locations/${enc(id)}/unlink-osm`, { method: "POST" }),
     onSuccess: () => invalidateLocations(client),
   });
 }
@@ -605,10 +633,16 @@ export function useImportVendors() {
   return useMutation({
     mutationFn: ({ text, fileName, dryRun }: { text: string; fileName: string; dryRun: boolean }) =>
       // As a string: qs drops a false, and the server's default is a dry run.
-      api<ImportReport>(`/vendors/import${qs({ dry_run: dryRun ? "true" : "false", filename: fileName.slice(0, 200) })}`, {
-        method: "POST",
-        rawBody: { text, contentType: /\.json$/i.test(fileName) ? "application/json" : "application/yaml" },
-      }),
+      api<ImportReport>(
+        `/vendors/import${qs({ dry_run: dryRun ? "true" : "false", filename: fileName.slice(0, 200) })}`,
+        {
+          method: "POST",
+          rawBody: {
+            text,
+            contentType: /\.json$/i.test(fileName) ? "application/json" : "application/yaml",
+          },
+        },
+      ),
     onSuccess: (report) => {
       if (report.dry_run) return;
       invalidateLocations(client);
@@ -627,10 +661,14 @@ export function useExportSummary(enabled: boolean) {
 }
 
 /** Whether a location is in a public export, and the plain-words reason when that is fixed. */
-export function shareState(location: VendorLocation, vendorKind: VendorKind): { shared: boolean; fixed: string | null } {
+export function shareState(
+  location: VendorLocation,
+  vendorKind: VendorKind,
+): { shared: boolean; fixed: string | null } {
   if (vendorKind === "stand") return { shared: false, fixed: "Stands are never shared" };
   if (!location.active) return { shared: false, fixed: "An inactive location is never shared" };
-  if (location.osm_id !== null) return { shared: true, fixed: "Shared because it's linked to OpenStreetMap" };
+  if (location.osm_id !== null)
+    return { shared: true, fixed: "Shared because it's linked to OpenStreetMap" };
   return { shared: location.publishable, fixed: null };
 }
 
@@ -651,7 +689,9 @@ export function useOsmCandidates(homeBaseId: string, radiusM: number, enabled: b
   return useQuery({
     queryKey: geoKeys.osmCandidates(homeBaseId, radiusM),
     queryFn: () =>
-      api<ListResponse<OsmCandidate>>(`/osm/candidates${qs({ home_base_id: homeBaseId, radius_m: radiusM })}`),
+      api<ListResponse<OsmCandidate>>(
+        `/osm/candidates${qs({ home_base_id: homeBaseId, radius_m: radiusM })}`,
+      ),
     select: (data) => data.items,
     enabled: enabled && Boolean(homeBaseId) && radiusM >= 100,
     retry: false,
@@ -667,7 +707,9 @@ export function useAdoptOsm() {
     onSuccess: (_created, input) => {
       invalidateLocations(client);
       void client.invalidateQueries({ queryKey: geoKeys.vendors });
-      void client.invalidateQueries({ queryKey: geoKeys.osmCandidates(input.home_base_id, input.radius_m) });
+      void client.invalidateQueries({
+        queryKey: geoKeys.osmCandidates(input.home_base_id, input.radius_m),
+      });
     },
   });
 }
@@ -695,7 +737,10 @@ export function useMapPlaces(q: string, near: { lat: string; lon: string } | nul
   const trimmed = q.trim();
   return useQuery({
     queryKey: geoKeys.mapPlaces(trimmed, near),
-    queryFn: () => api<ListResponse<MapPlace>>(`/map/places${qs({ q: trimmed, lat: near?.lat, lon: near?.lon })}`),
+    queryFn: () =>
+      api<ListResponse<MapPlace>>(
+        `/map/places${qs({ q: trimmed, lat: near?.lat, lon: near?.lon })}`,
+      ),
     select: (data) => data.items,
     enabled: trimmed.length >= 2,
     placeholderData: (previous) => previous,

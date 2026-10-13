@@ -5,7 +5,14 @@ import type { Purchase } from "../api/purchases";
 import { flourProductId, hits, units } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation, marketLocationId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
-import { discountLine, ingestJobId, receiptDocumentId, receiptPurchase, receiptPurchaseId, unmatchedLine } from "./purchase-fixtures";
+import {
+  discountLine,
+  ingestJobId,
+  receiptDocumentId,
+  receiptPurchase,
+  receiptPurchaseId,
+  unmatchedLine,
+} from "./purchase-fixtures";
 
 const base = `/purchases/${receiptPurchaseId}`;
 
@@ -19,7 +26,8 @@ function baseRoutes(purchase: () => Purchase) {
     "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
     "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
     "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
-    "GET /products/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
+    "GET /products/search": (call: RecordedCall) =>
+      jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
     [`GET ${base}`]: () => jsonResponse(200, purchase()),
   };
 }
@@ -32,8 +40,22 @@ async function openReview() {
 describe("receipt review", () => {
   it("labels a shortlist hit as a similar name and records that rung when accepted", async () => {
     // Issue 180: with no model answer, close catalog names are offered, never resolved.
-    const similarLine = { ...unmatchedLine, suggestions: [{ kind: "similar" as const, product_id: hits[1].id, ignore: false, label: "Riverbend Bread Flour", score: "0.520" }] };
-    const purchase = { ...receiptPurchase, lines: receiptPurchase.lines.map((l) => (l.id === unmatchedLine.id ? similarLine : l)) };
+    const similarLine = {
+      ...unmatchedLine,
+      suggestions: [
+        {
+          kind: "similar" as const,
+          product_id: hits[1].id,
+          ignore: false,
+          label: "Riverbend Bread Flour",
+          score: "0.520",
+        },
+      ],
+    };
+    const purchase = {
+      ...receiptPurchase,
+      lines: receiptPurchase.lines.map((l) => (l.id === unmatchedLine.id ? similarLine : l)),
+    };
     const calls = mockApi({
       ...baseRoutes(() => purchase),
       [`POST ${base}/lines/${unmatchedLine.id}/resolve`]: () => jsonResponse(200, purchase),
@@ -49,7 +71,9 @@ describe("receipt review", () => {
     rows[1].focus();
     await user.keyboard("{Enter}");
     const accept = await waitFor(() => {
-      const found = calls.find((c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`);
+      const found = calls.find(
+        (c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`,
+      );
       expect(found).toBeDefined();
       return found;
     });
@@ -59,19 +83,44 @@ describe("receipt review", () => {
   it("says when the date and total are stand-ins for what the reader could not find", async () => {
     // The upload time and the line sum fill the header fields and look like
     // answers; nothing on the screen said they were not read from the receipt.
-    mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["purchased_at_missing", "total_missing"] })));
+    mockApi(
+      baseRoutes(() => ({ ...receiptPurchase, flags: ["purchased_at_missing", "total_missing"] })),
+    );
     renderApp(base);
     await openReview();
-    expect(screen.getByText(/The date could not be read from the receipt, so Purchased at is when it was uploaded/)).toBeInTheDocument();
-    expect(screen.getByText(/The total could not be read from the receipt, so Total is what the lines add up to/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The date could not be read from the receipt, so Purchased at is when it was uploaded/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The total could not be read from the receipt, so Total is what the lines add up to/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("offers a lost decimal point back, one line or all of them, and applies nothing unasked", async () => {
     // #59: OCR read "3.49" as "349". The first misread line is the current one.
-    const misread = (l: typeof unmatchedLine, total: string) => ({ ...l, raw_text: `${l.raw_text} ${total}`, unit_price: null, line_total: `${total}.0000`, flags: ["decimal_missing", "exceeds_total"] });
+    const misread = (l: typeof unmatchedLine, total: string) => ({
+      ...l,
+      raw_text: `${l.raw_text} ${total}`,
+      unit_price: null,
+      line_total: `${total}.0000`,
+      flags: ["decimal_missing", "exceeds_total"],
+    });
     const first = misread(unmatchedLine, "349");
-    const second = { ...misread({ ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299", seq: 5, suggestions: [] }, "425") };
-    const purchase = { ...receiptPurchase, flags: ["reconcile_mismatch", "decimals_restore_total"], lines: [...receiptPurchase.lines.filter((l) => l.id !== unmatchedLine.id), first, second] };
+    const second = {
+      ...misread(
+        { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299", seq: 5, suggestions: [] },
+        "425",
+      ),
+    };
+    const purchase = {
+      ...receiptPurchase,
+      flags: ["reconcile_mismatch", "decimals_restore_total"],
+      lines: [...receiptPurchase.lines.filter((l) => l.id !== unmatchedLine.id), first, second],
+    };
     const calls = mockApi({
       ...baseRoutes(() => purchase),
       [`PATCH ${base}/lines/${first.id}`]: () => jsonResponse(200, purchase),
@@ -80,26 +129,60 @@ describe("receipt review", () => {
     const user = userEvent.setup();
     renderApp(base);
     await openReview();
-    expect(screen.getByText(/2 lines look like they lost their decimal points \(\$349\.00 for \$3\.49\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /2 lines look like they lost their decimal points \(\$349\.00 for \$3\.49\)/,
+      ),
+    ).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
 
-    const current = screen.getAllByTestId("review-line").find((r) => r.getAttribute("aria-selected") === "true")!;
+    const current = screen
+      .getAllByTestId("review-line")
+      .find((r) => r.getAttribute("aria-selected") === "true")!;
     expect(within(current).getByText("decimal point missing?")).toBeInTheDocument();
     await user.click(within(current).getByRole("button", { name: "Use $3.49" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(first.id))?.body).toEqual({ line_total: "3.49" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(first.id))?.body).toEqual({
+        line_total: "3.49",
+      }),
+    );
 
     await user.click(screen.getByRole("button", { name: "Restore 2 decimal points" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({ line_total: "4.25" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH" && c.path.endsWith(second.id))?.body).toEqual({
+        line_total: "4.25",
+      }),
+    );
   });
 
   it("merges a line that is only a count into the item beside it, on a click", async () => {
     // #87: the reader could not tell which neighbour "5 @ 0.79" belongs to.
-    const count = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8305", seq: 5, raw_text: "5 @ 0.79", qty: "5", unit: "each", unit_price: "0.7900", line_total: "3.9500", suggestions: [], flags: ["quantity_line"] };
-    const avocado = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8306", seq: 6, raw_text: "AVOCADO 3.95 F", line_total: "3.9500", suggestions: [], flags: [] };
+    const count = {
+      ...unmatchedLine,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8305",
+      seq: 5,
+      raw_text: "5 @ 0.79",
+      qty: "5",
+      unit: "each",
+      unit_price: "0.7900",
+      line_total: "3.9500",
+      suggestions: [],
+      flags: ["quantity_line"],
+    };
+    const avocado = {
+      ...unmatchedLine,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8306",
+      seq: 6,
+      raw_text: "AVOCADO 3.95 F",
+      line_total: "3.9500",
+      suggestions: [],
+      flags: [],
+    };
     const purchase = { ...receiptPurchase, lines: [...receiptPurchase.lines, count, avocado] };
     const calls = mockApi({
       ...baseRoutes(() => purchase),
-      [`POST ${base}/lines/${count.id}/merge`]: () => jsonResponse(200, { ...purchase, lines: receiptPurchase.lines }),
+      [`POST ${base}/lines/${count.id}/merge`]: () =>
+        jsonResponse(200, { ...purchase, lines: receiptPurchase.lines }),
     });
     const user = userEvent.setup();
     renderApp(base);
@@ -109,9 +192,17 @@ describe("receipt review", () => {
     expect(await within(row).findByText("only a quantity")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "POST")).toBe(false);
     // Line 4 above is an item too, so both ways are offered.
-    expect(within(row).getByRole("button", { name: /Merge line 5 into the line above/ })).toBeInTheDocument();
-    await user.click(within(row).getByRole("button", { name: "Merge line 5 into the next line, AVOCADO 3.95 F" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({ into_line_id: avocado.id }));
+    expect(
+      within(row).getByRole("button", { name: /Merge line 5 into the line above/ }),
+    ).toBeInTheDocument();
+    await user.click(
+      within(row).getByRole("button", { name: "Merge line 5 into the next line, AVOCADO 3.95 F" }),
+    );
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({
+        into_line_id: avocado.id,
+      }),
+    );
   });
 
   it("opens the product picker in a full-width row under its line", async () => {
@@ -127,7 +218,9 @@ describe("receipt review", () => {
     const pickRow = box.closest("tr")!;
     expect(pickRow).toHaveAttribute("data-testid", "review-pick-row");
     expect(pickRow.querySelector("td")).toHaveAttribute("colspan", "5");
-    const current = screen.getAllByTestId("review-line").find((r) => r.getAttribute("aria-selected") === "true")!;
+    const current = screen
+      .getAllByTestId("review-line")
+      .find((r) => r.getAttribute("aria-selected") === "true")!;
     expect(pickRow.previousElementSibling).toBe(current);
     expect(within(current).getByText("Choosing below")).toBeInTheDocument();
 
@@ -156,14 +249,18 @@ describe("receipt review", () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["lines_partial"] })));
     renderApp(base);
     await openReview();
-    expect(screen.getByText(/Part of this receipt could not be read, so some of its lines are missing/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Part of this receipt could not be read, so some of its lines are missing/),
+    ).toBeInTheDocument();
   });
 
   it("says quietly when the receipt was read from the text scan", async () => {
     mockApi(baseRoutes(() => ({ ...receiptPurchase, flags: ["ocr_fallback"] })));
     renderApp(base);
     await openReview();
-    expect(screen.getByText("Read from the text scan: the image reader wasn't available.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Read from the text scan: the image reader wasn't available."),
+    ).toBeInTheDocument();
   });
 
   it("says nothing about the text scan when the image reader read it", async () => {
@@ -189,14 +286,33 @@ describe("receipt review", () => {
           ...purchase,
           lines: purchase.lines.map((l) =>
             l.id === unmatchedLine.id
-              ? { ...l, product: { id: hits[1].id, name: hits[1].name, brand: hits[1].brand, pack_qty: hits[1].pack_qty, pack_unit: hits[1].pack_unit, category: hits[1].ingredient.category, category_key: hits[1].ingredient.category_key }, resolution: "fuzzy", resolved_by: adminUser.id, suggestions: [] }
+              ? {
+                  ...l,
+                  product: {
+                    id: hits[1].id,
+                    name: hits[1].name,
+                    brand: hits[1].brand,
+                    pack_qty: hits[1].pack_qty,
+                    pack_unit: hits[1].pack_unit,
+                    category: hits[1].ingredient.category,
+                    category_key: hits[1].ingredient.category_key,
+                  },
+                  resolution: "fuzzy",
+                  resolved_by: adminUser.id,
+                  suggestions: [],
+                }
               : l,
           ),
         };
         return jsonResponse(200, purchase);
       },
       [`POST ${base}/lines/${receiptPurchase.lines[3].id}/resolve`]: () => {
-        purchase = { ...purchase, lines: purchase.lines.map((l) => (l.seq === 4 ? { ...l, product: null, resolution: "ignored", flags: [] } : l)) };
+        purchase = {
+          ...purchase,
+          lines: purchase.lines.map((l) =>
+            l.seq === 4 ? { ...l, product: null, resolution: "ignored", flags: [] } : l,
+          ),
+        };
         return jsonResponse(200, purchase);
       },
     });
@@ -213,11 +329,20 @@ describe("receipt review", () => {
     // Flags and suggestions draw the eye; the outlier is not quiet.
     expect(rows[3]).not.toHaveAttribute("data-quiet");
     expect(within(rows[3]).getByText("price outlier")).toBeInTheDocument();
-    expect(screen.getByText(/The receipt says \$12\.00 but the lines add up to \$11\.50/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/The receipt says \$12\.00 but the lines add up to \$11\.50/),
+    ).toBeInTheDocument();
     // A screen's width, not the multi-megabyte original, which the link opens.
-    expect(screen.getByRole("img", { name: "The receipt as photographed" })).toHaveAttribute("src", `/api/v1/receipts/${receiptDocumentId}/image?width=1024`);
-    expect(screen.getByRole("link", { name: "Open the receipt photo at full size" })).toHaveAttribute("href", `/api/v1/receipts/${receiptDocumentId}/image`);
-    expect(screen.getByLabelText("Keyboard shortcuts")).toHaveTextContent("accept the top suggestion");
+    expect(screen.getByRole("img", { name: "The receipt as photographed" })).toHaveAttribute(
+      "src",
+      `/api/v1/receipts/${receiptDocumentId}/image?width=1024`,
+    );
+    expect(
+      screen.getByRole("link", { name: "Open the receipt photo at full size" }),
+    ).toHaveAttribute("href", `/api/v1/receipts/${receiptDocumentId}/image`);
+    expect(screen.getByLabelText("Keyboard shortcuts")).toHaveTextContent(
+      "accept the top suggestion",
+    );
 
     rows[1].focus();
     await user.keyboard("j");
@@ -232,7 +357,9 @@ describe("receipt review", () => {
     // Enter accepts the top suggestion and says which rung it came from.
     await user.keyboard("{Enter}");
     const accept = await waitFor(() => {
-      const found = calls.find((c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`);
+      const found = calls.find(
+        (c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`,
+      );
       expect(found).toBeDefined();
       return found;
     });
@@ -248,12 +375,21 @@ describe("receipt review", () => {
     screen.getAllByTestId("review-line")[3].focus();
     await user.keyboard("i");
     const ignore = await waitFor(() => {
-      const found = calls.find((c) => c.method === "POST" && c.path === `${base}/lines/${receiptPurchase.lines[3].id}/resolve`);
+      const found = calls.find(
+        (c) =>
+          c.method === "POST" && c.path === `${base}/lines/${receiptPurchase.lines[3].id}/resolve`,
+      );
       expect(found).toBeDefined();
       return found;
     });
     expect(ignore?.body).toEqual({ ignore: true });
-    await waitFor(() => expect(within(screen.getAllByTestId("review-line")[3]).getByText("ignored", { selector: "span.italic" })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        within(screen.getAllByTestId("review-line")[3]).getByText("ignored", {
+          selector: "span.italic",
+        }),
+      ).toBeInTheDocument(),
+    );
   });
 
   it("opens the product typeahead with / and resolves the line with the chosen product", async () => {
@@ -263,7 +399,25 @@ describe("receipt review", () => {
       [`POST ${base}/lines/${unmatchedLine.id}/resolve`]: () => {
         purchase = {
           ...purchase,
-          lines: purchase.lines.map((l) => (l.id === unmatchedLine.id ? { ...l, product: { id: flourProductId, name: "All-Purpose Flour", brand: "Millstone", pack_qty: "5", pack_unit: "lb", category: "pantry", category_key: "pantry" }, resolution: "manual", resolved_by: adminUser.id, suggestions: [] } : l)),
+          lines: purchase.lines.map((l) =>
+            l.id === unmatchedLine.id
+              ? {
+                  ...l,
+                  product: {
+                    id: flourProductId,
+                    name: "All-Purpose Flour",
+                    brand: "Millstone",
+                    pack_qty: "5",
+                    pack_unit: "lb",
+                    category: "pantry",
+                    category_key: "pantry",
+                  },
+                  resolution: "manual",
+                  resolved_by: adminUser.id,
+                  suggestions: [],
+                }
+              : l,
+          ),
         };
         return jsonResponse(200, purchase);
       },
@@ -278,16 +432,30 @@ describe("receipt review", () => {
     await waitFor(() => expect(box).toHaveFocus());
     await user.keyboard("flour");
     // Scoped to the typeahead: the discount line's "Attach to" select also has an option naming this product.
-    await user.click(await within(screen.getByRole("listbox", { name: "Products" })).findByRole("option", { name: /All-Purpose Flour/ }));
+    await user.click(
+      await within(screen.getByRole("listbox", { name: "Products" })).findByRole("option", {
+        name: /All-Purpose Flour/,
+      }),
+    );
 
     const post = await waitFor(() => {
-      const found = calls.find((c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`);
+      const found = calls.find(
+        (c) => c.method === "POST" && c.path === `${base}/lines/${unmatchedLine.id}/resolve`,
+      );
       expect(found).toBeDefined();
       return found;
     });
     expect(post?.body).toEqual({ product_id: flourProductId });
-    await waitFor(() => expect(screen.queryByRole("combobox", { name: "Product for line 2" })).not.toBeInTheDocument());
-    expect(within(screen.getAllByTestId("review-line")[1]).getByRole("link", { name: "Millstone All-Purpose Flour" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: "Product for line 2" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      within(screen.getAllByTestId("review-line")[1]).getByRole("link", {
+        name: "Millstone All-Purpose Flour",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("reattaches a discount to another item with a PATCH of parent_line_id, and detaches with clear_parent", async () => {
@@ -296,7 +464,14 @@ describe("receipt review", () => {
       ...baseRoutes(() => purchase),
       [`PATCH ${base}/lines/${discountLine.id}`]: (call) => {
         const body = call.body as { parent_line_id?: string; clear_parent?: boolean };
-        purchase = { ...purchase, lines: purchase.lines.map((l) => (l.id === discountLine.id ? { ...l, parent_line_id: body.clear_parent ? null : (body.parent_line_id ?? null) } : l)) };
+        purchase = {
+          ...purchase,
+          lines: purchase.lines.map((l) =>
+            l.id === discountLine.id
+              ? { ...l, parent_line_id: body.clear_parent ? null : (body.parent_line_id ?? null) }
+              : l,
+          ),
+        };
         return jsonResponse(200, purchase);
       },
     });
@@ -311,8 +486,14 @@ describe("receipt review", () => {
     expect(attach).toHaveValue("");
     await user.selectOptions(attach, unmatchedLine.id);
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(1));
-    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ parent_line_id: unmatchedLine.id });
-    await waitFor(() => expect(screen.getByRole("combobox", { name: "Attach line 3 to" })).toHaveValue(unmatchedLine.id));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      parent_line_id: unmatchedLine.id,
+    });
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Attach line 3 to" })).toHaveValue(
+        unmatchedLine.id,
+      ),
+    );
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Attach line 3 to" }), "");
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(2));
@@ -324,7 +505,13 @@ describe("receipt review", () => {
     const calls = mockApi({
       ...baseRoutes(() => purchase),
       [`POST ${base}/commit`]: () => {
-        purchase = { ...purchase, status: "committed", lines: purchase.lines.map((l) => (l.seq === 1 || l.seq === 4 ? { ...l, observation_id: `obs-${l.seq}` } : l)) };
+        purchase = {
+          ...purchase,
+          status: "committed",
+          lines: purchase.lines.map((l) =>
+            l.seq === 1 || l.seq === 4 ? { ...l, observation_id: `obs-${l.seq}` } : l,
+          ),
+        };
         return jsonResponse(200, purchase);
       },
       [`POST ${base}/reopen`]: () => {
@@ -332,7 +519,8 @@ describe("receipt review", () => {
         return jsonResponse(200, purchase);
       },
       // Another draft waits, so the commit notice offers it (G9).
-      "GET /purchases": () => jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }),
+      "GET /purchases": () =>
+        jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }),
     });
     const user = userEvent.setup();
     renderApp(base);
@@ -341,11 +529,15 @@ describe("receipt review", () => {
     rows[1].focus();
     await user.keyboard("c");
     const dialog = await screen.findByRole("dialog", { name: "Commit this purchase?" });
-    expect(dialog).toHaveTextContent("2 lines emit a price observation now. 1 unidentified line waits in the to-identify queue.");
+    expect(dialog).toHaveTextContent(
+      "2 lines emit a price observation now. 1 unidentified line waits in the to-identify queue.",
+    );
     expect(within(dialog).getByRole("button", { name: "Commit" })).toHaveFocus();
     await user.keyboard("{Enter}");
 
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `${base}/commit`)).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === `${base}/commit`)).toBe(true),
+    );
     expect(await screen.findByRole("button", { name: "Reopen" })).toBeInTheDocument();
     expect(screen.queryByTestId("review")).not.toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Lines" });
@@ -353,18 +545,26 @@ describe("receipt review", () => {
     expect(lines[0]).toHaveTextContent("observed");
     expect(lines[1]).toHaveTextContent("unresolved");
     expect(lines[1]).toHaveTextContent("no observation");
-    expect(screen.getByRole("link", { name: "to-identify queue" })).toHaveAttribute("href", "/shop/receipts/identify");
+    expect(screen.getByRole("link", { name: "to-identify queue" })).toHaveAttribute(
+      "href",
+      "/shop/receipts/identify",
+    );
     // A receipt purchase has no entry-form Edit; the review screen is its editor.
     expect(screen.queryByRole("button", { name: "Edit" })).not.toBeInTheDocument();
     // The page stays, with what the commit did and the way to the next draft (G9).
     const notice = await screen.findByTestId("notice");
     expect(notice).toHaveTextContent("Committed. 2 prices added to the price book.");
-    expect(within(notice).getByRole("link", { name: "Next draft" })).toHaveAttribute("href", `/shop/purchases/${NEXT_DRAFT}`);
+    expect(within(notice).getByRole("link", { name: "Next draft" })).toHaveAttribute(
+      "href",
+      `/shop/purchases/${NEXT_DRAFT}`,
+    );
     const draftQuery = calls.find((c) => c.method === "GET" && c.path.startsWith("/purchases?"));
     expect(draftQuery?.query.get("status")).toBe("draft");
 
     await user.click(screen.getByRole("button", { name: "Reopen" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === `${base}/reopen`)).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "POST" && c.path === `${base}/reopen`)).toBe(true),
+    );
     expect(await screen.findByTestId("review")).toBeInTheDocument();
     // A confirmation about the commit does not outlive the reopen.
     expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
@@ -388,8 +588,27 @@ describe("receipt review", () => {
     const calls = mockApi({
       ...baseRoutes(() => purchase),
       // A branch with a saved address shows it on its chip (#86).
-      "GET /vendor-locations": () => jsonResponse(200, { items: [{ ...chainLocation, address: "4 Pier Lane" }, marketLocation] }), // pii-scan: allow invented street
-      "GET /ingest-jobs": () => jsonResponse(200, { items: [{ id: ingestJobId, receipt_document_id: receiptDocumentId, stage: "review", status: "needs_review", attempts: 1, last_error: null, purchase_id: receiptPurchaseId, created_at: "2026-09-20T18:05:30Z", updated_at: "2026-09-20T18:06:00Z" }] }),
+      "GET /vendor-locations": () =>
+        jsonResponse(200, {
+          // pii-scan: allow invented street
+          items: [{ ...chainLocation, address: "4 Pier Lane" }, marketLocation],
+        }),
+      "GET /ingest-jobs": () =>
+        jsonResponse(200, {
+          items: [
+            {
+              id: ingestJobId,
+              receipt_document_id: receiptDocumentId,
+              stage: "review",
+              status: "needs_review",
+              attempts: 1,
+              last_error: null,
+              purchase_id: receiptPurchaseId,
+              created_at: "2026-09-20T18:05:30Z",
+              updated_at: "2026-09-20T18:06:00Z",
+            },
+          ],
+        }),
       [`GET /ingest-jobs/${ingestJobId}`]: () =>
         jsonResponse(200, {
           id: ingestJobId,
@@ -412,8 +631,22 @@ describe("receipt review", () => {
                   vendor_location_id: null,
                   vendor_id: null,
                   candidates: [
-                    { vendor_location_id: marketLocationId, vendor_id: marketLocation.vendor.id, vendor_name: marketLocation.vendor.name, location_name: marketLocation.name, score: "1.200", evidence: {} },
-                    { vendor_location_id: chainLocationId, vendor_id: chainLocation.vendor.id, vendor_name: chainLocation.vendor.name, location_name: chainLocation.name, score: "0.900", evidence: {} },
+                    {
+                      vendor_location_id: marketLocationId,
+                      vendor_id: marketLocation.vendor.id,
+                      vendor_name: marketLocation.vendor.name,
+                      location_name: marketLocation.name,
+                      score: "1.200",
+                      evidence: {},
+                    },
+                    {
+                      vendor_location_id: chainLocationId,
+                      vendor_id: chainLocation.vendor.id,
+                      vendor_name: chainLocation.vendor.name,
+                      location_name: chainLocation.name,
+                      score: "0.900",
+                      evidence: {},
+                    },
                   ],
                 },
               },
@@ -422,7 +655,14 @@ describe("receipt review", () => {
         }),
       [`PATCH ${base}`]: (call) => {
         const body = call.body as { vendor_location_id: string };
-        purchase = { ...purchase, vendor_location: { id: body.vendor_location_id, name: chainLocation.name, vendor: { id: chainLocation.vendor.id, name: chainLocation.vendor.name, kind: "chain" } } };
+        purchase = {
+          ...purchase,
+          vendor_location: {
+            id: body.vendor_location_id,
+            name: chainLocation.name,
+            vendor: { id: chainLocation.vendor.id, name: chainLocation.vendor.name, kind: "chain" },
+          },
+        };
         return jsonResponse(200, purchase);
       },
     });
@@ -433,14 +673,22 @@ describe("receipt review", () => {
     const candidates = await screen.findByRole("list", { name: "Location candidates" });
     const buttons = within(candidates).getAllByRole("button");
     // Ranked, but the raw match score is not shown: it means nothing to a person.
-    expect(buttons.map((b) => b.textContent)).toEqual(["Pier Farmers Market", "Millstone Market — Millstone Harbour4 Pier Lane"]); // pii-scan: allow invented street
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      "Pier Farmers Market",
+      // pii-scan: allow invented street
+      "Millstone Market — Millstone Harbour4 Pier Lane",
+    ]);
     expect(screen.getByLabelText("Location")).toHaveValue("");
 
     await user.click(buttons[1]);
     expect(screen.getByLabelText("Location")).toHaveValue(chainLocationId);
     await user.click(screen.getByRole("button", { name: "Save header" }));
-    await waitFor(() => expect(calls.some((c) => c.method === "PATCH" && c.path === base)).toBe(true));
-    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ vendor_location_id: chainLocationId });
+    await waitFor(() =>
+      expect(calls.some((c) => c.method === "PATCH" && c.path === base)).toBe(true),
+    );
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      vendor_location_id: chainLocationId,
+    });
     expect(await screen.findByRole("heading", { name: /Millstone Market/ })).toBeInTheDocument();
     // Found by /devex-review: the save gave no sign it had worked.
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
@@ -456,7 +704,11 @@ describe("the commit notice (review follow-ups)", () => {
     mockApi({
       ...baseRoutes(() => purchase),
       [`POST ${base}/commit`]: () => {
-        purchase = { ...purchase, status: "committed", lines: purchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)) };
+        purchase = {
+          ...purchase,
+          status: "committed",
+          lines: purchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)),
+        };
         return jsonResponse(200, purchase);
       },
       [`POST ${base}/reopen`]: () => {
@@ -473,12 +725,16 @@ describe("the commit notice (review follow-ups)", () => {
     await user.keyboard("{Enter}");
 
     // Shown before the draft lookup answers.
-    expect(await screen.findByTestId("notice")).toHaveTextContent("Committed. 1 price added to the price book.");
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Committed. 1 price added to the price book.",
+    );
     await user.click(await screen.findByRole("button", { name: "Reopen" }));
     await screen.findByTestId("review");
     expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
 
-    answerDrafts(jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }));
+    answerDrafts(
+      jsonResponse(200, { items: [{ ...receiptPurchase, id: NEXT_DRAFT }], next_cursor: null }),
+    );
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
   });
@@ -486,7 +742,13 @@ describe("the commit notice (review follow-ups)", () => {
   it("says where the lines went when a commit adds no prices because none is identified", async () => {
     // Found dogfooding a first receipt: every line unidentified, and the notice
     // said its prices were "already in the price book".
-    const unidentified = receiptPurchase.lines.map((l) => ({ ...l, product: null, resolution: "unmatched", observation_id: null, suggestions: [] }));
+    const unidentified = receiptPurchase.lines.map((l) => ({
+      ...l,
+      product: null,
+      resolution: "unmatched",
+      observation_id: null,
+      suggestions: [],
+    }));
     let purchase: Purchase = { ...receiptPurchase, lines: unidentified };
     mockApi({
       ...baseRoutes(() => purchase),
@@ -504,13 +766,24 @@ describe("the commit notice (review follow-ups)", () => {
     await user.keyboard("{Enter}");
     const notice = await screen.findByTestId("notice");
     const items = unidentified.filter((l) => l.line_kind === "item").length;
-    expect(notice).toHaveTextContent(`Committed. No prices yet: ${items} lines wait in To identify`);
-    expect(within(notice).getByRole("link", { name: "Name them" })).toHaveAttribute("href", "/shop/receipts/identify?mode=name");
+    expect(notice).toHaveTextContent(
+      `Committed. No prices yet: ${items} lines wait in To identify`,
+    );
+    expect(within(notice).getByRole("link", { name: "Name them" })).toHaveAttribute(
+      "href",
+      "/shop/receipts/identify?mode=name",
+    );
   });
 
   it("does not count prices a recommit kept as added", async () => {
     // Reopened with its observations live; committing again without changes adds none.
-    let purchase: Purchase = { ...receiptPurchase, status: "reviewed", lines: receiptPurchase.lines.map((l) => (l.seq === 1 ? { ...l, observation_id: "obs-1" } : l)) };
+    let purchase: Purchase = {
+      ...receiptPurchase,
+      status: "reviewed",
+      lines: receiptPurchase.lines.map((l) =>
+        l.seq === 1 ? { ...l, observation_id: "obs-1" } : l,
+      ),
+    };
     mockApi({
       ...baseRoutes(() => purchase),
       [`POST ${base}/commit`]: () => {
@@ -525,7 +798,11 @@ describe("the commit notice (review follow-ups)", () => {
     rows[1].focus();
     await user.keyboard("c");
     await user.keyboard("{Enter}");
-    expect(await screen.findByTestId("notice")).toHaveTextContent("Committed. Its prices were already in the price book.");
-    expect(within(screen.getByTestId("notice")).queryByRole("link", { name: "Next draft" })).not.toBeInTheDocument();
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Committed. Its prices were already in the price book.",
+    );
+    expect(
+      within(screen.getByTestId("notice")).queryByRole("link", { name: "Next draft" }),
+    ).not.toBeInTheDocument();
   });
 });

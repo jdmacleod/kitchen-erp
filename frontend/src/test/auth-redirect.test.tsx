@@ -2,7 +2,15 @@ import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { chainLocation } from "./geo-fixtures";
 import { manualPurchase } from "./purchase-fixtures";
-import { adminUser, errorResponse, jsonResponse, mainRegion, memberUser, mockApi, renderApp } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mainRegion,
+  memberUser,
+  mockApi,
+  renderApp,
+} from "./helpers";
 
 describe("route guards", () => {
   it("sends an unauthenticated visitor to /login", async () => {
@@ -31,12 +39,15 @@ describe("route guards", () => {
       "GET /health": () => jsonResponse(200, { status: "degraded" }),
       "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation] }),
       "GET /purchases": () => jsonResponse(200, { items: [manualPurchase], next_cursor: null }),
-      "GET /inbox": () => jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
+      "GET /inbox": () =>
+        jsonResponse(200, { items: [], reading: { count: 0, oldest_at: null, stalled: false } }),
     });
     renderApp("/");
 
     expect(await screen.findByRole("region", { name: "Recent purchases" })).toBeInTheDocument();
-    expect(within(mainRegion()).getByRole("heading", { level: 1 }).textContent).toMatch(/^Good (morning|afternoon|evening)$/);
+    expect(within(mainRegion()).getByRole("heading", { level: 1 }).textContent).toMatch(
+      /^Good (morning|afternoon|evening)$/,
+    );
     expect(screen.queryByText("Add somewhere you shop")).not.toBeInTheDocument();
     expect(await screen.findByTestId("health-status")).toHaveTextContent("degraded");
   });

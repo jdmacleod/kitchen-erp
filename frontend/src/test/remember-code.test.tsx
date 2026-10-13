@@ -14,7 +14,12 @@ const base = `/purchases/${receiptPurchaseId}`;
 
 describe("remembering an item code in review", () => {
   it("offers the code once the line has a product, and records it on a click", async () => {
-    const chosen: PurchaseLine = { ...aliasLine, resolution: "manual", raw_text: "88001 WHOLE MILK GAL 4.29", code_offer: { scheme: "vendor_sku", value: "88001" } };
+    const chosen: PurchaseLine = {
+      ...aliasLine,
+      resolution: "manual",
+      raw_text: "88001 WHOLE MILK GAL 4.29",
+      code_offer: { scheme: "vendor_sku", value: "88001" },
+    };
     let remembered = 0;
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
@@ -26,12 +31,18 @@ describe("remembering an item code in review", () => {
       [`GET ${base}`]: () => jsonResponse(200, { ...receiptPurchase, lines: [chosen] }),
       [`POST ${base}/lines/${chosen.id}/remember-code`]: () => {
         remembered += 1;
-        return jsonResponse(200, { scheme: "vendor_sku", value: "88001", product_id: aliasLine.product!.id });
+        return jsonResponse(200, {
+          scheme: "vendor_sku",
+          value: "88001",
+          product_id: aliasLine.product!.id,
+        });
       },
     });
     const user = userEvent.setup();
     renderApp(`/shop${base}`);
-    const buttons = await screen.findAllByRole("button", { name: /Remember 88001 for .*All-Purpose Flour/ });
+    const buttons = await screen.findAllByRole("button", {
+      name: /Remember 88001 for .*All-Purpose Flour/,
+    });
     expect(remembered).toBe(0);
     await user.click(buttons[0]);
     await waitFor(() => expect(remembered).toBe(1));

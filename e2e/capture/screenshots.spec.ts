@@ -62,7 +62,10 @@ async function shot(page: Page, name: string): Promise<void> {
 async function pickIngredient(page: Page, name: string): Promise<void> {
   const box = page.getByRole("combobox", { name: "Add an ingredient" });
   await box.fill(name.slice(0, 6));
-  await page.getByRole("option", { name: new RegExp(name, "i") }).first().click();
+  await page
+    .getByRole("option", { name: new RegExp(name, "i") })
+    .first()
+    .click();
   await expect(page.getByRole("list", { name: "Chosen ingredients" })).toContainText(name);
 }
 
@@ -82,7 +85,10 @@ test("capture the README screenshots", async ({ page }) => {
 
   // A product with eight months of observations behind it, for the history chart.
   await page.goto("/products");
-  await page.getByRole("link", { name: /Extra virgin olive oil/ }).first().click();
+  await page
+    .getByRole("link", { name: /Extra virgin olive oil/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}$/);
   await shot(page, "product-prices");
 
@@ -92,7 +98,10 @@ test("capture the README screenshots", async ({ page }) => {
   await shot(page, "purchases");
 
   // The date cell is the link into a purchase.
-  await page.getByRole("link", { name: /\b20\d\d\b/ }).first().click();
+  await page
+    .getByRole("link", { name: /\b20\d\d\b/ })
+    .first()
+    .click();
   await expect(page).toHaveURL(/\/purchases\/[0-9a-f-]{36}$/);
   await shot(page, "purchase-detail");
 });
@@ -129,7 +138,9 @@ test("capture the Cook screenshots", async ({ page }) => {
       "recipes-resolve",
       async () => {
         await page.goto("/cook/recipes/resolve");
-        await expect(page.getByRole("heading", { level: 1, name: "Resolve recipe names" })).toBeVisible();
+        await expect(
+          page.getByRole("heading", { level: 1, name: "Resolve recipe names" }),
+        ).toBeVisible();
       },
     ],
   ];
@@ -171,7 +182,10 @@ test("capture the Plan screenshots", async ({ page }) => {
   for (const name of ["Olive oil", "Whole milk", "Coffee beans"]) {
     await pickIngredient(page, name);
   }
-  await page.getByRole("group", { name: "Kitchen" }).getByRole("button", { name: "Harbour Flat" }).click();
+  await page
+    .getByRole("group", { name: "Kitchen" })
+    .getByRole("button", { name: "Harbour Flat" })
+    .click();
   await expect(page.getByTestId("kitchen-tag")).toContainText("Harbour Flat");
   await expect(page.getByRole("table", { name: "Price comparison" })).toBeVisible();
   await shot(page, "plan-compare");
@@ -190,17 +204,23 @@ test("capture the Trip screenshots", async ({ page }) => {
   await signIn(page);
   await assertDemoData(page);
 
-  const kitchens = (await (await page.request.get("/api/v1/home-bases")).json()) as { items: { id: string; name: string }[] };
+  const kitchens = (await (await page.request.get("/api/v1/home-bases")).json()) as {
+    items: { id: string; name: string }[];
+  };
   const kitchen = kitchens.items.find((k) => k.name === "Harbour Flat");
   expect(kitchen, "the demo's first kitchen").toBeTruthy();
-  const locations = (await (await page.request.get("/api/v1/vendor-locations")).json()) as { items: { id: string; name: string }[] };
+  const locations = (await (await page.request.get("/api/v1/vendor-locations")).json()) as {
+    items: { id: string; name: string }[];
+  };
   const stall = locations.items.find((l) => l.name === "Bramble Row Produce");
   expect(stall, "the demo's produce stall").toBeTruthy();
   for (const [query, price] of [
     ["Lemons", "1.20"],
     ["Basil", "1.10"],
   ] as const) {
-    const found = (await (await page.request.get(`/api/v1/products?q=${encodeURIComponent(query)}`)).json()) as { items: { id: string }[] };
+    const found = (await (
+      await page.request.get(`/api/v1/products?q=${encodeURIComponent(query)}`)
+    ).json()) as { items: { id: string }[] };
     expect(found.items.length, query).toBeGreaterThan(0);
     const noted = await page.request.post("/api/v1/price-observations", {
       data: { product_id: found.items[0].id, vendor_location_id: stall!.id, price, unit: "each" },
@@ -212,13 +232,24 @@ test("capture the Trip screenshots", async ({ page }) => {
   when.setUTCDate(when.getUTCDate() + ((6 - when.getUTCDay() + 7) % 7 || 7));
   when.setUTCHours(17, 0, 0, 0);
   const made = await page.request.post("/api/v1/plan/trips", {
-    data: { home_base_id: kitchen!.id, planned_at: when.toISOString(), max_stops: 3, value_of_time_per_hour: "5.00", mileage_rate: "0.67" },
+    data: {
+      home_base_id: kitchen!.id,
+      planned_at: when.toISOString(),
+      max_stops: 3,
+      value_of_time_per_hour: "5.00",
+      mileage_rate: "0.67",
+    },
   });
   expect(made.status(), await made.text()).toBe(201);
-  const plan = (await made.json()) as { id: string; variants: { id: string; kind: string; stop_count: number }[] };
+  const plan = (await made.json()) as {
+    id: string;
+    variants: { id: string; kind: string; stop_count: number }[];
+  };
   const cheapest = plan.variants.find((v) => v.kind === "cheapest")!;
   expect(cheapest.stop_count, "the Cheapest plan visits the stall too").toBe(2);
-  const chosen = await page.request.post(`/api/v1/plan/trips/${plan.id}/choose`, { data: { variant_id: cheapest.id } });
+  const chosen = await page.request.post(`/api/v1/plan/trips/${plan.id}/choose`, {
+    data: { variant_id: cheapest.id },
+  });
   expect(chosen.status(), await chosen.text()).toBe(200);
 
   await page.setViewportSize({ width: 1280, height: 800 });

@@ -11,7 +11,12 @@ import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 import { aliasLine, receiptPurchase, receiptPurchaseId } from "./purchase-fixtures";
 
 const base = `/purchases/${receiptPurchaseId}`;
-const purchase: Purchase = { ...receiptPurchase, subtotal: "11.5000", tax: "0.0000", total: "12.0000" };
+const purchase: Purchase = {
+  ...receiptPurchase,
+  subtotal: "11.5000",
+  tax: "0.0000",
+  total: "12.0000",
+};
 
 describe("review money fields", () => {
   it("shows amounts to cents and does not resend one that was not changed", async () => {
@@ -45,7 +50,10 @@ describe("review money fields", () => {
     // Review of #76: comparing as numbers dropped an unchanged line total from
     // the patch, and the server clears a price flag only when it is sent.
     const flagged = { ...aliasLine, line_total: "3.4900", flags: ["exceeds_total"] };
-    const withFlag: Purchase = { ...purchase, lines: [flagged, ...receiptPurchase.lines.filter((l) => l.id !== aliasLine.id)] };
+    const withFlag: Purchase = {
+      ...purchase,
+      lines: [flagged, ...receiptPurchase.lines.filter((l) => l.id !== aliasLine.id)],
+    };
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),

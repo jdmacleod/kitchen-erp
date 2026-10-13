@@ -17,7 +17,11 @@ import { controlsUnder44, expectNoSidewaysScroll, login, loginAs, nextTag } from
  */
 
 const stamp = nextTag();
-const COOK = { email: `e2e-cook-${stamp}@example.com`, password: "e2e-only-not-a-secret", name: `E2E Cook ${stamp}` };
+const COOK = {
+  email: `e2e-cook-${stamp}@example.com`,
+  password: "e2e-only-not-a-secret",
+  name: `E2E Cook ${stamp}`,
+};
 const HARBOUR = `E2E Harbour kitchen ${stamp}`;
 const RIDGE = `E2E Ridge kitchen ${stamp}`;
 const RHUBARB = `E2E Rhubarb ${stamp}`;
@@ -41,7 +45,9 @@ async function ensureKitchen(page: Page, name: string, lat: string, lon: string)
   if (r.status() === 201) return ((await r.json()) as { id: string }).id;
   expect(r.status(), `kitchen ${name}`).toBe(409);
   const list = await page.request.get("/api/v1/home-bases");
-  const found = ((await list.json()) as { items: { id: string; name: string }[] }).items.find((k) => k.name === name);
+  const found = ((await list.json()) as { items: { id: string; name: string }[] }).items.find(
+    (k) => k.name === name,
+  );
   expect(found, `kitchen ${name} exists`).toBeTruthy();
   return found!.id;
 }
@@ -59,7 +65,9 @@ async function setUp(page: Page): Promise<Setup> {
     [CHARD, "each"],
     ...RECIPE.lines.map((line) => [line, "g"]),
   ]) {
-    const r = await page.request.post("/api/v1/ingredients", { data: { name, canonical_unit: unit } });
+    const r = await page.request.post("/api/v1/ingredients", {
+      data: { name, canonical_unit: unit },
+    });
     expect([201, 409], `ingredient ${name}`).toContain(r.status());
   }
   const scanned = await page.request.post("/api/v1/recipes/rescan");
@@ -78,8 +86,14 @@ const isPhone = (project: string) => project !== "desktop";
 /** The chip that names the current kitchen: in the sidebar footer, or at the top of the More sheet (opened here). */
 async function kitchenChip(page: Page, project: string) {
   if (isPhone(project)) {
-    await page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: "More" }).click();
-    return page.getByRole("dialog", { name: "More" }).getByTestId("kitchen-switcher-row").getByRole("button", { name: /^Kitchen:/ });
+    await page
+      .getByRole("navigation", { name: "Tabs" })
+      .getByRole("button", { name: "More" })
+      .click();
+    return page
+      .getByRole("dialog", { name: "More" })
+      .getByTestId("kitchen-switcher-row")
+      .getByRole("button", { name: /^Kitchen:/ });
   }
   return page.getByRole("button", { name: /^Kitchen:/ });
 }
@@ -115,7 +129,10 @@ async function switchTo(page: Page, project: string, name: string): Promise<void
     if (already) return;
     await chip.click();
     // Chosen by keyboard: the menu opens upward from the footer, and a stack that has run this spec many times has more kitchens than fit.
-    await page.getByRole("menu", { name: "Switch kitchen" }).getByRole("menuitemradio", { name: `Switch to ${name}` }).focus();
+    await page
+      .getByRole("menu", { name: "Switch kitchen" })
+      .getByRole("menuitemradio", { name: `Switch to ${name}` })
+      .focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("button", { name: `Kitchen: ${name}` })).toBeVisible();
   }
@@ -134,7 +151,9 @@ async function listAction(page: Page, name: string): Promise<void> {
 
 const row = (page: Page, name: string) => page.getByTestId("list-item").filter({ hasText: name });
 
-test("Plan appears with the feature, the switcher lists the kitchens, and switching writes the setting and changes the tag", async ({ page }, testInfo) => {
+test("Plan appears with the feature, the switcher lists the kitchens, and switching writes the setting and changes the tag", async ({
+  page,
+}, testInfo) => {
   const { harbourId, ridgeId } = await setUp(page);
   const project = testInfo.project.name;
 
@@ -154,7 +173,12 @@ test("Plan appears with the feature, the switcher lists the kitchens, and switch
   } else {
     // The sidebar is an accordion: Plan sits between Cook and Shop, and only the open section lists its pages (UI-2.1).
     const sidebar = page.getByRole("navigation", { name: "Main" }).first();
-    await expect(sidebar.getByRole("list").first().getByRole("link")).toHaveText([/^Home/, /^Cook/, /^Plan/, /^Shop/]);
+    await expect(sidebar.getByRole("list").first().getByRole("link")).toHaveText([
+      /^Home/,
+      /^Cook/,
+      /^Plan/,
+      /^Shop/,
+    ]);
     await sidebar.getByRole("link", { name: "Plan" }).click();
     await expect(page).toHaveURL(/\/plan\/list$/);
     await expect(sidebar.getByRole("link", { name: "Shopping list" })).toBeVisible();
@@ -165,10 +189,14 @@ test("Plan appears with the feature, the switcher lists the kitchens, and switch
   // UI-2.4 / UI-2.5 / UI-8.7: both kitchens are offered; a choice PUTs the setting and the tag follows.
   // A new member has no setting, so the chain picked one; switch to the other first, so both switches are real.
   const current = await currentKitchen(page, project);
-  const [first, second, firstId, secondId] = current === HARBOUR ? [RIDGE, HARBOUR, ridgeId, harbourId] : [HARBOUR, RIDGE, harbourId, ridgeId];
+  const [first, second, firstId, secondId] =
+    current === HARBOUR
+      ? [RIDGE, HARBOUR, ridgeId, harbourId]
+      : [HARBOUR, RIDGE, harbourId, ridgeId];
   const puts: string[] = [];
   page.on("request", (req) => {
-    if (req.method() === "PUT" && req.url().includes("/api/v1/me/settings")) puts.push(req.postData() ?? "");
+    if (req.method() === "PUT" && req.url().includes("/api/v1/me/settings"))
+      puts.push(req.postData() ?? "");
   });
   await switchTo(page, project, first);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(`${first} list`);
@@ -184,10 +212,14 @@ test("Plan appears with the feature, the switcher lists the kitchens, and switch
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(`${second} list`);
   const settings = await page.request.get("/api/v1/me/settings");
-  expect(((await settings.json()) as { current_home_base_id: string }).current_home_base_id).toBe(secondId);
+  expect(((await settings.json()) as { current_home_base_id: string }).current_home_base_id).toBe(
+    secondId,
+  );
 });
 
-test("the list: add by name, claim and check, add from a recipe, then start a fresh list that carries the unchecked item", async ({ page }, testInfo) => {
+test("the list: add by name, claim and check, add from a recipe, then start a fresh list that carries the unchecked item", async ({
+  page,
+}, testInfo) => {
   await setUp(page);
   const project = testInfo.project.name;
   await page.goto("/plan/list");
@@ -212,13 +244,18 @@ test("the list: add by name, claim and check, add from a recipe, then start a fr
   await page.getByRole("option", { name: new RegExp(CHARD) }).click();
   await add.getByRole("button", { name: "Add", exact: true }).click();
   await expect(page.getByRole("heading", { name: "To get (2)" })).toBeVisible();
-  await row(page, RHUBARB).getByRole("checkbox", { name: `Check ${RHUBARB}` }).click();
+  await row(page, RHUBARB)
+    .getByRole("checkbox", { name: `Check ${RHUBARB}` })
+    .click();
   await expect(page.getByRole("heading", { name: "To get (1)" })).toBeVisible();
   await expect(page.getByTestId("list-announcement")).toHaveText(`Checked ${RHUBARB}. 1 to get.`);
   const checked = page.locator("details").filter({ hasText: "Checked (1)" });
   await expect(checked).toBeVisible();
   await checked.locator("summary").click();
-  await expect(checked.getByTestId("list-item").filter({ hasText: RHUBARB })).toHaveAttribute("data-checked", "true");
+  await expect(checked.getByTestId("list-item").filter({ hasText: RHUBARB })).toHaveAttribute(
+    "data-checked",
+    "true",
+  );
 
   // UI-8.5: a recipe's lines land with their (amount, unit) pairs as written.
   await listAction(page, "Add from recipe");
@@ -227,7 +264,9 @@ test("the list: add by name, claim and check, add from a recipe, then start a fr
   await page.getByRole("option", { name: new RegExp(RECIPE.title) }).click();
   await drawer.getByRole("button", { name: "Add to list" }).click();
   await expect(drawer).toBeHidden();
-  await expect(page.getByTestId("notice")).toHaveText(`Added ${RECIPE.added} items from ${RECIPE.title}.`);
+  await expect(page.getByTestId("notice")).toHaveText(
+    `Added ${RECIPE.added} items from ${RECIPE.title}.`,
+  );
   await expect(page.getByRole("heading", { name: "To get (3)" })).toBeVisible();
   // "1 cup" of flour cannot become grams without a density, so the pair stays as written.
   await expect(row(page, "flour").first().getByTestId("item-amounts")).toContainText(/1.*cup/);
@@ -254,13 +293,18 @@ test("the list: add by name, claim and check, add from a recipe, then start a fr
   await expect(page.getByRole("link", { name: "Back to the current list" })).toBeVisible();
 });
 
-test("Compare under Plan offers the kitchen control, All by default, and keeps a chosen kitchen in the URL", async ({ page }, testInfo) => {
+test("Compare under Plan offers the kitchen control, All by default, and keeps a chosen kitchen in the URL", async ({
+  page,
+}, testInfo) => {
   const { harbourId } = await setUp(page);
   await page.goto("/shop/compare");
   await expect(page).toHaveURL(/\/plan\/compare$/);
   await expect(page.getByRole("heading", { level: 1, name: "Compare" })).toBeVisible();
   const control = page.getByRole("group", { name: "Kitchen" });
-  await expect(control.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+  await expect(control.getByRole("button", { name: "All" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.getByTestId("kitchen-tag")).toHaveCount(0);
   await control.getByRole("button", { name: HARBOUR }).click();
   await expect(page).toHaveURL(new RegExp(`home_base_id=${harbourId}`));
@@ -271,7 +315,9 @@ test("Compare under Plan offers the kitchen control, All by default, and keeps a
   }
 });
 
-test("at 390px the list, Trips and Compare fit the viewport and every control is a 44px target", async ({ page }, testInfo) => {
+test("at 390px the list, Trips and Compare fit the viewport and every control is a 44px target", async ({
+  page,
+}, testInfo) => {
   test.skip(testInfo.project.name !== "phone", "the 390px viewport is the phone project");
   await setUp(page);
   await page.goto("/plan/list");
@@ -290,7 +336,11 @@ test("at 390px the list, Trips and Compare fit the viewport and every control is
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.waitForLoadState("networkidle");
     await expectNoSidewaysScroll(page, path);
-    small.push(...(await controlsUnder44(page, "header, nav[aria-label=Tabs], main")).map((f) => `${path}: ${f}`));
+    small.push(
+      ...(await controlsUnder44(page, "header, nav[aria-label=Tabs], main")).map(
+        (f) => `${path}: ${f}`,
+      ),
+    );
   }
   // The list's own sheets render outside main: More actions, and the row's actions.
   await page.goto("/plan/list");
@@ -298,7 +348,9 @@ test("at 390px the list, Trips and Compare fit the viewport and every control is
   await page.getByRole("button", { name: "More actions", exact: true }).click();
   small.push(...(await controlsUnder44(page, "[role=dialog]")).map((f) => `More actions: ${f}`));
   await page.keyboard.press("Escape");
-  await row(page, RHUBARB).getByRole("button", { name: `More actions for ${RHUBARB}` }).click();
+  await row(page, RHUBARB)
+    .getByRole("button", { name: `More actions for ${RHUBARB}` })
+    .click();
   small.push(...(await controlsUnder44(page, "[role=dialog]")).map((f) => `row actions: ${f}`));
   await page.keyboard.press("Escape");
   expect(small, "controls under 44px").toEqual([]);

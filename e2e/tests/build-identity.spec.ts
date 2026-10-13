@@ -22,7 +22,9 @@ test("the sidebar names the build this stack was made from", async ({ page }) =>
   // Decided by the viewport, not by whether the tab bar has rendered yet: an
   // instant isVisible() raced the first paint and skipped the tap (phone-375).
   if ((page.viewportSize()?.width ?? 1280) < 1024) {
-    const more = page.getByRole("navigation", { name: "Tabs" }).getByRole("button", { name: "More" });
+    const more = page
+      .getByRole("navigation", { name: "Tabs" })
+      .getByRole("button", { name: "More" });
     await more.click();
   }
 

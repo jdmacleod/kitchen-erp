@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { errorMessage } from "../../api/client";
-import { useMerge, useMergePreview, useStandardEntries, type MergeTarget, type StandardEntry } from "../../api/ingredientLink";
+import {
+  useMerge,
+  useMergePreview,
+  useStandardEntries,
+  type MergeTarget,
+  type StandardEntry,
+} from "../../api/ingredientLink";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { CategoryChip } from "../CategoryChip";
 import { Alert, Button, alertTones, focusRing } from "../ui";
@@ -59,20 +65,37 @@ export function IngredientMergePanel({
   const stuck = p ? p.measures.filter((m) => !m.copyable) : [];
 
   return (
-    <div role="group" aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+    <div
+      role="group"
+      aria-labelledby={headingId}
+      className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950"
+    >
       <h3 id={headingId} className="text-sm font-medium">
         Merge {loser.name} into {targetName}?
       </h3>
       <p className="text-sm">
-        {moving === undefined ? "Its products move" : `${plural(moving, "product")} ${moving === 1 ? "moves" : "move"}`}. {loser.name} becomes another spelling.
-        {p && p.unit_from !== p.unit_to ? ` Units differ (${p.unit_from} → ${p.unit_to})${p.prices_needing_bridge > 0 ? ":" : "."}` : ""}
-        {p && p.prices_needing_bridge > 0 ? ` ${plural(p.prices_needing_bridge, "price")} will need a bridge.` : ""}
+        {moving === undefined
+          ? "Its products move"
+          : `${plural(moving, "product")} ${moving === 1 ? "moves" : "move"}`}
+        . {loser.name} becomes another spelling.
+        {p && p.unit_from !== p.unit_to
+          ? ` Units differ (${p.unit_from} → ${p.unit_to})${p.prices_needing_bridge > 0 ? ":" : "."}`
+          : ""}
+        {p && p.prices_needing_bridge > 0
+          ? ` ${plural(p.prices_needing_bridge, "price")} will need a bridge.`
+          : ""}
       </p>
       <fieldset className="flex flex-col gap-1 text-sm">
         <legend className="mb-1">Keep:</legend>
         {[second, first].map((o) => (
           <label key={o.id} className="flex min-h-11 items-center gap-2 lg:min-h-0">
-            <input type="radio" name={`${headingId}-keep`} checked={survivorId === o.id} onChange={() => setSurvivorId(o.id)} className={focusRing} />
+            <input
+              type="radio"
+              name={`${headingId}-keep`}
+              checked={survivorId === o.id}
+              onChange={() => setSurvivorId(o.id)}
+              className={focusRing}
+            />
             {o.name}
             {o.products === undefined ? "" : `, ${plural(o.products, "product")}`}
           </label>
@@ -99,7 +122,11 @@ export function IngredientMergePanel({
           ))}
         </fieldset>
       ) : null}
-      {stuck.length > 0 ? <p className="text-xs">{stuck.map((m) => m.label).join(", ")} can't carry over: the units differ.</p> : null}
+      {stuck.length > 0 ? (
+        <p className="text-xs">
+          {stuck.map((m) => m.label).join(", ")} can't carry over: the units differ.
+        </p>
+      ) : null}
       {preview.isError ? <Alert tone="error">{errorMessage(preview.error)}</Alert> : null}
       {merge.isError ? (
         <div role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error}`}>
@@ -113,7 +140,12 @@ export function IngredientMergePanel({
           disabled={merge.isPending || !p}
           onClick={() =>
             merge.mutate(
-              { survivor_id: survivor.id, loser_id: loser.id, target, copy_measures: copyable.filter((m) => !unticked.has(m.label)).map((m) => m.label) },
+              {
+                survivor_id: survivor.id,
+                loser_id: loser.id,
+                target,
+                copy_measures: copyable.filter((m) => !unticked.has(m.label)).map((m) => m.label),
+              },
               { onSuccess: (done) => onMerged({ survivor, loser, targetName: done.target_name }) },
             )
           }
@@ -129,7 +161,15 @@ export function IngredientMergePanel({
 }
 
 /** A search of the standard list only, for a wrong or missing suggestion (DV4). */
-export function ChooseStandard({ id, onChosen, onCancel }: { id: string; onChosen: (e: StandardEntry) => void; onCancel: () => void }) {
+export function ChooseStandard({
+  id,
+  onChosen,
+  onCancel,
+}: {
+  id: string;
+  onChosen: (e: StandardEntry) => void;
+  onCancel: () => void;
+}) {
   const [text, setText] = useState("");
   const debounced = useDebouncedValue(text, 200);
   const found = useStandardEntries(debounced);
@@ -147,7 +187,11 @@ export function ChooseStandard({ id, onChosen, onCancel }: { id: string; onChose
           items={items}
           autoFocus
           getKey={(e) => e.key}
-          status={text.trim() && !found.isFetching && items.length === 0 ? "No standard name matches." : undefined}
+          status={
+            text.trim() && !found.isFetching && items.length === 0
+              ? "No standard name matches."
+              : undefined
+          }
           onSelect={onChosen}
           renderItem={(e) => (
             <span className="flex items-center gap-2">

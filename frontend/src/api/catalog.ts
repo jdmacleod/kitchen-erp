@@ -22,8 +22,20 @@ export type BridgeSource = "usda" | "label" | "measured" | "llm" | "manual";
 export type Perishability = "shelf_stable" | "shelf_months" | "refrigerated" | "fresh" | "frozen";
 
 export const CANONICAL_UNITS: readonly CanonicalUnit[] = ["g", "ml", "each"];
-export const BRIDGE_SOURCES: readonly BridgeSource[] = ["manual", "measured", "label", "usda", "llm"];
-export const PERISHABILITIES: readonly Perishability[] = ["shelf_stable", "shelf_months", "refrigerated", "fresh", "frozen"];
+export const BRIDGE_SOURCES: readonly BridgeSource[] = [
+  "manual",
+  "measured",
+  "label",
+  "usda",
+  "llm",
+];
+export const PERISHABILITIES: readonly Perishability[] = [
+  "shelf_stable",
+  "shelf_months",
+  "refrigerated",
+  "fresh",
+  "frozen",
+];
 
 export const perishabilityLabel: Record<Perishability, string> = {
   shelf_stable: "Shelf stable",
@@ -35,9 +47,12 @@ export const perishabilityLabel: Record<Perishability, string> = {
 
 /** What each value means, after the USDA storage charts (spec 02). */
 export const perishabilityHint: Record<Perishability, string> = {
-  shelf_stable: "Keeps a year or more at room temperature, unopened: canned goods, rice, pasta, sugar, spices.",
-  shelf_months: "Room temperature, but goes stale or rancid in weeks to months: nuts, chips, crackers, oils, whole-grain flour.",
-  refrigerated: "Kept cold, or keeps about a week or longer: eggs, butter, hard cheese, bacon, carrots, onions.",
+  shelf_stable:
+    "Keeps a year or more at room temperature, unopened: canned goods, rice, pasta, sugar, spices.",
+  shelf_months:
+    "Room temperature, but goes stale or rancid in weeks to months: nuts, chips, crackers, oils, whole-grain flour.",
+  refrigerated:
+    "Kept cold, or keeps about a week or longer: eggs, butter, hard cheese, bacon, carrots, onions.",
   fresh: "Keeps a week or less: raw meat, poultry and fish, milk, greens, berries, bread.",
   frozen: "Bought and kept frozen.",
 };
@@ -56,7 +71,9 @@ function days(n: number): string {
 }
 
 /** "Keeps 1 day in the fridge, 270 days in the freezer", or null with no times. */
-export function keepTimesText(i: Pick<Ingredient, "keep_room_days" | "keep_fridge_days" | "keep_freezer_days">): string | null {
+export function keepTimesText(
+  i: Pick<Ingredient, "keep_room_days" | "keep_fridge_days" | "keep_freezer_days">,
+): string | null {
   const parts = [
     i.keep_room_days != null ? `${days(i.keep_room_days)} at room temperature` : null,
     i.keep_fridge_days != null ? `${days(i.keep_fridge_days)} in the fridge` : null,
@@ -126,7 +143,14 @@ export interface Ingredient {
 
 /** The summary shape of a full ingredient, as product responses carry it. */
 export function ingredientSummary(i: Ingredient): IngredientSummary {
-  return { id: i.id, name: i.name, canonical_unit: i.canonical_unit, active: i.active, category: i.category, category_key: i.category_key };
+  return {
+    id: i.id,
+    name: i.name,
+    canonical_unit: i.canonical_unit,
+    active: i.active,
+    category: i.category,
+    category_key: i.category_key,
+  };
 }
 
 export interface Product {
@@ -158,13 +182,7 @@ export interface Product {
 }
 
 export type BrandTier =
-  | "value"
-  | "standard"
-  | "premium"
-  | "organic"
-  | "natural"
-  | "prepared"
-  | "specialty";
+  "value" | "standard" | "premium" | "organic" | "natural" | "prepared" | "specialty";
 
 /** The store brand a product's brand names: whose it is and its tier (2R). */
 export interface HouseBrand {
@@ -210,7 +228,8 @@ export interface SearchHit {
   score: string;
 }
 
-export type BridgeKind = "none" | "density" | "density_override" | "measure" | "pack" | "pack_count";
+export type BridgeKind =
+  "none" | "density" | "density_override" | "measure" | "pack" | "pack_count";
 
 export interface Provenance {
   bridge_kind: BridgeKind;
@@ -362,7 +381,9 @@ export function validationMessages(e: unknown): string[] {
   const errors = (e.details as { errors?: unknown }).errors;
   if (!Array.isArray(errors)) return [];
   return errors
-    .map((entry) => (typeof entry === "object" && entry !== null ? (entry as { msg?: unknown }).msg : undefined))
+    .map((entry) =>
+      typeof entry === "object" && entry !== null ? (entry as { msg?: unknown }).msg : undefined,
+    )
     .filter((msg): msg is string => typeof msg === "string");
 }
 
@@ -402,7 +423,8 @@ export const catalogKeys = {
   ingredients: ["ingredients"] as const,
   ingredientList: (q: string, includeInactive: boolean) =>
     ["ingredients", "list", { q, includeInactive }] as const,
-  ingredientSearch: (q: string, includeStandard: boolean) => ["ingredients", "search", q, includeStandard] as const,
+  ingredientSearch: (q: string, includeStandard: boolean) =>
+    ["ingredients", "search", q, includeStandard] as const,
   ingredient: (id: string) => ["ingredients", "detail", id] as const,
   products: ["products"] as const,
   productList: (ingredientId: string | undefined, includeInactive: boolean) =>
@@ -475,7 +497,8 @@ export function useIngredientsInText(text: string) {
   const trimmed = text.trim().slice(0, 200);
   return useQuery({
     queryKey: [...catalogKeys.ingredientSearch(trimmed, true), "in-text"],
-    queryFn: () => api<{ items: IngredientMatch[] }>(`/ingredients/in-text${qs({ text: trimmed })}`),
+    queryFn: () =>
+      api<{ items: IngredientMatch[] }>(`/ingredients/in-text${qs({ text: trimmed })}`),
     select: (data) => data.items,
     enabled: trimmed.length > 0,
     staleTime: 10_000,
@@ -532,7 +555,9 @@ export function useSetIngredientActive(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (active: boolean) =>
-      api<Ingredient>(`/ingredients/${enc(id)}/${active ? "activate" : "deactivate"}`, { method: "POST" }),
+      api<Ingredient>(`/ingredients/${enc(id)}/${active ? "activate" : "deactivate"}`, {
+        method: "POST",
+      }),
     onSuccess: (updated) => {
       client.setQueryData(catalogKeys.ingredient(id), updated);
       invalidateIngredient(client, id);
@@ -543,7 +568,8 @@ export function useSetIngredientActive(id: string) {
 export function useConfirmDensity(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<Ingredient>(`/ingredients/${enc(id)}/density/confirm`, { method: "POST" }),
+    mutationFn: () =>
+      api<Ingredient>(`/ingredients/${enc(id)}/density/confirm`, { method: "POST" }),
     onSuccess: (updated) => {
       client.setQueryData(catalogKeys.ingredient(id), updated);
       invalidateIngredient(client, id);
@@ -555,14 +581,20 @@ export function useConfirmDensity(id: string) {
 export function useConvert(ingredientId: string) {
   return useMutation({
     mutationFn: (input: ConvertInput) =>
-      api<ConvertResult>(`/ingredients/${enc(ingredientId)}/convert`, { method: "POST", body: input }),
+      api<ConvertResult>(`/ingredients/${enc(ingredientId)}/convert`, {
+        method: "POST",
+        body: input,
+      }),
   });
 }
 
 // --- measures ---------------------------------------------------------------
 
 export function addMeasure(ingredientId: string, input: MeasureCreateInput): Promise<Measure> {
-  return api<Measure>(`/ingredients/${enc(ingredientId)}/measures`, { method: "POST", body: input });
+  return api<Measure>(`/ingredients/${enc(ingredientId)}/measures`, {
+    method: "POST",
+    body: input,
+  });
 }
 
 export function useAddMeasure(ingredientId: string) {
@@ -632,13 +664,24 @@ export function useProducts(
     enabled?: boolean;
   } = {},
 ) {
-  const { ingredientId, includeInactive = false, noPhoto = false, limit = 50, enabled = true } = options;
+  const {
+    ingredientId,
+    includeInactive = false,
+    noPhoto = false,
+    limit = 50,
+    enabled = true,
+  } = options;
   const q = options.q?.trim().slice(0, 200) || undefined;
   const category = options.category ?? undefined;
   // qs() drops false, so the flag goes as the string "true" or not at all.
   const noPhotoParam = noPhoto ? "true" : undefined;
   return useInfiniteQuery({
-    queryKey: [...catalogKeys.productList(ingredientId, includeInactive), q ?? "", category ?? "", noPhoto],
+    queryKey: [
+      ...catalogKeys.productList(ingredientId, includeInactive),
+      q ?? "",
+      category ?? "",
+      noPhoto,
+    ],
     queryFn: ({ pageParam }) =>
       api<Page<ProductListItem>>(
         `/products${qs({ ingredient_id: ingredientId, include_inactive: includeInactive, q, category, no_photo: noPhotoParam, limit, cursor: pageParam })}`,
@@ -701,7 +744,9 @@ export function useSetProductActive(id: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (active: boolean) =>
-      api<Product>(`/products/${enc(id)}/${active ? "activate" : "deactivate"}`, { method: "POST" }),
+      api<Product>(`/products/${enc(id)}/${active ? "activate" : "deactivate"}`, {
+        method: "POST",
+      }),
     onSuccess: (updated) => {
       client.setQueryData(catalogKeys.product(id), updated);
       invalidateProduct(client, id);
@@ -734,7 +779,10 @@ export function useProductMergePreview(loserId: string, survivorId: string | nul
   return useQuery({
     queryKey: [...catalogKeys.products, "merge-preview", loserId, survivorId ?? ""],
     queryFn: () =>
-      api<ProductMerge>(`/products/${enc(loserId)}/merge/preview`, { method: "POST", body: { survivor_id: survivorId } }),
+      api<ProductMerge>(`/products/${enc(loserId)}/merge/preview`, {
+        method: "POST",
+        body: { survivor_id: survivorId },
+      }),
     enabled: Boolean(survivorId),
     staleTime: 0,
     gcTime: 0,
@@ -745,7 +793,10 @@ export function useMergeProduct(loserId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (survivorId: string) =>
-      api<ProductMerge>(`/products/${enc(loserId)}/merge`, { method: "POST", body: { survivor_id: survivorId } }),
+      api<ProductMerge>(`/products/${enc(loserId)}/merge`, {
+        method: "POST",
+        body: { survivor_id: survivorId },
+      }),
     // Prices, codes, photos, listings and receipt lines all move: refetch everything.
     onSuccess: () => void client.invalidateQueries(),
   });
@@ -770,7 +821,8 @@ export function useDuplicates(enabled = true) {
 export function useMarkDistinct() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (pair: { a: string; b: string }) => api<void>("/products/duplicates/distinct", { method: "POST", body: pair }),
+    mutationFn: (pair: { a: string; b: string }) =>
+      api<void>("/products/duplicates/distinct", { method: "POST", body: pair }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: catalogKeys.duplicates });
       void client.invalidateQueries({ queryKey: inboxKey });
@@ -781,7 +833,8 @@ export function useMarkDistinct() {
 export function useConfirmDensityOverride(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => api<Product>(`/products/${enc(id)}/density-override/confirm`, { method: "POST" }),
+    mutationFn: () =>
+      api<Product>(`/products/${enc(id)}/density-override/confirm`, { method: "POST" }),
     onSuccess: (updated) => {
       client.setQueryData(catalogKeys.product(id), updated);
       invalidateProduct(client, id);
@@ -792,7 +845,12 @@ export function useConfirmDensityOverride(id: string) {
 // --- formatting -------------------------------------------------------------
 
 /** "12 oz", "19 oz · 5 links", or "" when the product has no pack. */
-export function formatPack(pack_qty: string | null, pack_unit: string | null, pack_count?: number | null, piece_name?: string | null): string {
+export function formatPack(
+  pack_qty: string | null,
+  pack_unit: string | null,
+  pack_count?: number | null,
+  piece_name?: string | null,
+): string {
   if (pack_qty === null || pack_unit === null) return "";
   const size = `${trimDecimal(pack_qty)} ${unitLabel(pack_unit)}`;
   return pack_count ? `${size} · ${formatPieces(pack_count, piece_name)}` : size;
@@ -827,7 +885,11 @@ export function trimDecimal(value: string): string {
 export function productTitle(p: { brand: string | null; name: string }): string {
   const brand = p.brand?.trim();
   if (!brand) return p.name;
-  const fold = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const fold = (s: string) =>
+    s
+      .toLocaleLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, " ")
+      .trim();
   const name = fold(p.name);
   return name === fold(brand) || name.startsWith(`${fold(brand)} `) ? p.name : `${brand} ${p.name}`;
 }

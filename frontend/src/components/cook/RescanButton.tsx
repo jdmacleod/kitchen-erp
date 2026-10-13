@@ -15,7 +15,8 @@ export function useRescanWithNotice() {
     if (rescan.isPending) return;
     rescan.mutate(undefined, {
       onSuccess: (scan) => notice.show({ tone: "success", message: rescanSentence(scan) }),
-      onError: (e) => notice.show({ tone: "error", message: `Couldn't rescan: ${errorMessage(e)}` }),
+      onError: (e) =>
+        notice.show({ tone: "error", message: `Couldn't rescan: ${errorMessage(e)}` }),
     });
   }, [rescan, notice]);
   return { run, pending: rescan.isPending };

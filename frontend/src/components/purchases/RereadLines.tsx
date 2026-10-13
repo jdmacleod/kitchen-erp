@@ -14,7 +14,13 @@ const hintClass = "text-sm text-neutral-600 dark:text-neutral-400";
  * only when the reading kept the reader's answer, and "Read again". Either goes
  * to the re-read page. While a re-read is open, the button goes there instead.
  */
-export function RereadLines({ purchase, disabled = false }: { purchase: Purchase; disabled?: boolean }) {
+export function RereadLines({
+  purchase,
+  disabled = false,
+}: {
+  purchase: Purchase;
+  disabled?: boolean;
+}) {
   const state = purchase.reread;
   const navigate = useNavigate();
   const request = useRequestReread(purchase.id);
@@ -41,7 +47,13 @@ export function RereadLines({ purchase, disabled = false }: { purchase: Purchase
 
   return (
     <>
-      <Button ref={trigger} variant="secondary" disabled={disabled || request.isPending} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <Button
+        ref={trigger}
+        variant="secondary"
+        disabled={disabled || request.isPending}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
         Re-read lines
       </Button>
       {open ? (
@@ -59,7 +71,11 @@ export function RereadLines({ purchase, disabled = false }: { purchase: Purchase
           </p>
           {state.can_recheck ? (
             <div className="flex flex-col gap-1">
-              <Button variant="secondary" disabled={request.isPending} onClick={() => choose("check")}>
+              <Button
+                variant="secondary"
+                disabled={request.isPending}
+                onClick={() => choose("check")}
+              >
                 Re-check the lines
               </Button>
               <span className={hintClass}>Runs today's line rules again. Instant, no model.</span>
@@ -69,9 +85,13 @@ export function RereadLines({ purchase, disabled = false }: { purchase: Purchase
             <Button variant="secondary" disabled={request.isPending} onClick={() => choose("read")}>
               Read again
             </Button>
-            <span className={hintClass}>Asks the model to read the receipt text again. Takes a few minutes.</span>
+            <span className={hintClass}>
+              Asks the model to read the receipt text again. Takes a few minutes.
+            </span>
           </div>
-          <span className={hintClass}>Nothing changes until you've seen what would change and applied it.</span>
+          <span className={hintClass}>
+            Nothing changes until you've seen what would change and applied it.
+          </span>
           {request.isError ? <Alert tone="error">{errorMessage(request.error)}</Alert> : null}
           <Button variant="secondary" className={`self-start ${focusRing}`} onClick={close}>
             Cancel

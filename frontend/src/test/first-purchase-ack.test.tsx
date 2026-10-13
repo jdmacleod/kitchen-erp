@@ -21,7 +21,12 @@ function StateProbe() {
   return <div data-testid="router-state">{JSON.stringify(useLocation().state)}</div>;
 }
 
-function renderWithProbe(entry: string, element: React.ReactNode, pattern = entry, state: unknown = { firstPurchase: true }) {
+function renderWithProbe(
+  entry: string,
+  element: React.ReactNode,
+  pattern = entry,
+  state: unknown = { firstPurchase: true },
+) {
   const client = createQueryClient({ retry: false });
   return render(
     <QueryClientProvider client={client}>
@@ -114,7 +119,12 @@ describe("first-purchase acknowledgement", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
     });
-    renderWithProbe(`/shop/purchases/${manualPurchase.id}`, <PurchaseDetailPage />, "/shop/purchases/:id", { notice: FIRST_PURCHASE_NOTICE });
+    renderWithProbe(
+      `/shop/purchases/${manualPurchase.id}`,
+      <PurchaseDetailPage />,
+      "/shop/purchases/:id",
+      { notice: FIRST_PURCHASE_NOTICE },
+    );
 
     expect(await screen.findByText(ACK)).toBeInTheDocument();
     await waitFor(() => expect(screen.getByTestId("router-state")).toHaveTextContent("null"));
@@ -132,7 +142,9 @@ describe("first-purchase acknowledgement", () => {
     renderApp("/shop/purchases/new");
 
     await screen.findByRole("button", { name: "Save purchase" });
-    await waitFor(() => expect(calls.some((c) => c.path.startsWith("/vendor-locations"))).toBe(true));
+    await waitFor(() =>
+      expect(calls.some((c) => c.path.startsWith("/vendor-locations"))).toBe(true),
+    );
     expect(calls.filter((c) => c.path.startsWith("/purchases"))).toHaveLength(0);
   });
 
@@ -160,7 +172,8 @@ describe("first-purchase acknowledgement", () => {
     mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
-      [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, { ...manualPurchase, status }),
+      [`GET /purchases/${manualPurchase.id}`]: () =>
+        jsonResponse(200, { ...manualPurchase, status }),
       [`POST /purchases/${manualPurchase.id}/reopen`]: () => {
         status = "reviewed";
         return jsonResponse(200, { ...manualPurchase, status: "reviewed" });

@@ -21,7 +21,8 @@ export function rememberLocation(id: string): void {
   }
 }
 
-export type GeoState = { status: "pending" } | { status: "ok"; near: string } | { status: "unavailable" };
+export type GeoState =
+  { status: "pending" } | { status: "ok"; near: string } | { status: "unavailable" };
 
 /**
  * One position fix, asked for once. The coordinates go only to this
@@ -30,7 +31,9 @@ export type GeoState = { status: "pending" } | { status: "ok"; near: string } | 
  */
 export function useGeoPosition(enabled: boolean): [GeoState, () => void] {
   const [state, setState] = useState<GeoState>(() =>
-    enabled && typeof navigator !== "undefined" && navigator.geolocation ? { status: "pending" } : { status: "unavailable" },
+    enabled && typeof navigator !== "undefined" && navigator.geolocation
+      ? { status: "pending" }
+      : { status: "unavailable" },
   );
   useEffect(() => {
     if (state.status !== "pending") return;
@@ -42,7 +45,10 @@ export function useGeoPosition(enabled: boolean): [GeoState, () => void] {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           if (cancelled) return;
-          setState({ status: "ok", near: `${position.coords.latitude},${position.coords.longitude}` });
+          setState({
+            status: "ok",
+            near: `${position.coords.latitude},${position.coords.longitude}`,
+          });
         },
         fail,
         { maximumAge: 5 * 60_000, timeout: 8_000 },
@@ -82,7 +88,9 @@ function optionLabel(l: VendorLocation): string {
   if (l.distance_m === null) return name;
   const metres = Number(l.distance_m);
   if (!Number.isFinite(metres)) return name;
-  return metres < 1000 ? `${name} · ${Math.round(metres)} m` : `${name} · ${(metres / 1000).toFixed(1)} km`;
+  return metres < 1000
+    ? `${name} · ${Math.round(metres)} m`
+    : `${name} · ${(metres / 1000).toFixed(1)} km`;
 }
 
 /**
@@ -127,7 +135,8 @@ export function LocationSelect({
 
   let status = hint;
   if (locations.isError) status = "Locations could not be loaded.";
-  else if (autoDefault && geo.status === "pending" && !touched) status = "Locating the nearest store…";
+  else if (autoDefault && geo.status === "pending" && !touched)
+    status = "Locating the nearest store…";
 
   return (
     <SelectField

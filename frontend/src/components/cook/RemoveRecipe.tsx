@@ -33,13 +33,24 @@ export function RemoveRecipe({ recipe }: { recipe: Recipe }) {
 
   if (confirming) {
     return (
-      <div role="group" aria-labelledby={headingId} className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
+      <div
+        role="group"
+        aria-labelledby={headingId}
+        className="flex flex-col gap-3 rounded-md border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950"
+      >
         <h3 id={headingId} className="text-sm font-medium">
           Remove ‘{recipe.title}’?
         </h3>
-        <p className="text-sm">Its cost snapshots and pins go with it. The file itself is not touched.</p>
+        <p className="text-sm">
+          Its cost snapshots and pins go with it. The file itself is not touched.
+        </p>
         {remove.isError ? (
-          <div ref={alert} tabIndex={-1} role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}>
+          <div
+            ref={alert}
+            tabIndex={-1}
+            role="alert"
+            className={`rounded-md border px-3 py-2 text-sm ${alertTones.error} ${focusRing}`}
+          >
             {errorMessage(remove.error)}
           </div>
         ) : null}
@@ -50,13 +61,20 @@ export function RemoveRecipe({ recipe }: { recipe: Recipe }) {
             disabled={remove.isPending}
             onClick={() =>
               remove.mutate(undefined, {
-                onSuccess: () => go("/cook/recipes", { tone: "success", message: `Removed ${recipe.title}.` }),
+                onSuccess: () =>
+                  go("/cook/recipes", { tone: "success", message: `Removed ${recipe.title}.` }),
               })
             }
           >
             {remove.isPending ? "Removing…" : "Remove recipe"}
           </Button>
-          <Button ref={cancel} variant="secondary" className="w-full lg:w-auto" disabled={remove.isPending} onClick={close}>
+          <Button
+            ref={cancel}
+            variant="secondary"
+            className="w-full lg:w-auto"
+            disabled={remove.isPending}
+            onClick={close}
+          >
             Cancel
           </Button>
         </div>

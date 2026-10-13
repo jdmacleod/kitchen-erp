@@ -16,14 +16,33 @@ export interface SnapshotPoint {
 }
 
 /** The committed snapshots, then the current provisional one when there is one. */
-export function snapshotPoints(history: CostHistoryItem[], current: RecipeCost | null | undefined): SnapshotPoint[] {
+export function snapshotPoints(
+  history: CostHistoryItem[],
+  current: RecipeCost | null | undefined,
+): SnapshotPoint[] {
   const points: SnapshotPoint[] = history
     .filter((h) => h.totals.consumed_cost !== null)
-    .map((h) => ({ id: h.id, computed_at: h.computed_at, consumed_cost: h.totals.consumed_cost as string, provisional: false }));
-  if (current?.provisional && current.totals.consumed_cost !== null && !points.some((p) => p.id === current.id)) {
-    points.push({ id: current.id, computed_at: current.computed_at, consumed_cost: current.totals.consumed_cost, provisional: true });
+    .map((h) => ({
+      id: h.id,
+      computed_at: h.computed_at,
+      consumed_cost: h.totals.consumed_cost as string,
+      provisional: false,
+    }));
+  if (
+    current?.provisional &&
+    current.totals.consumed_cost !== null &&
+    !points.some((p) => p.id === current.id)
+  ) {
+    points.push({
+      id: current.id,
+      computed_at: current.computed_at,
+      consumed_cost: current.totals.consumed_cost,
+      provisional: true,
+    });
   }
-  return points.sort((a, b) => new Date(a.computed_at).getTime() - new Date(b.computed_at).getTime());
+  return points.sort(
+    (a, b) => new Date(a.computed_at).getTime() - new Date(b.computed_at).getTime(),
+  );
 }
 
 /**
@@ -67,24 +86,56 @@ export function SnapshotChart({ points }: { points: SnapshotPoint[] }) {
       >
         {chart.ticksY.map((v) => (
           <g key={v}>
-            <line x1={PAD.left} x2={W - PAD.right} y1={chart.sy(v)} y2={chart.sy(v)} stroke="currentColor" strokeOpacity="0.15" />
-            <text x={PAD.left - 6} y={chart.sy(v) + 4} textAnchor="end" fontSize="11" fill="currentColor">
+            <line
+              x1={PAD.left}
+              x2={W - PAD.right}
+              y1={chart.sy(v)}
+              y2={chart.sy(v)}
+              stroke="currentColor"
+              strokeOpacity="0.15"
+            />
+            <text
+              x={PAD.left - 6}
+              y={chart.sy(v) + 4}
+              textAnchor="end"
+              fontSize="11"
+              fill="currentColor"
+            >
               {fmtY(v)}
             </text>
           </g>
         ))}
         {chart.ticksX.map((t, i) => (
-          <text key={t} x={chart.sx(t)} y={H - PAD.bottom + 18} textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"} fontSize="11" fill="currentColor">
+          <text
+            key={t}
+            x={chart.sx(t)}
+            y={H - PAD.bottom + 18}
+            textAnchor={i === 0 ? "start" : i === 2 ? "end" : "middle"}
+            fontSize="11"
+            fill="currentColor"
+          >
             {formatDate(new Date(t).toISOString())}
           </text>
         ))}
-        <polyline points={chart.placed.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke={stroke} strokeWidth="2" />
+        <polyline
+          points={chart.placed.map((p) => `${p.x},${p.y}`).join(" ")}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2"
+        />
         {chart.placed.map((p) => (
           <g key={p.id} data-testid={p.provisional ? "provisional-point" : "snapshot-point"}>
             <title>{`${formatMoney(p.consumed_cost)} on ${formatDate(p.computed_at)}${p.provisional ? " (provisional)" : ""}`}</title>
             {p.provisional ? (
               <>
-                <circle cx={p.x} cy={p.y} r="4" fill="var(--color-white)" stroke={stroke} strokeWidth="2" />
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r="4"
+                  fill="var(--color-white)"
+                  stroke={stroke}
+                  strokeWidth="2"
+                />
                 <text x={p.x + 8} y={p.y - 6} fontSize="10" fill="currentColor">
                   provisional
                 </text>

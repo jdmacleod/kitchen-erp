@@ -31,7 +31,12 @@ export function jsonResponse(status: number, body?: unknown): Response {
   });
 }
 
-export function errorResponse(status: number, code: string, message: string, details?: Record<string, unknown>): Response {
+export function errorResponse(
+  status: number,
+  code: string,
+  message: string,
+  details?: Record<string, unknown>,
+): Response {
   return jsonResponse(status, { error: details ? { code, message, details } : { code, message } });
 }
 
@@ -61,7 +66,12 @@ export function mockApi(routes: Record<string, RouteHandler>): RecordedCall[] {
     const method = (init?.method ?? "GET").toUpperCase();
     const headers = new Headers(init?.headers);
     // JSON bodies are parsed; anything else (a YAML vendor file) is kept as text.
-    const body = typeof init?.body === "string" ? (headers.get("Content-Type")?.includes("json") ? JSON.parse(init.body) : init.body) : undefined;
+    const body =
+      typeof init?.body === "string"
+        ? headers.get("Content-Type")?.includes("json")
+          ? JSON.parse(init.body)
+          : init.body
+        : undefined;
     const [pathname, search = ""] = path.split("?", 2);
     const call: RecordedCall = { method, path, query: new URLSearchParams(search), headers, body };
     calls.push(call);

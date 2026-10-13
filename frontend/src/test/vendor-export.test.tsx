@@ -18,18 +18,27 @@ describe("export vendors", () => {
   it("says how much of the list is public before downloading", async () => {
     mockApi({
       ...base,
-      "GET /vendors": () => jsonResponse(200, { items: [{ ...chainVendor, location_count: 1, last_visit: null }] }),
+      "GET /vendors": () =>
+        jsonResponse(200, { items: [{ ...chainVendor, location_count: 1, last_visit: null }] }),
       "GET /vendors/export-summary": () => jsonResponse(200, { locations: 39, public: 3 }),
     });
     const user = userEvent.setup();
     renderApp("/catalog/vendors");
     await user.click(await screen.findByRole("button", { name: "Export" }));
     const dialog = await screen.findByRole("dialog", { name: "Export vendors" });
-    expect(await within(dialog).findByRole("heading", { name: "Public — 3 of 39 locations shared" })).toBeInTheDocument();
-    expect(within(dialog).getByText(/tick Share on a location to include more/)).toBeInTheDocument();
+    expect(
+      await within(dialog).findByRole("heading", { name: "Public — 3 of 39 locations shared" }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/tick Share on a location to include more/),
+    ).toBeInTheDocument();
     expect(within(dialog).getByText(/Keep it private/)).toBeInTheDocument();
-    expect(within(dialog).getByRole("link", { name: "Download the public file as YAML" })).toHaveAttribute("href", "/api/v1/vendors/export?format=yaml&mode=public");
-    expect(within(dialog).getByRole("link", { name: "Download the household file as JSON" })).toHaveAttribute("href", "/api/v1/vendors/export?format=json&mode=household");
+    expect(
+      within(dialog).getByRole("link", { name: "Download the public file as YAML" }),
+    ).toHaveAttribute("href", "/api/v1/vendors/export?format=yaml&mode=public");
+    expect(
+      within(dialog).getByRole("link", { name: "Download the household file as JSON" }),
+    ).toHaveAttribute("href", "/api/v1/vendors/export?format=json&mode=household");
   });
 });
 
@@ -58,7 +67,9 @@ describe("share in public export", () => {
     expect(box).toHaveAccessibleDescription(/Notes and kitchen never do/);
     await user.click(box);
     await user.click(screen.getByRole("button", { name: "Save location" }));
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ publishable: true }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ publishable: true }),
+    );
     expect(await screen.findByText(/Shared in public export/)).toBeInTheDocument();
   });
 
@@ -73,7 +84,12 @@ describe("share in public export", () => {
   });
 
   it("never shares a stand", async () => {
-    render({ ...stallLocation, parent_location_id: null, publishable: true, vendor: { ...stallLocation.vendor, id: chainVendorId } });
+    render({
+      ...stallLocation,
+      parent_location_id: null,
+      publishable: true,
+      vendor: { ...stallLocation.vendor, id: chainVendorId },
+    });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: `Edit ${stallLocation.name}` }));
     const box = screen.getByRole("checkbox", { name: "Share in public export" });
@@ -84,7 +100,13 @@ describe("share in public export", () => {
   });
 
   it("never counts an inactive location as shared", () => {
-    expect(shareState({ ...chainLocation, publishable: true, active: false }, "chain")).toEqual({ shared: false, fixed: "An inactive location is never shared" });
-    expect(shareState({ ...chainLocation, publishable: true }, "chain")).toEqual({ shared: true, fixed: null });
+    expect(shareState({ ...chainLocation, publishable: true, active: false }, "chain")).toEqual({
+      shared: false,
+      fixed: "An inactive location is never shared",
+    });
+    expect(shareState({ ...chainLocation, publishable: true }, "chain")).toEqual({
+      shared: true,
+      fixed: null,
+    });
   });
 });

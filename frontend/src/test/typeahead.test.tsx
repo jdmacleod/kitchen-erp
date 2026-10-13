@@ -49,7 +49,9 @@ describe("ProductTypeahead", () => {
     expect(box).toHaveValue("");
     await waitFor(() => expect(box).toHaveAttribute("aria-expanded", "false"));
     // Every call sent the query text and a limit.
-    expect(calls.every((c) => c.path.startsWith("/products/search?q=") && c.query.get("limit") === "10")).toBe(true);
+    expect(
+      calls.every((c) => c.path.startsWith("/products/search?q=") && c.query.get("limit") === "10"),
+    ).toBe(true);
   });
 
   it("closes on Escape without selecting", async () => {
@@ -70,5 +72,4 @@ describe("ProductTypeahead", () => {
     expect(onSelect).not.toHaveBeenCalled();
     expect(box).toHaveValue("fl");
   });
-
 });

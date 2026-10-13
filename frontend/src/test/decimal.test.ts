@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { add, cmp, div, formatMoney, isDecimal, isNonNegativeDecimal, isZero, moneyForQty, mul, roundTo, stripZeros, sub } from "../lib/decimal";
+import {
+  add,
+  cmp,
+  div,
+  formatMoney,
+  isDecimal,
+  isNonNegativeDecimal,
+  isZero,
+  moneyForQty,
+  mul,
+  roundTo,
+  stripZeros,
+  sub,
+} from "../lib/decimal";
 
 describe("decimal", () => {
   it("adds without floating-point error", () => {
@@ -52,7 +65,8 @@ describe("decimal", () => {
 
   it("validates decimal text", () => {
     for (const ok of ["1", "1.", ".5", "0.00", "-3.2", " 12 "]) expect(isDecimal(ok)).toBe(true);
-    for (const bad of ["", ".", "-", "1e3", "1,5", "abc", "1.2.3"]) expect(isDecimal(bad)).toBe(false);
+    for (const bad of ["", ".", "-", "1e3", "1,5", "abc", "1.2.3"])
+      expect(isDecimal(bad)).toBe(false);
     expect(isNonNegativeDecimal("0")).toBe(true);
     expect(isNonNegativeDecimal("-0")).toBe(true);
     expect(isNonNegativeDecimal("-0.01")).toBe(false);

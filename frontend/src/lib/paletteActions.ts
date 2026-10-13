@@ -23,7 +23,13 @@ export interface PaletteAction {
   switchToKitchenId?: string;
 }
 
-const action = (id: string, label: string, route: string, keywords: string[], extra: Partial<PaletteAction> = {}): PaletteAction => ({
+const action = (
+  id: string,
+  label: string,
+  route: string,
+  keywords: string[],
+  extra: Partial<PaletteAction> = {},
+): PaletteAction => ({
   kind: "action",
   id,
   label,
@@ -34,43 +40,151 @@ const action = (id: string, label: string, route: string, keywords: string[], ex
 
 export const PALETTE_ACTIONS: PaletteAction[] = [
   // Things to do.
-  action("new-purchase", "New purchase", "/shop/purchases/new", ["enter", "add", "create", "manual", "purchase", "shopping"], { feature: "shop" }),
-  action("upload-receipts", "Upload receipts", "/shop/receipts", ["scan", "receipt", "photo", "add"], { feature: "shop" }),
-  action("log-shelf-price", "Log a shelf price", "/shop/shelf-prices", ["record", "price", "spotted", "barcode"], { feature: "shop" }),
-  action("photograph-product", "Photograph a product", "/catalog/products/photograph", ["photo", "camera", "picture", "label"], { feature: "catalog" }),
-  action("add-product", "Add product", "/catalog/products?new=1", ["new", "create", "product"], { feature: "catalog" }),
-  action("add-ingredient", "Add ingredient", "/catalog/ingredients?new=1", ["new", "create", "ingredient"], { feature: "catalog" }),
-  action("add-vendor", "Add vendor", "/catalog/vendors?new=1", ["new", "create", "store", "shop", "market"], { feature: "catalog" }),
+  action(
+    "new-purchase",
+    "New purchase",
+    "/shop/purchases/new",
+    ["enter", "add", "create", "manual", "purchase", "shopping"],
+    { feature: "shop" },
+  ),
+  action(
+    "upload-receipts",
+    "Upload receipts",
+    "/shop/receipts",
+    ["scan", "receipt", "photo", "add"],
+    { feature: "shop" },
+  ),
+  action(
+    "log-shelf-price",
+    "Log a shelf price",
+    "/shop/shelf-prices",
+    ["record", "price", "spotted", "barcode"],
+    { feature: "shop" },
+  ),
+  action(
+    "photograph-product",
+    "Photograph a product",
+    "/catalog/products/photograph",
+    ["photo", "camera", "picture", "label"],
+    { feature: "catalog" },
+  ),
+  action("add-product", "Add product", "/catalog/products?new=1", ["new", "create", "product"], {
+    feature: "catalog",
+  }),
+  action(
+    "add-ingredient",
+    "Add ingredient",
+    "/catalog/ingredients?new=1",
+    ["new", "create", "ingredient"],
+    { feature: "catalog" },
+  ),
+  action(
+    "add-vendor",
+    "Add vendor",
+    "/catalog/vendors?new=1",
+    ["new", "create", "store", "shop", "market"],
+    { feature: "catalog" },
+  ),
   // "Rescan recipes" carries `?rescan=1`, which the list consumes and runs (UI-7.17).
   // "Plan a trip" carries `?new=1`, which the trips page reads to open its drawer (UI-8.12).
-  action("plan-trip", "Plan a trip", "/plan/trips?new=1", ["new", "plan", "trip", "stores", "route", "shopping"], { feature: "plan" }),
-  action("rescan-recipes", "Rescan recipes", "/cook/recipes?rescan=1", ["scan", "refresh", "index", "cook", "repository"], { feature: "cook" }),
+  action(
+    "plan-trip",
+    "Plan a trip",
+    "/plan/trips?new=1",
+    ["new", "plan", "trip", "stores", "route", "shopping"],
+    { feature: "plan" },
+  ),
+  action(
+    "rescan-recipes",
+    "Rescan recipes",
+    "/cook/recipes?rescan=1",
+    ["scan", "refresh", "index", "cook", "repository"],
+    { feature: "cook" },
+  ),
   // Pages to go to.
   action("home", "Home", "/", ["inbox", "needs you", "start"]),
-  action("recipes", "Recipes", "/cook/recipes", ["cook", "costing", "dishes", "cooklang"], { feature: "cook" }),
-  action("resolve-recipes", "Resolve recipe names", "/cook/recipes/resolve", ["cook", "unmatched", "names", "ingredients"], { feature: "cook" }),
-  action("purchases", "Purchases", "/shop/purchases", ["shopping", "history", "drafts"], { feature: "shop" }),
-  action("receipts", "Receipts", "/shop/receipts", ["uploads", "batches", "jobs"], { feature: "shop" }),
-  action("to-identify", "Products to identify", "/shop/receipts/identify", ["unmatched", "name", "naming", "lines"], { feature: "shop" }),
-  action("compare-prices", "Compare prices", "/plan/compare", ["cheapest", "price book", "compare"], { feature: "shop" }),
-  action("shopping-list", "Shopping list", "/plan/list", ["plan", "list", "groceries", "to get"], { feature: "plan" }),
+  action("recipes", "Recipes", "/cook/recipes", ["cook", "costing", "dishes", "cooklang"], {
+    feature: "cook",
+  }),
+  action(
+    "resolve-recipes",
+    "Resolve recipe names",
+    "/cook/recipes/resolve",
+    ["cook", "unmatched", "names", "ingredients"],
+    { feature: "cook" },
+  ),
+  action("purchases", "Purchases", "/shop/purchases", ["shopping", "history", "drafts"], {
+    feature: "shop",
+  }),
+  action("receipts", "Receipts", "/shop/receipts", ["uploads", "batches", "jobs"], {
+    feature: "shop",
+  }),
+  action(
+    "to-identify",
+    "Products to identify",
+    "/shop/receipts/identify",
+    ["unmatched", "name", "naming", "lines"],
+    { feature: "shop" },
+  ),
+  action(
+    "compare-prices",
+    "Compare prices",
+    "/plan/compare",
+    ["cheapest", "price book", "compare"],
+    { feature: "shop" },
+  ),
+  action("shopping-list", "Shopping list", "/plan/list", ["plan", "list", "groceries", "to get"], {
+    feature: "plan",
+  }),
   action("trips", "Trips", "/plan/trips", ["plan", "trip", "stores", "route"], { feature: "plan" }),
-  action("ingredients", "Ingredients", "/catalog/ingredients", ["catalog", "food"], { feature: "catalog" }),
+  action("ingredients", "Ingredients", "/catalog/ingredients", ["catalog", "food"], {
+    feature: "catalog",
+  }),
   action("products", "Products", "/catalog/products", ["catalog", "items"], { feature: "catalog" }),
-  action("vendors", "Vendors", "/catalog/vendors", ["stores", "shops", "map"], { feature: "catalog" }),
-  action("needs-bridge", "Needs a bridge", "/catalog/bridges", ["pack size", "density", "usda", "bridges"], { feature: "catalog" }),
-  action("posted-prices", "Posted prices", "/catalog/products/posted-prices", ["online", "listings", "web prices"], { feature: "catalog" }),
+  action("vendors", "Vendors", "/catalog/vendors", ["stores", "shops", "map"], {
+    feature: "catalog",
+  }),
+  action(
+    "needs-bridge",
+    "Needs a bridge",
+    "/catalog/bridges",
+    ["pack size", "density", "usda", "bridges"],
+    { feature: "catalog" },
+  ),
+  action(
+    "posted-prices",
+    "Posted prices",
+    "/catalog/products/posted-prices",
+    ["online", "listings", "web prices"],
+    { feature: "catalog" },
+  ),
   action("kitchens", "Kitchens", "/settings/kitchens", ["settings", "home bases", "home"]),
-  action("users", "Users", "/settings/users", ["settings", "people", "accounts", "password"], { adminOnly: true }),
+  action("users", "Users", "/settings/users", ["settings", "people", "accounts", "password"], {
+    adminOnly: true,
+  }),
   action("api-tokens", "API tokens", "/settings/tokens", ["settings", "keys", "helper"]),
-  action("capture-settings", "Capture settings", "/settings/capture", ["settings", "bookmarklet", "clip", "save to kitchen erp"]),
+  action("capture-settings", "Capture settings", "/settings/capture", [
+    "settings",
+    "bookmarklet",
+    "clip",
+    "save to kitchen erp",
+  ]),
   action("system", "System", "/settings/system", ["settings", "health", "status", "backup"]),
 ];
 
 /** Shown before typing, after any recents. */
-export const COMMON_ACTION_IDS = ["new-purchase", "upload-receipts", "log-shelf-price", "add-product"];
+export const COMMON_ACTION_IDS = [
+  "new-purchase",
+  "upload-receipts",
+  "log-shelf-price",
+  "add-product",
+];
 
-const words = (text: string): string[] => text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const words = (text: string): string[] =>
+  text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
 
 /** The actions that are built for this person. Features only add to the defaults, as in the navigation. */
 export function availableActions(
@@ -106,13 +220,26 @@ export function matchActions(query: string, actions: PaletteAction[], limit = 5)
  * "Switch to {kitchen}" for each kitchen other than the current one (09, Search;
  * UI-2.4). Built by the caller from the kitchens it has, once Plan is a feature.
  */
-export function kitchenActions(kitchens: readonly HomeBase[], currentId: string | null): PaletteAction[] {
+export function kitchenActions(
+  kitchens: readonly HomeBase[],
+  currentId: string | null,
+): PaletteAction[] {
   return kitchens
     .filter((k) => k.id !== currentId)
-    .map((k) => action(`switch-kitchen-${k.id}`, `Switch to ${k.name}`, "", ["kitchen", "switch", "change", k.name], { section: "Plan", switchToKitchenId: k.id }));
+    .map((k) =>
+      action(
+        `switch-kitchen-${k.id}`,
+        `Switch to ${k.name}`,
+        "",
+        ["kitchen", "switch", "change", k.name],
+        { section: "Plan", switchToKitchenId: k.id },
+      ),
+    );
 }
 
 /** The common actions that are built, in their fixed order. */
 export function commonActions(actions: PaletteAction[]): PaletteAction[] {
-  return COMMON_ACTION_IDS.map((id) => actions.find((a) => a.id === id)).filter((a): a is PaletteAction => a !== undefined);
+  return COMMON_ACTION_IDS.map((id) => actions.find((a) => a.id === id)).filter(
+    (a): a is PaletteAction => a !== undefined,
+  );
 }

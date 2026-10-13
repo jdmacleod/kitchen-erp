@@ -25,7 +25,9 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
   // Higher prices sit higher; a flat series draws through the middle.
   const sy = (y: number) => (y1 === y0 ? H / 2 : H - PAD - ((y - y0) / (y1 - y0)) * (H - 2 * PAD));
   const coords = points.map((_, i) => [sx(xs[i]), sy(ys[i])] as const);
-  const d = coords.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  const d = coords
+    .map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(" ");
   const last = coords[coords.length - 1];
   // Each point's hover target runs halfway to its neighbours, so targets never
   // overlap however the dates cluster, and together they cover the width.
@@ -36,13 +38,43 @@ export function Sparkline({ points, label }: { points: IngredientPricePoint[]; l
 
   return (
     <figure className="m-0">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label} className="h-auto w-full text-neutral-800 dark:text-neutral-200">
-        <path d={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <circle cx={last[0]} cy={last[1]} r="4" fill="currentColor" stroke="var(--color-white)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={label}
+        className="h-auto w-full text-neutral-800 dark:text-neutral-200"
+      >
+        <path
+          d={d}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          vectorEffect="non-scaling-stroke"
+        />
+        <circle
+          cx={last[0]}
+          cy={last[1]}
+          r="4"
+          fill="currentColor"
+          stroke="var(--color-white)"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
         {points.map((p, i) => (
-          <rect key={p.observation_id} data-testid="sparkline-target" x={edges[i][0]} y="0" width={edges[i][1] - edges[i][0]} height={H} fill="transparent">
+          <rect
+            key={p.observation_id}
+            data-testid="sparkline-target"
+            x={edges[i][0]}
+            y="0"
+            width={edges[i][1] - edges[i][0]}
+            height={H}
+            fill="transparent"
+          >
             <title>
-              {formatDate(p.observed_at)}: {formatUnitPrice(p.display_unit_price, p.display_unit)} at {p.vendor_name}
+              {formatDate(p.observed_at)}: {formatUnitPrice(p.display_unit_price, p.display_unit)}{" "}
+              at {p.vendor_name}
             </title>
           </rect>
         ))}

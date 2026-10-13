@@ -2,10 +2,24 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NoticeProvider, useNavigateWithNotice, useNotice, type NoticeData } from "../components/Notice";
+import {
+  NoticeProvider,
+  useNavigateWithNotice,
+  useNotice,
+  type NoticeData,
+} from "../components/Notice";
 
-const saved: NoticeData = { tone: "success", message: "Saved $3.49 at Pier Stand", timeoutMs: 3000 };
-const added: NoticeData = { tone: "success", message: "Added Rolled Oats.", action: { label: "Open it", to: "/c" }, focusAction: true };
+const saved: NoticeData = {
+  tone: "success",
+  message: "Saved $3.49 at Pier Stand",
+  timeoutMs: 3000,
+};
+const added: NoticeData = {
+  tone: "success",
+  message: "Added Rolled Oats.",
+  action: { label: "Open it", to: "/c" },
+  focusAction: true,
+};
 
 function PageA() {
   const go = useNavigateWithNotice();
@@ -14,10 +28,18 @@ function PageA() {
   return (
     <>
       <h1>Page A</h1>
-      <button type="button" onClick={() => navigate(1)}>Forward</button>
-      <button type="button" onClick={() => go("/b", added)}>Go with notice</button>
-      <button type="button" onClick={() => notice.show(saved)}>Save here</button>
-      <button type="button" onClick={() => notice.show({ tone: "info", message: "Second" })}>Show another</button>
+      <button type="button" onClick={() => navigate(1)}>
+        Forward
+      </button>
+      <button type="button" onClick={() => go("/b", added)}>
+        Go with notice
+      </button>
+      <button type="button" onClick={() => notice.show(saved)}>
+        Save here
+      </button>
+      <button type="button" onClick={() => notice.show({ tone: "info", message: "Second" })}>
+        Show another
+      </button>
     </>
   );
 }
@@ -27,7 +49,9 @@ function PageB() {
   return (
     <>
       <h1>Page B</h1>
-      <button type="button" onClick={() => navigate(-1)}>Back</button>
+      <button type="button" onClick={() => navigate(-1)}>
+        Back
+      </button>
     </>
   );
 }

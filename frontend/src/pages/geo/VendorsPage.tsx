@@ -24,7 +24,18 @@ import {
   type VendorKind,
 } from "../../api/geo";
 import { Badge, RadioGroup, SelectField, TextAreaField } from "../../components/catalog/fields";
-import { Alert, Button, Card, EmptyState, Field, PageHeader, focusRing, primaryLinkClass, secondaryLinkClass, tapTarget } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageHeader,
+  focusRing,
+  primaryLinkClass,
+  secondaryLinkClass,
+  tapTarget,
+} from "../../components/ui";
 import { Dialog } from "../../components/Dialog";
 import { MoreActionsDialog } from "../../components/MoreActionsDialog";
 import { Drawer } from "../../components/Drawer";
@@ -98,7 +109,10 @@ export function VendorsPage() {
 
   return (
     <>
-      <PageHeader title="Vendors" description="The shops, markets and stands you buy from, and where they are.">
+      <PageHeader
+        title="Vendors"
+        description="The shops, markets and stands you buy from, and where they are."
+      >
         <div className="flex flex-wrap gap-2">
           {wide ? (
             secondary.map((a) => (
@@ -131,7 +145,13 @@ export function VendorsPage() {
       {view === "map" ? (
         <MapPage embedded />
       ) : (
-        <VendorList q={q} kind={kind} includeInactive={includeInactive} setParam={setParam} onAdd={() => setAdding(true)} />
+        <VendorList
+          q={q}
+          kind={kind}
+          includeInactive={includeInactive}
+          setParam={setParam}
+          onAdd={() => setAdding(true)}
+        />
       )}
 
       {adding ? <AddVendorDrawer onClose={() => setAdding(false)} /> : null}
@@ -209,7 +229,12 @@ function VendorList({
           className={`min-h-12 w-full rounded-lg border border-neutral-300 bg-white px-4 text-base dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
         />
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <SegmentedControl label="Kind" options={KIND_OPTIONS} value={kind} onChange={(v) => setParam("kind", v || null)} />
+          <SegmentedControl
+            label="Kind"
+            options={KIND_OPTIONS}
+            value={kind}
+            onChange={(v) => setParam("kind", v || null)}
+          />
           <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-9">
             <input
               type="checkbox"
@@ -276,9 +301,16 @@ function VendorList({
 function VendorCard({ vendor }: { vendor: VendorListItem }) {
   const locations = vendor.location_count;
   return (
-    <li data-testid="vendor-card" className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+    <li
+      data-testid="vendor-card"
+      className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+    >
       <div className="flex items-start justify-between gap-2">
-        <Link id={`vendor-row-${vendor.id}`} to={`/catalog/vendors/${vendor.id}`} className={`${tapTarget} font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}>
+        <Link
+          id={`vendor-row-${vendor.id}`}
+          to={`/catalog/vendors/${vendor.id}`}
+          className={`${tapTarget} font-display rounded text-lg leading-snug underline-offset-2 hover:underline ${focusRing}`}
+        >
           {vendor.name}
         </Link>
         <Badge>{vendorKindLabel[vendor.kind]}</Badge>
@@ -286,11 +318,17 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
       <dl className={`grid gap-0.5 text-sm ${muted}`}>
         <div>
           <dt className="sr-only">Locations</dt>
-          <dd>{locations === 0 ? "No locations yet" : `${locations} ${locations === 1 ? "location" : "locations"}`}</dd>
+          <dd>
+            {locations === 0
+              ? "No locations yet"
+              : `${locations} ${locations === 1 ? "location" : "locations"}`}
+          </dd>
         </div>
         <div>
           <dt className="sr-only">Last visit</dt>
-          <dd>{vendor.last_visit ? `Last visit ${formatDate(vendor.last_visit)}` : "Not visited yet"}</dd>
+          <dd>
+            {vendor.last_visit ? `Last visit ${formatDate(vendor.last_visit)}` : "Not visited yet"}
+          </dd>
         </div>
         <div>
           <dt className="sr-only">Pricing</dt>
@@ -308,7 +346,14 @@ function VendorCard({ vendor }: { vendor: VendorListItem }) {
 
 // --- create -----------------------------------------------------------------
 
-const emptyForm = { name: "", kind: "independent" as VendorKind, price_scope: "location" as PriceScope, website: "", shop_url: "", notes: "" };
+const emptyForm = {
+  name: "",
+  kind: "independent" as VendorKind,
+  price_scope: "location" as PriceScope,
+  website: "",
+  shop_url: "",
+  notes: "",
+};
 
 function AddVendorDrawer({ onClose }: { onClose: () => void }) {
   const create = useCreateVendor();
@@ -316,7 +361,8 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
   const [invalid, setInvalid] = useState<string | null>(null);
   const notice = useNotice();
   const vendors = useVendors();
-  const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) =>
+    setForm((f) => ({ ...f, [key]: value }));
   const dirty = JSON.stringify(form) !== JSON.stringify(emptyForm);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -326,7 +372,11 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
       return;
     }
     setInvalid(null);
-    const input: VendorCreateInput = { name: form.name.trim(), kind: form.kind, price_scope: form.price_scope };
+    const input: VendorCreateInput = {
+      name: form.name.trim(),
+      kind: form.kind,
+      price_scope: form.price_scope,
+    };
     if (form.website.trim()) input.website = form.website.trim();
     if (form.shop_url.trim()) input.shop_url = form.shop_url.trim();
     if (form.notes.trim()) input.notes = form.notes.trim();
@@ -350,12 +400,40 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Drawer title="Add vendor" thing="vendor" dirty={dirty} onClose={onClose} formId="add-vendor" primaryLabel="Add vendor" busy={create.isPending} busyLabel="Adding…">
-      <form id="add-vendor" onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Add vendor" noValidate>
+    <Drawer
+      title="Add vendor"
+      thing="vendor"
+      dirty={dirty}
+      onClose={onClose}
+      formId="add-vendor"
+      primaryLabel="Add vendor"
+      busy={create.isPending}
+      busyLabel="Adding…"
+    >
+      <form
+        id="add-vendor"
+        onSubmit={onSubmit}
+        className="flex flex-col gap-4"
+        aria-label="Add vendor"
+        noValidate
+      >
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{geoErrorMessage(create.error)}</Alert> : null}
-        <Field id="new-vendor-name" label="Name" autoComplete="off" required value={form.name} onChange={(e) => set("name", e.target.value)} />
-        <RadioGroup name="new-vendor-kind" legend="Kind" options={VENDOR_KINDS.map((k) => ({ value: k, label: vendorKindLabel[k] }))} value={form.kind} onChange={(v) => set("kind", v)} />
+        <Field
+          id="new-vendor-name"
+          label="Name"
+          autoComplete="off"
+          required
+          value={form.name}
+          onChange={(e) => set("name", e.target.value)}
+        />
+        <RadioGroup
+          name="new-vendor-kind"
+          legend="Kind"
+          options={VENDOR_KINDS.map((k) => ({ value: k, label: vendorKindLabel[k] }))}
+          value={form.kind}
+          onChange={(v) => set("kind", v)}
+        />
         <RadioGroup
           name="new-vendor-scope"
           legend="Price scope"
@@ -364,9 +442,31 @@ function AddVendorDrawer({ onClose }: { onClose: () => void }) {
           onChange={(v) => set("price_scope", v)}
           hint="A chain usually charges the same everywhere; a market stall sets its own."
         />
-        <Field id="new-vendor-website" label="Website" type="url" autoComplete="off" placeholder="https://" value={form.website} onChange={(e) => set("website", e.target.value)} />
-        <Field id="new-vendor-shop-url" label="Online shop" hint="Where it sells online when that is another site, such as a storefront on a delivery service. Pages you clip there count as this store’s." type="url" autoComplete="off" placeholder="https://" value={form.shop_url} onChange={(e) => set("shop_url", e.target.value)} />
-        <TextAreaField id="new-vendor-notes" label="Notes" value={form.notes} onChange={(e) => set("notes", e.target.value)} />
+        <Field
+          id="new-vendor-website"
+          label="Website"
+          type="url"
+          autoComplete="off"
+          placeholder="https://"
+          value={form.website}
+          onChange={(e) => set("website", e.target.value)}
+        />
+        <Field
+          id="new-vendor-shop-url"
+          label="Online shop"
+          hint="Where it sells online when that is another site, such as a storefront on a delivery service. Pages you clip there count as this store’s."
+          type="url"
+          autoComplete="off"
+          placeholder="https://"
+          value={form.shop_url}
+          onChange={(e) => set("shop_url", e.target.value)}
+        />
+        <TextAreaField
+          id="new-vendor-notes"
+          label="Notes"
+          value={form.notes}
+          onChange={(e) => set("notes", e.target.value)}
+        />
       </form>
     </Drawer>
   );
@@ -405,14 +505,25 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
   const links = (mode: ExportMode, label: string) => (
     <div className="flex flex-wrap gap-2">
       {formats.map((f) => (
-        <a key={f} href={exportUrl(mode, f)} download className={secondaryLinkClass} aria-label={`Download ${label} as ${f.toUpperCase()}`}>
+        <a
+          key={f}
+          href={exportUrl(mode, f)}
+          download
+          className={secondaryLinkClass}
+          aria-label={`Download ${label} as ${f.toUpperCase()}`}
+        >
           {f.toUpperCase()}
         </a>
       ))}
     </div>
   );
   return (
-    <Dialog open onClose={onClose} labelledBy={titleId} className="max-h-[80vh] overflow-y-auto p-5">
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      className="max-h-[80vh] overflow-y-auto p-5"
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h2 id={titleId} className="font-display text-xl">
           Export vendors
@@ -421,17 +532,26 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
           Close
         </Button>
       </div>
-      <section aria-labelledby={`${titleId}-public`} className="flex flex-col gap-2 border-b border-neutral-200 pb-4 dark:border-neutral-800">
+      <section
+        aria-labelledby={`${titleId}-public`}
+        className="flex flex-col gap-2 border-b border-neutral-200 pb-4 dark:border-neutral-800"
+      >
         <h3 id={`${titleId}-public`} className="font-medium">
           Public
-          {summary.data ? ` — ${summary.data.public} of ${summary.data.locations} locations shared` : null}
+          {summary.data
+            ? ` — ${summary.data.public} of ${summary.data.locations} locations shared`
+            : null}
         </h3>
         {summary.isError ? <Alert tone="error">{errorMessage(summary.error)}</Alert> : null}
         <p className={`text-sm ${muted}`}>
-          Names, pins, addresses, hours and phones of locations you share or have linked to OpenStreetMap. Never notes, kitchens, store codes, stands or anything about your purchases. Read it before you contribute it.
+          Names, pins, addresses, hours and phones of locations you share or have linked to
+          OpenStreetMap. Never notes, kitchens, store codes, stands or anything about your
+          purchases. Read it before you contribute it.
         </p>
         {summary.data && summary.data.public < summary.data.locations ? (
-          <p className={`text-sm ${muted}`}>Link stores to OpenStreetMap or tick Share on a location to include more.</p>
+          <p className={`text-sm ${muted}`}>
+            Link stores to OpenStreetMap or tick Share on a location to include more.
+          </p>
         ) : null}
         {links("public", "the public file")}
       </section>
@@ -439,7 +559,9 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
         <h3 id={`${titleId}-household`} className="font-medium">
           Household
         </h3>
-        <p className={`text-sm ${muted}`}>Everything, including store codes, notes and kitchens. Keep it private.</p>
+        <p className={`text-sm ${muted}`}>
+          Everything, including store codes, notes and kitchens. Keep it private.
+        </p>
         {links("household", "the household file")}
       </section>
     </Dialog>
@@ -449,7 +571,12 @@ function ExportDialog({ onClose }: { onClose: () => void }) {
 function FindNearbyDialog({ onClose }: { onClose: () => void }) {
   const titleId = useId();
   return (
-    <Dialog open onClose={onClose} labelledBy={titleId} className="max-h-[80vh] overflow-y-auto p-5">
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      className="max-h-[80vh] overflow-y-auto p-5"
+    >
       <div className="mb-3 flex items-start justify-between gap-3">
         <h2 id={titleId} className="font-display text-xl">
           Find nearby
@@ -476,14 +603,21 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
   const setHomeBaseId = setChosen;
   const [radius, setRadius] = useState(2000);
   const [searched, setSearched] = useState<{ homeBaseId: string; radius: number } | null>(null);
-  const candidates = useOsmCandidates(searched?.homeBaseId ?? "", searched?.radius ?? 0, searched !== null);
+  const candidates = useOsmCandidates(
+    searched?.homeBaseId ?? "",
+    searched?.radius ?? 0,
+    searched !== null,
+  );
   const disabled = candidates.isError && isIntegrationDisabled(candidates.error);
 
   if (homeBases.data && homeBases.data.length === 0) {
     return (
       <p className={`text-sm ${muted}`}>
         Finding nearby shops starts from one of your kitchens. Add one first, under{" "}
-        <Link to="/settings/kitchens" className={`${tapTarget} rounded font-medium underline ${focusRing}`}>
+        <Link
+          to="/settings/kitchens"
+          className={`${tapTarget} rounded font-medium underline ${focusRing}`}
+        >
           Settings → Kitchens
         </Link>
         .
@@ -496,8 +630,8 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
     <Wrapper>
       {bare ? null : <h2 className="mb-1 text-lg font-medium">Adopt from OpenStreetMap</h2>}
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
-        Lists food shops and marketplaces near a kitchen so you can adopt the ones you use. Optional; needs
-        the Overpass integration switched on. © OpenStreetMap contributors.
+        Lists food shops and marketplaces near a kitchen so you can adopt the ones you use.
+        Optional; needs the Overpass integration switched on. © OpenStreetMap contributors.
       </p>
       <form
         className="grid gap-3 sm:grid-cols-3"
@@ -507,7 +641,13 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
           if (homeBaseId) setSearched({ homeBaseId, radius });
         }}
       >
-        <SelectField id="osm-home-base" label="Kitchen" value={homeBaseId} onChange={(e) => setHomeBaseId(e.target.value)} required>
+        <SelectField
+          id="osm-home-base"
+          label="Kitchen"
+          value={homeBaseId}
+          onChange={(e) => setHomeBaseId(e.target.value)}
+          required
+        >
           <option value="">{homeBases.isPending ? "Loading…" : "Choose"}</option>
           {(homeBases.data ?? []).map((h) => (
             <option key={h.id} value={h.id}>
@@ -515,7 +655,12 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
             </option>
           ))}
         </SelectField>
-        <SelectField id="osm-radius" label="Radius" value={String(radius)} onChange={(e) => setRadius(Number(e.target.value))}>
+        <SelectField
+          id="osm-radius"
+          label="Radius"
+          value={String(radius)}
+          onChange={(e) => setRadius(Number(e.target.value))}
+        >
           {RADII.map((r) => (
             <option key={r} value={r}>
               {r >= 1000 ? `${r / 1000} km` : `${r} m`}
@@ -538,11 +683,21 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
         </Alert>
       ) : candidates.data ? (
         candidates.data.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">No candidates within that radius.</p>
+          <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+            No candidates within that radius.
+          </p>
         ) : (
-          <ul aria-label="OpenStreetMap candidates" className="mt-3 divide-y divide-neutral-200 dark:divide-neutral-800">
+          <ul
+            aria-label="OpenStreetMap candidates"
+            className="mt-3 divide-y divide-neutral-200 dark:divide-neutral-800"
+          >
             {candidates.data.map((c) => (
-              <CandidateRow key={`${c.osm_type}-${c.osm_id}`} candidate={c} homeBaseId={searched?.homeBaseId ?? ""} radius={searched?.radius ?? 0} />
+              <CandidateRow
+                key={`${c.osm_type}-${c.osm_id}`}
+                candidate={c}
+                homeBaseId={searched?.homeBaseId ?? ""}
+                radius={searched?.radius ?? 0}
+              />
             ))}
           </ul>
         )
@@ -551,7 +706,15 @@ export function OsmAdoptionPanel({ bare = false }: { bare?: boolean }) {
   );
 }
 
-function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandidate; homeBaseId: string; radius: number }) {
+function CandidateRow({
+  candidate,
+  homeBaseId,
+  radius,
+}: {
+  candidate: OsmCandidate;
+  homeBaseId: string;
+  radius: number;
+}) {
   const adopt = useAdoptOsm();
   const [kind, setKind] = useState<VendorKind>(candidate.kind_guess);
   const name = candidate.name ?? `${candidate.osm_type} ${candidate.osm_id}`;
@@ -578,7 +741,12 @@ function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandida
             <label htmlFor={selectId} className="text-xs font-medium">
               Kind
             </label>
-            <select id={selectId} value={kind} onChange={(e) => setKind(e.target.value as VendorKind)} className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
+            <select
+              id={selectId}
+              value={kind}
+              onChange={(e) => setKind(e.target.value as VendorKind)}
+              className={`min-h-11 lg:min-h-8 rounded-md border border-neutral-300 bg-white px-2 text-sm dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+            >
               {VENDOR_KINDS.map((k) => (
                 <option key={k} value={k}>
                   {vendorKindLabel[k]}
@@ -591,7 +759,15 @@ function CandidateRow({ candidate, homeBaseId, radius }: { candidate: OsmCandida
             className="min-h-11 lg:min-h-8 px-2"
             disabled={adopt.isPending}
             aria-label={`Adopt ${name}`}
-            onClick={() => adopt.mutate({ osm_type: candidate.osm_type, osm_id: candidate.osm_id, home_base_id: homeBaseId, radius_m: radius, vendor_kind: kind })}
+            onClick={() =>
+              adopt.mutate({
+                osm_type: candidate.osm_type,
+                osm_id: candidate.osm_id,
+                home_base_id: homeBaseId,
+                radius_m: radius,
+                vendor_kind: kind,
+              })
+            }
           >
             {adopt.isPending ? "Adopting…" : "Adopt"}
           </Button>

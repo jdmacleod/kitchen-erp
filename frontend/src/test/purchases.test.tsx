@@ -45,7 +45,10 @@ describe("purchases", () => {
     expect(rows[0]).toHaveTextContent("$14.21");
     expect(rows[0]).toHaveTextContent("Committed");
     expect(rows[0]).toHaveTextContent("By hand");
-    expect(within(rows[0]).getByRole("link")).toHaveAttribute("href", `/shop/purchases/${purchaseId}`);
+    expect(within(rows[0]).getByRole("link")).toHaveAttribute(
+      "href",
+      `/shop/purchases/${purchaseId}`,
+    );
     // Date, Where, From, Lines, Total, Status (spec 10).
     expect(within(rows[0]).getAllByRole("cell")[3]).toHaveTextContent("2");
 
@@ -55,7 +58,9 @@ describe("purchases", () => {
     expect(more).toHaveTextContent("$3.50");
     expect(more).toHaveTextContent("Draft");
     expect(more).toHaveTextContent("Receipt");
-    expect(calls.some((c) => c.path.startsWith("/purchases") && c.query.get("cursor") === "page2")).toBe(true);
+    expect(
+      calls.some((c) => c.path.startsWith("/purchases") && c.query.get("cursor") === "page2"),
+    ).toBe(true);
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 
@@ -70,7 +75,9 @@ describe("purchases", () => {
     const table = screen.getByRole("table", { name: "Lines" });
     const rows = within(table).getAllByRole("row").slice(1);
     expect(rows).toHaveLength(2);
-    expect(within(rows[0]).getByRole("link", { name: "Millstone All-Purpose Flour" })).toHaveAttribute("href", `/catalog/products/${flourProductId}`);
+    expect(
+      within(rows[0]).getByRole("link", { name: "Millstone All-Purpose Flour" }),
+    ).toHaveAttribute("href", `/catalog/products/${flourProductId}`);
     expect(rows[0]).toHaveTextContent("2.31 × lb");
     expect(rows[0]).toHaveTextContent("$3.99");
     expect(rows[0]).toHaveTextContent("$9.22");
@@ -90,7 +97,15 @@ describe("purchases", () => {
           ...purchase,
           total: "15.00",
           computed_total: "15.0000",
-          lines: [{ ...purchase.lines[0], unit_price: "4.3290", line_total: "10", observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7102" }, purchase.lines[1]],
+          lines: [
+            {
+              ...purchase.lines[0],
+              unit_price: "4.3290",
+              line_total: "10",
+              observation_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7102",
+            },
+            purchase.lines[1],
+          ],
         };
         return jsonResponse(200, purchase);
       },
@@ -122,15 +137,29 @@ describe("purchases", () => {
     await user.type(slip, "15");
     await user.click(within(form).getByRole("button", { name: "Save changes" }));
 
-    await waitFor(() => expect(screen.queryByRole("form", { name: "Edit purchase" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole("form", { name: "Edit purchase" })).not.toBeInTheDocument(),
+    );
     const put = calls.find((c) => c.method === "PUT");
     expect(put?.body).toEqual({
       vendor_location_id: marketLocationId,
       purchased_at: manualPurchase.purchased_at,
       total: "15",
       lines: [
-        { id: manualPurchase.lines[0].id, product_id: flourProductId, qty: "2.31", unit: "lb", line_total: "10" },
-        { id: manualPurchase.lines[1].id, product_id: hits[1].id, qty: "1", unit: "each", line_total: "5.00" },
+        {
+          id: manualPurchase.lines[0].id,
+          product_id: flourProductId,
+          qty: "2.31",
+          unit: "lb",
+          line_total: "10",
+        },
+        {
+          id: manualPurchase.lines[1].id,
+          product_id: hits[1].id,
+          qty: "1",
+          unit: "each",
+          line_total: "5.00",
+        },
       ],
     });
     const table = screen.getByRole("table", { name: "Lines" });
@@ -141,7 +170,8 @@ describe("purchases", () => {
     const calls = mockApi({
       ...baseRoutes(),
       [`GET /purchases/${purchaseId}`]: () => jsonResponse(200, manualPurchase),
-      [`PUT /purchases/${purchaseId}`]: () => jsonResponse(200, { ...manualPurchase, lines: [manualPurchase.lines[1]] }),
+      [`PUT /purchases/${purchaseId}`]: () =>
+        jsonResponse(200, { ...manualPurchase, lines: [manualPurchase.lines[1]] }),
     });
     const user = userEvent.setup();
     renderApp(`/shop/purchases/${purchaseId}`);
@@ -153,7 +183,8 @@ describe("purchases", () => {
     await user.click(within(form).getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => expect(calls.find((c) => c.method === "PUT")).toBeDefined());
-    const lines = (calls.find((c) => c.method === "PUT")?.body as { lines: { id?: string }[] }).lines;
+    const lines = (calls.find((c) => c.method === "PUT")?.body as { lines: { id?: string }[] })
+      .lines;
     expect(lines.map((l) => l.id)).toEqual([manualPurchase.lines[1].id]);
   });
 });

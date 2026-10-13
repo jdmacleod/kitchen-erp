@@ -27,8 +27,8 @@ export function BridgeEditor({ ingredient }: { ingredient: Ingredient }) {
     <Card>
       <h2 className="mb-1 text-lg font-medium">Bridges</h2>
       <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-400">
-        How volumes, counts, and measures turn into {ingredient.canonical_unit}. Nothing here is guessed: a
-        conversion with no bridge fails and says why.
+        How volumes, counts, and measures turn into {ingredient.canonical_unit}. Nothing here is
+        guessed: a conversion with no bridge fails and says why.
       </p>
       <DensityRow ingredient={ingredient} />
       <MeasuresTable ingredient={ingredient} />
@@ -98,8 +98,14 @@ function DensityRow({ ingredient }: { ingredient: Ingredient }) {
   };
 
   return (
-    <section aria-labelledby="density-heading" className="border-b border-neutral-200 pb-4 dark:border-neutral-800">
-      <h3 id="density-heading" className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+    <section
+      aria-labelledby="density-heading"
+      className="border-b border-neutral-200 pb-4 dark:border-neutral-800"
+    >
+      <h3
+        id="density-heading"
+        className="text-sm font-semibold text-neutral-600 dark:text-neutral-400"
+      >
         Density
       </h3>
       {editing ? (
@@ -133,8 +139,13 @@ function DensityRow({ ingredient }: { ingredient: Ingredient }) {
           <p className="text-sm" data-testid="density-summary">
             {has ? (
               <>
-                <span className="font-medium">{trimDecimal(ingredient.density_g_per_ml ?? "")} g/ml</span>
-                <span className="text-neutral-600 dark:text-neutral-400"> · {ingredient.density_source}</span>{" "}
+                <span className="font-medium">
+                  {trimDecimal(ingredient.density_g_per_ml ?? "")} g/ml
+                </span>
+                <span className="text-neutral-600 dark:text-neutral-400">
+                  {" "}
+                  · {ingredient.density_source}
+                </span>{" "}
                 <ConfirmedBadge confirmed={ingredient.density_confirmed} />
               </>
             ) : (
@@ -145,7 +156,11 @@ function DensityRow({ ingredient }: { ingredient: Ingredient }) {
           </p>
           <div className="flex flex-wrap gap-2">
             {has && !ingredient.density_confirmed ? (
-              <Button variant="secondary" disabled={confirm.isPending} onClick={() => confirm.mutate()}>
+              <Button
+                variant="secondary"
+                disabled={confirm.isPending}
+                onClick={() => confirm.mutate()}
+              >
                 {confirm.isPending ? "Confirming…" : "Confirm density"}
               </Button>
             ) : null}
@@ -158,7 +173,12 @@ function DensityRow({ ingredient }: { ingredient: Ingredient }) {
                   <Button
                     variant="danger"
                     disabled={update.isPending}
-                    onClick={() => update.mutate({ clear_density: true }, { onSettled: () => setClearing(false) })}
+                    onClick={() =>
+                      update.mutate(
+                        { clear_density: true },
+                        { onSettled: () => setClearing(false) },
+                      )
+                    }
                   >
                     {update.isPending ? "Clearing…" : "Confirm clear"}
                   </Button>
@@ -195,12 +215,15 @@ function MeasuresTable({ ingredient }: { ingredient: Ingredient }) {
   const unit = ingredient.canonical_unit;
   return (
     <section aria-labelledby="measures-heading" className="pt-4">
-      <h3 id="measures-heading" className="text-sm font-semibold text-neutral-600 dark:text-neutral-400">
+      <h3
+        id="measures-heading"
+        className="text-sm font-semibold text-neutral-600 dark:text-neutral-400"
+      >
         Named measures
       </h3>
       <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
-        A label such as “cup”, “clove”, or “medium” and what one of it weighs in {unit}. Measures are checked
-        before units, so “cup” here beats the generic cup.
+        A label such as “cup”, “clove”, or “medium” and what one of it weighs in {unit}. Measures
+        are checked before units, so “cup” here beats the generic cup.
       </p>
       {ingredient.measures.length === 0 ? (
         <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">No measures yet.</p>
@@ -239,7 +262,15 @@ function MeasuresTable({ ingredient }: { ingredient: Ingredient }) {
   );
 }
 
-function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredientId: string; unit: string }) {
+function MeasureRow({
+  measure,
+  ingredientId,
+  unit,
+}: {
+  measure: Measure;
+  ingredientId: string;
+  unit: string;
+}) {
   const update = useUpdateMeasure(ingredientId);
   const confirm = useConfirmMeasure(ingredientId);
   const remove = useDeleteMeasure(ingredientId);
@@ -272,7 +303,9 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
       return;
     }
     setInvalid(null);
-    const input: { id: string; label?: string; canonical_qty?: string; source?: BridgeSource } = { id: measure.id };
+    const input: { id: string; label?: string; canonical_qty?: string; source?: BridgeSource } = {
+      id: measure.id,
+    };
     if (label.trim() !== measure.label) input.label = label.trim();
     if (qty.trim() !== measure.canonical_qty) input.canonical_qty = qty.trim();
     if (source !== measure.source) input.source = source;
@@ -284,9 +317,16 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
     return (
       <tr className="border-t border-neutral-200 dark:border-neutral-800">
         <td colSpan={5} className="py-3">
-          <form id={formId} onSubmit={save} className="flex flex-col gap-3" aria-label={`Edit measure ${measure.label}`}>
+          <form
+            id={formId}
+            onSubmit={save}
+            className="flex flex-col gap-3"
+            aria-label={`Edit measure ${measure.label}`}
+          >
             {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-            {update.isError ? <Alert tone="error">{catalogErrorMessage(update.error)}</Alert> : null}
+            {update.isError ? (
+              <Alert tone="error">{catalogErrorMessage(update.error)}</Alert>
+            ) : null}
             <div className="grid gap-3 sm:grid-cols-3">
               <Field
                 id={`measure-${measure.id}-label`}
@@ -306,7 +346,11 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
                 onChange={(e) => setQty(e.target.value)}
                 hint="A new quantity or source resets confirmation."
               />
-              <SourceSelect id={`measure-${measure.id}-source`} value={source} onChange={setSource} />
+              <SourceSelect
+                id={`measure-${measure.id}-source`}
+                value={source}
+                onChange={setSource}
+              />
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={busy}>
@@ -355,7 +399,11 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
             Edit
           </Button>
           {deleting ? (
-            <span className="flex gap-1" role="group" aria-label={`Confirm deleting ${measure.label}`}>
+            <span
+              className="flex gap-1"
+              role="group"
+              aria-label={`Confirm deleting ${measure.label}`}
+            >
               <Button
                 variant="danger"
                 className="min-h-11 lg:min-h-8 px-2 text-xs"
@@ -364,7 +412,11 @@ function MeasureRow({ measure, ingredientId, unit }: { measure: Measure; ingredi
               >
                 {remove.isPending ? "Deleting…" : "Confirm delete"}
               </Button>
-              <Button variant="secondary" className="min-h-11 lg:min-h-8 px-2 text-xs" onClick={() => setDeleting(false)}>
+              <Button
+                variant="secondary"
+                className="min-h-11 lg:min-h-8 px-2 text-xs"
+                onClick={() => setDeleting(false)}
+              >
                 Cancel
               </Button>
             </span>
@@ -421,7 +473,11 @@ function AddMeasureForm({ ingredientId, unit }: { ingredientId: string; unit: st
   };
 
   return (
-    <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3" aria-labelledby="add-measure-heading">
+    <form
+      onSubmit={onSubmit}
+      className="mt-4 flex flex-col gap-3"
+      aria-labelledby="add-measure-heading"
+    >
       <h4 id="add-measure-heading" className="text-sm font-medium">
         Add measure
       </h4>

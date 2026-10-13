@@ -1,7 +1,15 @@
 // Synthetic trip plans (17, 4B). Stores, products and figures are invented; the
 // locations are the synthetic geography in geo-fixtures; ids are fixed
 // v7-shaped UUIDs.
-import { chosenVariant, type Annotation, type Stop, type StopItem, type Trip, type TripSummary, type Variant } from "../api/trips";
+import {
+  chosenVariant,
+  type Annotation,
+  type Stop,
+  type StopItem,
+  type Trip,
+  type TripSummary,
+  type Variant,
+} from "../api/trips";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { kitchenId, openListId } from "./plan-fixtures";
 
@@ -37,7 +45,13 @@ function item(name: string, over: Partial<StopItem> = {}): StopItem {
   };
 }
 
-function stop(seq: number, location: typeof chainLocation, subtotal: string, items: StopItem[], over: Partial<Stop> = {}): Stop {
+function stop(
+  seq: number,
+  location: typeof chainLocation,
+  subtotal: string,
+  items: StopItem[],
+  over: Partial<Stop> = {},
+): Stop {
   return {
     id: nextId(),
     seq,
@@ -85,7 +99,12 @@ export const fastest: Variant = {
   trade: { money: "3.20", minutes: "-14" },
   stop_count: 1,
   annotations: [],
-  stops: [stop(1, chainLocation, "33.10", [item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" }), item("Cedar row lentils", { line_cost: "24.60", pack_price: "24.60" })])],
+  stops: [
+    stop(1, chainLocation, "33.10", [
+      item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" }),
+      item("Cedar row lentils", { line_cost: "24.60", pack_price: "24.60" }),
+    ]),
+  ],
 };
 
 export const cheapest: Variant = {
@@ -101,8 +120,20 @@ export const cheapest: Variant = {
   stop_count: 2,
   annotations: [estimatedNote],
   stops: [
-    stop(1, chainLocation, "14.40", [item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" })], { leg_source: "estimate" }),
-    stop(2, marketLocation, "10.50", [item("Larkspur rolled oats", { line_cost: "10.50", pack_price: "10.50", forced: true })], { arrive_at: "2026-10-17T16:40:00Z" }),
+    stop(
+      1,
+      chainLocation,
+      "14.40",
+      [item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" })],
+      { leg_source: "estimate" },
+    ),
+    stop(
+      2,
+      marketLocation,
+      "10.50",
+      [item("Larkspur rolled oats", { line_cost: "10.50", pack_price: "10.50", forced: true })],
+      { arrive_at: "2026-10-17T16:40:00Z" },
+    ),
   ],
 };
 
@@ -119,8 +150,17 @@ export const balanced: Variant = {
   stop_count: 2,
   annotations: [staleNote, forcedNote],
   stops: [
-    stop(1, chainLocation, "17.20", [item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" }), item("Cedar row lentils", { line_cost: "8.70", pack_price: "8.70", price_stale: true })]),
-    stop(2, marketLocation, "10.50", [item("Larkspur rolled oats", { line_cost: "10.50", pack_price: "10.50", forced: true })], { arrive_at: "2026-10-17T16:35:00Z", leg_seconds: 420, leg_meters: 3100 }),
+    stop(1, chainLocation, "17.20", [
+      item("Moonfield oat milk", { packs: "2", pack_price: "4.25", line_cost: "8.50" }),
+      item("Cedar row lentils", { line_cost: "8.70", pack_price: "8.70", price_stale: true }),
+    ]),
+    stop(
+      2,
+      marketLocation,
+      "10.50",
+      [item("Larkspur rolled oats", { line_cost: "10.50", pack_price: "10.50", forced: true })],
+      { arrive_at: "2026-10-17T16:35:00Z", leg_seconds: 420, leg_meters: 3100 },
+    ),
   ],
 };
 
@@ -167,7 +207,11 @@ export function summary(t: Trip): TripSummary {
       trade: v.trade,
       stop_count: v.stop_count,
     })),
-    stops: (chosenVariant(t) ?? t.variants.find((v) => v.kind === "balanced") ?? t.variants[0]).stops.map((s) => ({
+    stops: (
+      chosenVariant(t) ??
+      t.variants.find((v) => v.kind === "balanced") ??
+      t.variants[0]
+    ).stops.map((s) => ({
       seq: s.seq,
       vendor_location_id: s.vendor_location_id,
       name: s.vendor_location_name,

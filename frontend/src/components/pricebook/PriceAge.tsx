@@ -6,7 +6,10 @@ import { Badge } from "../catalog/fields";
  * "$1.29 each", or "—" when the price isn't normalized. The browser does no unit
  * arithmetic: the server already chose the unit and rounded the price.
  */
-export function formatUnitPrice(price: string | null | undefined, unit: string | null | undefined): string {
+export function formatUnitPrice(
+  price: string | null | undefined,
+  unit: string | null | undefined,
+): string {
   if (!price || !unit) return "—";
   // The server's digits as sent: it already chose 2 or 3 places ("0.680" stays "0.680").
   const money = price.startsWith("-") ? `-$${price.slice(1)}` : `$${price}`;

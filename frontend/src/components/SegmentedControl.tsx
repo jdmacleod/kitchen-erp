@@ -22,7 +22,11 @@ export function SegmentedControl<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex flex-wrap gap-0.5 rounded-lg bg-neutral-200 p-0.5 dark:bg-neutral-800">
+    <div
+      role="group"
+      aria-label={label}
+      className="inline-flex flex-wrap gap-0.5 rounded-lg bg-neutral-200 p-0.5 dark:bg-neutral-800"
+    >
       {options.map((o) => (
         <button
           key={o.value}

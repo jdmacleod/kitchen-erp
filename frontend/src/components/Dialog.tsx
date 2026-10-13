@@ -43,7 +43,10 @@ export function useModal(
   useEffect(() => {
     if (!open) return;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const first = initialFocus?.current ?? panel.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panel.current;
+    const first =
+      initialFocus?.current ??
+      panel.current?.querySelector<HTMLElement>(FOCUSABLE) ??
+      panel.current;
     first?.focus();
 
     const onKey = (event: KeyboardEvent) => {
@@ -80,7 +83,16 @@ export function useModal(
  * A modal over a scrim. Focus moves in on open, Tab stays inside, Escape or a click
  * on the scrim closes it, and focus returns to whatever opened it.
  */
-export function Dialog({ open, onClose, labelledBy, placement = "center", initialFocus, returnFocus, className = "", children }: DialogProps) {
+export function Dialog({
+  open,
+  onClose,
+  labelledBy,
+  placement = "center",
+  initialFocus,
+  returnFocus,
+  className = "",
+  children,
+}: DialogProps) {
   const panel = useRef<HTMLDivElement>(null);
   useModal(panel, open, onClose, initialFocus, returnFocus);
 
@@ -93,7 +105,8 @@ export function Dialog({ open, onClose, labelledBy, placement = "center", initia
   }[placement];
   const shape = {
     sheet: "w-full rounded-t-2xl lg:w-[28rem] lg:rounded-xl",
-    screen: "flex h-dvh w-full flex-col pt-[env(safe-area-inset-top)] lg:block lg:h-auto lg:max-w-[40rem] lg:rounded-xl lg:pt-0",
+    screen:
+      "flex h-dvh w-full flex-col pt-[env(safe-area-inset-top)] lg:block lg:h-auto lg:max-w-[40rem] lg:rounded-xl lg:pt-0",
     center: "w-full max-w-[40rem] rounded-xl",
   }[placement];
 

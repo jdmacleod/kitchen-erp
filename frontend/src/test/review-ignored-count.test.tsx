@@ -27,24 +27,40 @@ function render(purchase: Purchase) {
 
 describe("receipt review counts", () => {
   it("does not count an ignored line as waiting to be identified", async () => {
-    const ignored = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299", seq: 5, resolution: "ignored" as const, suggestions: [] };
+    const ignored = {
+      ...unmatchedLine,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299",
+      seq: 5,
+      resolution: "ignored" as const,
+      suggestions: [],
+    };
     render({ ...receiptPurchase, lines: [...receiptPurchase.lines, ignored] });
     await screen.findByTestId("review");
     // Three item lines besides the discount; only the unmatched one needs a product.
     expect(screen.getByText("4 items · 1 to identify")).toBeInTheDocument();
-    expect(screen.getByText("1 unidentified line will go to the to-identify queue.")).toBeInTheDocument();
+    expect(
+      screen.getByText("1 unidentified line will go to the to-identify queue."),
+    ).toBeInTheDocument();
   });
 
   it("does not count an ignored line among those that emit a price", async () => {
     // Review of #76: the commit dialog counted items less unresolved, so an
     // ignored line now counted as emitting a price it never emits.
-    const ignored = { ...unmatchedLine, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299", seq: 5, resolution: "ignored" as const, suggestions: [] };
+    const ignored = {
+      ...unmatchedLine,
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8299",
+      seq: 5,
+      resolution: "ignored" as const,
+      suggestions: [],
+    };
     render({ ...receiptPurchase, lines: [...receiptPurchase.lines, ignored] });
     const user = userEvent.setup();
     await screen.findByTestId("review");
     screen.getAllByTestId("review-line")[1].focus();
     await user.keyboard("c");
     const dialog = await screen.findByRole("dialog", { name: "Commit this purchase?" });
-    expect(dialog).toHaveTextContent("2 lines emit a price observation now. 1 unidentified line waits in the to-identify queue.");
+    expect(dialog).toHaveTextContent(
+      "2 lines emit a price observation now. 1 unidentified line waits in the to-identify queue.",
+    );
   });
 });

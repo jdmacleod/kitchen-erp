@@ -33,12 +33,16 @@ describe("inbox freshness", () => {
       "POST /to-identify/apply": () => jsonResponse(200, { applied: 1 }),
     });
     const client = createQueryClient({ retry: false });
-    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
 
     const { result } = renderHook(
       () => ({
         inbox: useInbox(),
-        apply: useMutation({ mutationFn: () => fetch("/api/v1/to-identify/apply", { method: "POST" }) }),
+        apply: useMutation({
+          mutationFn: () => fetch("/api/v1/to-identify/apply", { method: "POST" }),
+        }),
       }),
       { wrapper },
     );

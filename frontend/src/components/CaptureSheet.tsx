@@ -41,7 +41,13 @@ const MODES = [
  * from the bottom on phone and tablet, a small centred dialog on desktop (G14).
  * Mounted only while open.
  */
-export function CaptureSheet({ onClose, onShelfPrice }: { onClose: () => void; onShelfPrice?: (state: ShelfPriceState) => void }) {
+export function CaptureSheet({
+  onClose,
+  onShelfPrice,
+}: {
+  onClose: () => void;
+  onShelfPrice?: (state: ShelfPriceState) => void;
+}) {
   // At lg the shelf price opens in the right drawer over this page (G14).
   const wide = useMediaQuery(LG_QUERY);
   const titleId = useId();
@@ -70,15 +76,31 @@ export function CaptureSheet({ onClose, onShelfPrice }: { onClose: () => void; o
     onClose();
   };
   return (
-    <Dialog open onClose={onClose} labelledBy={titleId} placement="sheet" returnFocus={returnFocus} className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-300 lg:hidden dark:bg-neutral-700" />
+    <Dialog
+      open
+      onClose={onClose}
+      labelledBy={titleId}
+      placement="sheet"
+      returnFocus={returnFocus}
+      className="p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+    >
+      <div
+        aria-hidden="true"
+        className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-300 lg:hidden dark:bg-neutral-700"
+      />
       <h2 id={titleId} className="font-display mb-2 text-xl">
         Capture
       </h2>
       {/* With no guess there is nothing to say here; the mode asks for the store. */}
       {chosen || guess.status !== "none" ? (
         <div className="mb-3 flex">
-          <StoreChip value={chosen ?? guessed} source={chosen ? "chosen" : guess.status} locations={locations} onChoose={choose} onSkip={skip} />
+          <StoreChip
+            value={chosen ?? guessed}
+            source={chosen ? "chosen" : guess.status}
+            locations={locations}
+            onChoose={choose}
+            onSkip={skip}
+          />
         </div>
       ) : null}
       <ul className="flex flex-col gap-2">
@@ -99,13 +121,24 @@ export function CaptureSheet({ onClose, onShelfPrice }: { onClose: () => void; o
               className={`flex min-h-[4.75rem] items-center gap-3 rounded-lg border border-neutral-200 px-3 text-neutral-900 hover:bg-neutral-50 dark:border-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-800 ${focusRing}`}
             >
               <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
-                <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d={m.icon} />
                 </svg>
               </span>
               <span className="min-w-0">
                 <span className="block font-medium">{m.title}</span>
-                <span className="block text-sm text-neutral-600 dark:text-neutral-400">{m.description}</span>
+                <span className="block text-sm text-neutral-600 dark:text-neutral-400">
+                  {m.description}
+                </span>
               </span>
             </Link>
           </li>

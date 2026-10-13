@@ -4,7 +4,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { Product } from "../api/catalog";
 import { flourProduct, flourProductId, hits, units } from "./catalog-fixtures";
 import { chainLocation, chainLocationId, marketLocation } from "./geo-fixtures";
-import { adminUser, errorResponse, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  renderApp,
+  type RecordedCall,
+} from "./helpers";
 import { manualPurchase } from "./purchase-fixtures";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -16,11 +23,13 @@ function baseRoutes() {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
-    "GET /products/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
+    "GET /products/search": (call: RecordedCall) =>
+      jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
     "GET /ingredients/search": () => jsonResponse(200, { items: [] }),
     // Flour was last bought by the pound; the other product has never been bought.
     [`GET /products/${flourProductId}/last-purchase-unit`]: () => jsonResponse(200, { unit: "lb" }),
-    [`GET /products/${hits[1].id}/last-purchase-unit`]: () => errorResponse(404, "not_found", "no purchases"),
+    [`GET /products/${hits[1].id}/last-purchase-unit`]: () =>
+      errorResponse(404, "not_found", "no purchases"),
   };
 }
 
@@ -74,8 +83,12 @@ describe("manual purchase entry", () => {
     await user.type(within(line(1)).getByLabelText("Unit price 1"), "4.99{Enter}");
 
     const second = await screen.findByRole("group", { name: "Line 2" });
-    await waitFor(() => expect(within(second).getByRole("combobox", { name: "Product 2" })).toHaveFocus());
-    expect(within(line(1)).getByTestId(/product-choice$/)).toHaveTextContent("Millstone All-Purpose Flour");
+    await waitFor(() =>
+      expect(within(second).getByRole("combobox", { name: "Product 2" })).toHaveFocus(),
+    );
+    expect(within(line(1)).getByTestId(/product-choice$/)).toHaveTextContent(
+      "Millstone All-Purpose Flour",
+    );
   });
 
   it("enters three lines by keyboard alone and saves them in one request", async () => {
@@ -119,7 +132,12 @@ describe("manual purchase entry", () => {
     expect(await screen.findByRole("heading", { name: /Pier Farmers Market/ })).toBeInTheDocument();
     const posts = calls.filter((c) => c.method === "POST" && c.path === "/purchases");
     expect(posts).toHaveLength(1);
-    const body = posts[0].body as { vendor_location_id: string; purchased_at: string; total?: string; lines: unknown[] };
+    const body = posts[0].body as {
+      vendor_location_id: string;
+      purchased_at: string;
+      total?: string;
+      lines: unknown[];
+    };
     expect(body.vendor_location_id).toBe(chainLocationId);
     expect(body.total).toBeUndefined();
     expect(body.lines).toEqual([
@@ -140,7 +158,14 @@ describe("manual purchase entry", () => {
     const created: Product = {
       ...flourProduct,
       id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5d09",
-      ingredient: { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09", name: "rolled oats", canonical_unit: "g", active: true, category: null, category_key: null },
+      ingredient: {
+        id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5b09",
+        name: "rolled oats",
+        canonical_unit: "g",
+        active: true,
+        category: null,
+        category_key: null,
+      },
       brand: null,
       name: "Rolled Oats",
       pack_qty: null,
@@ -150,7 +175,8 @@ describe("manual purchase entry", () => {
     const calls = mockApi({
       ...baseRoutes(),
       "POST /products": () => jsonResponse(201, created),
-      [`GET /products/${created.id}/last-purchase-unit`]: () => errorResponse(404, "not_found", "no purchases"),
+      [`GET /products/${created.id}/last-purchase-unit`]: () =>
+        errorResponse(404, "not_found", "no purchases"),
     });
     const user = userEvent.setup();
     renderApp("/shop/purchases/new");
@@ -167,14 +193,18 @@ describe("manual purchase entry", () => {
     await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
     await user.type(within(form).getByLabelText("Name"), "Rolled Oats{Enter}");
 
-    await waitFor(() => expect(within(second).getByTestId(/product-choice$/)).toHaveTextContent("Rolled Oats"));
+    await waitFor(() =>
+      expect(within(second).getByTestId(/product-choice$/)).toHaveTextContent("Rolled Oats"),
+    );
     const post = calls.find((c) => c.method === "POST" && c.path === "/products");
     expect(post?.body).toEqual({ name: "Rolled Oats", ingredient: { name: "rolled oats" } });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
     // Enter inside the inline form created the product; it did not save the purchase.
     expect(calls.some((c) => c.method === "POST" && c.path === "/purchases")).toBe(false);
     // Line 1 is exactly as entered.
-    expect(within(line(1)).getByTestId(/product-choice$/)).toHaveTextContent("Millstone All-Purpose Flour");
+    expect(within(line(1)).getByTestId(/product-choice$/)).toHaveTextContent(
+      "Millstone All-Purpose Flour",
+    );
     expect(within(line(1)).getByLabelText("Quantity 1")).toHaveValue("1");
     expect(within(line(1)).getByLabelText("Unit 1")).toHaveValue("lb");
     expect(within(line(1)).getByLabelText("Unit price 1")).toHaveValue("4.99");
@@ -202,7 +232,10 @@ describe("manual purchase entry", () => {
     renderApp("/shop/purchases/new");
     const first = await screen.findByRole("group", { name: "Line 1" });
 
-    await user.type(within(first).getByRole("combobox", { name: /Product/ }), hits[0].name.toLowerCase());
+    await user.type(
+      within(first).getByRole("combobox", { name: /Product/ }),
+      hits[0].name.toLowerCase(),
+    );
     await screen.findByRole("option", { name: new RegExp(hits[0].name) });
     expect(screen.queryByRole("option", { name: /Create product/ })).not.toBeInTheDocument();
   });
@@ -235,13 +268,17 @@ describe("manual purchase entry", () => {
 
     const slip = screen.getByLabelText("Total on the slip");
     await user.type(slip, "10");
-    expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent("slip is higher by $0.7831");
+    expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent(
+      "slip is higher by $0.7831",
+    );
     await user.clear(slip);
     await user.type(slip, "9.2169");
     expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent("matches");
     await user.clear(slip);
     await user.type(slip, "9");
-    expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent("slip is lower by $0.2169");
+    expect(screen.getByTestId("new-purchase-difference")).toHaveTextContent(
+      "slip is lower by $0.2169",
+    );
   });
 
   it("acknowledges the first purchase on the page it lands on, and only the first", async () => {
@@ -253,7 +290,10 @@ describe("manual purchase entry", () => {
         [`GET /purchases/${manualPurchase.id}`]: () => jsonResponse(200, manualPurchase),
       });
       const user = userEvent.setup();
-      const { unmount } = renderApp({ pathname: "/shop/purchases/new", state: first ? { firstPurchase: true } : undefined });
+      const { unmount } = renderApp({
+        pathname: "/shop/purchases/new",
+        state: first ? { firstPurchase: true } : undefined,
+      });
       await screen.findByRole("group", { name: "Line 1" });
       await waitFor(() => expect(screen.getByLabelText("Location")).toHaveValue(chainLocationId));
       await pickFlour(user, 1);
@@ -261,8 +301,11 @@ describe("manual purchase entry", () => {
       await user.type(within(line(1)).getByLabelText("Unit price 1"), "3.99");
       await user.click(screen.getByRole("button", { name: "Save purchase" }));
 
-      expect(await screen.findByRole("heading", { name: /Pier Farmers Market/ })).toBeInTheDocument();
-      if (first) expect(screen.getByTestId("notice")).toHaveTextContent(/That is your kitchen set up/);
+      expect(
+        await screen.findByRole("heading", { name: /Pier Farmers Market/ }),
+      ).toBeInTheDocument();
+      if (first)
+        expect(screen.getByTestId("notice")).toHaveTextContent(/That is your kitchen set up/);
       else expect(screen.queryByTestId("notice")).not.toBeInTheDocument();
       unmount();
     }
@@ -279,7 +322,9 @@ describe("manual purchase entry", () => {
     await user.type(within(line(1)).getByLabelText("Quantity 1"), "2");
     await user.click(screen.getByRole("button", { name: "Save purchase" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Enter a unit price or a line total.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Enter a unit price or a line total.",
+    );
     expect(within(line(1)).getByLabelText("Unit price 1")).toHaveFocus();
     expect(calls.some((c) => c.method === "POST")).toBe(false);
   });

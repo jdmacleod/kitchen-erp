@@ -6,7 +6,15 @@ import { bridgeFixLink, normStatusText, useNeedsBridge } from "../../api/pricebo
 import { Badge } from "../../components/catalog/fields";
 import { useNotice } from "../../components/Notice";
 import { QuickPackEditor } from "../../components/pricebook/QuickPackEditor";
-import { Alert, Button, Card, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { UsdaReviewSection } from "./UsdaReviewSection";
@@ -41,7 +49,10 @@ export function NeedsBridgePage() {
 
   return (
     <>
-      <PageHeader title="Needs a bridge" description="Products whose prices can't be compared until they have a density, a measure or a pack size." />
+      <PageHeader
+        title="Needs a bridge"
+        description="Products whose prices can't be compared until they have a density, a measure or a pack size."
+      />
       <UsdaReviewSection />
       {list.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -64,7 +75,9 @@ export function NeedsBridgePage() {
         <Card>
           <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
             {products === 1 ? "1 product" : `${products} products`}
-            {packIds.length ? ` · ${packIds.length} ${packIds.length === 1 ? "needs" : "need"} a pack size` : ""}
+            {packIds.length
+              ? ` · ${packIds.length} ${packIds.length === 1 ? "needs" : "need"} a pack size`
+              : ""}
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm" aria-label="Needs a bridge">
@@ -88,22 +101,40 @@ export function NeedsBridgePage() {
                     <Fragment key={`${item.product.id}-${item.status}`}>
                       <tr data-testid="needs-bridge">
                         <td className="py-2 pr-3">
-                          <Link to={`/catalog/ingredients/${item.ingredient.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                          <Link
+                            to={`/catalog/ingredients/${item.ingredient.id}`}
+                            className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                          >
                             {item.ingredient.name}
                           </Link>
-                          <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {item.ingredient.canonical_unit}</span>
+                          <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                            {" "}
+                            · {item.ingredient.canonical_unit}
+                          </span>
                         </td>
                         <td className="py-2 pr-3">
-                          <Link to={`/catalog/products/${item.product.id}`} className={`rounded underline-offset-2 hover:underline ${focusRing}`}>
+                          <Link
+                            to={`/catalog/products/${item.product.id}`}
+                            className={`rounded underline-offset-2 hover:underline ${focusRing}`}
+                          >
                             {title}
                           </Link>
-                          {formatPack(item.product.pack_qty, item.product.pack_unit) ? <span className="text-xs text-neutral-600 dark:text-neutral-400"> · {formatPack(item.product.pack_qty, item.product.pack_unit)}</span> : null}
+                          {formatPack(item.product.pack_qty, item.product.pack_unit) ? (
+                            <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                              {" "}
+                              · {formatPack(item.product.pack_qty, item.product.pack_unit)}
+                            </span>
+                          ) : null}
                         </td>
                         <td className="py-2 pr-3">
                           <Badge tone="warn">{normStatusText[item.status]}</Badge>
                         </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{item.observation_count}</td>
-                        <td className="py-2 pr-3 whitespace-nowrap">{formatDate(item.latest_observed_at)}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">
+                          {item.observation_count}
+                        </td>
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {formatDate(item.latest_observed_at)}
+                        </td>
                         <td className="py-2">
                           {quickPack ? (
                             <Button
@@ -116,7 +147,10 @@ export function NeedsBridgePage() {
                               Set the pack
                             </Button>
                           ) : (
-                            <Link to={fix.to} className={`rounded font-medium underline ${focusRing}`}>
+                            <Link
+                              to={fix.to}
+                              className={`rounded font-medium underline ${focusRing}`}
+                            >
                               {fix.text}
                             </Link>
                           )}

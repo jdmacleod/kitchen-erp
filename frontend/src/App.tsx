@@ -69,9 +69,10 @@ export const REDIRECTS: { from: string; to: string; query?: Record<string, strin
  * A section's own path ("/settings", typed or trimmed from a URL) opens the
  * section's first page, the same place its sidebar entry goes, instead of Not found.
  */
-export const SECTION_ROOTS: { from: string; to: string }[] = [...MAIN_SECTIONS, ...FOOTER_SECTIONS].flatMap((section) =>
-  section.prefix ? [{ from: section.prefix, to: section.to }] : [],
-);
+export const SECTION_ROOTS: { from: string; to: string }[] = [
+  ...MAIN_SECTIONS,
+  ...FOOTER_SECTIONS,
+].flatMap((section) => (section.prefix ? [{ from: section.prefix, to: section.to }] : []));
 
 /**
  * Route table (docs/spec/09-information-architecture.md, Routes). Mounted inside a

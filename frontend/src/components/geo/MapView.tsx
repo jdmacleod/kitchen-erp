@@ -162,7 +162,9 @@ export async function glyphsPresent(): Promise<boolean> {
 /** A label layer without its icon: the Protomaps sprite is not shipped (no stated licence). */
 function withoutIcons(layer: LayerSpecification): LayerSpecification {
   if (layer.type !== "symbol" || !layer.layout) return layer;
-  const layout = Object.fromEntries(Object.entries(layer.layout).filter(([key]) => !key.startsWith("icon-")));
+  const layout = Object.fromEntries(
+    Object.entries(layer.layout).filter(([key]) => !key.startsWith("icon-")),
+  );
   return { ...layer, layout } as LayerSpecification;
 }
 
@@ -178,12 +180,22 @@ function buildStyle(present: boolean, labelled: boolean): StyleSpecification {
     return {
       version: 8,
       sources: {},
-      layers: [{ id: "ground", type: "background", paint: { "background-color": basemapColours(prefersDark()).background } }],
+      layers: [
+        {
+          id: "ground",
+          type: "background",
+          paint: { "background-color": basemapColours(prefersDark()).background },
+        },
+      ],
     };
   }
   // The Protomaps light/dark flavours recoloured onto the Market palette (spec 08).
   const dark = prefersDark();
-  const theme = { ...namedTheme(dark ? "dark" : "light"), ...basemapColours(dark), ...basemapLabelColours(dark) };
+  const theme = {
+    ...namedTheme(dark ? "dark" : "light"),
+    ...basemapColours(dark),
+    ...basemapLabelColours(dark),
+  };
   const layers: LayerSpecification[] = noLabelsWithCustomTheme("protomaps", theme).filter(
     (layer) => layer.type !== "symbol",
   );
@@ -198,7 +210,10 @@ function buildStyle(present: boolean, labelled: boolean): StyleSpecification {
   // the theme's CDN (criterion 29); without them the map stays unlabelled.
   if (labelled) {
     style.glyphs = `${window.location.origin}${GLYPHS_PATH}`;
-    style.layers = [...layers, ...labelsWithCustomTheme("protomaps", theme, "en").map(withoutIcons)];
+    style.layers = [
+      ...layers,
+      ...labelsWithCustomTheme("protomaps", theme, "en").map(withoutIcons),
+    ];
   }
   return style;
 }
@@ -236,7 +251,22 @@ function fix(value: number): string {
  * own origin, and when the extract is missing draws a plain ground instead.
  * Nothing here ever reaches another origin.
  */
-export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapClick, draft, onTilesStatus, onMapError, label, className = "", initialView = null, centerOn = null, onViewChange, path = null }: MapViewProps) {
+export function MapView({
+  pins,
+  selectedId,
+  onPinSelect,
+  placing = false,
+  onMapClick,
+  draft,
+  onTilesStatus,
+  onMapError,
+  label,
+  className = "",
+  initialView = null,
+  centerOn = null,
+  onViewChange,
+  path = null,
+}: MapViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef(new globalThis.Map<string, Marker>());
   const draftRef = useRef<Marker | null>(null);
@@ -244,9 +274,23 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
   const initialViewRef = useRef(initialView);
   const [ready, setReady] = useState<MapLibreMap | null>(null);
   // Latest callbacks, read by handlers registered once.
-  const callbacks = useRef({ onPinSelect, onMapClick, placing, onTilesStatus, onMapError, onViewChange });
+  const callbacks = useRef({
+    onPinSelect,
+    onMapClick,
+    placing,
+    onTilesStatus,
+    onMapError,
+    onViewChange,
+  });
   useEffect(() => {
-    callbacks.current = { onPinSelect, onMapClick, placing, onTilesStatus, onMapError, onViewChange };
+    callbacks.current = {
+      onPinSelect,
+      onMapClick,
+      placing,
+      onTilesStatus,
+      onMapError,
+      onViewChange,
+    };
   });
 
   // Create the map once.
@@ -288,7 +332,11 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       });
       const reportView = () => {
         const at = created.getCenter();
-        callbacks.current.onViewChange?.({ lat: fix(at.lat), lon: fix(at.lng), zoom: created.getZoom() });
+        callbacks.current.onViewChange?.({
+          lat: fix(at.lat),
+          lon: fix(at.lng),
+          zoom: created.getZoom(),
+        });
       };
       created.on("moveend", reportView);
       created.on("load", reportView);
@@ -325,7 +373,9 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
           e.stopPropagation();
           callbacks.current.onPinSelect?.(pin.id);
         });
-        marker = new Marker({ element: el, anchor: "center" }).setLngLat([num(pin.lon), num(pin.lat)]).addTo(map);
+        marker = new Marker({ element: el, anchor: "center" })
+          .setLngLat([num(pin.lon), num(pin.lat)])
+          .addTo(map);
         markers.set(pin.id, marker);
       } else {
         marker.setLngLat([num(pin.lon), num(pin.lat)]);
@@ -339,9 +389,15 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       el.classList.toggle("kerp-pin--priced", Boolean(pin.priceLabel));
       el.classList.toggle("kerp-pin--stale", Boolean(pin.stale));
       const text = el.querySelector<HTMLElement>(".kerp-pin__label");
-      if (text) text.textContent = pin.priceLabel ? (pin.stale ? `${pin.priceLabel} (stale)` : pin.priceLabel) : "";
+      if (text)
+        text.textContent = pin.priceLabel
+          ? pin.stale
+            ? `${pin.priceLabel} (stale)`
+            : pin.priceLabel
+          : "";
       const shape = el.querySelector<HTMLElement>(".kerp-pin__shape");
-      if (shape && pin.kind === "stop") shape.textContent = pin.number === undefined ? "" : String(pin.number);
+      if (shape && pin.kind === "stop")
+        shape.textContent = pin.number === undefined ? "" : String(pin.number);
       el.setAttribute("aria-label", pin.label);
       el.setAttribute("aria-pressed", pin.id === selectedId ? "true" : "false");
     }
@@ -356,13 +412,22 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
       if (pins.length === 1) {
         map.jumpTo({ center: [num(pins[0].lon), num(pins[0].lat)], zoom: 13 });
       } else {
-        let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
+        let west = Infinity,
+          south = Infinity,
+          east = -Infinity,
+          north = -Infinity;
         for (const pin of pins) {
-          const lon = num(pin.lon), lat = num(pin.lat);
-          west = Math.min(west, lon); east = Math.max(east, lon);
-          south = Math.min(south, lat); north = Math.max(north, lat);
+          const lon = num(pin.lon),
+            lat = num(pin.lat);
+          west = Math.min(west, lon);
+          east = Math.max(east, lon);
+          south = Math.min(south, lat);
+          north = Math.max(north, lat);
         }
-        const bounds: LngLatBoundsLike = [[west, south], [east, north]];
+        const bounds: LngLatBoundsLike = [
+          [west, south],
+          [east, north],
+        ];
         map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 });
       }
     }
@@ -377,10 +442,14 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
     const data: PathFeature = {
       type: "Feature",
       properties: {},
-      geometry: { type: "LineString", coordinates: points.length >= 2 ? points.map((p) => [num(p.lon), num(p.lat)]) : [] },
+      geometry: {
+        type: "LineString",
+        coordinates: points.length >= 2 ? points.map((p) => [num(p.lon), num(p.lat)]) : [],
+      },
     };
     const apply = () => {
-      const source = map.getSource(PATH_SOURCE) as { setData?: (d: PathFeature) => void } | undefined;
+      const source = map.getSource(PATH_SOURCE) as
+        { setData?: (d: PathFeature) => void } | undefined;
       if (source?.setData) {
         source.setData(data);
         return;
@@ -392,7 +461,12 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
         type: "line",
         source: PATH_SOURCE,
         layout: { "line-join": "round", "line-cap": "round" },
-        paint: { "line-color": prefersDark() ? HEX["neutral-200"] : HEX["neutral-800"], "line-width": 3, "line-dasharray": [1.5, 1.5], "line-opacity": 0.85 },
+        paint: {
+          "line-color": prefersDark() ? HEX["neutral-200"] : HEX["neutral-800"],
+          "line-width": 3,
+          "line-dasharray": [1.5, 1.5],
+          "line-opacity": 0.85,
+        },
       });
     };
     if (map.isStyleLoaded()) apply();
@@ -411,7 +485,10 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
     // Keep the operator's zoom when they are already close in; only pull in when
     // the view is wide enough that a pin would be lost on it. A caller that knows
     // the right scale (a town, a single shop) says so.
-    map.jumpTo({ center: [num(centerLon), num(centerLat)], zoom: centerZoom ?? Math.max(map.getZoom(), 13) });
+    map.jumpTo({
+      center: [num(centerLon), num(centerLat)],
+      zoom: centerZoom ?? Math.max(map.getZoom(), 13),
+    });
   }, [ready, centerLat, centerLon, centerZoom]);
 
   // Sync the draft pin.
@@ -425,7 +502,9 @@ export function MapView({ pins, selectedId, onPinSelect, placing = false, onMapC
     }
     if (!draftRef.current) {
       const el = pinElement({ kind: "draft" }, "New pin (drag to move)");
-      const marker = new Marker({ element: el, anchor: "center", draggable: true }).setLngLat([num(draft.lon), num(draft.lat)]).addTo(map);
+      const marker = new Marker({ element: el, anchor: "center", draggable: true })
+        .setLngLat([num(draft.lon), num(draft.lat)])
+        .addTo(map);
       marker.on("dragend", () => {
         const at = marker.getLngLat();
         callbacks.current.onMapClick?.(fix(at.lat), fix(at.lng));

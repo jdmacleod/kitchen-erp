@@ -18,15 +18,27 @@ describe("pieces in a pack", () => {
   });
 
   it("offers pieces only for a weighed or measured pack, and saves them", async () => {
-    let product: Product = { ...flourProduct, pack_qty: "14", pack_unit: "oz", pack_count: null, piece_name: null };
+    let product: Product = {
+      ...flourProduct,
+      pack_qty: "14",
+      pack_unit: "oz",
+      pack_count: null,
+      piece_name: null,
+    };
     const calls = mockApi({
       "GET /auth/me": () => jsonResponse(200, adminUser),
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, product),
-      [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
+      [`GET /products/${flourProductId}/prices`]: () =>
+        jsonResponse(200, { points: [], latest: [] }),
       [`PATCH /products/${flourProductId}`]: () => {
-        product = { ...product, pack_count: 4, piece_name: "link", updated_at: "2026-03-03T00:00:00Z" };
+        product = {
+          ...product,
+          pack_count: 4,
+          piece_name: "link",
+          updated_at: "2026-03-03T00:00:00Z",
+        };
         return jsonResponse(200, product);
       },
     });
@@ -38,11 +50,16 @@ describe("pieces in a pack", () => {
     await user.type(within(form).getByLabelText("Piece name (optional)"), "Link");
     await user.click(within(form).getByRole("button", { name: "Save changes" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
-    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ pack_count: 4, piece_name: "link" });
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      pack_count: 4,
+      piece_name: "link",
+    });
 
     // A pack counted in pieces already says how many: the fields go away.
     const saved = await screen.findByRole("form", { name: "Edit product" });
-    await waitFor(() => expect(within(saved).getByLabelText("Pieces in the pack (optional)")).toHaveValue("4"));
+    await waitFor(() =>
+      expect(within(saved).getByLabelText("Pieces in the pack (optional)")).toHaveValue("4"),
+    );
     await user.selectOptions(within(saved).getByLabelText("Pack unit"), "each");
     expect(within(saved).queryByLabelText("Pieces in the pack (optional)")).not.toBeInTheDocument();
   });
@@ -53,13 +70,16 @@ describe("pieces in a pack", () => {
       "GET /health": () => jsonResponse(200, { status: "ok" }),
       "GET /units": () => jsonResponse(200, { items: units }),
       [`GET /products/${flourProductId}`]: () => jsonResponse(200, flourProduct),
-      [`GET /products/${flourProductId}/prices`]: () => jsonResponse(200, { points: [], latest: [] }),
+      [`GET /products/${flourProductId}/prices`]: () =>
+        jsonResponse(200, { points: [], latest: [] }),
     });
     const user = userEvent.setup();
     renderApp(`/catalog/products/${flourProductId}`);
     const form = await screen.findByRole("form", { name: "Edit product" });
     await user.type(await within(form).findByLabelText("Pieces in the pack (optional)"), "4.5");
     await user.click(within(form).getByRole("button", { name: "Save changes" }));
-    expect(await within(form).findByText("Pieces must be a whole number, like 5.")).toBeInTheDocument();
+    expect(
+      await within(form).findByText("Pieces must be a whole number, like 5."),
+    ).toBeInTheDocument();
   });
 });

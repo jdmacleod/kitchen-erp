@@ -8,7 +8,11 @@ export interface Chrome {
   setWide: (wide: boolean) => void;
 }
 
-export const ChromeContext = createContext<Chrome>({ openCapture: () => {}, openSearch: () => {}, setWide: () => {} });
+export const ChromeContext = createContext<Chrome>({
+  openCapture: () => {},
+  openSearch: () => {},
+  setWide: () => {},
+});
 
 export function useChrome(): Chrome {
   return useContext(ChromeContext);

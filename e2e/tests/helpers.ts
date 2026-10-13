@@ -16,7 +16,8 @@ export const ADMIN = {
  * of 201 -- an intermittent failure with nothing wrong in the code under test.
  * The random suffix is what makes it per-worker.
  */
-export const nextTag = (): string => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+export const nextTag = (): string =>
+  `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 export async function login(page: Page): Promise<void> {
   await loginAs(page, ADMIN.email, ADMIN.password);
@@ -84,7 +85,11 @@ export async function expectNoSidewaysScroll(page: Page, where: string): Promise
     for (const el of document.querySelectorAll("main *")) {
       const width = el.getBoundingClientRect().width;
       if (!widest || width > widest.width) {
-        widest = { tag: el.tagName, cls: String(el.className).slice(0, 80), width: Math.round(width) };
+        widest = {
+          tag: el.tagName,
+          cls: String(el.className).slice(0, 80),
+          width: Math.round(width),
+        };
       }
     }
     return { scrollWidth: doc.scrollWidth, innerWidth: window.innerWidth, widest };
@@ -94,7 +99,9 @@ export async function expectNoSidewaysScroll(page: Page, where: string): Promise
     scrollWidth,
     `${where} is ${scrollWidth}px wide on a ${deviceWidth}px device` +
       ` (innerWidth ${innerWidth}px — inflated by zoom-out when content overflows)` +
-      (widest ? `; widest element in main: <${widest.tag} class="${widest.cls}"> at ${widest.width}px` : ""),
+      (widest
+        ? `; widest element in main: <${widest.tag} class="${widest.cls}"> at ${widest.width}px`
+        : ""),
   ).toBeLessThanOrEqual(deviceWidth as number);
 }
 
@@ -113,11 +120,15 @@ export async function controlsUnder44(page: Page, scope: string): Promise<string
       const box = el.getBoundingClientRect();
       if (box.width === 0 && box.height === 0) continue; // not rendered
       // A checkbox or radio is sized by its label, which is the target.
-      const target = el.matches("input[type=checkbox], input[type=radio]") ? (el.closest("label") ?? el) : el;
+      const target = el.matches("input[type=checkbox], input[type=radio]")
+        ? (el.closest("label") ?? el)
+        : el;
       const t = target.getBoundingClientRect();
       // Half a pixel of slack: map markers sit on subpixel transforms.
       if (t.width < 43.5 || t.height < 43.5) {
-        found.push(`<${el.tagName.toLowerCase()}> "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 40)}" ${Math.round(t.width)}×${Math.round(t.height)}`);
+        found.push(
+          `<${el.tagName.toLowerCase()}> "${(el.textContent || el.getAttribute("aria-label") || "").trim().slice(0, 40)}" ${Math.round(t.width)}×${Math.round(t.height)}`,
+        );
       }
     }
     return found;

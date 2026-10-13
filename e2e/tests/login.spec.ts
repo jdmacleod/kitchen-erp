@@ -8,7 +8,10 @@ test("unauthenticated visit redirects to login", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
 });
 
-test("admin logs in and lands on the home route with no external requests", async ({ page, baseURL }) => {
+test("admin logs in and lands on the home route with no external requests", async ({
+  page,
+  baseURL,
+}) => {
   const external = watchExternalRequests(page, baseURL!);
   await login(page);
 

@@ -12,8 +12,24 @@ const group: ToIdentifyGroup = {
   raw_text_norm: "RVRBND BREAD FLR",
   line_count: 2,
   lines: [
-    { line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8202", purchase_id: receiptPurchaseId, raw_text: "RVRBND BREAD FLR 2KG", purchased_at: "2026-09-20T18:05:00Z", line_total: "6.50", qty: "1", unit: "each" },
-    { line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8302", purchase_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8004", raw_text: "RVRBND BREAD FLR 2KG", purchased_at: "2026-09-06T17:00:00Z", line_total: "6.25", qty: "1", unit: "each" },
+    {
+      line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8202",
+      purchase_id: receiptPurchaseId,
+      raw_text: "RVRBND BREAD FLR 2KG",
+      purchased_at: "2026-09-20T18:05:00Z",
+      line_total: "6.50",
+      qty: "1",
+      unit: "each",
+    },
+    {
+      line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8302",
+      purchase_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8004",
+      raw_text: "RVRBND BREAD FLR 2KG",
+      purchased_at: "2026-09-06T17:00:00Z",
+      line_total: "6.25",
+      qty: "1",
+      unit: "each",
+    },
   ],
 };
 
@@ -23,9 +39,11 @@ function baseRoutes() {
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
-    "GET /products/search": (call: RecordedCall) => jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
+    "GET /products/search": (call: RecordedCall) =>
+      jsonResponse(200, { items: call.query.get("q")?.includes("flour") ? hits : [] }),
     "GET /to-identify": () => jsonResponse(200, { items: [group] }),
-    "POST /to-identify/apply": (call: RecordedCall) => jsonResponse(200, { applied: (call.body as { line_ids?: string[] }).line_ids?.length ?? 2 }),
+    "POST /to-identify/apply": (call: RecordedCall) =>
+      jsonResponse(200, { applied: (call.body as { line_ids?: string[] }).line_ids?.length ?? 2 }),
   };
 }
 
@@ -38,7 +56,10 @@ describe("to-identify queue", () => {
     const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
     expect(card).toHaveTextContent("2 lines");
     expect(within(card).getByRole("checkbox", { name: "Apply to all 2" })).toBeChecked();
-    expect(within(card).getAllByRole("link")[0]).toHaveAttribute("href", `/shop/purchases/${receiptPurchaseId}`);
+    expect(within(card).getAllByRole("link")[0]).toHaveAttribute(
+      "href",
+      `/shop/purchases/${receiptPurchaseId}`,
+    );
 
     await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
     await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
@@ -48,7 +69,11 @@ describe("to-identify queue", () => {
       expect(found).toBeDefined();
       return found;
     });
-    expect(post?.body).toEqual({ vendor_id: chainLocation.vendor.id, raw_text_norm: "RVRBND BREAD FLR", product_id: hits[1].id });
+    expect(post?.body).toEqual({
+      vendor_id: chainLocation.vendor.id,
+      raw_text_norm: "RVRBND BREAD FLR",
+      product_id: hits[1].id,
+    });
     expect(await screen.findByText("Applied to 2 lines.")).toBeInTheDocument();
   });
 
@@ -56,7 +81,10 @@ describe("to-identify queue", () => {
     // Regression: ISSUE-005 — a one-line group offered "Apply to all 1", a choice that changed nothing
     // Found by /qa on 2026-10-13
     const one: ToIdentifyGroup = { ...group, line_count: 1, lines: [group.lines[0]] };
-    const calls = mockApi({ ...baseRoutes(), "GET /to-identify": () => jsonResponse(200, { items: [one] }) });
+    const calls = mockApi({
+      ...baseRoutes(),
+      "GET /to-identify": () => jsonResponse(200, { items: [one] }),
+    });
     const user = userEvent.setup();
     renderApp("/shop/receipts/identify");
     const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
@@ -69,7 +97,11 @@ describe("to-identify queue", () => {
       expect(found).toBeDefined();
       return found;
     });
-    expect(post?.body).toEqual({ vendor_id: chainLocation.vendor.id, raw_text_norm: "RVRBND BREAD FLR", product_id: hits[1].id });
+    expect(post?.body).toEqual({
+      vendor_id: chainLocation.vendor.id,
+      raw_text_norm: "RVRBND BREAD FLR",
+      product_id: hits[1].id,
+    });
   });
 
   it("ignores only the chosen line when apply-to-all is off", async () => {
@@ -88,20 +120,51 @@ describe("to-identify queue", () => {
       expect(found).toBeDefined();
       return found;
     });
-    expect(post?.body).toEqual({ vendor_id: chainLocation.vendor.id, raw_text_norm: "RVRBND BREAD FLR", ignore: true, line_ids: [group.lines[1].line_id] });
+    expect(post?.body).toEqual({
+      vendor_id: chainLocation.vendor.id,
+      raw_text_norm: "RVRBND BREAD FLR",
+      ignore: true,
+      line_ids: [group.lines[1].line_id],
+    });
     expect(await screen.findByText("Applied to 1 line.")).toBeInTheDocument();
   });
 
   it("starts a new product from the line's wording and offers the ingredient it names", async () => {
     // #88: New product started with an empty name, and every ingredient was typed.
-    const second: ToIdentifyGroup = { ...group, raw_text_norm: "OAT MILK", line_count: 1, lines: [{ ...group.lines[0], line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8402", raw_text: "OAT MILK 3.49" }] };
+    const second: ToIdentifyGroup = {
+      ...group,
+      raw_text_norm: "OAT MILK",
+      line_count: 1,
+      lines: [
+        {
+          ...group.lines[0],
+          line_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f8402",
+          raw_text: "OAT MILK 3.49",
+        },
+      ],
+    };
     const queue = [group, second];
     const calls = mockApi({
       ...baseRoutes(),
       "GET /to-identify": () => jsonResponse(200, { items: queue }),
       "GET /ingredients/in-text": (call: RecordedCall) =>
         jsonResponse(200, {
-          items: call.query.get("text") === "RVRBND BREAD FLR" ? [{ kind: "ingredient", id: flour.id, name: flour.name, canonical_unit: flour.canonical_unit, active: true, category: null, category_key: null, matched_spelling: null, exact: true }] : [],
+          items:
+            call.query.get("text") === "RVRBND BREAD FLR"
+              ? [
+                  {
+                    kind: "ingredient",
+                    id: flour.id,
+                    name: flour.name,
+                    canonical_unit: flour.canonical_unit,
+                    active: true,
+                    category: null,
+                    category_key: null,
+                    matched_spelling: null,
+                    exact: true,
+                  },
+                ]
+              : [],
         }),
       "POST /products": () => jsonResponse(201, flourProduct),
       "POST /to-identify/apply": () => {
@@ -119,14 +182,27 @@ describe("to-identify queue", () => {
     // Offered, not chosen: nothing is picked until the button is pressed.
     const offered = await within(form).findByRole("group", { name: "Named on the receipt line" });
     await user.click(within(offered).getByRole("button", { name: flour.name }));
-    expect(within(form).getByTestId("identify-0-new-ingredient-choice")).toHaveTextContent(flour.name);
+    expect(within(form).getByTestId("identify-0-new-ingredient-choice")).toHaveTextContent(
+      flour.name,
+    );
     await user.click(within(form).getByRole("button", { name: "Create product" }));
 
-    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/products")?.body).toMatchObject({ name: "Rvrbnd bread flr", ingredient_id: flour.id }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path === "/products")?.body).toMatchObject({
+        name: "Rvrbnd bread flr",
+        ingredient_id: flour.id,
+      }),
+    );
     // The group is answered and the next one's product box has focus.
-    await waitFor(() => expect(screen.queryByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" })).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" }),
+      ).not.toBeInTheDocument(),
+    );
     const next = screen.getByRole("group", { name: "Millstone Market: OAT MILK" });
-    await waitFor(() => expect(within(next).getByRole("combobox", { name: "Product" })).toHaveFocus());
+    await waitFor(() =>
+      expect(within(next).getByRole("combobox", { name: "Product" })).toHaveFocus(),
+    );
   });
 
   it("says when there is nothing to identify", async () => {
@@ -142,17 +218,24 @@ describe("to-identify queue", () => {
     const calls = mockApi({
       ...baseRoutes(),
       "GET /to-identify": () => jsonResponse(200, { items: remembered === 0 ? [coded] : [] }),
-      [`POST /purchases/${receiptPurchaseId}/lines/${group.lines[0].line_id}/remember-code`]: () => {
-        remembered += 1;
-        return jsonResponse(200, { scheme: "vendor_sku", value: "88001", product_id: hits[1].id });
-      },
+      [`POST /purchases/${receiptPurchaseId}/lines/${group.lines[0].line_id}/remember-code`]:
+        () => {
+          remembered += 1;
+          return jsonResponse(200, {
+            scheme: "vendor_sku",
+            value: "88001",
+            product_id: hits[1].id,
+          });
+        },
     });
     const user = userEvent.setup();
     renderApp("/shop/receipts/identify");
     const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
     await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
     await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
-    const remember = await screen.findByRole("button", { name: `Remember 88001 for ${hits[1].name}` });
+    const remember = await screen.findByRole("button", {
+      name: `Remember 88001 for ${hits[1].name}`,
+    });
     expect(calls.some((c) => c.path.endsWith("/remember-code"))).toBe(false);
     await user.click(remember);
     expect(await screen.findByText(`Remembered 88001 for ${hits[1].name}.`)).toBeInTheDocument();

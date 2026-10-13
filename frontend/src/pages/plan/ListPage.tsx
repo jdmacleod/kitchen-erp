@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { itemName, listKeys, useArchivedLists, useArchiveList, useShoppingList, type ShoppingItem, type ShoppingList } from "../../api/shoppingList";
+import {
+  itemName,
+  listKeys,
+  useArchivedLists,
+  useArchiveList,
+  useShoppingList,
+  type ShoppingItem,
+  type ShoppingList,
+} from "../../api/shoppingList";
 import { Badge, Disclosure } from "../../components/catalog/fields";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
 import { useNotice } from "../../components/Notice";
@@ -9,7 +17,14 @@ import { AddFromRecipeDrawer, fromRecipeSentence } from "../../components/plan/A
 import { AddItemRow } from "../../components/plan/AddItemRow";
 import { KitchenTag } from "../../components/plan/KitchenTag";
 import { ListItemRow } from "../../components/plan/ListItemRow";
-import { Alert, Button, EmptyState, PageHeader, focusRing, secondaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  EmptyState,
+  PageHeader,
+  focusRing,
+  secondaryLinkClass,
+} from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
@@ -56,7 +71,14 @@ export function ListPage() {
       </>
     );
   }
-  return <ListView key={`${kitchen.currentId}:${listId ?? ""}`} homeBaseId={kitchen.currentId} kitchenName={kitchenName ?? "Kitchen"} listId={listId} />;
+  return (
+    <ListView
+      key={`${kitchen.currentId}:${listId ?? ""}`}
+      homeBaseId={kitchen.currentId}
+      kitchenName={kitchenName ?? "Kitchen"}
+      listId={listId}
+    />
+  );
 }
 
 function RetryAlert({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -74,7 +96,12 @@ function RetryAlert({ message, onRetry }: { message: string; onRetry: () => void
 
 function Skeleton() {
   return (
-    <div role="status" aria-label="Loading the list" className="flex flex-col gap-3" data-testid="list-skeleton">
+    <div
+      role="status"
+      aria-label="Loading the list"
+      className="flex flex-col gap-3"
+      data-testid="list-skeleton"
+    >
       {[0, 1, 2].map((i) => (
         <div key={i} className="flex items-center gap-3">
           <span className="size-7 rounded-full bg-neutral-200 dark:bg-neutral-800" />
@@ -86,7 +113,15 @@ function Skeleton() {
   );
 }
 
-function ListView({ homeBaseId, kitchenName, listId }: { homeBaseId: string; kitchenName: string; listId: string | null }) {
+function ListView({
+  homeBaseId,
+  kitchenName,
+  listId,
+}: {
+  homeBaseId: string;
+  kitchenName: string;
+  listId: string | null;
+}) {
   const list = useShoppingList(homeBaseId, listId);
   const listKey = listKeys.list(homeBaseId, listId);
   const notice = useNotice();
@@ -98,13 +133,17 @@ function ListView({ homeBaseId, kitchenName, listId }: { homeBaseId: string; kit
   const [announced, setAnnounced] = useState("");
   const name = list.data?.home_base_name ?? kitchenName;
   const archived = list.data?.status === "archived";
-  const title = archived ? `${name} list · archived ${formatDate(list.data?.archived_at)}` : `${name} list`;
+  const title = archived
+    ? `${name} list · archived ${formatDate(list.data?.archived_at)}`
+    : `${name} list`;
 
   const onError = (e: unknown) => notice.show({ tone: "error", message: errorMessage(e) });
   const onNotice = (message: string) => notice.show({ tone: "success", message });
   const onToggled = (item: ShoppingItem, checked: boolean) => {
     const left = (list.data?.unchecked.length ?? 0) + (checked ? -1 : 1);
-    setAnnounced(`${checked ? "Checked" : "Unchecked"} ${itemName(item)}. ${Math.max(0, left)} to get.`);
+    setAnnounced(
+      `${checked ? "Checked" : "Unchecked"} ${itemName(item)}. ${Math.max(0, left)} to get.`,
+    );
   };
 
   const actions: MoreAction[] = archived
@@ -150,26 +189,56 @@ function ListView({ homeBaseId, kitchenName, listId }: { homeBaseId: string; kit
         </PageHeader>
       </div>
 
-      {more ? <MoreActionsDialog actions={actions.map((a) => ({ ...a, open: () => { setMore(false); a.open(); } }))} onClose={() => setMore(false)} /> : null}
+      {more ? (
+        <MoreActionsDialog
+          actions={actions.map((a) => ({
+            ...a,
+            open: () => {
+              setMore(false);
+              a.open();
+            },
+          }))}
+          onClose={() => setMore(false)}
+        />
+      ) : null}
 
       <p aria-live="polite" className="sr-only" data-testid="list-announcement">
         {announced}
       </p>
 
-      {freshAsk && list.data ? <FreshListConfirm homeBaseId={homeBaseId} list={list.data} onClose={() => setFreshAsk(false)} /> : null}
+      {freshAsk && list.data ? (
+        <FreshListConfirm
+          homeBaseId={homeBaseId}
+          list={list.data}
+          onClose={() => setFreshAsk(false)}
+        />
+      ) : null}
 
       {archived ? (
         <Alert tone="info" className="mb-4">
-          This list was archived {formatDate(list.data?.archived_at)}. It is kept to read; nothing on it can change.
+          This list was archived {formatDate(list.data?.archived_at)}. It is kept to read; nothing
+          on it can change.
         </Alert>
       ) : null}
 
       {list.isPending ? (
         <Skeleton />
       ) : list.isError ? (
-        <RetryAlert message={`Couldn't load the list: ${errorMessage(list.error)}`} onRetry={() => void list.refetch()} />
+        <RetryAlert
+          message={`Couldn't load the list: ${errorMessage(list.error)}`}
+          onRetry={() => void list.refetch()}
+        />
       ) : (
-        <ListBody list={list.data} listKey={listKey} homeBaseId={homeBaseId} archived={archived} addInput={addInput} onToggled={onToggled} onError={onError} onNotice={onNotice} />
+        <ListBody
+          list={list.data}
+          listKey={listKey}
+          homeBaseId={homeBaseId}
+          archived={archived}
+          addInput={addInput}
+          onToggled={onToggled}
+          onError={onError}
+          onNotice={onNotice}
+        />
       )}
 
       {archived ? null : <PreviousLists homeBaseId={homeBaseId} />}
@@ -183,7 +252,10 @@ function ListView({ homeBaseId, kitchenName, listId }: { homeBaseId: string; kit
             notice.show({
               tone: "success",
               message: fromRecipeSentence(out, recipe.title),
-              action: out.skipped.length > 0 ? { label: "Resolve them", to: "/cook/recipes/resolve" } : undefined,
+              action:
+                out.skipped.length > 0
+                  ? { label: "Resolve them", to: "/cook/recipes/resolve" }
+                  : undefined,
             });
           }}
         />
@@ -203,12 +275,29 @@ interface ListBodyProps {
   onNotice: (message: string) => void;
 }
 
-function ListBody({ list, listKey, homeBaseId, archived, addInput, onToggled, onError, onNotice }: ListBodyProps) {
+function ListBody({
+  list,
+  listKey,
+  homeBaseId,
+  archived,
+  addInput,
+  onToggled,
+  onError,
+  onNotice,
+}: ListBodyProps) {
   const empty = list.unchecked.length === 0 && list.checked.length === 0;
   const rows = (items: ShoppingItem[]) => (
     <ul>
       {items.map((item) => (
-        <ListItemRow key={item.id} item={item} listKey={listKey} readOnly={archived} onToggled={onToggled} onError={onError} onNotice={onNotice} />
+        <ListItemRow
+          key={item.id}
+          item={item}
+          listKey={listKey}
+          readOnly={archived}
+          onToggled={onToggled}
+          onError={onError}
+          onNotice={onNotice}
+        />
       ))}
     </ul>
   );
@@ -221,13 +310,20 @@ function ListBody({ list, listKey, homeBaseId, archived, addInput, onToggled, on
         </h2>
         {archived ? null : (
           <div className="mt-2 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900">
-            <AddItemRow homeBaseId={homeBaseId} inputRef={addInput} autoFocus={empty} onAdded={(item) => onNotice(`Added ${itemName(item)}.`)} />
+            <AddItemRow
+              homeBaseId={homeBaseId}
+              inputRef={addInput}
+              autoFocus={empty}
+              onAdded={(item) => onNotice(`Added ${itemName(item)}.`)}
+            />
           </div>
         )}
         {empty ? (
           <div className="mt-3">
             <EmptyState title={archived ? "This list was empty." : "Nothing on the list."}>
-              {archived ? null : "Add what you need above, add a recipe's ingredients with “Add from recipe”, or add an ingredient from its own page."}
+              {archived
+                ? null
+                : "Add what you need above, add a recipe's ingredients with “Add from recipe”, or add an ingredient from its own page."}
             </EmptyState>
           </div>
         ) : list.unchecked.length === 0 ? (
@@ -250,7 +346,15 @@ function ListBody({ list, listKey, homeBaseId, archived, addInput, onToggled, on
  * "Start a fresh list" confirms inline under the header, never in a dialog
  * (UI-8.2): the carry-over checkbox is on by default and focus lands on Cancel.
  */
-function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; list: ShoppingList; onClose: () => void }) {
+function FreshListConfirm({
+  homeBaseId,
+  list,
+  onClose,
+}: {
+  homeBaseId: string;
+  list: ShoppingList;
+  onClose: () => void;
+}) {
   const archive = useArchiveList();
   const notice = useNotice();
   const [carry, setCarry] = useState(true);
@@ -266,7 +370,11 @@ function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; l
       {
         onSuccess: (out) => {
           onClose();
-          notice.show({ tone: "success", message: "Started a fresh list.", action: { label: "Open the old one", to: `/plan/list?list_id=${out.archived.id}` } });
+          notice.show({
+            tone: "success",
+            message: "Started a fresh list.",
+            action: { label: "Open the old one", to: `/plan/list?list_id=${out.archived.id}` },
+          });
         },
       },
     );
@@ -274,10 +382,18 @@ function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; l
     <Alert tone="warn" className="mb-4">
       <div className="flex flex-col gap-2" data-testid="fresh-list-confirm">
         <p>
-          Archive this list and start a new one? {carry ? `${n} unchecked ${n === 1 ? "item carries" : "items carry"} over.` : `${n} unchecked ${n === 1 ? "item stays" : "items stay"} on the old list.`}
+          Archive this list and start a new one?{" "}
+          {carry
+            ? `${n} unchecked ${n === 1 ? "item carries" : "items carry"} over.`
+            : `${n} unchecked ${n === 1 ? "item stays" : "items stay"} on the old list.`}
         </p>
         <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-8">
-          <input type="checkbox" className={`size-4 ${focusRing}`} checked={carry} onChange={(e) => setCarry(e.target.checked)} />
+          <input
+            type="checkbox"
+            className={`size-4 ${focusRing}`}
+            checked={carry}
+            onChange={(e) => setCarry(e.target.checked)}
+          />
           Carry unchecked items over
         </label>
         <div className="flex flex-wrap gap-2">
@@ -288,7 +404,11 @@ function FreshListConfirm({ homeBaseId, list, onClose }: { homeBaseId: string; l
             {archive.isPending ? "Starting…" : "Start a fresh list"}
           </Button>
         </div>
-        {archive.isError ? <span className="text-red-800 dark:text-red-200">Couldn&apos;t start a fresh list: {errorMessage(archive.error)}</span> : null}
+        {archive.isError ? (
+          <span className="text-red-800 dark:text-red-200">
+            Couldn&apos;t start a fresh list: {errorMessage(archive.error)}
+          </span>
+        ) : null}
       </div>
     </Alert>
   );
@@ -305,14 +425,22 @@ function PreviousLists({ homeBaseId }: { homeBaseId: string }) {
           Loading…
         </p>
       ) : lists.isError ? (
-        <Alert tone="error">Couldn&apos;t load the previous lists: {errorMessage(lists.error)}</Alert>
+        <Alert tone="error">
+          Couldn&apos;t load the previous lists: {errorMessage(lists.error)}
+        </Alert>
       ) : lists.data.length === 0 ? (
         <p className={`text-sm ${muted}`}>No previous lists yet.</p>
       ) : (
         <ul className="flex flex-col">
           {lists.data.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 border-t border-neutral-200 py-2 text-sm first:border-t-0 dark:border-neutral-800">
-              <Link to={`/plan/list?list_id=${l.id}`} className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}>
+            <li
+              key={l.id}
+              className="flex flex-wrap items-baseline gap-x-3 border-t border-neutral-200 py-2 text-sm first:border-t-0 dark:border-neutral-800"
+            >
+              <Link
+                to={`/plan/list?list_id=${l.id}`}
+                className={`inline-flex min-h-11 items-center rounded underline lg:min-h-0 ${focusRing}`}
+              >
                 Archived {formatDate(l.archived_at)}
               </Link>
               <span className={muted}>

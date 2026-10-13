@@ -41,7 +41,10 @@ describe("adding a line in review", () => {
     renderApp(base);
     const form = await newLine(user, "discount", "-3.75");
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
-    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ line_kind: "discount", line_total: "-3.75" });
+    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({
+      line_kind: "discount",
+      line_total: "-3.75",
+    });
     expect(within(form).queryByRole("alert")).not.toBeInTheDocument();
   });
 

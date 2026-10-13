@@ -21,9 +21,20 @@ export function sortKitchens(kitchens: readonly HomeBase[]): HomeBase[] {
  * the server's suggestion (the only kitchen); the first by name. A kitchen that
  * no longer exists counts for nothing.
  */
-export function resolveKitchen(settings: Settings | undefined, kitchens: readonly HomeBase[], rememberedKitchenId: string | null): string | null {
-  const known = (id: string | null | undefined) => (id && kitchens.some((k) => k.id === id) ? id : null);
-  return known(settings?.current_home_base_id) ?? known(rememberedKitchenId) ?? known(settings?.suggested_home_base_id) ?? sortKitchens(kitchens)[0]?.id ?? null;
+export function resolveKitchen(
+  settings: Settings | undefined,
+  kitchens: readonly HomeBase[],
+  rememberedKitchenId: string | null,
+): string | null {
+  const known = (id: string | null | undefined) =>
+    id && kitchens.some((k) => k.id === id) ? id : null;
+  return (
+    known(settings?.current_home_base_id) ??
+    known(rememberedKitchenId) ??
+    known(settings?.suggested_home_base_id) ??
+    sortKitchens(kitchens)[0]?.id ??
+    null
+  );
 }
 
 export interface CurrentKitchen {
@@ -45,7 +56,9 @@ export interface CurrentKitchen {
  * to the server once, so a second device reads the same answer (UI-2.5); one
  * mounted caller passes it, the sidebar's switcher.
  */
-export function useCurrentKitchen({ writeBack = false }: { writeBack?: boolean } = {}): CurrentKitchen {
+export function useCurrentKitchen({
+  writeBack = false,
+}: { writeBack?: boolean } = {}): CurrentKitchen {
   const built = usePlanBuilt();
   const settings = useSettings(built);
   const homeBases = useHomeBases(built);
@@ -66,7 +79,15 @@ export function useCurrentKitchen({ writeBack = false }: { writeBack?: boolean }
   // The fallback is written back once per answer (17, 4A).
   const written = useRef<string | null>(null);
   useEffect(() => {
-    if (!writeBack || !unset || waiting || !currentId || set.isPending || written.current === currentId) return;
+    if (
+      !writeBack ||
+      !unset ||
+      waiting ||
+      !currentId ||
+      set.isPending ||
+      written.current === currentId
+    )
+      return;
     written.current = currentId;
     set.mutate(currentId);
   }, [writeBack, unset, waiting, currentId, set]);

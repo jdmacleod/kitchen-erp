@@ -9,7 +9,9 @@ import { AmountRows, type AmountRow } from "./AmountRows";
 import { amountsInput, halfFilledAmount } from "./amounts";
 import { ItemFlags } from "./ItemFlags";
 
-type Target = { kind: "ingredient"; id: string; ingredient: IngredientSummary } | { kind: "product"; id: string; name: string };
+type Target =
+  | { kind: "ingredient"; id: string; ingredient: IngredientSummary }
+  | { kind: "product"; id: string; name: string };
 
 interface AddItemRowProps {
   homeBaseId: string;
@@ -30,7 +32,13 @@ const EMPTY: AmountRow[] = [{ amount: "", unit: "" }];
  * quality" chips, a note behind "Add a note", and "Add". Enter adds and keeps
  * focus in the picker, so a list can be typed through.
  */
-export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, onAdded }: AddItemRowProps) {
+export function AddItemRow({
+  homeBaseId,
+  compact = false,
+  inputRef,
+  autoFocus,
+  onAdded,
+}: AddItemRowProps) {
   const add = useAddItem();
   const ownRef = useRef<HTMLInputElement | null>(null);
   const ref = inputRef ?? ownRef;
@@ -80,7 +88,9 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
       amounts: compact ? [] : amountsInput(amounts),
       deferrable: compact ? false : deferrable,
       note: !compact && trimmedNote ? trimmedNote : null,
-      ...(!compact && target.kind === "ingredient" && minQuality ? { min_quality: Number(minQuality) } : {}),
+      ...(!compact && target.kind === "ingredient" && minQuality
+        ? { min_quality: Number(minQuality) }
+        : {}),
       added_from: "manual",
     };
     add.mutate(input, {
@@ -107,12 +117,21 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
     if (choice.kind !== "existing") return;
     chosen({ kind: "ingredient", id: choice.ingredient.id, ingredient: choice.ingredient });
   };
-  const onProduct = (hit: SearchHit) => chosen({ kind: "product", id: hit.id, name: productTitle(hit) });
+  const onProduct = (hit: SearchHit) =>
+    chosen({ kind: "product", id: hit.id, name: productTitle(hit) });
 
-  const pickerValue: IngredientChoice | null = target?.kind === "ingredient" ? { kind: "existing", ingredient: target.ingredient } : null;
+  const pickerValue: IngredientChoice | null =
+    target?.kind === "ingredient" ? { kind: "existing", ingredient: target.ingredient } : null;
 
   return (
-    <form id={formId} onSubmit={onSubmit} noValidate aria-label="Add an item" className="flex flex-col gap-2" data-testid={formId}>
+    <form
+      id={formId}
+      onSubmit={onSubmit}
+      noValidate
+      aria-label="Add an item"
+      className="flex flex-col gap-2"
+      data-testid={formId}
+    >
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <div className="min-w-0 flex-1">
           {byProduct ? (
@@ -123,16 +142,34 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
                   <span className="font-medium" data-testid="add-product-choice">
                     {target.name}
                   </span>
-                  <Button variant="ghost" className="min-h-11 px-2 lg:min-h-8" onClick={() => setTarget(null)}>
+                  <Button
+                    variant="ghost"
+                    className="min-h-11 px-2 lg:min-h-8"
+                    onClick={() => setTarget(null)}
+                  >
                     Change
                   </Button>
                 </div>
               </div>
             ) : (
-              <ProductTypeahead id={`${formId}-product`} label="Which product?" inputRef={ref} autoFocus={autoFocus} onSelect={onProduct} />
+              <ProductTypeahead
+                id={`${formId}-product`}
+                label="Which product?"
+                inputRef={ref}
+                autoFocus={autoFocus}
+                onSelect={onProduct}
+              />
             )
           ) : (
-            <IngredientPicker id={`${formId}-ingredient`} label="What do you need?" value={pickerValue} onChange={onIngredient} allowCreate={false} inputRef={ref} autoFocus={autoFocus} />
+            <IngredientPicker
+              id={`${formId}-ingredient`}
+              label="What do you need?"
+              value={pickerValue}
+              onChange={onIngredient}
+              allowCreate={false}
+              inputRef={ref}
+              autoFocus={autoFocus}
+            />
           )}
         </div>
         {compact ? null : (
@@ -157,10 +194,24 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
         <>
           <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap lg:items-end lg:gap-4">
             <AmountRows idPrefix={formId} rows={amounts} onChange={setAmounts} />
-            <ItemFlags idPrefix={formId} kind={target?.kind ?? (byProduct ? "product" : "ingredient")} deferrable={deferrable} minQuality={minQuality} onDeferrable={setDeferrable} onMinQuality={setMinQuality} />
+            <ItemFlags
+              idPrefix={formId}
+              kind={target?.kind ?? (byProduct ? "product" : "ingredient")}
+              deferrable={deferrable}
+              minQuality={minQuality}
+              onDeferrable={setDeferrable}
+              onMinQuality={setMinQuality}
+            />
           </div>
           {noteOpen ? (
-            <Field id={`${formId}-note`} label="Note" value={note} maxLength={500} autoComplete="off" onChange={(e) => setNote(e.target.value)} />
+            <Field
+              id={`${formId}-note`}
+              label="Note"
+              value={note}
+              maxLength={500}
+              autoComplete="off"
+              onChange={(e) => setNote(e.target.value)}
+            />
           ) : (
             <div>
               <Button variant="ghost" className="px-2" onClick={() => setNoteOpen(true)}>
@@ -171,7 +222,9 @@ export function AddItemRow({ homeBaseId, compact = false, inputRef, autoFocus, o
         </>
       )}
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-      {add.isError ? <Alert tone="error">Couldn&apos;t add it: {errorMessage(add.error)}</Alert> : null}
+      {add.isError ? (
+        <Alert tone="error">Couldn&apos;t add it: {errorMessage(add.error)}</Alert>
+      ) : null}
     </form>
   );
 }

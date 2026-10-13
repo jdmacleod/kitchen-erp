@@ -81,7 +81,13 @@ export function QuickPackEditor({ productId, title, onSaved, onCancel }: QuickPa
           value={qty}
           onChange={(e) => setQty(e.target.value)}
         />
-        <UnitSelect id={`${prefix}-unit`} label="Pack unit" value={unit} onChange={setUnit} emptyLabel="Choose…" />
+        <UnitSelect
+          id={`${prefix}-unit`}
+          label="Pack unit"
+          value={unit}
+          onChange={setUnit}
+          emptyLabel="Choose…"
+        />
         {showPieces ? (
           <Field
             id={`${prefix}-pieces`}

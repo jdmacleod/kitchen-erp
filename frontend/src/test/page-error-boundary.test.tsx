@@ -29,7 +29,9 @@ describe("a page that fails to render", () => {
     const nav = screen.getAllByRole("navigation")[0];
     await user.click(within(nav).getAllByRole("link", { name: /Shop|Purchases/ })[0]);
     expect(await screen.findByRole("heading", { level: 1, name: /Purchases/ })).toBeInTheDocument();
-    expect(within(mainRegion()).queryByText("This page couldn't be shown.")).not.toBeInTheDocument();
+    expect(
+      within(mainRegion()).queryByText("This page couldn't be shown."),
+    ).not.toBeInTheDocument();
     quiet.mockRestore();
   });
 });

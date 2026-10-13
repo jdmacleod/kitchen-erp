@@ -27,16 +27,13 @@ export function LocationGuard({ children }: { children: ReactNode }) {
       <EmptyState
         title="No locations yet"
         action={
-          <Link
-            to="/catalog/vendors?view=map&place=location"
-            className={primaryLinkClass}
-          >
+          <Link to="/catalog/vendors?view=map&place=location" className={primaryLinkClass}>
             Open the map
           </Link>
         }
       >
-        A purchase happens somewhere. Dropping a pin on the map names the shop and its
-        location in one step.
+        A purchase happens somewhere. Dropping a pin on the map names the shop and its location in
+        one step.
       </EmptyState>
     );
   }

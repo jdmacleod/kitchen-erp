@@ -2,8 +2,22 @@
 // manual purchases. Decimals are strings end to end; timestamps are UTC ISO
 // strings and are localized only for display.
 
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { qs, validationMessages, type CanonicalUnit, type IngredientCreateInput, type IngredientMatch, type Page, type ProductCreateInput } from "./catalog";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
+import {
+  qs,
+  validationMessages,
+  type CanonicalUnit,
+  type IngredientCreateInput,
+  type IngredientMatch,
+  type Page,
+  type ProductCreateInput,
+} from "./catalog";
 import type { CategoryKey } from "../components/CategoryChip";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
@@ -21,7 +35,13 @@ export interface ObservationProduct {
   brand: string | null;
   pack_qty: string | null;
   pack_unit: string | null;
-  ingredient: { id: string; name: string; canonical_unit: CanonicalUnit; category: string | null; category_key: CategoryKey | null };
+  ingredient: {
+    id: string;
+    name: string;
+    canonical_unit: CanonicalUnit;
+    category: string | null;
+    category_key: CategoryKey | null;
+  };
 }
 
 export interface ObservationLocation {
@@ -75,7 +95,16 @@ export interface PurchaseLineProduct {
   category_key: CategoryKey | null;
 }
 
-export type Resolution = "barcode" | "identifier" | "alias" | "fuzzy" | "llm" | "similar" | "manual" | "unmatched" | "ignored";
+export type Resolution =
+  | "barcode"
+  | "identifier"
+  | "alias"
+  | "fuzzy"
+  | "llm"
+  | "similar"
+  | "manual"
+  | "unmatched"
+  | "ignored";
 export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "similar" | "code";
 export type AcceptedKind = "alias" | "fuzzy" | "llm" | "similar" | "code";
 
@@ -266,7 +295,9 @@ export interface PurchaseFilters {
 }
 
 /** Exactly one of product_id, ignore, or product. */
-export type ResolveInput = ({ product_id: string } | { ignore: true } | { product: ProductCreateInput }) & {
+export type ResolveInput = (
+  { product_id: string } | { ignore: true } | { product: ProductCreateInput }
+) & {
   accepted_kind?: AcceptedKind;
 };
 
@@ -322,10 +353,11 @@ export interface ToIdentifyGroup {
   code?: CodeOffer | null;
 }
 
-export type ToIdentifyApplyInput = { vendor_id: string; raw_text_norm: string; line_ids?: string[] } & (
-  | { product_id: string }
-  | { ignore: true }
-);
+export type ToIdentifyApplyInput = {
+  vendor_id: string;
+  raw_text_norm: string;
+  line_ids?: string[];
+} & ({ product_id: string } | { ignore: true });
 
 // --- errors -----------------------------------------------------------------
 
@@ -366,13 +398,15 @@ const enc = encodeURIComponent;
 
 export const purchaseKeys = {
   observations: ["price-observations"] as const,
-  observationList: (filters: ObservationFilters) => ["price-observations", "list", filters] as const,
+  observationList: (filters: ObservationFilters) =>
+    ["price-observations", "list", filters] as const,
   purchases: ["purchases"] as const,
   purchaseList: (filters: PurchaseFilters) => ["purchases", "list", filters] as const,
   purchase: (id: string) => ["purchases", "detail", id] as const,
   lastUnit: (productId: string) => ["products", "last-purchase-unit", productId] as const,
   toIdentify: ["to-identify"] as const,
-  storeCodeOffer: (id: string, locationId: string | null) => ["purchases", "store-code-offer", id, locationId] as const,
+  storeCodeOffer: (id: string, locationId: string | null) =>
+    ["purchases", "store-code-offer", id, locationId] as const,
 };
 
 function invalidateObservations(client: QueryClient) {
@@ -469,7 +503,10 @@ export function usePurchases(filters: PurchaseFilters, limit = 50) {
 
 function sameStatus(key: readonly unknown[], filters: PurchaseFilters): boolean {
   const before = key[2] as PurchaseFilters | undefined;
-  return (before?.status ?? "") === (filters.status ?? "") && before?.vendor_location_id === filters.vendor_location_id;
+  return (
+    (before?.status ?? "") === (filters.status ?? "") &&
+    before?.vendor_location_id === filters.vendor_location_id
+  );
 }
 
 /**
@@ -506,7 +543,8 @@ export function usePurchase(id: string | undefined) {
 export function useCreatePurchase() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: PurchaseInput) => api<Purchase>("/purchases", { method: "POST", body: input, headers: idem() }),
+    mutationFn: (input: PurchaseInput) =>
+      api<Purchase>("/purchases", { method: "POST", body: input, headers: idem() }),
     onSuccess: (created) => {
       client.setQueryData(purchaseKeys.purchase(created.id), created);
       invalidatePurchases(client);
@@ -518,7 +556,8 @@ export function useCreatePurchase() {
 export function useUpdatePurchase(id: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: PurchaseInput) => api<Purchase>(`/purchases/${enc(id)}`, { method: "PUT", body: input }),
+    mutationFn: (input: PurchaseInput) =>
+      api<Purchase>(`/purchases/${enc(id)}`, { method: "PUT", body: input }),
     onSuccess: (updated) => {
       client.setQueryData(purchaseKeys.purchase(id), updated);
       invalidatePurchases(client);
@@ -544,8 +583,13 @@ function usePurchaseMutation<I>(id: string, call: (input: I) => Promise<Purchase
 // --- review (2D) ------------------------------------------------------------
 
 export function useResolveLine(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, ({ lineId, ...input }: ResolveInput & { lineId: string }) =>
-    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/resolve`, { method: "POST", body: input }),
+  return usePurchaseMutation(
+    purchaseId,
+    ({ lineId, ...input }: ResolveInput & { lineId: string }) =>
+      api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/resolve`, {
+        method: "POST",
+        body: input,
+      }),
   );
 }
 
@@ -554,26 +598,41 @@ export function useRememberCode(purchaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (lineId: string) =>
-      api<{ scheme: string; value: string; product_id: string }>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/remember-code`, { method: "POST" }),
+      api<{ scheme: string; value: string; product_id: string }>(
+        `/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/remember-code`,
+        { method: "POST" },
+      ),
     onSuccess: () => void client.invalidateQueries({ queryKey: purchaseKeys.purchase(purchaseId) }),
   });
 }
 
 export function useReResolveLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, (lineId: string) =>
-    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/re-resolve`, { method: "POST" }),
+    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/re-resolve`, {
+      method: "POST",
+    }),
   );
 }
 
 export function usePatchLine(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, ({ lineId, ...input }: LinePatchInput & { lineId: string }) =>
-    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}`, { method: "PATCH", body: input }),
+  return usePurchaseMutation(
+    purchaseId,
+    ({ lineId, ...input }: LinePatchInput & { lineId: string }) =>
+      api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}`, {
+        method: "PATCH",
+        body: input,
+      }),
   );
 }
 
 export function useLineKeeping(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, ({ lineId, ...input }: LineKeepingInput & { lineId: string }) =>
-    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/keeping`, { method: "PUT", body: input }),
+  return usePurchaseMutation(
+    purchaseId,
+    ({ lineId, ...input }: LineKeepingInput & { lineId: string }) =>
+      api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/keeping`, {
+        method: "PUT",
+        body: input,
+      }),
   );
 }
 
@@ -604,8 +663,13 @@ export function useAddLine(purchaseId: string) {
 
 /** Join a line that is only a weight or count to the item it belongs to (#87). */
 export function useMergeLine(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, ({ lineId, intoLineId }: { lineId: string; intoLineId: string }) =>
-    api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/merge`, { method: "POST", body: { into_line_id: intoLineId } }),
+  return usePurchaseMutation(
+    purchaseId,
+    ({ lineId, intoLineId }: { lineId: string; intoLineId: string }) =>
+      api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/merge`, {
+        method: "POST",
+        body: { into_line_id: intoLineId },
+      }),
   );
 }
 
@@ -622,7 +686,9 @@ export function usePatchPurchase(purchaseId: string) {
 }
 
 export function useCommitPurchase(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/commit`, { method: "POST" }));
+  return usePurchaseMutation(purchaseId, () =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/commit`, { method: "POST" }),
+  );
 }
 
 /** A store code the receipt printed that review may remember on its location (1F, design D10). */
@@ -638,7 +704,8 @@ export interface StoreCodeOffer {
 export function useStoreCodeOffer(purchaseId: string, locationId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: purchaseKeys.storeCodeOffer(purchaseId, locationId),
-    queryFn: () => api<{ offer: StoreCodeOffer | null }>(`/purchases/${enc(purchaseId)}/store-code-offer`),
+    queryFn: () =>
+      api<{ offer: StoreCodeOffer | null }>(`/purchases/${enc(purchaseId)}/store-code-offer`),
     select: (data) => data.offer,
     enabled: enabled && locationId !== null,
   });
@@ -648,7 +715,10 @@ export function useRememberStoreCode(purchaseId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (code: string) =>
-      api<StoreCodeOffer>(`/purchases/${enc(purchaseId)}/remember-store-code`, { method: "POST", body: { code } }),
+      api<StoreCodeOffer>(`/purchases/${enc(purchaseId)}/remember-store-code`, {
+        method: "POST",
+        body: { code },
+      }),
     onSuccess: () => void client.invalidateQueries({ queryKey: ["vendor-locations"] }),
   });
 }
@@ -666,7 +736,9 @@ export async function fetchNextDraft(excludeId: string): Promise<Purchase | null
  */
 /** A removed (voided) purchase back to review; committing records its prices anew (issue 210). */
 export function useRestorePurchase(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/restore`, { method: "POST" }));
+  return usePurchaseMutation(purchaseId, () =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/restore`, { method: "POST" }),
+  );
 }
 
 export function useRemovePurchase(purchaseId: string) {
@@ -674,14 +746,18 @@ export function useRemovePurchase(purchaseId: string) {
   return useMutation({
     mutationFn: async (): Promise<RemovedPurchase> => {
       try {
-        return await api<RemovedPurchase>(`/purchases/${enc(purchaseId)}/remove`, { method: "POST" });
+        return await api<RemovedPurchase>(`/purchases/${enc(purchaseId)}/remove`, {
+          method: "POST",
+        });
       } catch (e) {
-        if (isApiError(e) && e.status === 404) return { outcome: "delete", photo_deleted: false, purchase: null };
+        if (isApiError(e) && e.status === 404)
+          return { outcome: "delete", photo_deleted: false, purchase: null };
         throw e;
       }
     },
     onSuccess: (removed) => {
-      if (removed.purchase) client.setQueryData(purchaseKeys.purchase(purchaseId), removed.purchase);
+      if (removed.purchase)
+        client.setQueryData(purchaseKeys.purchase(purchaseId), removed.purchase);
       else client.removeQueries({ queryKey: purchaseKeys.purchase(purchaseId) });
       invalidatePurchases(client);
       invalidateObservations(client);
@@ -696,7 +772,9 @@ export function useRemovePurchase(purchaseId: string) {
 }
 
 export function useReopenPurchase(purchaseId: string) {
-  return usePurchaseMutation(purchaseId, () => api<Purchase>(`/purchases/${enc(purchaseId)}/reopen`, { method: "POST" }));
+  return usePurchaseMutation(purchaseId, () =>
+    api<Purchase>(`/purchases/${enc(purchaseId)}/reopen`, { method: "POST" }),
+  );
 }
 
 // --- to-identify queue ------------------------------------------------------
@@ -722,7 +800,11 @@ export interface NamingRow {
   pack_qty: string | null;
   pack_unit: string | null;
   /** The model's suggestion, once asked for (N2, N3). */
-  model: { status: "asking" | "done" | "failed"; name: string | null; ingredient: IngredientMatch | null } | null;
+  model: {
+    status: "asking" | "done" | "failed";
+    name: string | null;
+    ingredient: IngredientMatch | null;
+  } | null;
 }
 
 export type NameProductRow = {
@@ -741,7 +823,11 @@ export interface NamedProduct {
   product_id: string | null;
   applied: number;
   /** `product_exists` carries the product with the same name and ingredient (issue 179). */
-  error: { code: string; message: string; product?: { id: string; name: string; brand: string | null } | null } | null;
+  error: {
+    code: string;
+    message: string;
+    product?: { id: string; name: string; brand: string | null } | null;
+  } | null;
 }
 
 export function useNamingRows(enabled: boolean) {
@@ -751,7 +837,8 @@ export function useNamingRows(enabled: boolean) {
     select: (data) => data.items,
     enabled,
     // The worker answers one line at a time; look again while any is waiting.
-    refetchInterval: (query) => (query.state.data?.items.some((r) => r.model?.status === "asking") ? 3000 : false),
+    refetchInterval: (query) =>
+      query.state.data?.items.some((r) => r.model?.status === "asking") ? 3000 : false,
   });
 }
 
@@ -760,7 +847,8 @@ export function useSuggestNames() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: () => api<{ queued: number }>("/to-identify/naming/suggest", { method: "POST" }),
-    onSuccess: () => void client.invalidateQueries({ queryKey: [...purchaseKeys.toIdentify, "naming"] }),
+    onSuccess: () =>
+      void client.invalidateQueries({ queryKey: [...purchaseKeys.toIdentify, "naming"] }),
   });
 }
 
@@ -768,7 +856,10 @@ export function useNameProducts() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (rows: NameProductRow[]) =>
-      api<{ results: NamedProduct[] }>("/to-identify/name-products", { method: "POST", body: { rows } }),
+      api<{ results: NamedProduct[] }>("/to-identify/name-products", {
+        method: "POST",
+        body: { rows },
+      }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
       void client.invalidateQueries({ queryKey: ["products"] });
@@ -782,7 +873,8 @@ export function useNameProducts() {
 export function useApplyToIdentify() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: ToIdentifyApplyInput) => api<{ applied: number }>("/to-identify/apply", { method: "POST", body: input }),
+    mutationFn: (input: ToIdentifyApplyInput) =>
+      api<{ applied: number }>("/to-identify/apply", { method: "POST", body: input }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
       // "all": this applies a product to lines in purchases this hook never
@@ -799,7 +891,9 @@ export function useApplyToIdentify() {
  */
 export async function fetchLastPurchaseUnit(productId: string): Promise<string | null> {
   try {
-    const result = await api<{ unit: string | null }>(`/products/${enc(productId)}/last-purchase-unit`);
+    const result = await api<{ unit: string | null }>(
+      `/products/${enc(productId)}/last-purchase-unit`,
+    );
     return result?.unit ?? null;
   } catch (e) {
     if (isApiError(e) && e.status === 404) return null;
@@ -838,7 +932,12 @@ export const resolutionLabel: Record<Resolution, string> = {
 
 /** Lines a reviewer need not look at: resolved automatically and unflagged. */
 export function isQuietLine(line: PurchaseLine): boolean {
-  return (line.resolution === "alias" || line.resolution === "barcode" || line.resolution === "identifier") && line.flags.length === 0;
+  return (
+    (line.resolution === "alias" ||
+      line.resolution === "barcode" ||
+      line.resolution === "identifier") &&
+    line.flags.length === 0
+  );
 }
 
 export const sourceLabel: Record<ObservationSource, string> = {

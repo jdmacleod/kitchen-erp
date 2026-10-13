@@ -32,7 +32,9 @@ export function mergeSummary(m: ProductMerge): string {
 export function mergeWarnings(m: ProductMerge): string[] {
   const out: string[] = [];
   if (m.loser_pack_unit && m.survivor_pack_unit && m.loser_pack_unit !== m.survivor_pack_unit) {
-    out.push(`Its pack is in ${unitLabel(m.loser_pack_unit)}; ${m.survivor_name}'s is in ${unitLabel(m.survivor_pack_unit)}, and that pack is kept.`);
+    out.push(
+      `Its pack is in ${unitLabel(m.loser_pack_unit)}; ${m.survivor_name}'s is in ${unitLabel(m.survivor_pack_unit)}, and that pack is kept.`,
+    );
   }
   if (m.other_dimension_prices > 0) {
     const units = m.other_dimension_units.map(unitLabel).join(" and ");
@@ -42,7 +44,9 @@ export function mergeWarnings(m: ProductMerge): string[] {
     );
   }
   if (m.prices_needing_bridge > 0) {
-    out.push(`${plural(m.prices_needing_bridge, "price")} that compare now won't until a bridge is added.`);
+    out.push(
+      `${plural(m.prices_needing_bridge, "price")} that compare now won't until a bridge is added.`,
+    );
   }
   return out;
 }
@@ -81,8 +85,9 @@ export function ProductMergePanel({
     <Card>
       <h2 className="mb-1 text-lg font-medium">Merge into another product</h2>
       <p className="mb-3 text-sm text-neutral-700 dark:text-neutral-300">
-        For a duplicate of a product you already have. The product you choose is kept, with its own name, pack and details; this one
-        becomes inactive and its prices, codes, photos and receipt wordings go to the one you keep.
+        For a duplicate of a product you already have. The product you choose is kept, with its own
+        name, pack and details; this one becomes inactive and its prices, codes, photos and receipt
+        wordings go to the one you keep.
       </p>
       {survivor === null ? (
         <div className="flex flex-col gap-2">
@@ -120,18 +125,25 @@ export function ProductMergePanel({
           ) : null}
           {p ? (
             <p className="text-sm" data-testid="merge-moves">
-              {moves ? `${moves} ${moves.includes(" and ") || !moves.startsWith("1 ") ? "go" : "goes"} to ${p.survivor_name}.` : `Nothing else goes to ${p.survivor_name}.`}{" "}
+              {moves
+                ? `${moves} ${moves.includes(" and ") || !moves.startsWith("1 ") ? "go" : "goes"} to ${p.survivor_name}.`
+                : `Nothing else goes to ${p.survivor_name}.`}{" "}
               {productTitle(product)} becomes inactive, and its page links to {p.survivor_name}.
             </p>
           ) : null}
           {warnings.length > 0 ? (
-            <ul className="flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100" data-testid="merge-warnings">
+            <ul
+              className="flex flex-col gap-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100"
+              data-testid="merge-warnings"
+            >
               {warnings.map((w) => (
                 <li key={w}>{w}</li>
               ))}
             </ul>
           ) : null}
-          {preview.isError ? <Alert tone="error">{catalogErrorMessage(preview.error)}</Alert> : null}
+          {preview.isError ? (
+            <Alert tone="error">{catalogErrorMessage(preview.error)}</Alert>
+          ) : null}
           {merge.isError ? (
             <div role="alert" className={`rounded-md border px-3 py-2 text-sm ${alertTones.error}`}>
               {catalogErrorMessage(merge.error) || errorMessage(merge.error)}
@@ -151,7 +163,12 @@ export function ProductMergePanel({
             </Button>
           </div>
           <div>
-            <Button variant="ghost" className="px-2" disabled={merge.isPending} onClick={() => setSurvivor(null)}>
+            <Button
+              variant="ghost"
+              className="px-2"
+              disabled={merge.isPending}
+              onClick={() => setSurvivor(null)}
+            >
               Choose another product
             </Button>
           </div>

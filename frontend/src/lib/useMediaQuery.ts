@@ -15,7 +15,10 @@ export function useMediaQuery(query: string, fallback = true): boolean {
       list.addEventListener("change", onChange);
       return () => list.removeEventListener("change", onChange);
     },
-    () => (typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(query).matches : fallback),
+    () =>
+      typeof window !== "undefined" && typeof window.matchMedia === "function"
+        ? window.matchMedia(query).matches
+        : fallback,
     () => fallback,
   );
 }

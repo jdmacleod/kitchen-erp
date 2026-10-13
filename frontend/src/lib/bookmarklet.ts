@@ -106,7 +106,10 @@ const SOURCE = `(() => {
 
 /** The bookmarklet's code for an app at ``origin``. */
 export function bookmarkletCode(origin: string): string {
-  return SOURCE.replace("__APP__", JSON.stringify(origin)).replace("__VERSION__", String(CLIP_VERSION));
+  return SOURCE.replace("__APP__", JSON.stringify(origin)).replace(
+    "__VERSION__",
+    String(CLIP_VERSION),
+  );
 }
 
 /** The link to drag to the bookmarks bar. */

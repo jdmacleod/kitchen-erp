@@ -11,8 +11,18 @@ import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
 vi.mock("maplibre-gl", () => import("./maplibre-stub"));
 
-const larkspur: BrandFamily = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01", key: "larkspur", name: "Larkspur Markets", kind: "retailer" };
-const meadowline: BrandFamily = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a02", key: "meadowline", name: "Meadowline Cooperative", kind: "cooperative" };
+const larkspur: BrandFamily = {
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a01",
+  key: "larkspur",
+  name: "Larkspur Markets",
+  kind: "retailer",
+};
+const meadowline: BrandFamily = {
+  id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7a02",
+  key: "meadowline",
+  name: "Meadowline Cooperative",
+  kind: "cooperative",
+};
 
 const select: HouseBrand = {
   key: "larkspur/select",
@@ -40,10 +50,18 @@ describe("store brand on a product", () => {
   });
 
   it("names a retired brand's replacement, and a wholesale label as a store label", async () => {
-    const retired: HouseBrand = { ...select, key: "larkspur/farms", name: "Larkspur Farms", current: false, replaced_by_name: "Larkspur Select" };
+    const retired: HouseBrand = {
+      ...select,
+      key: "larkspur/farms",
+      name: "Larkspur Farms",
+      current: false,
+      replaced_by_name: "Larkspur Select",
+    };
     mockApi(productRoutes({ ...flourProduct, house_brand: retired }));
     renderApp(`/catalog/products/${flourProductId}`);
-    expect(await screen.findByText("Larkspur Markets brand · standard · now Larkspur Select")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Larkspur Markets brand · standard · now Larkspur Select"),
+    ).toBeInTheDocument();
   });
 
   it("shows nothing for a national brand", async () => {
@@ -63,7 +81,8 @@ describe("a vendor's brand family", () => {
       [`GET /vendors/${chainVendorId}`]: () => jsonResponse(200, vendor()),
       "GET /vendor-locations": () => jsonResponse(200, { items: [] }),
       "GET /brand-families": () => jsonResponse(200, { items: [larkspur, meadowline] }),
-      [`PATCH /vendors/${chainVendorId}`]: (c: { body: unknown }) => jsonResponse(200, onPatch ? onPatch(c.body) : vendor()),
+      [`PATCH /vendors/${chainVendorId}`]: (c: { body: unknown }) =>
+        jsonResponse(200, onPatch ? onPatch(c.body) : vendor()),
     };
   }
 
@@ -84,11 +103,15 @@ describe("a vendor's brand family", () => {
     const form = await screen.findByRole("form", { name: "Edit vendor" });
     const picker = await within(form).findByLabelText("Store brands");
     await waitFor(() => expect(within(picker).getAllByRole("option")).toHaveLength(2));
-    expect(within(picker).queryByRole("option", { name: "Meadowline Cooperative" })).not.toBeInTheDocument();
+    expect(
+      within(picker).queryByRole("option", { name: "Meadowline Cooperative" }),
+    ).not.toBeInTheDocument();
     await user.selectOptions(picker, larkspur.id);
     await user.click(within(form).getByRole("button", { name: "Save vendor" }));
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ brand_family_id: larkspur.id });
-    expect(await screen.findByTestId("vendor-brand-family")).toHaveTextContent("Sells Larkspur Markets brands");
+    expect(await screen.findByTestId("vendor-brand-family")).toHaveTextContent(
+      "Sells Larkspur Markets brands",
+    );
   });
 });

@@ -26,12 +26,22 @@ export function RecipePicker({ id, recipes, loading, error, value, onChange }: R
         <span className={labelClass} id={`${id}-label`}>
           Recipe
         </span>
-        <div role="group" aria-labelledby={`${id}-label`} className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm lg:min-h-10 dark:border-neutral-700 dark:bg-neutral-900">
+        <div
+          role="group"
+          aria-labelledby={`${id}-label`}
+          className="flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-1 text-sm lg:min-h-10 dark:border-neutral-700 dark:bg-neutral-900"
+        >
           <span data-testid={`${id}-choice`}>
             <span className="font-medium">{value.title}</span>
-            {servings ? <span className="text-neutral-600 dark:text-neutral-400"> · {servings} servings</span> : null}
+            {servings ? (
+              <span className="text-neutral-600 dark:text-neutral-400"> · {servings} servings</span>
+            ) : null}
           </span>
-          <Button variant="ghost" className="min-h-11 px-2 lg:min-h-8" onClick={() => onChange(null)}>
+          <Button
+            variant="ghost"
+            className="min-h-11 px-2 lg:min-h-8"
+            onClick={() => onChange(null)}
+          >
             Change
           </Button>
         </div>
@@ -65,7 +75,9 @@ export function RecipePicker({ id, recipes, loading, error, value, onChange }: R
         return (
           <span>
             <span className="font-medium">{r.title}</span>
-            {servings ? <span className="text-neutral-600 dark:text-neutral-400"> · {servings} servings</span> : null}
+            {servings ? (
+              <span className="text-neutral-600 dark:text-neutral-400"> · {servings} servings</span>
+            ) : null}
           </span>
         );
       }}

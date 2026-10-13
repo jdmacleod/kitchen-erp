@@ -33,7 +33,14 @@ export function legMinutes(stop: Pick<Stop, "leg_seconds" | "multiplier">): stri
  * the leg before each, its overhead, the items with packs and line cost, the
  * subtotal, and "Navigate" to the phone's maps application in a new tab.
  */
-export function TripStops({ variant, locationById, selectedId, onSelect, wide, openStopsOf = null }: TripStopsProps) {
+export function TripStops({
+  variant,
+  locationById,
+  selectedId,
+  onSelect,
+  wide,
+  openStopsOf = null,
+}: TripStopsProps) {
   return (
     <section aria-labelledby="trip-stops-heading" className="flex flex-col gap-3">
       <h2 id="trip-stops-heading" className="font-display text-lg">
@@ -45,15 +52,39 @@ export function TripStops({ variant, locationById, selectedId, onSelect, wide, o
         variant.stops.map((stop) => {
           const location = locationById(stop.vendor_location_id);
           const title = `Stop ${stop.seq} · ${stop.vendor_location_name}`;
-          const body = <StopBody stop={stop} location={location} selected={selectedId === stop.id} onSelect={onSelect} tripId={openStopsOf} />;
+          const body = (
+            <StopBody
+              stop={stop}
+              location={location}
+              selected={selectedId === stop.id}
+              onSelect={onSelect}
+              tripId={openStopsOf}
+            />
+          );
           return wide ? (
-            <section key={stop.id} aria-label={title} data-testid="stop" data-seq={stop.seq} data-selected={selectedId === stop.id ? "true" : "false"} className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
+            <section
+              key={stop.id}
+              aria-label={title}
+              data-testid="stop"
+              data-seq={stop.seq}
+              data-selected={selectedId === stop.id ? "true" : "false"}
+              className="rounded-lg border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+            >
               <h3 className="text-base font-medium">{title}</h3>
               {body}
             </section>
           ) : (
-            <div key={stop.id} data-testid="stop" data-seq={stop.seq} data-selected={selectedId === stop.id ? "true" : "false"} className="rounded-lg border border-neutral-200 bg-white px-4 py-1 dark:border-neutral-800 dark:bg-neutral-900">
-              <Disclosure summary={`${title} · ${formatMoney(stop.subtotal)}`} defaultOpen={stop.seq === 1}>
+            <div
+              key={stop.id}
+              data-testid="stop"
+              data-seq={stop.seq}
+              data-selected={selectedId === stop.id ? "true" : "false"}
+              className="rounded-lg border border-neutral-200 bg-white px-4 py-1 dark:border-neutral-800 dark:bg-neutral-900"
+            >
+              <Disclosure
+                summary={`${title} · ${formatMoney(stop.subtotal)}`}
+                defaultOpen={stop.seq === 1}
+              >
                 {body}
               </Disclosure>
             </div>
@@ -64,7 +95,19 @@ export function TripStops({ variant, locationById, selectedId, onSelect, wide, o
   );
 }
 
-function StopBody({ stop, location, selected, onSelect, tripId }: { stop: Stop; location: VendorLocation | undefined; selected: boolean; onSelect: (id: string | null) => void; tripId: string | null }) {
+function StopBody({
+  stop,
+  location,
+  selected,
+  onSelect,
+  tripId,
+}: {
+  stop: Stop;
+  location: VendorLocation | undefined;
+  selected: boolean;
+  onSelect: (id: string | null) => void;
+  tripId: string | null;
+}) {
   return (
     <div className="mt-2 flex flex-col gap-3 text-sm">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="stop-leg">
@@ -76,14 +119,25 @@ function StopBody({ stop, location, selected, onSelect, tripId }: { stop: Stop; 
       </p>
       <p className={muted}>{stop.overhead_min} min in the store</p>
 
-      <ul className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800" aria-label={`Items at stop ${stop.seq}`}>
+      <ul
+        className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-800"
+        aria-label={`Items at stop ${stop.seq}`}
+      >
         {stop.items.map((item) => (
-          <li key={item.id} data-testid="stop-item" className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5">
+          <li
+            key={item.id}
+            data-testid="stop-item"
+            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
+          >
             <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <Link to={`/catalog/products/${item.product_id}`} className="rounded underline">
                 {item.product_name}
               </Link>
-              <span className={`tabular-nums ${muted}`}>{item.packs !== null && item.pack_price !== null ? `${item.packs} × ${formatMoney(item.pack_price)}` : "by amount"}</span>
+              <span className={`tabular-nums ${muted}`}>
+                {item.packs !== null && item.pack_price !== null
+                  ? `${item.packs} × ${formatMoney(item.pack_price)}`
+                  : "by amount"}
+              </span>
               {item.price_stale ? <Badge tone="warn">stale</Badge> : null}
               {item.forced ? <Badge tone="neutral">only here</Badge> : null}
             </span>
@@ -100,7 +154,8 @@ function StopBody({ stop, location, selected, onSelect, tripId }: { stop: Stop; 
 
       {stop.done_at ? (
         <p className={muted} data-testid="stop-actual">
-          Done {formatDateTime(stop.done_at)} · predicted <span className="tabular-nums">{formatMoney(stop.subtotal)}</span>
+          Done {formatDateTime(stop.done_at)} · predicted{" "}
+          <span className="tabular-nums">{formatMoney(stop.subtotal)}</span>
           {stop.actual_cost !== null && stop.actual_cost !== undefined ? (
             <>
               {" · "}actual <span className="tabular-nums">{formatMoney(stop.actual_cost)}</span>
@@ -124,11 +179,20 @@ function StopBody({ stop, location, selected, onSelect, tripId }: { stop: Stop; 
           </Link>
         ) : null}
         {location ? (
-          <a href={navigateHref(location.lat, location.lon, location.name)} target="_blank" rel="noopener noreferrer" className={secondaryLinkClass}>
+          <a
+            href={navigateHref(location.lat, location.lon, location.name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={secondaryLinkClass}
+          >
             Navigate
           </a>
         ) : null}
-        <Button variant={selected ? "secondary" : "ghost"} aria-pressed={selected} onClick={() => onSelect(selected ? null : stop.id)}>
+        <Button
+          variant={selected ? "secondary" : "ghost"}
+          aria-pressed={selected}
+          onClick={() => onSelect(selected ? null : stop.id)}
+        >
           {selected ? "Shown on the map" : "Show on the map"}
         </Button>
       </div>

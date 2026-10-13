@@ -25,7 +25,13 @@ export function TripMap({ kitchen, stops, locationById, selectedId, onSelect }: 
     const path: { lat: string; lon: string }[] = [];
     let missing = 0;
     if (kitchen) {
-      pins.push({ id: "kitchen", lat: kitchen.lat, lon: kitchen.lon, kind: "home", label: `${kitchen.name} (kitchen)` });
+      pins.push({
+        id: "kitchen",
+        lat: kitchen.lat,
+        lon: kitchen.lon,
+        kind: "home",
+        label: `${kitchen.name} (kitchen)`,
+      });
       path.push({ lat: kitchen.lat, lon: kitchen.lon });
     }
     for (const stop of stops) {
@@ -34,7 +40,14 @@ export function TripMap({ kitchen, stops, locationById, selectedId, onSelect }: 
         missing += 1;
         continue;
       }
-      pins.push({ id: stop.id, lat: location.lat, lon: location.lon, kind: "stop", number: stop.seq, label: `Stop ${stop.seq}: ${stop.vendor_location_name}` });
+      pins.push({
+        id: stop.id,
+        lat: location.lat,
+        lon: location.lon,
+        kind: "stop",
+        number: stop.seq,
+        label: `Stop ${stop.seq}: ${stop.vendor_location_name}`,
+      });
       path.push({ lat: location.lat, lon: location.lon });
     }
     if (kitchen && path.length > 1) path.push({ lat: kitchen.lat, lon: kitchen.lon });
@@ -55,7 +68,9 @@ export function TripMap({ kitchen, stops, locationById, selectedId, onSelect }: 
       />
       <p className="text-xs text-neutral-600 dark:text-neutral-400">
         Straight lines between the stops in order, not the route.
-        {missing > 0 ? ` ${missing} ${missing === 1 ? "stop could not be placed: its location is gone." : "stops could not be placed: their locations are gone."}` : ""}
+        {missing > 0
+          ? ` ${missing} ${missing === 1 ? "stop could not be placed: its location is gone." : "stops could not be placed: their locations are gone."}`
+          : ""}
       </p>
     </div>
   );

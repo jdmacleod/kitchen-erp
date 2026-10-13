@@ -11,8 +11,18 @@ import { usePageTitle } from "../../lib/usePageTitle";
  * scoped token is refused everywhere except the routes its scope names.
  */
 export const TOKEN_ACCESS = [
-  { value: "full", scopes: ["*"], label: "Full access", hint: "Everything you can do. For capture apps and your own scripts." },
-  { value: "read", scopes: ["vendors:read"], label: "Read the public vendor list", hint: "Only the public vendor export." },
+  {
+    value: "full",
+    scopes: ["*"],
+    label: "Full access",
+    hint: "Everything you can do. For capture apps and your own scripts.",
+  },
+  {
+    value: "read",
+    scopes: ["vendors:read"],
+    label: "Read the public vendor list",
+    hint: "Only the public vendor export.",
+  },
   {
     value: "suggest",
     scopes: ["vendors:read", "vendors:suggest"],
@@ -31,7 +41,9 @@ type Access = (typeof TOKEN_ACCESS)[number]["value"];
 /** A token's access in the same words as the choice that made it. */
 export function accessLabel(scopes: string[]): string {
   const key = [...scopes].sort().join(" ");
-  return TOKEN_ACCESS.find((a) => [...a.scopes].sort().join(" ") === key)?.label ?? scopes.join(", ");
+  return (
+    TOKEN_ACCESS.find((a) => [...a.scopes].sort().join(" ") === key)?.label ?? scopes.join(", ")
+  );
 }
 
 interface Reveal {
@@ -67,12 +79,19 @@ export function TokensPage() {
 
   return (
     <>
-      <PageHeader title="API tokens" description="Keys for apps that capture prices and receipts on your behalf." />
+      <PageHeader
+        title="API tokens"
+        description="Keys for apps that capture prices and receipts on your behalf."
+      />
       <div className="flex flex-col gap-6">
         {reveal ? <NewTokenPanel reveal={reveal} onDismiss={() => setReveal(null)} /> : null}
 
         <Card>
-          <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-labelledby="create-token-heading">
+          <form
+            onSubmit={onSubmit}
+            className="flex flex-col gap-4"
+            aria-labelledby="create-token-heading"
+          >
             <h2 id="create-token-heading" className="text-lg font-medium">
               Create a token
             </h2>
@@ -90,7 +109,10 @@ export function TokensPage() {
             <fieldset className="flex flex-col gap-1">
               <legend className="mb-1 text-sm font-medium">What it can do</legend>
               {TOKEN_ACCESS.map((a) => (
-                <label key={a.value} className="flex min-h-11 items-start gap-2 py-1 text-sm lg:min-h-10">
+                <label
+                  key={a.value}
+                  className="flex min-h-11 items-start gap-2 py-1 text-sm lg:min-h-10"
+                >
                   <input
                     type="radio"
                     name="new-token-access"
@@ -102,7 +124,10 @@ export function TokensPage() {
                   />
                   <span>
                     <span className="font-medium">{a.label}</span>
-                    <span id={`token-access-${a.value}`} className="block text-xs text-neutral-600 dark:text-neutral-400">
+                    <span
+                      id={`token-access-${a.value}`}
+                      className="block text-xs text-neutral-600 dark:text-neutral-400"
+                    >
                       {a.hint}
                     </span>
                   </span>
@@ -128,7 +153,10 @@ export function TokensPage() {
           ) : tokens.data.length === 0 ? (
             <EmptyState title="No tokens yet" />
           ) : (
-            <ul aria-label="Your tokens" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            <ul
+              aria-label="Your tokens"
+              className="divide-y divide-neutral-200 dark:divide-neutral-800"
+            >
               {tokens.data.map((t) => (
                 <TokenRow
                   key={t.id}
@@ -166,8 +194,8 @@ function NewTokenPanel({ reveal, onDismiss }: { reveal: Reveal; onDismiss: () =>
         Token “{reveal.name}” created
       </h2>
       <p className="mt-1 text-sm text-green-900 dark:text-green-100">
-        Copy it now. It is shown once and cannot be retrieved later. Send it on each request as the header{" "}
-        <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>.
+        Copy it now. It is shown once and cannot be retrieved later. Send it on each request as the
+        header <code className="font-mono">Authorization: Bearer &lt;token&gt;</code>.
       </p>
       <output
         aria-label="Token"
@@ -184,7 +212,11 @@ function NewTokenPanel({ reveal, onDismiss }: { reveal: Reveal; onDismiss: () =>
           Dismiss
         </Button>
         <span role="status" className="text-sm text-green-900 dark:text-green-100">
-          {copied === "copied" ? "Copied." : copied === "failed" ? "Copy failed; select the text instead." : ""}
+          {copied === "copied"
+            ? "Copied."
+            : copied === "failed"
+              ? "Copy failed; select the text instead."
+              : ""}
         </span>
       </div>
     </section>
@@ -199,7 +231,11 @@ function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 py-3">
       <div className="min-w-0">
-        <p className={`font-medium ${revoked ? "text-neutral-600 dark:text-neutral-400 line-through" : ""}`}>{token.name}</p>
+        <p
+          className={`font-medium ${revoked ? "text-neutral-600 dark:text-neutral-400 line-through" : ""}`}
+        >
+          {token.name}
+        </p>
         <p className="text-xs text-neutral-600 dark:text-neutral-400">
           {accessLabel(token.scopes)}
           {" · "}
@@ -207,14 +243,16 @@ function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void
           {" · "}
           {token.last_used_at ? (
             <>
-              Last used <time dateTime={token.last_used_at}>{formatDateTime(token.last_used_at)}</time>
+              Last used{" "}
+              <time dateTime={token.last_used_at}>{formatDateTime(token.last_used_at)}</time>
             </>
           ) : (
             "Never used"
           )}
           {revoked ? (
             <>
-              {" · "}Revoked <time dateTime={token.revoked_at ?? ""}>{formatDateTime(token.revoked_at)}</time>
+              {" · "}Revoked{" "}
+              <time dateTime={token.revoked_at ?? ""}>{formatDateTime(token.revoked_at)}</time>
             </>
           ) : null}
         </p>
@@ -229,7 +267,12 @@ function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void
           <Button
             variant="danger"
             disabled={revoke.isPending}
-            onClick={() => revoke.mutate(token.id, { onSuccess: onRevoked, onSettled: () => setConfirming(false) })}
+            onClick={() =>
+              revoke.mutate(token.id, {
+                onSuccess: onRevoked,
+                onSettled: () => setConfirming(false),
+              })
+            }
           >
             {revoke.isPending ? "Revoking…" : "Confirm revoke"}
           </Button>
@@ -238,7 +281,11 @@ function TokenRow({ token, onRevoked }: { token: ApiToken; onRevoked: () => void
           </Button>
         </div>
       ) : (
-        <Button variant="danger" onClick={() => setConfirming(true)} aria-label={`Revoke ${token.name}`}>
+        <Button
+          variant="danger"
+          onClick={() => setConfirming(true)}
+          aria-label={`Revoke ${token.name}`}
+        >
           Revoke
         </Button>
       )}

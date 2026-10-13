@@ -33,7 +33,12 @@ describe("household members", () => {
     await user.click(within(drawer).getByLabelText(/^Admin/));
     await user.click(within(drawer).getByRole("button", { name: "Save changes" }));
 
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ display_name: "Sam", role: "admin" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+        display_name: "Sam",
+        role: "admin",
+      }),
+    );
     expect(await screen.findByText("Saved Sam.")).toBeInTheDocument();
   });
 
@@ -45,12 +50,18 @@ describe("household members", () => {
     await user.click(await screen.findByRole("button", { name: "Edit Member Example" }));
     const drawer = screen.getByRole("dialog", { name: "Edit Member Example" });
     await user.click(within(drawer).getByRole("button", { name: "Deactivate Member Example" }));
-    expect(within(drawer).getByText(/signed out everywhere, and their API tokens stop working/)).toBeInTheDocument();
+    expect(
+      within(drawer).getByText(/signed out everywhere, and their API tokens stop working/),
+    ).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
     await user.click(within(drawer).getByRole("button", { name: "Deactivate" }));
 
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ active: false }));
-    expect(await screen.findByText("Member Example is deactivated and signed out everywhere.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ active: false }),
+    );
+    expect(
+      await screen.findByText("Member Example is deactivated and signed out everywhere."),
+    ).toBeInTheDocument();
   });
 
   it("keeps unsaved edits when access changes, and keeps the drawer open", async () => {
@@ -68,10 +79,14 @@ describe("household members", () => {
     await user.click(within(drawer).getByRole("button", { name: "Deactivate Member Example" }));
     await user.click(within(drawer).getByRole("button", { name: "Deactivate" }));
 
-    expect(await within(drawer).findByText("Member Example is deactivated and signed out everywhere.")).toBeInTheDocument();
+    expect(
+      await within(drawer).findByText("Member Example is deactivated and signed out everywhere."),
+    ).toBeInTheDocument();
     expect(screen.getByRole("dialog", { name: "Edit Member Example" })).toBeInTheDocument();
     expect(within(drawer).getByLabelText("Display name")).toHaveValue("Sam");
-    expect(within(drawer).getByRole("button", { name: "Reactivate Member Example" })).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole("button", { name: "Reactivate Member Example" }),
+    ).toBeInTheDocument();
   });
 
   it("sets a new password for a member", async () => {
@@ -86,7 +101,11 @@ describe("household members", () => {
     expect(set).toBeDisabled();
     await user.type(within(drawer).getByLabelText("Set a new password"), "-but-longer");
     await user.click(set);
-    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/password"))?.body).toEqual({ password: "short-but-longer" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/password"))?.body).toEqual({
+        password: "short-but-longer",
+      }),
+    );
   });
 
   it("does not offer to remove your own admin access or set your own password", async () => {
@@ -99,7 +118,10 @@ describe("household members", () => {
     expect(within(drawer).getByLabelText("Member")).toBeDisabled();
     expect(within(drawer).queryByRole("button", { name: /^Deactivate/ })).not.toBeInTheDocument();
     expect(within(drawer).queryByLabelText("Set a new password")).not.toBeInTheDocument();
-    expect(within(drawer).getByRole("link", { name: "Settings, System" })).toHaveAttribute("href", "/settings/system");
+    expect(within(drawer).getByRole("link", { name: "Settings, System" })).toHaveAttribute(
+      "href",
+      "/settings/system",
+    );
   });
 });
 
@@ -127,12 +149,23 @@ describe("changing your own password", () => {
     await user.clear(screen.getByLabelText("New password again"));
     await user.type(screen.getByLabelText("New password again"), "new-secret-1");
     await user.click(screen.getByRole("button", { name: "Change password" }));
-    await waitFor(() => expect(calls.find((c) => c.path === "/auth/password")?.body).toEqual({ current_password: "old-secret", new_password: "new-secret-1" }));
-    expect(await screen.findByText("Password changed. You're signed out on your other devices.")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(calls.find((c) => c.path === "/auth/password")?.body).toEqual({
+        current_password: "old-secret",
+        new_password: "new-secret-1",
+      }),
+    );
+    expect(
+      await screen.findByText("Password changed. You're signed out on your other devices."),
+    ).toBeInTheDocument();
   });
 
   it("says when the current password is wrong", async () => {
-    mockApi(systemRoutes(() => errorResponse(422, "wrong_password", "The current password is not right.")));
+    mockApi(
+      systemRoutes(() =>
+        errorResponse(422, "wrong_password", "The current password is not right."),
+      ),
+    );
     const user = userEvent.setup();
     renderApp("/settings/system");
 
@@ -140,6 +173,8 @@ describe("changing your own password", () => {
     await user.type(screen.getByLabelText("New password"), "new-secret-1");
     await user.type(screen.getByLabelText("New password again"), "new-secret-1");
     await user.click(screen.getByRole("button", { name: "Change password" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("The current password is not right.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "The current password is not right.",
+    );
   });
 });

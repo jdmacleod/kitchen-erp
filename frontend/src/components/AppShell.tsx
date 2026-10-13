@@ -17,7 +17,8 @@ const chromeButton =
 const captureButton =
   "inline-flex min-h-10 items-center rounded-md bg-blue-600 px-3 text-sm font-medium text-white hover:bg-blue-700";
 // The shortcut as this platform writes it.
-const shortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
+const shortcut =
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘K" : "Ctrl K";
 
 /** The signed-in person's initials, for the phone header's avatar. */
 function initials(name: string): string {
@@ -41,7 +42,10 @@ const TASK_PATHS = new Set(["/shop/shelf-prices"]);
  * zone. So is a trip's stop (10, At the store): "Done here" is anchored there.
  */
 const STOP_PATH = /^\/plan\/trips\/[^/]+\/stop\/[^/]+$/;
-const isTaskPath = (pathname: string) => TASK_PATHS.has(pathname) || pathname.startsWith("/catalog/products/review/") || STOP_PATH.test(pathname);
+const isTaskPath = (pathname: string) =>
+  TASK_PATHS.has(pathname) ||
+  pathname.startsWith("/catalog/products/review/") ||
+  STOP_PATH.test(pathname);
 
 /**
  * Authenticated layout. At lg (1024px) and wider: a fixed sidebar. Below lg
@@ -64,13 +68,20 @@ export function AppShell() {
   useEffect(() => {
     entry.current = location.key;
   }, [location.key]);
-  const setOverlay = useCallback((next: Overlay) => setOpened({ overlay: next, on: entry.current }), []);
+  const setOverlay = useCallback(
+    (next: Overlay) => setOpened({ overlay: next, on: entry.current }),
+    [],
+  );
   const close = () => setOverlay(null);
   // What Capture handed the desktop shelf-price drawer (G14).
   const [shelfArrival, setShelfArrival] = useState<ShelfPriceState>({});
   const [wide, setWide] = useState(false);
   const chrome = useMemo<Chrome>(
-    () => ({ openCapture: () => setOverlay("capture"), openSearch: () => setOverlay("search"), setWide }),
+    () => ({
+      openCapture: () => setOverlay("capture"),
+      openSearch: () => setOverlay("search"),
+      setWide,
+    }),
     [setOverlay],
   );
 
@@ -80,7 +91,9 @@ export function AppShell() {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         // Never over the drawer: replacing it would drop what was typed there.
-        setOpened((prev) => (prev.overlay === "shelf" ? prev : { overlay: "search", on: entry.current }));
+        setOpened((prev) =>
+          prev.overlay === "shelf" ? prev : { overlay: "search", on: entry.current },
+        );
       }
     };
     document.addEventListener("keydown", onKey);
@@ -97,8 +110,13 @@ export function AppShell() {
       </a>
 
       {/* Phone and tablet header (10, Phone: home) */}
-      <header className={`sticky top-0 z-30 ${task ? "hidden" : "flex"} items-center justify-between border-b border-neutral-200 bg-neutral-50/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95`}>
-        <Link to="/" className={`font-display flex min-h-11 items-center rounded-md text-lg font-semibold ${focusRing}`}>
+      <header
+        className={`sticky top-0 z-30 ${task ? "hidden" : "flex"} items-center justify-between border-b border-neutral-200 bg-neutral-50/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden dark:border-neutral-800 dark:bg-neutral-950/95`}
+      >
+        <Link
+          to="/"
+          className={`font-display flex min-h-11 items-center rounded-md text-lg font-semibold ${focusRing}`}
+        >
           Kitchen ERP
         </Link>
         <span
@@ -113,15 +131,26 @@ export function AppShell() {
 
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 border-r border-neutral-200 bg-neutral-100 p-3 lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col dark:border-neutral-800 dark:bg-neutral-900/60">
-        <Link to="/" className={`font-display mb-3 rounded-md px-3 py-2 text-xl font-semibold ${focusRing}`}>
+        <Link
+          to="/"
+          className={`font-display mb-3 rounded-md px-3 py-2 text-xl font-semibold ${focusRing}`}
+        >
           Kitchen ERP
         </Link>
         <div className="mb-4 flex gap-2 px-1">
-          <button type="button" onClick={() => setOverlay("search")} className={`${chromeButton} flex-1 justify-between border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}>
+          <button
+            type="button"
+            onClick={() => setOverlay("search")}
+            className={`${chromeButton} flex-1 justify-between border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900 ${focusRing}`}
+          >
             <span>Search</span>
             <kbd className="text-xs text-neutral-600 dark:text-neutral-400">{shortcut}</kbd>
           </button>
-          <button type="button" onClick={() => setOverlay("capture")} className={`${captureButton} ${focusRing}`}>
+          <button
+            type="button"
+            onClick={() => setOverlay("capture")}
+            className={`${captureButton} ${focusRing}`}
+          >
             Capture
           </button>
         </div>
@@ -137,7 +166,9 @@ export function AppShell() {
         tabIndex={-1}
         data-wide={wide || undefined}
         className={`mx-auto w-full ${wide ? "max-w-7xl" : "max-w-4xl"} flex-1 px-4 md:px-8 lg:py-8 ${
-          task ? "pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6" : "pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+          task
+            ? "pt-[calc(1.5rem+env(safe-area-inset-top))] pb-6"
+            : "pt-6 pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
         }`}
       >
         <NewVersionNotice />
@@ -147,17 +178,19 @@ export function AppShell() {
               <Outlet />
             </PageErrorBoundary>
             {/* Inside the provider, so its Save can show the notice on this page. */}
-            {overlay === "shelf" ? <ShelfPriceDrawer arrival={shelfArrival} onClose={close} /> : null}
+            {overlay === "shelf" ? (
+              <ShelfPriceDrawer arrival={shelfArrival} onClose={close} />
+            ) : null}
           </NoticeProvider>
         </ChromeContext.Provider>
       </main>
 
       {task ? null : (
         <TabBar
-        onCapture={() => setOverlay("capture")}
-        onSearch={() => setOverlay("search")}
-        onMore={() => setOverlay(overlay === "more" ? null : "more")}
-        moreOpen={overlay === "more"}
+          onCapture={() => setOverlay("capture")}
+          onSearch={() => setOverlay("search")}
+          onMore={() => setOverlay(overlay === "more" ? null : "more")}
+          moreOpen={overlay === "more"}
         />
       )}
 
