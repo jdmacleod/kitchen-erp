@@ -18,6 +18,7 @@ help:  ## Show this help
 
 setup:  ## Install git hooks and create the local data directories
 	pre-commit install
+	git config blame.ignoreRevsFile .git-blame-ignore-revs
 	@mkdir -p data/receipts data/tiles data/usda data/imports data/routing
 	@echo
 	@echo "Now build tools/denylist.txt (gitignored) — see SECURITY.md."

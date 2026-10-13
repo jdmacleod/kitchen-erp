@@ -237,7 +237,8 @@ into `part1`/`part2`, and do not squeeze lines to get under a limit.
 - Never `--no-verify`. `make check-pii` before every commit (`SECURITY.md`).
 - Formatting-only changes go in their own pull request, never mixed with
   behaviour. After a formatting change merges, its commit goes in
-  `.git-blame-ignore-revs`, and other branches rebase and re-run `make fmt`
+  `.git-blame-ignore-revs` (GitHub's blame reads it; `make setup` sets
+  `blame.ignoreRevsFile` locally), and other branches rebase and re-run `make fmt`
   rather than resolving formatting conflicts by hand.
 - Before merging a migration, check its number against `main`: parallel branches
   have collided on migration numbers before.

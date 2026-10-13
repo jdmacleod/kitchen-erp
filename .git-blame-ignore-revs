@@ -1,0 +1,5 @@
+# Commits that only reformat code, skipped by `git blame` (GitHub reads this file;
+# locally: git config blame.ignoreRevsFile .git-blame-ignore-revs).
+
+# Apply the coding standards: Prettier, the widened ruff rules, type-aware ESLint (#338)
+c046f775dc3853965c7b2de2d85112bc7f00861e
