@@ -186,15 +186,18 @@ class Costed:
     line_cost: Decimal
 
 
-def cost_item(
+def amounts_in_canonical(
     pairs: list[tuple[Decimal, str]],
     kind: str,
     ingredient: Ingredient,
     product: Product,
-    unit_price: Decimal,
     units,
-) -> Costed | None:
-    """Packs and cost for an item's amounts with one product, or None (``cant_convert``)."""
+) -> tuple[Decimal, Decimal] | None:
+    """An item's amounts as (canonical quantity, loose pieces) for one product,
+    or None when a pair cannot convert (``cant_convert``).
+
+    Pieces are counts the product cannot express in its canonical unit and
+    rounds by ``pack_count`` instead."""
     # A pack stands for "1 each" only of a product a person named, and never
     # when the canonical unit is itself a count (one pack is then pack_count pieces).
     keep_pack = kind == "product" and ingredient.canonical_unit != "each"
@@ -211,6 +214,22 @@ def cost_item(
             pieces += packs.CTX.multiply(amount, unit_row.to_base_factor)
             continue
         return None
+    return canonical, pieces
+
+
+def cost_item(
+    pairs: list[tuple[Decimal, str]],
+    kind: str,
+    ingredient: Ingredient,
+    product: Product,
+    unit_price: Decimal,
+    units,
+) -> Costed | None:
+    """Packs and cost for an item's amounts with one product, or None (``cant_convert``)."""
+    converted = amounts_in_canonical(pairs, kind, ingredient, product, units)
+    if converted is None:
+        return None
+    canonical, pieces = converted
     pack_qty = packs.pack_canonical_qty(
         product, _context(ingredient, product, units, keep_pack=True)
     )
