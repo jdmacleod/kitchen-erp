@@ -7,12 +7,15 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "install-browsers": "playwright install chromium"
+    "install-browsers": "playwright install chromium",
+    "format": "prettier --write . --ignore-path ../.prettierignore --ignore-path .gitignore",
+    "format:check": "prettier --check . --ignore-path ../.prettierignore --ignore-path .gitignore"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.50.0",
-    "@types/node": "^26.6.3"
+    "@types/node": "^26.6.3",
+    "prettier": "3.9.10"
   },
   "packageManager": "pnpm@12.5.1"
 }

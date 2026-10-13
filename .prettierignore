@@ -1,0 +1,18 @@
+# Prettier formats frontend/ and e2e/ (CODING_STANDARDS.md, TypeScript and React).
+# The scripts run it from those directories with `--ignore-path ../.prettierignore`,
+# so these patterns are resolved against the repository root.
+
+# Lockfiles are written by pnpm.
+**/pnpm-lock.yaml
+
+# Build output, dependencies and test output.
+**/node_modules/
+frontend/dist/
+e2e/test-results/
+e2e/playwright-report/
+
+# Screenshots and anything else captured rather than written.
+docs/screenshots/
+
+# Markdown is markdownlint's (.markdownlint-cli2.yaml), not Prettier's.
+**/*.md
