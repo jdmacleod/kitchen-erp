@@ -50,7 +50,7 @@ async def test_a_new_ingredient_without_a_category_is_refused(admin_client):
 async def test_a_standard_entry_brings_its_own_category(admin_client, db_session):
     await seed_units_via_service(db_session)
     r = await admin_client.post(
-        "/api/v1/ingredients", json={"name": "shallot", "standard_key": "shallot"}
+        "/api/v1/ingredients", json={"name": "chayote", "standard_key": "chayote"}
     )
     assert r.status_code == 201 and r.json()["category_key"] == "produce"
 
@@ -70,7 +70,7 @@ async def suggestion(client, name: str, **params) -> dict:
 
 
 async def test_the_standard_list_suggests_first(admin_client):
-    assert await suggestion(admin_client, "shallots") == {
+    assert await suggestion(admin_client, "chayotes") == {
         "category": "produce",
         "source": "standard",
     }
