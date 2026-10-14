@@ -14,6 +14,8 @@ test("create an ingredient with a name and category, then a product for it", asy
   await page.getByRole("main").getByRole("button", { name: "Add ingredient" }).first().click();
   let drawer = page.getByRole("dialog", { name: "Add ingredient" });
   await drawer.getByLabel(/^name/i).fill(name);
+  // The name would be saved lowercase (issue 345); this one is kept as typed.
+  await drawer.getByRole("button", { name: `Keep “${name}”` }).click();
   // Every new ingredient has a category (issue 344).
   await drawer.getByLabel("Category", { exact: true }).selectOption("pantry");
   await drawer.getByRole("button", { name: "Add ingredient" }).click();
