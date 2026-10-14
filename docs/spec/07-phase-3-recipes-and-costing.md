@@ -258,6 +258,29 @@ label such as `clove` is kept as text for 3C. A Cooklang recipe reference
 "Cooklang recipe references"), and the example recipes avoid them (Phase 3
 build, 2026-10-10).
 
+References within one file follow the cooklang-rs `&` extensions (issue 367):
+
+- `@&name{}` (or `@&name`) is an ingredient named earlier in the file, matched
+  without regard to case or spacing. It has no `recipe_ingredient` row.
+- `@&name{qty%unit}` is more of that ingredient. It keeps a row of its own, so
+  the amount adds to the first.
+- `@&(~N)name{}` is the output of the step N back, and `@&(N)name{}` the output
+  of step N. Both count steps within the current section only.
+- `@&(=N)name{}` is the output of section N, and `@&(=~N)name{}` the output of
+  the section N back. Sections are counted from 1 as the recipe page shows them.
+
+A step or section reference has no row, so the resolver, the to-resolve queue
+and costing never see it. The recipe body carries it as a `reference` item
+pointing at its section and step, and the recipe page links its name there.
+A reference whose target doesn't come before it is a `ParseError` at the
+reference. So is a malformed `(…)`. `kerp recipes lint` suggests the `@&` form
+in two cases:
+
+- an ingredient line names an earlier section;
+- an ingredient line repeats an earlier ingredient in a measure that doesn't
+  convert and differs from the first one's (`@noodles{1%portion}` after
+  `@noodles{1%lb}`).
+
 The library is validated against the Cooklang canonical test suite, vendored
 with its licence, and with property tests: parsing a rendered recipe reproduces
 its structure, and every failure returns a typed `ParseError` with line and

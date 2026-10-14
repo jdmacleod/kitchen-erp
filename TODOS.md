@@ -122,7 +122,7 @@ Design: `docs/designs/vision-receipt-reading.md`.
 
 **Why:** Cooklang's references let a sauce or a stock be written once; today the parser reads one as an ingredient named `./Shared/Vinaigrette`, which goes to the resolve queue as an unmatched name.
 
-**Context:** Noted in `07`, 3B at the Phase 3 build (2026-10-10). The example recipes in `examples/recipes/` avoid references (their README says which were replaced). Needs a reference kind on `recipe_ingredient` pointing at the other recipe, the resolver skipping references, costing that follows the referenced snapshot and reports the line incomplete when that recipe is, and a cycle guard.
+**Context:** Noted in `07`, 3B at the Phase 3 build (2026-10-10). The example recipes in `examples/recipes/` avoid references (their README says which were replaced). Needs a reference kind on `recipe_ingredient` pointing at the other recipe, the resolver skipping references, costing that follows the referenced snapshot and reports the line incomplete when that recipe is, and a cycle guard. References within one file (`@&`, issue 367) are done: `app/recipes/cooklang/references.py` reads the modifier, and the parser's `Reference` item is where a recipe reference would go too.
 
 **Effort:** M (human) / S (CC)
 **Priority:** P3

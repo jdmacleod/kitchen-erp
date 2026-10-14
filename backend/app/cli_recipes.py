@@ -19,8 +19,12 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import typer
+
+if TYPE_CHECKING:
+    from app.services.recipe_vocabulary import CookFile
 
 recipes_cli = typer.Typer(
     help="The recipe vocabulary: report, lint and conform .cook files on the host.",
@@ -108,9 +112,11 @@ def lint(path: Path | None = PATH_OPTION, strict: bool = STRICT_OPTION) -> None:
 
     root = _root(path)
     ctx = _context()
-    report = vocab.build_report(ctx, root, vocab.read_files(root))
+    files = vocab.read_files(root)
+    report = vocab.build_report(ctx, root, files)
     for err in report.parse_errors:
         typer.echo(f"parse error  {err['path']}: {err['error']}", err=True)
+    hints = _reference_hints(files)
     flagged = report.flagged()
     for n in flagged:
         typer.echo(
@@ -119,15 +125,33 @@ def lint(path: Path | None = PATH_OPTION, strict: bool = STRICT_OPTION) -> None:
         )
     drift = sum(1 for n in flagged if n.bucket == "drift")
     unknown = len(flagged) - drift
-    if not flagged and not report.parse_errors:
+    if not flagged and not report.parse_errors and not hints:
         typer.echo(f"Every name in {_plural(report.files, 'file')} is a name or a spelling.")
         return
     typer.echo(
         f"{_plural(report.files, 'file')}: {drift} drift, {unknown} unknown, "
-        f"{_plural(len(report.parse_errors), 'parse error')}."
+        f"{_plural(hints, 'reference')}, {_plural(len(report.parse_errors), 'parse error')}."
     )
     if strict:
         raise typer.Exit(code=1)
+
+
+def _reference_hints(files: list[CookFile]) -> int:
+    """Print each line written as an ingredient that reads as an `@&` reference (issue 367)."""
+    from app.recipes.cooklang import Recipe
+    from app.recipes.cooklang.hints import reference_hints
+
+    count = 0
+    for f in files:
+        if not isinstance(f.parsed, Recipe):
+            continue
+        for hint in reference_hints(f.parsed):
+            count += 1
+            typer.echo(
+                f"{'refer':<8} {f.rel}:{hint.line}  @{hint.written} {hint.why}: "
+                f"write {hint.suggestion}"
+            )
+    return count
 
 
 @recipes_cli.command("conform")

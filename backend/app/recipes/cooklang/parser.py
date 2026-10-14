@@ -10,6 +10,10 @@ The grammar, as this parser reads it:
 - `@name{qty%unit}(note)`, `#name{qty}`, `~name{qty%unit}`; `@name`, `#name`
   and `~name` without braces are single words; `~{qty%unit}` is anonymous;
   `@?name` and `#?name` are optional.
+- `@&name` refers to an ingredient named earlier, and `@&(~1)name`, `@&(2)name`,
+  `@&(=2)name` and `@&(=~1)name` to an earlier step or section (the cooklang-rs
+  extensions; see `references.py`). A target that doesn't come before the
+  reference is an error.
 - A `{` or `(` opened by a component and never closed on its line, a `[-`
   never closed, a `>>` without a colon, and front matter that does not close
   or does not parse are errors with a line and a column. Everything else that
@@ -34,12 +38,14 @@ from app.recipes.cooklang.model import (
     ParseError,
     Quantity,
     Recipe,
+    Reference,
     Section,
     Step,
     Text,
     Timer,
 )
 from app.recipes.cooklang.quantities import parse_number, parse_quantity
+from app.recipes.cooklang.references import Target, as_reference, link_references, reference_target
 from app.units.parse import parse_unit
 
 _BOM = "\N{ZERO WIDTH NO-BREAK SPACE}"
@@ -154,12 +160,14 @@ def parse(text: str) -> Recipe | ParseError:
     scan.end_section()
     title = scan.metadata.get("title")
     servings, servings_text = _servings(scan.metadata.get("servings"))
-    return Recipe(
-        front_matter=scan.metadata,
-        sections=tuple(scan.sections),
-        title=title if isinstance(title, str) and title.strip() else None,
-        servings=servings,
-        servings_text=servings_text,
+    return link_references(
+        Recipe(
+            front_matter=scan.metadata,
+            sections=tuple(scan.sections),
+            title=title if isinstance(title, str) and title.strip() else None,
+            servings=servings,
+            servings_text=servings_text,
+        )
     )
 
 
@@ -266,6 +274,12 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
     if marker in "@#" and j < len(line) and line[j] == "?":
         optional = True
         j += 1
+    target: Target | None = None
+    if marker == "@" and line[j : j + 1] == "&":
+        found = reference_target(line, j + 1, line_number)
+        if isinstance(found, ParseError):
+            return found
+        target, j = found
     if j >= len(line) or line[j].isspace():
         return None
 
@@ -288,7 +302,7 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
             note = line[end + 1 : note_close].strip() or None
             end = note_close + 1
         item = _build(marker, name or None, body, note, optional, line_number)
-        return _place(item, at, end, j, j + len(name)), end
+        return _place(as_reference(item, target), at, end, j, j + len(name)), end
 
     # Single-word form: name characters, allowing a joiner between two of them.
     k = j
@@ -300,11 +314,14 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
     name = line[j:k]
     if not name:
         return None
-    return _place(_build(marker, name, "", None, optional, line_number), at, k, j, k), k
+    item = as_reference(_build(marker, name, "", None, optional, line_number), target)
+    return _place(item, at, k, j, k), k
 
 
 def _place(item: Item, start: int, end: int, name_start: int, name_end: int) -> Item:
-    """An ingredient with its token and name spans recorded; other items unchanged."""
+    """An ingredient or reference with its token span recorded; other items unchanged."""
+    if isinstance(item, Reference):
+        return replace(item, span=(start, end))
     if not isinstance(item, IngredientRef):
         return item
     return replace(item, span=(start, end), name_span=(name_start, name_end))

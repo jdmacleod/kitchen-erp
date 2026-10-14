@@ -24,6 +24,7 @@ from app.recipes.cooklang import (
     QuantityNumber,
     QuantityRange,
     QuantityText,
+    Reference,
     Text,
     Timer,
 )
@@ -50,6 +51,9 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
     Items are ``{"t": "text", "v"}``, ``{"t": "ingredient", "name", "qty",
     "unit", "note", "seq"}`` (``seq`` is the matching ``recipe_ingredient``
     row, numbered from 1 in document order as ``_ingredient_rows`` does),
+    ``{"t": "reference", "name", "qty", "unit", "note", "target", "section",
+    "step"}`` (an `@&` reference: no row, and ``section``/``step`` index this
+    list to where it came from; ``step`` is None for a whole section),
     ``{"t": "cookware", "name", "qty"}`` and ``{"t": "timer", "name", "qty",
     "unit"}``. Decimals are strings; nothing here is a float.
     """
@@ -72,6 +76,19 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
                             "unit": item.unit_text,
                             "note": item.note,
                             "seq": seq,
+                        }
+                    )
+                elif isinstance(item, Reference):
+                    items.append(
+                        {
+                            "t": "reference",
+                            "name": item.name,
+                            "qty": _qty(item.quantity),
+                            "unit": item.unit_text,
+                            "note": item.note,
+                            "target": item.target,
+                            "section": item.section,
+                            "step": item.step,
                         }
                     )
                 elif isinstance(item, Cookware):

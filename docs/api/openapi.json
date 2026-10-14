@@ -881,6 +881,86 @@
         "title": "BodyIngredient",
         "type": "object"
       },
+      "BodyReference": {
+        "additionalProperties": false,
+        "description": "An `@&` reference to an earlier ingredient, step or section; it has no row.\n\n``section`` and ``step`` index the body's sections and that section's steps\n(from 0); ``step`` is None when the whole section is meant.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qty"
+          },
+          "section": {
+            "title": "Section",
+            "type": "integer"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Step"
+          },
+          "t": {
+            "const": "reference",
+            "title": "T",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "ingredient",
+              "step",
+              "section"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "t",
+          "name",
+          "target",
+          "section"
+        ],
+        "title": "BodyReference",
+        "type": "object"
+      },
       "BodySection": {
         "additionalProperties": false,
         "properties": {
@@ -902,6 +982,7 @@
                   "mapping": {
                     "cookware": "#/components/schemas/BodyCookware",
                     "ingredient": "#/components/schemas/BodyIngredient",
+                    "reference": "#/components/schemas/BodyReference",
                     "text": "#/components/schemas/BodyText",
                     "timer": "#/components/schemas/BodyTimer"
                   },
@@ -913,6 +994,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/BodyIngredient"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BodyReference"
                   },
                   {
                     "$ref": "#/components/schemas/BodyCookware"
