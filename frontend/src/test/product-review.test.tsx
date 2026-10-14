@@ -1016,3 +1016,52 @@ describe("the short name (issue 347)", () => {
     expect(screen.getByTestId("review-summary")).not.toHaveTextContent(/^Rolled oats/);
   });
 });
+
+describe("a new product that looks like one already here (issue 348)", () => {
+  it("asks once before accepting it as new", async () => {
+    const same = {
+      product_id: otherProductId,
+      name: "Strong white flour",
+      brand: "Larkfield",
+      pack_qty: "1.5",
+      pack_unit: "kg",
+      photo: null,
+      ingredient: { id: flourProduct.ingredient.id, name: "flour" },
+      score: "0.9",
+      verdict: "same" as const,
+      reasons: [],
+      only_here: [],
+      only_there: [],
+    };
+    mockApi(
+      routes(
+        proposal({
+          match: {
+            strong: null,
+            candidates: [
+              {
+                product_id: same.product_id,
+                name: same.name,
+                brand: same.brand,
+                score: same.score,
+              },
+            ],
+            preselect: null,
+          },
+          candidates: [same],
+        }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await user.click(await screen.findByRole("radio", { name: "Create new product" }));
+    expect(
+      screen.getByText("This looks like Strong white flour, already in your catalog"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "It's a new product" }));
+    expect(
+      screen.queryByText("This looks like Strong white flour, already in your catalog"),
+    ).not.toBeInTheDocument();
+  });
+});

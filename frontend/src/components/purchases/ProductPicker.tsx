@@ -10,6 +10,8 @@ import {
   type ProductCreateInput,
   type SearchHit,
 } from "../../api/catalog";
+import { api } from "../../api/client";
+import { AlreadyInCatalog, sameFromError } from "../catalog/AlreadyInCatalog";
 import { Badge, labelClass } from "../catalog/fields";
 import {
   choiceInput,
@@ -235,20 +237,35 @@ export function InlineProductCreate({
   const [packQty, setPackQty] = useState("");
   const [packUnit, setPackUnit] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
+  // What was last sent, to send again with "Create anyway" (issue 348).
+  const [lastInput, setLastInput] = useState<ProductCreateInput | null>(null);
+  const same = sameFromError(create.error);
   const busy = disabled || create.isPending;
+  const pickExisting = async (id: string) =>
+    onCreated(productRefFromProduct(await api<Product>(`/products/${id}`)));
 
   const submit = () => {
-    if (!ingredient) return setInvalid("Choose an ingredient, or create a new one by name.");
+    if (!ingredient) {
+      setInvalid("Choose an ingredient, or create a new one by name.");
+      return;
+    }
     if (needsCategory(ingredient)) {
       setInvalid("Choose a category for the new ingredient.");
       return;
     }
-    if (!name.trim()) return setInvalid("A product name is required.");
+    if (!name.trim()) {
+      setInvalid("A product name is required.");
+      return;
+    }
     const hasQty = packQty.trim() !== "";
-    if (hasQty !== (packUnit !== ""))
-      return setInvalid("Give both a pack quantity and a pack unit, or neither.");
-    if (hasQty && !isPositiveDecimal(packQty))
-      return setInvalid("Pack quantity must be a positive number.");
+    if (hasQty !== (packUnit !== "")) {
+      setInvalid("Give both a pack quantity and a pack unit, or neither.");
+      return;
+    }
+    if (hasQty && !isPositiveDecimal(packQty)) {
+      setInvalid("Pack quantity must be a positive number.");
+      return;
+    }
     setInvalid(null);
 
     const input: ProductCreateInput = { name: name.trim(), ...choiceInput(ingredient) };
@@ -258,6 +275,11 @@ export function InlineProductCreate({
       input.pack_qty = packQty.trim();
       input.pack_unit = packUnit;
     }
+    send(input);
+  };
+
+  const send = (input: ProductCreateInput & { allow_duplicate?: boolean }) => {
+    setLastInput(input);
     create.mutate(input, { onSuccess: (product) => onCreated(productRefFromProduct(product)) });
   };
 
@@ -290,7 +312,16 @@ export function InlineProductCreate({
         New product <Badge>created with this entry</Badge>
       </p>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-      {create.error ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
+      {same && lastInput ? (
+        <AlreadyInCatalog
+          products={same}
+          busy={busy}
+          onUse={(p) => void pickExisting(p.id)}
+          onCreateAnyway={() => send({ ...lastInput, allow_duplicate: true })}
+        />
+      ) : create.error ? (
+        <Alert tone="error">{catalogErrorMessage(create.error)}</Alert>
+      ) : null}
       <IngredientPicker
         id={`${id}-ingredient`}
         value={ingredient}

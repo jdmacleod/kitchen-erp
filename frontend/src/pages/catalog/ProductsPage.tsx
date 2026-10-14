@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   formatPack,
   ingredientSummary,
@@ -15,6 +15,7 @@ import {
 } from "../../api/catalog";
 import { api, errorMessage } from "../../api/client";
 import { useProductsHelper, type KnownProduct } from "../../api/proposals";
+import { otherError, RefusedCreate } from "../../components/catalog/AlreadyInCatalog";
 import { DuplicatePairs } from "../../components/catalog/DuplicatePairs";
 import { Badge, QualityStars } from "../../components/catalog/fields";
 import { choiceInput, type IngredientChoice } from "../../components/catalog/IngredientPicker";
@@ -457,6 +458,9 @@ function AddProductForm({
   const [initial] = useState(() => emptyProductValues(initialIngredient));
   const [values, setValues] = useState<ProductFormValues>(initial);
   const [invalid, setInvalid] = useState<string | null>(null);
+  // What was last sent, to send again with "Create anyway" (issue 348).
+  const [lastInput, setLastInput] = useState<ProductCreateInput | null>(null);
+  const navigate = useNavigate();
   // A half-typed ingredient search is typed input too (D5).
   const [ingredientText, setIngredientText] = useState("");
   // A web address to start from (2M, PD20); a pasted one counts as typed input.
@@ -518,10 +522,18 @@ function AddProductForm({
       input.density_override = values.density_override.trim();
       input.density_override_source = values.density_override_source;
     }
+    send(input);
+  };
+
+  const send = (input: ProductCreateInput & { allow_duplicate?: boolean }) => {
+    setLastInput(input);
     const page = address.trim();
     create.mutate(input, {
       onSuccess: async (product) => {
-        if (!page || !helper.data?.configured) return onCreated(product);
+        if (!page || !helper.data?.configured) {
+          onCreated(product);
+          return;
+        }
         // The lookup helper reads the page; what it finds waits on Home as a product update.
         try {
           await api(`/products/${product.id}/look-up`, {
@@ -561,7 +573,16 @@ function AddProductForm({
         onChange={setValues}
         onSubmit={onSubmit}
         invalid={invalid}
-        error={create.error}
+        error={otherError(create.error)}
+        notice={
+          <RefusedCreate
+            error={create.error}
+            sent={lastInput}
+            busy={create.isPending}
+            onUse={(p) => void navigate(`/catalog/products/${p.id}`)}
+            resend={send}
+          />
+        }
         busy={create.isPending}
         submitLabel="Add product"
         busyLabel="Adding…"

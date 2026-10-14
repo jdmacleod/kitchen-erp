@@ -10811,6 +10811,11 @@
       "ProductCreate": {
         "additionalProperties": false,
         "properties": {
+          "allow_duplicate": {
+            "default": false,
+            "title": "Allow Duplicate",
+            "type": "boolean"
+          },
           "attributes": {
             "anyOf": [
               {

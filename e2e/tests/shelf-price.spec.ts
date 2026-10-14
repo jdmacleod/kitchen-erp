@@ -28,6 +28,7 @@ async function seedStoreAndProduct(page: Page, stamp: string) {
   const barcode = syntheticBarcode();
   const product = await page.request.post("/api/v1/products", {
     data: {
+      allow_duplicate: true,
       ingredient_id: ingredientId,
       name: `E2E oats tub ${stamp}`,
       pack_qty: "1",

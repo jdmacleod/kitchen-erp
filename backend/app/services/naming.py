@@ -27,7 +27,7 @@ from app.models import AppUser, NamingSuggestion, Product
 from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
-from app.services import catalog, resolution
+from app.services import catalog, product_same, resolution
 from app.units import UnitParseFailure, parse_unit
 
 log = get_logger(__name__)
@@ -342,16 +342,17 @@ async def name_product(
                     f"{same.name} already exists with this ingredient.",
                     {"product_id": str(same.id)},
                 )
-        product = await catalog.create_product(
-            db,
-            ProductCreate(
-                name=row.name,
-                ingredient_id=ingredient_id,
-                ingredient=ingredient,
-                pack_qty=row.pack_qty,
-                pack_unit=row.pack_unit,
-            ),
+        payload = ProductCreate(
+            name=row.name,
+            ingredient_id=ingredient_id,
+            ingredient=ingredient,
+            pack_qty=row.pack_qty,
+            pack_unit=row.pack_unit,
+            allow_duplicate=row.allow_duplicate,
         )
+        # The same product under another ingredient is offered too (#348).
+        await product_same.refuse_same(db, payload)
+        product = await catalog.create_product(db, payload)
     applied = await resolution.apply_to_identify(
         db,
         user,

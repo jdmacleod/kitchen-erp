@@ -21,7 +21,8 @@ from tests.pricebook_helpers import make_product
 
 async def _product(client, ingredient_id: str, name: str, **extra) -> dict:
     r = await client.post(
-        "/api/v1/products", json={"ingredient_id": ingredient_id, "name": name, **extra}
+        "/api/v1/products",
+        json={"ingredient_id": ingredient_id, "name": name, "allow_duplicate": True, **extra},
     )
     assert r.status_code == 201, r.text
     return r.json()
