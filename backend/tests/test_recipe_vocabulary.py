@@ -282,7 +282,7 @@ def test_lint_reports_drift_and_unknown_with_suggestions(catalog: Context) -> No
     assert "drift    balsamic → Balsamic vinegar  [2 lines in 1 file]" in out
     assert "unknown  moonberry jam  [1 line in 1 file]" in out
     assert "olive oil" not in out and "salt" not in out
-    assert out.rstrip().endswith("3 files: 5 drift, 1 unknown, 0 parse errors.")
+    assert out.rstrip().endswith("3 files: 5 drift, 1 unknown, 0 references, 0 parse errors.")
 
 
 def test_lint_strict_exits_1_on_drift_or_unknown_and_0_when_clean(
@@ -419,3 +419,22 @@ def test_rewrite_token(line: str, new_name: str, note: str | None, expected: str
     assert after.raw_name == new_name
     if note:
         assert after.note is not None and after.note.startswith(note)
+
+
+def test_lint_suggests_a_reference_for_a_section_or_a_repeat_by_portion(
+    catalog: Context, tmp_path: Path
+) -> None:
+    """Issue 367: a line written as an ingredient that means an earlier one."""
+    (tmp_path / "noodles.cook").write_text(
+        "= Prep\nSoak @rice noodles{1%lb}.\n\n= Glaze\nWhisk @tamari{2%tbsp}.\n\n"
+        "= Cook\nToss @rice noodles{1%portion} with @glaze{1%portion}.\n",
+        encoding="utf-8",
+    )
+    code, out = run("lint", "--path", str(tmp_path), "--strict")
+    assert code == 1, out
+    assert (
+        "refer    noodles.cook:8  @rice noodles repeats the ingredient from line 2: "
+        "write @&rice noodles{}"
+    ) in out
+    assert "refer    noodles.cook:8  @glaze names section 2: write @&(=2)glaze{…}" in out
+    assert "2 references" in out

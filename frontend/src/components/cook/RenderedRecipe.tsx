@@ -1,11 +1,12 @@
 import {
   lineText,
   type BodyItem,
+  type BodyReference,
   type BodySection,
   type Recipe,
   type RecipeIngredient,
 } from "../../api/recipes";
-import { sectionHeading } from "../ui";
+import { focusRing, sectionHeading } from "../ui";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -68,7 +69,11 @@ export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) 
           ))}
         </dl>
       ) : null}
-      {recipe.body ? <Steps body={recipe.body} /> : <IngredientLines lines={recipe.ingredients} />}
+      {recipe.body ? (
+        <Steps body={recipe.body} prefix={id ?? "recipe"} />
+      ) : (
+        <IngredientLines lines={recipe.ingredients} />
+      )}
       <p className={`text-xs ${muted}`}>
         Edit this recipe in its file; it updates here on the next scan.
       </p>
@@ -76,34 +81,45 @@ export function RenderedRecipe({ recipe, id }: { recipe: Recipe; id?: string }) 
   );
 }
 
+/** The anchor of a section, or of one of its steps, for a reference to link to. */
+function anchor(prefix: string, section: number, step?: number | null): string {
+  return step === null || step === undefined
+    ? `${prefix}-s${section + 1}`
+    : `${prefix}-s${section + 1}-${step + 1}`;
+}
+
+const targetHighlight = "scroll-mt-4 rounded-sm target:bg-neutral-100 dark:target:bg-neutral-800";
+
 /** The steps as written: numbered within each section, items inline. */
-function Steps({ body }: { body: BodySection[] }) {
-  const withSteps = body.filter((s) => s.steps.length > 0);
-  if (withSteps.length === 0)
+function Steps({ body, prefix }: { body: BodySection[]; prefix: string }) {
+  if (!body.some((s) => s.steps.length > 0))
     return <p className={`text-sm ${muted}`}>This recipe has no steps.</p>;
   return (
     <>
-      {withSteps.map((section, i) => (
-        <div
-          key={`${section.name ?? ""}-${i}`}
-          className="flex flex-col gap-2"
-          data-testid="recipe-section"
-        >
-          {section.name ? <h2 className="text-base font-medium">{section.name}</h2> : null}
-          <ol
-            className="flex list-decimal flex-col gap-2 pl-6 text-sm leading-6"
-            aria-label={section.name ? `${section.name} steps` : "Steps"}
+      {body.map((section, i) =>
+        section.steps.length === 0 ? null : (
+          <div
+            key={`${section.name ?? ""}-${i}`}
+            id={anchor(prefix, i)}
+            className={`flex flex-col gap-2 ${targetHighlight}`}
+            data-testid="recipe-section"
           >
-            {section.steps.map((step, j) => (
-              <li key={j}>
-                {step.map((item, k) => (
-                  <Item key={k} item={item} />
-                ))}
-              </li>
-            ))}
-          </ol>
-        </div>
-      ))}
+            {section.name ? <h2 className="text-base font-medium">{section.name}</h2> : null}
+            <ol
+              className="flex list-decimal flex-col gap-2 pl-6 text-sm leading-6"
+              aria-label={section.name ? `${section.name} steps` : "Steps"}
+            >
+              {section.steps.map((step, j) => (
+                <li key={j} id={anchor(prefix, i, j)} className={targetHighlight}>
+                  {step.map((item, k) => (
+                    <Item key={k} item={item} body={body} prefix={prefix} section={i} />
+                  ))}
+                </li>
+              ))}
+            </ol>
+          </div>
+        ),
+      )}
     </>
   );
 }
@@ -113,10 +129,47 @@ function quantity(qty: string | null, unit?: string | null): string {
   return [qty, unit].filter((p) => p).join(" ");
 }
 
-function Item({ item }: { item: BodyItem }) {
+/** Where a reference came from, in words: "Sauce", "step 2", "step 1 of Preparation". */
+function origin(ref: BodyReference, body: BodySection[], here: string | null): string {
+  const name = body[ref.section]?.name ?? null;
+  const section = name ?? `section ${ref.section + 1}`;
+  if (ref.step === null) return section;
+  const step = `step ${ref.step + 1}`;
+  return name === here ? step : `${step} of ${section}`;
+}
+
+/** A reference: its name links to the step or section it came from; it has no line to cost. */
+function ReferenceItem({ item, body, prefix, section }: ItemProps & { item: BodyReference }) {
+  const words = quantity(item.qty, item.unit);
+  const here = body[section]?.name ?? null;
+  return (
+    <span data-testid="step-reference">
+      <a
+        href={`#${anchor(prefix, item.section, item.step)}`}
+        className={`rounded-sm font-semibold underline underline-offset-2 ${focusRing}`}
+      >
+        {item.name}
+        <span className="sr-only"> (from {origin(item, body, here)})</span>
+      </a>
+      {words ? <span className={muted}> {words}</span> : null}
+      {item.note ? <span className={muted}> ({item.note})</span> : null}
+    </span>
+  );
+}
+
+/** Where an item sits: the whole body, the anchor prefix, and its own section's index. */
+interface ItemProps {
+  body: BodySection[];
+  prefix: string;
+  section: number;
+}
+
+function Item({ item, ...where }: ItemProps & { item: BodyItem }) {
   switch (item.t) {
     case "text":
       return <>{item.v}</>;
+    case "reference":
+      return <ReferenceItem item={item} {...where} />;
     case "ingredient": {
       const words = quantity(item.qty, item.unit);
       return (

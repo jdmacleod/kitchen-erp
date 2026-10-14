@@ -118,6 +118,22 @@ export interface RecipePin {
 }
 
 /**
+ * An `@&` reference (issue 367): an earlier ingredient, step or section used again.
+ * It has no ingredient line; `section` and `step` index the body (from 0), and
+ * `step` is null when the whole section is meant.
+ */
+export interface BodyReference {
+  t: "reference";
+  name: string;
+  qty: string | null;
+  unit: string | null;
+  note: string | null;
+  target: "ingredient" | "step" | "section";
+  section: number;
+  step: number | null;
+}
+
+/**
  * The parsed file as the rendered recipe shows it (package 8): sections of steps
  * of items in the order written. Quantities are text ("2", "1–2", "a handful").
  */
@@ -131,6 +147,7 @@ export type BodyItem =
       note: string | null;
       seq: number;
     }
+  | BodyReference
   | { t: "cookware"; name: string; qty: string | null }
   | { t: "timer"; name: string | null; qty: string | null; unit: string | null };
 

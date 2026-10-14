@@ -88,6 +88,57 @@ async def test_the_body_holds_the_steps_with_seq_linking_each_ingredient_to_its_
     assert "." not in str(whisk[0]["v"]) or whisk[0]["t"] == "text"  # text is kept verbatim
 
 
+FOCACCIA = """---
+title: Hilltop focaccia
+---
+
+= Dough
+
+Mix @flour{500%g} and @water{400%ml}.
+
+Fold the @&(~1)dough{} and add @&flour{20%g}.
+
+= Bake
+
+Press the @&(=1)dough{1%tray}(risen) into a #tin{} and dust with @&flour{}.
+"""
+
+
+async def test_a_reference_links_to_its_step_or_section_and_has_no_row(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """Issue 367: `@&` references add no ingredient line, except an added amount."""
+    recipes_repo.write("focaccia.cook", FOCACCIA)
+    recipes_repo.commit("one")
+    await rescan(admin_client)
+    recipe = await detail(admin_client, (await by_path(admin_client))["focaccia.cook"]["id"])
+
+    assert recipe["parse_error_message"] is None
+    rows = [(line["seq"], line["raw_name"], line["qty"]) for line in recipe["ingredients"]]
+    assert rows == [(1, "flour", "500"), (2, "water", "400"), (3, "flour", "20")]
+
+    fold = recipe["body"][0]["steps"][1]
+    assert fold[1] == {
+        "t": "reference",
+        "name": "dough",
+        "qty": None,
+        "unit": None,
+        "note": None,
+        "target": "step",
+        "section": 0,
+        "step": 0,
+    }
+    assert fold[3]["t"] == "ingredient" and fold[3]["seq"] == 3  # 20 g more flour
+    [press] = recipe["body"][1]["steps"]
+    refs = [item for item in press if item["t"] == "reference"]
+    assert [(r["name"], r["target"], r["section"], r["step"], r["qty"]) for r in refs] == [
+        ("dough", "section", 0, None, "1"),
+        ("flour", "ingredient", 0, 0, None),
+    ]
+    assert refs[0]["unit"] == "tray" and refs[0]["note"] == "risen"
+
+
 async def test_the_body_stays_when_the_file_stops_parsing(
     admin_client: httpx.AsyncClient,
     recipes_repo: TempRepo,  # noqa: F811

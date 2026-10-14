@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { IngredientMatch } from "../api/catalog";
-import type { Recipe, RecipePin } from "../api/recipes";
+import type { BodySection, Recipe, RecipePin } from "../api/recipes";
 import {
   adminUser,
   errorResponse,
@@ -257,6 +257,58 @@ describe("the rendered recipe (10, Rendered recipe)", () => {
     expect(within(broth).getByTestId("step-timer")).toHaveClass("text-neutral-600");
     expect(within(recipe).queryByRole("list", { name: "Ingredients" })).not.toBeInTheDocument();
     for (const el of recipe.querySelectorAll("span")) expect(el.className).not.toMatch(/blue/);
+  });
+
+  it("links a reference to the step or section it came from, by name (issue 367)", async () => {
+    const body: BodySection[] = [
+      ...stewBody,
+      {
+        name: "Serve",
+        steps: [
+          [
+            { t: "text", v: "Ladle the " },
+            {
+              t: "reference",
+              name: "broth",
+              qty: "1",
+              unit: "bowl",
+              note: "hot",
+              target: "section",
+              section: 1,
+              step: null,
+            },
+            { t: "text", v: " over the " },
+            {
+              t: "reference",
+              name: "onion",
+              qty: null,
+              unit: null,
+              note: null,
+              target: "ingredient",
+              section: 0,
+              step: 0,
+            },
+            { t: "text", v: "." },
+          ],
+        ],
+      },
+    ];
+    mount({}, () => ({ ...stewRecipe, body }));
+    const recipe = await within(await screen.findByRole("main")).findByRole("region", {
+      name: "Recipe",
+    });
+    const serve = await within(recipe).findByRole("list", { name: "Serve steps" });
+    expect(serve).toHaveTextContent("Ladle the broth (from Broth) 1 bowl (hot) over the onion");
+    const broth = within(serve).getByRole("link", { name: /^broth\s*\(from Broth\)$/ });
+    expect(broth).toHaveAttribute("href", "#recipe-s2");
+    expect(recipe.querySelector("#recipe-s2")).toHaveTextContent("Broth");
+    const onion = within(serve).getByRole("link", {
+      name: /^onion\s*\(from step 1 of section 1\)$/,
+    });
+    expect(onion).toHaveAttribute("href", "#recipe-s1-1");
+    expect(recipe.querySelector("#recipe-s1-1")).toHaveTextContent("Rinse the pearl barley");
+    // A reference has no ingredient line, so no seq.
+    expect(within(serve).queryByTestId("step-ingredient")).not.toBeInTheDocument();
   });
 
   it("falls back to the ingredient lines when the index has no body", async () => {

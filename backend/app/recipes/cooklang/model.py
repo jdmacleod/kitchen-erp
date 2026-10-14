@@ -64,6 +64,33 @@ class IngredientRef:
     # tool that rewrites a name (`kerp recipes conform`) edits exactly these bytes.
     span: tuple[int, int] = field(default=(0, 0), compare=False)
     name_span: tuple[int, int] = field(default=(0, 0), compare=False)
+    # `@&flour{100%g}`: more of an ingredient named earlier (cooklang-rs's `&`
+    # modifier). Still a line of its own, so the amount adds to the first one.
+    reference: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class Reference:
+    """An earlier ingredient, step or section used again (cooklang-rs's `&` extensions).
+
+    `@&(~1)dough{}` is the step before, `@&(2)dough{}` step 2 of this section,
+    `@&(=2)sauce{}` section 2, `@&(=~1)sauce{}` the section before, and `@&flour{}`
+    with no quantity the ingredient named earlier. Not an ingredient line: what it
+    names is already resolved and costed. `number` and `relative` are as written;
+    `section` and `step` (0-based) are where it points, filled in after parsing.
+    """
+
+    name: str
+    target: Literal["ingredient", "step", "section"]
+    number: int = 0
+    relative: bool = False
+    quantity: Quantity = NO_QUANTITY
+    unit_text: str | None = None
+    note: str | None = None
+    section: int | None = None
+    step: int | None = None
+    line: int = field(default=0, compare=False)
+    span: tuple[int, int] = field(default=(0, 0), compare=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,7 +109,7 @@ class Timer:
     line: int = field(default=0, compare=False)
 
 
-Item = Text | IngredientRef | Cookware | Timer
+Item = Text | IngredientRef | Reference | Cookware | Timer
 
 
 @dataclass(frozen=True, slots=True)

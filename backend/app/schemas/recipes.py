@@ -93,6 +93,23 @@ class BodyIngredient(ApiModel):
     seq: int
 
 
+class BodyReference(ApiModel):
+    """An `@&` reference to an earlier ingredient, step or section; it has no row.
+
+    ``section`` and ``step`` index the body's sections and that section's steps
+    (from 0); ``step`` is None when the whole section is meant.
+    """
+
+    t: Literal["reference"]
+    name: str
+    qty: str | None = None
+    unit: str | None = None
+    note: str | None = None
+    target: Literal["ingredient", "step", "section"]
+    section: int
+    step: int | None = None
+
+
 class BodyCookware(ApiModel):
     t: Literal["cookware"]
     name: str
@@ -106,7 +123,10 @@ class BodyTimer(ApiModel):
     unit: str | None = None
 
 
-BodyItem = Annotated[BodyText | BodyIngredient | BodyCookware | BodyTimer, Field(discriminator="t")]
+BodyItem = Annotated[
+    BodyText | BodyIngredient | BodyReference | BodyCookware | BodyTimer,
+    Field(discriminator="t"),
+]
 
 
 class BodySection(ApiModel):
