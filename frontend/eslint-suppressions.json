@@ -697,7 +697,7 @@
   },
   "src/pages/catalog/ProductReviewPage.tsx": {
     "@typescript-eslint/no-base-to-string": {
-      "count": 2
+      "count": 1
     },
     "@typescript-eslint/no-dynamic-delete": {
       "count": 1
@@ -709,13 +709,13 @@
       "count": 2
     },
     "@typescript-eslint/no-unnecessary-condition": {
-      "count": 11
+      "count": 10
     },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 2
     },
     "complexity": {
-      "count": 4
+      "count": 3
     },
     "jsx-a11y/img-redundant-alt": {
       "count": 2
@@ -739,6 +739,17 @@
     },
     "max-lines-per-function": {
       "count": 2
+    }
+  },
+  "src/pages/catalog/reviewValues.ts": {
+    "@typescript-eslint/no-base-to-string": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unnecessary-condition": {
+      "count": 1
+    },
+    "complexity": {
+      "count": 1
     }
   },
   "src/pages/cook/RecipeDetailPage.tsx": {

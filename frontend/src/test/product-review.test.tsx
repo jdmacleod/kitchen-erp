@@ -967,3 +967,52 @@ describe("a store-brand barcode in review (2R-3)", () => {
     );
   });
 });
+
+describe("the short name (issue 347)", () => {
+  it("starts a new product's name short, sends it, and can go back to the full title", async () => {
+    const short = proposal({ short_title: "Rolled oats" });
+    const calls = mockApi(
+      routes(short, {
+        "GET /ingredients/category-suggestion": () =>
+          jsonResponse(200, { category: "pantry", source: "standard" }),
+        "POST /ingredients": () =>
+          jsonResponse(201, {
+            ...flourProduct.ingredient,
+            id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f9b51",
+          }),
+        [`POST /product-proposals/${proposalId}/accept`]: () =>
+          jsonResponse(200, {
+            ...short,
+            status: "accepted",
+            result: { product_id: flourProductId },
+          }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await user.click(await screen.findByRole("radio", { name: "Create new product" }));
+    const note = await screen.findByTestId("short-title");
+    expect(note).toHaveTextContent("Name shortened from the page title");
+    expect(screen.getByTestId("review-summary")).toHaveTextContent("Rolled oats");
+    const ingredient = screen.getByRole("combobox", { name: "Ingredient" });
+    await user.type(ingredient, "oats");
+    await user.click(await screen.findByRole("option", { name: /Create new ingredient/ }));
+    await screen.findByText("from the standard list");
+    await user.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
+    const sent = calls.find((c) => c.path.endsWith("/accept"))?.body as {
+      edits: Record<string, unknown>;
+    };
+    expect(sent.edits.title).toBe("Rolled oats");
+  });
+
+  it("uses the full title on request", async () => {
+    mockApi(routes(proposal({ short_title: "Rolled oats" })));
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/review/${proposalId}`);
+    await user.click(await screen.findByRole("radio", { name: "Create new product" }));
+    await user.click(await screen.findByRole("button", { name: "Use the full title" }));
+    expect(screen.queryByTestId("short-title")).not.toBeInTheDocument();
+    expect(screen.getByTestId("review-summary")).not.toHaveTextContent(/^Rolled oats/);
+  });
+});

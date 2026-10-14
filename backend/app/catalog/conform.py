@@ -49,6 +49,12 @@ class Conformed:
 
 
 @cache
+def proper_noun_words() -> frozenset[str]:
+    """Every word the standard list capitalises, lowercased: "dijon", "thai", "york"."""
+    return frozenset(w.lower() for phrase in _proper_nouns() for w in phrase)
+
+
+@cache
 def _proper_nouns() -> tuple[tuple[str, ...], ...]:
     """The capitalised words and phrases of the standard list's proper-noun names."""
     phrases: set[tuple[str, ...]] = set()

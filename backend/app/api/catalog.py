@@ -34,6 +34,7 @@ from app.schemas.catalog import (
     ProductOut,
     ProductUpdate,
     SearchOut,
+    ShortNameOut,
     UsdaSuggestionList,
 )
 from app.services import (
@@ -42,6 +43,7 @@ from app.services import (
     ingredient_names,
     product_duplicates,
     product_merge,
+    product_short_names,
     proposals,
     resolution,
     usda,
@@ -233,6 +235,19 @@ async def list_products(
         cursor=cursor,
     )
     return ProductList(items=rows, next_cursor=next_cursor)
+
+
+@router.get("/products/short-name", response_model=ShortNameOut)
+async def product_short_name(
+    db: DbSession,
+    _: CurrentUser,
+    title: str = Query(..., min_length=1, max_length=400),
+    brand: str | None = Query(None, max_length=200),
+    has_pack: bool = False,
+) -> ShortNameOut:
+    """A product title as a short name: no brand in front, no pack size (#347)."""
+    name = await product_short_names.suggest(db, title, brand, has_pack=has_pack)
+    return ShortNameOut(name=name)
 
 
 @router.get("/products/search", response_model=SearchOut)

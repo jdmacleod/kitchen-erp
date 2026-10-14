@@ -12578,6 +12578,17 @@
             ],
             "title": "Result"
           },
+          "short_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Title"
+          },
           "status": {
             "enum": [
               "pending",
@@ -15987,6 +15998,21 @@
           "suggested_home_base_id"
         ],
         "title": "SettingsOut",
+        "type": "object"
+      },
+      "ShortNameOut": {
+        "additionalProperties": false,
+        "description": "A product title as its short name (#347).",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ShortNameOut",
         "type": "object"
       },
       "SkippedLine": {
@@ -26043,6 +26069,78 @@
           }
         },
         "summary": "Search Products",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/short-name": {
+      "get": {
+        "description": "A product title as a short name: no brand in front, no pack size (#347).",
+        "operationId": "product_short_name_api_v1_products_short_name_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "title",
+            "required": true,
+            "schema": {
+              "maxLength": 400,
+              "minLength": 1,
+              "title": "Title",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "brand",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Brand"
+            }
+          },
+          {
+            "in": "query",
+            "name": "has_pack",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Has Pack",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShortNameOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Product Short Name",
         "tags": [
           "catalog"
         ]

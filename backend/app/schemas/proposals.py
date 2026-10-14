@@ -135,6 +135,9 @@ class ProposalOut(ApiModel):
     decided_at: datetime | None
     result: dict[str, Any] | None
     created_at: datetime
+    # The title as a short name (#347): no brand in front, no pack size, sentence
+    # case. Review starts the name field with it; None when the title is already short.
+    short_title: str | None = None
 
 
 class ProposalSummary(ApiModel):

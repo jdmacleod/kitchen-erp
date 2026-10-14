@@ -334,3 +334,25 @@ describe("a pasted page with the lookup helper (2M)", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 });
+
+describe("the short name hint (issue 347)", () => {
+  it("offers the name without the brand and pack, and uses it on request", async () => {
+    mockApi({
+      ...baseRoutes(() => []),
+      "GET /products/short-name": () => jsonResponse(200, { name: "Thick cut bacon" }),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.type(within(form).getByLabelText("Brand"), "Harbor Light");
+    const name = within(form).getByLabelText("Name");
+    await user.type(name, "Harbor Light Thick Cut Bacon");
+    const hint = await within(form).findByTestId("short-name-hint");
+    expect(hint).toHaveTextContent("Shorter: “Thick cut bacon”");
+    await user.click(within(hint).getByRole("button", { name: "Use it" }));
+    expect(name).toHaveValue("Thick cut bacon");
+    await waitFor(() =>
+      expect(within(form).queryByTestId("short-name-hint")).not.toBeInTheDocument(),
+    );
+  });
+});

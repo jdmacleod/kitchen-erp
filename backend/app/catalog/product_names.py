@@ -46,3 +46,138 @@ def tidy(text: str | None) -> str | None:
     out = text.translate(_TABLE)
     out = _SPACES.sub(" ", out)
     return _BEFORE_PUNCT.sub(r"\1", out).strip()
+
+
+# --- short names (#347) ----------------------------------------------------------
+#
+# A product's name is short: no brand in front, no pack size, sentence case. The
+# brand and the pack have fields of their own, so a retailer's title ("HARBOR LIGHT
+# Thick Cut Bacon, 12 oz") repeats both; its short name is "Thick cut bacon".
+
+# A number with a unit, or a count of things: "12 oz", "16 fl. oz.", "6 cans",
+# "12 pk", "1/2 gal", "2.25 lb", "48 OZ (3 LBS)".
+_QTY = (
+    r"\d+(?:[./]\d+)?\s{0,2}(?:-\s?)?"
+    r"(?:fl\.?\s{0,2}oz\.?|oz\.?|lbs?\.?|pounds?|ounces?|kg|g|grams?|mg|ml|l|liters?|litres?"
+    r"|gal(?:lons?)?|qt|quarts?|pt|pints?|ct|count|pk|pack|packs|cans?|bottles?|bags?"
+    r"|boxes|box|jars?|pieces|pcs|each|ea|rolls|links|slices|sheets|eggs|bars|cups|pods)\b"
+)
+# Words that only say how the pack is sold: "Bag", "Clamshell", "Each", "Can".
+_CONTAINERS = (
+    r"(?:bag|bottle|box|can|carton|clamshell|container|each|jar|pack|package|pouch|tub|tin|"
+    r"bunch|case|loaf|bundle|tray)"
+)
+_PACK_PHRASE = re.compile(
+    rf"(?:net\s+wt\.?\s*)?{_QTY}(?:\s*(?:[x×/]|per)\s*{_QTY})*(?:\s*\({_QTY}[^)]*\))?"
+    rf"(?:\s+{_CONTAINERS}\b)?\.?",
+    re.IGNORECASE,
+)
+# A trailing piece of the title that is only pack: ", 12 oz", " - 5 Oz", " (255g)",
+# " 12oz Bag", ", Each", ", 6 cans / 12 fl oz".
+_TRAILING_PACK = re.compile(
+    rf"(?:\s*[,\-–:|/]\s*|\s+|\s*\()(?:{_PACK_PHRASE.pattern}|{_CONTAINERS})\)?\s*$",
+    re.IGNORECASE,
+)
+# Retail banners in capitals ending in "!": "BIG DEAL!", "NEW!".
+_BANNER = re.compile(r"\s*\b[A-Z]{2,}(?:\s+[A-Z]{2,})*!")
+_UNIT_WORDS = frozenset(
+    {"oz", "lb", "lbs", "g", "kg", "mg", "ml", "l", "fl", "ct", "pk", "gal", "qt", "pt"}
+)
+# Words kept in capitals when a name is put in sentence case.
+ACRONYMS = frozenset(
+    {"IPA", "BBQ", "USDA", "XL", "XXL", "NY", "USA", "UK", "PB&J", "BLT", "GF", "TV", "DIY"}
+)
+
+
+def _brand_lead(words: list[str], keys: set[str]) -> int:
+    """How many leading words are a known brand: never all of them."""
+    from app.catalog.brand_names import name_key
+
+    for n in range(len(words) - 1, 0, -1):
+        if name_key(" ".join(words[:n])) in keys:
+            return n
+    return 0
+
+
+def _sentence_case(text: str, keep: set[str]) -> str:
+    """Sentence case for a name in capitals or Title Case; others are left alone."""
+    words = text.split(" ")
+    # Units and sizes say nothing about the name's case: "Snap Peas, 32 oz" is Title Case.
+    lettered = [
+        w
+        for w in words
+        if any(c.isalpha() for c in w)
+        and not any(c.isdigit() for c in w)
+        and w.strip(",.()").lower() not in _UNIT_WORDS
+    ]
+    if not lettered:
+        return text
+    upper = sum(1 for w in lettered if w.isupper() and len(w) > 1)
+    titled = sum(1 for w in lettered if w[:1].isupper())
+    shouting = upper / len(lettered) >= 0.6
+    title_case = len(lettered) >= 2 and titled == len(lettered)
+    if not (shouting or title_case):
+        return text
+    out = []
+    for i, word in enumerate(words):
+        bare = word.strip(",.()!:;")
+        if bare.upper() in ACRONYMS:
+            out.append(word.upper())
+            continue
+        if bare.lower() in keep:
+            # A proper noun or brand word: "DIJON" becomes "Dijon", "McKenzie" stays.
+            out.append(word.capitalize() if word.isupper() else word)
+            continue
+        if any(c.isdigit() for c in bare) or bare.lower() in _UNIT_WORDS:
+            out.append(word if not word.isupper() else word.lower())
+            continue
+        inner = word.replace("-", " ").split()
+        if not shouting and any(c.isupper() for part in inner for c in part[1:]):  # McCormick
+            out.append(word)
+            continue
+        lowered = word.lower()
+        out.append(lowered[:1].upper() + lowered[1:] if i == 0 else lowered)
+    return " ".join(out)
+
+
+def short_name(
+    title: str,
+    brand: str | None = None,
+    *,
+    has_pack: bool = True,
+    brand_keys: frozenset[str] | set[str] = frozenset(),
+    proper_nouns: frozenset[str] | set[str] = frozenset(),
+) -> str:
+    """The short name for a product titled ``title`` (#347). Never empty, idempotent.
+
+    ``brand`` and ``brand_keys`` (other spellings of brands, as ``brand_names.name_key``
+    keys) are dropped from the front, and a trailing ", Brand" too. Pack text is
+    dropped from the end only when the product's pack is known (``has_pack``), so
+    nothing is lost. ``proper_nouns`` (lowercase) keep their capitals.
+    """
+    from app.catalog.brand_names import name_key
+
+    original = tidy(title) or ""
+    text = _BANNER.sub("", original).strip()
+    keys = set(brand_keys)
+    if brand and (key := name_key(brand)):
+        keys.add(key)
+        # A brand's own first words lead many titles: "Sierra Nevada" for "Sierra
+        # Nevada Brewing Co.". Two words at least, so a one-word lead stays a word.
+        brand_words = key.split()
+        keys.update(" ".join(brand_words[:n]) for n in range(2, len(brand_words)))
+    for _ in range(4):
+        before = text
+        if has_pack:
+            text = _TRAILING_PACK.sub("", text).strip(" ,-–:|/")
+        words = text.split()
+        if keys and (lead := _brand_lead(words, keys)):
+            text = " ".join(words[lead:]).lstrip(" ,-–:|/")
+        tail = re.split(r"\s*(?:,|\s-\s|\bby\b)\s*", text)
+        if keys and len(tail) > 1 and name_key(tail[-1]) in keys:
+            text = text[: text.rfind(tail[-1])].rstrip(" ,-–:|/").removesuffix(" by").strip()
+        if text == before:
+            break
+    keep = {w.lower() for w in proper_nouns} | {w for k in keys for w in k.split()}
+    text = _sentence_case(text, keep)
+    return text or original or title

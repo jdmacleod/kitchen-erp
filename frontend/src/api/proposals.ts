@@ -150,6 +150,8 @@ export interface Proposal {
   decided_at: string | null;
   result: { product_id?: string; superseded_by?: string } | null;
   created_at: string;
+  /** The title as a short name, no brand in front or pack size (issue 347); null when already short. */
+  short_title?: string | null;
 }
 
 export interface ProposalSummary {

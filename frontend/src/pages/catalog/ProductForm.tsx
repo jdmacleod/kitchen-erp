@@ -18,6 +18,7 @@ import {
   type IngredientChoice,
 } from "../../components/catalog/IngredientPicker";
 import { RatingInput } from "../../components/catalog/RatingInput";
+import { ShortNameHint } from "../../components/catalog/ShortNameHint";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { Alert, Button, Field, sectionHeading } from "../../components/ui";
 
@@ -249,6 +250,12 @@ export function ProductForm({
           onChange={(e) => set("name", e.target.value)}
         />
       </div>
+      <ShortNameHint
+        name={values.name}
+        brand={values.brand}
+        hasPack={values.pack_qty.trim() !== "" && values.pack_unit !== ""}
+        onUse={(name) => set("name", name)}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field

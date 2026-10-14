@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
-import { formatPack, formatPieces, useProduct, useUnits } from "../../api/catalog";
+import { formatPack, useProduct, useUnits } from "../../api/catalog";
 import { errorMessage, isApiError } from "../../api/client";
 import {
   ROLE_LABELS,
@@ -52,11 +52,13 @@ import {
   focusRing,
   sectionHeading,
 } from "../../components/ui";
-import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDate, formatDateTime } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { piecesFit } from "./ProductForm";
 import { defaultMain, PhotoSize, pixels } from "./reviewPhotos";
+import { comparedPrice, parsePieces, showPrice, showValue } from "./reviewValues";
+
+export { basisText, parsePieces, showPrice, showValue } from "./reviewValues";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 const reviewHeading = `${sectionHeading} mb-2`;
@@ -73,47 +75,7 @@ const REVIEWED: [string, string][] = [
   ["gtin", "Barcode"],
 ];
 
-/** What a price is for, as a person reads it: "" for 1 each, " / lb", " / 100 g". */
-export function basisText(qty: string | undefined, unit: string | undefined): string {
-  const q = stripZeros(qty ?? "1");
-  const u = (unit ?? "each").replace("_", " ");
-  if (u === "each" && q === "1") return "";
-  return q === "1" ? ` / ${u}` : ` / ${q} ${u}`;
-}
-
-export function showPrice(
-  price: { amount: string; qty?: string; unit?: string },
-  sayEach = false,
-): string {
-  const basis = basisText(price.qty, price.unit);
-  return `${formatMoney(price.amount)}${basis || (sayEach ? " each" : "")}`;
-}
-
-/** A price candidate side by side with others: "each" is said, not implied. */
-function comparedPrice(value: unknown): string {
-  if (typeof value === "string") return `${formatMoney(value)} each`;
-  return showPrice(value as PriceBasis, true);
-}
-
 const DECIMAL = /^\d{1,8}(\.\d{1,4})?$/;
-
-/** A field's value as a person reads it. */
-export function showValue(field: string, value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (field === "pack" && typeof value === "object") {
-    const pack = value as Pack;
-    return `${pack.qty.replace(/\.0+$|(\.\d*?)0+$/, "$1")} ${pack.unit}`;
-  }
-  if (field === "pieces" && typeof value === "object") {
-    const pieces = value as { count: string; name?: string };
-    return formatPieces(Number(pieces.count), pieces.name);
-  }
-  if (field === "gtin" && typeof value === "string") return value.replace(/^0+(?=\d{12,13}$)/, "");
-  if (field === "price" && typeof value === "string") return formatMoney(value);
-  if (field === "price" && typeof value === "object") return showPrice(value as PriceBasis);
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  return String(value);
-}
 
 export function ProductReviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -152,19 +114,6 @@ export function ProductReviewPage() {
 interface Choice {
   /** The index into [chosen, ...alternatives], or null while a conflict is open. */
   index: number | null;
-}
-
-/** "5 links" or "5" as pieces; the name singular, as the product stores it. */
-export function parsePieces(text: string): { count: string; name?: string } | null {
-  const m = /^(\d{1,5})(?:\s+([A-Za-z][A-Za-z -]{0,31}))?$/.exec(text.trim());
-  if (!m || Number(m[1]) <= 0) return null;
-  const name = m[2]
-    ?.trim()
-    .toLowerCase()
-    .replace(/(ies)$/, "y")
-    .replace(/(ches|shes|sses|xes|zes)$/, (s) => s.slice(0, -2))
-    .replace(/([^s])s$/, "$1");
-  return { count: String(Number(m[1])), ...(name ? { name } : {}) };
 }
 
 /** A field's choices, the merge's first; the same value from another source is one choice. */
@@ -210,6 +159,8 @@ function Review({ proposal }: { proposal: Proposal }) {
   // Fields the person chose or typed; only these replace what an updated product has.
   const [touched, setTouched] = useState<Set<string>>(new Set());
   const touch = (name: string) => setTouched((t) => new Set(t).add(name));
+  // A new product starts with the title as a short name, unless the full one is asked for (issue 347).
+  const [fullTitle, setFullTitle] = useState(false);
   const [ingredient, setIngredient] = useState<IngredientChoice | null>(null);
   const productPhotos = proposal.photos.filter((p) => p.role === "product");
   // The person's choice of main photo; until they make one, the default below applies.
@@ -291,8 +242,13 @@ function Review({ proposal }: { proposal: Proposal }) {
     matchRef.current?.querySelector<HTMLInputElement>("input:checked, input")?.focus();
   }, []);
 
+  const shortTitle =
+    isNew && proposal.short_title && !fullTitle && !touched.has("title")
+      ? proposal.short_title
+      : null;
   const chosenValue = (name: string): unknown => {
     if (typed[name] !== undefined) return typed[name];
+    if (name === "title" && shortTitle) return shortTitle;
     if (kept(name)) return current(name);
     const field = fields[name];
     const index = choices[name]?.index;
@@ -338,6 +294,7 @@ function Review({ proposal }: { proposal: Proposal }) {
       )
         out[name] = candidates(field)[index].value;
     }
+    if (shortTitle && !("title" in typed)) out.title = shortTitle;
     for (const [name, value] of Object.entries(typed)) {
       if (name === "pack") {
         const m = /^(\d+(?:\.\d+)?)\s*([a-zA-Z_ ]+)$/.exec(value.trim());
@@ -572,6 +529,12 @@ function Review({ proposal }: { proposal: Proposal }) {
             ) : null}
             {editing ? (
               <div className="mt-3 flex flex-col gap-4">
+                {shortTitle ? (
+                  <ShortTitleNote
+                    full={fields.title ? showValue("title", fields.title.value) : ""}
+                    onFull={() => setFullTitle(true)}
+                  />
+                ) : null}
                 {REVIEWED.map(([name, label]) => {
                   if (name === "pieces" && !piecesOffered) return null;
                   const field = fields[name];
@@ -1341,4 +1304,19 @@ function minutesAgo(iso: string, now: number): string {
   const minutes = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000));
   if (minutes < 1) return "just now";
   return minutes === 1 ? "1 min ago" : `${minutes} min ago`;
+}
+
+/** "Shortened from the page title “…”" with a way back to it (issue 347). */
+function ShortTitleNote({ full, onFull }: { full: string; onFull: () => void }) {
+  return (
+    <p className={`flex flex-wrap items-center gap-2 text-sm ${muted}`} data-testid="short-title">
+      <span>
+        Name shortened from the page title <span className="italic">“{full}”</span>: the brand and
+        pack have fields of their own.
+      </span>
+      <Button variant="ghost" className="min-h-11 lg:min-h-8 px-2" onClick={onFull}>
+        Use the full title
+      </Button>
+    </p>
+  );
 }
