@@ -2105,7 +2105,8 @@ ingredients:
     unit: g
     fdc: 168410
   - key: frozen-french-fries
-    name: "frozen french fries"
+    name: "frozen French fries"
+    proper_noun: true
     category: frozen
     perishability: frozen
     keep: {room: null, fridge: null, freezer: 240}
