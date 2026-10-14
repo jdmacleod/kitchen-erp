@@ -25,7 +25,7 @@ def test_a_form_word_after_a_comma_goes_in_front():
 
 def test_a_usda_style_meat_name_becomes_its_standard_name_or_reads_meat_first():
     assert conform("Beef, flank steak").name == "flank steak"
-    assert conform("pork, shoulder").name == "pork shoulder"
+    assert conform("goat, shank").name == "goat shank"
 
 
 def test_a_known_brand_in_front_is_dropped():
@@ -36,7 +36,7 @@ def test_a_known_brand_in_front_is_dropped():
 
 
 def test_names_are_lowercase_but_for_the_standard_lists_proper_nouns():
-    assert conform("DIJON MUSTARD").name == "Dijon mustard"
+    assert conform("KALAMATA OLIVE PASTE").name == "Kalamata olive paste"
     assert conform("New potatoes").name == "new potatoes"
     assert conform("monterey jack").name == "Monterey Jack"
 
@@ -53,7 +53,7 @@ def test_conforming_twice_changes_nothing(text):
 
 
 def test_spelling_variants_meet_the_standard_entry():
-    assert match_entry("thai chilies").key == match_entry("thai chiles").key
+    assert match_entry("fresno chilies").key == match_entry("fresno chile").key
     assert match_entry("greek yoghurt").key == match_entry("greek yogurt").key
 
 
