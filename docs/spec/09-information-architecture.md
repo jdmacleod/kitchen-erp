@@ -145,6 +145,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one aggregate row (T7, #186); a product failing two ways counts once. The detail names the reason, or breaks the count down by reason when they differ | "71 products need a pack size before their prices compare" | Set packs / Add densities / Add measures / Review → `/catalog/bridges` |
 | Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
 | Link | Ingredients still To review against the standard list, one aggregate row (03, 1G) | "13 ingredients to link to the standard list" | Review → `/catalog/ingredients/link` |
+| Ingredient duplicates | Pairs of ingredients that look like one food entered twice, one aggregate row (03, #346) | "3 possible duplicate ingredients" | Review → `/catalog/ingredients/link#duplicates` |
 | USDA | Linked ingredients with unreviewed USDA densities or measures, one aggregate row, only when USDA data is loaded (03, 1G) | "9 ingredients have USDA densities to review" | Review → `/catalog/bridges#usda` |
 | New product | Pending new-product proposals, one aggregate row (2L, PD3) | "5 products to review" | Review → the oldest proposal |
 | Product update | Pending product-update proposals, one aggregate row (2N) | "2 product updates to review" | Review → the oldest |

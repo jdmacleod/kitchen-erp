@@ -17,6 +17,7 @@ export type InboxKind =
   | "product_update"
   | "reread"
   | "duplicates"
+  | "ingredient_duplicates"
   | "posted_prices"
   | "recipe";
 

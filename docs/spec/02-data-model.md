@@ -132,6 +132,7 @@ Merging a duplicate product into the one to keep (#179) never touches its price 
 
 ```
 product_distinct_pair            -- "Not the same" on a possible duplicate (03, 2026-10-08)
+ingredient_distinct_pair         -- "Not the same" on a possible duplicate ingredient (03, #346)
   product_a FK product,
   product_b FK product,
   decided_by FK user,

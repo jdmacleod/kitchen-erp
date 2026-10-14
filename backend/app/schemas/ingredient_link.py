@@ -140,3 +140,25 @@ class UsdaDecisionIn(ApiModel):
 class UsdaDecisionOut(ApiModel):
     saved: int
     ingredient: IngredientOut
+
+
+class IngredientDuplicateSide(ApiModel):
+    id: uuid.UUID
+    name: str
+    products: int
+    # Linked to the standard list: the likelier one to keep.
+    standard: bool
+
+
+class IngredientDuplicatePairOut(ApiModel):
+    """Two ingredients that look like one food entered twice, and why (#346)."""
+
+    a: IngredientDuplicateSide
+    b: IngredientDuplicateSide
+    reasons: list[str]
+    # The suggested survivor: the standard-linked one, else the one with more products.
+    keep_id: uuid.UUID
+
+
+class IngredientDuplicateList(ApiModel):
+    items: list[IngredientDuplicatePairOut]

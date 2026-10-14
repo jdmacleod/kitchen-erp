@@ -54,6 +54,7 @@ function routes(
     "GET /auth/me": () => jsonResponse(200, adminUser),
     "GET /health": () => jsonResponse(200, { status: "ok" }),
     "GET /ingredients/link": () => jsonResponse(200, state.page),
+    "GET /ingredients/duplicates": () => jsonResponse(200, { items: [] }),
     ...extra,
   };
 }
@@ -192,5 +193,60 @@ describe("link page (1G)", () => {
     await waitFor(() =>
       expect(calls.some((c) => c.path === `/ingredients/${ids.sorrel}/reopen`)).toBe(true),
     );
+  });
+});
+
+describe("possible duplicate ingredients (issue 346)", () => {
+  const pair = {
+    a: { id: ids.onions, name: "green onions", products: 1, standard: false },
+    b: { id: ids.scallion, name: "scallion", products: 3, standard: true },
+    reasons: ["same USDA food", "same standard entry"],
+    keep_id: ids.scallion,
+  };
+
+  it("lists each pair with its reasons and the suggested one to keep", async () => {
+    mockApi(
+      routes(
+        { page: { to_review: [], skipped: [] } },
+        { "GET /ingredients/duplicates": () => jsonResponse(200, { items: [pair] }) },
+      ),
+    );
+    renderApp("/catalog/ingredients/link");
+    const card = await screen.findByRole("group", { name: "green onions and scallion" });
+    expect(within(card).getByTestId("duplicate-reasons")).toHaveTextContent(
+      "same USDA food · same standard entry",
+    );
+    expect(within(card).getByRole("button", { name: "Keep scallion" })).toBeInTheDocument();
+    expect(card).toHaveTextContent("suggested");
+  });
+
+  it("remembers Not the same and the pair leaves", async () => {
+    let items = [pair];
+    const calls = mockApi(
+      routes(
+        { page: { to_review: [], skipped: [] } },
+        {
+          "GET /ingredients/duplicates": () => jsonResponse(200, { items }),
+          "POST /ingredients/duplicates/distinct": () => {
+            items = [];
+            return new Response(null, { status: 204 });
+          },
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients/link");
+    await user.click(
+      await screen.findByRole("button", { name: "green onions and scallion are not the same" }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Possible duplicate ingredients" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      a: ids.onions,
+      b: ids.scallion,
+    });
   });
 });
