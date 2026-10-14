@@ -473,9 +473,6 @@
     }
   },
   "src/components/purchases/ProductPicker.tsx": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 4
-    },
     "@typescript-eslint/prefer-nullish-coalescing": {
       "count": 1
     },
@@ -728,9 +725,6 @@
     }
   },
   "src/pages/catalog/ProductsPage.tsx": {
-    "@typescript-eslint/no-confusing-void-expression": {
-      "count": 1
-    },
     "@typescript-eslint/no-misused-promises": {
       "count": 3
     },

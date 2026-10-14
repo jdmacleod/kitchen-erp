@@ -16,7 +16,7 @@ async function seedPurchase(page: Page, stamp: string) {
   const { id: ingredientId } = (await ingredient.json()) as { id: string };
   const productName = `E2E barley bag ${stamp}`;
   const product = await page.request.post("/api/v1/products", {
-    data: { ingredient_id: ingredientId, name: productName },
+    data: { allow_duplicate: true, ingredient_id: ingredientId, name: productName },
   });
   expect(product.status()).toBe(201);
   const { id: productId } = (await product.json()) as { id: string };

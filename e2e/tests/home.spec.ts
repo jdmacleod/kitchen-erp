@@ -34,6 +34,7 @@ async function seedCommittedPurchase(page: Page): Promise<void> {
 
   const product = await page.request.post("/api/v1/products", {
     data: {
+      allow_duplicate: true,
       ingredient_id: ingredientId,
       name: `E2E barley sack ${stamp}`,
       pack_qty: "1",

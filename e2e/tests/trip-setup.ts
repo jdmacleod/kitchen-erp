@@ -83,6 +83,7 @@ export async function makeTripWorld(request: APIRequestContext, stamp: string): 
       `product ${name}`,
       await request.post("/api/v1/products", {
         data: {
+          allow_duplicate: true,
           ingredient: { name, canonical_unit: "g", category: "pantry", keep_name: true },
           name: `${name} bag`,
           pack_qty: "1",

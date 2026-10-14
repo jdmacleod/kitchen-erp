@@ -46,6 +46,7 @@ async def make_product(
                 "canonical_unit": canonical_unit,
             },
             "name": product_name,
+            "allow_duplicate": True,
             **extra,
         },
     )

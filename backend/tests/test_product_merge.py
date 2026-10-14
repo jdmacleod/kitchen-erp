@@ -45,7 +45,12 @@ async def _also(client: httpx.AsyncClient, first: dict, name: str, **extra) -> d
     """Another product of ``first``'s ingredient."""
     r = await client.post(
         "/api/v1/products",
-        json={"ingredient_id": first["ingredient"]["id"], "name": name, **extra},
+        json={
+            "ingredient_id": first["ingredient"]["id"],
+            "name": name,
+            "allow_duplicate": True,
+            **extra,
+        },
     )
     assert r.status_code == 201, r.text
     return r.json()

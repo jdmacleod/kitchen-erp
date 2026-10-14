@@ -246,6 +246,8 @@ class ProductCreate(_PackPair):
     density_override: Decimal | None = Field(default=None, gt=0)
     density_override_source: BridgeSource | None = None
     notes: str | None = None
+    # Create it even though the catalog has the same product (#348).
+    allow_duplicate: bool = Field(default=False, exclude=True)
 
     @model_validator(mode="after")
     def _ingredient(self):

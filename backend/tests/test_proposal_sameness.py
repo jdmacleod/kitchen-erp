@@ -182,7 +182,12 @@ async def test_a_merge_rematches_onto_the_survivor(admin_client, admin, store):
         admin_client, "Medlar jam", "Medlar Jam", brand="Fernhill", pack_qty="8", pack_unit="oz"
     )
     ing = keep["ingredient"]["id"]
-    body = {"ingredient_id": ing, "name": "Medlar jam", "brand": "Fernhill"}
+    body = {
+        "ingredient_id": ing,
+        "name": "Medlar jam",
+        "brand": "Fernhill",
+        "allow_duplicate": True,
+    }
     loser = (await admin_client.post("/api/v1/products", json=body)).json()
     proposal = await clip(admin, store, "Fernhill Medlar Jam, 8 oz")
     before = {c["product_id"] for c in (await read(admin_client, proposal.id))["candidates"]}

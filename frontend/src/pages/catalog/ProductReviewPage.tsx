@@ -267,10 +267,15 @@ function Review({ proposal }: { proposal: Proposal }) {
   })();
   const piecesOffered = !units.data || piecesFit(packUnit, units.data);
 
+  // A new product the sameness rules call one the catalog has asks once (issue 348).
+  const [confirmedNew, setConfirmedNew] = useState(false);
+  const sameAs =
+    isNew && !confirmedNew ? proposal.candidates?.find((c) => c.verdict === "same") : undefined;
   const blocker = ((): string | null => {
     if (readOnly) return null;
     if (!match) return "Choose whether to update a product or create one";
     if (conflicts.length > 0) return `Choose a ${conflicts[0][1].toLowerCase()} to accept`;
+    if (sameAs) return `This looks like ${sameAs.name}, already in your catalog`;
     if (isNew && !ingredient) return "Choose an ingredient to accept";
     if (isNew && needsCategory(ingredient)) return "Choose a category for the new ingredient";
     if (isNew && !title) return "Give the product a name to accept";
@@ -802,6 +807,15 @@ function Review({ proposal }: { proposal: Proposal }) {
               {blocker ? (
                 <span className={`basis-full text-sm lg:min-w-0 lg:flex-1 lg:basis-auto ${muted}`}>
                   {blocker}
+                  {sameAs ? (
+                    <Button
+                      variant="ghost"
+                      className="min-h-11 lg:min-h-8 px-2"
+                      onClick={() => setConfirmedNew(true)}
+                    >
+                      It's a new product
+                    </Button>
+                  ) : null}
                 </span>
               ) : (
                 <span className={`hidden text-xs lg:inline lg:flex-1 ${muted}`}>

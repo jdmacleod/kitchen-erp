@@ -35,7 +35,9 @@ async def clear_category(client: httpx.AsyncClient, ingredient: dict) -> dict:
 
 async def make_product(client: httpx.AsyncClient, ingredient_id: str, name: str, **extra) -> dict:
     r = await client.post(
-        "/api/v1/products", json={"ingredient_id": ingredient_id, "name": name, **extra}
+        "/api/v1/products",
+        # Tests make look-alikes on purpose; "already in your catalog" has its own tests (#348).
+        json={"ingredient_id": ingredient_id, "name": name, "allow_duplicate": True, **extra},
     )
     assert r.status_code == 201, r.text
     return r.json()

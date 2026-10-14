@@ -356,3 +356,73 @@ describe("the short name hint (issue 347)", () => {
     );
   });
 });
+
+describe("already in your catalog (issue 348)", () => {
+  const same = {
+    id: flourProduct.id,
+    name: "Thick cut lantern bacon",
+    brand: "Harbor Light",
+    pack_qty: "12",
+    pack_unit: "oz",
+    verdict: "same",
+  };
+
+  async function fill(user: ReturnType<typeof userEvent.setup>) {
+    const form = await openAddDrawer(user);
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "flour");
+    await user.click((await within(form).findAllByRole("option", { name: /flour/i }))[0]);
+    await user.type(within(form).getByLabelText("Name"), "Thick Cut Lantern Bacon");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
+    return form;
+  }
+
+  it("lists the product it already has, and creates anyway on request", async () => {
+    let tries = 0;
+    const calls = mockApi({
+      ...baseRoutes(() => []),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
+      "POST /products": () => {
+        tries += 1;
+        return tries === 1
+          ? errorResponse(409, "product_exists", "Already there.", {
+              product_id: same.id,
+              candidates: [same],
+            })
+          : jsonResponse(201, flourProduct);
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await fill(user);
+    const notice = await within(form).findByTestId("already-in-catalog");
+    expect(notice).toHaveTextContent(
+      "Thick cut lantern bacon · Harbor Light · 12 oz (the same product)",
+    );
+    await user.click(within(notice).getByRole("button", { name: "Create anyway" }));
+    await waitFor(() => expect(tries).toBe(2));
+    const posts = calls.filter((c) => c.method === "POST" && c.path === "/products");
+    expect(posts[1].body).toMatchObject({ name: "Thick Cut Lantern Bacon", allow_duplicate: true });
+  });
+
+  it("opens the existing product with Use this one", async () => {
+    mockApi({
+      ...baseRoutes(() => []),
+      "GET /ingredients/search": () => jsonResponse(200, { items: [ingredientMatch(flour)] }),
+      "POST /products": () =>
+        errorResponse(409, "product_exists", "Already there.", {
+          product_id: same.id,
+          candidates: [same],
+        }),
+      [`GET /products/${same.id}`]: () => jsonResponse(200, flourProduct),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await fill(user);
+    const notice = await within(form).findByTestId("already-in-catalog");
+    await user.click(within(notice).getByRole("button", { name: `Use ${same.name}` }));
+    // The product's page opens in place of the drawer.
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+});

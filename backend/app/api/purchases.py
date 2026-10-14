@@ -58,6 +58,7 @@ from app.services import (
     naming,
     pricebook,
     pricebook_views,
+    product_same,
     proposals,
     purchases,
     removal,
@@ -539,6 +540,7 @@ async def resolve_line(
 ) -> PurchaseOut:
     product_id = payload.product_id
     if payload.product is not None:
+        await product_same.refuse_same(db, payload.product)
         product_id = (await catalog.create_product(db, payload.product)).id
     purchase = await resolution.decide_line(
         db,

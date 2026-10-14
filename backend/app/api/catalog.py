@@ -43,6 +43,7 @@ from app.services import (
     ingredient_names,
     product_duplicates,
     product_merge,
+    product_same,
     product_short_names,
     proposals,
     resolution,
@@ -263,6 +264,7 @@ async def create_product(
 ) -> JSONResponse:
     if guard.replay is not None:
         return guard.replay
+    await product_same.refuse_same(db, payload)
     row = await catalog.create_product(db, payload)
     # Proposals clipped before this product existed now see it (2P).
     await proposals.rematch_pending(db, row.id)
