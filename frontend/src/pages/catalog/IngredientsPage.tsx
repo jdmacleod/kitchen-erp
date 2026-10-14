@@ -16,12 +16,11 @@ import {
   type BridgeSource,
   type CanonicalUnit,
   type Ingredient,
-  type IngredientCreateInput,
   type Perishability,
 } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import { useLinkSummary } from "../../api/ingredientLink";
-import { CategoryField } from "../../components/catalog/CategoryField";
+import type { NewIngredientInput } from "../../api/newIngredient";
 import {
   Badge,
   Disclosure,
@@ -30,9 +29,9 @@ import {
   TextAreaField,
 } from "../../components/catalog/fields";
 import {
-  suggestedHint,
-  useSuggestedCategory,
-} from "../../components/catalog/NewIngredientCategory";
+  NewIngredientFields,
+  useNewIngredientDraft,
+} from "../../components/catalog/NewIngredientFields";
 import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
 import { CategoryChip } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
@@ -248,8 +247,6 @@ function IngredientRow({ ingredient }: { ingredient: Ingredient }) {
 // --- create form ------------------------------------------------------------
 
 const emptyForm = {
-  name: "",
-  category: "",
   canonical_unit: "g" as CanonicalUnit,
   density: "",
   density_source: "measured" as BridgeSource,
@@ -272,26 +269,20 @@ export function AddIngredientDrawer({
   initialName?: string;
 }) {
   const create = useCreateIngredient();
-  const [form, setForm] = useState({ ...emptyForm, name: initialName });
+  const [form, setForm] = useState(emptyForm);
   const [queued, setQueued] = useState<QueuedMeasure[]>([]);
   const [invalid, setInvalid] = useState<string | null>(null);
   const [addingMeasures, setAddingMeasures] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const debouncedName = useDebouncedValue(form.name.trim(), 300);
-  const [categoryTouched, setCategoryTouched] = useState(false);
-  const { category, source } = useSuggestedCategory(debouncedName, form.category, categoryTouched);
+  // Name, its conformed form, a standard entry and the category (issue 344, issue 345).
+  const draft = useNewIngredientDraft(initialName);
   const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const name = form.name.trim();
-    if (!name) {
-      setInvalid("A name is required.");
-      return;
-    }
-    if (!category.trim()) {
-      setInvalid("Choose a category: every ingredient has one.");
+    if (draft.problem) {
+      setInvalid(draft.problem);
       return;
     }
     if (form.density.trim() && !isPositiveDecimal(form.density)) {
@@ -304,8 +295,7 @@ export function AddIngredientDrawer({
     }
     setInvalid(null);
 
-    const input: IngredientCreateInput = { name, canonical_unit: form.canonical_unit };
-    input.category = category.trim();
+    const input: NewIngredientInput = { ...draft.input(), canonical_unit: form.canonical_unit };
     if (form.density.trim()) {
       input.density_g_per_ml = form.density.trim();
       input.density_source = form.density_source;
@@ -356,8 +346,7 @@ export function AddIngredientDrawer({
   const busy = create.isPending || addingMeasures;
 
   const dirty =
-    JSON.stringify(form) !== JSON.stringify({ ...emptyForm, name: initialName }) ||
-    queued.length > 0;
+    JSON.stringify(form) !== JSON.stringify(emptyForm) || draft.dirty || queued.length > 0;
 
   return (
     <Drawer
@@ -380,26 +369,7 @@ export function AddIngredientDrawer({
         {invalid ? <Alert tone="error">{invalid}</Alert> : null}
         {create.isError ? <Alert tone="error">{catalogErrorMessage(create.error)}</Alert> : null}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id="new-ingredient-name"
-            label="Name"
-            autoComplete="off"
-            required
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-          />
-          <CategoryField
-            id="new-ingredient-category"
-            value={category}
-            required
-            onChange={(value) => {
-              setCategoryTouched(true);
-              set("category", value);
-            }}
-            hint={suggestedHint(source)}
-          />
-        </div>
+        <NewIngredientFields draft={draft} />
         <RadioGroup
           name="new-ingredient-unit"
           legend="Canonical unit"
@@ -410,7 +380,7 @@ export function AddIngredientDrawer({
         />
 
         <UsdaSuggestions
-          name={debouncedName}
+          name={draft.debounced}
           canonicalUnit={form.canonical_unit}
           queued={queued}
           onUseDensity={(density) => {

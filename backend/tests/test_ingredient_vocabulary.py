@@ -62,7 +62,10 @@ async def test_a_plural_another_ingredient_has_is_skipped_not_an_error(admin_cli
     await make_ingredient(admin_client, "Eggs")
     r = await admin_client.post(
         "/api/v1/products",
-        json={"name": "Dozen large", "ingredient": {"name": "Egg", "category": "pantry"}},
+        json={
+            "name": "Dozen large",
+            "ingredient": {"name": "Egg", "keep_name": True, "category": "pantry"},
+        },
     )
     assert r.status_code == 201, r.text
     egg_id = r.json()["ingredient"]["id"]

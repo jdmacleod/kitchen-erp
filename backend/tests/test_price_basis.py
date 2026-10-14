@@ -178,7 +178,12 @@ async def accept(admin_client, store, recorded, canonical_unit: str) -> uuid.UUI
     ing = (
         await admin_client.post(
             "/api/v1/ingredients",
-            json={"category": "pantry", "name": "Bananas", "canonical_unit": canonical_unit},
+            json={
+                "category": "pantry",
+                "keep_name": True,
+                "name": "Bananas",
+                "canonical_unit": canonical_unit,
+            },
         )
     ).json()
     r = await admin_client.post(

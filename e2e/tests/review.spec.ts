@@ -20,7 +20,7 @@ interface Seeded {
  */
 async function seedReviewedPurchase(page: Page): Promise<Seeded> {
   const ingredient = await page.request.post("/api/v1/ingredients", {
-    data: { name: `E2E semolina ${stamp}`, category: "pantry" },
+    data: { name: `E2E semolina ${stamp}`, category: "pantry", keep_name: true },
   });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };

@@ -149,6 +149,22 @@ IRREGULAR = {
 }
 _VOWELS = frozenset("aeiou")
 
+# One word, spelled more than one way by cooks and stores (#345). Data, not
+# logic: each group lists every spelling, singular and plural alike.
+SPELLING_GROUPS: tuple[frozenset[str], ...] = (
+    frozenset({"chile", "chili", "chilli"}),
+    frozenset({"chiles", "chilies", "chillies", "chilis"}),
+    frozenset({"yogurt", "yoghurt", "yoghourt"}),
+    frozenset({"doughnut", "donut"}),
+    frozenset({"doughnuts", "donuts"}),
+)
+_SPELLINGS = {word: group for group in SPELLING_GROUPS for word in group}
+
+
+def spellings(word: str) -> frozenset[str]:
+    """Every way the word is spelled, itself included."""
+    return _SPELLINGS.get(word, frozenset({word}))
+
 
 def plural_word(word: str) -> str | None:
     """The plural of one lowercase word, or ``None`` when it should not have one."""

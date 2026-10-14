@@ -219,3 +219,43 @@ describe("a new ingredient's category (issue 344)", () => {
     expect(field).toHaveValue("pantry");
   });
 });
+
+describe("a new ingredient's name (issue 345)", () => {
+  it("is saved conformed, with a way to keep it as typed", async () => {
+    let posted: RecordedCall | undefined;
+    mockApi({
+      ...routes(
+        () => [],
+        (call) => (posted = call),
+      ),
+      "GET /ingredients/category-suggestion": () =>
+        jsonResponse(200, { category: "frozen", source: "catalog" }),
+      "GET /ingredients/conformed-name": (call: RecordedCall) =>
+        jsonResponse(
+          200,
+          call.query.get("name") === "Okra, frozen"
+            ? { name: "frozen okra", changes: ["“frozen” goes in front, as a cook writes it"] }
+            : { name: call.query.get("name"), changes: [] },
+        ),
+    });
+    const user = userEvent.setup();
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), "Okra, frozen");
+    await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
+    const preview = await within(form).findByTestId("new-product-ingredient-name-preview");
+    expect(preview).toHaveTextContent("Will be saved as “frozen okra”");
+    await waitFor(() =>
+      expect(screen.getByTestId("new-product-ingredient-choice")).toHaveTextContent("frozen okra"),
+    );
+    await user.type(within(form).getByLabelText("Name"), "Okra");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
+    await waitFor(() => expect(posted).toBeDefined());
+    expect((posted?.body as { ingredient: unknown }).ingredient).toEqual({
+      name: "frozen okra",
+      category: "frozen",
+    });
+  });
+});

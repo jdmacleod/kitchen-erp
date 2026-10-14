@@ -41,6 +41,7 @@ async def make_product(
         json={
             "ingredient": {
                 "category": "pantry",
+                "keep_name": True,
                 "name": ingredient_name,
                 "canonical_unit": canonical_unit,
             },

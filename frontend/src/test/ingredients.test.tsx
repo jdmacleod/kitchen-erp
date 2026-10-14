@@ -264,3 +264,97 @@ describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
     expect(screen.getByLabelText("Other category")).toBeInTheDocument();
   });
 });
+
+describe("a typed name, conformed (issue 345)", () => {
+  function routes(calls: { body?: unknown }[]) {
+    return {
+      ...baseRoutes(() => []),
+      "GET /ingredients/conformed-name": (call: RecordedCall) => {
+        const typed = call.query.get("name") ?? "";
+        return jsonResponse(
+          200,
+          typed === "Okra, frozen"
+            ? { name: "frozen okra", changes: ["“frozen” goes in front, as a cook writes it"] }
+            : { name: typed, changes: [] },
+        );
+      },
+      "GET /ingredients/search": (call: RecordedCall) =>
+        jsonResponse(200, {
+          items:
+            call.query.get("q") === "lantern okra"
+              ? [
+                  {
+                    kind: "standard",
+                    id: null,
+                    key: "lantern-okra",
+                    name: "lantern okra",
+                    canonical_unit: "g",
+                    active: true,
+                    category: "produce",
+                    category_key: "produce",
+                    matched_spelling: null,
+                    exact: false,
+                  },
+                ]
+              : [],
+        }),
+      "POST /ingredients": (call: RecordedCall) => {
+        calls.push(call);
+        return jsonResponse(201, { ...flour, name: "x", measures: [] });
+      },
+    };
+  }
+
+  it("saves the conformed name, or the typed one when kept", async () => {
+    const posts: { body?: unknown }[] = [];
+    mockApi(routes(posts));
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients");
+    await openAddDrawer(user);
+    await user.type(screen.getByLabelText("Name"), "Okra, frozen");
+    const preview = await screen.findByTestId("new-ingredient-name-preview");
+    expect(preview).toHaveTextContent("Will be saved as “frozen okra”");
+    expect(preview).toHaveTextContent("goes in front");
+    await user.selectOptions(screen.getByLabelText("Category"), "frozen");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toMatchObject({ name: "frozen okra", category: "frozen" });
+    expect(posts[0].body).not.toHaveProperty("keep_name");
+  });
+
+  it("keeps the name as typed on request", async () => {
+    const posts: { body?: unknown }[] = [];
+    mockApi(routes(posts));
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients");
+    await openAddDrawer(user);
+    await user.type(screen.getByLabelText("Name"), "Okra, frozen");
+    await user.click(await screen.findByRole("button", { name: "Keep “Okra, frozen”" }));
+    expect(screen.getByTestId("new-ingredient-name-kept")).toHaveTextContent("Saved as typed.");
+    await user.selectOptions(screen.getByLabelText("Category"), "frozen");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toMatchObject({ name: "Okra, frozen", keep_name: true });
+  });
+
+  it("offers a standard entry for the typed name and creates from it", async () => {
+    const posts: { body?: unknown }[] = [];
+    mockApi(routes(posts));
+    const user = userEvent.setup();
+    renderApp("/catalog/ingredients");
+    await openAddDrawer(user);
+    await user.type(screen.getByLabelText("Name"), "lantern okra");
+    const offers = await screen.findByRole("group", { name: "From the standard list" });
+    await user.click(within(offers).getByRole("button", { name: /lantern okra/ }));
+    expect(screen.queryByLabelText("Category")).not.toBeInTheDocument();
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
+    );
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toMatchObject({ name: "lantern okra", standard_key: "lantern-okra" });
+  });
+});

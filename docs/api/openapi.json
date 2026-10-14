@@ -2067,6 +2067,29 @@
         "title": "CompareRow",
         "type": "object"
       },
+      "ConformedNameOut": {
+        "additionalProperties": false,
+        "description": "A typed ingredient name as it would be saved, and why it changed (#345).",
+        "properties": {
+          "changes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "changes"
+        ],
+        "title": "ConformedNameOut",
+        "type": "object"
+      },
       "ConvertIn": {
         "additionalProperties": false,
         "properties": {
@@ -4586,6 +4609,11 @@
             ],
             "title": "Density Source"
           },
+          "keep_name": {
+            "default": false,
+            "title": "Keep Name",
+            "type": "boolean"
+          },
           "name": {
             "maxLength": 200,
             "minLength": 1,
@@ -5515,6 +5543,11 @@
               }
             ],
             "title": "Keep Fridge Days"
+          },
+          "keep_name": {
+            "default": false,
+            "title": "Keep Name",
+            "type": "boolean"
           },
           "keep_room_days": {
             "anyOf": [
@@ -21491,6 +21524,51 @@
           }
         },
         "summary": "Category Suggestion",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/ingredients/conformed-name": {
+      "get": {
+        "description": "A typed ingredient name as the 1G rules write it, and why, for the form's preview (#345).",
+        "operationId": "conformed_name_api_v1_ingredients_conformed_name_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConformedNameOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conformed Name",
         "tags": [
           "catalog"
         ]

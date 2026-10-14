@@ -228,7 +228,12 @@ async def test_an_alias_decision_recomputes_the_recipes_using_the_name_and_no_ot
         "/api/v1/recipes/resolve",
         json={
             "name_norm": "dragon root",
-            "ingredient": {"category": "pantry", "name": "Dragon root", "canonical_unit": "each"},
+            "ingredient": {
+                "category": "pantry",
+                "keep_name": True,
+                "name": "Dragon root",
+                "canonical_unit": "each",
+            },
         },
     )
     assert r.status_code == 200, r.text
@@ -440,7 +445,12 @@ async def test_an_ingredient_merge_recomputes_the_recipes_whose_lines_it_repoint
     await shelf(admin_client, sold["id"], loc["id"], "3.00", qty="1", unit="each")
     r = await admin_client.post(
         "/api/v1/ingredients",
-        json={"category": "pantry", "name": "Wyrm root", "canonical_unit": "each"},
+        json={
+            "category": "pantry",
+            "keep_name": True,
+            "name": "Wyrm root",
+            "canonical_unit": "each",
+        },
     )
     assert r.status_code == 201, r.text
     survivor = r.json()

@@ -15,7 +15,7 @@ async def test_inline_ingredient_creation_is_transactional(
     r = await admin_client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"name": "Rigatoni", "category": "pasta"},
+            "ingredient": {"name": "Rigatoni", "keep_name": True, "category": "pasta"},
             "brand": "De Cecco",
             "name": "Rigatoni n.24",
             "pack_qty": "1",
@@ -33,7 +33,7 @@ async def test_inline_ingredient_creation_is_transactional(
     r = await admin_client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"name": "Penne", "category": "pantry"},
+            "ingredient": {"name": "Penne", "keep_name": True, "category": "pantry"},
             "name": "Penne",
             "barcode": "024094070046",
         },
@@ -52,7 +52,7 @@ async def test_exactly_one_ingredient_reference(admin_client, db_session):
         json={
             "name": "Both",
             "ingredient_id": str(uuid.uuid4()),
-            "ingredient": {"name": "X", "category": "pantry"},
+            "ingredient": {"name": "X", "keep_name": True, "category": "pantry"},
         },
     )
     assert r.status_code == 422

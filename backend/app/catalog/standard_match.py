@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from functools import cache
 
 from app.catalog import standard
-from app.catalog.names import normalize_name, plural, plural_word, singulars
+from app.catalog.names import normalize_name, plural, plural_word, singulars, spellings
 
 # Words that describe how a food was bought, not which food it is. Data, not
 # logic: add to it freely, but never a word that names a variety ("whole",
@@ -49,7 +49,8 @@ def _head_keys(word: str) -> set[str]:
     keys = {word, *singulars(word)}
     if (p := plural_word(word)) is not None:
         keys.add(p)
-    return keys
+    # "chilies" meets "chiles", "yoghurt" meets "yogurt" (#345).
+    return {variant for key in keys for variant in spellings(key)}
 
 
 def split_name(name: str) -> tuple[str, frozenset[str]] | None:

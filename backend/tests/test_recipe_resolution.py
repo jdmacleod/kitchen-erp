@@ -321,7 +321,12 @@ async def test_creating_an_ingredient_inline_from_the_standard_list(
     r = await decide(
         admin_client,
         name_norm="lemon juice",
-        ingredient={"name": "Lemon", "canonical_unit": "each", "category": "produce"},
+        ingredient={
+            "name": "Lemon",
+            "keep_name": True,
+            "canonical_unit": "each",
+            "category": "produce",
+        },
     )
     assert r.status_code == 200, r.text
     assert r.json()["action"] == "created"
@@ -346,7 +351,9 @@ async def test_a_new_ingredients_own_name_settles_other_waiting_names(
     await rescan(admin_client)
     assert (await queue(admin_client))["names"] == 2
     r = await decide(
-        admin_client, name_norm="parsnips", ingredient={"name": "Parsnip", "category": "produce"}
+        admin_client,
+        name_norm="parsnips",
+        ingredient={"name": "Parsnip", "keep_name": True, "category": "produce"},
     )
     assert r.status_code == 200, r.text
     # "parsnip" is the new ingredient's own name: the re-run resolved it at once (14).

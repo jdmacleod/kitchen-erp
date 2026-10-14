@@ -27,7 +27,7 @@ import { login, nextTag } from "./helpers";
 async function seedCommittedPurchase(page: Page): Promise<void> {
   const stamp = nextTag();
   const ingredient = await page.request.post("/api/v1/ingredients", {
-    data: { name: `E2E barley ${stamp}`, category: "pantry" },
+    data: { name: `E2E barley ${stamp}`, category: "pantry", keep_name: true },
   });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };

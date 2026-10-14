@@ -19,6 +19,8 @@ async def make_ingredient(client: httpx.AsyncClient, name: str, **extra) -> dict
     body = {"name": name, **extra}
     if "standard_key" not in body:
         body.setdefault("category", "pantry")
+        # Names stay as the test wrote them; tests of conforming pass keep_name=False (#345).
+        body.setdefault("keep_name", True)
     r = await client.post("/api/v1/ingredients", json=body)
     assert r.status_code == 201, r.text
     return r.json()
