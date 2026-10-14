@@ -240,7 +240,6 @@ ingredients:
     perishability: fresh
     keep: {room: null, fridge: 5, freezer: null}
     unit: g
-    fdc: 168421
   - key: baby-spinach
     name: "baby spinach"
     category: produce
@@ -880,7 +879,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170051
-    spellings: ["tinned tomatoes"]
+    spellings: ["tinned tomatoes", "whole peeled tomatoes", "canned whole tomatoes"]
     note: "Whole, diced and crushed are products or a recipe note, not separate entries."
   - key: canned-tuna
     name: "canned tuna"
@@ -1306,6 +1305,7 @@ ingredients:
     unit: g
     fdc: 168398
     note: "Frozen kernels, the usual way loose kernels are bought; the raw record (169998) is corn on the cob's, by the ear."
+    spellings: ["frozen corn"]
   - key: corn-oil
     name: "corn oil"
     category: pantry
@@ -2097,13 +2097,6 @@ ingredients:
     keep: {room: null, fridge: null, freezer: 240}
     unit: g
     fdc: 170398
-  - key: frozen-corn
-    name: "frozen corn"
-    category: frozen
-    perishability: frozen
-    keep: {room: null, fridge: null, freezer: 240}
-    unit: g
-    fdc: 168398
   - key: frozen-edamame
     name: "frozen edamame"
     category: frozen
@@ -2140,7 +2133,6 @@ ingredients:
     perishability: frozen
     keep: {room: null, fridge: null, freezer: 240}
     unit: g
-    fdc: 169910
     spellings: ["frozen mango chunks"]
   - key: frozen-mixed-vegetables
     name: "frozen mixed vegetables"
@@ -4174,13 +4166,6 @@ ingredients:
     unit: g
     fdc: 173904
     spellings: ["old-fashioned oats"]
-  - key: romaine-hearts
-    name: "romaine hearts"
-    category: produce
-    perishability: fresh
-    keep: {room: null, fridge: 10, freezer: null}
-    unit: g
-    fdc: 169247
   - key: romaine-lettuce
     name: "romaine lettuce"
     category: produce
@@ -4188,7 +4173,7 @@ ingredients:
     keep: {room: null, fridge: 3, freezer: null}
     unit: g
     fdc: 169247
-    spellings: ["romaine", "cos lettuce"]
+    spellings: ["romaine", "cos lettuce", "romaine hearts"]
   - key: romesco
     name: "romesco"
     category: pantry
@@ -5276,14 +5261,6 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171265
-  - key: whole-peeled-tomatoes
-    name: "whole peeled tomatoes"
-    category: pantry
-    perishability: shelf_stable
-    keep: {room: 365, fridge: null, freezer: null}
-    unit: g
-    fdc: 170051
-    spellings: ["canned whole tomatoes"]
   - key: whole-wheat-bread
     name: "whole wheat bread"
     category: bakery

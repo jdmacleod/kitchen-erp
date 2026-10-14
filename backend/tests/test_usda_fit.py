@@ -76,3 +76,16 @@ def test_every_standard_entry_fits_its_own_usda_record():
         if fit.verdict != "fits":
             unfit.append((entry.name, DESCRIPTIONS[str(entry.fdc)], fit.reason))
     assert unfit == []
+
+
+def test_no_two_standard_entries_share_a_usda_record():
+    """Two entries on one record would read as one food entered twice (#346)."""
+    seen: dict[int, str] = {}
+    shared = []
+    for entry in standard_list().ingredients:
+        if entry.fdc is None:
+            continue
+        if entry.fdc in seen:
+            shared.append((seen[entry.fdc], entry.key))
+        seen[entry.fdc] = entry.key
+    assert shared == []
