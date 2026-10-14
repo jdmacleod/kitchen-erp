@@ -363,6 +363,21 @@ class IngredientDistinctPair(Base):
     )
 
 
+class CleanupSkip(Base):
+    """A catalog cleanup suggestion a person skipped (#349): not offered again while its
+    key, which carries what it proposes, stays the same. A decision, not a fact."""
+
+    __tablename__ = "cleanup_skip"
+
+    key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    skipped_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id")
+    )
+    skipped_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ProductIdentifier(UUIDPrimaryKey, Base):
     """One code a product is known by (03, 1H). Vendor-scoped schemes carry a vendor."""
 

@@ -51,6 +51,7 @@ from app.models import LineReread
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
+    catalog_cleanup,
     ingredient_duplicates,
     lookups,
     pricebook,
@@ -487,6 +488,22 @@ async def _ingredient_duplicates(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _catalog_cleanup(db: AsyncSession) -> list[InboxItem]:
+    n = await catalog_cleanup.count(db)
+    if not n:
+        return []
+    return [
+        InboxItem(
+            kind="catalog_cleanup",
+            title=f"Tidy the catalog: {n} {'suggestion' if n == 1 else 'suggestions'}",
+            detail="Categories, names, USDA links and duplicates the catalog's checks found.",
+            action_label="Review",
+            action_route="/catalog/cleanup",
+            created_at=datetime.now(UTC),
+        )
+    ]
+
+
 async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
     changes = await lookups.pending_price_changes(db)
     if not changes:
@@ -577,6 +594,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("reread", _rereads),
     ("duplicates", _duplicates),
     ("ingredient_duplicates", _ingredient_duplicates),
+    ("catalog_cleanup", _catalog_cleanup),
     ("posted_prices", _posted_prices),
     ("recipe", _recipes),
 ]

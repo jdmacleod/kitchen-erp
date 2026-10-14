@@ -5,6 +5,7 @@ from app.api import (
     auth,
     brands,
     catalog,
+    catalog_cleanup,
     geo,
     health,
     inbox,
@@ -31,6 +32,7 @@ router.include_router(auth.router)
 router.include_router(users.router)
 router.include_router(api_tokens.router)
 router.include_router(units.router)
+router.include_router(catalog_cleanup.router)
 router.include_router(ingredient_link.router)
 router.include_router(catalog.router)
 router.include_router(geo.router)

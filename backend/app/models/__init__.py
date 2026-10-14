@@ -9,6 +9,7 @@ from app.models.brands import (
     Gs1PrefixFamily,
 )
 from app.models.catalog import (
+    CleanupSkip,
     FdcBranded,
     FdcFood,
     FdcRelease,
@@ -81,6 +82,7 @@ __all__ = [
     "BrandFamily",
     "BrandFamilyBanner",
     "BrandFamilyCarries",
+    "CleanupSkip",
     "FdcBranded",
     "FdcFood",
     "FdcRelease",

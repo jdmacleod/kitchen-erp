@@ -19,6 +19,7 @@ InboxKind = Literal[
     "reread",
     "duplicates",
     "ingredient_duplicates",
+    "catalog_cleanup",
     "posted_prices",
     "recipe",
 ]
