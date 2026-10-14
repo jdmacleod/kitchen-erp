@@ -279,7 +279,7 @@ async def test_products_needing_a_bridge_are_one_aggregate_item(admin_client):
     assert item["title"] == "2 products need a density before their prices compare"
     assert item["detail"] == "Each is added once, on its ingredient."
     assert item["action_label"] == "Add densities"
-    assert item["action_route"] == "/catalog/bridges"
+    assert item["action_route"] == "/catalog/bridges#products"
 
 
 async def test_one_product_needing_a_pack_reads_singular(admin_client):

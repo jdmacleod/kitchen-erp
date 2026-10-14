@@ -114,6 +114,52 @@ describe("ingredient detail", () => {
       calls.some((c) => c.method === "POST" && c.path === `/measures/${cupMeasureId}/confirm`),
     ).toBe(true);
   });
+});
+
+describe("ingredient detail: measure checks and density", () => {
+  it("asks once before adding a measure no food could weigh, and flags a saved one", async () => {
+    const odd = {
+      ...flour.measures[0],
+      id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c02",
+      label: "cup zest",
+      canonical_qty: "0.33",
+    };
+    let ingredient: Ingredient = { ...flour, measures: [...flour.measures, odd] };
+    const calls = mockApi({
+      ...baseRoutes(() => ingredient),
+      [`POST /ingredients/${flourId}/measures`]: (call) => {
+        const body = call.body as { label: string; canonical_qty: string };
+        const added = { ...odd, id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5c03", ...body };
+        ingredient = { ...ingredient, measures: [...ingredient.measures, added] };
+        return jsonResponse(201, added);
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/ingredients/${flourId}`);
+
+    const table = await screen.findByRole("table", { name: "Named measures" });
+    expect(
+      await within(table).findByText(
+        /One cup zest at 0.33 g would be 0.0014 g\/ml, lighter than any food/,
+      ),
+    ).toBeInTheDocument();
+    expect(within(table).queryByText(/One cup at/)).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Label"), "cup juice");
+    await user.type(screen.getByLabelText("One is (g)"), "0.33");
+    await user.click(screen.getByRole("button", { name: "Add measure" }));
+    expect(await screen.findByText(/Add it again to keep it\./)).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Add measure" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+        label: "cup juice",
+        canonical_qty: "0.33",
+        source: "measured",
+      }),
+    );
+  });
 
   it("adds a density and deactivates the ingredient", async () => {
     let ingredient = flour;

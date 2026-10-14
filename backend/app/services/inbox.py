@@ -309,7 +309,7 @@ async def _bridges(db: AsyncSession) -> list[InboxItem]:
             title=f"{count} {noun} {verb} {need} before {their} prices compare",
             detail=detail,
             action_label=label,
-            action_route="/catalog/bridges",
+            action_route="/catalog/bridges#products",
             created_at=min(row["first_observed_at"] for row in rows),
         )
     ]
