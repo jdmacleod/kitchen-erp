@@ -48,7 +48,7 @@ _SAME_FORM = {
 
 # Foods bought as a form, so the record's form word is no surprise.
 _FORM_IS_THE_FOOD = {
-    "powder": frozenset({"gelatin", "cocoa", "custard"}),
+    "powder": frozenset({"gelatin", "cocoa", "custard", "mix", "instant"}),
     "concentrate": frozenset({"bottled"}),
 }
 
@@ -69,7 +69,7 @@ GENERIC_HEADS = frozenset(
     {
         "greens", "fruit", "quarters", "chops", "ribs", "steak", "steaks", "buns",
         "tenders", "rinds", "cob", "fillets", "fillet", "cutlets", "strips", "leaves",
-        "sprigs", "florets", "wedges", "slices", "pieces", "bites", "meat",
+        "sprigs", "florets", "wedges", "slices", "pieces", "bites", "meat", "hearts",
     }
 )  # fmt: skip
 
@@ -103,6 +103,7 @@ SYNONYMS: dict[str, frozenset[str]] = {
     "sunchoke": frozenset({"jerusalem-artichoke", "artichoke"}),
     "mint": frozenset({"spearmint", "peppermint"}),
     "sprout": frozenset({"sprouted"}),
+    "fry": frozenset({"fried"}),
     "choy": frozenset({"choi"}),
     "peppercorn": frozenset({"pepper"}),
     "melon": frozenset({"gourd"}),
