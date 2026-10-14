@@ -88,6 +88,12 @@ class IngredientCreate(_DensityPair):
         return self
 
 
+class ShortNameOut(ApiModel):
+    """A product title as its short name (#347)."""
+
+    name: str
+
+
 class ConformedNameOut(ApiModel):
     """A typed ingredient name as it would be saved, and why it changed (#345)."""
 

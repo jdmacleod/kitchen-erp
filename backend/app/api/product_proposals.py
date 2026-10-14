@@ -22,7 +22,7 @@ from app.schemas.proposals import (
     ProposalOut,
     ProposalSummary,
 )
-from app.services import brands, lookups, proposals, resolution
+from app.services import brands, lookups, product_short_names, proposals, resolution
 
 router = APIRouter(tags=["product proposals"])
 
@@ -58,6 +58,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         decided_at=proposal.decided_at,
         result=proposal.result,
         created_at=proposal.created_at,
+        short_title=await product_short_names.for_proposal(db, proposal.fields),
     )
 
 

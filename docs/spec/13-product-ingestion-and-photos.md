@@ -57,6 +57,8 @@ Ingestion behaves differently for four kinds of product. The kind is stored on `
 
 ---
 
+**Clipped titles become short names (#347).** A page's title is kept as captured on the capture and in the proposal's title field. The proposal also carries `short_title` (03 §1C, "Product names are short"), which review uses as the new product's name unless the person asks for the full title.
+
 ## 3. Data model additions
 
 All tables follow existing conventions: UUID primary keys, UTC `timestamptz`, `Decimal`/`numeric` for money and quantities, and migrations through Alembic. Tables described as append-only get the same privilege-plus-trigger enforcement as `price_observation`.
