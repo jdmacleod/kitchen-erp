@@ -51,6 +51,7 @@ from app.models import LineReread
 from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
+    ingredient_duplicates,
     lookups,
     pricebook,
     product_duplicates,
@@ -469,6 +470,23 @@ async def _duplicates(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _ingredient_duplicates(db: AsyncSession) -> list[InboxItem]:
+    pairs = await ingredient_duplicates.find_duplicates(db)
+    if not pairs:
+        return []
+    noun = "possible duplicate ingredient" if len(pairs) == 1 else "possible duplicate ingredients"
+    return [
+        InboxItem(
+            kind="ingredient_duplicates",
+            title=f"{len(pairs)} {noun}",
+            detail="One food entered twice, it seems. Merge them or say they differ.",
+            action_label="Review",
+            action_route="/catalog/ingredients/link#duplicates",
+            created_at=min(max(d.a.created_at, d.b.created_at) for d in pairs),
+        )
+    ]
+
+
 async def _posted_prices(db: AsyncSession) -> list[InboxItem]:
     changes = await lookups.pending_price_changes(db)
     if not changes:
@@ -558,6 +576,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("product_update", _product_updates),
     ("reread", _rereads),
     ("duplicates", _duplicates),
+    ("ingredient_duplicates", _ingredient_duplicates),
     ("posted_prices", _posted_prices),
     ("recipe", _recipes),
 ]

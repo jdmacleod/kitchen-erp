@@ -14,8 +14,11 @@ from fastapi import APIRouter, Query
 from app.api.deps import CurrentUser, DbSession
 from app.catalog import standard
 from app.catalog.names import normalize_name
-from app.schemas.catalog import IngredientOut
+from app.schemas.catalog import DistinctIn, IngredientOut
 from app.schemas.ingredient_link import (
+    IngredientDuplicateList,
+    IngredientDuplicatePairOut,
+    IngredientDuplicateSide,
     LinkIn,
     LinkOther,
     LinkPageOut,
@@ -33,7 +36,7 @@ from app.schemas.ingredient_link import (
     UsdaReviewGroupOut,
     UsdaReviewOut,
 )
-from app.services import catalog, ingredient_reconcile, usda_review
+from app.services import catalog, ingredient_duplicates, ingredient_reconcile, usda_review
 
 router = APIRouter(tags=["ingredient vocabulary"])
 
@@ -172,3 +175,29 @@ async def usda_review_decide(
         replace_density=body.replace_density,
     )
     return UsdaDecisionOut(saved=saved, ingredient=await catalog.get_ingredient(db, ingredient_id))
+
+
+@router.get("/ingredients/duplicates", response_model=IngredientDuplicateList)
+async def ingredient_duplicate_pairs(db: DbSession, _: CurrentUser) -> IngredientDuplicateList:
+    """Pairs of ingredients that look like one food entered twice (#346)."""
+    pairs = await ingredient_duplicates.find_duplicates(db)
+
+    def side(s: ingredient_duplicates.Side) -> IngredientDuplicateSide:
+        return IngredientDuplicateSide(
+            id=s.id, name=s.name, products=s.products, standard=s.standard
+        )
+
+    return IngredientDuplicateList(
+        items=[
+            IngredientDuplicatePairOut(
+                a=side(p.a), b=side(p.b), reasons=p.reasons, keep_id=p.keep.id
+            )
+            for p in pairs
+        ]
+    )
+
+
+@router.post("/ingredients/duplicates/distinct", status_code=204)
+async def ingredient_pair_distinct(body: DistinctIn, user: CurrentUser, db: DbSession) -> None:
+    """ "Not the same": the pair is never offered again, in either order (#346)."""
+    await ingredient_duplicates.mark_distinct(db, user, body.a, body.b)

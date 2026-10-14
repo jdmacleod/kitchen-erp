@@ -4132,6 +4132,7 @@
               "product_update",
               "reread",
               "duplicates",
+              "ingredient_duplicates",
               "posted_prices",
               "recipe"
             ],
@@ -4681,6 +4682,85 @@
           "name"
         ],
         "title": "IngredientCreate",
+        "type": "object"
+      },
+      "IngredientDuplicateList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngredientDuplicatePairOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "IngredientDuplicateList",
+        "type": "object"
+      },
+      "IngredientDuplicatePairOut": {
+        "additionalProperties": false,
+        "description": "Two ingredients that look like one food entered twice, and why (#346).",
+        "properties": {
+          "a": {
+            "$ref": "#/components/schemas/IngredientDuplicateSide"
+          },
+          "b": {
+            "$ref": "#/components/schemas/IngredientDuplicateSide"
+          },
+          "keep_id": {
+            "format": "uuid",
+            "title": "Keep Id",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "reasons",
+          "keep_id"
+        ],
+        "title": "IngredientDuplicatePairOut",
+        "type": "object"
+      },
+      "IngredientDuplicateSide": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "products": {
+            "title": "Products",
+            "type": "integer"
+          },
+          "standard": {
+            "title": "Standard",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "products",
+          "standard"
+        ],
+        "title": "IngredientDuplicateSide",
         "type": "object"
       },
       "IngredientList": {
@@ -21571,6 +21651,63 @@
         "summary": "Conformed Name",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/ingredients/duplicates": {
+      "get": {
+        "description": "Pairs of ingredients that look like one food entered twice (#346).",
+        "operationId": "ingredient_duplicate_pairs_api_v1_ingredients_duplicates_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientDuplicateList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ingredient Duplicate Pairs",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/duplicates/distinct": {
+      "post": {
+        "description": "\"Not the same\": the pair is never offered again, in either order (#346).",
+        "operationId": "ingredient_pair_distinct_api_v1_ingredients_duplicates_distinct_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DistinctIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredient Pair Distinct",
+        "tags": [
+          "ingredient vocabulary"
         ]
       }
     },

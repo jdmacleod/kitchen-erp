@@ -339,6 +339,30 @@ class ProductDistinctPair(Base):
     )
 
 
+class IngredientDistinctPair(Base):
+    """ "Not the same" on a possible duplicate ingredient (#346): never offered again.
+    A decision, not a fact; the pair is stored in id order so either order finds it."""
+
+    __tablename__ = "ingredient_distinct_pair"
+    __table_args__ = (
+        CheckConstraint("ingredient_a < ingredient_b", name="ck_ingredient_distinct_pair_order"),
+        Index("ix_ingredient_distinct_pair_b", "ingredient_b"),
+    )
+
+    ingredient_a: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ingredient.id", ondelete="CASCADE"), primary_key=True
+    )
+    ingredient_b: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ingredient.id", ondelete="CASCADE"), primary_key=True
+    )
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("app_user.id")
+    )
+    decided_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class ProductIdentifier(UUIDPrimaryKey, Base):
     """One code a product is known by (03, 1H). Vendor-scoped schemes carry a vendor."""
 

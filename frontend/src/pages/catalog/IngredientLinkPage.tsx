@@ -10,6 +10,7 @@ import {
   type StandardEntry,
 } from "../../api/ingredientLink";
 import { useUsdaReview } from "../../api/usdaReview";
+import { IngredientDuplicatePairs } from "../../components/catalog/IngredientDuplicatePairs";
 import {
   ChooseStandard,
   IngredientMergePanel,
@@ -28,7 +29,12 @@ import {
 } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
-type Tally = { linked: number; renamed: number; merged: number; skipped: number };
+interface Tally {
+  linked: number;
+  renamed: number;
+  merged: number;
+  skipped: number;
+}
 type Decision = keyof Tally;
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -103,6 +109,7 @@ export function IngredientLinkPage() {
       <p aria-live="polite" className="sr-only" data-testid="link-announcement">
         {announcement}
       </p>
+      <IngredientDuplicatePairs />
       {page.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -189,7 +196,10 @@ function LinkRowView({
   };
   const rename = () => {
     const name = newName.trim();
-    if (!name) return setError("A name needs at least one letter or digit.");
+    if (!name) {
+      setError("A name needs at least one letter or digit.");
+      return;
+    }
     setError(null);
     action.mutate(
       { id: row.id, action: "rename", name },
