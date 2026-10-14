@@ -270,7 +270,7 @@ Ingredients stay flat in 1G. A hierarchy (cheese → parmesan) is deferred (TODO
 - *same name*: conformed, and with the last word's plural and spelling variants folded, the names read the same;
 - *similar name*: a spelling slip, one word each differing and those two nearly alike.
 
-A variety ("red onion" beside "onion") or another food ("white wine vinegar" beside "red wine vinegar") is never paired. The pairs head the link page with "Keep this one" on either side, which opens the merge below with the other's name kept as a spelling. The standard-linked one, or else the one with more products, is suggested. "Not the same" is stored in `ingredient_distinct_pair` (0055) and never offered again. A Needs you row counts them.
+A variety ("purple kohlrabi" beside "kohlrabi") or another food ("pear vinegar" beside "plum vinegar") is never paired. The pairs head the link page with "Keep this one" on either side, which opens the merge below with the other's name kept as a spelling. The standard-linked one, or else the one with more products, is suggested. "Not the same" is stored in `ingredient_distinct_pair` (0055) and never offered again. A Needs you row counts them.
 
 **Merging.** When a Link or Rename would give an ingredient a name another active ingredient already has, the page offers a merge instead. The person picks which ingredient survives, defaulting to the one with more products. The merge runs in one transaction with a single commit:
 

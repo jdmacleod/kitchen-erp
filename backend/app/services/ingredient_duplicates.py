@@ -11,8 +11,8 @@ ingredients is offered when any of these hold, each kept as a reason:
   and spelling variants folded, they read the same ("okra, frozen" and "frozen
   okra"; "red chilies" and "red chiles");
 - ``similar name``: a spelling slip, one word each differing and those two words
-  nearly alike; "red onion" is a variety of "onion" and "red wine vinegar" a
-  different food from "white wine vinegar", so neither pair is offered.
+  nearly alike; "purple kohlrabi" is a variety of "kohlrabi" and "plum vinegar" a
+  different food from "pear vinegar", so neither pair is offered.
 
 A pair a person marked "Not the same" is remembered in
 ``ingredient_distinct_pair`` and never offered again. Nothing is merged here:
@@ -94,7 +94,7 @@ def _folded(word: str) -> str:
 def _similar(a: str, b: str) -> bool:
     """A spelling slip: one word each that differs, and those two read nearly alike
     ("worcestershire" and "worchestershire"). A different word is a different food
-    ("red wine vinegar", "white wine vinegar"), and added words make a variety."""
+    ("plum vinegar", "pear vinegar"), and added words make a variety."""
     wa, wb = set(name_key(a).split()), set(name_key(b).split())
     only_a, only_b = wa - wb, wb - wa
     if len(only_a) != 1 or len(only_b) != 1:

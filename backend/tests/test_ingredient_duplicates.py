@@ -21,8 +21,8 @@ def test_a_name_key_folds_order_plurals_and_spellings():
 
 def test_only_a_spelling_slip_reads_as_a_similar_name():
     assert _similar("worcestershire sauce", "worchestershire sauce")
-    assert not _similar("red wine vinegar", "white wine vinegar")
-    assert not _similar("onion", "red onion")
+    assert not _similar("plum vinegar", "pear vinegar")
+    assert not _similar("kohlrabi", "purple kohlrabi")
 
 
 async def test_two_ingredients_on_one_fitting_usda_food_are_offered(
@@ -52,8 +52,8 @@ async def test_the_same_name_in_another_order_or_spelling_is_offered(admin_clien
     await seed_units_via_service(db_session)
     await make_ingredient(admin_client, "frozen okra")
     await make_ingredient(admin_client, "okra, frozen")
-    await make_ingredient(admin_client, "red onion")
-    await make_ingredient(admin_client, "onion")
+    await make_ingredient(admin_client, "purple kohlrabi")
+    await make_ingredient(admin_client, "kohlrabi")
     assert await pairs(admin_client) == [({"frozen okra", "okra, frozen"}, ["same name"])]
 
 
