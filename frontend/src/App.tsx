@@ -6,6 +6,7 @@ import { AppShell } from "./components/AppShell";
 import { FOOTER_SECTIONS, MAIN_SECTIONS } from "./components/Nav";
 import { RedirectTo } from "./components/RedirectTo";
 import { ClipPage } from "./pages/capture/ClipPage";
+import { CatalogCleanupPage } from "./pages/catalog/CatalogCleanupPage";
 import { IngredientDetailPage } from "./pages/catalog/IngredientDetailPage";
 import { IngredientLinkPage } from "./pages/catalog/IngredientLinkPage";
 import { IngredientsPage } from "./pages/catalog/IngredientsPage";
@@ -114,6 +115,7 @@ export function App() {
             {/* Catalog */}
             <Route path="/catalog/ingredients" element={<IngredientsPage />} />
             <Route path="/catalog/ingredients/link" element={<IngredientLinkPage />} />
+            <Route path="/catalog/cleanup" element={<CatalogCleanupPage />} />
             <Route path="/catalog/ingredients/:id" element={<IngredientDetailPage />} />
             <Route path="/catalog/products" element={<ProductsPage />} />
             <Route path="/catalog/products/review/:id" element={<ProductReviewPage />} />

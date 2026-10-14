@@ -1739,6 +1739,123 @@
         "title": "ChooseIn",
         "type": "object"
       },
+      "CleanupApplyOut": {
+        "additionalProperties": false,
+        "properties": {
+          "applied": {
+            "title": "Applied",
+            "type": "integer"
+          },
+          "gone": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gone",
+            "type": "array"
+          }
+        },
+        "required": [
+          "applied",
+          "gone"
+        ],
+        "title": "CleanupApplyOut",
+        "type": "object"
+      },
+      "CleanupKeysIn": {
+        "additionalProperties": false,
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "title": "CleanupKeysIn",
+        "type": "object"
+      },
+      "CleanupOut": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CleanupSuggestionOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CleanupOut",
+        "type": "object"
+      },
+      "CleanupSuggestionOut": {
+        "additionalProperties": false,
+        "description": "One proposed fix (#349): what it changes, from what, to what, and why.",
+        "properties": {
+          "after": {
+            "title": "After",
+            "type": "string"
+          },
+          "before": {
+            "title": "Before",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "category",
+              "ingredient_name",
+              "usda_link",
+              "ingredient_merge",
+              "product_name",
+              "product_brand"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "subject_id": {
+            "format": "uuid",
+            "title": "Subject Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "subject_id",
+          "subject",
+          "before",
+          "after",
+          "reason",
+          "ready"
+        ],
+        "title": "CleanupSuggestionOut",
+        "type": "object"
+      },
       "CodeOffer": {
         "additionalProperties": false,
         "properties": {
@@ -4133,6 +4250,7 @@
               "reread",
               "duplicates",
               "ingredient_duplicates",
+              "catalog_cleanup",
               "posted_prices",
               "recipe"
             ],
@@ -20821,6 +20939,105 @@
         "summary": "List Brand Families",
         "tags": [
           "brands"
+        ]
+      }
+    },
+    "/api/v1/catalog/cleanup": {
+      "get": {
+        "description": "Every fix the catalog's checks propose, not yet applied or skipped.",
+        "operationId": "list_suggestions_api_v1_catalog_cleanup_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Suggestions",
+        "tags": [
+          "catalog cleanup"
+        ]
+      }
+    },
+    "/api/v1/catalog/cleanup/apply": {
+      "post": {
+        "description": "Apply the suggestions named, as they stand now.",
+        "operationId": "apply_suggestions_api_v1_catalog_cleanup_apply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupKeysIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CleanupApplyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Suggestions",
+        "tags": [
+          "catalog cleanup"
+        ]
+      }
+    },
+    "/api/v1/catalog/cleanup/skip": {
+      "post": {
+        "description": "Skip the suggestions named: not offered again while they stay the same.",
+        "operationId": "skip_suggestions_api_v1_catalog_cleanup_skip_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CleanupKeysIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip Suggestions",
+        "tags": [
+          "catalog cleanup"
         ]
       }
     },

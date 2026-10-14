@@ -615,3 +615,16 @@ The 4C layout, with the brief's semantics made exact (S1):
 - Every control is at least 44px, the check circle 28px, and the whole screen works at 360px with no horizontal scroll.
 
 These phone screens are also the design brief for the Phase 6 native capture app.
+
+## Tidy the catalog (#349)
+
+`/catalog/cleanup` is reached from its Needs you row, not from the navigation. It lists what the catalog's checks (#342–#348) would have prevented, grouped in working order:
+
+- duplicate ingredients;
+- USDA links that name another food;
+- categories;
+- ingredient names;
+- product names that repeat the brand or the pack;
+- brands and kinds.
+
+Each row shows the subject (linked), before → after, and why, with **Accept** and **Skip**. A group shows 25 rows at a time, with "Show more" and **Accept these N** for the rows on screen. A category nothing could guess has no Accept: "Choose on its page" opens the ingredient. Accepting calls the existing services: ingredient update, merge, preferred USDA reference, product update. Nothing changes on loading the page. A skip is stored by key (`cleanup_skip`, migration 0056). The key carries what the suggestion proposes, so a skip lasts until the data changes.

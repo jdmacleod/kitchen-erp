@@ -286,7 +286,7 @@ async def test_one_product_needing_a_pack_reads_singular(admin_client):
     loc = await make_location(admin_client, "Pellar Grocer", "Pellar Grocer")
     flour = await make_product(admin_client, "Flour", "Bulk flour")
     await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
-    [item] = (await get_inbox(admin_client))["items"]
+    [item] = [i for i in (await get_inbox(admin_client))["items"] if i["kind"] == "bridge"]
     assert item["title"] == "1 product needs a pack size before its prices compare"
     assert item["action_label"] == "Set packs"
 
@@ -296,7 +296,7 @@ async def test_a_product_failing_two_ways_counts_once(admin_client):
     flour = await make_product(admin_client, "Flour", "Bulk flour")
     await shelf(admin_client, flour["id"], loc["id"], "0.89", qty="1", unit="cup")
     await shelf(admin_client, flour["id"], loc["id"], "4.10")  # "each" with no pack size
-    [item] = (await get_inbox(admin_client))["items"]
+    [item] = [i for i in (await get_inbox(admin_client))["items"] if i["kind"] == "bridge"]
     assert item["title"] == "1 product needs a bridge before its prices compare"
     assert item["detail"] == "1 needs a pack size and 1 a density."
     assert item["action_label"] == "Review"
