@@ -161,6 +161,12 @@ ingredients:
     keep: {room: 1, fridge: 21, freezer: null}
     unit: g
     fdc: 171688
+  - key: apple-cider
+    name: "apple cider"
+    category: beverages
+    perishability: refrigerated
+    keep: {room: null, fridge: 10, freezer: null}
+    unit: ml
   - key: apricot
     name: "apricot"
     category: produce
@@ -228,6 +234,19 @@ ingredients:
     keep: {room: null, fridge: 14, freezer: 300}
     unit: g
     fdc: 168568
+  - key: baby-kale
+    name: "baby kale"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
+    unit: g
+  - key: baby-spinach
+    name: "baby spinach"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
+    unit: g
+    fdc: 1999632
   - key: bacon
     name: "bacon"
     category: meat
@@ -527,6 +546,14 @@ ingredients:
     unit: ml
     fdc: 167748
     spellings: ["lemon juice from concentrate"]
+  - key: bouillon-cubes
+    name: "bouillon cubes"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    fdc: 171613
+    spellings: ["stock cubes", "bouillon granules"]
   - key: brandy
     name: "brandy"
     category: beverages
@@ -607,6 +634,13 @@ ingredients:
     keep: {room: 120, fridge: null, freezer: null}
     unit: g
     fdc: 168833
+  - key: brownie-mix
+    name: "brownie mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 174948
   - key: brussels-sprouts
     name: "Brussels sprouts"
     proper_noun: true
@@ -645,6 +679,14 @@ ingredients:
     unit: g
     fdc: 174982
     spellings: ["round crackers"]
+  - key: butter-lettuce
+    name: "butter lettuce"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
+    unit: g
+    fdc: 168429
+    spellings: ["bibb lettuce", "boston lettuce"]
   - key: buttermilk
     name: "buttermilk"
     category: dairy
@@ -673,6 +715,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169723
+  - key: cake-mix
+    name: "cake mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 174947
   - key: camembert
     name: "camembert"
     category: dairy
@@ -696,6 +745,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175188
+  - key: canned-chicken-noodle-soup
+    name: "canned chicken noodle soup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 171543
+    spellings: ["chicken noodle soup"]
   - key: canned-chickpeas
     name: "canned chickpeas"
     category: pantry
@@ -711,6 +768,14 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171976
+  - key: canned-corn
+    name: "canned corn"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 169214
+    spellings: ["canned sweet corn"]
   - key: canned-crab
     name: "canned crab"
     category: seafood
@@ -719,6 +784,29 @@ ingredients:
     unit: g
     fdc: 171966
     spellings: ["crab meat", "lump crab"]
+  - key: canned-diced-tomatoes
+    name: "canned diced tomatoes"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 333281
+    spellings: ["diced tomatoes"]
+  - key: canned-green-beans
+    name: "canned green beans"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 168505
+  - key: canned-green-chiles
+    name: "canned green chiles"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 168577
+    spellings: ["diced green chiles"]
   - key: canned-kidney-beans
     name: "canned kidney beans"
     category: pantry
@@ -726,6 +814,34 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175195
+  - key: canned-mandarin-oranges
+    name: "canned mandarin oranges"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 169106
+  - key: canned-peaches
+    name: "canned peaches"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 169929
+  - key: canned-peas
+    name: "canned peas"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+  - key: canned-pineapple
+    name: "canned pineapple"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 167767
+    spellings: ["pineapple chunks"]
   - key: canned-pinto-beans
     name: "canned pinto beans"
     category: pantry
@@ -748,6 +864,14 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 175175
+  - key: canned-tomato-soup
+    name: "canned tomato soup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 172882
+    spellings: ["tomato soup"]
   - key: canned-tomatoes
     name: "canned tomatoes"
     category: pantry
@@ -755,7 +879,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170051
-    spellings: ["tinned tomatoes"]
+    spellings: ["tinned tomatoes", "whole peeled tomatoes", "canned whole tomatoes"]
     note: "Whole, diced and crushed are products or a recipe note, not separate entries."
   - key: canned-tuna
     name: "canned tuna"
@@ -1031,6 +1155,13 @@ ingredients:
     unit: g
     spellings: ["lap cheong", "lap chong"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: chipotles-in-adobo
+    name: "chipotles in adobo"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["chipotle peppers in adobo"]
   - key: chives
     name: "chives"
     category: produce
@@ -1069,6 +1200,14 @@ ingredients:
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
+  - key: club-soda
+    name: "club soda"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 174842
+    spellings: ["soda water"]
   - key: cocktail-sauce
     name: "cocktail sauce"
     category: pantry
@@ -1098,6 +1237,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 171412
+  - key: coconut-water
+    name: "coconut water"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 3, freezer: null}
+    unit: ml
+    fdc: 170174
   - key: cod
     name: "cod"
     category: seafood
@@ -1121,6 +1267,13 @@ ingredients:
     unit: g
     fdc: 173416
     spellings: ["colby jack"]
+  - key: coleslaw-mix
+    name: "coleslaw mix"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
+    unit: g
+    spellings: ["shredded cabbage"]
   - key: collard-greens
     name: "collard greens"
     category: produce
@@ -1129,6 +1282,14 @@ ingredients:
     unit: g
     fdc: 170406
     spellings: ["collards"]
+  - key: cooking-spray
+    name: "cooking spray"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: ml
+    fdc: 171430
+    spellings: ["nonstick spray", "oil spray"]
   - key: corn-chips
     name: "corn chips"
     category: pantry
@@ -1144,6 +1305,7 @@ ingredients:
     unit: g
     fdc: 168398
     note: "Frozen kernels, the usual way loose kernels are bought; the raw record (169998) is corn on the cob's, by the ear."
+    spellings: ["frozen corn"]
   - key: corn-oil
     name: "corn oil"
     category: pantry
@@ -1167,6 +1329,14 @@ ingredients:
     keep: {room: 2, fridge: 4, freezer: 120}
     unit: each
     fdc: 175036
+  - key: cornbread-mix
+    name: "cornbread mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 174908
+    spellings: ["corn muffin mix"]
   - key: corned-beef
     name: "corned beef"
     category: meat
@@ -1227,6 +1397,13 @@ ingredients:
     keep: {room: null, fridge: 21, freezer: null}
     unit: g
     fdc: 171722
+  - key: cranberry-juice
+    name: "cranberry juice"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 10, freezer: null}
+    unit: ml
+    fdc: 168117
   - key: cranberry-sauce
     name: "cranberry sauce"
     category: pantry
@@ -1249,6 +1426,14 @@ ingredients:
     keep: {room: null, fridge: 14, freezer: null}
     unit: g
     fdc: 173418
+  - key: cream-of-mushroom-soup
+    name: "cream of mushroom soup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 171155
+    spellings: ["canned cream of mushroom soup"]
   - key: cream-of-tartar
     name: "cream of tartar"
     category: pantry
@@ -1279,6 +1464,13 @@ ingredients:
     unit: g
     fdc: 172739
     spellings: ["rye crispbread", "knäckebröd"]
+  - key: crushed-tomatoes
+    name: "crushed tomatoes"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["canned crushed tomatoes"]
   - key: cucumber
     name: "cucumber"
     category: produce
@@ -1378,6 +1570,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168558
+  - key: dinner-rolls
+    name: "dinner rolls"
+    category: bakery
+    perishability: fresh
+    keep: {room: 3, fridge: 7, freezer: 90}
+    unit: each
+    fdc: 172793
   - key: distilled-vinegar
     name: "distilled vinegar"
     category: pantry
@@ -1876,6 +2075,51 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: frozen-blueberries
+    name: "frozen blueberries"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 173950
+  - key: frozen-broccoli
+    name: "frozen broccoli"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 169968
+    spellings: ["frozen broccoli florets"]
+  - key: frozen-cauliflower
+    name: "frozen cauliflower"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 170398
+  - key: frozen-edamame
+    name: "frozen edamame"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 168410
+  - key: frozen-french-fries
+    name: "frozen French fries"
+    proper_noun: true
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 168442
+    spellings: ["frozen fries"]
+  - key: frozen-green-beans
+    name: "frozen green beans"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 169962
   - key: frozen-hash-browns
     name: "frozen hash browns"
     category: frozen
@@ -1884,6 +2128,13 @@ ingredients:
     unit: g
     fdc: 170043
     spellings: ["hash browns", "hashbrowns", "shredded hash browns"]
+  - key: frozen-mango
+    name: "frozen mango"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    spellings: ["frozen mango chunks"]
   - key: frozen-mixed-vegetables
     name: "frozen mixed vegetables"
     category: frozen
@@ -1892,6 +2143,41 @@ ingredients:
     unit: g
     fdc: 170471
     spellings: ["mixed vegetables"]
+  - key: frozen-peas
+    name: "frozen peas"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 170016
+  - key: frozen-pie-crust
+    name: "frozen pie crust"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 175024
+  - key: frozen-spinach
+    name: "frozen spinach"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 169287
+  - key: frozen-strawberries
+    name: "frozen strawberries"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 240}
+    unit: g
+    fdc: 168173
+  - key: frozen-yogurt
+    name: "frozen yogurt"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 60}
+    unit: ml
+    fdc: 168815
   - key: furikake
     name: "furikake"
     category: spices
@@ -1951,6 +2237,13 @@ ingredients:
     keep: {room: 2, fridge: 7, freezer: 30}
     unit: g
     fdc: 169231
+  - key: ginger-ale
+    name: "ginger ale"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 174846
   - key: glass-noodles
     name: "glass noodles"
     category: pantry
@@ -2401,6 +2694,14 @@ ingredients:
     unit: g
     fdc: 173472
     spellings: ["prepared horseradish"]
+  - key: hot-cocoa-mix
+    name: "hot cocoa mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 174122
+    spellings: ["hot chocolate mix"]
   - key: hot-dogs
     name: "hot dogs"
     category: meat
@@ -2425,6 +2726,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 174289
+  - key: ice-cream
+    name: "ice cream"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 60}
+    unit: ml
+    fdc: 167575
   - key: iceberg-lettuce
     name: "iceberg lettuce"
     category: produce
@@ -2432,6 +2740,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 169248
+  - key: instant-coffee
+    name: "instant coffee"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    fdc: 171893
   - key: italian-bread
     name: "Italian bread"
     proper_noun: true
@@ -2748,6 +3063,12 @@ ingredients:
     unit: g
     spellings: ["kaffir lime leaves", "lime leaves"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: manchego
+    name: "manchego"
+    category: dairy
+    perishability: refrigerated
+    keep: {room: null, fridge: 180, freezer: 180}
+    unit: g
   - key: mandarin-orange
     name: "mandarin orange"
     category: produce
@@ -2915,6 +3236,14 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: multigrain-bread
+    name: "multigrain bread"
+    category: bakery
+    perishability: fresh
+    keep: {room: 4, fridge: 10, freezer: 90}
+    unit: g
+    fdc: 168013
+    spellings: ["multi-grain bread"]
   - key: mushroom
     name: "mushroom"
     category: produce
@@ -2936,6 +3265,13 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 300}
     unit: g
     fdc: 169256
+  - key: naan
+    name: "naan"
+    category: bakery
+    perishability: fresh
+    keep: {room: 3, fridge: 7, freezer: 90}
+    unit: each
+    fdc: 171845
   - key: napa-cabbage
     name: "napa cabbage"
     category: produce
@@ -3101,6 +3437,14 @@ ingredients:
     unit: g
     spellings: ["coconut sugar"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: pancake-mix
+    name: "pancake mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 175007
+    spellings: ["waffle mix"]
   - key: pancetta
     name: "pancetta"
     category: meat
@@ -3830,7 +4174,7 @@ ingredients:
     keep: {room: null, fridge: 3, freezer: null}
     unit: g
     fdc: 169247
-    spellings: ["romaine", "cos lettuce"]
+    spellings: ["romaine", "cos lettuce", "romaine hearts"]
   - key: romesco
     name: "romesco"
     category: pantry
@@ -4080,6 +4424,13 @@ ingredients:
     unit: ml
     fdc: 169070
     spellings: ["chinese cooking wine", "shaoxing rice wine"]
+  - key: sherbet
+    name: "sherbet"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: null, freezer: 60}
+    unit: ml
+    fdc: 167577
   - key: shiitake-mushrooms
     name: "shiitake mushrooms"
     category: produce
@@ -4261,6 +4612,13 @@ ingredients:
     unit: g
     spellings: ["dry chorizo", "cured chorizo"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: sparkling-water
+    name: "sparkling water"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["seltzer"]
   - key: speck
     name: "speck"
     category: meat
@@ -4289,6 +4647,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172428
+  - key: spring-mix
+    name: "spring mix"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
+    unit: g
+    spellings: ["mesclun", "salad mix"]
   - key: squid
     name: "squid"
     category: seafood
@@ -4321,6 +4686,13 @@ ingredients:
     unit: g
     fdc: 171715
     spellings: ["carambola"]
+  - key: stock-concentrate
+    name: "stock concentrate"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: null, fridge: 90, freezer: null}
+    unit: g
+    spellings: ["bouillon paste", "soup base"]
   - key: stracciatella
     name: "stracciatella"
     category: dairy
@@ -4619,6 +4991,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170054
+  - key: tonic-water
+    name: "tonic water"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 171869
   - key: tortilla-chips
     name: "tortilla chips"
     category: pantry
