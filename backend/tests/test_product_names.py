@@ -56,7 +56,7 @@ def test_a_product_is_tidied_as_it_is_set():
 
 async def test_saved_names_are_tidied_through_the_api(admin_client):
     body = {
-        "ingredient": {"name": "Plum jam"},
+        "ingredient": {"name": "Plum jam", "category": "pantry"},
         "name": f"Fernhill{TM} Plum Jam",
         "brand": f"Fernhill{REG}",
     }
@@ -70,7 +70,10 @@ async def test_saved_names_are_tidied_through_the_api(admin_client):
 
 
 async def test_a_pasted_sign_still_finds_the_tidied_name(admin_client):
-    body = {"ingredient": {"name": "Plum jam"}, "name": f"Fernhill{TM} Plum Jam"}
+    body = {
+        "ingredient": {"name": "Plum jam", "category": "pantry"},
+        "name": f"Fernhill{TM} Plum Jam",
+    }
     assert (await admin_client.post("/api/v1/products", json=body)).status_code == 201
     r = await admin_client.get("/api/v1/products/search", params={"q": f"fernhill{REG} plum"})
     assert [h["name"] for h in r.json()["items"]] == ["Fernhill Plum Jam"]

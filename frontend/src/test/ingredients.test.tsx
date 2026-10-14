@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Ingredient } from "../api/catalog";
 import { flour, flourId, units } from "./catalog-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
+import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -14,7 +14,21 @@ function baseRoutes(items: () => Ingredient[]) {
     "GET /units": () => jsonResponse(200, { items: units }),
     "GET /ingredients": () => jsonResponse(200, { items: items(), next_cursor: null }),
     "GET /usda/suggestions": () => jsonResponse(200, { items: [], loaded: false }),
+    // A new ingredient's likeliest category (issue 344): the standard list's, here.
+    "GET /ingredients/category-suggestion": (call: RecordedCall) =>
+      jsonResponse(200, suggestionFor(call.query.get("name") ?? "")),
   };
+}
+
+const SUGGESTED: Record<string, string> = {
+  cumin: "spices",
+  peas: "frozen",
+  "all-purpose flour": "pantry",
+};
+
+function suggestionFor(name: string) {
+  const category = SUGGESTED[name] ?? null;
+  return { category, source: category ? "standard" : null };
 }
 
 /** Open the add drawer from the page header. */
@@ -25,7 +39,7 @@ async function openAddDrawer(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("ingredients", () => {
-  it("creates an ingredient with only a name", async () => {
+  it("creates an ingredient from a name and its suggested category", async () => {
     let items: Ingredient[] = [];
     const created: Ingredient = {
       ...flour,
@@ -46,6 +60,9 @@ describe("ingredients", () => {
 
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "cumin");
+    // The category is prefilled from the standard list, and says so (issue 344).
+    await waitFor(() => expect(screen.getByLabelText("Category")).toHaveValue("spices"));
+    expect(screen.getByText("Suggested from the standard list.")).toBeInTheDocument();
     await user.click(
       within(screen.getByRole("dialog")).getByRole("button", { name: "Add ingredient" }),
     );
@@ -55,7 +72,7 @@ describe("ingredients", () => {
       expect(found).toBeDefined();
       return found;
     });
-    expect(post?.body).toEqual({ name: "cumin", canonical_unit: "g" });
+    expect(post?.body).toEqual({ name: "cumin", canonical_unit: "g", category: "spices" });
     expect(post?.headers.get("Idempotency-Key")).toMatch(UUID);
 
     // The drawer closes and the new row, now in the list, takes focus (G10).
@@ -83,6 +100,7 @@ describe("ingredients", () => {
 
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "peas");
+    await waitFor(() => expect(screen.getByLabelText("Category")).toHaveValue("frozen"));
     await user.click(screen.getByText("More: density, yield, perishability, notes"));
     const select = screen.getByLabelText("Perishability");
     expect(select).toHaveValue("");
@@ -98,7 +116,12 @@ describe("ingredients", () => {
       expect(found).toBeDefined();
       return found;
     });
-    expect(post?.body).toEqual({ name: "peas", canonical_unit: "g", perishability: "frozen" });
+    expect(post?.body).toEqual({
+      name: "peas",
+      canonical_unit: "g",
+      category: "frozen",
+      perishability: "frozen",
+    });
   });
 
   it("fills the density from a USDA suggestion with source usda and queues a measure", async () => {
@@ -127,6 +150,7 @@ describe("ingredients", () => {
 
     await openAddDrawer(user);
     await user.type(screen.getByLabelText("Name"), "all-purpose flour");
+    await waitFor(() => expect(screen.getByLabelText("Category")).toHaveValue("pantry"));
 
     await user.click(
       await screen.findByRole("button", { name: "Use density 0.528 g/ml (from 1 cup)" }),
@@ -151,6 +175,7 @@ describe("ingredients", () => {
     expect(post?.body).toEqual({
       name: "all-purpose flour",
       canonical_unit: "g",
+      category: "pantry",
       density_g_per_ml: "0.528",
       density_source: "usda",
     });
@@ -222,7 +247,7 @@ describe("ingredients, empty states and suggestions (G11, UI-3.6)", () => {
     await openAddDrawer(user);
     const field = screen.getByLabelText("Category");
     expect([...field.querySelectorAll("option")].map((o) => o.textContent)).toEqual([
-      "No category",
+      "Choose a category",
       "Produce",
       "Dairy",
       "Meat",

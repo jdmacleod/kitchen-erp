@@ -1382,6 +1382,57 @@
         "title": "CapturedImage",
         "type": "object"
       },
+      "CategorySuggestionOut": {
+        "additionalProperties": false,
+        "description": "The category a new ingredient most likely has, and where that came from (#344).",
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "produce",
+                  "dairy",
+                  "meat",
+                  "seafood",
+                  "bakery",
+                  "pantry",
+                  "spices",
+                  "beverages",
+                  "frozen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "standard",
+                  "usda",
+                  "clip",
+                  "catalog"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "required": [
+          "category",
+          "source"
+        ],
+        "title": "CategorySuggestionOut",
+        "type": "object"
+      },
       "CheaperElsewhereItem": {
         "additionalProperties": false,
         "description": "An item assigned to a later stop that this location could also fill:\n``id`` is its stop item there, ``at_seq`` that stop, ``line_cost_there`` the\nplan's figure and ``line_cost_here`` this location's offer; ``difference``\nis here minus there, so \"+0.80 here\" when it costs more here.",
@@ -21361,6 +21412,85 @@
           }
         },
         "summary": "Create Ingredient",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/ingredients/category-suggestion": {
+      "get": {
+        "description": "The likeliest category for a new ingredient, to prefill its picker (#344).",
+        "operationId": "category_suggestion_api_v1_ingredients_category_suggestion_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "fdc_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fdc Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "proposal_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Proposal Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorySuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Category Suggestion",
         "tags": [
           "catalog"
         ]

@@ -187,7 +187,7 @@ async def test_stale_marking_and_exclusion(admin_client, owner_conn: asyncpg.Con
     r = await admin_client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"name": "Strawberries", "perishability": "fresh"},
+            "ingredient": {"category": "pantry", "name": "Strawberries", "perishability": "fresh"},
             "name": "Berries",
             "pack_qty": "1",
             "pack_unit": "lb",

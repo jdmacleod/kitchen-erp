@@ -6,7 +6,7 @@ import { login, nextTag } from "./helpers";
 // database never collide on the case-insensitive unique index.
 const stamp = nextTag();
 
-test("create an ingredient with only a name, then a product for it", async ({ page }) => {
+test("create an ingredient with a name and category, then a product for it", async ({ page }) => {
   await login(page);
   await page.goto("/catalog/ingredients");
   const name = `E2E rigatoni ${stamp}`;
@@ -14,6 +14,8 @@ test("create an ingredient with only a name, then a product for it", async ({ pa
   await page.getByRole("main").getByRole("button", { name: "Add ingredient" }).first().click();
   let drawer = page.getByRole("dialog", { name: "Add ingredient" });
   await drawer.getByLabel(/^name/i).fill(name);
+  // Every new ingredient has a category (issue 344).
+  await drawer.getByLabel("Category", { exact: true }).selectOption("pantry");
   await drawer.getByRole("button", { name: "Add ingredient" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByText(name).first()).toBeVisible();

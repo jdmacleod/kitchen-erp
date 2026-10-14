@@ -321,7 +321,7 @@ async def test_creating_an_ingredient_inline_from_the_standard_list(
     r = await decide(
         admin_client,
         name_norm="lemon juice",
-        ingredient={"name": "Lemon", "canonical_unit": "each"},
+        ingredient={"name": "Lemon", "canonical_unit": "each", "category": "produce"},
     )
     assert r.status_code == 200, r.text
     assert r.json()["action"] == "created"
@@ -330,7 +330,9 @@ async def test_creating_an_ingredient_inline_from_the_standard_list(
     # A taken name names its holder, so the page can offer it.
     recipes_repo.write("zest.cook", "Grate @lemon zest{1%tsp}.\n")
     await rescan(admin_client)
-    r = await decide(admin_client, name_norm="lemon zest", ingredient={"name": "lemon"})
+    r = await decide(
+        admin_client, name_norm="lemon zest", ingredient={"name": "lemon", "category": "produce"}
+    )
     assert r.status_code == 409 and r.json()["error"]["code"] == "ingredient_name_taken"
     assert r.json()["error"]["details"]["holder"] == "Lemon"
 
@@ -343,7 +345,9 @@ async def test_a_new_ingredients_own_name_settles_other_waiting_names(
     recipes_repo.write("b.cook", "Roast @parsnip{1}.\n")
     await rescan(admin_client)
     assert (await queue(admin_client))["names"] == 2
-    r = await decide(admin_client, name_norm="parsnips", ingredient={"name": "Parsnip"})
+    r = await decide(
+        admin_client, name_norm="parsnips", ingredient={"name": "Parsnip", "category": "produce"}
+    )
     assert r.status_code == 200, r.text
     # "parsnip" is the new ingredient's own name: the re-run resolved it at once (14).
     assert r.json()["remaining"] == 0

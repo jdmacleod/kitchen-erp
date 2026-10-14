@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, computed_field, field_validator, model_validator
 
 from app.catalog import categories, keep
 from app.catalog.attributes import ProductKind
@@ -73,6 +73,22 @@ class IngredientCreate(_DensityPair):
     perishability: Perishability | None = None
     notes: str | None = None
 
+    _category = field_validator("category")(categories.stored)
+
+    @model_validator(mode="after")
+    def _category_required(self):
+        # A new ingredient always has a category (#344); a standard entry brings its own.
+        if self.standard_key is None and self.category is None:
+            raise ValueError("category_required: choose a category for the new ingredient")
+        return self
+
+
+class CategorySuggestionOut(ApiModel):
+    """The category a new ingredient most likely has, and where that came from (#344)."""
+
+    category: CategoryKey | None
+    source: Literal["standard", "usda", "clip", "catalog"] | None
+
 
 class IngredientUpdate(ApiModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
@@ -88,6 +104,8 @@ class IngredientUpdate(ApiModel):
     keep_fridge_days: int | None = Field(default=None, ge=0, le=3650)
     keep_freezer_days: int | None = Field(default=None, ge=0, le=3650)
     notes: str | None = None
+
+    _category = field_validator("category")(categories.stored)
 
     @model_validator(mode="after")
     def _pair(self):

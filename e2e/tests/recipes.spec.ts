@@ -182,6 +182,7 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
     await options.filter({ hasText: "Create new ingredient" }).first().click();
     const drawer = page.getByRole("form", { name: "Add ingredient" });
     await expect(drawer.getByLabel("Name")).toHaveValue(name!);
+    await drawer.getByLabel("Category", { exact: true }).selectOption("pantry");
     await page.getByRole("button", { name: "Add ingredient" }).click();
   }
 

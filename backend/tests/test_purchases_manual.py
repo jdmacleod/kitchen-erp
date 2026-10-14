@@ -15,7 +15,7 @@ async def setup(client: httpx.AsyncClient):
     r = await client.post(
         "/api/v1/products",
         json={
-            "ingredient": {"name": "Eggs", "canonical_unit": "each"},
+            "ingredient": {"category": "pantry", "name": "Eggs", "canonical_unit": "each"},
             "name": "Dozen eggs",
             "pack_qty": "12",
             "pack_unit": "each",

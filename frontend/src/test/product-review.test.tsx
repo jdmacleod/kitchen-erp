@@ -359,6 +359,12 @@ describe("product review", () => {
     });
     const calls = mockApi(
       routes(withPieces, {
+        // The proposal's captured category prefills the new ingredient's (issue 344).
+        "GET /ingredients/category-suggestion": (call) =>
+          jsonResponse(200, {
+            category: call.query.get("proposal_id") === proposalId ? "pantry" : null,
+            source: "clip",
+          }),
         "POST /ingredients": () =>
           jsonResponse(201, {
             ...flourProduct.ingredient,
@@ -386,8 +392,11 @@ describe("product review", () => {
     const ingredient = screen.getByRole("combobox", { name: "Ingredient" });
     await user.type(ingredient, "flour");
     await user.click(await screen.findByRole("option", { name: /Create new ingredient/ }));
+    expect(await screen.findByText("from the page")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Accept" }));
     await waitFor(() => expect(calls.some((c) => c.path.endsWith("/accept"))).toBe(true));
+    const created = calls.find((c) => c.method === "POST" && c.path === "/ingredients");
+    expect(created?.body).toEqual({ name: "flour", category: "pantry" });
     const sent = calls.find((c) => c.path.endsWith("/accept"))!.body as {
       edits: Record<string, unknown>;
     };

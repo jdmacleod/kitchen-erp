@@ -160,7 +160,11 @@ async def accept(admin_client, store, recorded, canonical_unit: str) -> uuid.UUI
     body = (await admin_client.get(f"/api/v1/product-proposals/{proposal['id']}")).json()
     assert body["price"] == {"amount": "0.69", "qty": "1", "unit": "lb", "is_promo": False}
     assert body["fields"]["price"]["conflict"] is True  # the page's JSON-LD said 3.49 each
-    ing0 = (await admin_client.post("/api/v1/ingredients", json={"name": "Plantains"})).json()
+    ing0 = (
+        await admin_client.post(
+            "/api/v1/ingredients", json={"name": "Plantains", "category": "pantry"}
+        )
+    ).json()
     blocked = await admin_client.post(
         f"/api/v1/product-proposals/{proposal['id']}/accept",
         json={
@@ -173,7 +177,8 @@ async def accept(admin_client, store, recorded, canonical_unit: str) -> uuid.UUI
     assert blocked.status_code == 409 and blocked.json()["error"]["code"] == "price_conflict"
     ing = (
         await admin_client.post(
-            "/api/v1/ingredients", json={"name": "Bananas", "canonical_unit": canonical_unit}
+            "/api/v1/ingredients",
+            json={"category": "pantry", "name": "Bananas", "canonical_unit": canonical_unit},
         )
     ).json()
     r = await admin_client.post(

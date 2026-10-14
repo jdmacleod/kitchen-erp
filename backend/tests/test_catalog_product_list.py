@@ -4,7 +4,12 @@ category keys on ingredient shapes, and last_paid (T16). All names are invented.
 import httpx
 import pytest
 
-from tests.catalog_helpers import make_ingredient, make_product, seed_units_via_service
+from tests.catalog_helpers import (
+    clear_category,
+    make_ingredient,
+    make_product,
+    seed_units_via_service,
+)
 
 
 async def _names(client: httpx.AsyncClient, **params) -> tuple[list[str], str | None]:
@@ -92,13 +97,15 @@ async def test_a_cursor_for_no_product_is_rejected(admin_client):
 async def test_ingredient_shapes_carry_the_category_key(admin_client, db_session):
     await seed_units_via_service(db_session)
     fish = await make_ingredient(admin_client, "Hake", category="Fish")
-    plain = await make_ingredient(admin_client, "Tofu")
+    plain = await clear_category(admin_client, await make_ingredient(admin_client, "Tofu"))
     odd = await make_ingredient(admin_client, "Kombu", category="sea vegetables")
-    assert fish["category_key"] == "seafood" and fish["category"] == "Fish"
+    # A category with a key is stored as the key (#344); other text as typed.
+    assert fish["category_key"] == "seafood" and fish["category"] == "seafood"
+    assert odd["category"] == "sea vegetables"
     assert plain["category_key"] is None and odd["category_key"] is None
 
     product = await make_product(admin_client, fish["id"], "Hake fillets")
-    assert product["ingredient"]["category"] == "Fish"
+    assert product["ingredient"]["category"] == "seafood"
     assert product["ingredient"]["category_key"] == "seafood"
     listed = (await admin_client.get("/api/v1/ingredients")).json()["items"]
     assert {i["name"]: i["category_key"] for i in listed} == {
@@ -149,7 +156,7 @@ async def test_no_category_finds_products_whose_ingredient_has_no_key(admin_clie
     Found by /devex-review on 2026-10-06."""
     await seed_units_via_service(db_session)
     greens = await make_ingredient(admin_client, "Snap peas", category="vegetables")
-    bare = await make_ingredient(admin_client, "Quince paste")
+    bare = await clear_category(admin_client, await make_ingredient(admin_client, "Quince paste"))
     odd = await make_ingredient(admin_client, "Spruce tips", category="foraged")
     await make_product(admin_client, greens["id"], "Sugar snap peas")
     await make_product(admin_client, bare["id"], "Quince paste block")

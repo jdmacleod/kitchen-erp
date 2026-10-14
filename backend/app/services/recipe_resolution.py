@@ -38,7 +38,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog import standard
+from app.catalog import categories, standard
 from app.catalog.names import normalize_name, singulars
 from app.catalog.standard_match import match_entry
 from app.core.config import Settings, get_settings
@@ -304,11 +304,10 @@ async def _prep_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[Res
 async def _usda_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
     """Foods from the USDA pool (``fdc_food``) to create an ingredient from.
 
-    Ranked as ``kerp ingredients usda-candidates`` ranks them: Foundation and
-    SR Legacy foods resembling the name, the ones USDA's own survey recipes use
-    most first. The name without its prep words is what is searched and what the
-    new ingredient would be called; the stripped words ride as the note.
-    """
+    Ranked as ``kerp ingredients usda-candidates`` ranks them, used ones first. The
+    name without its prep words is what is searched and what the new ingredient
+    would be called; the stripped words ride as the note, the food group as its
+    category (#344)."""
     stripped = strip_prep(name_norm)
     text = stripped.remainder if stripped is not None else name_norm
     foods = await usda.candidates(db, text, limit=USDA_PROPOSALS, fit_name=text)
@@ -318,6 +317,7 @@ async def _usda_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[Res
             name=text,
             fdc_id=food.fdc_id,
             fdc_description=food.description,
+            category=categories.key(food.category),
             note=stripped.note if stripped is not None else None,
         )
         for food in foods

@@ -29,7 +29,10 @@ UPC = with_check(j("04812 300003"))
 
 
 async def product(client, name, **extra) -> dict:
-    body = {"ingredient": {"name": f"{name} ingredient", "canonical_unit": "g"}, "name": name}
+    body = {
+        "ingredient": {"category": "pantry", "name": f"{name} ingredient", "canonical_unit": "g"},
+        "name": name,
+    }
     r = await client.post("/api/v1/products", json={**body, **extra})
     assert r.status_code == 201, r.text
     return r.json()
@@ -48,7 +51,10 @@ async def test_barcode_round_trips_in_display_form_and_any_written_form_finds_it
 
 
 async def test_wrong_check_digit_refused_other_codes_kept(admin_client):
-    body = {"ingredient": {"name": "oats", "canonical_unit": "g"}, "name": "Oats"}
+    body = {
+        "ingredient": {"category": "pantry", "name": "oats", "canonical_unit": "g"},
+        "name": "Oats",
+    }
     r = await admin_client.post("/api/v1/products", json={**body, "barcode": bad_check(UPC)})
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_gtin"
     p = await product(admin_client, "Loose apples", barcode="4011")
@@ -66,7 +72,10 @@ async def test_ambiguous_eight_digits_need_a_symbology(admin_client):
         and gs1_ok(upce_to_upca(c))
         and upce_to_upca(c).zfill(14) != c.zfill(14)
     )
-    body = {"ingredient": {"name": "mints", "canonical_unit": "g"}, "name": "Mints"}
+    body = {
+        "ingredient": {"category": "pantry", "name": "mints", "canonical_unit": "g"},
+        "name": "Mints",
+    }
     r = await admin_client.post("/api/v1/products", json={**body, "barcode": code})
     assert r.status_code == 422 and r.json()["error"]["code"] == "ambiguous_barcode"
     p = await product(admin_client, "Mints", barcode=code, barcode_symbology="upce")
@@ -75,7 +84,10 @@ async def test_ambiguous_eight_digits_need_a_symbology(admin_client):
 
 async def test_barcode_taken_in_another_form(admin_client):
     await product(admin_client, "First", barcode=UPC)
-    body = {"ingredient": {"name": "second", "canonical_unit": "g"}, "name": "Second"}
+    body = {
+        "ingredient": {"category": "pantry", "name": "second", "canonical_unit": "g"},
+        "name": "Second",
+    }
     r = await admin_client.post("/api/v1/products", json={**body, "barcode": "0" + UPC})
     assert r.status_code == 409 and r.json()["error"]["code"] == "barcode_taken"
 
@@ -119,7 +131,10 @@ async def test_attributes_validated_by_category(admin_client):
         "/api/v1/products", json={**odd, "attributes": {"species": "unicorn"}}
     )
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_attributes"
-    plain = {"ingredient": {"name": "apple", "canonical_unit": "each"}, "name": "Apple"}
+    plain = {
+        "ingredient": {"category": "pantry", "name": "apple", "canonical_unit": "each"},
+        "name": "Apple",
+    }
     r = await admin_client.post("/api/v1/products", json={**plain, "attributes": {"species": "x"}})
     assert r.status_code == 422
 

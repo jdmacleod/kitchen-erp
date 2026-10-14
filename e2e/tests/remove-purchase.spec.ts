@@ -10,7 +10,7 @@ import { login, nextTag } from "./helpers";
  */
 async function seedPurchase(page: Page, stamp: string) {
   const ingredient = await page.request.post("/api/v1/ingredients", {
-    data: { name: `E2E pearl barley ${stamp}` },
+    data: { name: `E2E pearl barley ${stamp}`, category: "pantry" },
   });
   expect(ingredient.status()).toBe(201);
   const { id: ingredientId } = (await ingredient.json()) as { id: string };

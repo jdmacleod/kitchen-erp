@@ -19,7 +19,9 @@ async def test_create_with_only_a_name_and_use_it(admin_client: httpx.AsyncClien
 async def test_name_unique_case_insensitively_with_specific_code(admin_client, db_session):
     await seed_units_via_service(db_session)
     await make_ingredient(admin_client, "Kosher Salt")
-    r = await admin_client.post("/api/v1/ingredients", json={"name": "kosher salt"})
+    r = await admin_client.post(
+        "/api/v1/ingredients", json={"name": "kosher salt", "category": "pantry"}
+    )
     assert r.status_code == 409
     assert r.json()["error"]["code"] == "ingredient_name_taken"
 
@@ -27,7 +29,8 @@ async def test_name_unique_case_insensitively_with_specific_code(admin_client, d
 async def test_density_pair_validation(admin_client, db_session):
     await seed_units_via_service(db_session)
     r = await admin_client.post(
-        "/api/v1/ingredients", json={"name": "Honey", "density_g_per_ml": "1.42"}
+        "/api/v1/ingredients",
+        json={"category": "pantry", "name": "Honey", "density_g_per_ml": "1.42"},
     )
     assert r.status_code == 422
     assert r.json()["error"]["code"] == "validation_error"
@@ -119,6 +122,10 @@ async def test_list_pagination_cursor(admin_client, db_session):
 async def test_idempotent_create(admin_client, db_session):
     await seed_units_via_service(db_session)
     h = {"Idempotency-Key": "ing-1"}
-    a = await admin_client.post("/api/v1/ingredients", json={"name": "Cumin"}, headers=h)
-    b = await admin_client.post("/api/v1/ingredients", json={"name": "Cumin"}, headers=h)
+    a = await admin_client.post(
+        "/api/v1/ingredients", json={"name": "Cumin", "category": "pantry"}, headers=h
+    )
+    b = await admin_client.post(
+        "/api/v1/ingredients", json={"name": "Cumin", "category": "pantry"}, headers=h
+    )
     assert a.status_code == b.status_code == 201 and a.json() == b.json()

@@ -66,7 +66,7 @@ async function setUp(page: Page): Promise<Setup> {
     ...RECIPE.lines.map((line) => [line, "g"]),
   ]) {
     const r = await page.request.post("/api/v1/ingredients", {
-      data: { name, canonical_unit: unit },
+      data: { name, canonical_unit: unit, category: "pantry" },
     });
     expect([201, 409], `ingredient ${name}`).toContain(r.status());
   }

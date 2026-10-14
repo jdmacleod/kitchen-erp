@@ -11,7 +11,12 @@ import {
   type SearchHit,
 } from "../../api/catalog";
 import { Badge, labelClass } from "../catalog/fields";
-import { choiceInput, IngredientPicker, type IngredientChoice } from "../catalog/IngredientPicker";
+import {
+  choiceInput,
+  IngredientPicker,
+  needsCategory,
+  type IngredientChoice,
+} from "../catalog/IngredientPicker";
 import { ProductTypeahead } from "../catalog/ProductTypeahead";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Alert, Button, Field } from "../ui";
@@ -234,6 +239,10 @@ export function InlineProductCreate({
 
   const submit = () => {
     if (!ingredient) return setInvalid("Choose an ingredient, or create a new one by name.");
+    if (needsCategory(ingredient)) {
+      setInvalid("Choose a category for the new ingredient.");
+      return;
+    }
     if (!name.trim()) return setInvalid("A product name is required.");
     const hasQty = packQty.trim() !== "";
     if (hasQty !== (packUnit !== ""))

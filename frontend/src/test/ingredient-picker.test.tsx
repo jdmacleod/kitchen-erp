@@ -154,3 +154,68 @@ describe("ingredient picker (1G)", () => {
     expect(search?.query.get("include_standard")).toBe("false");
   });
 });
+
+describe("a new ingredient's category (issue 344)", () => {
+  async function chooseNew(user: ReturnType<typeof userEvent.setup>, name: string) {
+    renderApp("/catalog/products");
+    const form = await openAddDrawer(user);
+    await user.type(within(form).getByRole("combobox", { name: "Ingredient" }), name);
+    await user.click(await within(form).findByRole("option", { name: /Create new ingredient/ }));
+    return form;
+  }
+
+  it("asks for one when nothing suggests it, and won't save without it", async () => {
+    let posted: RecordedCall | undefined;
+    mockApi({
+      ...routes(
+        () => [],
+        (call) => (posted = call),
+      ),
+      "GET /ingredients/category-suggestion": () =>
+        jsonResponse(200, { category: null, source: null }),
+    });
+    const user = userEvent.setup();
+    const form = await chooseNew(user, "lantern root");
+    const field = await within(form).findByLabelText("Category");
+    expect(field).toHaveValue("");
+    expect(within(field).getByRole("option", { name: "Choose a category" })).toBeDisabled();
+    await user.type(within(form).getByLabelText("Name"), "Lantern root");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
+    expect(
+      await screen.findByText("Choose a category for the new ingredient."),
+    ).toBeInTheDocument();
+    expect(posted).toBeUndefined();
+
+    await user.selectOptions(field, "produce");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", { name: "Add product" }),
+    );
+    await waitFor(() => expect(posted).toBeDefined());
+    expect((posted?.body as { ingredient: unknown }).ingredient).toEqual({
+      name: "lantern root",
+      category: "produce",
+    });
+  });
+
+  it("prefills the suggestion as a chip that can be changed", async () => {
+    mockApi({
+      ...routes(() => []),
+      "GET /ingredients/category-suggestion": () =>
+        jsonResponse(200, { category: "spices", source: "usda" }),
+    });
+    const user = userEvent.setup();
+    const form = await chooseNew(user, "lantern seed");
+    const chip = await within(form).findByTestId("new-product-ingredient-category-chip");
+    expect(chip).toHaveTextContent("spices");
+    expect(chip).toHaveTextContent("from USDA");
+    await user.click(
+      within(chip).getByRole("button", { name: "Change the category of lantern seed" }),
+    );
+    const field = within(form).getByLabelText("Category");
+    expect(field).toHaveValue("spices");
+    await user.selectOptions(field, "pantry");
+    expect(field).toHaveValue("pantry");
+  });
+});

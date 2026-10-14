@@ -33,7 +33,7 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "kind": "ingredient",
             "id": basil["id"],
             "label": "Basil",
-            "detail": "Herbs",
+            "detail": "produce",
             "route": f"/catalog/ingredients/{basil['id']}",
             "category_key": "produce",
             "badge": None,

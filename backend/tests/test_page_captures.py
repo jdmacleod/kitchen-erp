@@ -168,7 +168,9 @@ async def test_a_structured_price_reaches_the_observation_exactly(
 ):
     """Criterion 86, second part."""
     proposal = (await admin_client.post("/api/v1/product-captures", json=page(price))).json()
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{proposal['id']}/accept",
         json={
@@ -263,7 +265,9 @@ async def test_the_address_check_names_a_product_already_in_the_catalog(
     pasted = await admin_client.post(
         "/api/v1/product-captures", json={"channel": "paste_url", "page_url": PAGE}
     )
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     accepted = await admin_client.post(
         f"/api/v1/product-proposals/{pasted.json()['id']}/accept",
         json={"action": "new", "ingredient_id": ing["id"]},
@@ -522,7 +526,9 @@ async def test_the_listing_follows_the_adapters_name_and_number_after_the_job(
     assert body["price"]["amount"] == "4.29"
 
     # A reviewer's name wins on the stored listing too, not the one read at capture.
-    ing = (await admin_client.post("/api/v1/ingredients", json={"name": "Oats"})).json()
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
     r = await admin_client.post(
         f"/api/v1/product-proposals/{proposal['id']}/accept",
         json={

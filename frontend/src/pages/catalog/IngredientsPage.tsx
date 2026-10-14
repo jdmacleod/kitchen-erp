@@ -29,6 +29,10 @@ import {
   SelectField,
   TextAreaField,
 } from "../../components/catalog/fields";
+import {
+  suggestedHint,
+  useSuggestedCategory,
+} from "../../components/catalog/NewIngredientCategory";
 import { UsdaSuggestions, type QueuedMeasure } from "../../components/catalog/UsdaSuggestions";
 import { CategoryChip } from "../../components/CategoryChip";
 import { Drawer } from "../../components/Drawer";
@@ -274,6 +278,8 @@ export function AddIngredientDrawer({
   const [addingMeasures, setAddingMeasures] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const debouncedName = useDebouncedValue(form.name.trim(), 300);
+  const [categoryTouched, setCategoryTouched] = useState(false);
+  const { category, source } = useSuggestedCategory(debouncedName, form.category, categoryTouched);
   const set = <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
@@ -282,6 +288,10 @@ export function AddIngredientDrawer({
     const name = form.name.trim();
     if (!name) {
       setInvalid("A name is required.");
+      return;
+    }
+    if (!category.trim()) {
+      setInvalid("Choose a category: every ingredient has one.");
       return;
     }
     if (form.density.trim() && !isPositiveDecimal(form.density)) {
@@ -295,7 +305,7 @@ export function AddIngredientDrawer({
     setInvalid(null);
 
     const input: IngredientCreateInput = { name, canonical_unit: form.canonical_unit };
-    if (form.category.trim()) input.category = form.category.trim();
+    input.category = category.trim();
     if (form.density.trim()) {
       input.density_g_per_ml = form.density.trim();
       input.density_source = form.density_source;
@@ -381,8 +391,13 @@ export function AddIngredientDrawer({
           />
           <CategoryField
             id="new-ingredient-category"
-            value={form.category}
-            onChange={(value) => set("category", value)}
+            value={category}
+            required
+            onChange={(value) => {
+              setCategoryTouched(true);
+              set("category", value);
+            }}
+            hint={suggestedHint(source)}
           />
         </div>
         <RadioGroup
