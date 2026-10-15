@@ -5806,6 +5806,11 @@
             ],
             "title": "Density Source"
           },
+          "drop_measures": {
+            "default": false,
+            "title": "Drop Measures",
+            "type": "boolean"
+          },
           "keep_freezer_days": {
             "anyOf": [
               {
@@ -9517,6 +9522,11 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "switch_to_ml": {
+            "default": false,
+            "title": "Switch To Ml",
+            "type": "boolean"
           }
         },
         "required": [
@@ -22519,6 +22529,7 @@
         ]
       },
       "patch": {
+        "description": "409 measures_in_old_unit: a unit change while measures in the old unit exist.",
         "operationId": "update_ingredient_api_v1_ingredients__ingredient_id__patch",
         "parameters": [
           {

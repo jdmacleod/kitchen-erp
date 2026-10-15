@@ -74,10 +74,18 @@ export function choiceInput(
 }
 
 /** The chosen ingredient's id, creating a new or standard one first. */
-export async function ingredientIdFor(choice: IngredientChoice): Promise<string> {
+export async function ingredientIdFor(
+  choice: IngredientChoice,
+  unit?: CanonicalUnit,
+): Promise<string> {
   const input = choiceInput(choice);
   if ("ingredient_id" in input) return input.ingredient_id;
-  return (await api<{ id: string }>("/ingredients", { method: "POST", body: input.ingredient })).id;
+  // A new ingredient for a product sold by volume is measured in ml (issue 358).
+  const body =
+    unit && choice.kind === "new"
+      ? { ...input.ingredient, canonical_unit: unit }
+      : input.ingredient;
+  return (await api<{ id: string }>("/ingredients", { method: "POST", body })).id;
 }
 
 /** True while a new ingredient still lacks the category it must have (issue 344). */

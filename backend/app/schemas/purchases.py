@@ -108,6 +108,9 @@ class NeedsBridgeItem(ApiModel):
     status: NormStatus
     observation_count: int
     latest_observed_at: datetime
+    # "no density" for an ingredient in g whose products are all sold by volume:
+    # measuring it in ml would bridge it without a density (issue 358).
+    switch_to_ml: bool = False
 
 
 class NeedsBridgeList(ApiModel):

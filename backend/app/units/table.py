@@ -85,3 +85,9 @@ SEED_UNITS: tuple[Unit, ...] = (
 
 def units_by_code(units: Iterable[Unit] = SEED_UNITS) -> Mapping[str, Unit]:
     return {u.code: u for u in units}
+
+
+def is_volume(code: str | None) -> bool:
+    """Whether a unit code measures volume: "ml", "fl_oz" and "cup" do, "g" and "each" don't."""
+    unit = units_by_code().get(code) if code else None
+    return unit is not None and unit.dimension == "volume"

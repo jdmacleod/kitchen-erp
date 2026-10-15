@@ -864,9 +864,6 @@
   "src/pages/pricebook/NeedsBridgePage.tsx": {
     "@typescript-eslint/no-unnecessary-condition": {
       "count": 1
-    },
-    "max-lines-per-function": {
-      "count": 1
     }
   },
   "src/pages/pricebook/UsdaReviewSection.tsx": {
