@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from app.services.spelling import suggest, words
 
-VOCAB = words(["Flat-leaf parsley", "Serrano pepper", "Jalapeno pepper", "Meadowline yogurt"])
+VOCAB = words(["Fresno chile", "Oregano sprigs", "Kestrel pepper", "Meadowline yogurt"])
 
 
 def test_a_word_one_letter_off_a_catalog_word_is_offered_in_its_case():
-    assert suggest("ITALIAN PARSLEV", VOCAB) == [{"word": "PARSLEV", "maybe": "PARSLEY"}]
-    assert suggest("serrand peppers", VOCAB) == [{"word": "serrand", "maybe": "serrano"}]
+    assert suggest("RED FRESMO", VOCAB) == [{"word": "FRESMO", "maybe": "FRESNO"}]
+    assert suggest("dried oregand", VOCAB) == [{"word": "oregand", "maybe": "oregano"}]
 
 
 def test_a_letter_dropped_or_added_is_one_edit_too():
@@ -17,7 +17,7 @@ def test_a_letter_dropped_or_added_is_one_edit_too():
 
 
 def test_a_plural_of_a_known_word_is_not_a_misspelling():
-    assert suggest("JALAPENO PEPPERS", VOCAB) == []
+    assert suggest("KESTREL PEPPERS", VOCAB) == []
 
 
 def test_short_words_and_unknown_words_far_from_any_are_left_alone():
@@ -33,10 +33,10 @@ async def test_a_draft_line_carries_its_likely_spelling(admin_client, admin):
     from tests.pricebook_helpers import make_location, make_product
     from tests.resolution_helpers import make_receipt_purchase
 
-    await make_product(admin_client, "flat-leaf parsley", "Kestrel flat-leaf parsley")
+    await make_product(admin_client, "fresno chile", "Kestrel fresno chile")
     loc = await make_location(admin_client, "Larkspur Grocers", "Larkspur Harbour")
     pid = await make_receipt_purchase(
-        admin.id, loc["id"], [{"raw_text": "ITALIAN PARSLEV", "line_total": "0.99"}]
+        admin.id, loc["id"], [{"raw_text": "RED FRESMO", "line_total": "0.99"}]
     )
     (line,) = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()["lines"]
-    assert line["spelling"] == [{"word": "PARSLEV", "maybe": "PARSLEY"}]
+    assert line["spelling"] == [{"word": "FRESMO", "maybe": "FRESNO"}]

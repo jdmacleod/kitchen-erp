@@ -407,6 +407,21 @@ PRICE_FLAGS = frozenset(
     }
 )
 
+# Rows kept at zero for review that are not purchases of their own: a weight or
+# count row that joined no item, a footer sentence, a payment, a row of the item
+# above, a points count, a rate note, a deposit's rate or total. Never queued to
+# be identified.
+ZERO_ROW_FLAGS = (
+    "no_amount_printed",
+    "footer_text",
+    "payment_row",
+    "continuation_row",
+    "points_not_money",
+    "rate_note",
+    "deposit_rate_row",
+    "deposit_total",
+)
+
 # The last amount on a line, and whatever tax or flag letters follow it.
 _TRAILING_AMOUNT = re.compile(r"(\d[\d.,]*)\s*(?:[A-Za-z*]{1,2}\s*)?$")
 

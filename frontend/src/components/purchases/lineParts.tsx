@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { trimDecimal } from "../../api/catalog";
-import type { LinePatchInput, PurchaseLine } from "../../api/purchases";
-import { formatMoney } from "../../lib/decimal";
+import type { LinePatchInput, Purchase, PurchaseLine } from "../../api/purchases";
+import { cmp, formatMoney, isZero } from "../../lib/decimal";
+import { breakdown, type RunningTotal } from "../../lib/reconcile";
 import { Badge } from "../catalog/fields";
 import { Button } from "../ui";
 
@@ -324,27 +325,105 @@ export function LineRaw({ line, compact }: { line: PurchaseLine; compact?: boole
   );
 }
 
+/** A line's amount as it counts: a saving shows with its minus (2S). */
+function counted(line: PurchaseLine): string {
+  if (line.line_total === null) return "";
+  return line.line_kind === "discount"
+    ? `−${formatMoney(line.line_total.replace(/^-/, ""))}`
+    : formatMoney(line.line_total);
+}
+
+/** The lines' sum through this line, and where it already equals the receipt's total. */
+function SoFar({ running }: { running: RunningTotal | undefined }) {
+  if (!running) return null;
+  return (
+    <span className="block text-[11px] tabular-nums text-neutral-600 dark:text-neutral-400">
+      so far {formatMoney(running.soFar)}
+      {running.reachesTotal ? <Badge wrap>the receipt's total</Badge> : null}
+    </span>
+  );
+}
+
 /** What it was read as: quantity × unit, and the prices; on one line when compact. */
-export function LineParsed({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
-  if (line.in_price_amount) return <InPriceAmount line={line} />;
-  if (compact) {
-    const qty = line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—";
+export function LineParsed({
+  line,
+  compact,
+  running,
+}: {
+  line: PurchaseLine;
+  compact?: boolean;
+  running?: RunningTotal;
+}) {
+  if (line.in_price_amount)
     return (
-      <span className="tabular-nums">
-        {line.line_total !== null ? `${qty} · ${formatMoney(line.line_total)}` : qty}
-      </span>
+      <>
+        <InPriceAmount line={line} />
+        <SoFar running={running} />
+      </>
+    );
+  const qty = line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—";
+  if (compact) {
+    return (
+      <>
+        <span className="tabular-nums">
+          {line.line_total === null
+            ? qty
+            : line.qty === null
+              ? counted(line)
+              : `${qty} · ${counted(line)}`}
+        </span>
+        <SoFar running={running} />
+      </>
     );
   }
   return (
     <>
-      <span className="tabular-nums">
-        {line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}
-      </span>
+      <span className="tabular-nums">{qty}</span>
       <span className="block text-xs tabular-nums">
         {line.unit_price !== null ? `${formatMoney(line.unit_price, 2, 4)} ea` : ""}
         {line.unit_price !== null && line.line_total !== null ? " · " : ""}
-        {line.line_total !== null ? formatMoney(line.line_total) : ""}
+        {counted(line)}
       </span>
+      <SoFar running={running} />
     </>
+  );
+}
+
+/** The one-click fixes on a line: a spelling, a saving in the price, the item a saving is for. */
+export function LineFixes({
+  line,
+  itemLines,
+  busy,
+  onPatch,
+  title,
+}: {
+  line: PurchaseLine;
+  itemLines: PurchaseLine[];
+  busy: boolean;
+  onPatch: (input: LinePatchInput) => void;
+  title: (l: PurchaseLine) => ReactNode;
+}) {
+  return (
+    <>
+      <SpellingFix line={line} busy={busy} onPatch={onPatch} />
+      <SavingInPrice line={line} busy={busy} onPatch={onPatch} />
+      <AttachSaving line={line} itemLines={itemLines} busy={busy} onPatch={onPatch} title={title} />
+    </>
+  );
+}
+
+/** Where the running sums end, beside what the receipt says (2S). */
+export function LinesTotal({ purchase }: { purchase: Purchase }) {
+  const sums = breakdown(purchase);
+  const headerTax = !purchase.lines.some((l) => l.line_kind === "tax") && !isZero(sums.tax);
+  return (
+    <p className="mt-2 border-t border-neutral-200 pt-2 text-sm tabular-nums dark:border-neutral-800">
+      {headerTax ? `With the header's tax of ${formatMoney(sums.tax)}, the` : "The"} lines add up to{" "}
+      <span className="font-medium">{formatMoney(sums.linesTotal)}</span>; the receipt says{" "}
+      <span className="font-medium">{formatMoney(sums.total)}</span>
+      {sums.gap !== null && !isZero(sums.gap)
+        ? `, ${formatMoney(sums.gap.replace(/^-/, ""))} ${cmp(sums.gap, "0") < 0 ? "short" : "over"}.`
+        : "."}
+    </p>
   );
 }

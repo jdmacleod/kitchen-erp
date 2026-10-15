@@ -240,3 +240,53 @@ describe("reading the photo and the words (2S, U4, U9)", () => {
     );
   });
 });
+
+describe("reading down the lines (2S)", () => {
+  it("shows each saving as a minus and the sum so far, ending beside the receipt's total", async () => {
+    mockApi(routes(() => youPayPurchase));
+    renderApp(base);
+    await panel();
+    const rows = screen.getAllByTestId("review-line");
+    expect(within(rows[1]).getByText("−$0.50")).toBeInTheDocument();
+    expect(within(rows[1]).getByText("so far $2.49")).toBeInTheDocument();
+    expect(within(rows[5]).getByText("so far $4.92")).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) =>
+        el?.tagName === "P"
+          ? el.textContent === "The lines add up to $4.92; the receipt says $6.57, $1.65 short."
+          : false,
+      ),
+    ).toBeInTheDocument();
+    // The weight row is not an item of its own.
+    expect(screen.getByText(/^3 items · /)).toBeInTheDocument();
+  });
+
+  it("offers today's line rules to a receipt read before printed rows", async () => {
+    const before = {
+      ...youPayPurchase,
+      printed_checks: null,
+      lines: youPayPurchase.lines.map((l) => ({ ...l, printed_text: null })),
+      reread: { can_recheck: true, open: null },
+    };
+    const calls = mockApi(
+      routes(() => before, {
+        [`POST ${base}/rereads`]: () =>
+          jsonResponse(201, { id: "r1", status: "pending", mode: "check" }),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(base);
+    const why = await panel();
+    await user.click(within(why).getByRole("button", { name: "Re-check the lines" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toEqual({ mode: "check" }),
+    );
+  });
+
+  it("does not offer it once the reading has printed rows", async () => {
+    mockApi(routes(() => ({ ...youPayPurchase, reread: { can_recheck: true, open: null } })));
+    renderApp(base);
+    const why = await panel();
+    expect(within(why).queryByRole("button", { name: "Re-check the lines" })).toBeNull();
+  });
+});

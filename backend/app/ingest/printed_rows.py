@@ -1,7 +1,7 @@
 """What the receipt prints, beside what the model said it prints.
 
 The model is asked for each row exactly as printed, and often answers with the
-name alone: "PEPPERS THAI" for "3781 PEPPERS THAI 0.45 0.45 S". The passes that
+name alone: "KESTREL OATS" for "51177 KESTREL OATS 4.29 3.79 S". The passes that
 work from a line's printed numbers then see none. :func:`anchor_rows` matches
 each line back to its OCR row, so those passes, and review, can read the row.
 
@@ -61,7 +61,7 @@ def anchor_rows(lines: list[ParsedLine], receipt_text: str) -> None:
     """Match each line, in order, to the OCR row that holds its text.
 
     A row matches when its letters and digits contain the line's, within a few
-    rows of the previous match: two "Member Savings" rows match the first and
+    rows of the previous match: two "Club Savings" rows match the first and
     then the second. A line with no such row keeps ``printed_row`` None; nothing
     is guessed. The model's ``raw_text`` is never changed.
     """
@@ -80,7 +80,7 @@ def anchor_rows(lines: list[ParsedLine], receipt_text: str) -> None:
 
 
 def _one_digit_off(a: Decimal, b: Decimal) -> bool:
-    """Two amounts printed alike but for one digit (1.89 read for 1.99)."""
+    """Two amounts printed alike but for one digit (0.60 read for 0.50)."""
     sa, sb = f"{a:.2f}", f"{b:.2f}"
     return len(sa) == len(sb) and sum(x != y for x, y in zip(sa, sb, strict=True)) == 1
 

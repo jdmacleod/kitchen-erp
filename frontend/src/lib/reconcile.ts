@@ -144,7 +144,7 @@ export function totalIsPaid(purchase: Purchase): boolean {
   return checks(purchase).some((c) => c.key === "payment" && c.ok);
 }
 
-/** Two amounts printed alike but for one digit: 1.89 read for 1.99. */
+/** Two amounts printed alike but for one digit: 0.60 read for 0.50. */
 export function oneDigitOff(a: string, b: string): boolean {
   const [x, y] = [roundTo(a, 2), roundTo(b, 2)];
   if (x.length !== y.length) return false;
@@ -219,4 +219,46 @@ export function weightFits(
   });
   const into = fits.length === 1 ? neighbours[fits[0]] : undefined;
   return into ? { into, where: fits[0], amount } : null;
+}
+
+export interface RunningTotal {
+  /** What the lines come to through this one, in printed order. */
+  soFar: string;
+  /** The receipt's total is reached here, before the last line that counts. */
+  reachesTotal: boolean;
+}
+
+/** How a line counts toward the total: a saving takes away, the rest adds. */
+export function signedAmount(line: PurchaseLine): string {
+  return line.line_kind === "discount" ? sub("0", total(line)) : total(line);
+}
+
+/**
+ * The lines' sum after each line, in printed order (2S): read down the column
+ * to see where the sum leaves the receipt's arithmetic. A line where the sum
+ * already equals the printed total, with lines still counting after it, marks
+ * where the extra lines begin.
+ */
+export function runningTotals(purchase: Purchase): Map<string, RunningTotal> {
+  const lines = [...purchase.lines].sort((a, b) => a.seq - b.seq);
+  const lastCounting = lines.filter((l) => cmp(total(l), "0") !== 0).at(-1);
+  const out = new Map<string, RunningTotal>();
+  let soFar = "0";
+  for (const line of lines) {
+    soFar = add(soFar, signedAmount(line));
+    const reaches =
+      purchase.total !== null &&
+      line.id !== lastCounting?.id &&
+      cmp(total(line), "0") !== 0 &&
+      near(soFar, purchase.total, "0");
+    out.set(line.id, { soFar: roundTo(soFar, 2), reachesTotal: reaches });
+  }
+  return out;
+}
+
+/** A new header total that is just what the lines add up to, on a receipt whose lines are off. */
+export function totalHidingGap(purchase: Purchase, newTotal: string | undefined): string | null {
+  if (newTotal === undefined || purchase.trust !== "check_lines") return null;
+  const lines = purchase.lines_total ?? null;
+  return lines !== null && isDecimal(newTotal) && cmp(newTotal, lines) === 0 ? newTotal : null;
 }

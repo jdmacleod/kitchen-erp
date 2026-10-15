@@ -19,7 +19,7 @@ async def make_receipt_purchase(
     total: str | None = None,
 ) -> str:
     """lines: dicts with raw_text, line_total and optional line_kind, qty, unit,
-    unit_price, flags, and parent (a seq)."""
+    unit_price, flags, printed_text, and parent (a seq)."""
     async with get_sessionmaker()() as db:
         purchase = Purchase(
             vendor_location_id=uuid.UUID(location_id),
@@ -43,6 +43,7 @@ async def make_receipt_purchase(
                 resolution="unmatched",
                 flags=list(spec.get("flags", [])),
                 suggestions=[],
+                printed_text=spec.get("printed_text"),
             )
             purchase.lines.append(line)
             by_seq[seq] = line
