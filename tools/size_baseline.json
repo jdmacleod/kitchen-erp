@@ -13,7 +13,7 @@
   "frontend/src/api/catalog.ts": 936,
   "frontend/src/api/purchases.ts": 892,
   "frontend/src/components/purchases/ReviewPurchase.tsx": 1843,
-  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1336,
+  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1342,
   "frontend/src/pages/geo/MapPage.tsx": 1145,
   "frontend/src/pages/geo/VendorDetailPage.tsx": 1074,
   "frontend/src/pages/purchases/ShelfPricePage.tsx": 912
