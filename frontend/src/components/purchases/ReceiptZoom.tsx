@@ -71,7 +71,7 @@ export function ReceiptZoom({
           {zoom === 1 ? "Whole receipt" : `${zoom * 100}%`}
         </span>
         <Button
-          variant="secondary"
+          variant={wide ? "primary" : "secondary"}
           className={`${small} hidden lg:inline-flex`}
           aria-pressed={wide}
           onClick={() => onWide(!wide)}
