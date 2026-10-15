@@ -52,6 +52,10 @@ def _shape(lines: list[lines_mod.ParsedLine]) -> list[tuple]:
         ("5 @ 0.79", ("5", "each", "0.79", None)),
         ("2.31 lb @ 0.69/lb            1.59", ("2.31", "lb", "0.69", "1.59")),
         ("3 @ 1.25   3.75 F", ("3", "each", "1.25", "3.75")),
+        # A till that names the currency before the unit.
+        ("0.84 lb @ 1.49 USD/lb", ("0.84", "lb", "1.49", None)),
+        ("1.10 kg @ 3.20 US$/kg", ("1.10", "kg", "3.20", None)),
+        ("0.84 1b @ 1.49 USD/1b", ("0.84", "lb", "1.49", None)),  # "lb" garbled too
     ],
 )
 def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
@@ -75,6 +79,7 @@ def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
         "2.31 lb @ 0.69/lb  1.59  1.60",  # two amounts: not clear which
         "OAT MILK 3.49",
         "2.31 lb",  # no rate
+        "0.84 lb @ 1.49 PLUMS/lb",  # a word, not a currency, before the unit
     ],
 )
 def test_a_row_with_more_than_a_quantity_is_not_one(raw):
@@ -95,6 +100,22 @@ def test_a_weight_above_its_item_joins_it():
          ["qty_from_line_above"]),
         (2, "OAT MILK 3.49", "item", "1", "each", None, "3.49", None, []),
     ]  # fmt: skip
+
+
+def test_a_weight_with_its_currency_named_joins_the_item_above():
+    # "0.84 lb @ 1.49 USD/lb" under its item: the model reads it as a second item at
+    # the item's price, so the item would count twice.
+    lines = _read(
+        ("KESTREL PLUMS 1.25 F", "item", "1.25"),
+        ("0.84 lb @ 1.49 USD/lb", "item", "1.25"),
+        ("OAT MILK 3.49", "item", "3.49"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["0.84 lb @ 1.49 USD/lb"]
+    assert [(line.raw_text, str(line.qty), line.unit) for line in kept] == [
+        ("KESTREL PLUMS 1.25 F", "0.84", "lb"),
+        ("OAT MILK 3.49", "1", "each"),
+    ]
 
 
 def test_a_count_read_as_a_discount_of_the_item_above_joins_the_item_below():

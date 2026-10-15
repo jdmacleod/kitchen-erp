@@ -107,7 +107,9 @@ COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*" + _RATE, re.IGNORECASE)
 GARBLED_WEIGHT_PATTERN = re.compile(
     r"(?<![\d.])(\d+\.\d+)\s*([il1|!][a-z1|!])(?![A-Za-z0-9])\s*@\s*" + _RATE, re.IGNORECASE
 )
-_GARBLED_RATE_UNIT = re.compile(r"/\s*[il1|!][a-z1|!]?(?![A-Za-z0-9])", re.IGNORECASE)
+# Some tills name the currency before a rate's unit: "0.99 USD/lb".
+_CURRENCY = r"(?:\b(?:USD|US\$|CAD|EUR)\s*)?"
+_GARBLED_RATE_UNIT = re.compile(_CURRENCY + r"/\s*[il1|!][a-z1|!]?(?![A-Za-z0-9])", re.I)
 # A weight that is printed but did not survive OCR cleanly: "1.24 1b", "0.85 Ib", a
 # weight with no "@ price". Enough to know the line is weighed, not enough to read it.
 # Grams count only with more after them on the line: a trailing single letter is as
@@ -407,10 +409,8 @@ PRICE_FLAGS = frozenset(
     }
 )
 
-# Rows kept at zero for review that are not purchases of their own: a weight or
-# count row that joined no item, a footer sentence, a payment, a row of the item
-# above, a points count, a rate note, a deposit's rate or total. Never queued to
-# be identified.
+# Rows kept at zero for review that are not purchases of their own (the passes in
+# structure.py set these flags). Never queued to be identified.
 ZERO_ROW_FLAGS = (
     "no_amount_printed",
     "footer_text",
@@ -619,7 +619,7 @@ class PrintedQuantity:
 
 # "/lb" after a rate, and what may be left once the quantity and amounts are out
 # of a quantity row: nothing, or a tax letter or two.
-_RATE_UNIT = re.compile(r"/\s*(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.IGNORECASE)
+_RATE_UNIT = re.compile(_CURRENCY + r"/\s*(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.I)
 _TAX_CODE = re.compile(r"[A-Za-z*]{0,2}")
 
 
