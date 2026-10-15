@@ -14,8 +14,6 @@ import {
   qs,
   validationMessages,
   type CanonicalUnit,
-  type IngredientCreateInput,
-  type IngredientMatch,
   type Page,
   type ProductCreateInput,
 } from "./catalog";
@@ -133,6 +131,12 @@ export interface PurchaseLine {
   seq: number;
   raw_text: string | null;
   raw_text_norm?: string | null;
+  /** The OCR row the reading matched it to, codes and prices included (2S). */
+  printed_text?: string | null;
+  /** A saving its item's price already includes: shown, counted as nothing. */
+  in_price_amount?: string | null;
+  /** Words one edit from a catalog word, on a draft's item lines: OCR's misreadings (U9). */
+  spelling?: { word: string; maybe: string }[];
   line_kind: string;
   product: PurchaseLineProduct | null;
   parent_line_id: string | null;
@@ -216,6 +220,8 @@ export interface Purchase {
   status: PurchaseStatus;
   source: ObservationSource;
   flags: string[];
+  /** What the receipt prints about itself besides its total (2S). */
+  printed_checks?: PrintedChecks | null;
   ledger_txn_ref?: string | null;
   lines: PurchaseLine[];
   created_at: string;
@@ -231,6 +237,12 @@ export interface Purchase {
   removed_line_count?: number | null;
   /** What "Re-read lines" can offer (04, 2S); null in lists, on a voided or non-receipt purchase. */
   reread?: RereadState | null;
+}
+
+export interface PrintedChecks {
+  savings_total?: string | null;
+  item_count?: number | null;
+  payment?: string | null;
 }
 
 export interface RereadState {
@@ -311,6 +323,8 @@ export interface LinePatchInput {
   parent_line_id?: string;
   clear_parent?: true;
   clear_qty?: true;
+  /** A saving already in its item's price (true), or counted again (false). */
+  in_price?: boolean;
 }
 
 export interface LineAddInput {
@@ -409,7 +423,7 @@ export const purchaseKeys = {
     ["purchases", "store-code-offer", id, locationId] as const,
 };
 
-function invalidateObservations(client: QueryClient) {
+export function invalidateObservations(client: QueryClient) {
   void client.invalidateQueries({ queryKey: purchaseKeys.observations });
 }
 
@@ -784,89 +798,6 @@ export function useToIdentify() {
     queryKey: purchaseKeys.toIdentify,
     queryFn: () => api<{ items: ToIdentifyGroup[] }>("/to-identify"),
     select: (data) => data.items,
-  });
-}
-
-// --- naming new products in bulk (04, 2I; #88) --------------------------------
-
-/** A waiting group with the product its wording suggests. */
-export interface NamingRow {
-  vendor: { id: string; name: string };
-  raw_text_norm: string | null;
-  line_count: number;
-  raw_text: string | null;
-  name: string;
-  ingredient: IngredientMatch | null;
-  pack_qty: string | null;
-  pack_unit: string | null;
-  /** The model's suggestion, once asked for (N2, N3). */
-  model: {
-    status: "asking" | "done" | "failed";
-    name: string | null;
-    ingredient: IngredientMatch | null;
-  } | null;
-}
-
-export type NameProductRow = {
-  vendor_id: string;
-  raw_text_norm: string;
-  name: string;
-  pack_qty?: string;
-  pack_unit?: string;
-  /** Create it even though a product of the same name and ingredient exists (issue 179). */
-  allow_duplicate?: boolean;
-} & ({ ingredient_id: string } | { ingredient: IngredientCreateInput } | { product_id: string });
-
-export interface NamedProduct {
-  vendor_id: string;
-  raw_text_norm: string;
-  product_id: string | null;
-  applied: number;
-  /** `product_exists` carries the product with the same name and ingredient (issue 179). */
-  error: {
-    code: string;
-    message: string;
-    product?: { id: string; name: string; brand: string | null } | null;
-  } | null;
-}
-
-export function useNamingRows(enabled: boolean) {
-  return useQuery({
-    queryKey: [...purchaseKeys.toIdentify, "naming"],
-    queryFn: () => api<{ items: NamingRow[] }>("/to-identify/naming"),
-    select: (data) => data.items,
-    enabled,
-    // The worker answers one line at a time; look again while any is waiting.
-    refetchInterval: (query) =>
-      query.state.data?.items.some((r) => r.model?.status === "asking") ? 3000 : false,
-  });
-}
-
-/** Ask the model about the rows the wording couldn't name (N3). */
-export function useSuggestNames() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: () => api<{ queued: number }>("/to-identify/naming/suggest", { method: "POST" }),
-    onSuccess: () =>
-      void client.invalidateQueries({ queryKey: [...purchaseKeys.toIdentify, "naming"] }),
-  });
-}
-
-export function useNameProducts() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (rows: NameProductRow[]) =>
-      api<{ results: NamedProduct[] }>("/to-identify/name-products", {
-        method: "POST",
-        body: { rows },
-      }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
-      void client.invalidateQueries({ queryKey: ["products"] });
-      void client.invalidateQueries({ queryKey: ["ingredients"] });
-      invalidatePurchases(client, "all");
-      invalidateObservations(client);
-    },
   });
 }
 

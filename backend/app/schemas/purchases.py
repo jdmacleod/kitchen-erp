@@ -185,6 +185,9 @@ class LineOut(ApiModel):
     # A saving the receipt prints that its item's price already includes: shown,
     # counted as nothing (line_total is 0).
     in_price_amount: DecimalStr | None = None
+    # Words of an item line on a draft one edit from a catalog word, as
+    # {word, maybe} (2S): OCR's misreadings, offered for a person to fix.
+    spelling: list[dict[str, str]] = []  # noqa: RUF012
     suggestions: list[dict] = []  # noqa: RUF012
     # Whether this line ever reached the price book, so removing it voids a
     # price. On a single purchase only; null in lists.
@@ -343,6 +346,9 @@ class LineEdit(ApiModel):
     parent_line_id: uuid.UUID | None = None
     clear_parent: bool = False
     clear_qty: bool = False
+    # A saving the item's price already includes (2S): true keeps its amount and
+    # counts it as nothing; false counts it again. Discounts only.
+    in_price: bool | None = None
 
 
 class LineKeepingIn(ApiModel):

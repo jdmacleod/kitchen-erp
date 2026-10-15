@@ -4,7 +4,7 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
-import { flagLabel } from "../components/purchases/ReviewPurchase";
+import { flagLabel } from "../components/purchases/lineParts";
 import { units } from "./catalog-fixtures";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";

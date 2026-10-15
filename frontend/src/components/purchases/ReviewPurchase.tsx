@@ -39,6 +39,7 @@ import {
   stripZeros,
 } from "../../lib/decimal";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
+import { weightFits } from "../../lib/reconcile";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
@@ -50,10 +51,23 @@ import { SegmentedControl } from "../SegmentedControl";
 import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from "../ui";
 import { BestBy } from "./BestBy";
 import { CorrectLines } from "./CorrectLines";
+import {
+  AttachSaving,
+  LineFlags,
+  LineParsed,
+  LineRaw,
+  LineTags,
+  PRICE_FLAGS,
+  SavingInPrice,
+  SpellingFix,
+  orphanSaving,
+  suspectLine,
+} from "./lineParts";
 import { ProductPicker } from "./ProductPicker";
-import { ReceiptImage } from "./ReceiptImage";
+import { ReceiptZoom } from "./ReceiptZoom";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { RereadLines } from "./RereadLines";
+import { WhyOff } from "./WhyOff";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = {
   alias_unconfirmed: "alias",
@@ -139,6 +153,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   if (!holding && heldWide !== liveWide) setHeldWide(liveWide);
   const wide = holding ? heldWide : liveWide;
   const [filter, setFilter] = useState<"needs" | "all">("all");
+  // The image column at half the page while checking lines against it (U4).
+  const [sideBySide, setSideBySide] = useState(false);
   const needing = lines.filter(needsYou);
   // What is on screen, in order: on a phone the lines that need you come first.
   // A receipt held for a careful look puts its suspect lines first at every width.
@@ -199,6 +215,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const rowId = (lineId: string) => `review-line-${lineId}`;
   const focusRow = (lineId: string | null) => {
     if (lineId) pendingFocus.current = rowId(lineId);
+  };
+  // From the "why it's off" panel: bring a line into view, even one the filter hides.
+  const showLine = (lineId: string) => {
+    if (!shown.some((l) => l.id === lineId)) setFilter("all");
+    setCurrentId(lineId);
+    focusRow(lineId);
   };
 
   // Always a line on screen: when the filter hides the current one, the first
@@ -430,13 +452,9 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               : " Compare the lines with the receipt image."}
           </span>
         </Alert>
-      ) : mismatch ? (
-        <Alert tone="info">
-          The receipt says {purchase.total !== null ? formatMoney(purchase.total) : "—"} but the
-          lines add up to{" "}
-          {purchase.computed_total !== null ? formatMoney(purchase.computed_total) : "—"}. Check the
-          lines or the header.
-        </Alert>
+      ) : null}
+      {mismatch || purchase.trust === "check_lines" ? (
+        <WhyOff purchase={purchase} onShowLine={showLine} />
       ) : null}
       {decimalSuspects.length > 0 ? (
         <Alert tone="info">
@@ -492,23 +510,17 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           stacks above it until xl, where there is room for both side by side.
           Beside it at lg the table had under 500px and the receipt text a few
           characters (QA 2026-10-12). */}
-      <div
-        className={`grid gap-4 ${purchase.receipt_document_id ? "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]" : ""}`}
-      >
+      <div className={`grid gap-4 ${purchase.receipt_document_id ? imageColumns(sideBySide) : ""}`}>
         {purchase.receipt_document_id ? (
           <Disclosure
             summary="Receipt image"
             defaultOpen
             className="md:sticky md:top-4 md:self-start"
           >
-            <ReceiptImage
+            <ReceiptZoom
               documentId={purchase.receipt_document_id}
-              alt="The receipt as photographed"
-              // A phone photo or a PDF page is several megabytes at full size; the
-              // review needs a screen's width, and the link opens the original.
-              width={1024}
-              link={{ label: "Open the receipt photo at full size" }}
-              className="max-h-[80dvh] w-full rounded-md border border-neutral-200 object-contain dark:border-neutral-800"
+              wide={sideBySide}
+              onWide={setSideBySide}
             />
           </Disclosure>
         ) : null}
@@ -675,6 +687,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
 // --- header -----------------------------------------------------------------
 
+/** A new total that is just what the lines add up to, on a receipt whose lines are off. */
+function totalHidingGap(purchase: Purchase, input: PurchaseHeaderInput): string | null {
+  if (input.total === undefined || purchase.trust !== "check_lines") return null;
+  return sameAmount(input.total, purchase.lines_total) ? input.total : null;
+}
+
 function ReviewHeader({ purchase }: { purchase: Purchase }) {
   const patch = usePatchPurchase(purchase.id);
   const locations = useLocations({});
@@ -697,8 +715,11 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
   // What the last Save did, until the form changes again: a click with no
   // answer left people unsure the location had stuck.
   const [saved, setSaved] = useState<"saved" | "unchanged" | null>(null);
+  // A total typed to match the lines hides the gap rather than finding it (U2): asked once.
+  const [askedTotal, setAskedTotal] = useState<string | null>(null);
   const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setSaved(null);
+    setAskedTotal(null);
     setForm((f) => ({ ...f, [key]: value }));
   };
 
@@ -718,6 +739,11 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
     }
     setInvalid(null);
     if (Object.keys(input).length === 0) return setSaved("unchanged");
+    const hiding = totalHidingGap(purchase, input);
+    if (hiding && askedTotal !== hiding) {
+      setAskedTotal(hiding);
+      return;
+    }
     patch.mutate(input, { onSuccess: () => setSaved("saved") });
   };
 
@@ -732,6 +758,12 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
       </div>
       {invalid ? <Alert tone="error">{invalid}</Alert> : null}
       {patch.error ? <Alert tone="error">{purchaseErrorMessage(patch.error)}</Alert> : null}
+      {askedTotal ? (
+        <Alert tone="warn">
+          This makes the lines add up by changing the total, not a line. Is the receipt's total
+          really {formatMoney(askedTotal)}? Save again to keep it.
+        </Alert>
+      ) : null}
       {candidates.length > 0 ? (
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium">Location candidates from the receipt</span>
@@ -909,6 +941,37 @@ function lineTitle(l: PurchaseLine): string {
 }
 
 /**
+ * The image beside the lines. From lg the lines are a table that needs the
+ * width, so the image stacks above it until xl; side by side, a person has
+ * chosen half the page for the image while checking lines against it.
+ */
+function imageColumns(sideBySide: boolean): string {
+  return sideBySide
+    ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+    : "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]";
+}
+
+/** Flags that say what was done, not that anything needs a person (2S, U8). */
+const QUIET_FLAGS = ["parent_inferred", "saving_in_price"];
+
+/** The one-click fixes for a saving: already in the price, or which item it is for. */
+function LineFixes({ line, itemLines, busy, onPatch }: ReviewLineProps) {
+  return (
+    <>
+      <SpellingFix line={line} busy={busy} onPatch={onPatch} />
+      <SavingInPrice line={line} busy={busy} onPatch={onPatch} />
+      <AttachSaving
+        line={line}
+        itemLines={itemLines}
+        busy={busy}
+        onPatch={onPatch}
+        title={lineTitle}
+      />
+    </>
+  );
+}
+
+/**
  * A line that needs a person: flagged, or an item with no product or with
  * suggestions to weigh. Not ignored lines, and not ones matched automatically.
  */
@@ -916,34 +979,12 @@ export function needsYou(line: PurchaseLine): boolean {
   if (isQuietLine(line)) return false;
   const isItem = line.line_kind === "item";
   return (
-    line.flags.length > 0 ||
+    line.flags.some((f) => !QUIET_FLAGS.includes(f)) ||
+    orphanSaving(line) ||
     (isItem &&
       line.resolution !== "ignored" &&
       (!line.product || (line.suggestions?.length ?? 0) > 0))
   );
-}
-
-/** Mirrors backend PRICE_FLAGS: a suspected misreading, cleared when a person gives the price. */
-const PRICE_FLAGS = [
-  "decimal_missing",
-  "exceeds_total",
-  "tax_code_as_digit",
-  "no_amount_printed",
-  "regular_price_from_text",
-  "tax_from_rate",
-  "not_in_scan",
-  "points_not_money",
-  "payment_row",
-  "continuation_row",
-  "rate_note",
-  "saving_already_netted",
-  "deposit_rate_row",
-  "deposit_total",
-];
-
-/** A line whose amount, or whether it is a line at all, is in doubt: shown first on a receipt held for a careful look. */
-function suspectLine(line: PurchaseLine): boolean {
-  return line.flags.some((f) => PRICE_FLAGS.includes(f) || f === "footer_text");
 }
 
 /** A stored amount ("6.9800") as it is typed ("6.98"); no digit that matters is dropped. */
@@ -959,50 +1000,6 @@ function editableMoney(stored: string | null | undefined): string {
 function sameAmount(text: string, stored: string | null | undefined): boolean {
   return stored !== null && stored !== undefined && isDecimal(text) && cmp(text, stored) === 0;
 }
-
-/** What a line flag means, in words; unknown flags fall back to their code. */
-const FLAG_LABELS: Record<string, string> = {
-  // #31: the quantity is the default, or the line looked weighed but could not be read.
-  qty_assumed: "quantity assumed",
-  qty_corrected: "quantity from the print",
-  qty_inferred: "quantity from the print",
-  // #87: a weight or count printed on a row of its own, joined to its item or not.
-  qty_from_line_above: "quantity from above",
-  qty_from_line_below: "quantity from below",
-  quantity_line: "only a quantity",
-  // A weight row whose "lb" OCR garbled, joined by its arithmetic.
-  unit_misread: "pounds, unit misread",
-  // #59: a price printed with no decimal point, or a line over the whole receipt.
-  decimal_missing: "decimal point missing?",
-  exceeds_total: "more than the receipt total",
-  // A tax letter OCR read as a third decimal ("6.378"), cut back to the cents.
-  tax_code_as_digit: "tax letter read as a digit",
-  // Issue 181: line structure fixed from the printed arithmetic.
-  qty_from_prefix: "count printed before the name",
-  no_amount_printed: "prints no amount",
-  kind_from_wording: "a product, not a saving",
-  regular_price_from_text: "regular price restored",
-  footer_text: "footer text?",
-  tax_from_rate: "tax from its rate",
-  // A saving printed "8.00-", points read as money, a payment read as an item.
-  negative_from_text: "printed as a saving",
-  points_not_money: "points, not money",
-  payment_row: "a payment, not a purchase",
-  // A row of the item above (its rate, its name in another script, its code).
-  continuation_row: "part of the item above",
-  // A rate note ("2 @ 0.45") read as a discount; a saving the price already had.
-  rate_note: "a rate note, not a saving",
-  saving_already_netted: "saving already in the price",
-  // A deposit's rate row, or the line totalling the deposits, read as more deposit.
-  deposit_rate_row: "the deposit's rate, already counted",
-  deposit_total: "the deposits' total, already counted",
-  // A count or weight printed beneath the item that the reader left out.
-  qty_from_text: "quantity from below",
-  // Issue 121: the amount is printed nowhere in the scan's text.
-  not_in_scan: "not on the scan",
-  // An imported line whose quantity the export never gave: no price is recorded.
-  no_price: "quantity unknown, no price",
-};
 
 /** A decimal_missing amount read as its hundredth: "349.0000" is most likely 3.49. */
 function restoredTotal(lineTotal: string): string {
@@ -1052,6 +1049,24 @@ function QuantityMerge({
   const { above, below } = mergeInto;
   if (!above && !below) return null;
   const size = "mt-1 min-h-11 lg:min-h-8 px-2 text-xs";
+  // When the weight at its rate is one neighbour's amount, say so and offer that one (U7).
+  const fit = weightFits(line, { above: above ?? undefined, below: below ?? undefined });
+  if (fit)
+    return (
+      <span className="mt-1 block text-xs">
+        Fits line {fit.into.seq}: {trimDecimal(line.qty ?? "")} {line.unit} ×{" "}
+        {formatMoney(line.unit_price)} = {formatMoney(fit.amount)}.
+        <Button
+          variant="secondary"
+          className={`${size} block`}
+          disabled={busy}
+          onClick={() => onMerge(fit.into)}
+          aria-label={`Join line ${line.seq} to line ${fit.into.seq}, ${lineTitle(fit.into)}`}
+        >
+          Join to line {fit.into.seq}
+        </Button>
+      </span>
+    );
   return (
     <div className="flex flex-wrap gap-1">
       {below ? (
@@ -1077,94 +1092,6 @@ function QuantityMerge({
         </Button>
       ) : null}
     </div>
-  );
-}
-
-export function flagLabel(flag: string): string {
-  return FLAG_LABELS[flag] ?? flag.replaceAll("_", " ");
-}
-
-/** The line's number, kind and flags. */
-function LineTags({ line }: { line: PurchaseLine }) {
-  return (
-    <>
-      <span className="tabular-nums">{line.seq}</span>
-      {line.line_kind !== "item" ? (
-        <>
-          {" "}
-          <Badge>{line.line_kind}</Badge>
-        </>
-      ) : null}
-      {line.flags.map((f) => (
-        <span key={f} className="mt-1 block">
-          {/* Wrapping: an unbroken "quantity from the print" made the # column
-              wider than the text, pushing Product and Actions out of view. */}
-          <Badge tone="warn" wrap>
-            {flagLabel(f)}
-          </Badge>
-        </span>
-      ))}
-    </>
-  );
-}
-
-/** In the table, a line's kind and flags sit under its receipt text, not under its number. */
-function LineFlags({ line }: { line: PurchaseLine }) {
-  if (line.line_kind === "item" && line.flags.length === 0) return null;
-  return (
-    <span className="mt-1 flex flex-wrap gap-1">
-      {line.line_kind !== "item" ? <Badge>{line.line_kind}</Badge> : null}
-      {line.flags.map((f) => (
-        <Badge key={f} tone="warn" wrap>
-          {flagLabel(f)}
-        </Badge>
-      ))}
-    </span>
-  );
-}
-
-/** What the receipt says, verbatim and normalized; one truncated line when compact. */
-function LineRaw({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
-  if (compact) {
-    return (
-      <span className="block truncate font-mono text-xs" title={line.raw_text ?? undefined}>
-        {line.raw_text ?? "—"}
-      </span>
-    );
-  }
-  return (
-    <>
-      <span className="font-mono text-xs break-words">{line.raw_text ?? "—"}</span>
-      {line.raw_text_norm && line.raw_text_norm !== line.raw_text ? (
-        <span className="block text-[11px] text-neutral-600 dark:text-neutral-400">
-          {line.raw_text_norm}
-        </span>
-      ) : null}
-    </>
-  );
-}
-
-/** What it was read as: quantity × unit, and the prices; on one line when compact. */
-function LineParsed({ line, compact }: { line: PurchaseLine; compact?: boolean }) {
-  if (compact) {
-    const qty = line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—";
-    return (
-      <span className="tabular-nums">
-        {line.line_total !== null ? `${qty} · ${formatMoney(line.line_total)}` : qty}
-      </span>
-    );
-  }
-  return (
-    <>
-      <span className="tabular-nums">
-        {line.qty !== null ? `${trimDecimal(line.qty)} × ${line.unit ?? ""}` : "—"}
-      </span>
-      <span className="block text-xs tabular-nums">
-        {line.unit_price !== null ? `${formatMoney(line.unit_price, 2, 4)} ea` : ""}
-        {line.unit_price !== null && line.line_total !== null ? " · " : ""}
-        {line.line_total !== null ? formatMoney(line.line_total) : ""}
-      </span>
-    </>
   );
 }
 
@@ -1501,7 +1428,7 @@ function ReviewLine(props: ReviewLineProps) {
       <td className={`${pad} pr-2 pl-1 tabular-nums`}>{line.seq}</td>
       <td className={`${pad} pr-2`}>
         <LineRaw line={line} compact={compact} />
-        <LineFlags line={line} />
+        <LineFlags line={line} itemLines={props.itemLines} />
       </td>
       <td className={`${pad} pr-2`}>
         {editing ? (
@@ -1512,6 +1439,7 @@ function ReviewLine(props: ReviewLineProps) {
             {compact ? null : (
               <>
                 <DecimalFix line={line} busy={busy} onPatch={onPatch} />
+                <LineFixes {...props} />
                 <QuantityMerge
                   line={line}
                   mergeInto={props.mergeInto}
@@ -1611,7 +1539,7 @@ function ReviewCard(props: ReviewLineProps) {
           <LineRaw line={line} />
         </div>
         <div className="shrink-0 text-right text-xs text-neutral-600 dark:text-neutral-400">
-          <LineTags line={line} />
+          <LineTags line={line} itemLines={props.itemLines} />
         </div>
       </div>
       <div>
@@ -1621,6 +1549,7 @@ function ReviewCard(props: ReviewLineProps) {
           <>
             <LineParsed line={line} />
             <DecimalFix line={line} busy={busy} onPatch={onPatch} />
+            <LineFixes {...props} />
             <QuantityMerge
               line={line}
               mergeInto={props.mergeInto}

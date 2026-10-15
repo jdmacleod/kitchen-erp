@@ -191,12 +191,13 @@ describe("receipt review", () => {
     row.focus();
     expect(await within(row).findByText("only a quantity")).toBeInTheDocument();
     expect(calls.some((c) => c.method === "POST")).toBe(false);
-    // Line 4 above is an item too, so both ways are offered.
+    // Line 4 above is an item too, but only the avocado comes to 5 at 0.79: that one is offered (2S).
+    expect(within(row).getByText(/Fits line 6: 5 each × \$0\.79 = \$3\.95/)).toBeInTheDocument();
     expect(
-      within(row).getByRole("button", { name: /Merge line 5 into the line above/ }),
-    ).toBeInTheDocument();
+      within(row).queryByRole("button", { name: /Merge line 5 into the line above/ }),
+    ).not.toBeInTheDocument();
     await user.click(
-      within(row).getByRole("button", { name: "Merge line 5 into the next line, AVOCADO 3.95 F" }),
+      within(row).getByRole("button", { name: "Join line 5 to line 6, AVOCADO 3.95 F" }),
     );
     await waitFor(() =>
       expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/merge"))?.body).toEqual({
@@ -329,9 +330,7 @@ describe("receipt review", () => {
     // Flags and suggestions draw the eye; the outlier is not quiet.
     expect(rows[3]).not.toHaveAttribute("data-quiet");
     expect(within(rows[3]).getByText("price outlier")).toBeInTheDocument();
-    expect(
-      screen.getByText(/The receipt says \$12\.00 but the lines add up to \$11\.50/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "The lines are off by $0.50" })).toBeInTheDocument();
     // A screen's width, not the multi-megabyte original, which the link opens.
     expect(screen.getByRole("img", { name: "The receipt as photographed" })).toHaveAttribute(
       "src",

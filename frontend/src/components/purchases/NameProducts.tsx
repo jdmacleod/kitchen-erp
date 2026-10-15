@@ -2,13 +2,13 @@ import { useState } from "react";
 import { isPositiveDecimal, productTitle } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
 import {
-  purchaseErrorMessage,
   useNameProducts,
   useNamingRows,
   useSuggestNames,
   type NameProductRow,
   type NamingRow,
-} from "../../api/purchases";
+} from "../../api/naming";
+import { purchaseErrorMessage } from "../../api/purchases";
 import { stripZeros } from "../../lib/decimal";
 import { hintClass } from "../catalog/fields";
 import {

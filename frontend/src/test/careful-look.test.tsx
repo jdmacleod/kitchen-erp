@@ -84,9 +84,7 @@ describe("a receipt held for a careful look", () => {
     mount(`/purchases/${receiptPurchaseId}`, { ...held, held: false });
     await screen.findByTestId("review");
     expect(screen.queryByText("This receipt needs a careful look")).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/The receipt says \$12\.00 but the lines add up to/),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /The lines are off by/ })).toBeInTheDocument();
   });
 
   it("is a squash row in Needs you", async () => {

@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import ApiError
 from app.ingest.lines import PRICE_FLAGS, QTY_FLAGS, prints_an_amount, quantity_only
 from app.ingest.lines import restored as restored_amount
+from app.ingest.printed_rows import IN_PRICE_FLAGS
 from app.models import AppUser, Product, Purchase, PurchaseLine
 from app.models.geo import VendorLocation
 from app.models.units import UnitRow
@@ -190,6 +191,7 @@ async def edit_line(
     if line is None:
         raise ApiError(404, "not_found", "No such line on this purchase.")
     data = payload.model_dump(exclude_unset=True)
+    _edit_in_price(line, data)
     # A person has now said what the quantity is: it is no longer inferred,
     # corrected from the print, or assumed (#31). A price alone says nothing about
     # the quantity, so it leaves the warning in place.
@@ -224,6 +226,32 @@ async def edit_line(
     purchase.flags = _rechecked_total(purchase)
     await db.commit()
     return await get_purchase(db, purchase_id)
+
+
+# Every flag that says a saving is already in its item's price, a person's or a pass's.
+_IN_PRICE = IN_PRICE_FLAGS | {"saving_already_netted"}
+
+
+def _edit_in_price(line: PurchaseLine, data: dict) -> None:
+    in_price = data.pop("in_price", None)
+    if in_price is not None:
+        _set_in_price(line, in_price)
+    elif data.get("line_total") is not None and line.in_price_amount is not None:
+        _set_in_price(line, False)  # a person gave the saving's amount: it counts again
+
+
+def _set_in_price(line: PurchaseLine, in_price: bool) -> None:
+    """Count a saving as already in its item's price, keeping its amount, or count it again."""
+    if line.line_kind != "discount":
+        raise ApiError(422, "not_a_saving", "Only a saving can be in its item's price.")
+    if in_price and line.in_price_amount is None:
+        if line.line_total <= 0:
+            raise ApiError(422, "no_saving", "This saving has no amount to keep.")
+        line.in_price_amount, line.line_total = line.line_total, Decimal("0")
+        line.flags = [f for f in line.flags if f not in _IN_PRICE] + ["saving_in_price"]
+    elif not in_price and line.in_price_amount is not None:
+        line.line_total, line.in_price_amount = line.in_price_amount, None
+        line.flags = [f for f in line.flags if f not in _IN_PRICE]
 
 
 async def delete_line(db: AsyncSession, user: AppUser, purchase_id: uuid.UUID, line_id: uuid.UUID):
@@ -337,7 +365,8 @@ def _apply_row(line: PurchaseLine, row: LineRow) -> tuple[bool, bool]:
     if qty_changed:
         line.flags = [f for f in line.flags if f not in QTY_FLAGS]
     if total_changed:
-        line.flags = [f for f in line.flags if f not in PRICE_FLAGS]
+        line.flags = [f for f in line.flags if f not in PRICE_FLAGS and f not in _IN_PRICE]
+        line.in_price_amount = None  # a saving given an amount counts again
     if qty_changed or total_changed:
         # A printed rate stays while it still makes the line's amount.
         keeps_rate = (
