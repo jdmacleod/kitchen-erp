@@ -23,6 +23,10 @@ interface Row {
   total: string;
   /** The row this discount or deposit belongs to, while it is still an item. */
   parentKey: string | null;
+  /** The OCR row the saved line was matched to, shown under its text (2S). */
+  printed?: string | null;
+  /** A saving already in its item's price: kept, counted as nothing, until given an amount. */
+  inPrice?: string | null;
 }
 
 const ATTACHABLE = new Set(["discount", "deposit"]);
@@ -58,6 +62,8 @@ function rowsOf(purchase: Purchase): Row[] {
       unit: l.unit ?? "",
       total: l.line_total !== null ? stripZeros(l.line_total, 2) : "",
       parentKey: l.parent_line_id,
+      printed: l.printed_text ?? null,
+      inPrice: l.in_price_amount ?? null,
     }));
 }
 
@@ -195,9 +201,6 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
     insertAt(at + 1);
   };
 
-  const labelClass = "text-xs font-medium lg:sr-only";
-  const cell = `${inputClass} w-full`;
-
   return (
     <div
       className="flex flex-col gap-3"
@@ -240,120 +243,21 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
         </Button>
       </div>
 
-      <div
-        className="hidden gap-2 border-b border-neutral-200 pb-1 text-xs font-semibold text-neutral-600 lg:grid lg:grid-cols-[2rem_minmax(0,1fr)_5rem_7rem_6.5rem_7rem_auto] dark:border-neutral-800 dark:text-neutral-400"
-        aria-hidden="true"
-      >
-        <span>#</span>
-        <span>Receipt text</span>
-        <span>Qty</span>
-        <span>Unit</span>
-        <span>Line total</span>
-        <span>Kind</span>
-        <span className="sr-only">Actions</span>
-      </div>
-      <ol aria-label="Lines to save" className="flex flex-col gap-2 lg:gap-1">
-        {rows.map((row, at) => {
-          const n = at + 1;
-          return (
-            <li
-              key={row.key}
-              className="grid grid-cols-2 gap-2 rounded-lg border border-neutral-200 p-2 lg:grid-cols-[2rem_minmax(0,1fr)_5rem_7rem_6.5rem_7rem_auto] lg:items-center lg:rounded-none lg:border-0 lg:p-0 dark:border-neutral-800"
-            >
-              <span className="col-span-2 text-xs font-semibold text-neutral-600 lg:col-span-1 lg:text-sm lg:font-normal dark:text-neutral-400">
-                <span className="lg:hidden">Row </span>
-                {n}
-              </span>
-              <label className="col-span-2 flex min-w-0 flex-col gap-1 lg:col-span-1">
-                <span className={labelClass}>Receipt text, row {n}</span>
-                <input
-                  id={cellId(row.key, "text")}
-                  className={cell}
-                  autoComplete="off"
-                  value={row.rawText}
-                  onChange={(e) => change(row.key, { rawText: e.target.value })}
-                  onKeyDown={onCellKey(at)}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1">
-                <span className={labelClass}>Quantity, row {n}</span>
-                <input
-                  id={cellId(row.key, "qty")}
-                  className={cell}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={row.qty}
-                  onChange={(e) => change(row.key, { qty: e.target.value })}
-                  onKeyDown={onCellKey(at)}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1">
-                <span className={labelClass}>Unit, row {n}</span>
-                <select
-                  id={cellId(row.key, "unit")}
-                  className={cell}
-                  value={row.unit}
-                  onChange={(e) => change(row.key, { unit: e.target.value })}
-                >
-                  <option value="">—</option>
-                  {row.unit && !(units.data ?? []).some((u) => u.code === row.unit) ? (
-                    <option value={row.unit}>{row.unit}</option>
-                  ) : null}
-                  {(units.data ?? []).map((u) => (
-                    <option key={u.code} value={u.code}>
-                      {unitLabel(u.code)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex min-w-0 flex-col gap-1">
-                <span className={labelClass}>Line total, row {n}</span>
-                <input
-                  id={cellId(row.key, "total")}
-                  className={cell}
-                  inputMode="decimal"
-                  autoComplete="off"
-                  value={row.total}
-                  onChange={(e) => change(row.key, { total: e.target.value })}
-                  onKeyDown={onCellKey(at)}
-                />
-              </label>
-              <label className="flex min-w-0 flex-col gap-1">
-                <span className={labelClass}>Kind, row {n}</span>
-                <select
-                  id={cellId(row.key, "kind")}
-                  className={cell}
-                  value={row.kind}
-                  onChange={(e) => change(row.key, { kind: e.target.value })}
-                >
-                  {LINE_KINDS.map((k) => (
-                    <option key={k} value={k}>
-                      {k}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <span className="col-span-2 flex gap-1 lg:col-span-1">
-                <Button
-                  variant="secondary"
-                  className="px-2 text-xs"
-                  aria-label={`Add a row below row ${n}`}
-                  onClick={() => insertAt(at + 1)}
-                >
-                  Add below
-                </Button>
-                <Button
-                  variant="danger"
-                  className="px-2 text-xs"
-                  aria-label={`Delete row ${n}`}
-                  onClick={() => remove(at)}
-                >
-                  Delete
-                </Button>
-              </span>
-            </li>
-          );
-        })}
+      <ol aria-label="Lines to save" className="flex flex-col">
+        {rows.map((row, at) => (
+          <CorrectRow
+            key={row.key}
+            row={row}
+            at={at}
+            attachedTo={ATTACHABLE.has(row.kind) ? attachIndex(rows, at) : undefined}
+            units={units.data ?? []}
+            cellId={cellId}
+            change={change}
+            onCellKey={onCellKey}
+            insertAt={insertAt}
+            remove={remove}
+          />
+        ))}
       </ol>
       {rows.length === 0 ? (
         <p className={hintClass}>No lines. Add a row to start typing the receipt.</p>
@@ -384,5 +288,156 @@ export function CorrectLines({ purchase, onDone }: { purchase: Purchase; onDone:
         </Button>
       </div>
     </div>
+  );
+}
+
+const cell = `${inputClass} w-full`;
+const shortLabel = "text-[11px] text-neutral-600 dark:text-neutral-400";
+
+interface CorrectRowProps {
+  row: Row;
+  at: number;
+  /** The row a discount or deposit counts against, by index. */
+  attachedTo: number | undefined;
+  units: { code: string }[];
+  cellId: (key: string, field: string) => string;
+  change: (key: string, patch: Partial<Row>) => void;
+  onCellKey: (at: number) => (event: KeyboardEvent<HTMLInputElement>) => void;
+  insertAt: (at: number) => void;
+  remove: (at: number) => void;
+}
+
+/** What a row is, in words, under its text: the printed row, its item, a saving in the price. */
+function RowNotes({ row, attachedTo }: Pick<CorrectRowProps, "row" | "attachedTo">) {
+  const printed = row.printed && row.printed.trim() !== row.rawText.trim() ? row.printed : null;
+  const kept = row.inPrice && (row.total.trim() === "" || cmp(row.total, "0") === 0);
+  if (!printed && attachedTo === undefined && !kept) return null;
+  return (
+    <span className={`flex flex-wrap gap-x-3 ${shortLabel}`}>
+      {printed ? <span className="font-mono">Printed: {printed}</span> : null}
+      {attachedTo !== undefined ? <span>On line {attachedTo + 1}</span> : null}
+      {kept ? (
+        <span>
+          Already in the price: −{formatMoney(row.inPrice)}, not counted. Type an amount to count
+          it.
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * One line in Correct the lines (U5): the receipt text across the full width,
+ * so six "Member Savings" rows can be told apart, and the numbers beneath.
+ */
+function CorrectRow(props: CorrectRowProps) {
+  const { row, at, units, cellId, change, onCellKey, insertAt, remove } = props;
+  const n = at + 1;
+  const known = units.some((u) => u.code === row.unit);
+  return (
+    <li className="grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2 gap-y-1 border-b border-neutral-200 py-2 dark:border-neutral-800">
+      <span className="pt-2 text-sm tabular-nums text-neutral-600 dark:text-neutral-400">{n}</span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <input
+          id={cellId(row.key, "text")}
+          aria-label={`Receipt text, row ${n}`}
+          placeholder="Receipt text"
+          className={`${cell} font-mono`}
+          autoComplete="off"
+          value={row.rawText}
+          onChange={(e) => change(row.key, { rawText: e.target.value })}
+          onKeyDown={onCellKey(at)}
+        />
+        <RowNotes row={row} attachedTo={props.attachedTo} />
+      </span>
+      <span className="col-start-2 grid grid-cols-2 items-end gap-2 sm:grid-cols-[5rem_7rem_6.5rem_7rem_auto]">
+        <label className="flex min-w-0 flex-col">
+          <span className={shortLabel} aria-hidden="true">
+            Qty
+          </span>
+          <input
+            id={cellId(row.key, "qty")}
+            aria-label={`Quantity, row ${n}`}
+            className={cell}
+            inputMode="decimal"
+            autoComplete="off"
+            value={row.qty}
+            onChange={(e) => change(row.key, { qty: e.target.value })}
+            onKeyDown={onCellKey(at)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col">
+          <span className={shortLabel} aria-hidden="true">
+            Unit
+          </span>
+          <select
+            id={cellId(row.key, "unit")}
+            aria-label={`Unit, row ${n}`}
+            className={cell}
+            value={row.unit}
+            onChange={(e) => change(row.key, { unit: e.target.value })}
+          >
+            <option value="">—</option>
+            {row.unit && !known ? <option value={row.unit}>{row.unit}</option> : null}
+            {units.map((u) => (
+              <option key={u.code} value={u.code}>
+                {unitLabel(u.code)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex min-w-0 flex-col">
+          <span className={shortLabel} aria-hidden="true">
+            Line total
+          </span>
+          <input
+            id={cellId(row.key, "total")}
+            aria-label={`Line total, row ${n}`}
+            className={cell}
+            inputMode="decimal"
+            autoComplete="off"
+            value={row.total}
+            onChange={(e) => change(row.key, { total: e.target.value })}
+            onKeyDown={onCellKey(at)}
+          />
+        </label>
+        <label className="flex min-w-0 flex-col">
+          <span className={shortLabel} aria-hidden="true">
+            Kind
+          </span>
+          <select
+            id={cellId(row.key, "kind")}
+            aria-label={`Kind, row ${n}`}
+            className={cell}
+            value={row.kind}
+            onChange={(e) => change(row.key, { kind: e.target.value })}
+          >
+            {LINE_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span className="col-span-2 flex gap-1 sm:col-span-1">
+          <Button
+            variant="secondary"
+            className="px-2 text-xs"
+            aria-label={`Add a row below row ${n}`}
+            onClick={() => insertAt(at + 1)}
+          >
+            Add below
+          </Button>
+          <Button
+            variant="danger"
+            className="px-2 text-xs"
+            aria-label={`Delete row ${n}`}
+            onClick={() => remove(at)}
+          >
+            Delete
+          </Button>
+        </span>
+      </span>
+    </li>
   );
 }

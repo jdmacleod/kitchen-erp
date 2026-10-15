@@ -65,6 +65,7 @@ from app.services import (
     reread,
     resolution,
     review,
+    spelling,
     store_codes,
     unit_display,
     unit_switch,
@@ -270,6 +271,7 @@ async def purchase_out(
     if names is None:
         names = await purchases.resolver_names(db, [purchase])
     recorded = await purchases.recorded_lines(db, purchase.lines) if detail else None
+    vocab = await spelling.vocabulary(db) if detail and purchase.status == "draft" else None
     lines = [
         LineOut(
             id=line.id,
@@ -302,6 +304,9 @@ async def purchase_out(
             raw_text_norm=line.raw_text_norm,
             printed_text=line.printed_text,
             in_price_amount=line.in_price_amount,
+            spelling=spelling.suggest(line.raw_text, vocab)
+            if vocab and line.line_kind == "item"
+            else [],
             suggestions=line.suggestions or [],
             recorded=None if recorded is None else line.id in recorded,
             code_offer=offers.get(line.id),  # type: ignore[arg-type]

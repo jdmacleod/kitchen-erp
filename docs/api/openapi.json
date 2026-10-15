@@ -6758,6 +6758,17 @@
             "title": "Clear Qty",
             "type": "boolean"
           },
+          "in_price": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Price"
+          },
           "line_kind": {
             "anyOf": [
               {
@@ -7214,6 +7225,17 @@
           "seq": {
             "title": "Seq",
             "type": "integer"
+          },
+          "spelling": {
+            "default": [],
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "title": "Spelling",
+            "type": "array"
           },
           "stored_in": {
             "anyOf": [

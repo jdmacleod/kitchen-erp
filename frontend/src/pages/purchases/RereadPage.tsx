@@ -15,7 +15,7 @@ import {
   type RereadMode,
 } from "../../api/rereads";
 import { useNavigateWithNotice } from "../../components/Notice";
-import { flagLabel } from "../../components/purchases/ReviewPurchase";
+import { flagLabel } from "../../components/purchases/lineParts";
 import {
   Alert,
   Button,
