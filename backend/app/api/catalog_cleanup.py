@@ -6,6 +6,7 @@ from fastapi import APIRouter, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.catalog_cleanup import (
+    CleanupApplyIn,
     CleanupApplyOut,
     CleanupKeysIn,
     CleanupOut,
@@ -31,6 +32,8 @@ async def list_suggestions(db: DbSession, _: CurrentUser) -> CleanupOut:
                 after=s.after,
                 reason=s.reason,
                 ready=s.ready,
+                value=s.value if s.kind == "category" else "",
+                choosable=s.choosable,
             )
             for s in found
         ]
@@ -38,9 +41,9 @@ async def list_suggestions(db: DbSession, _: CurrentUser) -> CleanupOut:
 
 
 @router.post("/catalog/cleanup/apply", response_model=CleanupApplyOut)
-async def apply_suggestions(body: CleanupKeysIn, _: CurrentUser, db: DbSession) -> CleanupApplyOut:
-    """Apply the suggestions named, as they stand now."""
-    applied, gone = await catalog_cleanup.apply(db, body.keys)
+async def apply_suggestions(body: CleanupApplyIn, _: CurrentUser, db: DbSession) -> CleanupApplyOut:
+    """Apply the suggestions named, as they stand now, with any category chosen instead."""
+    applied, gone = await catalog_cleanup.apply(db, body.keys, body.chosen)
     return CleanupApplyOut(applied=applied, gone=gone)
 
 

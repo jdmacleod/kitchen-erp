@@ -5,13 +5,17 @@ what the catalog already holds that they would have prevented. Each finding is a
 suggestion with a stable key: the kind, the row and what it proposes, so a skip
 sticks until the data changes. Kinds:
 
-- ``category``: an ingredient without a category, with the likeliest one;
+- ``category``: an ingredient without a category, with the likeliest one, or a
+  frozen food filed elsewhere; the person may choose another before accepting;
 - ``ingredient_name``: an ingredient name the 1G rules write differently;
 - ``usda_link``: a preferred USDA reference that doesn't fit, relinked to one
   that does or unlinked;
 - ``ingredient_merge``: two ingredients that look like one food;
 - ``product_name``: a product name that repeats its brand or pack;
-- ``product_brand``: a brand that only says "none", or a brand on a loose product.
+- ``product_brand``: a brand that only says "none" or describes the food
+  ("Organic"), a brand on loose produce (cleared: produce is sold by weight, the
+  bunch or the piece, and the store's name is the vendor), or a brand on another
+  loose product (which is then a branded or private-label one).
 
 Accepting calls the existing services; nothing is written here otherwise.
 """
@@ -20,17 +24,20 @@ from __future__ import annotations
 
 import hashlib
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from sqlalchemy import Text, cast, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog import categories as category_keys
 from app.catalog import proposals as merging
+from app.catalog.brand_names import is_never_brand
 from app.catalog.conform import conform, proper_noun_words
 from app.catalog.product_names import short_name
 from app.catalog.usda_fit import fits
+from app.core.errors import ApiError
 from app.models import AppUser
 from app.models.catalog import CleanupSkip, FdcFood, Ingredient, IngredientRef, Product
 from app.schemas.catalog import IngredientUpdate, ProductUpdate
@@ -72,8 +79,14 @@ class Suggestion:
 
     @property
     def ready(self) -> bool:
-        """Whether accepting it can apply something; a category nobody could guess can't."""
+        """Whether accepting it as offered applies something; a category nobody could
+        guess needs the person to choose one first."""
         return self.kind != "category" or bool(self.value)
+
+    @property
+    def choosable(self) -> bool:
+        """Whether the person may choose the value: a category, from the nine keys."""
+        return self.kind == "category"
 
 
 def _key(kind: str, subject: uuid.UUID, value: str) -> str:
@@ -97,10 +110,28 @@ async def _categories(db: AsyncSession, rows: list[Ingredient], *, guess: bool) 
     out = []
     for i in rows:
         if i.category:
+            # A frozen food filed elsewhere: the name settles it, whatever was chosen.
+            if (
+                category_keys.key_from_name(i.name) == "frozen"
+                and category_keys.key(i.category) != "frozen"
+            ):
+                out.append(
+                    Suggestion(
+                        _key("category", i.id, "frozen"),
+                        "category",
+                        i.id,
+                        i.name,
+                        i.category,
+                        "frozen",
+                        "the name says frozen",
+                        "frozen",
+                    )
+                )
             continue
         found = await ingredient_category.suggest(db, i.name) if guess else None
         value = found.category if found and found.category else ""
-        reason = f"suggested {found.source}" if found and found.source else "no likely category"
+        reason = _SOURCE_REASONS.get(found.source, "") if found and found.source else ""
+        reason = reason or "no likely category: choose one"
         # The key doesn't carry the guess: a skip holds until a category is set.
         out.append(
             Suggestion(
@@ -115,6 +146,15 @@ async def _categories(db: AsyncSession, rows: list[Ingredient], *, guess: bool) 
             )
         )
     return out
+
+
+_SOURCE_REASONS = {
+    "name": "its name says so",
+    "standard": "the standard list files it there",
+    "usda": "a guess from the USDA food group",
+    "clip": "the store page files it there",
+    "catalog": "a guess from similar ingredients",
+}
 
 
 def _names(rows: list[Ingredient], keys: set[str]) -> list[Suggestion]:
@@ -207,12 +247,46 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
             Product.kind,
             Product.pack_qty,
             Product.brand_id,
+            Ingredient.name.label("ingredient_name"),
+            Ingredient.category,
         )
+        .join(Ingredient, Ingredient.id == Product.ingredient_id)
         .where(Product.active)
         .order_by(Product.name)
     )
     for p in rows:
-        if p.brand and merging.is_null_like(p.brand):
+        loose = p.kind in ("loose", "random_weight")
+        produce = (
+            category_keys.key(p.category) == "produce"
+            and category_keys.key_from_name(p.ingredient_name) is None
+        )
+        if p.brand and is_never_brand(p.brand):
+            out.append(
+                Suggestion(
+                    _key("product_brand", p.id, ""),
+                    "product_brand",
+                    p.id,
+                    p.name,
+                    f"brand “{p.brand}”",
+                    "no brand",
+                    f"“{p.brand}” describes the food; it isn't a brand",
+                    "",
+                )
+            )
+        elif p.brand and loose and produce:
+            out.append(
+                Suggestion(
+                    _key("product_brand", p.id, ""),
+                    "product_brand",
+                    p.id,
+                    p.name,
+                    f"brand “{p.brand}”",
+                    "no brand, sold loose",
+                    "produce sold loose has no brand; the store is the vendor",
+                    "",
+                )
+            )
+        elif p.brand and merging.is_null_like(p.brand):
             out.append(
                 Suggestion(
                     _key("product_brand", p.id, ""),
@@ -225,7 +299,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
                     "",
                 )
             )
-        elif p.brand and p.kind in ("loose", "random_weight"):
+        elif p.brand and loose:
             # A brand the dataset knows is linked (brand_id), and is some store's own.
             kind = "private_label" if p.brand_id is not None else "branded"
             out.append(
@@ -289,13 +363,25 @@ async def skip(db: AsyncSession, user: AppUser, keys: list[str]) -> None:
     await db.commit()
 
 
-async def apply(db: AsyncSession, keys: list[str]) -> tuple[int, list[str]]:
-    """Apply the suggestions named, as they are now; a key no longer offered is reported."""
+async def apply(
+    db: AsyncSession, keys: list[str], chosen: dict[str, str] | None = None
+) -> tuple[int, list[str]]:
+    """Apply the suggestions named, as they are now; a key no longer offered is reported.
+
+    ``chosen`` maps a key to the value the person chose instead of the one offered:
+    a category key, for a category suggestion. Any other choice is refused."""
+    chosen = chosen or {}
     wanted = set(keys)
     current = {s.key: s for s in await suggestions(db) if s.key in wanted}
+    for key, value in chosen.items():
+        s = current.get(key)
+        if s is not None and not (s.choosable and value in category_keys.KEYS):
+            raise ApiError(422, "cleanup_choice", f"{value!r} is not a choice for {s.subject!r}.")
     applied = 0
     for key in keys:
         s = current.get(key)
+        if s is not None and key in chosen:
+            s = replace(s, value=chosen[key])
         if s is None or not s.ready:
             continue
         await _apply_one(db, s)

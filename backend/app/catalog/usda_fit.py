@@ -70,8 +70,12 @@ GENERIC_HEADS = frozenset(
         "greens", "fruit", "quarters", "chops", "ribs", "steak", "steaks", "buns",
         "tenders", "rinds", "cob", "fillets", "fillet", "cutlets", "strips", "leaves",
         "sprigs", "florets", "wedges", "slices", "pieces", "bites", "meat", "hearts",
+        "roots", "root", "stems", "stalks", "tops",
     }
 )  # fmt: skip
+# Parts every plant has: a record naming one ("Chicory roots") says nothing about
+# which plant, so unlike a cut ("flank steak") the part never fits on its own.
+_PLANT_PARTS = frozenset({"roots", "root", "stems", "stalks", "tops", "leaves", "sprigs"})
 
 # A cook's word and the words a USDA record uses for the same food. Data, not
 # logic: add to it freely, but never a word that names another food.
@@ -174,13 +178,18 @@ def fits(ingredient_name: str, description: str) -> Fit:
     # part the record names itself ("flat iron steak", "...top blade steak").
     pairs = {a + b for a, b in pairwise(words)}
     head_named = named(head) or bool(pairs & record)
-    if not head_named and named_last in GENERIC_HEADS and named(named_last):
+    if not head_named and named_last in GENERIC_HEADS - _PLANT_PARTS and named(named_last):
         head_named = True
     if not head_named:
-        others = [w for w in words if w != head and w not in FORMS | DESCRIPTORS and named(w)]
+        skip = FORMS | DESCRIPTORS | _PLANT_PARTS
+        others = [w for w in words if w != head and w not in skip and named(w)]
         if not others:
             return Fit("misfit", f"the USDA record never names {head!r}")
         return Fit("doubtful", f"the USDA record names {others[0]!r} but not {head!r}")
+    # "Stew with beans" is a dish made of the food; "Tomatoes, ..., with salt added"
+    # only says how it was canned, so only the first part counts.
+    if "with" in _words(description.split(",", 1)[0]) and "with" not in words:
+        return Fit("doubtful", "the USDA record is a dish made with the food")
     for word in record_forms:
         if word not in FORMS or word in name_readings:
             continue

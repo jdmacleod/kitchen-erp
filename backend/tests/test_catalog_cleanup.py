@@ -117,6 +117,81 @@ async def test_a_brand_on_a_loose_product_makes_it_branded(admin_client, db_sess
     assert (await admin_client.get(f"/api/v1/products/{p['id']}")).json()["kind"] == "branded"
 
 
+async def test_loose_produce_loses_its_brand_rather_than_becoming_branded(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    quince = await make_ingredient(admin_client, "lantern quince", category="produce")
+    p = await make_product(
+        admin_client, quince["id"], "Lantern quince", brand="Fernhill Market", kind="loose"
+    )
+    [s] = by_kind(await suggestions(admin_client), "product_brand")
+    assert s["after"] == "no brand, sold loose"
+    await accept(admin_client, s["key"])
+    got = (await admin_client.get(f"/api/v1/products/{p['id']}")).json()
+    assert (got["brand"], got["kind"]) == (None, "loose")
+
+
+async def test_a_brand_that_describes_the_food_is_cleared(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    beans = await make_ingredient(admin_client, "lantern beans")
+    p = await make_product(
+        admin_client, beans["id"], "Organic lantern beans", brand="Organic", kind="branded"
+    )
+    items = await suggestions(admin_client)
+    # "Organic" is not a brand, so the name keeps it.
+    assert by_kind(items, "product_name") == []
+    [s] = by_kind(items, "product_brand")
+    assert s["after"] == "no brand"
+    await accept(admin_client, s["key"])
+    assert (await admin_client.get(f"/api/v1/products/{p['id']}")).json()["brand"] is None
+
+
+async def test_a_real_brand_that_is_also_a_food_word_stays(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    ale = await make_ingredient(admin_client, "lantern ale")
+    await make_product(admin_client, ale["id"], "Lantern ale", brand="Stone", kind="branded")
+    assert by_kind(await suggestions(admin_client), "product_brand") == []
+
+
+async def test_a_frozen_food_filed_elsewhere_is_offered_frozen(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    rolls = await make_ingredient(admin_client, "frozen lantern rolls", category="bakery")
+    [s] = by_kind(await suggestions(admin_client), "category")
+    assert (s["subject_id"], s["before"], s["value"]) == (rolls["id"], "bakery", "frozen")
+    await accept(admin_client, s["key"])
+    assert (await admin_client.get(f"/api/v1/ingredients/{rolls['id']}")).json()[
+        "category"
+    ] == "frozen"
+
+
+async def test_a_person_chooses_a_category_instead_of_the_guess(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    fish = await clear_category(admin_client, await make_ingredient(admin_client, "zzyzx"))
+    [s] = by_kind(await suggestions(admin_client), "category")
+    assert s["choosable"] and not s["ready"]
+    r = await admin_client.post(
+        "/api/v1/catalog/cleanup/apply", json={"keys": [s["key"]], "chosen": {s["key"]: "nope"}}
+    )
+    assert r.status_code == 422
+    r = await admin_client.post(
+        "/api/v1/catalog/cleanup/apply",
+        json={"keys": [s["key"]], "chosen": {s["key"]: "seafood"}},
+    )
+    assert r.json()["applied"] == 1
+    got = (await admin_client.get(f"/api/v1/ingredients/{fish['id']}")).json()
+    assert got["category"] == "seafood"
+
+
+async def test_only_a_category_can_be_chosen(admin_client, db_session):
+    await seed_units_via_service(db_session)
+    bacon = await make_ingredient(admin_client, "lantern bacon")
+    await make_product(admin_client, bacon["id"], "Harbor Light Bacon", brand="Harbor Light")
+    [s] = by_kind(await suggestions(admin_client), "product_name")
+    r = await admin_client.post(
+        "/api/v1/catalog/cleanup/apply", json={"keys": [s["key"]], "chosen": {s["key"]: "meat"}}
+    )
+    assert r.status_code == 422
+
+
 async def test_a_skip_holds_until_the_data_changes(admin_client, db_session):
     await seed_units_via_service(db_session)
     bacon = await make_ingredient(admin_client, "lantern bacon")
@@ -137,7 +212,7 @@ async def test_a_skip_holds_until_the_data_changes(admin_client, db_session):
 
 async def test_the_inbox_counts_them(admin_client, db_session):
     await seed_units_via_service(db_session)
-    await make_ingredient(admin_client, "Okra, frozen")
+    await make_ingredient(admin_client, "Okra, frozen", category="frozen")
     items = (await admin_client.get("/api/v1/inbox")).json()["items"]
     [row] = [i for i in items if i["kind"] == "catalog_cleanup"]
     assert row["title"] == "Tidy the catalog: 1 suggestion"

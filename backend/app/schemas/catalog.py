@@ -106,7 +106,7 @@ class CategorySuggestionOut(ApiModel):
     """The category a new ingredient most likely has, and where that came from (#344)."""
 
     category: CategoryKey | None
-    source: Literal["standard", "usda", "clip", "catalog"] | None
+    source: Literal["name", "standard", "usda", "clip", "catalog"] | None
 
 
 class IngredientUpdate(ApiModel):

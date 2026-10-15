@@ -109,3 +109,23 @@ def test_the_result_is_a_key_or_none_and_is_idempotent(text):
 @given(st.text(max_size=40))
 def test_normalizing_first_changes_nothing(text):
     assert key(categories.normalize(text)) == key(text)
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("frozen lantern shrimp", "frozen"),
+        ("lantern rolls, frozen", "frozen"),
+        ("whole sea bass", "seafood"),
+        ("canned lantern peas", "pantry"),
+        ("dried lantern chiles", "pantry"),
+        ("crispy lantern shallots", "pantry"),
+        ("canned sardines", "pantry"),
+        ("dried lantern seasoning", "spices"),
+        ("lantern masala", "spices"),
+        ("lantern root", None),
+        ("", None),
+    ],
+)
+def test_some_words_in_a_name_settle_its_category(name, expected):
+    assert categories.key_from_name(name) == expected

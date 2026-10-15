@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from functools import cache
 
 from app.catalog import standard
-from app.catalog.brand_names import name_key
+from app.catalog.brand_names import is_brand_key, name_key
 from app.catalog.product_names import tidy
 from app.catalog.standard_match import match_entry
 
@@ -114,7 +114,7 @@ def _without_brand(name: str, brand_keys: Iterable[str]) -> tuple[str, str | Non
     # Longest leading run first; never the whole name.
     for n in range(len(words) - 1, 0, -1):
         lead = " ".join(words[:n])
-        if name_key(lead) in keys:
+        if (key := name_key(lead)) in keys and is_brand_key(key):
             rest = " ".join(words[n:])
             return rest, f"“{lead}” is a brand, which belongs on the product"
     return name, None

@@ -23,6 +23,8 @@ DESCRIPTIONS = json.loads(
         ("roasted duck stock", "Seeds, breadfruit seeds, roasted"),
         ("soft herbs", "Meat extender"),
         ("sea bream", "Oat bran, raw"),
+        # "roots" names a part, so the food is the word before it.
+        ("lovage roots", "Chicory roots, raw"),
     ],
 )
 def test_a_record_that_never_names_the_food_is_a_misfit(name, description):
@@ -37,6 +39,7 @@ def test_a_record_that_never_names_the_food_is_a_misfit(name, description):
         ("frozen meatballs", "Meatballs, meatless"),
         ("goat leg", "Goat, ground, raw"),
         ("coconut water", "Nuts, coconut milk, canned"),
+        ("lantern stew", "Lantern stew with beans, canned"),
     ],
 )
 def test_another_form_of_the_food_is_doubtful(name, description):

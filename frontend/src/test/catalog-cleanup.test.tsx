@@ -14,6 +14,8 @@ const name = (n: number): CleanupSuggestion => ({
   after: `Lantern jam ${n}`,
   reason: "brand and pack have fields of their own",
   ready: true,
+  value: "",
+  choosable: false,
 });
 const unguessed: CleanupSuggestion = {
   key: "category:i1:x",
@@ -22,8 +24,22 @@ const unguessed: CleanupSuggestion = {
   subject: "zzyzx",
   before: "no category",
   after: "choose one",
-  reason: "no likely category",
+  reason: "no likely category: choose one",
   ready: false,
+  value: "",
+  choosable: true,
+};
+const guessed: CleanupSuggestion = {
+  key: "category:i2:y",
+  kind: "category",
+  subject_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b02",
+  subject: "lantern fish",
+  before: "no category",
+  after: "meat",
+  reason: "a guess from similar ingredients",
+  ready: true,
+  value: "meat",
+  choosable: true,
 };
 
 function routes(items: () => CleanupSuggestion[], onPost: (call: RecordedCall) => void) {
@@ -66,10 +82,9 @@ describe("tidy the catalog (issue 349)", () => {
     expect(within(names).getAllByTestId("cleanup-row")[0]).toHaveTextContent(
       "HARBOR LIGHT Lantern Jam 1, 8 oz → Lantern jam 1",
     );
-    // A category nobody could guess is chosen on its page, not accepted here.
+    // A category nobody could guess can't be accepted until one is chosen.
     const cats = screen.getByRole("list", { name: "Categories" });
-    expect(within(cats).getByRole("link", { name: "Choose on its page" })).toBeInTheDocument();
-    expect(within(cats).queryByRole("button", { name: /Accept/ })).not.toBeInTheDocument();
+    expect(within(cats).getByRole("button", { name: "Accept: zzyzx" })).toBeDisabled();
 
     await user.click(within(cats).getByRole("button", { name: "Skip: zzyzx" }));
     await waitFor(() => expect(screen.queryByRole("list", { name: "Categories" })).toBeNull());
@@ -77,7 +92,37 @@ describe("tidy the catalog (issue 349)", () => {
 
     await user.click(screen.getByRole("button", { name: "Accept these 2" }));
     await waitFor(() => expect(posts).toHaveLength(2));
-    expect(posts[1].body).toEqual({ keys: [name(1).key, name(2).key] });
+    expect(posts[1].body).toEqual({ keys: [name(1).key, name(2).key], chosen: {} });
     expect(await screen.findByText("Nothing to tidy")).toBeInTheDocument();
+  });
+
+  it("takes the category a person chose instead of the guess", async () => {
+    let items = [guessed, unguessed];
+    const posts: RecordedCall[] = [];
+    mockApi(
+      routes(
+        () => items,
+        (call) => {
+          posts.push(call);
+          const keys = (call.body as { keys: string[] }).keys;
+          items = items.filter((s) => !keys.includes(s.key));
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/cleanup");
+    const cats = await screen.findByRole("list", { name: "Categories" });
+    const guess = within(cats).getByLabelText("Category for lantern fish");
+    expect(guess).toHaveValue("meat");
+    await user.selectOptions(guess, "seafood");
+    await user.selectOptions(within(cats).getByLabelText("Category for zzyzx"), "pantry");
+    expect(within(cats).getByRole("button", { name: "Accept: zzyzx" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Accept these 2" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({
+      keys: [guessed.key, unguessed.key],
+      chosen: { [guessed.key]: "seafood", [unguessed.key]: "pantry" },
+    });
   });
 });

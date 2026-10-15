@@ -11,7 +11,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog.brand_names import name_key
+from app.catalog.brand_names import is_brand_key, name_key
 from app.catalog.conform import Conformed, conform
 from app.models.brands import Brand, BrandAlias
 from app.models.catalog import Product
@@ -26,7 +26,7 @@ async def brand_keys(db: AsyncSession) -> set[str]:
         .all()
     )
     keys = {name_key(n) for n in [*names, *on_products]} | set(aliases)
-    return {k for k in keys if k}
+    return {k for k in keys if is_brand_key(k)}
 
 
 async def preview(db: AsyncSession, name: str) -> Conformed:

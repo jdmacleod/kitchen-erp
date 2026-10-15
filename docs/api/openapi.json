@@ -1496,6 +1496,7 @@
             "anyOf": [
               {
                 "enum": [
+                  "name",
                   "standard",
                   "usda",
                   "clip",
@@ -1823,6 +1824,33 @@
         "title": "ChooseIn",
         "type": "object"
       },
+      "CleanupApplyIn": {
+        "additionalProperties": false,
+        "properties": {
+          "chosen": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 200,
+            "title": "Chosen",
+            "type": "object"
+          },
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "keys"
+        ],
+        "title": "CleanupApplyIn",
+        "type": "object"
+      },
       "CleanupApplyOut": {
         "additionalProperties": false,
         "properties": {
@@ -1893,6 +1921,10 @@
             "title": "Before",
             "type": "string"
           },
+          "choosable": {
+            "title": "Choosable",
+            "type": "boolean"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -1925,6 +1957,10 @@
             "format": "uuid",
             "title": "Subject Id",
             "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
           }
         },
         "required": [
@@ -1935,7 +1971,9 @@
           "before",
           "after",
           "reason",
-          "ready"
+          "ready",
+          "value",
+          "choosable"
         ],
         "title": "CleanupSuggestionOut",
         "type": "object"
@@ -21329,13 +21367,13 @@
     },
     "/api/v1/catalog/cleanup/apply": {
       "post": {
-        "description": "Apply the suggestions named, as they stand now.",
+        "description": "Apply the suggestions named, as they stand now, with any category chosen instead.",
         "operationId": "apply_suggestions_api_v1_catalog_cleanup_apply_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CleanupKeysIn"
+                "$ref": "#/components/schemas/CleanupApplyIn"
               }
             }
           },
