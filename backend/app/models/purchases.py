@@ -260,6 +260,9 @@ class Purchase(UUIDPrimaryKey, Timestamped, Base):
         UUID(as_uuid=True), ForeignKey("app_user.id"), nullable=False
     )
     flags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    # What the receipt prints about itself besides its total (savings total, items
+    # sold, payment), read from the scan; None when nothing was printed or read.
+    printed_checks: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     ledger_txn_ref: Mapped[str | None] = mapped_column(Text)
     import_ref: Mapped[str | None] = mapped_column(Text)
     # Removed after reaching the price book (#74): kept, read-only, prices voided.
@@ -316,6 +319,8 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     seq: Mapped[int] = mapped_column(Integer, nullable=False)
     raw_text: Mapped[str | None] = mapped_column(Text)
     raw_text_norm: Mapped[str | None] = mapped_column(Text)
+    # The OCR row the line was matched to; the model's raw_text can leave out prices.
+    printed_text: Mapped[str | None] = mapped_column(Text)
     suggestions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, default=list)
     line_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="item")
     product_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -328,6 +333,8 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))
     unit_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     line_total: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    # A saving the item's price already includes: printed, but counted as nothing.
+    in_price_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     resolution: Mapped[str] = mapped_column(String(16), nullable=False, default="unmatched")
     resolved_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("app_user.id")

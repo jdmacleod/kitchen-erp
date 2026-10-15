@@ -1,0 +1,294 @@
+{
+  "header": {
+    "address_text": null,
+    "flags": [],
+    "location": {
+      "candidates": [],
+      "matched": false,
+      "vendor_id": null,
+      "vendor_location_id": null
+    },
+    "merchant_name": "LARKSPUR GROCERS",
+    "model_attempts": 1,
+    "parsed": true,
+    "phone_text": null,
+    "purchased_at": "2026-03-21T23:40:00+00:00",
+    "purchased_at_local": "2026-03-21 16:40",
+    "store_identifier": "0412",
+    "subtotal": null,
+    "tax": "0.00",
+    "total": "12.36"
+  },
+  "lines": {
+    "line_count": 8,
+    "lines": [
+      {
+        "flags": [],
+        "in_price_amount": null,
+        "line_kind": "item",
+        "line_total": "2.99",
+        "parent_seq": null,
+        "printed_row": "44112 MEADOW TORTILLAS 3.49 2.99 S",
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "MEADOW TORTILLAS",
+        "seq": 1,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "saving_in_price"
+        ],
+        "in_price_amount": "0.50",
+        "line_kind": "discount",
+        "line_total": "0",
+        "parent_seq": 1,
+        "printed_row": "Club Savings -0.50",
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Club Savings",
+        "seq": 2,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "in_price_amount": null,
+        "line_kind": "item",
+        "line_total": "5.79",
+        "parent_seq": null,
+        "printed_row": "55223 RIVERBEND YOGURT 6.29 5.79 S",
+        "purchase_line_id": "<uuid>",
+        "qty": "1",
+        "raw_text": "RIVERBEND YOGURT",
+        "seq": 3,
+        "unit": "each",
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "saving_in_price"
+        ],
+        "in_price_amount": "0.50",
+        "line_kind": "discount",
+        "line_total": "0",
+        "parent_seq": 3,
+        "printed_row": "Club Savings -0.50",
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Club Savings",
+        "seq": 4,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [
+          "qty_from_line_below"
+        ],
+        "in_price_amount": null,
+        "line_kind": "item",
+        "line_total": "0.63",
+        "parent_seq": null,
+        "printed_row": "3781 PEPPERS FRESNO 0.63 0.63 S",
+        "purchase_line_id": "<uuid>",
+        "qty": "0.07",
+        "raw_text": "PEPPERS FRESNO",
+        "seq": 5,
+        "unit": "lb",
+        "unit_price": "8.99"
+      },
+      {
+        "flags": [
+          "qty_from_line_below"
+        ],
+        "in_price_amount": null,
+        "line_kind": "item",
+        "line_total": "2.95",
+        "parent_seq": null,
+        "printed_row": "4041 GALA APPLES 4.10 2.95 S",
+        "purchase_line_id": "<uuid>",
+        "qty": "1.48",
+        "raw_text": "GALA APPLES",
+        "seq": 6,
+        "unit": "lb",
+        "unit_price": "1.99"
+      },
+      {
+        "flags": [
+          "parent_inferred",
+          "saving_in_price"
+        ],
+        "in_price_amount": "1.15",
+        "line_kind": "discount",
+        "line_total": "0",
+        "parent_seq": 6,
+        "printed_row": "Club Savings -1.15",
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "Club Savings",
+        "seq": 7,
+        "unit": null,
+        "unit_price": null
+      },
+      {
+        "flags": [],
+        "in_price_amount": null,
+        "line_kind": "tax",
+        "line_total": "0.00",
+        "parent_seq": null,
+        "printed_row": "TAX 0.00",
+        "purchase_line_id": "<uuid>",
+        "qty": null,
+        "raw_text": "TAX 0.00",
+        "seq": 8,
+        "unit": null,
+        "unit_price": null
+      }
+    ],
+    "merged_rows": [
+      "WT 0.07 lb @ $8.99 /lb",
+      "WT 1.48 lb @ $1.99 /lb"
+    ],
+    "model_attempts": 1,
+    "parsed": true,
+    "parser": "llm-generic",
+    "parser_version": "10",
+    "printed_checks": {
+      "item_count": 4,
+      "payment": "12.36",
+      "savings_total": "2.15"
+    },
+    "purchase_flags": [],
+    "purchase_id": "<uuid>",
+    "read_lines": {
+      "lines": [
+        {
+          "line_kind": "item",
+          "line_total": "2.99",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "MEADOW TORTILLAS",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "0.50",
+          "parent_index": 0,
+          "qty": null,
+          "raw_text": "Club Savings",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "5.79",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "RIVERBEND YOGURT",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "0.50",
+          "parent_index": 2,
+          "qty": null,
+          "raw_text": "Club Savings",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "0.63",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "PEPPERS FRESNO",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "0.00",
+          "parent_index": null,
+          "qty": "0.07",
+          "raw_text": "WT 0.07 lb @ $8.99 /lb",
+          "unit": "lb",
+          "unit_price": "8.99"
+        },
+        {
+          "line_kind": "item",
+          "line_total": "2.95",
+          "parent_index": null,
+          "qty": "1",
+          "raw_text": "GALA APPLES",
+          "unit": "each",
+          "unit_price": null
+        },
+        {
+          "line_kind": "item",
+          "line_total": "0.00",
+          "parent_index": null,
+          "qty": "1.48",
+          "raw_text": "WT 1.48 lb @ $1.99 /lb",
+          "unit": "lb",
+          "unit_price": "1.99"
+        },
+        {
+          "line_kind": "discount",
+          "line_total": "1.15",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "Club Savings",
+          "unit": null,
+          "unit_price": null
+        },
+        {
+          "line_kind": "tax",
+          "line_total": "0.00",
+          "parent_index": null,
+          "qty": null,
+          "raw_text": "TAX 0.00",
+          "unit": null,
+          "unit_price": null
+        }
+      ]
+    },
+    "reconciliation": {
+      "checked": true,
+      "computed_total": "12.36",
+      "deposits": "0",
+      "difference": "0.00",
+      "discounts": "0",
+      "fees": "0",
+      "items": "12.36",
+      "mismatch": false,
+      "printed_total": "12.36",
+      "tax": "0.00",
+      "tax_source": "lines"
+    }
+  },
+  "requests": [
+    {
+      "messages_digest": "dbhlgdcnhkkafcmo",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 2.0,
+      "stage": "header"
+    },
+    {
+      "messages_digest": "ncapiigifobbgmck",
+      "options": {
+        "num_ctx": 8192,
+        "num_predict": 8192,
+        "temperature": 0
+      },
+      "read_timeout": 62.0,
+      "stage": "lines"
+    }
+  ]
+}

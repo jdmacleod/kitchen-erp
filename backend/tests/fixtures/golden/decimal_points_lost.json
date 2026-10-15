@@ -27,9 +27,11 @@
           "decimal_missing",
           "exceeds_total"
         ],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "349",
         "parent_seq": null,
+        "printed_row": "OAT MILK 1L 349",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "OAT MILK 1L            349",
@@ -42,9 +44,11 @@
           "decimal_missing",
           "exceeds_total"
         ],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "425",
         "parent_seq": null,
+        "printed_row": "RYE BREAD 425",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "RYE BREAD              425",
@@ -54,9 +58,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "fee",
         "line_total": "0.10",
         "parent_seq": null,
+        "printed_row": "BAG FEE 0.10",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "BAG FEE               0.10",
@@ -66,9 +72,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "1.65",
         "parent_seq": null,
+        "printed_row": "EGGS DOZEN 18CT 1.65",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "EGGS DOZEN 18CT       1.65",
@@ -81,6 +89,7 @@
     "parsed": true,
     "parser": "llm-generic",
     "parser_version": "10",
+    "printed_checks": null,
     "purchase_flags": [
       "reconcile_mismatch",
       "decimals_restore_total"

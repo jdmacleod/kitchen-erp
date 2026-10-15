@@ -73,6 +73,8 @@ def _present(purchase: Purchase) -> list[proposal_of.Line]:
             id=x.id,
             parent_id=x.parent_line_id,
             seq=x.seq,
+            printed_text=x.printed_text,
+            in_price_amount=x.in_price_amount,
         )
         for x in lines
     ]
@@ -114,6 +116,7 @@ def make_proposal(
         reading_flags=assessed.flags,
     )
     proposal["read_lines"] = read.model_dump(mode="json")
+    proposal["printed_checks"] = assessed.passes.checks
     if unread_parts:
         proposal["unread_parts"] = list(unread_parts)
     return proposal
@@ -261,9 +264,14 @@ def _rows(
             others = [f for f in (line.flags if line else []) if f not in before]
             fields["unit_price"] = None if row["unit_price"] is None else Decimal(row["unit_price"])
             fields["flags"] = list(dict.fromkeys([*row["flags"], *others]))
+            fields["printed_text"] = row.get("printed_text")
+            in_price = row.get("in_price_amount")
+            fields["in_price_amount"] = None if in_price is None else Decimal(in_price)
         elif line is not None:
             fields["unit_price"] = line.unit_price
             fields["flags"] = list(line.flags)
+            fields["printed_text"] = line.printed_text
+            fields["in_price_amount"] = line.in_price_amount
         rows.append(ReadRow(**fields))
     return rows
 
@@ -298,6 +306,8 @@ def _applied_output(
                     "line_total": spec["line_total"],
                     "parent_seq": parent,
                     "flags": list(spec["flags"]),
+                    "printed_row": spec.get("printed_text"),
+                    "in_price_amount": spec.get("in_price_amount"),
                 }
             )
         elif line.id in written:
@@ -314,6 +324,10 @@ def _applied_output(
                     "line_total": str(old.line_total),
                     "parent_seq": seq_of.get(old.parent_id) if old.parent_id else None,
                     "flags": list(old.flags),
+                    "printed_row": old.printed_text,
+                    "in_price_amount": None
+                    if old.in_price_amount is None
+                    else str(old.in_price_amount),
                 }
             )
     output: dict[str, Any] = {
@@ -369,6 +383,8 @@ async def apply(db: AsyncSession, user: AppUser, reread_id: uuid.UUID) -> LineRe
         *[f for f in purchase.flags if f not in reading_flags],
         *proposal["after"]["flags"],
     ]
+    if "printed_checks" in proposal:  # proposals made before 0057 carry none
+        purchase.printed_checks = proposal["printed_checks"]
     rows = _rows(proposal, purchase, written)
     ordered = await apply_rows(db, user, purchase, rows)
     db.add(

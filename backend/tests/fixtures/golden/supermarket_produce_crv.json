@@ -24,9 +24,11 @@
     "lines": [
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "1.59",
         "parent_seq": null,
+        "printed_row": null,
         "purchase_line_id": "<uuid>",
         "qty": "2.31",
         "raw_text": "BANANAS 2.31 lb @ 0.69/lb            1.59",
@@ -38,9 +40,11 @@
         "flags": [
           "qty_inferred"
         ],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "4.47",
         "parent_seq": null,
+        "printed_row": null,
         "purchase_line_id": "<uuid>",
         "qty": "1.12",
         "raw_text": "HEIRLOOM TOMATO 1.12 lb @ 3.99/lb            4.47",
@@ -50,9 +54,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "6.99",
         "parent_seq": null,
+        "printed_row": "SPARKLING WATER 12PK 6.99",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "SPARKLING WATER 12PK          6.99",
@@ -62,9 +68,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "deposit",
         "line_total": "1.20",
         "parent_seq": 3,
+        "printed_row": "CRV 1.20",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "CRV                          1.20",
@@ -74,9 +82,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "3.49",
         "parent_seq": null,
+        "printed_row": "KOMBUCHA 16OZ 3.49",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "KOMBUCHA 16OZ                 3.49",
@@ -88,9 +98,11 @@
         "flags": [
           "parent_inferred"
         ],
+        "in_price_amount": null,
         "line_kind": "deposit",
         "line_total": "0.05",
         "parent_seq": 5,
+        "printed_row": "CA REDEMPTION VAL 0.05",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "CA REDEMPTION VAL            0.05",
@@ -100,9 +112,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "4.29",
         "parent_seq": null,
+        "printed_row": "CHEDDAR SHARP 8OZ 4.29",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "CHEDDAR SHARP 8OZ             4.29",
@@ -112,9 +126,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "tax",
         "line_total": "0.00",
         "parent_seq": null,
+        "printed_row": "TAX 0.00",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "TAX                           0.00",
@@ -127,6 +143,9 @@
     "parsed": true,
     "parser": "llm-generic",
     "parser_version": "10",
+    "printed_checks": {
+      "payment": "22.08"
+    },
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "read_lines": {

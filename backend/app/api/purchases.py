@@ -294,6 +294,8 @@ async def purchase_out(
             flags=line.flags,
             observation_id=live.get(line.id),
             raw_text_norm=line.raw_text_norm,
+            printed_text=line.printed_text,
+            in_price_amount=line.in_price_amount,
             suggestions=line.suggestions or [],
             recorded=None if recorded is None else line.id in recorded,
             code_offer=offers.get(line.id),  # type: ignore[arg-type]
@@ -340,6 +342,7 @@ async def purchase_out(
         status=purchase.status,
         source=purchase.source,
         flags=purchase.flags,
+        printed_checks=purchase.printed_checks,  # type: ignore[arg-type]
         ledger_txn_ref=purchase.ledger_txn_ref,
         trip_plan_id=purchase.trip_plan_id,
         lines=lines,
