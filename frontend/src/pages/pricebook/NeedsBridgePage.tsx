@@ -25,8 +25,9 @@ export function NeedsBridgePage() {
   const notice = useNotice();
   // The product whose pack is being set in place (issue 186); one at a time.
   const [editing, setEditing] = useState<string | null>(null);
-  // The row whose "Measure in ml instead" panel is open (issue 358).
-  const [switching, setSwitching] = useState<string | null>(null);
+  // The open "Measure in ml instead" (issue 358) or "Weigh one" (issue 357)
+  // panel, as "ml:" or "weigh:" and the row's key; one at a time.
+  const [panel, setPanel] = useState<string | null>(null);
   const products = new Set(items.map((i) => i.product.id)).size;
   const packIds = items.filter((i) => i.status === "no_pack").map((i) => i.product.id);
   const densities = items.filter((i) => i.status === "no_density").length;
@@ -118,7 +119,8 @@ export function NeedsBridgePage() {
                   {items.map((item) => {
                     const rowKey = `${item.product.id}-${item.status}`;
                     const open = item.status === "no_pack" && editing === item.product.id;
-                    const toMl = item.switch_to_ml === true && switching === rowKey;
+                    const toMl = item.switch_to_ml === true && panel === `ml:${rowKey}`;
+                    const weighing = panel === `weigh:${rowKey}`;
                     return (
                       <NeedsBridgeRow
                         key={rowKey}
@@ -128,14 +130,10 @@ export function NeedsBridgePage() {
                         onTogglePack={() => setEditing(open ? null : item.product.id)}
                         onPackSaved={(title) => saved(item.product.id, title)}
                         toMl={toMl}
-                        onToggleMl={() => setSwitching(toMl ? null : rowKey)}
-                        onMlDone={() => {
-                          setSwitching(null);
-                          notice.show({
-                            tone: "success",
-                            message: `${item.ingredient.name} is measured in ml now.`,
-                          });
-                        }}
+                        onToggleMl={() => setPanel(toMl ? null : `ml:${rowKey}`)}
+                        weighing={weighing}
+                        onToggleWeigh={() => setPanel(weighing ? null : `weigh:${rowKey}`)}
+                        onPanelDone={() => setPanel(null)}
                       />
                     );
                   })}
