@@ -31,9 +31,11 @@ const review: UsdaReview = {
           portion_label: "1 teaspoon",
           gram_weight: "2.8",
           density_g_per_ml: "0.56806",
+          suggested: false,
         },
       ],
-      measures: [{ label: "clove", canonical_qty: "3", from_portion: "1 clove" }],
+      measures: [{ label: "clove", canonical_qty: "3", from_portion: "1 clove", suggested: true }],
+      density_spread_pct: null,
     },
   ],
 };
@@ -167,5 +169,163 @@ describe("USDA suggestions (1G)", () => {
     );
     await waitFor(() => expect(posts).toHaveLength(1));
     expect(posts[0].body).toEqual({ skip: true });
+  });
+});
+
+describe("USDA suggestions: what starts chosen (#359)", () => {
+  it("starts with the suggested density and measures, and notes densities that disagree", async () => {
+    const posts: RecordedCall[] = [];
+    const syrup = {
+      ...review.groups[0],
+      name: "maple syrup",
+      usda_description: "Syrups, maple",
+      densities: [
+        {
+          portion_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b11",
+          portion_label: "1 tbsp",
+          gram_weight: "17",
+          density_g_per_ml: "1.15",
+          suggested: false,
+        },
+        {
+          portion_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b12",
+          portion_label: "1 cup",
+          gram_weight: "279",
+          density_g_per_ml: "1.18",
+          suggested: true,
+        },
+      ],
+      measures: [
+        { label: "nlea serving", canonical_qty: "30", from_portion: "1 serving", suggested: false },
+        { label: "slice", canonical_qty: "25", from_portion: "1 slice", suggested: true },
+      ],
+      density_spread_pct: 5,
+    };
+    mockApi(
+      routes(
+        { review: { ...review, groups: [syrup] } },
+        {
+          [`POST /usda/review/${garlicId}`]: (call) => (
+            posts.push(call),
+            jsonResponse(200, { saved: 2, ingredient: flour })
+          ),
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/bridges");
+    const group = await screen.findByTestId("usda-group");
+    expect(within(group).getByRole("radio", { name: "1 cup = 279 g → 1.18 g/ml" })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: "None" })).not.toBeChecked();
+    expect(within(group).getByText(/These portions differ by 5%/)).toBeInTheDocument();
+    expect(
+      within(group).getByRole("checkbox", { name: "1 nlea serving = 30 g" }),
+    ).not.toBeChecked();
+    expect(within(group).getByRole("checkbox", { name: "1 slice = 25 g" })).toBeChecked();
+    await user.click(within(group).getByRole("button", { name: "Accept selected" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({
+      density_portion_id: syrup.densities[1].portion_id,
+      measures: ["slice"],
+      replace_density: false,
+    });
+  });
+});
+
+describe("USDA suggestions: changing a wrong food (#359)", () => {
+  it("changes a wrong USDA food from the row", async () => {
+    const posts: RecordedCall[] = [];
+    mockApi(
+      routes(
+        { review },
+        {
+          "GET /usda/suggestions": (call) =>
+            jsonResponse(200, {
+              loaded: true,
+              items: [
+                {
+                  fdc_id: 1002,
+                  description: "Garlic, raw",
+                  similarity: "1",
+                  densities: [],
+                  measures: [],
+                },
+                {
+                  fdc_id: 2002,
+                  description: call.query.get("name") === "garlic" ? "Garlic, invented" : "Other",
+                  similarity: "0.8",
+                  densities: [],
+                  measures: [],
+                },
+              ],
+            }),
+          [`POST /usda/review/${garlicId}/link`]: (call) => (
+            posts.push(call),
+            jsonResponse(200, { ...flour, id: garlicId, name: "garlic" })
+          ),
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/bridges");
+    const group = await screen.findByTestId("usda-group");
+    await user.click(within(group).getByRole("button", { name: "Wrong food? Change the link" }));
+    const panel = within(group).getByRole("group", { name: "Change the USDA food for garlic" });
+    expect(within(panel).getByLabelText("Search USDA foods")).toHaveValue("garlic");
+    // The food it is linked to now is not offered again.
+    await user.click(await within(panel).findByRole("button", { name: "Use “Garlic, invented”" }));
+    expect(
+      within(panel).queryByRole("button", { name: "Use “Garlic, raw”" }),
+    ).not.toBeInTheDocument();
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({ fdc_id: 2002 });
+    expect(await screen.findByTestId("notice")).toHaveTextContent(
+      "Linked garlic to “Garlic, invented”.",
+    );
+  });
+
+  it("can leave an ingredient with no USDA food", async () => {
+    const posts: RecordedCall[] = [];
+    mockApi(
+      routes(
+        { review },
+        {
+          "GET /usda/suggestions": () => jsonResponse(200, { loaded: true, items: [] }),
+          [`POST /usda/review/${garlicId}/link`]: (call) => (
+            posts.push(call),
+            jsonResponse(200, flour)
+          ),
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/bridges");
+    const group = await screen.findByTestId("usda-group");
+    await user.click(within(group).getByRole("button", { name: "Wrong food? Change the link" }));
+    await user.click(within(group).getByRole("button", { name: "No USDA food" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({ fdc_id: null });
+    expect(await screen.findByTestId("notice")).toHaveTextContent("garlic has no USDA food now.");
+  });
+});
+
+describe("USDA suggestions: paging (#359)", () => {
+  it("shows 20 rows at a time", async () => {
+    const groups = Array.from({ length: 25 }, (_, i) => ({
+      ...review.groups[0],
+      ingredient_id: `0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f${String(1000 + i).padStart(4, "0")}`,
+      name: `herb ${String(i + 1).padStart(2, "0")}`,
+    }));
+    mockApi(routes({ review: { ...review, groups } }));
+    const user = userEvent.setup();
+    renderApp("/catalog/bridges");
+    await screen.findAllByTestId("usda-group");
+    expect(screen.getAllByTestId("usda-group")).toHaveLength(20);
+    expect(
+      screen.getByText("25 ingredients with values to review · showing 20"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show 5 more of 5" }));
+    expect(screen.getAllByTestId("usda-group")).toHaveLength(25);
+    expect(screen.queryByRole("button", { name: /Show .* more/ })).not.toBeInTheDocument();
   });
 });

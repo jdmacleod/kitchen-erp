@@ -7,10 +7,17 @@ a measure whose label it has. An ingredient counted in ``each`` never gets a
 density (DV21); its measures are counted against USDA's own "medium" or
 "each" portion, and it gets none when USDA gives no such portion.
 
+Each offer says whether to preselect it (#359): the cup density, else the
+largest volume portion's, and measures whose label starts with a volume unit or
+a plain size word. Densities are given to three significant figures, with the
+spread noted when the portions disagree by more than 5%. A measure label's
+first word is made singular, so "slices" and "slice" are one measure.
+
 Accepting goes through the same write paths as the ingredient page: values
 are stored ``source = usda`` and unconfirmed, and prices are recomputed. The
 decision records ``usda_reviewed_fdc_id``, so the ingredient leaves the list
-until its reference changes. There is no accept-all (DV18).
+until its reference changes. There is no accept-all (DV18). A wrong food can
+be swapped for another, or for none, from the row (``relink``).
 """
 
 from __future__ import annotations
@@ -23,13 +30,15 @@ from datetime import date
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from sqlalchemy import Integer as SqlInteger
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog.names import singular_word
 from app.core.errors import ApiError
 from app.models.catalog import FdcFood, Ingredient, IngredientMeasure, IngredientRef, RefUsdaPortion
-from app.services import pricebook
+from app.services import catalog, pricebook
 from app.services.usda import _UNITS, _classify, current_release, is_loaded
+from app.units import UnitParseFailure, parse_unit
 
 _Q5 = Decimal("0.00001")
 _Q3 = Decimal("0.001")
@@ -49,6 +58,8 @@ class DensityOffer:
     portion_label: str
     gram_weight: Decimal
     density_g_per_ml: Decimal
+    # Preselected: the cup portion, else the largest (#359).
+    suggested: bool = False
 
 
 @dataclass
@@ -56,6 +67,8 @@ class MeasureOffer:
     label: str
     canonical_qty: Decimal
     from_portion: str
+    # Ticked by default: a label a receipt or recipe would name (#359).
+    suggested: bool = True
 
 
 @dataclass
@@ -69,6 +82,8 @@ class ReviewGroup:
     has_density: bool
     densities: list[DensityOffer] = field(default_factory=list)
     measures: list[MeasureOffer] = field(default_factory=list)
+    # How far apart the offered densities are, in percent, when over 5%.
+    density_spread_pct: int | None = None
 
 
 @dataclass
@@ -78,32 +93,89 @@ class ReviewList:
     groups: list[ReviewGroup]
 
 
-def _offers(  # noqa: C901
-    portions: list[RefUsdaPortion], unit: str, has_density: bool, labels: set[str]
-) -> tuple[list[DensityOffer], list[MeasureOffer]]:
-    densities: list[DensityOffer] = []
-    named: list[tuple[RefUsdaPortion, str, Decimal]] = []
+# Plain words a receipt or recipe could count one of the food by (#359).
+_SIZE_WORDS = frozenset(
+    {"small", "medium", "large", "extra", "each", "whole", "piece", "slice", "clove", "leaf"}
+)
+_WORD = re.compile(r"[a-z]+")
+# Densities from one food's portions that differ by more than this are noted.
+_SPREAD = Decimal("0.05")
+
+
+def _sig3(value: Decimal) -> Decimal:
+    """Three significant figures, plain: a USDA cup of 0.528341 g/ml reads 0.528."""
+    step = Decimal(1).scaleb(value.adjusted() - 2)
+    return Decimal(format(value.quantize(step, rounding=ROUND_HALF_EVEN).normalize(), "f"))
+
+
+def measure_label(text: str) -> str:
+    """A measure label with its first word singular: "slices" → "slice",
+    "berries, frozen" → "berry, frozen". Lookups are exact, so one form is kept."""
+    label = text.strip().lower()
+    m = _WORD.match(label)
+    if m is None:
+        return label
+    return singular_word(m.group()) + label[m.end() :]
+
+
+def plain_label(label: str) -> bool:
+    """Whether a receipt or recipe would name this measure: the label starts with a
+    volume unit ("cup", "fl oz") or a plain size word ("medium", "slice"). Labels
+    such as "nlea serving" or "strip medium" are offered unticked (#359)."""
+    words = _WORD.findall(label.lower())
+    if not words:
+        return False
+    if words[0] in _SIZE_WORDS:
+        return True
+    for n in (2, 1):
+        parsed = parse_unit(" ".join(words[:n]))
+        if not isinstance(parsed, UnitParseFailure) and _UNITS[parsed].dimension == "volume":
+            return True
+    return False
+
+
+def _density_offers(
+    portions: list[RefUsdaPortion],
+) -> tuple[list[DensityOffer], int | None]:
+    """Each volume portion's density, the cup (else the largest portion) suggested,
+    and the spread between them in percent when it is over 5%."""
+    found: list[tuple[DensityOffer, str, Decimal, Decimal]] = []
     for p in portions:
         kind, code = _classify(p.portion_unit)
+        if kind != "volume" or code is None:
+            continue
+        ml = p.portion_amount * _UNITS[code].to_base_factor
+        exact = p.gram_weight / ml
+        offer = DensityOffer(p.id, p.portion_label, p.gram_weight, _sig3(exact))
+        found.append((offer, code, ml, exact))
+    if not found:
+        return [], None
+    pick = next((f for f in found if f[1] == "cup"), None) or max(found, key=lambda f: f[2])
+    pick[0].suggested = True
+    low, high = min(f[3] for f in found), max(f[3] for f in found)
+    spread = (high - low) / low
+    pct = int((spread * 100).to_integral_value()) if spread > _SPREAD else None
+    return [f[0] for f in found], pct
+
+
+def _named(portions: list[RefUsdaPortion], unit: str) -> list[tuple[RefUsdaPortion, str, Decimal]]:
+    named: list[tuple[RefUsdaPortion, str, Decimal]] = []
+    for p in portions:
+        kind, _code = _classify(p.portion_unit)
         per_unit_g = p.gram_weight / p.portion_amount
-        if kind == "volume" and code is not None:
-            if unit != "each" and not has_density:
-                densities.append(
-                    DensityOffer(
-                        portion_id=p.id,
-                        portion_label=p.portion_label,
-                        gram_weight=p.gram_weight,
-                        density_g_per_ml=(per_unit_g / _UNITS[code].to_base_factor).quantize(
-                            _Q5, rounding=ROUND_HALF_EVEN
-                        ),
-                    )
-                )
-            if unit == "each":
-                # "1 cup chopped" → "cup chopped": the measure is one of these.
-                named.append((p, _LEADING_AMOUNT.sub("", p.portion_label.lower()), per_unit_g))
+        if kind == "volume" and unit == "each":
+            # "1 cup chopped" → "cup chopped": the measure is one of these.
+            named.append((p, _LEADING_AMOUNT.sub("", p.portion_label.lower()), per_unit_g))
         elif kind in {"named", "count"}:
             label = p.portion_unit.lower() if kind == "named" else "each"
             named.append((p, label, per_unit_g))
+    return named
+
+
+def _measure_offers(
+    portions: list[RefUsdaPortion], unit: str, labels: set[str]
+) -> list[MeasureOffer]:
+    named = _named(portions, unit)
     measures: list[MeasureOffer] = []
     if unit == "g":
         for p, label, grams in named:
@@ -121,14 +193,24 @@ def _offers(  # noqa: C901
                 if qty > 0:
                     measures.append(MeasureOffer(label, qty, p.portion_label))
     # ml ingredients get densities only: a measure in ml would need the density first.
-    seen: set[str] = set()
+    seen = {measure_label(label) for label in labels}
     unique: list[MeasureOffer] = []
     for m in measures:
-        if m.label in labels or m.label in seen:
+        m.label = measure_label(m.label)
+        if m.label in seen:
             continue
         seen.add(m.label)
+        m.suggested = plain_label(m.label)
         unique.append(m)
-    return densities, unique
+    return unique
+
+
+def _offers(
+    portions: list[RefUsdaPortion], unit: str, has_density: bool, labels: set[str]
+) -> tuple[list[DensityOffer], list[MeasureOffer], int | None]:
+    """What a food's portions offer an ingredient: (densities, measures, spread %)."""
+    densities, spread = ([], None) if unit == "each" or has_density else _density_offers(portions)
+    return densities, _measure_offers(portions, unit, labels), spread
 
 
 async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list[ReviewGroup]:
@@ -164,7 +246,7 @@ async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list
     groups = []
     for ingredient, fdc_id in pairs:
         has_density = ingredient.density_g_per_ml is not None
-        densities, measures = _offers(
+        densities, measures, spread = _offers(
             portions[fdc_id], ingredient.canonical_unit, has_density, labels[ingredient.id]
         )
         groups.append(
@@ -178,6 +260,7 @@ async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list
                 has_density=has_density,
                 densities=densities,
                 measures=measures,
+                density_spread_pct=spread,
             )
         )
     return groups
@@ -252,7 +335,7 @@ async def decide(
             )
         # Offers as if there were no density yet, so a Replace finds its portion.
         group = await _group(db, ingredient, fdc_id)
-        densities, _ = _offers(
+        densities, _, _ = _offers(
             list(
                 (
                     await db.execute(select(RefUsdaPortion).where(RefUsdaPortion.fdc_id == fdc_id))
@@ -272,7 +355,7 @@ async def decide(
             saved += 1
         offered = {m.label: m for m in group.measures}
         for label in measures:
-            m = offered.get(label.lower())
+            m = offered.get(measure_label(label))
             if m is None:
                 continue  # taken since the list was read, or never offered
             db.add(
@@ -291,3 +374,23 @@ async def decide(
         await pricebook.recompute_for_ingredient(db, ingredient.id)
     await db.refresh(ingredient)
     return saved, ingredient
+
+
+async def relink(db: AsyncSession, ingredient_id: uuid.UUID, fdc_id: int | None) -> None:
+    """Make another USDA food the ingredient's preferred reference, or leave it with
+    none (#359). A person chose it, so there is no fit check. A new food's
+    portions are offered next, since the review compares against its id."""
+    ingredient = await db.get(Ingredient, ingredient_id)
+    if ingredient is None or not ingredient.active:
+        raise ApiError(404, "not_found", "No such active ingredient.")
+    if fdc_id is None:
+        await db.execute(
+            update(IngredientRef)
+            .where(IngredientRef.ingredient_id == ingredient.id, IngredientRef.is_preferred)
+            .values(is_preferred=False)
+        )
+    else:
+        if await db.get(FdcFood, fdc_id) is None:
+            raise ApiError(422, "unknown_food", "No USDA food in the loaded release has that id.")
+        await catalog.set_preferred_fdc(db, ingredient.id, fdc_id)
+    await db.commit()
