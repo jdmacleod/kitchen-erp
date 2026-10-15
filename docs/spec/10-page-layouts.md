@@ -353,9 +353,19 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - Checks run before saving: "Pack quantity must be a positive number, like 500.", "Choose a pack unit.", and "Pieces must be a whole number, like 5."
 - Phone, below 1024px: the editor stays in view while the table scrolls sideways, its fields stack, and its buttons are 44px.
 
+**Unconfirmed values on Needs a bridge (issue 356).**
+
+- A last section, "Unconfirmed values" (`#unconfirmed`), lists every density, named measure and product density saved as unconfirmed, from `GET /api/v1/bridges/unconfirmed`. It is hidden when there are none.
+- A line under the heading: "12 values were saved without a check. Confirm each one against a label, or fix it. 2 look wrong and are listed first."
+- Each row shows the ingredient (a link to its page), what the value is ("Density", "Measure", "Density of Tarn clover honey"), the value ("1 cup = 125 g", "1.42 g/ml"), the density a volume measure implies, and its source in words ("from USDA", "from a label").
+- A value no food could have (the same check as the ingredient page's measure warning: 0.05 to 2.5 g/ml, or within 25% of a mass unit) comes first, with the reason under it.
+- Confirm (primary), Edit and Delete act in place. Edit opens a field under the row whose Save and confirm saves the value as read from a label and confirms it in one step. Each action names its value for screen readers, and the list refreshes without a reload.
+- 20 rows at first, with "Show 20 more of N".
+
 **Inbox rows (DV1, DV7).**
 
 - Badge "Link", title "13 ingredients to link to the standard list", action "Review", while any ingredient is To review.
+- Badge "Bridge", title "12 bridge values wait for a check", action "Check", linking to `#unconfirmed` (issue 356). It counts without reading the values.
 - Badge "USDA", title "9 ingredients have USDA densities to review", linking to the section above. It appears once no ingredient is To review, or when a linked ingredient has suggestions. The link page's finish Notice points to it.
 
 ## Products (Products: search and catalog first · Products: add drawer · Add drawer: unsaved input)

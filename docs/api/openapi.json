@@ -4334,6 +4334,7 @@
               "vendor_suggestions",
               "link",
               "usda",
+              "unconfirmed_bridges",
               "new_product",
               "product_update",
               "reread",
@@ -18106,6 +18107,134 @@
         "title": "TripsOut",
         "type": "object"
       },
+      "UnconfirmedList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UnconfirmedValueOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "UnconfirmedList",
+        "type": "object"
+      },
+      "UnconfirmedValueOut": {
+        "additionalProperties": false,
+        "properties": {
+          "canonical_unit": {
+            "enum": [
+              "g",
+              "ml",
+              "each"
+            ],
+            "title": "Canonical Unit",
+            "type": "string"
+          },
+          "g_per_ml": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "G Per Ml"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingredient_id": {
+            "format": "uuid",
+            "title": "Ingredient Id",
+            "type": "string"
+          },
+          "ingredient_name": {
+            "title": "Ingredient Name",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "density",
+              "measure",
+              "product_density"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          },
+          "product_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Name"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "ingredient_id",
+          "ingredient_name",
+          "canonical_unit",
+          "product_name",
+          "label",
+          "value",
+          "source",
+          "g_per_ml",
+          "problem"
+        ],
+        "title": "UnconfirmedValueOut",
+        "type": "object"
+      },
       "UnitList": {
         "additionalProperties": false,
         "properties": {
@@ -21068,6 +21197,28 @@
         "summary": "List Brand Families",
         "tags": [
           "brands"
+        ]
+      }
+    },
+    "/api/v1/bridges/unconfirmed": {
+      "get": {
+        "description": "Every unconfirmed density, measure and product density, implausible ones first.",
+        "operationId": "unconfirmed_api_v1_bridges_unconfirmed_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnconfirmedList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unconfirmed",
+        "tags": [
+          "catalog"
         ]
       }
     },

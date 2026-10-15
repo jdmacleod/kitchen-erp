@@ -18,6 +18,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
                      standard list (1G)
     usda             usda_review.review_list, when linking is done  one aggregate row
                      or a linked ingredient has suggestions (1G)
+    unconfirmed_bri. unconfirmed_bridges.waiting: densities and     one aggregate row
+                     measures nobody has checked (issue 356)
     new_product      pending new-product proposals (2L)             one aggregate row
     product_update   pending product-update proposals (2N)          one aggregate row
     reread           re-read proposals ready with changes (04, 2S)  one aggregate row
@@ -60,6 +62,7 @@ from app.services import (
     purchases,
     recipe_resolution,
     resolution,
+    unconfirmed_bridges,
     upload_batches,
     usda_review,
     vendor_suggestions,
@@ -393,6 +396,24 @@ async def _usda(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _unconfirmed_bridges(db: AsyncSession) -> list[InboxItem]:
+    # Issue 356: one row for every density and measure nobody has checked.
+    count, oldest = await unconfirmed_bridges.waiting(db)
+    if not count or oldest is None:
+        return []
+    noun, verb = ("bridge value", "waits") if count == 1 else ("bridge values", "wait")
+    return [
+        InboxItem(
+            kind="unconfirmed_bridges",
+            title=f"{count} {noun} {verb} for a check",
+            detail="Densities and measures saved as unconfirmed. Check them against a label.",
+            action_label="Check",
+            action_route="/catalog/bridges#unconfirmed",
+            created_at=oldest,
+        )
+    ]
+
+
 async def _new_products(db: AsyncSession) -> list[InboxItem]:
     rows = await proposals.list_pending(db, limit=1000)
     new = [p for p in rows if p.kind == "new_product"]
@@ -589,6 +610,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("vendor_suggestions", _suggestions),
     ("link", _link),
     ("usda", _usda),
+    ("unconfirmed_bridges", _unconfirmed_bridges),
     ("new_product", _new_products),
     ("product_update", _product_updates),
     ("reread", _rereads),

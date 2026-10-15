@@ -21,6 +21,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   vendor_suggestions: { label: "Vendors", tone: "neutral" },
   link: { label: "Link", tone: "neutral" },
   usda: { label: "USDA", tone: "neutral" },
+  // Densities and measures nobody has checked against a label (issue 356).
+  unconfirmed_bridges: { label: "Bridge", tone: "neutral" },
   new_product: { label: "Products", tone: "neutral" },
   product_update: { label: "Products", tone: "neutral" },
   // Receipts whose re-read would change their lines (04, 2S).

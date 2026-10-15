@@ -13,6 +13,7 @@ export type InboxKind =
   | "vendor_suggestions"
   | "link"
   | "usda"
+  | "unconfirmed_bridges"
   | "new_product"
   | "product_update"
   | "reread"

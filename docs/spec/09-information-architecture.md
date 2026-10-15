@@ -148,6 +148,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Ingredient duplicates | Pairs of ingredients that look like one food entered twice, one aggregate row (03, #346) | "3 possible duplicate ingredients" | Review → `/catalog/ingredients/link#duplicates` |
 | Tidy the catalog | Fixes the catalog's checks propose for what it already holds: categories, ingredient names, USDA links, product names, brands and kinds (#349). Merges have their own row and are not counted here | "Tidy the catalog: 12 suggestions" | Review → `/catalog/cleanup` |
 | USDA | Linked ingredients with unreviewed USDA densities or measures, one aggregate row, only when USDA data is loaded (03, 1G) | "9 ingredients have USDA densities to review" | Review → `/catalog/bridges#usda` |
+| Bridge | Densities, measures and product densities saved as unconfirmed, one aggregate row (issue 356) | "12 bridge values wait for a check" | Check → `/catalog/bridges#unconfirmed` |
 | New product | Pending new-product proposals, one aggregate row (2L, PD3) | "5 products to review" | Review → the oldest proposal |
 | Product update | Pending product-update proposals, one aggregate row (2N) | "2 product updates to review" | Review → the oldest |
 | Re-read | Re-read proposals ready with changes, one aggregate row (04, 2S) | "3 re-read receipts to review" | Review → the oldest |
