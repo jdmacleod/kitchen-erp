@@ -23,6 +23,7 @@ from app.catalog import receipt_codes
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
+from app.ingest.lines import ZERO_ROW_FLAGS
 from app.models import (
     AppUser,
     IngestJob,
@@ -156,17 +157,15 @@ async def _loose_code_suggestions(
 
 async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, dict[str, str]]:
     """Per line, the code its chosen product could be remembered by (04, 2K)."""
-    location = purchase.vendor_location
-    vendor = location.vendor if location is not None else None
+    vendor = purchase.vendor_location.vendor if purchase.vendor_location is not None else None
     if vendor is None:
         return {}
     out: dict[uuid.UUID, dict[str, str]] = {}
     for line in purchase.lines:
         if line.line_kind != "item" or line.product_id is None:
             continue
-        offer = receipt_codes.read(
-            line.raw_text or "", vendor.code_position, vendor.rw_layout
-        ).offer
+        printed = line.printed_text or line.raw_text or ""  # raw_text may lack the code (2S)
+        offer = receipt_codes.read(printed, vendor.code_position, vendor.rw_layout).offer
         if offer is None or line.resolution in ("identifier", "barcode"):
             continue
         known = await _by_identifier(db, offer[0], offer[1], vendor.id)
@@ -399,7 +398,7 @@ async def _by_code(
     """
     vendor = await db.get(Vendor, vendor_id) if vendor_id is not None else None
     codes = receipt_codes.read(
-        line.raw_text or "",
+        line.printed_text or line.raw_text or "",
         vendor.code_position if vendor else None,
         vendor.rw_layout if vendor else None,
     )
@@ -769,10 +768,12 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
             JOIN vendor v ON v.id = vl.vendor_id
             WHERE p.status = 'committed' AND pl.line_kind = 'item'
               AND pl.resolution = 'unmatched' AND pl.removed_at IS NULL
+              AND NOT pl.flags && CAST(:zero AS varchar[])
             GROUP BY v.id, v.name, pl.raw_text_norm
             ORDER BY max(p.purchased_at) DESC
             """
-        )
+        ),
+        {"zero": list(ZERO_ROW_FLAGS)},
     )
     return [dict(r) for r in rows.mappings()]
 
@@ -788,6 +789,7 @@ def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
             PurchaseLine.resolution == "unmatched",
             PurchaseLine.raw_text_norm == raw_text_norm,
             PurchaseLine.removed_at.is_(None),
+            ~PurchaseLine.flags.overlap(list(ZERO_ROW_FLAGS)),
             VendorLocation.vendor_id == vendor_id,
         )
     )
@@ -824,7 +826,10 @@ async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) 
                 PurchaseLine.line_kind == "item",
                 PurchaseLine.resolution == "unmatched",
                 PurchaseLine.removed_at.is_(None),
-                or_(*(PurchaseLine.raw_text.contains(c, autoescape=True) for c in cores)),
+                or_(
+                    *(PurchaseLine.raw_text.contains(c, autoescape=True) for c in cores),
+                    *(PurchaseLine.printed_text.contains(c, autoescape=True) for c in cores),
+                ),
             )
         )
     ).all()
@@ -885,11 +890,6 @@ async def apply_to_identify(
     for line_id, purchase_id in targets:
         await decide_line(db, user, purchase_id, line_id, product_id=product_id, ignore=ignore)
     return len(targets)
-
-
-async def void_for_purchase(db: AsyncSession, purchase: Purchase) -> list[uuid.UUID]:
-    live = await live_observations(db, purchase)
-    return list(live.values())
 
 
 __all__ = [

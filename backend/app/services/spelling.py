@@ -1,8 +1,8 @@
 """A likely spelling for a word OCR misread on a receipt line (2S, U9).
 
-OCR turns one letter into another (PARSLEY into PARSLEV, SERRANO into SERRAND).
+OCR turns one letter into another (FRESNO into FRESMO, OREGANO into OREGAND).
 A word on an item line that the catalog does not know, and that is one edit
-from exactly one word it does know, is offered as "maybe PARSLEY". Only a
+from exactly one word it does know, is offered as "maybe FRESNO". Only a
 suggestion: a person's tap changes the line's text, and the printed row stays.
 """
 

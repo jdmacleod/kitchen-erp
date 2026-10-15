@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { breakdown, checks, hints, oneDigitOff, totalIsPaid, weightFits } from "../lib/reconcile";
+import {
+  breakdown,
+  checks,
+  hints,
+  oneDigitOff,
+  purchasedItems,
+  runningTotals,
+  totalHidingGap,
+  totalIsPaid,
+  weightFits,
+} from "../lib/reconcile";
 import {
   appleSaving,
   apples,
@@ -82,8 +92,45 @@ describe("why a receipt's lines are off (2S)", () => {
   });
 
   it("tells one misread digit from a different amount", () => {
-    expect(oneDigitOff("1.89", "1.99")).toBe(true);
-    expect(oneDigitOff("1.89", "2.09")).toBe(false);
+    expect(oneDigitOff("0.60", "0.50")).toBe(true);
+    expect(oneDigitOff("0.60", "0.45")).toBe(false);
     expect(oneDigitOff("9.99", "10.99")).toBe(false);
+  });
+});
+
+describe("the lines' sum so far (2S)", () => {
+  it("adds items, takes away savings, in printed order", () => {
+    const running = runningTotals(youPayPurchase);
+    expect(youPayPurchase.lines.map((l) => running.get(l.id)?.soFar)).toEqual([
+      "2.99",
+      "2.49",
+      "3.12",
+      "3.12",
+      "6.07",
+      "4.92",
+    ]);
+    expect([...running.values()].some((r) => r.reachesTotal)).toBe(false);
+  });
+
+  it("marks where the sum already equals the receipt's total, with lines still counting after it", () => {
+    const extra = { ...peppers, id: "extra", seq: 7, line_total: "1.0000" };
+    const purchase = {
+      ...youPayPurchase,
+      total: "4.92",
+      lines: [...youPayPurchase.lines, extra],
+    };
+    const running = runningTotals(purchase);
+    expect(running.get(appleSaving.id)).toEqual({ soFar: "4.92", reachesTotal: true });
+    expect(running.get("extra")).toEqual({ soFar: "5.92", reachesTotal: false });
+  });
+
+  it("asks before a header total that only hides the gap", () => {
+    expect(totalHidingGap(youPayPurchase, "4.92")).toBe("4.92");
+    expect(totalHidingGap(youPayPurchase, "6.57")).toBeNull();
+    expect(totalHidingGap({ ...youPayPurchase, trust: "adds_up" }, "4.92")).toBeNull();
+  });
+
+  it("counts only purchases as items, not a weight row kept at zero", () => {
+    expect(purchasedItems(youPayPurchase).map((l) => l.seq)).toEqual([1, 3, 5]);
   });
 });

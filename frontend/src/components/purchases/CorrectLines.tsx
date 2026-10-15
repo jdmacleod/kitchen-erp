@@ -328,7 +328,7 @@ function RowNotes({ row, attachedTo }: Pick<CorrectRowProps, "row" | "attachedTo
 
 /**
  * One line in Correct the lines (U5): the receipt text across the full width,
- * so six "Member Savings" rows can be told apart, and the numbers beneath.
+ * so several "Club Savings" rows can be told apart, and the numbers beneath.
  */
 function CorrectRow(props: CorrectRowProps) {
   const { row, at, units, cellId, change, onCellKey, insertAt, remove } = props;

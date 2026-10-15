@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { trimDecimal } from "../../api/catalog";
+import { errorMessage } from "../../api/client";
 import {
   purchaseErrorMessage,
   useMergeLine,
@@ -7,6 +9,7 @@ import {
   type Purchase,
   type PurchaseLine,
 } from "../../api/purchases";
+import { useRequestReread } from "../../api/rereads";
 import { cmp, formatMoney, isZero, sub } from "../../lib/decimal";
 import {
   breakdown,
@@ -200,6 +203,40 @@ function HintRow({ hint, lines, busy, run, patch, merge, onShowLine }: HintProps
 }
 
 /**
+ * A receipt read before lines kept their printed rows (2S) has none, and none of
+ * the receipt's own checks: today's line rules, run again on the same answer,
+ * may explain the gap themselves. Instant, no model.
+ */
+function RecheckOffer({ purchase }: { purchase: Purchase }) {
+  const request = useRequestReread(purchase.id);
+  const navigate = useNavigate();
+  const state = purchase.reread;
+  const readBefore = !purchase.printed_checks && !purchase.lines.some((l) => l.printed_text);
+  if (!readBefore || !state?.can_recheck || state.open) return null;
+  return (
+    <div className="rounded-md border border-amber-200 bg-neutral-50 px-3 py-2 dark:border-amber-900 dark:bg-neutral-900">
+      This receipt was read before today's line rules, which match each line to its printed row and
+      read the receipt's own totals. Re-checking runs them on the same reading, instantly.
+      <span className="mt-2 block">
+        <Button
+          variant="secondary"
+          className={small}
+          disabled={request.isPending}
+          onClick={() =>
+            request.mutate("check", {
+              onSuccess: () => void navigate(`/shop/purchases/${purchase.id}/reread`),
+            })
+          }
+        >
+          Re-check the lines
+        </Button>
+      </span>
+      {request.isError ? <Alert tone="error">{errorMessage(request.error)}</Alert> : null}
+    </div>
+  );
+}
+
+/**
  * Why a receipt's lines miss its printed total (2S, U1): the sums side by side,
  * what the receipt prints about itself, and the shapes the gap matches, each
  * with the correction it suggests. Every fix is one a person can undo.
@@ -247,6 +284,7 @@ export function WhyOff({
           : "Compare the lines with the receipt photo. If the total itself was misread, correct it in the header."}
       </p>
       <Sums sums={sums} />
+      <RecheckOffer purchase={purchase} />
       {checks(purchase).length > 0 ? (
         <ul aria-label="What the receipt prints about itself" className="flex flex-col gap-1">
           {checks(purchase).map((c) => (

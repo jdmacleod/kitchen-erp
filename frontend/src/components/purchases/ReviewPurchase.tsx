@@ -39,7 +39,13 @@ import {
   stripZeros,
 } from "../../lib/decimal";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
-import { weightFits } from "../../lib/reconcile";
+import {
+  purchasedItems,
+  runningTotals,
+  totalHidingGap,
+  weightFits,
+  type RunningTotal,
+} from "../../lib/reconcile";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { Badge, Disclosure, SelectField, hintClass } from "../catalog/fields";
 import { UnitSelect } from "../catalog/UnitSelect";
@@ -52,14 +58,13 @@ import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from
 import { BestBy } from "./BestBy";
 import { CorrectLines } from "./CorrectLines";
 import {
-  AttachSaving,
+  LineFixes,
   LineFlags,
   LineParsed,
   LineRaw,
   LineTags,
   PRICE_FLAGS,
-  SavingInPrice,
-  SpellingFix,
+  LinesTotal,
   orphanSaving,
   suspectLine,
 } from "./lineParts";
@@ -332,7 +337,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     return { above: item(lines[at - 1]), below: item(lines[at + 1]) };
   };
 
+  // While the lines miss the total, each shows the sum so far (2S).
+  const off = purchase.trust === "check_lines" || purchase.flags.includes("reconcile_mismatch");
+  const running = off ? runningTotals(purchase) : null;
   const lineProps = (line: PurchaseLine): ReviewLineProps => ({
+    running: running?.get(line.id),
     line,
     itemLines,
     mergeInto: line.flags.includes("quantity_line")
@@ -378,8 +387,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       ),
   });
 
-  // An ignored line has no product on purpose; it never joins the to-identify queue.
-  const unresolved = itemLines.filter(
+  // An ignored line, or a row kept at zero, never joins the to-identify queue.
+  const unresolved = purchasedItems(purchase).filter(
     (l) => l.resolution !== "ignored" && (l.resolution === "unmatched" || !l.product),
   ).length;
   // Neither does it emit a price: what commits is the item lines less both.
@@ -535,7 +544,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
               <h2 className={sectionHeading}>Lines</h2>
               <span className="flex flex-wrap items-center gap-2">
                 <span className={hintClass}>
-                  {itemLines.length} items · {unresolved} to identify
+                  {purchasedItems(purchase).length} items · {unresolved} to identify
                 </span>
                 {correcting ? null : (
                   <Button
@@ -609,6 +618,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                     ))}
                   </ul>
                 )}
+                {running ? <LinesTotal purchase={purchase} /> : null}
                 <RemovedLinesCaption purchase={purchase} />
                 <Disclosure summary="Add a line" className="mt-3">
                   <AddLineForm
@@ -687,12 +697,6 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
 
 // --- header -----------------------------------------------------------------
 
-/** A new total that is just what the lines add up to, on a receipt whose lines are off. */
-function totalHidingGap(purchase: Purchase, input: PurchaseHeaderInput): string | null {
-  if (input.total === undefined || purchase.trust !== "check_lines") return null;
-  return sameAmount(input.total, purchase.lines_total) ? input.total : null;
-}
-
 function ReviewHeader({ purchase }: { purchase: Purchase }) {
   const patch = usePatchPurchase(purchase.id);
   const locations = useLocations({});
@@ -739,7 +743,7 @@ function ReviewHeader({ purchase }: { purchase: Purchase }) {
     }
     setInvalid(null);
     if (Object.keys(input).length === 0) return setSaved("unchanged");
-    const hiding = totalHidingGap(purchase, input);
+    const hiding = totalHidingGap(purchase, input.total);
     if (hiding && askedTotal !== hiding) {
       setAskedTotal(hiding);
       return;
@@ -916,6 +920,8 @@ function RememberStoreCode({ purchase }: { purchase: Purchase }) {
 
 interface ReviewLineProps {
   line: PurchaseLine;
+  /** The lines' sum through this one, while the lines miss the total (2S). */
+  running?: RunningTotal;
   itemLines: PurchaseLine[];
   mergeInto: { above: PurchaseLine | null; below: PurchaseLine | null };
   current: boolean;
@@ -953,23 +959,6 @@ function imageColumns(sideBySide: boolean): string {
 
 /** Flags that say what was done, not that anything needs a person (2S, U8). */
 const QUIET_FLAGS = ["parent_inferred", "saving_in_price"];
-
-/** The one-click fixes for a saving: already in the price, or which item it is for. */
-function LineFixes({ line, itemLines, busy, onPatch }: ReviewLineProps) {
-  return (
-    <>
-      <SpellingFix line={line} busy={busy} onPatch={onPatch} />
-      <SavingInPrice line={line} busy={busy} onPatch={onPatch} />
-      <AttachSaving
-        line={line}
-        itemLines={itemLines}
-        busy={busy}
-        onPatch={onPatch}
-        title={lineTitle}
-      />
-    </>
-  );
-}
 
 /**
  * A line that needs a person: flagged, or an item with no product or with
@@ -1435,11 +1424,11 @@ function ReviewLine(props: ReviewLineProps) {
           <span className={hintClass}>Editing below</span>
         ) : (
           <>
-            <LineParsed line={line} compact={compact} />
+            <LineParsed line={line} compact={compact} running={props.running} />
             {compact ? null : (
               <>
                 <DecimalFix line={line} busy={busy} onPatch={onPatch} />
-                <LineFixes {...props} />
+                <LineFixes {...props} title={lineTitle} />
                 <QuantityMerge
                   line={line}
                   mergeInto={props.mergeInto}
@@ -1547,9 +1536,9 @@ function ReviewCard(props: ReviewLineProps) {
           <LineEditor line={line} busy={busy} onPatch={onPatch} onCancel={onCancelEdit} />
         ) : (
           <>
-            <LineParsed line={line} />
+            <LineParsed line={line} running={props.running} />
             <DecimalFix line={line} busy={busy} onPatch={onPatch} />
-            <LineFixes {...props} />
+            <LineFixes {...props} title={lineTitle} />
             <QuantityMerge
               line={line}
               mergeInto={props.mergeInto}
