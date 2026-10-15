@@ -33,6 +33,7 @@ from app.schemas.ingredient_link import (
     StandardEntryOut,
     UsdaDecisionIn,
     UsdaDecisionOut,
+    UsdaRelinkIn,
     UsdaReviewGroupOut,
     UsdaReviewOut,
 )
@@ -175,6 +176,15 @@ async def usda_review_decide(
         replace_density=body.replace_density,
     )
     return UsdaDecisionOut(saved=saved, ingredient=await catalog.get_ingredient(db, ingredient_id))
+
+
+@router.post("/usda/review/{ingredient_id}/link", response_model=IngredientOut)
+async def usda_review_relink(
+    ingredient_id: uuid.UUID, body: UsdaRelinkIn, db: DbSession, _: CurrentUser
+) -> IngredientOut:
+    """Link the ingredient to another USDA food, or none (#359). 422 unknown_food."""
+    await usda_review.relink(db, ingredient_id, body.fdc_id)
+    return await catalog.get_ingredient(db, ingredient_id)
 
 
 @router.get("/ingredients/duplicates", response_model=IngredientDuplicateList)

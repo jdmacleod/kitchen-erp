@@ -331,9 +331,11 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - A first section, "USDA suggestions", sits above the existing table on Needs a bridge. There is no separate page.
 - Grouped rows, never cards (DV8). Each group shows:
   - the ingredient, its unit and the USDA food it is linked to;
-  - the densities as radios, each with its portion, grams and the resulting g/ml;
-  - the measures as checkboxes, ticked by default;
+  - the densities as radios, each with its portion, grams and the resulting g/ml to three significant figures. The suggested one (the cup, else the largest portion) starts chosen, and "These portions differ by N%. Check a label before confirming." shows when they differ by more than 5%;
+  - the measures as checkboxes, ticked when the label is one a receipt or recipe would name, unticked otherwise ("nlea serving", "strip medium");
+  - "Wrong food? Change the link", which opens a search of the loaded USDA foods in the row, with "Use this" on each, "No USDA food" and Cancel;
   - "Accept selected" and Skip.
+- The list shows 20 groups at first, under a count ("182 ingredients with values to review · showing 20"), with "Show 20 more of N".
 - A footer names the source: "Data: USDA FoodData Central, release 2026-04-30".
 - There is no accept-all (DV18). A decided ingredient leaves the section.
 - Values the ingredient already has are not offered (DV19). An ingredient counted in `each` gets measures only (DV21).

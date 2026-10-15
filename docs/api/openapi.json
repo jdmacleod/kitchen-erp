@@ -3079,13 +3079,18 @@
           "portion_label": {
             "title": "Portion Label",
             "type": "string"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "boolean"
           }
         },
         "required": [
           "portion_id",
           "portion_label",
           "gram_weight",
-          "density_g_per_ml"
+          "density_g_per_ml",
+          "suggested"
         ],
         "title": "DensityOfferOut",
         "type": "object"
@@ -8790,12 +8795,17 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "suggested": {
+            "title": "Suggested",
+            "type": "boolean"
           }
         },
         "required": [
           "label",
           "canonical_qty",
-          "from_portion"
+          "from_portion",
+          "suggested"
         ],
         "title": "MeasureOfferOut",
         "type": "object"
@@ -18387,6 +18397,29 @@
         "title": "UsdaDecisionOut",
         "type": "object"
       },
+      "UsdaRelinkIn": {
+        "additionalProperties": false,
+        "description": "The USDA food a person chose for the ingredient; null leaves it with none.",
+        "properties": {
+          "fdc_id": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fdc Id"
+          }
+        },
+        "required": [
+          "fdc_id"
+        ],
+        "title": "UsdaRelinkIn",
+        "type": "object"
+      },
       "UsdaReviewGroupOut": {
         "additionalProperties": false,
         "properties": {
@@ -18405,6 +18438,17 @@
             },
             "title": "Densities",
             "type": "array"
+          },
+          "density_spread_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Density Spread Pct"
           },
           "fdc_id": {
             "title": "Fdc Id",
@@ -18450,7 +18494,8 @@
           "usda_description",
           "has_density",
           "densities",
-          "measures"
+          "measures",
+          "density_spread_pct"
         ],
         "title": "UsdaReviewGroupOut",
         "type": "object"
@@ -29688,6 +29733,60 @@
           }
         },
         "summary": "Usda Review Decide",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/usda/review/{ingredient_id}/link": {
+      "post": {
+        "description": "Link the ingredient to another USDA food, or none (#359). 422 unknown_food.",
+        "operationId": "usda_review_relink_api_v1_usda_review__ingredient_id__link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsdaRelinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Usda Review Relink",
         "tags": [
           "ingredient vocabulary"
         ]

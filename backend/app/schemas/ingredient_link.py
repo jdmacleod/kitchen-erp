@@ -104,12 +104,16 @@ class DensityOfferOut(ApiModel):
     portion_label: str
     gram_weight: DecimalStr
     density_g_per_ml: DecimalStr
+    # Preselected: the cup portion, else the largest volume portion.
+    suggested: bool
 
 
 class MeasureOfferOut(ApiModel):
     label: str
     canonical_qty: DecimalStr
     from_portion: str
+    # Ticked by default: the label starts with a volume unit or a plain size word.
+    suggested: bool
 
 
 class UsdaReviewGroupOut(ApiModel):
@@ -121,6 +125,8 @@ class UsdaReviewGroupOut(ApiModel):
     has_density: bool
     densities: list[DensityOfferOut]
     measures: list[MeasureOfferOut]
+    # How far apart the densities are, in percent, when more than 5%.
+    density_spread_pct: int | None
 
 
 class UsdaReviewOut(ApiModel):
@@ -135,6 +141,12 @@ class UsdaDecisionIn(ApiModel):
     skip: bool = False
     # After a 409 density_exists: replace the density set since the list was read.
     replace_density: bool = False
+
+
+class UsdaRelinkIn(ApiModel):
+    """The USDA food a person chose for the ingredient; null leaves it with none."""
+
+    fdc_id: int | None = Field(gt=0)
 
 
 class UsdaDecisionOut(ApiModel):

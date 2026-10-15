@@ -67,7 +67,7 @@ async def test_offers_densities_and_measures_the_ingredient_lacks(
     f = _group(review, "Flour")
     assert f["usda_description"] == "Flour, wheat, white, all-purpose, enriched"
     assert [d["portion_label"] for d in f["densities"]] == ["1 cup", "1 tablespoon"]
-    assert Decimal(f["densities"][0]["density_g_per_ml"]) == Decimal("0.52834")
+    assert Decimal(f["densities"][0]["density_g_per_ml"]) == Decimal("0.528")
     g = _group(review, "Garlic")
     assert [(m["label"], m["canonical_qty"]) for m in g["measures"]] == [("clove", "3")]
     # An ml ingredient gets densities only.
@@ -128,7 +128,7 @@ async def test_accepting_saves_unconfirmed_usda_values_and_recomputes(
     assert body["saved"] == 1
     assert body["ingredient"]["density_source"] == "usda"
     assert body["ingredient"]["density_confirmed"] is False
-    assert Decimal(body["ingredient"]["density_g_per_ml"]) == Decimal("0.52834")
+    assert Decimal(body["ingredient"]["density_g_per_ml"]) == Decimal("0.528")
     after = (await admin_client.get(f"/api/v1/price-observations/{by_cup['id']}")).json()
     assert after["norm"]["status"] == "ok" and after["norm"]["bridge_kind"] == "density"
     assert _group(await _review(admin_client), "Flour") is None

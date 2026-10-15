@@ -9,12 +9,16 @@ export interface DensityOffer {
   portion_label: string;
   gram_weight: string;
   density_g_per_ml: string;
+  /** Preselected: the cup portion, else the largest volume portion. */
+  suggested: boolean;
 }
 
 export interface MeasureOffer {
   label: string;
   canonical_qty: string;
   from_portion: string;
+  /** Ticked by default: the label starts with a volume unit or a plain size word. */
+  suggested: boolean;
 }
 
 export interface UsdaReviewGroup {
@@ -26,6 +30,8 @@ export interface UsdaReviewGroup {
   has_density: boolean;
   densities: DensityOffer[];
   measures: MeasureOffer[];
+  /** How far apart the densities are, in percent, when more than 5%. */
+  density_spread_pct: number | null;
 }
 
 export interface UsdaReview {
@@ -66,6 +72,22 @@ export function useUsdaDecision() {
       void client.invalidateQueries({ queryKey: usdaReviewKey });
       void client.invalidateQueries({ queryKey: ["ingredients"] });
       void client.invalidateQueries({ queryKey: ["price-book"] });
+    },
+  });
+}
+
+/** Link the ingredient to another USDA food, or to none (`fdcId: null`). */
+export function useUsdaRelink() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ingredientId, fdcId }: { ingredientId: string; fdcId: number | null }) =>
+      api<Ingredient>(`/usda/review/${encodeURIComponent(ingredientId)}/link`, {
+        method: "POST",
+        body: { fdc_id: fdcId },
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: usdaReviewKey });
+      void client.invalidateQueries({ queryKey: ["ingredients"] });
     },
   });
 }

@@ -200,6 +200,20 @@ def plural(name: str) -> str | None:
     return f"{head} {word}" if head else word
 
 
+def singular_word(word: str) -> str:
+    """One lowercase word's singular, or the word when it reads as singular.
+
+    The shortest of ``singulars`` whose plural is the word: "slices" → "slice",
+    "berries" → "berry", "boxes" → "box", "tomatoes" → "tomato". A word that no
+    singular pluralizes back to ("glass", "medium"), an uncountable word
+    ("molasses") and a Latin-looking one ("hummus", "citrus") are kept.
+    """
+    if word in UNCOUNTABLE or word.endswith(("us", "is", "ss")):
+        return word
+    found = [s for s in singulars(word) if plural_word(s) == word]
+    return min(found, key=len) if found else word
+
+
 def singulars(text: str) -> list[str]:
     """Singular readings of a phrase whose last word may be plural, likeliest first.
 
