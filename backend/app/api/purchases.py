@@ -67,6 +67,7 @@ from app.services import (
     review,
     store_codes,
     unit_display,
+    unit_switch,
     user_settings,
 )
 
@@ -213,6 +214,10 @@ async def void_observation(
 
 @router.get("/price-book/needs-bridge", response_model=NeedsBridgeList)
 async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
+    rows = await pricebook.needs_bridge(db)
+    liquids = await unit_switch.volume_only(
+        db, {r["ingredient_id"] for r in rows if r["status"] == "no_density"}
+    )
     items = [
         NeedsBridgeItem(
             ingredient={
@@ -237,8 +242,9 @@ async def needs_bridge(_: CurrentUser, db: DbSession) -> NeedsBridgeList:
             status=r["status"],
             observation_count=r["observation_count"],
             latest_observed_at=r["latest_observed_at"],
+            switch_to_ml=r["status"] == "no_density" and r["ingredient_id"] in liquids,
         )
-        for r in await pricebook.needs_bridge(db)
+        for r in rows
     ]
     return NeedsBridgeList(items=items)
 

@@ -266,6 +266,10 @@ function Review({ proposal }: { proposal: Proposal }) {
     return (pack as Pack | undefined)?.unit ?? "";
   })();
   const piecesOffered = !units.data || piecesFit(packUnit, units.data);
+  // A new ingredient for a pack sold by volume starts in ml (issue 358).
+  const packByVolume =
+    units.data?.find((u) => u.code === packUnit || u.aliases.includes(packUnit))?.dimension ===
+    "volume";
 
   // A new product the sameness rules call one the catalog has asks once (issue 348).
   const [confirmedNew, setConfirmedNew] = useState(false);
@@ -352,7 +356,9 @@ function Review({ proposal }: { proposal: Proposal }) {
     };
     if (target === "new") {
       input.kind = kind;
-      input.ingredient_id = ingredient ? await ingredientIdFor(ingredient) : undefined;
+      input.ingredient_id = ingredient
+        ? await ingredientIdFor(ingredient, packByVolume ? "ml" : undefined)
+        : undefined;
     }
     accept.mutate(input, {
       onSuccess: (done) => {

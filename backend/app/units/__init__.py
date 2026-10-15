@@ -17,7 +17,7 @@ from app.units.convert import (
     convert_between,
 )
 from app.units.parse import UnitParseFailure, normalize_unit_text, parse_unit
-from app.units.table import BASE_UNIT, SEED_UNITS, Dimension, Unit, units_by_code
+from app.units.table import BASE_UNIT, SEED_UNITS, Dimension, Unit, is_volume, units_by_code
 
 __all__ = [
     "BASE_UNIT",
@@ -36,6 +36,7 @@ __all__ = [
     "UnitParseFailure",
     "convert",
     "convert_between",
+    "is_volume",
     "normalize_unit_text",
     "parse_unit",
     "units_by_code",

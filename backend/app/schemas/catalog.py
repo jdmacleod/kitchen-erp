@@ -16,6 +16,7 @@ from app.catalog.keep import Place as StoragePlace
 from app.catalog.perishability import Perishability
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.product_photos import PhotoSummary
+from app.units import is_volume
 
 CanonicalUnit = Literal["g", "ml", "each"]
 BridgeSource = Literal["usda", "label", "measured", "llm", "manual"]
@@ -124,6 +125,9 @@ class IngredientUpdate(ApiModel):
     notes: str | None = None
     # A rename is conformed to the 1G rules unless kept as typed (#345).
     keep_name: bool = Field(default=False, exclude=True)
+    # A change of unit removes measures stored in the old one, which no longer
+    # mean anything; without this flag such a change is refused (issue 358).
+    drop_measures: bool = Field(default=False, exclude=True)
 
     _category = field_validator("category")(categories.stored)
 
@@ -255,6 +259,16 @@ class ProductCreate(_PackPair):
             raise ValueError("give exactly one of ingredient_id or ingredient")
         if (self.density_override is None) != (self.density_override_source is None):
             raise ValueError("density_override and density_override_source must be given together")
+        # A new ingredient for a product sold by volume is measured in ml unless
+        # the request says otherwise (issue 358): juices and syrups aren't weighed.
+        new = self.ingredient
+        if (
+            new is not None
+            and new.standard_key is None
+            and "canonical_unit" not in new.model_fields_set
+            and is_volume(self.pack_unit)
+        ):
+            new.canonical_unit = "ml"
         return self
 
 

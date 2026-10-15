@@ -200,6 +200,8 @@ export interface NeedsBridgeItem {
     pack_unit: string | null;
   };
   status: NormStatus;
+  /** No density, but every product of this g ingredient is sold by volume (issue 358). */
+  switch_to_ml?: boolean;
   observation_count: number;
   latest_observed_at: string;
 }

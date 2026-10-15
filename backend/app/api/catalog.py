@@ -47,6 +47,7 @@ from app.services import (
     product_short_names,
     proposals,
     resolution,
+    unit_switch,
     usda,
 )
 
@@ -137,6 +138,8 @@ async def get_ingredient(ingredient_id: uuid.UUID, _: CurrentUser, db: DbSession
 async def update_ingredient(
     ingredient_id: uuid.UUID, payload: IngredientUpdate, _: CurrentUser, db: DbSession
 ) -> IngredientOut:
+    """409 measures_in_old_unit: a unit change while measures in the old unit exist."""
+    await unit_switch.guard_unit_change(db, ingredient_id, payload)
     return IngredientOut.model_validate(await catalog.update_ingredient(db, ingredient_id, payload))
 
 
