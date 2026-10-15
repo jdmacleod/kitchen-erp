@@ -24,9 +24,11 @@
     "lines": [
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "3.29",
         "parent_seq": null,
+        "printed_row": "WHL MLK GAL 3.29",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "WHL MLK GAL          3.29",
@@ -36,9 +38,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "2.49",
         "parent_seq": null,
+        "printed_row": "EGGS LG 12CT 2.49",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "EGGS LG 12CT         2.49",
@@ -48,9 +52,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "6.84",
         "parent_seq": null,
+        "printed_row": null,
         "purchase_line_id": "<uuid>",
         "qty": "1.96",
         "raw_text": "BNLS CHKN BRST       6.84 1.96 lb @ 3.49/lb",
@@ -60,9 +66,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "1.58",
         "parent_seq": null,
+        "printed_row": "BLK BNS 15OZ 2 @ 0.79 1.58",
         "purchase_line_id": "<uuid>",
         "qty": "2",
         "raw_text": "BLK BNS 15OZ  2 @ 0.79   1.58",
@@ -72,9 +80,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "1.99",
         "parent_seq": null,
+        "printed_row": "TORT FLR 10CT 1.99",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "TORT FLR 10CT        1.99",
@@ -84,9 +94,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "2.07",
         "parent_seq": null,
+        "printed_row": "AVOCADO HASS 3 @ 0.69 2.07",
         "purchase_line_id": "<uuid>",
         "qty": "3",
         "raw_text": "AVOCADO HASS  3 @ 0.69  2.07",
@@ -96,9 +108,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "1.49",
         "parent_seq": null,
+        "printed_row": "DISH SOAP 1.49 T",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "DISH SOAP            1.49 T",
@@ -108,9 +122,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "tax",
         "line_total": "0.12",
         "parent_seq": null,
+        "printed_row": "TAX 0.12",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "TAX                  0.12",
@@ -123,6 +139,9 @@
     "parsed": true,
     "parser": "llm-generic",
     "parser_version": "10",
+    "printed_checks": {
+      "savings_total": "0.00"
+    },
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "read_lines": {

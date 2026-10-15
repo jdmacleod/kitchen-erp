@@ -179,6 +179,12 @@ class LineOut(ApiModel):
     flags: list[str]
     observation_id: uuid.UUID | None
     raw_text_norm: str | None = None
+    # The OCR row the reading matched this line to; the model's raw_text can leave
+    # out a row's codes and prices. Null when no row matched, or entered by hand.
+    printed_text: str | None = None
+    # A saving the receipt prints that its item's price already includes: shown,
+    # counted as nothing (line_total is 0).
+    in_price_amount: DecimalStr | None = None
     suggestions: list[dict] = []  # noqa: RUF012
     # Whether this line ever reached the price book, so removing it voids a
     # price. On a single purchase only; null in lists.
@@ -223,6 +229,14 @@ class RereadState(ApiModel):
     open: OpenRereadRef | None = None
 
 
+class PrintedChecks(ApiModel):
+    """What a receipt prints about itself besides its total, when read (2S)."""
+
+    savings_total: DecimalStr | None = None
+    item_count: int | None = None
+    payment: DecimalStr | None = None
+
+
 class PurchaseOut(ApiModel):
     id: uuid.UUID
     vendor_location: PurchaseLocationRef | None
@@ -246,6 +260,7 @@ class PurchaseOut(ApiModel):
     status: str
     source: str
     flags: list[str]
+    printed_checks: PrintedChecks | None = None
     ledger_txn_ref: str | None
     # The plan this purchase closed a stop of, when "Done here" recorded it (17, 4C).
     trip_plan_id: uuid.UUID | None = None

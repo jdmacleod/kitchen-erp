@@ -1,0 +1,74 @@
+# Synthetic receipt. Vendor, codes and items are invented (SECURITY.md).
+name: price_and_you_pay
+notes: |
+  A till that prints two prices on each item's row, Price and You Pay, with the
+  club saving beneath it for information: You Pay already has the saving off,
+  and the balance is the You Pay column. Weighed items print their weight on the
+  row below. The recorded model answer does what qwen2.5:14b did on real
+  receipts of this layout: each item's raw_text is its name alone, without its
+  code or either price, a weight row is an item of its own at nothing, and the
+  last saving sits under a weight row. The stage matches each line to its
+  printed row, joins the weights on the printed arithmetic, and counts each
+  saving as already in its item's price, so the lines add up to the balance.
+ocr_text: |
+  LARKSPUR GROCERS
+  STORE 0412
+  03/21/26 16:40
+                              Price  You Pay
+  44112  MEADOW TORTILLAS      3.49   2.99 S
+         Club Savings -0.50
+  55223  RIVERBEND YOGURT      6.29   5.79 S
+         Club Savings -0.50
+  3781   PEPPERS FRESNO        0.63   0.63 S
+  WT     0.07 lb @ $8.99 /lb
+  4041   GALA APPLES           4.10   2.95 S
+  WT     1.48 lb @ $1.99 /lb
+         Club Savings -1.15
+       TAX                      0.00
+  **** BALANCE                 12.36
+  PAYMENT AMOUNT               12.36
+  YOUR SAVINGS
+  Club Savings                  2.15
+  Total                         2.15
+  TOTAL NUMBER OF ITEMS SOLD =    4
+expected_header:
+  merchant_name: LARKSPUR GROCERS
+  store_identifier: "0412"
+  purchased_at_local: "2026-03-21 16:40"
+  purchased_at: "2026-03-21T23:40:00+00:00"
+  subtotal: null
+  tax: "0.00"
+  total: "12.36"
+expected_lines:
+  - {seq: 1, raw_text: "MEADOW TORTILLAS", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.99", parent_seq: null}
+  - {seq: 2, raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "0", parent_seq: 1}
+  - {seq: 3, raw_text: "RIVERBEND YOGURT", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.79", parent_seq: null}
+  - {seq: 4, raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "0", parent_seq: 3}
+  - {seq: 5, raw_text: "PEPPERS FRESNO", line_kind: item, qty: "0.07", unit: lb, unit_price: "8.99", line_total: "0.63", parent_seq: null}
+  - {seq: 6, raw_text: "GALA APPLES", line_kind: item, qty: "1.48", unit: lb, unit_price: "1.99", line_total: "2.95", parent_seq: null}
+  - {seq: 7, raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "0", parent_seq: 6}
+  - {seq: 8, raw_text: "TAX 0.00", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_seq: null}
+expected_reconciliation:
+  mismatch: false
+llm_responses:
+  header:
+    merchant_name: "LARKSPUR GROCERS"
+    store_identifier: "0412"
+    address_text: null
+    phone_text: null
+    purchased_at_local: "2026-03-21 16:40"
+    subtotal: null
+    tax: "0.00"
+    total: "12.36"
+  lines:
+    lines:
+      - {raw_text: "MEADOW TORTILLAS", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.99", parent_index: null}
+      - {raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "0.50", parent_index: 0}
+      - {raw_text: "RIVERBEND YOGURT", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "5.79", parent_index: null}
+      - {raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "0.50", parent_index: 2}
+      - {raw_text: "PEPPERS FRESNO", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "0.63", parent_index: null}
+      - {raw_text: "WT 0.07 lb @ $8.99 /lb", line_kind: item, qty: "0.07", unit: lb, unit_price: "8.99", line_total: "0.00", parent_index: null}
+      - {raw_text: "GALA APPLES", line_kind: item, qty: "1", unit: each, unit_price: null, line_total: "2.95", parent_index: null}
+      - {raw_text: "WT 1.48 lb @ $1.99 /lb", line_kind: item, qty: "1.48", unit: lb, unit_price: "1.99", line_total: "0.00", parent_index: null}
+      - {raw_text: "Club Savings", line_kind: discount, qty: null, unit: null, unit_price: null, line_total: "1.15", parent_index: null}
+      - {raw_text: "TAX 0.00", line_kind: tax, qty: null, unit: null, unit_price: null, line_total: "0.00", parent_index: null}

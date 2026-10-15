@@ -39,20 +39,12 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass, field, replace
-from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.config import get_settings
-from app.core.ids import new_id
-from app.ingest.errors import StageFailure
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 from app.ingest.witness import appears_in
-from app.models import IngestJob, Purchase, PurchaseLine, ReceiptDocument
-from app.services.normalize import normalize_receipt_text
 from app.units import UnitParseFailure, parse_unit
 
 LINES_TASK = (
@@ -166,6 +158,10 @@ class ParsedLine:
     parent_seq: int | None = None
     flags: list[str] = field(default_factory=list)
     purchase_line_id: uuid.UUID | None = None
+    # The OCR row this line was matched to (printed_rows.anchor_rows), or None.
+    printed_row: str | None = None
+    # A printed saving the item's price already includes; line_total is then 0.
+    in_price_amount: Decimal | None = None
 
     def as_json(self) -> dict[str, Any]:
         return {
@@ -181,6 +177,8 @@ class ParsedLine:
             "line_total": str(self.line_total),
             "parent_seq": self.parent_seq,
             "flags": list(self.flags),
+            "printed_row": self.printed_row,
+            "in_price_amount": None if self.in_price_amount is None else str(self.in_price_amount),
         }
 
 
@@ -642,6 +640,11 @@ def quantity_only(raw_text: str) -> PrintedQuantity | None:
     return PrintedQuantity(qty, unit, Decimal(rate), amounts[0] if amounts else None)
 
 
+def printed_text(line: ParsedLine) -> str:
+    """The OCR row the line was matched to when known, else the model's raw_text."""
+    return line.printed_row or line.raw_text
+
+
 def prints_an_amount(raw_text: str) -> bool:
     """Whether the row prints an amount (a name row such as "BANANAS" does not)."""
     return _AMOUNT.search(raw_text) is not None
@@ -706,7 +709,7 @@ def merge_quantity_lines(lines: list[ParsedLine]) -> tuple[list[ParsedLine], lis
                 (other, flag)
                 for other, flag in ((above, "qty_from_line_below"), (below, "qty_from_line_above"))
                 if other is not None
-                and prints_an_amount(other.raw_text)
+                and prints_an_amount(printed_text(other))
                 and printed.comes_to(other.line_total)
             ]
             if len(fits) == 1:
@@ -780,75 +783,3 @@ def computed_total(lines: list[ParsedLine]) -> Decimal:
     for line in lines:
         total += -line.line_total if line.line_kind == "discount" else line.line_total
     return total.quantize(CENTS)
-
-
-async def upsert_draft_purchase(
-    db: AsyncSession,
-    job: IngestJob,
-    document: ReceiptDocument,
-    *,
-    purchased_at: datetime,
-    subtotal: Decimal | None,
-    tax: Decimal | None,
-    total: Decimal,
-    vendor_location_id: uuid.UUID | None,
-    flags: list[str],
-    lines: list[ParsedLine],
-) -> Purchase:
-    """Create the receipt's draft purchase, or rewrite the one the job already has."""
-    purchase: Purchase | None = None
-    if job.purchase_id is not None:
-        purchase = await db.get(Purchase, job.purchase_id)
-    if purchase is not None:
-        if purchase.status != "draft":
-            raise StageFailure(code="purchase_not_draft")
-        await db.execute(delete(PurchaseLine).where(PurchaseLine.purchase_id == purchase.id))
-        purchase.purchased_at = purchased_at
-        purchase.subtotal = subtotal
-        purchase.tax = tax
-        purchase.total = total
-        purchase.vendor_location_id = vendor_location_id
-        purchase.flags = list(flags)
-    else:
-        purchase = Purchase(
-            id=new_id(),
-            vendor_location_id=vendor_location_id,
-            receipt_document_id=document.id,
-            purchased_at=purchased_at,
-            subtotal=subtotal,
-            tax=tax,
-            total=total,
-            status="draft",
-            source="receipt",
-            entered_by=document.uploaded_by,
-            flags=list(flags),
-        )
-        db.add(purchase)
-        await db.flush()  # the purchase row must exist before the job points at it
-        job.purchase_id = purchase.id
-    await db.flush()
-
-    by_seq: dict[int, uuid.UUID] = {}
-    for line in lines:
-        line.purchase_line_id = new_id()
-        by_seq[line.seq] = line.purchase_line_id
-    for line in lines:
-        db.add(
-            PurchaseLine(
-                id=line.purchase_line_id,
-                purchase_id=purchase.id,
-                seq=line.seq,
-                raw_text=line.raw_text,
-                raw_text_norm=normalize_receipt_text(line.raw_text),
-                line_kind=line.line_kind,
-                parent_line_id=None if line.parent_seq is None else by_seq.get(line.parent_seq),
-                qty=line.qty,
-                unit=line.unit,
-                unit_price=line.unit_price,
-                line_total=line.line_total,
-                resolution="unmatched",
-                flags=list(line.flags),
-            )
-        )
-    await db.flush()
-    return purchase

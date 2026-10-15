@@ -16,6 +16,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
+from typing import Any
 
 from app.ingest.lines import (
     _REGULAR_PRICE,
@@ -32,6 +33,12 @@ from app.ingest.lines import (
     prints_an_amount,
     quantity_only,
     reconcile,
+)
+from app.ingest.printed_rows import (
+    anchor_rows,
+    printed_checks,
+    savings_already_netted,
+    savings_in_price,
 )
 from app.ingest.schemas import ReceiptLines
 
@@ -99,6 +106,8 @@ class PostPasses:
     dropped_rows: list[str] = field(default_factory=list)  # shelf-price rows (#64)
     # Rows the scan prints like a purchase that no line accounts for (pattern 5).
     unread_rows: list[str] = field(default_factory=list)
+    # What the receipt prints about itself besides its total (printed_rows).
+    checks: dict[str, Any] | None = None
 
 
 def post_passes(
@@ -109,6 +118,8 @@ def post_passes(
 ) -> PostPasses:
     """Every deterministic pass over the model's lines, in the stage's order."""
     parsed = parse_model_lines(result)
+    anchor_rows(parsed, receipt_text)
+    checks = printed_checks(receipt_text)
     parsed, merged = merge_quantity_lines(parsed)
     parsed, dropped = fold_regular_prices(parsed)
     quantity_prefix(parsed)
@@ -124,9 +135,16 @@ def post_passes(
     rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
     savings_already_netted(parsed, printed_total, header_tax)
+    printed_savings = None if checks is None else checks.get("savings_total")
+    savings_in_price(
+        parsed,
+        printed_total,
+        header_tax,
+        None if printed_savings is None else Decimal(printed_savings),
+    )
     payment_rows(parsed, printed_total, header_tax)
     unread = rows_not_read(parsed, receipt_text, merged + dropped, printed_total)
-    return PostPasses(_renumber(parsed), merged, dropped, unread)
+    return PostPasses(_renumber(parsed), merged, dropped, unread, checks)
 
 
 # --- 1. A count printed before the name -------------------------------------
@@ -290,40 +308,6 @@ def rate_notes_not_discounts(lines: list[ParsedLine]) -> None:
         line.qty = line.unit = line.unit_price = None
         line.flags = [f for f in line.flags if f not in ("parent_inferred", "parent_rejected")]
         line.flags.append("rate_note")
-
-
-# --- 13. A saving already netted into the item's price ----------------------
-
-# How a till words a saving it only reports: "YOU SAVED", "WAS $2.10".
-_SAVED_NOTE = re.compile(r"you\s*sav|\bwas\b", re.IGNORECASE)
-
-
-def savings_already_netted(
-    lines: list[ParsedLine], printed_total: Decimal | None, header_tax: Decimal | None = None
-) -> None:
-    """A "you saved" note under a net price counts for nothing, when that adds up.
-
-    Some tills print what was paid on the item's row and only report the saving
-    below it ("Was $2.10/lb YOU SAVED .66"). Subtracting that saving counts it
-    twice. Nothing on the row says which layout it is, so the receipt decides:
-    the note counts for nothing only when the lines then add up to the printed
-    total, and did not before. Flagged ``saving_already_netted``; never dropped.
-    """
-    if printed_total is None:
-        return
-    for line in lines:
-        if line.line_kind != "discount" or line.line_total <= 0:
-            continue
-        if not _SAVED_NOTE.search(line.raw_text) or "negative_from_text" in line.flags:
-            continue
-        if _difference(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
-            return  # the receipt adds up: every saving is needed
-        saving = line.line_total
-        line.line_total = Decimal("0")
-        if _difference(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
-            line.flags.append("saving_already_netted")
-        else:
-            line.line_total = saving
 
 
 # --- 5. Rows the model skipped ---------------------------------------------

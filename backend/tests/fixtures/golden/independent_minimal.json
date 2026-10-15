@@ -24,9 +24,11 @@
     "lines": [
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "6.50",
         "parent_seq": null,
+        "printed_row": "Sourdough loaf 6.50",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "Sourdough loaf        6.50",
@@ -36,9 +38,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "9.00",
         "parent_seq": null,
+        "printed_row": "Local honey 12oz 9.00",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "Local honey 12oz      9.00",
@@ -48,9 +52,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "5.75",
         "parent_seq": null,
+        "printed_row": "Butter 1lb 5.75",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "Butter 1lb            5.75",
@@ -60,9 +66,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "3.06",
         "parent_seq": null,
+        "printed_row": "Apples 2.04 lb @ 1.50/lb 3.06",
         "purchase_line_id": "<uuid>",
         "qty": "2.04",
         "raw_text": "Apples 2.04 lb @ 1.50/lb   3.06",
@@ -72,9 +80,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "fee",
         "line_total": "0.10",
         "parent_seq": null,
+        "printed_row": "Bag fee 0.10",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "Bag fee               0.10",
@@ -87,6 +97,7 @@
     "parsed": true,
     "parser": "llm-generic",
     "parser_version": "10",
+    "printed_checks": null,
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "read_lines": {

@@ -387,6 +387,16 @@ class ReadRow(LineRow):
 
     unit_price: Decimal | None = None
     flags: list[str] = []  # noqa: RUF012
+    printed_text: str | None = None
+    in_price_amount: Decimal | None = None
+
+
+def _take_reading(line: PurchaseLine, row: ReadRow) -> None:
+    """What only a reading writes: the printed rate and row, flags, a saving in price."""
+    line.unit_price = row.unit_price
+    line.flags = list(row.flags)
+    line.printed_text = row.printed_text
+    line.in_price_amount = row.in_price_amount
 
 
 async def apply_rows(  # noqa: C901
@@ -426,8 +436,7 @@ async def apply_rows(  # noqa: C901
                 suggestions=[],
             )
             if isinstance(row, ReadRow):
-                line.unit_price = row.unit_price
-                line.flags = list(row.flags)
+                _take_reading(line, row)
             seq += 1
             purchase.lines.append(line)
             if line.line_kind == "item" and text:
@@ -436,8 +445,7 @@ async def apply_rows(  # noqa: C901
             line = saved[row.id]
             text_changed, needs_resolving = _apply_row(line, row)
             if isinstance(row, ReadRow):
-                line.unit_price = row.unit_price
-                line.flags = list(row.flags)
+                _take_reading(line, row)
             if line.resolved_by is not None and line.line_kind == "item":
                 # A person chose this line's product (or to ignore it): keep the
                 # choice, and learn it under the wording as now corrected.

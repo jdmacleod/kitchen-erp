@@ -24,9 +24,11 @@
     "lines": [
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "5.99",
         "parent_seq": null,
+        "printed_row": "ORG WHOLE MILK 1GAL 5.99 F",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "ORG WHOLE MILK 1GAL          5.99 F",
@@ -36,9 +38,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "discount",
         "line_total": "1.00",
         "parent_seq": 1,
+        "printed_row": "HRBV CARD SAVINGS 1.00-",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "HRBV CARD SAVINGS          1.00-",
@@ -48,9 +52,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "9.47",
         "parent_seq": null,
+        "printed_row": "CHKN THIGHS B/S 9.47 F",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "CHKN THIGHS B/S              9.47 F",
@@ -60,9 +66,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "discount",
         "line_total": "2.48",
         "parent_seq": 3,
+        "printed_row": "MEMBER PRICE 2.48-",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "MEMBER PRICE               2.48-",
@@ -72,9 +80,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "3.49",
         "parent_seq": null,
+        "printed_row": "ITAL BRD LOAF 3.49 F",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "ITAL BRD LOAF                3.49 F",
@@ -84,9 +94,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "3.98",
         "parent_seq": null,
+        "printed_row": "GRK YOGURT PLN 5.3Z 2 @ 1.99 3.98 F",
         "purchase_line_id": "<uuid>",
         "qty": "2",
         "raw_text": "GRK YOGURT PLN 5.3Z  2 @ 1.99   3.98 F",
@@ -96,9 +108,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "item",
         "line_total": "12.99",
         "parent_seq": null,
+        "printed_row": "PAPER TOWELS 6RL 12.99 T",
         "purchase_line_id": "<uuid>",
         "qty": "1",
         "raw_text": "PAPER TOWELS 6RL            12.99 T",
@@ -108,9 +122,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "discount",
         "line_total": "3.00",
         "parent_seq": 7,
+        "printed_row": "HRBV CARD SAVINGS 3.00-",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "HRBV CARD SAVINGS          3.00-",
@@ -120,9 +136,11 @@
       },
       {
         "flags": [],
+        "in_price_amount": null,
         "line_kind": "tax",
         "line_total": "0.95",
         "parent_seq": null,
+        "printed_row": "TAX 0.95",
         "purchase_line_id": "<uuid>",
         "qty": null,
         "raw_text": "TAX                          0.95",
@@ -135,6 +153,10 @@
     "parsed": true,
     "parser": "llm-generic",
     "parser_version": "10",
+    "printed_checks": {
+      "payment": "30.39",
+      "savings_total": "6.48"
+    },
     "purchase_flags": [],
     "purchase_id": "<uuid>",
     "read_lines": {

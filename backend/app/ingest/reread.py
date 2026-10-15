@@ -53,6 +53,8 @@ class Line:
     parent_id: uuid.UUID | None = None  # present lines and the baseline
     parent_at: int | None = None  # the new reading: the parent's index in it
     seq: int = 0
+    printed_text: str | None = None  # the OCR row the reading matched the line to
+    in_price_amount: Decimal | None = None  # a saving its item's price already includes
 
     def key(self) -> tuple[str, str]:
         return (self.line_kind, normalize_receipt_text(self.raw_text or ""))
@@ -83,6 +85,8 @@ def baseline_lines(output: dict[str, Any] | None) -> list[Line]:
                 id=uuid.UUID(row["purchase_line_id"]),
                 parent_id=uuid.UUID(parent) if parent else None,
                 seq=row.get("seq") or 0,
+                printed_text=row.get("printed_row"),
+                in_price_amount=_dec(row.get("in_price_amount")),
             )
         )
     return out
@@ -101,6 +105,8 @@ def new_lines(parsed: list[ParsedLine]) -> list[Line]:
             flags=list(p.flags),
             parent_at=None if p.parent_seq is None else at.get(p.parent_seq),
             seq=p.seq,
+            printed_text=p.printed_row,
+            in_price_amount=p.in_price_amount,
         )
         for p in parsed
     ]
@@ -357,6 +363,10 @@ def propose(  # noqa: C901, PLR0912, PLR0915
             "unit": e.row.unit,
             "unit_price": None if e.row.unit_price is None else str(e.row.unit_price),
             "line_total": str(e.row.line_total),
+            "printed_text": e.row.printed_text,
+            "in_price_amount": None
+            if e.row.in_price_amount is None
+            else str(e.row.in_price_amount),
             "attach_to": attach[i],
             "flags": list(e.row.flags),
         }

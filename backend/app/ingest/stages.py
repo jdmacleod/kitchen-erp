@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, job_id_var
-from app.ingest import assess, parsers, readers
+from app.ingest import assess, draft, parsers, readers
 from app.ingest import header as header_stage
 from app.ingest import lines as lines_stage
 from app.ingest.errors import IngestError, RetryableError
@@ -287,7 +287,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
     if printed_total is None:
         purchase_flags.append("total_missing")
 
-    purchase = await lines_stage.upsert_draft_purchase(
+    purchase = await draft.upsert_draft_purchase(
         ctx.db,
         ctx.job,
         ctx.document,
@@ -298,6 +298,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         vendor_location_id=vendor_location_id,
         flags=purchase_flags,
         lines=parsed,
+        printed_checks=passes.checks,
     )
     output: dict[str, Any] = {
         "parsed": result is not None,
@@ -308,6 +309,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         "line_count": len(parsed),
         "lines": [line.as_json() for line in parsed],
         "reconciliation": reconciliation,
+        "printed_checks": passes.checks,
         "purchase_flags": purchase_flags,
     }
     if reason is not None:

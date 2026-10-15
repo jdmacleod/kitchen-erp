@@ -7065,6 +7065,17 @@
             "title": "Id",
             "type": "string"
           },
+          "in_price_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Price Amount"
+          },
           "line_kind": {
             "title": "Line Kind",
             "type": "string"
@@ -7096,6 +7107,17 @@
               }
             ],
             "title": "Parent Line Id"
+          },
+          "printed_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Printed Text"
           },
           "product": {
             "anyOf": [
@@ -10940,6 +10962,47 @@
         "title": "PricesReported",
         "type": "object"
       },
+      "PrintedChecks": {
+        "additionalProperties": false,
+        "description": "What a receipt prints about itself besides its total, when read (2S).",
+        "properties": {
+          "item_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Count"
+          },
+          "payment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment"
+          },
+          "savings_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Savings Total"
+          }
+        },
+        "title": "PrintedChecks",
+        "type": "object"
+      },
       "ProductBrief": {
         "additionalProperties": false,
         "properties": {
@@ -13313,6 +13376,16 @@
           "lines_total": {
             "title": "Lines Total",
             "type": "string"
+          },
+          "printed_checks": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrintedChecks"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "purchased_at": {
             "format": "date-time",

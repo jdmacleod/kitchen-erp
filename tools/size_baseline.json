@@ -1,8 +1,7 @@
 {
-  "backend/app/cli.py": 1445,
-  "backend/app/ingest/lines.py": 854,
+  "backend/app/cli.py": 1429,
   "backend/app/ingest/llm.py": 820,
-  "backend/app/ingest/structure.py": 874,
+  "backend/app/ingest/structure.py": 858,
   "backend/app/services/catalog.py": 1414,
   "backend/app/services/geo.py": 1001,
   "backend/app/services/lookups.py": 964,
@@ -13,8 +12,8 @@
   "backend/app/services/trip_planner.py": 1131,
   "frontend/src/api/catalog.ts": 936,
   "frontend/src/api/purchases.ts": 961,
-  "frontend/src/components/purchases/ReviewPurchase.tsx": 1916,
-  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1365,
+  "frontend/src/components/purchases/ReviewPurchase.tsx": 1914,
+  "frontend/src/pages/catalog/ProductReviewPage.tsx": 1336,
   "frontend/src/pages/geo/MapPage.tsx": 1145,
   "frontend/src/pages/geo/VendorDetailPage.tsx": 1074,
   "frontend/src/pages/purchases/ShelfPricePage.tsx": 912
