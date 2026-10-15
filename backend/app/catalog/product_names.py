@@ -63,9 +63,10 @@ _QTY = (
     r"|boxes|box|jars?|pieces|pcs|each|ea|rolls|links|slices|sheets|eggs|bars|cups|pods)\b"
 )
 # Words that only say how the pack is sold: "Bag", "Clamshell", "Each", "Can".
+# "Bunch" stays in a name: no unit says it, so the name is where it is kept.
 _CONTAINERS = (
     r"(?:bag|bottle|box|can|carton|clamshell|container|each|jar|pack|package|pouch|tub|tin|"
-    r"bunch|case|loaf|bundle|tray)"
+    r"case|loaf|bundle|tray)"
 )
 _PACK_PHRASE = re.compile(
     rf"(?:net\s+wt\.?\s*)?{_QTY}(?:\s*(?:[x×/]|per)\s*{_QTY})*(?:\s*\({_QTY}[^)]*\))?"
@@ -155,12 +156,14 @@ def short_name(
     dropped from the end only when the product's pack is known (``has_pack``), so
     nothing is lost. ``proper_nouns`` (lowercase) keep their capitals.
     """
-    from app.catalog.brand_names import name_key
+    from app.catalog.brand_names import NEVER_BRANDS, is_brand_key, name_key
 
     original = tidy(title) or ""
     text = _BANNER.sub("", original).strip()
-    keys = set(brand_keys)
-    if brand and (key := name_key(brand)):
+    # Another product's brand that is also a word for the food ("Stone", "Organic")
+    # stays in this name; the product's own brand goes unless it only describes it.
+    keys = {k for k in brand_keys if is_brand_key(k)}
+    if brand and (key := name_key(brand)) and key not in NEVER_BRANDS:
         keys.add(key)
         # A brand's own first words lead many titles: "Sierra Nevada" for "Sierra
         # Nevada Brewing Co.". Two words at least, so a one-word lead stays a word.

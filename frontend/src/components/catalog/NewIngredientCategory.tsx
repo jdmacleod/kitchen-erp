@@ -6,6 +6,7 @@ import { CategoryField } from "./CategoryField";
 import { labelClass } from "./fields";
 
 const FROM: Record<CategorySource, string> = {
+  name: "from its name",
   standard: "from the standard list",
   usda: "from USDA",
   clip: "from the page",

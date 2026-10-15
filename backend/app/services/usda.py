@@ -462,6 +462,10 @@ def uncooked_text(description: str) -> str:
 TEXT_SIMILARITY = 0.2
 
 
+# Food groups whose records are dishes or another shopper's food, never an ingredient.
+NOT_BOUGHT_GROUPS = ("Restaurant Foods", "Fast Foods", "Baby Foods")
+
+
 async def candidates(
     db: AsyncSession, query: str, limit: int = 15, *, fit_name: str | None = None
 ) -> list[FdcFood]:
@@ -478,7 +482,10 @@ async def candidates(
     With ``fit_name``, a food that never names that ingredient's food is left out
     and one that names it in another form comes after the ones that fit (#343).
     """
-    core = FdcFood.data_type.in_(("foundation_food", "sr_legacy_food"))
+    # A restaurant's or a baby food's record ("CHAIN'S, soup") is a dish, not what is bought.
+    core = FdcFood.data_type.in_(("foundation_food", "sr_legacy_food")) & or_(
+        FdcFood.category.is_(None), FdcFood.category.not_in(NOT_BOUGHT_GROUPS)
+    )
     lowered = func.lower(FdcFood.description)
     if query.strip().isdigit():
         food = await db.get(FdcFood, int(query))

@@ -4,7 +4,7 @@ import { qs, type IngredientCreateInput } from "./catalog";
 import { api } from "./client";
 
 /** Where a suggested category came from, shown under the chip (issue 344). */
-export type CategorySource = "standard" | "usda" | "clip" | "catalog";
+export type CategorySource = "name" | "standard" | "usda" | "clip" | "catalog";
 
 export interface CategorySuggestion {
   category: CategoryKey | null;

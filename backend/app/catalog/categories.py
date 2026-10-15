@@ -131,3 +131,44 @@ def key_from_text(text: str | None) -> CategoryKey | None:
         if (found := SYNONYMS.get(phrase)) is not None:
             return found
     return None
+
+
+# Words in an ingredient's name that settle its category whatever else it says
+# (``key_from_name``). Data, not logic: add freely, but never a word that also
+# names a food of another category ("bass" stays: sea bass and striped bass are
+# both fish, and no other food is called bass).
+_SEAFOOD_WORDS = frozenset(
+    {
+        "anchovy", "anchovies", "bass", "branzino", "catfish", "clam", "clams", "cod",
+        "crab", "crabs", "crawfish", "fish", "flounder", "grouper", "haddock", "halibut",
+        "herring", "lobster", "lobsters", "mackerel", "mahi", "mussel", "mussels",
+        "octopus", "oyster", "oysters", "pollock", "prawn", "prawns", "salmon",
+        "sardine", "sardines", "scallop", "scallops", "seabass", "shrimp", "snapper",
+        "sole", "squid", "swordfish", "tilapia", "trout", "tuna", "whitefish", "yellowtail",
+    }
+)  # fmt: skip
+# How a food was kept or made, which puts it on a shelf rather than in the
+# produce, meat or seafood case: "canned chipotle peppers", "fried shallots".
+_SHELF_WORDS = frozenset({"canned", "jarred", "dried", "dehydrated", "crispy", "fried", "pickled"})
+_SPICE_WORDS = frozenset({"seasoning", "seasonings", "masala", "spice", "spices", "rub"})
+
+
+def key_from_name(name: str | None) -> CategoryKey | None:
+    """The category an ingredient's own words settle, or None when they don't.
+
+    "frozen" anywhere wins: a frozen food is filed with the frozen foods whatever
+    it is. Then a spice blend, a fish or shellfish, and a food kept on a shelf
+    (canned, dried, fried). A fish that is canned or dried is pantry, so the shelf
+    words come before the fish."""
+    if not name:
+        return None
+    words = normalize(re.sub(r"[^\w\s'-]", " ", name)).split()
+    if "frozen" in words:
+        return "frozen"
+    if _SPICE_WORDS.intersection(words):
+        return "spices"
+    if _SHELF_WORDS.intersection(words):
+        return "pantry"
+    if _SEAFOOD_WORDS.intersection(words):
+        return "seafood"
+    return None

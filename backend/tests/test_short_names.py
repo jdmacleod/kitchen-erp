@@ -44,6 +44,25 @@ def test_a_brand_spelled_another_way_is_dropped_too():
     assert short_name("Harbor Light Organic Pears", "Harbor Light", brand_keys=keys) == "Pears"
 
 
+def test_organic_is_part_of_the_name_not_a_brand():
+    assert short_name("Organic Lantern Beans", "Organic") == "Organic lantern beans"
+    keys = {name_key("Organic")}
+    assert short_name("Organic Lantern Beans", None, brand_keys=keys) == "Organic lantern beans"
+
+
+def test_a_brand_that_is_also_a_food_word_goes_only_from_its_own_products():
+    keys = {name_key("Stone")}
+    assert short_name("Stone Ground Lantern Mustard", None, brand_keys=keys) == (
+        "Stone ground lantern mustard"
+    )
+    assert short_name("Stone Lantern Ale", "Stone", brand_keys=keys) == "Lantern ale"
+
+
+def test_a_bunch_stays_in_the_name():
+    # No unit says "bunch", so dropping it would lose how the produce is sold.
+    assert short_name("Lantern Herb Bunch", None) == "Lantern herb bunch"
+
+
 def test_the_pack_stays_in_the_name_when_the_product_has_no_pack():
     assert short_name("Snap Peas, 32 oz", None, has_pack=False) == "Snap peas, 32 oz"
 

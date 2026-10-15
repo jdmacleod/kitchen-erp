@@ -35,6 +35,12 @@ def test_a_known_brand_in_front_is_dropped():
     assert conform("Harbor Light", brand_keys=BRANDS).name == "harbor light"  # never emptied
 
 
+def test_a_word_that_describes_the_food_is_never_taken_for_a_brand():
+    brands = {name_key("Stone"), name_key("Organic"), *BRANDS}
+    assert conform("stone ground cornmeal", brand_keys=brands).name == "stone ground cornmeal"
+    assert conform("organic lantern beans", brand_keys=brands).name == "organic lantern beans"
+
+
 def test_names_are_lowercase_but_for_the_standard_lists_proper_nouns():
     assert conform("KALAMATA OLIVE PASTE").name == "Kalamata olive paste"
     assert conform("New potatoes").name == "new potatoes"

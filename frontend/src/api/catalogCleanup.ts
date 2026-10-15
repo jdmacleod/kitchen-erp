@@ -19,8 +19,18 @@ export interface CleanupSuggestion {
   before: string;
   after: string;
   reason: string;
-  /** False for a category nothing could guess: choose one on the ingredient's page. */
+  /** False for a category nothing could guess: choose one before accepting. */
   ready: boolean;
+  /** What accepting applies as offered: the category key, for a category; else "". */
+  value: string;
+  /** Whether a person may choose the value instead: a category, from the nine keys. */
+  choosable: boolean;
+}
+
+/** Suggestions to apply, with any category chosen instead of the one offered. */
+export interface CleanupApply {
+  keys: string[];
+  chosen?: Record<string, string>;
 }
 
 const cleanupKey = ["catalog", "cleanup"] as const;
@@ -46,10 +56,10 @@ function useRefresh() {
 export function useApplyCleanup() {
   const refresh = useRefresh();
   return useMutation({
-    mutationFn: (keys: string[]) =>
+    mutationFn: ({ keys, chosen = {} }: CleanupApply) =>
       api<{ applied: number; gone: string[] }>("/catalog/cleanup/apply", {
         method: "POST",
-        body: { keys },
+        body: { keys, chosen },
       }),
     onSuccess: refresh,
   });

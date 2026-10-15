@@ -8,6 +8,8 @@ import {
   type CleanupSuggestion,
 } from "../../api/catalogCleanup";
 import { errorMessage } from "../../api/client";
+import { inputClass } from "../../components/catalog/fields";
+import { CATEGORY_KEYS } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
@@ -30,7 +32,7 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
   {
     kind: "category",
     title: "Categories",
-    hint: "Ingredients without a category, with the likeliest one.",
+    hint: "Ingredients without a category, or frozen foods filed elsewhere. Change the category if the guess is wrong.",
   },
   {
     kind: "ingredient_name",
@@ -45,9 +47,11 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
   {
     kind: "product_brand",
     title: "Brands and kinds",
-    hint: "A brand that only says none, or a brand on a product sold loose.",
+    hint: "A brand that only says none or describes the food, or a brand on a product sold loose. Loose produce has no brand.",
   },
 ];
+
+const label = (key: string) => key[0].toUpperCase() + key.slice(1);
 
 const subjectRoute = (s: CleanupSuggestion) =>
   s.kind.startsWith("product")
@@ -110,22 +114,32 @@ function Group({
   rows: CleanupSuggestion[];
 }) {
   const [shown, setShown] = useState(PAGE);
+  // Categories the person chose instead of the guess, by suggestion key.
+  const [chosen, setChosen] = useState<Record<string, string>>({});
   const apply = useApplyCleanup();
   const skip = useSkipCleanup();
   const notice = useNotice();
   const visible = rows.slice(0, shown);
-  const ready = visible.filter((s) => s.ready).map((s) => s.key);
+  const valueOf = (s: CleanupSuggestion) => chosen[s.key] ?? s.value;
+  const canAccept = (s: CleanupSuggestion) => s.ready || (s.choosable && valueOf(s) !== "");
+  const ready = visible.filter(canAccept).map((s) => s.key);
   const busy = apply.isPending || skip.isPending;
   const accept = (keys: string[]) =>
-    apply.mutate(keys, {
-      onSuccess: ({ applied, gone }) =>
-        notice.show({
-          tone: gone.length ? "info" : "success",
-          message: `Applied ${applied} ${applied === 1 ? "fix" : "fixes"}.${
-            gone.length ? ` ${gone.length} had changed and were left.` : ""
-          }`,
-        }),
-    });
+    apply.mutate(
+      {
+        keys,
+        chosen: Object.fromEntries(keys.filter((k) => k in chosen).map((k) => [k, chosen[k]])),
+      },
+      {
+        onSuccess: ({ applied, gone }) =>
+          notice.show({
+            tone: gone.length ? "info" : "success",
+            message: `Applied ${applied} ${applied === 1 ? "fix" : "fixes"}.${
+              gone.length ? ` ${gone.length} had changed and were left.` : ""
+            }`,
+          }),
+      },
+    );
   const headingId = `cleanup-${kind}`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-2">
@@ -154,28 +168,28 @@ function Group({
                 <Link to={subjectRoute(s)} className={`font-medium underline ${focusRing}`}>
                   {s.subject}
                 </Link>
-                <p className="text-sm">
-                  <span className={muted}>{s.before}</span> → <span>{s.after}</span>
-                </p>
+                {s.choosable ? (
+                  <CategoryChoice
+                    suggestion={s}
+                    value={valueOf(s)}
+                    disabled={busy}
+                    onChange={(value) => setChosen({ ...chosen, [s.key]: value })}
+                  />
+                ) : (
+                  <p className="text-sm">
+                    <span className={muted}>{s.before}</span> → <span>{s.after}</span>
+                  </p>
+                )}
                 <p className={`text-xs ${muted}`}>{s.reason}</p>
               </div>
               <div className="flex shrink-0 gap-2">
-                {s.ready ? (
-                  <Button
-                    disabled={busy}
-                    onClick={() => accept([s.key])}
-                    aria-label={`Accept: ${s.subject}`}
-                  >
-                    Accept
-                  </Button>
-                ) : (
-                  <Link
-                    to={subjectRoute(s)}
-                    className={`self-center text-sm underline ${focusRing}`}
-                  >
-                    Choose on its page
-                  </Link>
-                )}
+                <Button
+                  disabled={busy || !canAccept(s)}
+                  onClick={() => accept([s.key])}
+                  aria-label={`Accept: ${s.subject}`}
+                >
+                  Accept
+                </Button>
                 <Button
                   variant="ghost"
                   disabled={busy}
@@ -197,5 +211,44 @@ function Group({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** A category suggestion's value, prefilled with the guess and open to change. */
+function CategoryChoice({
+  suggestion: s,
+  value,
+  disabled,
+  onChange,
+}: {
+  suggestion: CleanupSuggestion;
+  value: string;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  const id = `cleanup-choice-${s.key}`;
+  return (
+    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className={muted}>{s.before}</span> →
+      <label className="sr-only" htmlFor={id}>
+        Category for {s.subject}
+      </label>
+      <select
+        id={id}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputClass}
+      >
+        <option value="" disabled>
+          Choose one
+        </option>
+        {CATEGORY_KEYS.map((key) => (
+          <option key={key} value={key}>
+            {label(key)}
+          </option>
+        ))}
+      </select>
+    </p>
   );
 }

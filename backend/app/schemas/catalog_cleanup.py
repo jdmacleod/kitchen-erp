@@ -22,8 +22,12 @@ class CleanupSuggestionOut(ApiModel):
     before: str
     after: str
     reason: str
-    # False for a category nothing could guess: open the ingredient to choose one.
+    # False for a category nothing could guess: choose one before accepting.
     ready: bool
+    # What accepting applies as offered: the category key, for a category; else "".
+    value: str
+    # Whether the person may choose the value instead (a category, from the nine keys).
+    choosable: bool
 
 
 class CleanupOut(ApiModel):
@@ -32,6 +36,11 @@ class CleanupOut(ApiModel):
 
 class CleanupKeysIn(ApiModel):
     keys: list[str] = Field(min_length=1, max_length=200)
+
+
+class CleanupApplyIn(CleanupKeysIn):
+    # A key's value chosen instead of the one offered: a category key, for a category.
+    chosen: dict[str, str] = Field(default_factory=dict, max_length=200)
 
 
 class CleanupApplyOut(ApiModel):
