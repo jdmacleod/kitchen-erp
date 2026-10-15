@@ -18,6 +18,7 @@ import {
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { UnconfirmedSection } from "./UnconfirmedSection";
 import { UsdaReviewSection } from "./UsdaReviewSection";
 
 /** Observations that could not be priced per canonical unit, and what each is missing. */
@@ -210,6 +211,7 @@ export function NeedsBridgePage() {
           </Card>
         )}
       </section>
+      <UnconfirmedSection />
     </>
   );
 }
