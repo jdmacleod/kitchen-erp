@@ -3,11 +3,16 @@
 Resolution order is fixed and documented in the Phase 1 specification:
 
 1. `from_unit` is a named measure label for the ingredient: multiply by its
-   canonical quantity.
+   canonical quantity. The one exception is "each" when a product with a pack
+   is supplied: that is one pack (step 2), even if the ingredient has an
+   "each" measure, which then weighs the pack's pieces (issue 357).
 2. `from_unit` is a count unit and a product with a pack is supplied: convert
    the pack quantity recursively and multiply. When the canonical unit is a
    count and the pack states its pieces (19 oz, 5 pieces), one pack is that
-   many pieces.
+   many pieces. When the pack itself is counted in pieces (8 each) and the
+   canonical unit is not a count, one piece is the ingredient's measure for one
+   ("each", else "whole", else "medium"); without such a measure the pack has
+   no weight and the conversion fails with `no_pack` (issue 357).
 3. `from_unit` shares a dimension with the canonical unit: apply unit factors.
 4. It crosses mass and volume: product density override, else ingredient
    density, else `no_density`.
@@ -26,7 +31,7 @@ from typing import Literal
 
 from app.units.table import BASE_UNIT, Unit, units_by_code
 
-CONVERT_VERSION = "1"
+CONVERT_VERSION = "2"  # 2: "each" of a packed product is the pack; packs in pieces (issue 357)
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 
@@ -127,6 +132,94 @@ def _find_measure(label: str, measures: tuple[Measure, ...]) -> Measure | None:
     return None
 
 
+# Measure labels that stand for one of the ingredient, the most general first.
+PIECE_LABELS = ("each", "whole", "medium")
+
+
+def _piece_measure(measures: tuple[Measure, ...]) -> Measure | None:
+    """The ingredient's measure for one piece, if it has one."""
+    for label in PIECE_LABELS:
+        found = _find_measure(label, measures)
+        if found is not None:
+            return found
+    return None
+
+
+def _pieces(qty: Decimal, pack: Pack, units: Mapping[str, Unit], measures, canonical: str):
+    """``qty`` packs of ``pack``, a pack counted in pieces, through a piece measure."""
+    piece = _piece_measure(measures)
+    if piece is None:
+        return ConversionFailure(
+            "no_pack",
+            f"The pack is {pack.qty} {pack.unit} and nothing says what one piece weighs.",
+        )
+    pieces = _mul(pack.qty, units[pack.unit].to_base_factor)
+    return CanonicalQty(
+        _mul(qty, _mul(pieces, piece.canonical_qty)),
+        canonical,
+        Provenance(
+            "pack",
+            None,
+            True,
+            f"{pack.qty} {pack.unit}",
+            via=Provenance("measure", piece.source, piece.confirmed, piece.label),
+        ),
+    )
+
+
+def _through_pack(
+    each: Decimal, product: ProductContext, context: ConversionContext
+) -> CanonicalQty | ConversionFailure:
+    """``each`` packs of the product (step 2): its pieces, its pieces' measure, or its size."""
+    assert product.pack is not None  # noqa: S101 - the caller checked
+    units = context.units
+    canonical = context.canonical_unit
+    canonical_dim = units[canonical].dimension
+    pack_dim = units[product.pack.unit].dimension if product.pack.unit in units else None
+    if canonical_dim == "count" and product.pack.count and pack_dim != "count":
+        # The pack's stated pieces; its size never becomes a count (no piece weight).
+        return CanonicalQty(
+            _mul(each, Decimal(product.pack.count)),
+            canonical,
+            Provenance(
+                "pack_count",
+                None,
+                True,
+                f"{product.pack.qty} {product.pack.unit}, {product.pack.count} pieces",
+            ),
+        )
+    if pack_dim == "count" and canonical_dim != "count":
+        return _pieces(each, product.pack, units, context.measures, canonical)
+    inner_context = ConversionContext(
+        canonical_unit=canonical,
+        density_g_per_ml=context.density_g_per_ml,
+        density_source=context.density_source,
+        density_confirmed=context.density_confirmed,
+        measures=(),  # a pack is expressed in units, never in measures
+        product=ProductContext(
+            pack=None,
+            density_g_per_ml=product.density_g_per_ml,
+            density_source=product.density_source,
+            density_confirmed=product.density_confirmed,
+        ),
+        units=units,
+    )
+    inner = convert(product.pack.qty, product.pack.unit, inner_context)
+    if isinstance(inner, ConversionFailure):
+        return inner
+    return CanonicalQty(
+        _mul(each, inner.qty),
+        canonical,
+        Provenance(
+            "pack",
+            None,
+            True,
+            f"{product.pack.qty} {product.pack.unit}",
+            via=inner.provenance if inner.provenance.bridge_kind != "none" else None,
+        ),
+    )
+
+
 def convert(  # noqa: C901
     qty: Decimal | None, from_unit: str, context: ConversionContext
 ) -> CanonicalQty | ConversionFailure:
@@ -138,6 +231,12 @@ def convert(  # noqa: C901
     canonical_dim = units[canonical].dimension
     if BASE_UNIT[canonical_dim] != canonical:
         raise ValueError(f"canonical unit must be one of {sorted(BASE_UNIT.values())}")
+
+    # 1. "each" of a product with a pack is one pack, before any measure: an
+    # "each" measure weighs one piece, and a pack may hold many (issue 357).
+    product = context.product
+    if from_unit == "each" and product is not None and product.pack is not None:
+        return _through_pack(_mul(qty, units["each"].to_base_factor), product, context)
 
     # 1. Named measure.
     measure = _find_measure(from_unit, context.measures)
@@ -166,48 +265,8 @@ def convert(  # noqa: C901
     )
     if unit.dimension == "count" and (pack_applies or canonical_dim != "count"):
         if pack_applies:
-            each = _mul(qty, unit.to_base_factor)
-            pack_dim = units[product.pack.unit].dimension if product.pack.unit in units else None
-            if canonical_dim == "count" and product.pack.count and pack_dim != "count":
-                # The pack's stated pieces; its size never becomes a count (no piece weight).
-                return CanonicalQty(
-                    _mul(each, Decimal(product.pack.count)),
-                    canonical,
-                    Provenance(
-                        "pack_count",
-                        None,
-                        True,
-                        f"{product.pack.qty} {product.pack.unit}, {product.pack.count} pieces",
-                    ),
-                )
-            inner_context = ConversionContext(
-                canonical_unit=canonical,
-                density_g_per_ml=context.density_g_per_ml,
-                density_source=context.density_source,
-                density_confirmed=context.density_confirmed,
-                measures=(),  # a pack is expressed in units, never in measures
-                product=ProductContext(
-                    pack=None,
-                    density_g_per_ml=product.density_g_per_ml,
-                    density_source=product.density_source,
-                    density_confirmed=product.density_confirmed,
-                ),
-                units=units,
-            )
-            inner = convert(product.pack.qty, product.pack.unit, inner_context)
-            if isinstance(inner, ConversionFailure):
-                return inner
-            return CanonicalQty(
-                _mul(each, inner.qty),
-                canonical,
-                Provenance(
-                    "pack",
-                    None,
-                    True,
-                    f"{product.pack.qty} {product.pack.unit}",
-                    via=inner.provenance if inner.provenance.bridge_kind != "none" else None,
-                ),
-            )
+            assert product is not None  # noqa: S101 - pack_applies says so
+            return _through_pack(_mul(qty, unit.to_base_factor), product, context)
         # 5. Count unit with nothing to bridge it.
         if product is not None:
             return ConversionFailure("no_pack", "The product has no pack size.")

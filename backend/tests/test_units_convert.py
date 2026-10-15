@@ -161,15 +161,24 @@ def test_mass_into_count_canonical_has_no_bridge():
     fail(convert(D("500"), "g", EGGS), "unknown_measure")
 
 
-def test_measure_precedes_pack():
+def test_each_of_a_packed_product_is_the_pack_before_any_measure():
+    """Issue 357: "1 each" of a 1 lb bag is the bag, not one piece the measure weighs."""
     ctx = ConversionContext(
         "g",
         measures=(Measure("each", D("60"), "manual", True),),
         product=ProductContext(pack=Pack(D("1"), "lb")),
     )
     r = ok(convert(D("1"), "each", ctx))
-    assert r.qty == D("60")
-    assert r.provenance.bridge_kind == "measure"
+    assert r.qty == D("453.59237")
+    assert r.provenance.bridge_kind == "pack"
+
+
+def test_measure_precedes_without_a_pack():
+    measures = (Measure("each", D("60"), "manual", True),)
+    r = ok(convert(D("1"), "each", ConversionContext("g", measures=measures)))
+    assert (r.qty, r.provenance.bridge_kind) == (D("60"), "measure")
+    loose = ConversionContext("g", measures=measures, product=ProductContext())
+    assert ok(convert(D("2"), "each", loose)).qty == D("120")
 
 
 def test_invalid_canonical_unit_is_a_programming_error():
@@ -178,8 +187,8 @@ def test_invalid_canonical_unit_is_a_programming_error():
 
 
 def test_results_carry_version():
-    assert ok(convert(D("1"), "g", FLOUR)).version == "1"
-    assert fail(convert(None, "g", FLOUR), "no_qty").version == "1"
+    assert ok(convert(D("1"), "g", FLOUR)).version == "2"
+    assert fail(convert(None, "g", FLOUR), "no_qty").version == "2"
 
 
 def test_each_with_pack_in_count_canonical_means_one_pack():
@@ -218,3 +227,69 @@ def test_pieces_never_turn_a_weight_into_a_count():
     """No piece weight: 100 g of a 14 oz, 4-piece pack is not a number of pieces."""
     ctx = ConversionContext("each", product=ProductContext(pack=Pack(D("14"), "oz", 4)))
     fail(convert(D("100"), "g", ctx), "unknown_measure")
+
+
+# Issue 357: a pack counted in pieces is weighed through the ingredient's
+# measure for one piece; without one it still has no weight.
+LIMES = Measure("each", D("67"), "usda", False)
+
+
+def test_a_pack_in_pieces_is_weighed_through_the_piece_measure():
+    ctx = ConversionContext(
+        "g", measures=(LIMES,), product=ProductContext(pack=Pack(D("8"), "each"))
+    )
+    r = ok(convert(D("2"), "each", ctx))
+    assert r.qty == D("1072") and r.unit == "g"
+    assert r.provenance.bridge_kind == "pack" and r.provenance.detail == "8 each"
+    assert r.provenance.via is not None
+    assert (r.provenance.via.bridge_kind, r.provenance.via.detail) == ("measure", "each")
+    assert r.provenance.via.confirmed is False
+
+
+def test_a_dozen_pack_counts_its_pieces():
+    ctx = ConversionContext(
+        "g", measures=(LIMES,), product=ProductContext(pack=Pack(D("1"), "dozen"))
+    )
+    assert ok(convert(D("1"), "each", ctx)).qty == D("804")
+
+
+@pytest.mark.parametrize(
+    ("labels", "used"),
+    [
+        (("medium", "whole", "each"), "each"),
+        (("medium", "whole"), "whole"),
+        (("medium",), "medium"),
+    ],
+)
+def test_the_piece_measure_is_each_then_whole_then_medium(labels, used):
+    measures = tuple(
+        Measure(label, D(str(10 * (i + 1))), "manual", True) for i, label in enumerate(labels)
+    )
+    ctx = ConversionContext(
+        "g", measures=measures, product=ProductContext(pack=Pack(D("1"), "each"))
+    )
+    r = ok(convert(D("1"), "each", ctx))
+    assert r.provenance.via is not None and r.provenance.via.detail == used
+
+
+def test_a_pack_in_pieces_without_a_piece_measure_has_no_weight():
+    ctx = ConversionContext(
+        "g", measures=(GARLIC_CLOVE,), product=ProductContext(pack=Pack(D("8"), "each"))
+    )
+    fail(convert(D("1"), "each", ctx), "no_pack")
+    # A volume canonical is the same: no piece measure, no volume.
+    fail(
+        convert(
+            D("1"),
+            "each",
+            ConversionContext("ml", product=ProductContext(pack=Pack(D("6"), "each"))),
+        ),
+        "no_pack",
+    )
+
+
+def test_a_count_canonical_ignores_the_piece_measure():
+    ctx = ConversionContext(
+        "each", measures=(LIMES,), product=ProductContext(pack=Pack(D("8"), "each"))
+    )
+    assert ok(convert(D("1"), "each", ctx)).qty == D("8")

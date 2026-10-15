@@ -67,3 +67,18 @@ def test_a_pack_of_pieces_is_exactly_its_count(packs, count, unit, size):
     result = convert(packs, "each", ctx)
     assert result.qty == packs * count
     assert result.provenance.bridge_kind == "pack_count"
+
+
+@given(quantities, st.integers(min_value=1, max_value=1000), quantities)
+def test_a_pack_in_pieces_weighs_its_pieces_exactly(packs, pieces, weight):
+    """Issue 357: N pieces through a piece measure is N times the measure, exactly."""
+    from app.units import ConversionContext, Measure, Pack, ProductContext, convert
+
+    ctx = ConversionContext(
+        "g",
+        measures=(Measure("each", weight, "manual", True),),
+        product=ProductContext(pack=Pack(Decimal(pieces), "each")),
+    )
+    result = convert(packs, "each", ctx)
+    assert result.qty == packs * pieces * weight
+    assert result.provenance.via is not None and result.provenance.via.bridge_kind == "measure"

@@ -503,7 +503,9 @@ describe("needs a bridge", () => {
     await user.selectOptions(within(form).getByLabelText("Pack unit"), "each");
     await user.click(within(form).getByRole("button", { name: "Save pack" }));
     expect(
-      within(form).getByText(/A pack counted in pieces can't be priced per g\./),
+      within(form).getByText(
+        /A pack counted in pieces is priced per g only through what one piece weighs/,
+      ),
     ).toBeInTheDocument();
     expect(calls.some((c) => c.method === "PATCH")).toBe(false);
 

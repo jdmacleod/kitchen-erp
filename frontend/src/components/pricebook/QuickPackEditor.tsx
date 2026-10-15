@@ -49,7 +49,7 @@ export function QuickPackEditor({
     if (!isPositiveDecimal(qty)) return "Pack quantity must be a positive number, like 500.";
     if (!unit) return "Choose a pack unit.";
     if (piecesOnly) {
-      return `A pack counted in pieces can't be priced per ${canonicalUnit}. Give what it weighs or holds, like 680 g, and put the count under Pieces.`;
+      return `A pack counted in pieces is priced per ${canonicalUnit} only through what one piece weighs: use Weigh one on its row. Or give what the pack weighs or holds, like 680 g, and put the count under Pieces.`;
     }
     if (showPieces && pieces.trim() && !/^[1-9]\d{0,4}$/.test(pieces.trim())) {
       return "Pieces must be a whole number, like 5.";
