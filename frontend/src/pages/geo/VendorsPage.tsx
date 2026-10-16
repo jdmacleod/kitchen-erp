@@ -47,9 +47,9 @@ import {
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { describeOpeningHours } from "../../lib/openingHours";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useSearchText } from "../../lib/useSearchText";
 import { MapPage } from "./MapPage";
 
 const KIND_OPTIONS: { value: VendorKind | ""; label: string }[] = [
@@ -190,21 +190,8 @@ function VendorList({
   onAdd: () => void;
 }) {
   usePageTitle("Vendors");
-  const [text, setText] = useState(q);
-  // The field follows ?q= when it changes from outside (Back, a link), and the
-  // URL takes only text the debounce has settled on, so an old pending value
-  // cannot be written back over the new one.
-  const [seenQ, setSeenQ] = useState(q);
-  if (q !== seenQ) {
-    setSeenQ(q);
-    setText(q);
-  }
-  const debounced = useDebouncedValue(text.trim(), 250);
-  useEffect(() => {
-    if (debounced === text.trim() && debounced !== q) setParam("q", debounced || null);
-    // Only the typed text drives the URL.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debounced]);
+  // The field and ?q= stay in step (lib/useSearchText).
+  const [text, setText] = useSearchText(q, (v) => setParam("q", v));
 
   const vendors = useVendors(q, includeInactive);
   // The API has no kind filter for vendors, and the list is not paged, so
