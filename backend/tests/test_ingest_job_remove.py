@@ -21,6 +21,7 @@ from tests.removal_helpers import receipt_draft, set_job_status, stored_photo, u
 
 no_network = gh.no_network
 receipts_dir = ih.receipts_dir
+recorded = ih.recorded
 
 
 @pytest.fixture(autouse=True)
@@ -105,6 +106,32 @@ async def test_uploading_a_removed_receipt_again_reads_it_again(admin_client, re
     # A plain duplicate is not a revival.
     r = await upload(admin_client, png_bytes("revive"))
     assert r.json()["revived"] is False
+
+
+async def test_a_revived_receipt_is_read_to_review_again(
+    admin_client, receipts_dir: Path, recorded
+):
+    """Criterion 59: after the revival the pipeline runs to a fresh draft."""
+    fixture = ih.load_fixture("independent_minimal")
+    recorded(fixture)
+    _, job = await ih.upload_fixture(admin_client, fixture)
+    first = await ih.run_job(job["id"])
+    assert (first.stage, first.status) == ("review", "needs_review")
+    removed = first.purchase_id
+    r = await admin_client.post(f"/api/v1/purchases/{removed}/remove")
+    assert r.status_code == 200 and r.json()["outcome"] == "delete"
+
+    r = await upload(admin_client, png_bytes(fixture.name), ocr_text=fixture.ocr_text)
+    assert r.status_code == 200 and r.json()["revived"] is True
+    assert r.json()["job"]["id"] == job["id"]
+    again = await ih.run_job(job["id"])
+    assert (again.stage, again.status) == ("review", "needs_review")
+    assert again.purchase_id is not None and again.purchase_id != removed
+    draft = (await admin_client.get(f"/api/v1/purchases/{again.purchase_id}")).json()
+    assert draft["status"] == "draft"
+    assert [ln["raw_text"] for ln in draft["lines"]] == [
+        ln["raw_text"] for ln in fixture.expected_lines
+    ]
 
 
 async def test_uploading_a_receipt_whose_purchase_was_removed_reads_it_again(

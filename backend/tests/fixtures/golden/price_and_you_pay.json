@@ -270,6 +270,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 612,
+    "skipped": [],
+    "text": "phchpldglfhiiboc"
+  },
   "requests": [
     {
       "messages_digest": "dbhlgdcnhkkafcmo",

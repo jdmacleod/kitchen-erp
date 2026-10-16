@@ -37,7 +37,7 @@ from app.catalog import categories as category_keys
 from app.catalog import proposals as merging
 from app.catalog.brand_names import is_never_brand
 from app.catalog.conform import conform, proper_noun_words
-from app.catalog.product_names import short_name
+from app.catalog.product_names import produce_name, short_name
 from app.core.errors import ApiError
 from app.models import AppUser
 from app.models.catalog import CleanupSkip, Ingredient, IngredientRef, Product
@@ -134,10 +134,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
     )
     for p in rows:
         loose = p.kind in ("loose", "random_weight")
-        produce = (
-            category_keys.key(p.category) == "produce"
-            and category_keys.key_from_name(p.ingredient_name) is None
-        )
+        produce = category_keys.is_produce(p.category, p.ingredient_name)
         if p.brand and is_never_brand(p.brand):
             out.append(
                 Suggestion(
@@ -194,9 +191,15 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
             )
         brand = None if p.brand and merging.is_null_like(p.brand) else p.brand
         short = short_name(
-            p.name, brand, has_pack=p.pack_qty is not None, brand_keys=keys, proper_nouns=proper
+            p.name,
+            brand,
+            has_pack=p.pack_qty is not None,
+            produce=produce,
+            brand_keys=keys,
+            proper_nouns=proper,
         )
         if short and short != p.name:
+            filler = produce and produce_name(p.name) != p.name
             out.append(
                 Suggestion(
                     suggestion_key("product_name", p.id, short),
@@ -205,7 +208,9 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
                     p.name,
                     p.name,
                     short,
-                    "brand and pack have fields of their own",
+                    "produce needs no “Fresh” or “1 ct”"
+                    if filler
+                    else "brand and pack have fields of their own",
                     short,
                 )
             )

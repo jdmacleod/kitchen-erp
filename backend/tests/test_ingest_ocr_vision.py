@@ -127,6 +127,52 @@ async def test_the_transcript_is_the_receipt_text(
     assert "ocr_fallback" not in await _purchase_flags(final.purchase_id)
 
 
+async def test_the_output_names_prompt_tokens_and_load_seconds(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, transcriber
+):
+    """Criterion 93 (2O): what the transcription cost, as Ollama reported it."""
+    fixture = load_fixture("independent_minimal")
+
+    def reply() -> httpx.Response:
+        return _stream(
+            {"message": {"content": fixture.ocr_text}, "done": False},
+            {
+                "message": {"content": ""},
+                "done": True,
+                "done_reason": "stop",
+                "eval_count": 42,
+                "prompt_eval_count": 612,
+                "load_duration": 1_500_000_000,  # nanoseconds
+            },
+        )
+
+    transcriber(fixture, reply)
+    _, job = await upload_fixture(admin_client, fixture, client_ocr=False)
+    await run_job(job["id"], ocr_adapters=VISION)
+    vision = (await stage_outputs(admin_client, job["id"]))["ocr"]["vision"]
+    assert (vision["prompt_tokens"], vision["completion_tokens"]) == (612, 42)
+    assert vision["load_seconds"] == 1.5
+
+
+async def test_header_and_lines_requests_carry_no_image(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, transcriber
+):
+    """Criterion 68: only the vision transcriber is sent the receipt image."""
+    fixture = load_fixture("independent_minimal")
+    transport, _ = transcriber(fixture, _transcript(fixture.ocr_text))
+    _, job = await upload_fixture(admin_client, fixture, client_ocr=False)
+    final = await run_job(job["id"], ocr_adapters=VISION)
+    assert final.stage == "review"
+
+    (transcription,) = transport.transcriber_requests
+    assert any("images" in message for message in transcription["messages"])
+    reads = transport.recorded.requests
+    assert {r["stage"] for r in reads} == {"header", "lines"}
+    for request in reads:
+        for message in request["body"]["messages"]:
+            assert "images" not in message, request["stage"]
+
+
 async def test_text_sent_with_the_upload_still_wins(
     admin_client: httpx.AsyncClient, receipts_dir: Path, transcriber
 ):

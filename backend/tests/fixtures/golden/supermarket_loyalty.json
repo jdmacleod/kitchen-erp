@@ -259,6 +259,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 684,
+    "skipped": [],
+    "text": "dfdabmdnnofhcapd"
+  },
   "requests": [
     {
       "messages_digest": "iabonmmigjnjmflh",

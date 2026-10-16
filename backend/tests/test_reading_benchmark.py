@@ -167,6 +167,43 @@ def test_an_unknown_item_count_is_left_out_of_the_mean():
     assert unknown["reconcile_share"] == 1  # reconcile does not need the count
 
 
+def _receipt(total: str) -> bench.Receipt:
+    return bench.Receipt(uuid.uuid4(), "r.png", "image/png", None, Decimal(total), None)
+
+
+def test_a_reply_with_no_item_lines_is_not_reconciled():
+    """Criterion 69: an empty reply that validates is never counted as reconciled,
+    even against a receipt whose total it would trivially match."""
+    config = bench.Config("b", "o", "p", text_model="t")
+    for lines in ([], None):
+        row = bench.score(config, _receipt("0.00"), bench.Reading(lines=lines), None, {})
+        assert row["reconciled"] is False and row["item_count"] == 0
+
+
+def test_timeouts_and_out_of_room_are_one_runaway_rate():
+    """Criterion 69: a timeout or an out-of-room reply from any text call is a runaway;
+    the OCR model's out-of-room is its normal cap and is not."""
+    config = bench.Config("b", "o", "p", text_model="t")
+
+    def reading(*calls: tuple[str, str]) -> bench.Reading:
+        ledger = llm.CallLedger()
+        for role, outcome in calls:
+            ledger.append(llm.CallRecord(role=role, model="m", outcome=outcome, seconds=1.0))
+        return bench.Reading(lines=[], ledger=ledger)
+
+    readings = [
+        reading(("header", "ok"), ("lines", "timeout")),
+        reading(("header", "out_of_room"), ("lines", "ok")),
+        reading(("ocr", "out_of_room"), ("lines", "ok")),
+        reading(("ocr", "timeout")),
+        reading(("header", "ok"), ("lines", "invalid")),
+    ]
+    rows = [bench.score(config, _receipt("1.00"), r, None, {}) for r in readings]
+    assert [row["runaway"] for row in rows] == [True, True, False, True, False]
+    kw = {"run_id": "r", "started_at": "s", "set_hash": "h", "digest": ""}
+    assert bench.aggregate(config, rows, **kw)["runaway_share"] == 3 / 5
+
+
 def _stored(arm: str, model: str, share: str, text_model: str | None = None) -> dict[str, str]:
     row = {"arm": arm, "model": model, "prompt_version": "p", "receipt_set_hash": "h"}
     row |= {"reconcile_share": share, "alias_hit_rate": "", "seconds_p50": "60"}

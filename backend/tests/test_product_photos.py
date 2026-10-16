@@ -184,6 +184,38 @@ async def test_a_heic_photo_produces_every_derivative(admin_client, product, med
         assert got.status_code == 200 and got.headers["content-type"] == "image/webp"
 
 
+async def test_a_heic_photo_and_its_mask_give_a_cutout(admin_client, product, media_root: Path):
+    """Criterion 95, the HEIC cutout."""
+    import pillow_heif
+
+    pillow_heif.register_heif_opener()
+    out = io.BytesIO()
+    Image.new("RGB", (300, 200), RED).save(out, format="HEIF")
+    r = await admin_client.post(
+        "/api/v1/product-photos",
+        data={"product_id": product["id"]},
+        files=[("photos", ("p.heic", out.getvalue(), "image/heic"))],
+    )
+    assert r.status_code == 201, r.text
+    await work()
+    [photo] = (await photos_of(admin_client, product["id"]))["items"]
+    r = await admin_client.post(
+        f"/api/v1/product-photos/{photo['id']}/mask",
+        files={"mask": ("m.png", mask_png((300, 200), (50, 25, 250, 175)), "image/png")},
+    )
+    assert r.status_code == 202, r.text
+    await work()
+    [photo] = (await photos_of(admin_client, product["id"]))["items"]
+    assert photo["has_cutout"]
+    for key in ("cutout_medium", "cutout_large"):
+        got = await admin_client.get(photo["urls"][key])
+        assert got.status_code == 200 and got.headers["content-type"] == "image/webp"
+        with Image.open(io.BytesIO(got.content)) as cutout:
+            assert cutout.mode == "RGBA" and cutout.width == cutout.height
+    for path in media_root.rglob("*.*"):
+        assert not has_metadata(path.read_bytes()), path
+
+
 async def test_rebuild_is_byte_identical_and_addresses_name_their_inputs(
     admin_client, product, media_root: Path
 ):
@@ -384,6 +416,66 @@ async def test_media_needs_a_session_and_is_cached_for_good(admin_client, produc
     assert r.headers["cache-control"] == "private, max-age=31536000, immutable"
     async with httpx.AsyncClient(transport=client._transport, base_url="http://test") as anon:
         assert (await anon.get(url)).status_code == 401
+
+
+async def test_the_images_rebuild_command_remakes_deleted_derivatives(
+    admin_client, product, media_root: Path
+):
+    """Criterion 96 through `kerp images rebuild`, a subprocess: it opens its own engine."""
+    import os
+    import shutil
+    import subprocess
+    import sys
+
+    await upload(admin_client, product["id"], jpeg((900, 700)))
+    await work()
+    derived = media_root / "derived"
+    before = {p.relative_to(derived): p.read_bytes() for p in derived.rglob("*.webp")}
+    assert len(before) == 3
+    shutil.rmtree(derived)
+    done = subprocess.run(
+        [sys.executable, "-m", "app.cli", "images", "rebuild"],
+        cwd=Path(__file__).resolve().parent.parent,
+        env={**os.environ, "MEDIA_PATH": str(media_root)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == (
+        f"3 derivative file(s) present for pipeline {media.pipeline_version()}"
+    )
+    after = {p.relative_to(derived): p.read_bytes() for p in derived.rglob("*.webp")}
+    assert after == before
+
+
+async def test_a_full_token_fetches_media_and_no_proxy_rule_is_needed(admin_client, product):
+    """Criterion 100: a "*" bearer token reads the file; nginx passes /api/ through as it is."""
+    await upload(admin_client, product["id"], jpeg())
+    await work()
+    [photo] = (await photos_of(admin_client, product["id"]))["items"]
+    url = photo["urls"]["medium"]
+    expected = (await admin_client.get(url)).content
+    r = await admin_client.post("/api/v1/api-tokens", json={"name": "photo tool"})
+    assert r.status_code == 201 and r.json()["token"]["scopes"] == ["*"]
+    bearer = {"Authorization": f"Bearer {r.json()['plaintext']}"}
+    from app.main import app
+
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as tool:
+        got = await tool.get(url, headers=bearer)
+    assert got.status_code == 200 and got.content == expected
+    assert got.headers["content-type"] == "image/webp"
+    assert got.headers["cache-control"] == "private, max-age=31536000, immutable"
+
+    nginx = Path(__file__).resolve().parents[2] / "frontend" / "nginx.conf"
+    locations = [
+        line.split()[1]
+        for line in nginx.read_text().splitlines()
+        if line.strip().startswith("location ")
+    ]
+    assert "/api/" in locations
+    assert not [loc for loc in locations if "media" in loc]
 
 
 async def test_a_missing_derivative_is_rebuilt_and_a_missing_original_is_404(

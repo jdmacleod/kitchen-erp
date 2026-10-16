@@ -150,6 +150,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 184,
+    "skipped": [],
+    "text": "kchlanmohabkbnok"
+  },
   "requests": [
     {
       "messages_digest": "ebdinbfffihbakep",

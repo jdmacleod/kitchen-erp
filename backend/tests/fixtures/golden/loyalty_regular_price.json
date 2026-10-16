@@ -186,6 +186,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 279,
+    "skipped": [],
+    "text": "bmfdjagpodkeomml"
+  },
   "requests": [
     {
       "messages_digest": "nkldoccdllncaomp",

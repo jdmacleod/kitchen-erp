@@ -51,7 +51,7 @@ from app.schemas.catalog import (
     ProvenanceOut,
     SearchHit,
 )
-from app.services import best_by, brands, recipe_cost_triggers
+from app.services import best_by, brands, new_products, recipe_cost_triggers
 from app.services.normalize import normalize_receipt_text
 from app.services.pagination import decode_cursor, decode_keyset, encode_cursor, encode_keyset
 from app.services.pricebook import recompute_for_ingredient, recompute_for_product
@@ -1028,24 +1028,6 @@ async def _set_barcode(
     product.identifiers.append(ProductIdentifier(scheme=scheme, value=value, source="manual"))
 
 
-def _kind_from_evidence(
-    brand: str | None,
-    barcode: str | None,
-    exclusive_vendor_id: uuid.UUID | None,
-    *,
-    house_brand: bool = False,
-) -> str:
-    """The kind a product starts with when none is given (03, 1H). A brand the brand
-    dataset lists is some store's own, which beats a market stall (16, 2R)."""
-    if house_brand:
-        return "private_label"
-    if exclusive_vendor_id is not None:
-        return "unbranded_vendor"
-    if (brand or "").strip() or barcode:
-        return "branded"
-    return "loose"
-
-
 def _attributes(ingredient: Ingredient, data: dict | None) -> dict:
     try:
         return validate_attributes(categories.key(ingredient.category), data)
@@ -1053,8 +1035,12 @@ def _attributes(ingredient: Ingredient, data: dict | None) -> dict:
         raise ApiError(422, "invalid_attributes", str(exc).splitlines()[0]) from exc
 
 
-async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
-    """Create a product, and its ingredient inline if asked, in one transaction."""
+async def create_product(
+    db: AsyncSession, payload: ProductCreate, *, per_weight: bool = False
+) -> Product:
+    """Create a product, and its ingredient inline if asked, in one transaction. Its
+    kind and the produce defaults come from ``new_products``; ``per_weight`` says it
+    was bought priced by weight."""
     try:
         if payload.ingredient is not None:
             ingredient = await new_ingredient(db, payload.ingredient)
@@ -1065,21 +1051,25 @@ async def create_product(db: AsyncSession, payload: ProductCreate) -> Product:
             if ingredient is None:
                 raise ApiError(404, "not_found", "No such ingredient.")
             ingredient_id = payload.ingredient_id
+        begin = await new_products.start(
+            db,
+            ingredient,
+            name=payload.name,
+            brand=payload.brand,
+            kind=payload.kind,
+            barcode=payload.barcode,
+            exclusive_vendor_id=payload.exclusive_vendor_id,
+            per_weight=per_weight,
+        )
         product = Product(
             ingredient_id=ingredient_id,
-            brand=payload.brand,
-            name=payload.name.strip(),
+            brand=begin.brand,
+            name=begin.name,
             pack_qty=payload.pack_qty,
             pack_unit=payload.pack_unit,
             pack_count=payload.pack_count,
             piece_name=_piece_name(payload.piece_name),
-            kind=payload.kind
-            or _kind_from_evidence(
-                payload.brand,
-                payload.barcode,
-                payload.exclusive_vendor_id,
-                house_brand=await brands.is_house_brand(db, payload.brand),
-            ),
+            kind=begin.kind,
             attributes=_attributes(ingredient, payload.attributes),
             quality_rating=payload.quality_rating,
             exclusive_vendor_id=payload.exclusive_vendor_id,

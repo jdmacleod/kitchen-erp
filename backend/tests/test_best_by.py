@@ -234,6 +234,26 @@ async def test_prices_are_unaffected(admin_client):
     assert r.json()["voided"] is False
 
 
+@pytest.mark.parametrize("days_ago", [10, 200])
+async def test_staleness_is_unaffected(admin_client, days_ago):
+    """Q7: a fresh price stays fresh and a stale one stale, whatever is said about keeping."""
+    chicken, product = await _chicken(admin_client)
+    p = await _bought(admin_client, product["id"], at=datetime.now(UTC) - timedelta(days=days_ago))
+
+    async def offer() -> tuple:
+        r = await admin_client.get(f"/api/v1/ingredients/{chicken['id']}/offers")
+        assert r.status_code == 200, r.text
+        [item] = r.json()["items"]
+        return item["stale"], item["norm_unit_price"], r.json()["stale_after_days"]
+
+    before = await offer()
+    assert before[0] is (days_ago > 90)
+    await _keeping(admin_client, p, stored_in="freezer")
+    await _keeping(admin_client, p, date="use_by", best_by="2026-06-05")
+    await admin_client.patch(f"/api/v1/ingredients/{chicken['id']}", json={"keep_fridge_days": 2})
+    assert await offer() == before
+
+
 async def test_a_use_by_without_a_date_is_refused(admin_client):
     _, product = await _chicken(admin_client)
     p = await _bought(admin_client, product["id"])
