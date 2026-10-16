@@ -14,23 +14,37 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:8082",
     trace: "retain-on-failure",
   },
+  // A test for one side of lg carries a tag, and the projects on the other side
+  // leave it out: `@desktop-only` runs on desktop alone, `@below-lg` on the
+  // phone and tablet projects (plan-acceptance.spec.ts, cook-acceptance.spec.ts).
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] } },
-    { name: "phone", use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } } },
+    { name: "desktop", grepInvert: /@below-lg/, use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "phone",
+      grepInvert: /@desktop-only/,
+      use: { ...devices["Pixel 7"], viewport: { width: 390, height: 844 } },
+    },
     // 375px is the narrowest phone still in common use, and it is narrower than
     // the 390 above. The Location select on the purchase form overflowed only
     // below ~427px, so `phone` was green while the form ran off the screen.
-    { name: "phone-375", use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } } },
-    // The layout floor and the top of the tablet range (UI-4.2). Both use the
-    // phone shell, so they run only the fit and touch-target checks.
+    {
+      name: "phone-375",
+      grepInvert: /@desktop-only/,
+      use: { ...devices["Pixel 7"], viewport: { width: 375, height: 812 } },
+    },
+    // The layout floor and the top of the tablet range (UI-4.2, UI-8.19). Both
+    // use the phone shell, so they run only the fit, touch-target and keyboard
+    // checks: the narrow-phone spec and the Plan acceptance spec.
     {
       name: "phone-360",
-      testMatch: /narrow-phone\.spec\.ts/,
+      testMatch: /(narrow-phone|plan-acceptance)\.spec\.ts/,
+      grepInvert: /@desktop-only/,
       use: { ...devices["Pixel 7"], viewport: { width: 360, height: 780 } },
     },
     {
       name: "tablet-1000",
-      testMatch: /narrow-phone\.spec\.ts/,
+      testMatch: /(narrow-phone|plan-acceptance)\.spec\.ts/,
+      grepInvert: /@desktop-only/,
       use: { ...devices["Pixel 7"], viewport: { width: 1000, height: 1280 } },
     },
   ],
