@@ -17,10 +17,12 @@ import {
   type RemovedPurchase,
   type Resolution,
 } from "../../api/purchases";
+import { isSetAside } from "../../api/supplies";
 import { Badge } from "../../components/catalog/fields";
 import { CategoryChip } from "../../components/CategoryChip";
 import { useNavigateWithNotice, useNotice } from "../../components/Notice";
 import { BestBy } from "../../components/purchases/BestBy";
+import { SupplyName } from "../../components/purchases/KitchenSupply";
 import { PurchaseForm, isLineEmpty, purchaseValues } from "../../components/purchases/PurchaseForm";
 import {
   RemovedLinesCaption,
@@ -272,6 +274,9 @@ function CommittedPurchase({
               {p.computed_total !== null ? formatMoney(p.computed_total) : "—"}
             </Item>
             <Item label="Tax">{p.tax !== null ? formatMoney(p.tax) : "—"}</Item>
+            {p.supply_total ? (
+              <Item label="Kitchen supplies">{formatMoney(p.supply_total)}</Item>
+            ) : null}
             {p.flags.length > 0 ? (
               <Item label="Flags">
                 <span className="flex flex-wrap gap-1">
@@ -377,7 +382,11 @@ function LineRow({
           <span>
             {line.raw_text ?? "—"}{" "}
             {isItem ? (
-              resolution === "ignored" ? (
+              resolution === "supply" ? (
+                <>
+                  <Badge>kitchen supply</Badge> <SupplyName category={line.supply_category} />
+                </>
+              ) : resolution === "ignored" ? (
                 <Badge>ignored</Badge>
               ) : (
                 <Badge tone="warn">unresolved</Badge>
@@ -419,7 +428,7 @@ function LineRow({
           line.recorded ? (
             <Badge>voided</Badge>
           ) : null
-        ) : isItem && resolution !== "ignored" ? (
+        ) : isItem && !isSetAside(line) ? (
           line.observation_id ? (
             <Badge tone="good">observed</Badge>
           ) : (

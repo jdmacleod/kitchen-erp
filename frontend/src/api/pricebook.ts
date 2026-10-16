@@ -141,6 +141,8 @@ export interface CompareResult {
 export interface PricePanel {
   last_visit: string | null;
   spend: string | null;
+  /** The part of spend that went on kitchen supplies (spec 04, 2T). */
+  supply_spend?: string | null;
   visits: number;
   period_days: number;
   recent: {
