@@ -26,6 +26,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from difflib import SequenceMatcher
+from functools import lru_cache
 
 from sqlalchemy import Text, cast, func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -72,6 +73,9 @@ class DuplicatePair:
         )
 
 
+# Pure, and asked for every pair of names ending in the same noun on each look at
+# Tidy the catalog (issue 372): remembered rather than conformed again.
+@lru_cache(maxsize=8192)
 def name_key(name: str) -> str:
     """A name with its conformed form, last word's plural and spelling folded."""
     words = normalize_name(conform(name).name).split()

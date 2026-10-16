@@ -172,3 +172,32 @@ def key_from_name(name: str | None) -> CategoryKey | None:
     if _SEAFOOD_WORDS.intersection(words):
         return "seafood"
     return None
+
+
+# The filed keys a name word overrides (``misfiled``); "frozen" overrides any.
+# The others override only what their word rules out beyond doubt: a fish is no
+# meat, and a canned, dried or seasoning food is not kept in a fresh case. A fish
+# filed under pantry or frozen may be canned or frozen; "dried oregano" is a spice,
+# "spice cake" bakes, and "fish sauce" is pantry.
+_FRESH: frozenset[CategoryKey] = frozenset({"produce", "meat", "seafood", "dairy"})
+_OVERRIDES: dict[CategoryKey, frozenset[CategoryKey]] = {
+    "seafood": frozenset({"meat"}),
+    "pantry": _FRESH,
+    "spices": _FRESH,
+}
+
+
+def misfiled(name: str | None, category: str | None) -> CategoryKey | None:
+    """The key an ingredient filed under ``category`` belongs under instead, when its
+    name settles it (issue 372); None when the filing stands or nothing says otherwise.
+
+    A frozen food filed anywhere else is offered frozen; a fish filed under meat,
+    seafood; a canned, dried or fried food or a seasoning filed in a fresh case
+    (produce, meat, seafood, dairy), pantry or spices."""
+    by_name = key_from_name(name)
+    filed = key(category)
+    if category is None or by_name is None or by_name == filed:
+        return None
+    if by_name == "frozen":
+        return by_name
+    return by_name if filed in _OVERRIDES.get(by_name, frozenset()) else None

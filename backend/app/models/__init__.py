@@ -24,6 +24,7 @@ from app.models.catalog import (
     RefUsdaPortion,
     VendorListing,
 )
+from app.models.cleanup import CleanupGuess
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.line_words import LineWord
 from app.models.lookups import ListingPriceChange, LookupAnswer, LookupRequest
@@ -83,6 +84,7 @@ __all__ = [
     "BrandFamily",
     "BrandFamilyBanner",
     "BrandFamilyCarries",
+    "CleanupGuess",
     "CleanupSkip",
     "FdcBranded",
     "FdcFood",

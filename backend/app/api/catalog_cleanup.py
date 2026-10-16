@@ -34,6 +34,7 @@ async def list_suggestions(db: DbSession, _: CurrentUser) -> CleanupOut:
                 ready=s.ready,
                 value=s.value if s.kind == "category" else "",
                 choosable=s.choosable,
+                confidence=s.confidence,
             )
             for s in found
         ]
@@ -42,9 +43,10 @@ async def list_suggestions(db: DbSession, _: CurrentUser) -> CleanupOut:
 
 @router.post("/catalog/cleanup/apply", response_model=CleanupApplyOut)
 async def apply_suggestions(body: CleanupApplyIn, _: CurrentUser, db: DbSession) -> CleanupApplyOut:
-    """Apply the suggestions named, as they stand now, with any category chosen instead."""
-    applied, gone = await catalog_cleanup.apply(db, body.keys, body.chosen)
-    return CleanupApplyOut(applied=applied, gone=gone)
+    """Apply the suggestions named, as they stand now, with any category chosen instead.
+    A guess named with others is held back: guesses are accepted one at a time."""
+    applied, gone, held = await catalog_cleanup.apply(db, body.keys, body.chosen)
+    return CleanupApplyOut(applied=applied, gone=gone, held=held)
 
 
 @router.post("/catalog/cleanup/skip", status_code=status.HTTP_204_NO_CONTENT)
