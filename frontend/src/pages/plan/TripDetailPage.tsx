@@ -29,7 +29,14 @@ import { TripMap } from "../../components/plan/TripMap";
 import { TripStops } from "../../components/plan/TripStops";
 import { VariantCard } from "../../components/plan/VariantCard";
 import { SegmentedControl } from "../../components/SegmentedControl";
-import { Alert, Button, PageHeader, focusRing, primaryLinkClass } from "../../components/ui";
+import {
+  Alert,
+  Button,
+  PageHeader,
+  focusRing,
+  primaryLinkClass,
+  tapTarget,
+} from "../../components/ui";
 import { formatMoney } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
@@ -82,10 +89,7 @@ function Breadcrumb() {
   return (
     <nav aria-label="Breadcrumb" className={`mb-2 text-sm ${muted}`}>
       <span>Plan</span> <span aria-hidden="true">/</span>{" "}
-      <Link
-        to="/plan/trips"
-        className={`inline-flex min-h-11 items-center rounded-sm underline lg:min-h-0 ${focusRing}`}
-      >
+      <Link to="/plan/trips" className={`${tapTarget} rounded-sm underline ${focusRing}`}>
         Trips
       </Link>
     </nav>
