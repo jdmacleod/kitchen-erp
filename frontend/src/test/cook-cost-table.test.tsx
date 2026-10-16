@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { IngredientMatch } from "../api/catalog";
-import type { BodySection, Recipe, RecipePin } from "../api/recipes";
+import type { BodySection, Recipe, RecipeCost, RecipePin } from "../api/recipes";
 import {
   adminUser,
   errorResponse,
@@ -21,6 +21,7 @@ import {
   recipeList,
   stewBody,
   stewCost,
+  stewLines,
   stewRecipe,
 } from "./recipe-fixtures";
 
@@ -37,6 +38,23 @@ const celeryRoot: IngredientMatch = {
   exact: false,
 };
 
+/**
+ * The cost as the server sends it: every decision and pin recomputes it, and its
+ * lines come back with new ids each time. Rows keyed by those remounted and lost
+ * the keyboard focus in a browser while mocks with fixed ids passed (issue 282).
+ */
+function recomputed(make: () => RecipeCost = () => stewCost()): RouteHandler {
+  let run = 0;
+  return () => {
+    run += 1;
+    const cost = make();
+    return jsonResponse(200, {
+      ...cost,
+      lines: cost.lines.map((l) => ({ ...l, id: `${l.id}-run${run}` })),
+    });
+  };
+}
+
 function mount(routes: Record<string, RouteHandler> = {}, recipe: () => Recipe = () => stewRecipe) {
   const calls = mockApi({
     "GET /auth/me": () => jsonResponse(200, adminUser),
@@ -45,7 +63,7 @@ function mount(routes: Record<string, RouteHandler> = {}, recipe: () => Recipe =
     "GET /recipes/status": () => jsonResponse(200, mountedStatus),
     "GET /recipes": () => jsonResponse(200, { items: recipeList }),
     "GET /recipes/r-barley": () => jsonResponse(200, recipe()),
-    "GET /recipes/r-barley/cost": () => jsonResponse(200, stewCost()),
+    "GET /recipes/r-barley/cost": recomputed(),
     "GET /recipes/r-barley/cost/history": () => jsonResponse(200, emptyHistory),
     "GET /ingredients/search": () => jsonResponse(200, { items: [celeryRoot] }),
     "GET /products": () => jsonResponse(200, { items: [barleyProduct], next_cursor: null }),
@@ -62,10 +80,11 @@ const pinCalls = (calls: RecordedCall[]) =>
 describe("the cost table's ingredient picker (UI-7.10, criterion 28)", () => {
   it("resolves an unmapped line from its combobox, refreshes the cost and shows the Notice", async () => {
     let costFetches = 0;
+    const fresh = recomputed();
     const calls = mount({
-      "GET /recipes/r-barley/cost": () => {
+      "GET /recipes/r-barley/cost": (call) => {
         costFetches += 1;
-        return jsonResponse(200, stewCost());
+        return fresh(call);
       },
       "POST /recipes/resolve": () =>
         jsonResponse(200, {
@@ -151,6 +170,74 @@ describe("the cost table's ingredient picker (UI-7.10, criterion 28)", () => {
   });
 });
 
+/**
+ * The stew's cost with two names waiting, mystery root and then dried kelp; once
+ * mystery root is decided it comes back resolved as celery root.
+ */
+function twoWaiting(decided: boolean): RecipeCost {
+  const base = stewCost();
+  return {
+    ...base,
+    lines: base.lines.map((l) => {
+      if (l.line.id === stewLines[2].id && decided)
+        return {
+          ...base.lines[0],
+          id: l.id,
+          line: {
+            ...l.line,
+            resolution: "alias",
+            ingredient_id: "i-celery-root",
+            ingredient_name: "celery root",
+          },
+        };
+      if (l.line.id !== stewLines[3].id) return l;
+      return {
+        ...l,
+        status: "unmapped",
+        price: null,
+        line: { ...l.line, resolution: "unmatched", ingredient_id: null, ingredient_name: null },
+      };
+    }),
+  };
+}
+
+describe("keyboard focus across a recomputed cost (criterion 31, UI-7.12)", () => {
+  it("keeps focus on the next line's picker after the recomputed cost arrives (criterion 31)", async () => {
+    let decided = false;
+    const cost = () => twoWaiting(decided);
+    let costFetches = 0;
+    const fresh = recomputed(cost);
+    mount({
+      "GET /recipes/r-barley/cost": (call) => {
+        costFetches += 1;
+        return fresh(call);
+      },
+      "POST /recipes/resolve": () => {
+        decided = true;
+        return jsonResponse(200, {
+          name_norm: "mystery root",
+          action: "matched",
+          ingredient: { ...celeryRoot },
+          lines: 1,
+          recipes: 1,
+          remaining: 1,
+        });
+      },
+    });
+    const user = userEvent.setup();
+    const [, , root, kelp] = await costRows();
+    const before = costFetches;
+    await user.type(within(root).getByRole("combobox", { name: "Choose an ingredient" }), "celery");
+    await waitFor(() => expect(within(root).getAllByRole("option").length).toBeGreaterThan(0));
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(costFetches).toBeGreaterThan(before));
+    // The refetched rows render, mystery root with its ingredient, and focus is
+    // still on dried kelp's picker in the same row, not on the page.
+    expect(await within(root).findByRole("link", { name: "celery root" })).toBeInTheDocument();
+    expect(within(kelp).getByRole("combobox", { name: "Choose an ingredient" })).toHaveFocus();
+  });
+});
+
 describe("pins (UI-7.11, criterion 31)", () => {
   it("Pin product… offers only the line's ingredient's products, pins on Enter, then shows Pinned with Unpin", async () => {
     let pins: RecipePin[] = [];
@@ -192,10 +279,12 @@ describe("pins (UI-7.11, criterion 31)", () => {
     expect(pinCalls(calls)[0]).toMatchObject({ method: "PUT", body: { product_id: "p-barley-1" } });
     const pinned = await within(barley).findByTestId("pinned");
     expect(pinned).toHaveTextContent("Pinned · Moonfield pearl barley 1 lb");
-    // Focus moves to the next line that can take a pin.
+    // Focus moves to the next line that can take a pin, after the recomputed
+    // cost (new line ids) has rendered: the onion row is the same element.
     await waitFor(() =>
       expect(within(onion).getByRole("button", { name: "Pin product…" })).toHaveFocus(),
     );
+    expect(onion).toBeInTheDocument();
 
     await user.click(within(pinned).getByRole("button", { name: "Unpin" }));
     await waitFor(() => expect(pinCalls(calls).map((c) => c.method)).toEqual(["PUT", "DELETE"]));
