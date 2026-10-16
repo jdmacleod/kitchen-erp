@@ -69,7 +69,7 @@ import {
   suspectLine,
 } from "./lineParts";
 import { ProductPicker } from "./ProductPicker";
-import { ReceiptZoom } from "./ReceiptZoom";
+import { imageColumns, ReceiptZoom } from "./ReceiptZoom";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { RereadLines } from "./RereadLines";
 import { WhyOff } from "./WhyOff";
@@ -527,9 +527,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
             className="md:sticky md:top-4 md:self-start"
           >
             <ReceiptZoom
-              documentId={purchase.receipt_document_id}
+              purchase={purchase}
               wide={sideBySide}
               onWide={setSideBySide}
+              currentLine={current}
+              onSelectLine={showLine}
             />
           </Disclosure>
         ) : null}
@@ -944,17 +946,6 @@ interface ReviewLineProps {
 
 function lineTitle(l: PurchaseLine): string {
   return l.product ? productTitle(l.product) : (l.raw_text ?? `line ${l.seq}`);
-}
-
-/**
- * The image beside the lines. From lg the lines are a table that needs the
- * width, so the image stacks above it until xl; side by side, a person has
- * chosen half the page for the image while checking lines against it.
- */
-function imageColumns(sideBySide: boolean): string {
-  return sideBySide
-    ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-    : "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]";
 }
 
 /** Flags that say what was done, not that anything needs a person (2S, U8). */

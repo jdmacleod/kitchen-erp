@@ -163,3 +163,24 @@ async def db_session():
     async with get_sessionmaker()() as db:
         yield db
         await db.execute(text("SELECT 1"))
+
+
+# Tests that run the real Tesseract binary skip where it isn't installed, which
+# includes CI's backend job. Say so at the end of the run, and as a GitHub notice
+# in CI, so a green run isn't read as having exercised them.
+TESSERACT_SKIP = "tesseract binary not installed"
+
+
+def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
+    skipped = [
+        r for r in terminalreporter.stats.get("skipped", []) if TESSERACT_SKIP in str(r.longrepr)
+    ]
+    if not skipped:
+        return
+    message = (
+        f"{len(skipped)} tests that run the Tesseract binary were skipped: it isn't installed "
+        "here. They run locally or in the api container, where it is."
+    )
+    terminalreporter.write_line(message)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        terminalreporter.write_line(f"::notice title=Tesseract tests skipped::{message}")

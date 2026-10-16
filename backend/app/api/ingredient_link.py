@@ -19,6 +19,7 @@ from app.schemas.ingredient_link import (
     IngredientDuplicateList,
     IngredientDuplicatePairOut,
     IngredientDuplicateSide,
+    IngredientUsdaOut,
     LinkIn,
     LinkOther,
     LinkPageOut,
@@ -33,11 +34,18 @@ from app.schemas.ingredient_link import (
     StandardEntryOut,
     UsdaDecisionIn,
     UsdaDecisionOut,
+    UsdaReferenceOut,
     UsdaRelinkIn,
     UsdaReviewGroupOut,
     UsdaReviewOut,
 )
-from app.services import catalog, ingredient_duplicates, ingredient_reconcile, usda_review
+from app.services import (
+    catalog,
+    ingredient_duplicates,
+    ingredient_reconcile,
+    usda_refuse,
+    usda_review,
+)
 
 router = APIRouter(tags=["ingredient vocabulary"])
 
@@ -185,6 +193,16 @@ async def usda_review_relink(
     """Link the ingredient to another USDA food, or none (#359). 422 unknown_food."""
     await usda_review.relink(db, ingredient_id, body.fdc_id)
     return await catalog.get_ingredient(db, ingredient_id)
+
+
+@router.get("/ingredients/{ingredient_id}/usda", response_model=IngredientUsdaOut)
+async def ingredient_usda(
+    ingredient_id: uuid.UUID, db: DbSession, _: CurrentUser
+) -> IngredientUsdaOut:
+    """The preferred USDA food and its refuse, for the yield suggestion (07, 3D). 404 not_found."""
+    await catalog.get_ingredient(db, ingredient_id)
+    found = await usda_refuse.preferred_reference(db, ingredient_id)
+    return IngredientUsdaOut(reference=None if found is None else UsdaReferenceOut(**asdict(found)))
 
 
 @router.get("/ingredients/duplicates", response_model=IngredientDuplicateList)

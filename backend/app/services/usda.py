@@ -1,10 +1,11 @@
 """Optional USDA FoodData Central reference: importer and bridge suggestions.
 
 Reads a local, unzipped download: food.csv, measure_unit.csv and
-food_portion.csv, plus, when present, food_category.csv for categories and
+food_portion.csv, plus, when present, food_category.csv for categories,
 input_food.csv, sr_legacy_food.csv and fndds_ingredient_nutrient_value.csv for
-usage counts (03, 1G). Nothing here runs at costing time; it only proposes
-standard-list links, densities and named measures.
+usage counts (03, 1G), and food_component.csv for refuse (``usda_refuse``).
+Nothing here runs at costing time; it only proposes standard-list links,
+densities, named measures and yields.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from app.catalog import usda_fit
 from app.core.ids import new_id
 from app.models.catalog import FdcFood, FdcRelease, RefUsdaPortion
 from app.schemas.catalog import DensitySuggestion, MeasureSuggestion, UsdaSuggestion
+from app.services import usda_refuse
 from app.units import UnitParseFailure, parse_unit, units_by_code
 
 DATA_TYPES = {"foundation_food", "sr_legacy_food", "survey_fndds_food"}
@@ -141,6 +143,9 @@ def check_columns(directory: Path) -> list[str]:
                 raise UsdaFormatError(name, column)
         if name == "input_food.csv" and not header & set(_INPUT_FDC_COLUMNS):
             raise UsdaFormatError(name, _INPUT_FDC_COLUMNS[0])
+    # Refuse is checked as it is read: a changed layout skips it rather than the import.
+    if not (directory / usda_refuse.FILE).is_file():
+        absent.append(usda_refuse.FILE)
     return absent
 
 
@@ -313,6 +318,7 @@ async def import_usda(
     result = UsdaImport(absent=check_columns(directory), release_date=release_date(directory))
     foods = read_foods(directory)
     uses = fndds_uses(directory, foods, skipped)
+    refuse = usda_refuse.read_refuse(directory, foods, skipped)
     await db.execute(delete(RefUsdaPortion))
     await db.execute(delete(FdcFood))
     result.foods = await _insert(
@@ -325,6 +331,7 @@ async def import_usda(
                 "description": description,
                 "category": category,
                 "fndds_uses": uses.get(food_id, 0),
+                "refuse_pct": refuse.get(food_id),
             }
             for food_id, (description, data_type, category) in foods.items()
         ),

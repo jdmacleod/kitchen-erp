@@ -206,7 +206,9 @@ describe("reading the photo and the words (2S, U4, U9)", () => {
     await user.click(screen.getByRole("button", { name: "Zoom in" }));
     expect(screen.getByText("150%")).toBeInTheDocument();
     const zoomed = screen.getByRole("img", { name: "The receipt as photographed" });
-    expect(zoomed).toHaveStyle({ width: "150%" });
+    // The photo fills a box one and a half times the frame's width.
+    expect(screen.getByTestId("receipt-photo")).toHaveStyle({ width: "150%" });
+    expect(zoomed).toHaveClass("w-full");
     expect(zoomed.getAttribute("src")).not.toContain("width=");
     const wide = screen.getByRole("button", { name: "Side by side" });
     expect(wide).toHaveAttribute("aria-pressed", "false");
