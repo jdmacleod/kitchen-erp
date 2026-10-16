@@ -455,7 +455,7 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
 
 /** The row states, each in words (10, Row states; UI-7.9). */
 function RowWords({ line }: { line: CostLine }) {
-  const link = `rounded-sm font-medium underline ${focusRing}`;
+  const link = `${tapTarget} rounded-sm font-medium underline ${focusRing}`;
   switch (line.status) {
     case "unmapped":
       return <span className={muted}>Needs an ingredient</span>;
