@@ -524,6 +524,23 @@ async def test_pending_proposals_are_one_inbox_row_that_leaves_on_decision(
     assert not [i for i in items if i["kind"] == "new_product"]
 
 
+async def test_the_inbox_row_leaves_when_the_last_proposal_is_accepted(admin_client, user, store):
+    """Criterion 82: accepting, like rejecting, takes the proposal off the inbox."""
+    result = await capture(user, page_evidence(store, gtin_value=None))
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    assert [i["title"] for i in items if i["kind"] == "new_product"] == ["1 product to review"]
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Oats", "category": "pantry"})
+    ).json()
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{result.proposal.id}/accept",
+        json={"action": "new", "ingredient_id": ing["id"]},
+    )
+    assert r.status_code == 200, r.text
+    items = (await admin_client.get("/api/v1/inbox")).json()["items"]
+    assert not [i for i in items if i["kind"] == "new_product"]
+
+
 async def test_the_reading_line_counts_photos_being_identified(admin_client, user):
     """Criterion 82, last part: counted, and stalled past INGEST_STALL_MINUTES."""
     async with get_sessionmaker()() as db:

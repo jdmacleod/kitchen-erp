@@ -168,6 +168,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 367,
+    "skipped": [],
+    "text": "emjpdnmonhgmkbik"
+  },
   "requests": [
     {
       "messages_digest": "pgieaeicmjkabpnm",

@@ -116,3 +116,42 @@ async def test_the_usual_pack_decides_pound_or_ounce(admin_client, pack_qty, uni
         "items"
     ][0]
     assert item["display_unit"] == unit
+
+
+async def test_two_packs_under_one_ingredient_read_in_one_unit(admin_client):
+    """A small and a large pack of one ingredient share one unit in every response."""
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market Eastside")
+    small = await make_product(
+        admin_client, "Pearl barley", "Pearl barley 8 oz", pack_qty="8", pack_unit="oz"
+    )
+    iid = small["ingredient"]["id"]
+    r = await admin_client.post(
+        "/api/v1/products",
+        json={
+            "ingredient_id": iid,
+            "name": "Pearl barley 3 lb",
+            "pack_qty": "3",
+            "pack_unit": "lb",
+        },
+    )
+    assert r.status_code == 201, r.text
+    large = r.json()
+    await shelf(admin_client, small["id"], loc["id"], "2.00")
+    await shelf(admin_client, large["id"], loc["id"], "6.00")
+
+    items = (await admin_client.get(f"/api/v1/ingredients/{iid}/offers")).json()["items"]
+    shown = {i["product_name"]: (i["display_unit_price"], i["display_unit"]) for i in items}
+    # The usual pack is the lower median of two, 8 oz, so the 3 lb pack reads per oz too.
+    assert shown == {"Pearl barley 8 oz": ("0.250", "oz"), "Pearl barley 3 lb": ("0.125", "oz")}
+
+    cheapest = (
+        await admin_client.get("/api/v1/price-book/cheapest", params={"ingredient_id": iid})
+    ).json()
+    assert cheapest["display_unit"] == "oz"
+    history = (await admin_client.get(f"/api/v1/ingredients/{iid}/price-history")).json()
+    assert (history["display_low"], history["display_high"], history["display_unit"]) == (
+        "0.125",
+        "0.250",
+        "oz",
+    )
+    assert {p["display_unit"] for p in history["points"]} == {"oz"}

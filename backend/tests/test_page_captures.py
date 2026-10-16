@@ -20,7 +20,7 @@ from app.services import plugins
 from tests import geo_helpers as gh
 from tests import ingest_helpers as ih
 from tests import test_products_helper as tph
-from tests.pricebook_helpers import make_location
+from tests.pricebook_helpers import make_location, make_product
 from tests.test_captures import work
 
 no_network = gh.no_network
@@ -162,6 +162,14 @@ async def test_a_clip_becomes_a_proposal_for_the_matched_vendor(admin_client, st
     assert again.status_code == 200 and again.json()["id"] == body["id"]
 
 
+async def test_a_page_being_read_is_counted_on_the_reading_line(admin_client, store, no_network):
+    """Criterion 82: a clipped page waiting to be read counts as a page, not a photo."""
+    r = await admin_client.post("/api/v1/product-captures", json=page())
+    assert r.status_code == 201, r.text
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert (reading["pages"], reading["photos"]) == (1, 0)
+
+
 @pytest.mark.parametrize("price", ["0.10", "19.99"])
 async def test_a_structured_price_reaches_the_observation_exactly(
     admin_client, store, owner_conn: asyncpg.Connection, price
@@ -289,6 +297,27 @@ async def test_the_address_check_names_a_product_already_in_the_catalog(
     assert same_item is not None and same_item["reason"] == "identifier"
     assert await known(f"{SHOP}/p/barley-flakes-88001") is None
     assert await known("https://other.example.test/p/rolled-oats-77123") is None
+
+
+async def test_the_address_check_names_the_product_a_barcode_in_the_address_belongs_to(
+    admin_client, store, no_network
+):
+    """Criterion 105, the barcode leg: a valid GTIN in the address names its product."""
+    from app.catalog.identifiers import check_digit
+
+    body = "04812 300009".replace(" ", "")
+    upc = body + str(check_digit(body))
+    product = await make_product(admin_client, "Oats", "Steel cut oats", barcode=upc)
+    r = await admin_client.post(
+        "/api/v1/product-captures/address", json={"page_url": f"{SHOP}/p/steel-cut-oats-{upc}"}
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["item_number"] is None  # the digits are the barcode, not the store's
+    assert r.json()["known"] == {
+        "product_id": product["id"],
+        "name": "Steel cut oats",
+        "reason": "identifier",
+    }
 
 
 # --- adapters and the model -----------------------------------------------------------------
