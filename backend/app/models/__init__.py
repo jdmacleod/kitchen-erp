@@ -25,6 +25,7 @@ from app.models.catalog import (
     VendorListing,
 )
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
+from app.models.line_words import LineWord
 from app.models.lookups import ListingPriceChange, LookupAnswer, LookupRequest
 from app.models.photos import ProductImage, ProductJob, ProductStageResult
 from app.models.plan import (
@@ -97,6 +98,7 @@ __all__ = [
     "IngredientMeasure",
     "IngredientRef",
     "LineReread",
+    "LineWord",
     "ListingPriceChange",
     "LookupAnswer",
     "LookupRequest",

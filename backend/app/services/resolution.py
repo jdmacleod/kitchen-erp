@@ -38,6 +38,7 @@ from app.models import (
 )
 from app.models.geo import Vendor, VendorLocation
 from app.services import best_by, brands, pricebook, recipe_cost_triggers
+from app.services.aliases import upsert_alias
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
 from app.services.purchases import ensure_not_voided, get_purchase, live_observations
@@ -282,43 +283,6 @@ async def is_price_outlier(
 
 
 # --- aliases ----------------------------------------------------------------
-
-
-async def upsert_alias(
-    db: AsyncSession, vendor_id: uuid.UUID, raw_text_norm: str, product_id: uuid.UUID | None
-) -> ReceiptAlias:
-    """Every human confirmation writes or updates an alias. Re-pointing resets the count."""
-    if not raw_text_norm:
-        raise ApiError(422, "empty_alias", "The line has no text to learn from.")
-    alias = (
-        await db.execute(
-            select(ReceiptAlias).where(
-                ReceiptAlias.vendor_id == vendor_id, ReceiptAlias.raw_text_norm == raw_text_norm
-            )
-        )
-    ).scalar_one_or_none()
-    now = datetime.now(UTC)
-    disposition = "product" if product_id is not None else "ignore"
-    if alias is None:
-        alias = ReceiptAlias(
-            vendor_id=vendor_id,
-            raw_text_norm=raw_text_norm,
-            disposition=disposition,
-            product_id=product_id,
-            confirmed_count=1,
-            last_seen_at=now,
-        )
-        db.add(alias)
-    elif alias.disposition == disposition and alias.product_id == product_id:
-        alias.confirmed_count += 1
-        alias.last_seen_at = now
-    else:
-        alias.disposition = disposition
-        alias.product_id = product_id
-        alias.confirmed_count = 1
-        alias.last_seen_at = now
-    await db.flush()
-    return alias
 
 
 async def fuzzy_aliases(db: AsyncSession, vendor_id: uuid.UUID, norm: str) -> list[dict[str, Any]]:
