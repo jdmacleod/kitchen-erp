@@ -10,7 +10,7 @@ the page can show it and a person can undo it. Computed per request, never store
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.catalog import standard
 from app.catalog.line_words import Vocabulary, WordChange, suggest_words, unread
 from app.models import Ingredient, IngredientAlias, Product
-from app.services import line_words, spelling
+from app.services import line_words, naming_brands, spelling
 
 
 def sentence(words: list[str]) -> str:
@@ -33,6 +33,7 @@ class NamingWords:
 
     vocabulary: Vocabulary
     spelling: frozenset[str]
+    brands: dict[str, str]
     learned: dict[uuid.UUID, dict[str, list[tuple[str, int]]]] = field(default_factory=dict)
 
 
@@ -45,14 +46,29 @@ async def load(db: AsyncSession) -> NamingWords:
         *(e.name for e in entries),
         *(s for e in entries for s in e.spellings),
     ]
-    return NamingWords(Vocabulary.of(texts), await spelling.vocabulary(db))
+    return NamingWords(
+        Vocabulary.of(texts), await spelling.vocabulary(db), await naming_brands.by_key(db)
+    )
+
+
+@dataclass(frozen=True)
+class Suggested:
+    """A row's suggested name and brand, from its printed words."""
+
+    name: str
+    # The printed words the name is built from (the brand's taken off), and each
+    # one it shows differently, indexed within them.
+    words: list[str]
+    changes: list[WordChange]
+    # Words still shown as printed without being known (#389).
+    unread: int
+    brand: str | None
 
 
 async def suggest(
     db: AsyncSession, known: NamingWords, vendor_id: uuid.UUID, words: list[str]
-) -> tuple[str, list[WordChange], int]:
-    """The suggested name for these printed words, each change made to them, and how
-    many words it still shows as printed without knowing them (#389)."""
+) -> Suggested:
+    """The suggested name and brand for these printed words (#384, #390)."""
     if vendor_id not in known.learned:
         found = await line_words.expansions(db, vendor_id)
         known.learned[vendor_id] = {
@@ -67,7 +83,16 @@ async def suggest(
     shown = [w.lower() for w in words]
     for change in changes:
         shown[change.index] = change.shown
-    return sentence(shown), changes, unread(words, changes, known.vocabulary)
+    # A leading brand becomes the Brand, and the name starts after it (#390).
+    brand, taken = naming_brands.leading(words, shown, known.brands)
+    rest = [replace(c, index=c.index - taken) for c in changes if c.index >= taken]
+    return Suggested(
+        name=sentence(shown[taken:]),
+        words=[w.lower() for w in words[taken:]],
+        changes=rest,
+        unread=unread(words[taken:], rest, known.vocabulary),
+        brand=brand,
+    )
 
 
 async def complete(

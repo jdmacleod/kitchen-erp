@@ -124,6 +124,7 @@ export function NameProducts() {
             vendor_id: row.vendor.id,
             raw_text_norm: row.raw_text_norm ?? "",
             name: v.name.trim(),
+            ...(v.brand.trim() ? { brand: v.brand.trim() } : {}),
             ...(v.packQty.trim() ? { pack_qty: v.packQty.trim(), pack_unit: v.packUnit } : {}),
             ...(v.duplicate ? { allow_duplicate: true } : {}),
             ...(forgotten(row, v).length > 0 ? { forget_words: forgotten(row, v) } : {}),

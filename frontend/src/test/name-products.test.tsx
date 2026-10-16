@@ -38,6 +38,7 @@ const rows: NamingRow[] = [
     name: "Rvrbnd bread flr",
     name_words: ["rvrbnd", "bread", "flr"],
     name_changes: [],
+    brand: null,
     ingredient: {
       kind: "ingredient",
       id: flour.id,
@@ -65,6 +66,7 @@ const rows: NamingRow[] = [
     name: "Bnls chkn brst",
     name_words: ["bnls", "chkn", "brst"],
     name_changes: [],
+    brand: null,
     ingredient: null,
     pack_qty: null,
     pack_unit: null,
@@ -81,6 +83,7 @@ const rows: NamingRow[] = [
     name: "Oat milk",
     name_words: ["oat", "milk"],
     name_changes: [],
+    brand: null,
     ingredient: null,
     pack_qty: null,
     pack_unit: null,
@@ -660,5 +663,54 @@ describe("moving through a long list (issue 389)", () => {
     expect(await screen.findByText("Restored 1 row you hadn't created.")).toBeInTheDocument();
     const again = await screen.findByRole("group", { name: `${vendor.name}: ITEM 21` });
     expect(within(again).getByRole("checkbox")).toBeChecked();
+  });
+});
+
+describe("a brand on each row (issue 390)", () => {
+  const branded = (): NamingRow[] => [
+    { ...rows[0], brand: "Riverbend", name: "Bread flour", name_words: ["bread", "flour"] },
+    rows[1],
+    rows[2],
+  ];
+
+  it("prefills the wording's brand, sends it, and sends none once cleared", async () => {
+    const calls = mockApi({
+      ...routes(three),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: branded() }),
+      "GET /to-identify/naming/brands": () => jsonResponse(200, { items: ["Riverbend Mills"] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: RVRBND BREAD FLR 2KG` });
+    const brand = within(row).getByRole("combobox", { name: "Brand" });
+    expect(brand).toHaveValue("Riverbend");
+    expect(within(row).getByText("From the receipt's wording")).toBeInTheDocument();
+
+    await user.click(within(row).getByRole("checkbox"));
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({
+      rows: [{ name: "Bread flour", brand: "Riverbend" }],
+    });
+  });
+
+  it("suggests known brands while typing, and an empty brand isn't sent", async () => {
+    const calls = mockApi({
+      ...routes(three),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: branded() }),
+      "GET /to-identify/naming/brands": () => jsonResponse(200, { items: ["Riverbend Mills"] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: RVRBND BREAD FLR 2KG` });
+    const brand = within(row).getByRole("combobox", { name: "Brand" });
+    await user.type(brand, " M");
+    await user.click(await within(row).findByRole("option", { name: "Riverbend Mills" }));
+    expect(brand).toHaveValue("Riverbend Mills");
+    await user.clear(brand);
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    const sent = calls.find((c) => c.method === "POST")?.body as { rows: object[] };
+    expect(sent.rows[0]).not.toHaveProperty("brand");
   });
 });

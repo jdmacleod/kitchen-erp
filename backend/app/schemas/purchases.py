@@ -509,6 +509,8 @@ class NamingRow(ApiModel):
     # The printed words the name is built from, and each one it shows differently.
     name_words: list[str]
     name_changes: list[NameChange]
+    # A known brand the wording starts with, taken off the name (#390).
+    brand: str | None
     ingredient: IngredientMatch | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
@@ -545,6 +547,7 @@ class NameProductRow(ApiModel):
     vendor_id: uuid.UUID
     raw_text_norm: str = Field(min_length=1)
     name: str = Field(min_length=1, max_length=200)
+    brand: str | None = Field(default=None, max_length=120)
     product_id: uuid.UUID | None = None
     allow_duplicate: bool = False
     ingredient_id: uuid.UUID | None = None

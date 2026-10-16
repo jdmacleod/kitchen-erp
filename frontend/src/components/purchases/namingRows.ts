@@ -25,6 +25,7 @@ export interface RowEdit {
   duplicate?: boolean;
   /** Changed words the person put back as printed (issue 384). */
   undone?: number[];
+  brand?: string;
 }
 
 export interface RowValue {
@@ -37,6 +38,8 @@ export interface RowValue {
   duplicate: boolean;
   /** Which of the fields shown came from the model. */
   fromModel: { name: boolean; ingredient: boolean };
+  /** The product's brand: typed, else the one the wording starts with (issue 390). */
+  brand: string;
   /** The changed words to show as toggles, while the name is still built from them. */
   changes: NameChange[];
   undone: ReadonlySet<number>;
@@ -100,6 +103,7 @@ export function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
   return {
     ...plainFields(row, edit),
     name: nameOf(row, edit, model.name),
+    brand: edit?.brand ?? row.brand ?? "",
     ingredient: ingredientOf(row, edit, model.ingredient),
     fromModel: { name: model.name !== null, ingredient: model.ingredient !== null },
     changes: fromWords ? row.name_changes : [],
