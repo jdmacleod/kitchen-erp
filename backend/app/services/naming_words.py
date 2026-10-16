@@ -67,3 +67,29 @@ async def suggest(
     for change in changes:
         shown[change.index] = change.shown
     return sentence(shown), changes
+
+
+async def complete(
+    db: AsyncSession, vendor_id: uuid.UUID, prefix: str, limit: int = 6
+) -> list[dict[str, str]]:
+    """Words that complete the one being typed in a Name (#385): what this vendor's
+    words were learned to mean first, most confirmed first, then the vocabulary's,
+    shortest first."""
+    start = prefix.strip().casefold()
+    if len(start) < 2 or not start.isalpha():
+        return []
+    learned = await line_words.expansions(db, vendor_id)
+    counts: dict[str, int] = {}
+    for found in learned.values():
+        for e in found:
+            if e.expansion.startswith(start) and e.expansion != start:
+                counts[e.expansion] = max(counts.get(e.expansion, 0), e.count)
+    out = [{"word": w, "source": "learned"} for w in sorted(counts, key=lambda w: (-counts[w], w))]
+    known = await load(db)
+    seen = set(counts)
+    rest = sorted(
+        (w for w in known.vocabulary.words if w.startswith(start) and w != start and w not in seen),
+        key=lambda w: (len(w), w),
+    )
+    out += [{"word": w, "source": "vocabulary"} for w in rest]
+    return out[:limit]

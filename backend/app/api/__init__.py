@@ -13,6 +13,7 @@ from app.api import (
     ingredient_link,
     lookups,
     media,
+    naming_words,
     plan,
     product_captures,
     product_photos,
@@ -39,6 +40,7 @@ router.include_router(catalog.router)
 router.include_router(bridges.router)
 router.include_router(geo.router)
 router.include_router(brands.router)
+router.include_router(naming_words.router)  # before purchases: a fixed path
 router.include_router(purchases.router)
 router.include_router(rereads.router)
 router.include_router(receipts.router)
