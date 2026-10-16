@@ -16250,6 +16250,79 @@
         "title": "ResolveRecipe",
         "type": "object"
       },
+      "RowBoxOut": {
+        "additionalProperties": false,
+        "description": "Where a line's printed row sits on the receipt photo, in the photo's pixels.",
+        "properties": {
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "left": {
+            "title": "Left",
+            "type": "integer"
+          },
+          "line_id": {
+            "format": "uuid",
+            "title": "Line Id",
+            "type": "string"
+          },
+          "top": {
+            "title": "Top",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "line_id",
+          "left",
+          "top",
+          "width",
+          "height"
+        ],
+        "title": "RowBoxOut",
+        "type": "object"
+      },
+      "RowBoxesOut": {
+        "additionalProperties": false,
+        "description": "The rows found on the receipt photo (04, 2S). ``width`` and ``height`` are\nthe upright photo's size the boxes are measured in; both are null, and\n``lines`` empty, when no boxes have been found.",
+        "properties": {
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RowBoxOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "title": "RowBoxesOut",
+        "type": "object"
+      },
       "RowError": {
         "additionalProperties": false,
         "properties": {
@@ -28906,6 +28979,50 @@
         "summary": "Restore Purchase",
         "tags": [
           "purchases"
+        ]
+      }
+    },
+    "/api/v1/purchases/{purchase_id}/row-boxes": {
+      "get": {
+        "description": "Where each line's printed row sits on the receipt photo (04, 2S; issue 380).\n\nFound by a local Tesseract pass after reading. A line whose row was not\nfound, or not matched with confidence, is left out; so is every line until\nthe pass has run.",
+        "operationId": "get_row_boxes_api_v1_purchases__purchase_id__row_boxes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RowBoxesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Row Boxes",
+        "tags": [
+          "receipts"
         ]
       }
     },
