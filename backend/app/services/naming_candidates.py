@@ -25,9 +25,8 @@ _ORDER = {"same": 0, "other_size": 1, "variant": 2, "similar": 3}
 async def by_ingredient(
     db: AsyncSession, ingredient_ids: set[uuid.UUID]
 ) -> dict[uuid.UUID, list[Product]]:
-    """Every active product of these ingredients, in one query (#183)."""
-    if not ingredient_ids:
-        return {}
+    """Every active product of these ingredients, in one query (#183). The query runs
+    even for none, so the naming list costs the same however many rows match."""
     rows = await db.scalars(
         select(Product)
         .where(Product.active, Product.ingredient_id.in_(ingredient_ids))
