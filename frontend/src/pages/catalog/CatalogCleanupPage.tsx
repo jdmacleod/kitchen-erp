@@ -49,6 +49,11 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
     title: "Brands and kinds",
     hint: "A brand that only says none or describes the food, or a brand on a product sold loose. Loose produce has no brand.",
   },
+  {
+    kind: "product_pack",
+    title: "Sold by the bunch",
+    hint: "Produce whose name says bunch and whose pack doesn't. With the pack in bunches, its prices compare per bunch, and by weight once one bunch is weighed.",
+  },
 ];
 
 const label = (key: string) => key[0].toUpperCase() + key.slice(1);

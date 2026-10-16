@@ -84,6 +84,18 @@ export function IngredientOffers({
   );
 }
 
+/** A price per bunch compares only with other bunches until one is weighed (issue 371). */
+function BunchCaption() {
+  return (
+    <Link
+      to="/catalog/bridges#products"
+      className={`flex min-h-11 items-center justify-end text-xs underline lg:min-h-0 ${focusRing}`}
+    >
+      Weigh one bunch to compare
+    </Link>
+  );
+}
+
 function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredient }) {
   const comparable = o.norm_unit_price !== null;
   const fix =
@@ -122,9 +134,12 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
       <td className="hidden py-2 pr-3 align-top sm:table-cell">{product}</td>
       <td className="py-2 pr-3 text-right align-top tabular-nums">
         {comparable ? (
-          <span className="font-medium">
-            {formatUnitPrice(o.display_unit_price, o.display_unit)}
-          </span>
+          <>
+            <span className="font-medium">
+              {formatUnitPrice(o.display_unit_price, o.display_unit)}
+            </span>
+            {o.norm_status === "no_bunch_weight" ? <BunchCaption /> : null}
+          </>
         ) : (
           <>
             <span className="block">

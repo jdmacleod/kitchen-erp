@@ -13,7 +13,9 @@ export function formatUnitPrice(
   if (!price || !unit) return "—";
   // The server's digits as sent: it already chose 2 or 3 places ("0.680" stays "0.680").
   const money = price.startsWith("-") ? `-$${price.slice(1)}` : `$${price}`;
-  return unit === "each" ? `${money} each` : `${money}/${unit}`;
+  if (unit === "each") return `${money} each`;
+  // A price per bunch nothing has weighed yet (issue 371): "$1.29 a bunch".
+  return unit === "bunch" ? `${money} a bunch` : `${money}/${unit}`;
 }
 
 interface PriceAgeProps {

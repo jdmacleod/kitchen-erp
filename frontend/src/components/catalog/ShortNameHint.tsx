@@ -12,19 +12,23 @@ export function ShortNameHint({
   name,
   brand,
   hasPack,
+  packUnit = "",
   onUse,
 }: {
   name: string;
   brand: string;
   hasPack: boolean;
+  /** The pack's unit: a pack in bunches lets the name drop "bunch" (issue 371). */
+  packUnit?: string;
   onUse: (name: string) => void;
 }) {
   const typed = useDebouncedValue(name.trim(), 400);
+  const unit = hasPack && packUnit ? packUnit : undefined;
   const short = useQuery({
-    queryKey: ["products", "short-name", typed, brand.trim(), hasPack],
+    queryKey: ["products", "short-name", typed, brand.trim(), hasPack, unit],
     queryFn: () =>
       api<{ name: string }>(
-        `/products/short-name${qs({ title: typed, brand: brand.trim() || undefined, has_pack: hasPack })}`,
+        `/products/short-name${qs({ title: typed, brand: brand.trim() || undefined, has_pack: hasPack, pack_unit: unit })}`,
       ),
     enabled: typed.length > 0,
     staleTime: 60_000,

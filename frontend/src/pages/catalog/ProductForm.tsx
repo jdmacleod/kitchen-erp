@@ -13,6 +13,7 @@ import {
   BarcodeSymbologyPrompt,
   SYMBOLOGY_REQUIRED,
 } from "../../components/catalog/BarcodeSymbologyPrompt";
+import { BunchHint } from "../../components/catalog/BunchHint";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import {
   choiceName,
@@ -166,7 +167,8 @@ export function densityReason(
   const canonical = choiceUnit(ingredient);
   const from = units.find((u) => u.code === packUnit)?.dimension;
   const to = CANONICAL_DIMENSION[canonical];
-  if (!from || !to || from === to || from === "count" || to === "count") return null;
+  // Counts and bunches need a pack or a measure, never a density (issue 371).
+  if (!to || to === "count" || (from !== "mass" && from !== "volume") || from === to) return null;
   const name = choiceName(ingredient);
   return `${packUnit} is a ${from} unit and ${name} is measured in ${canonical}, so this product's prices can't be compared until there is a density. You can add one here or later; saving without one is fine.`;
 }
@@ -279,7 +281,14 @@ export function ProductForm({
         name={values.name}
         brand={values.brand}
         hasPack={values.pack_qty.trim() !== "" && values.pack_unit !== ""}
+        packUnit={values.pack_unit}
         onUse={(name) => set("name", name)}
+      />
+      <BunchHint
+        name={values.name}
+        produce={chosen.data?.category_key === "produce"}
+        hasPack={values.pack_qty.trim() !== "" || values.pack_unit !== ""}
+        onUse={() => onChange({ ...values, pack_qty: "1", pack_unit: "bunch" })}
       />
 
       <div className="grid gap-4 sm:grid-cols-2">
