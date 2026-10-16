@@ -73,6 +73,24 @@ async def test_wrong_check_digit_refused_other_codes_kept(admin_client):
     assert [x["id"] for x in r.json()["items"]] == [p["id"]]
 
 
+async def test_wrong_check_digit_on_eight_digits_refused(admin_client):
+    ean8 = bad_check(with_check("9638507"))  # number system 9: never UPC-E
+    body = {
+        "ingredient": {
+            "category": "pantry",
+            "keep_name": True,
+            "name": "gum",
+            "canonical_unit": "g",
+        },
+        "name": "Gum",
+    }
+    for extra in ({}, {"barcode_symbology": "ean8"}):
+        r = await admin_client.post("/api/v1/products", json={**body, "barcode": ean8, **extra})
+        assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_gtin"
+    r = await admin_client.get("/api/v1/products", params={"barcode": ean8})
+    assert r.status_code == 200 and r.json()["items"] == []
+
+
 async def test_ambiguous_eight_digits_need_a_symbology(admin_client):
     code = next(
         c
@@ -184,6 +202,80 @@ async def test_identifier_constraints(admin_client, owner_conn: asyncpg.Connecti
     await owner_conn.execute(insert, pid, "plu", "4011", vid)
     with pytest.raises(asyncpg.UniqueViolationError):
         await owner_conn.execute(insert, pid, "plu", "4011", vid)
+
+
+async def test_rw_item_needs_a_vendor_and_other_refuses_one(
+    admin_client, owner_conn: asyncpg.Connection
+):
+    p = await product(admin_client, "Weighed")
+    loc = await make_location(admin_client, "Invented Deli", "Invented Deli", kind="chain")
+    pid, vid = uuid.UUID(p["id"]), uuid.UUID(loc["vendor"]["id"])
+    insert = (
+        "INSERT INTO product_identifier (id, product_id, scheme, value, vendor_id, source) "
+        "VALUES (gen_random_uuid(), $1, $2, $3, $4, 'manual')"
+    )
+    with pytest.raises(asyncpg.CheckViolationError):
+        await owner_conn.execute(insert, pid, "rw_item", "51234", None)
+    with pytest.raises(asyncpg.CheckViolationError):
+        await owner_conn.execute(insert, pid, "other", "ABC-123", vid)
+    await owner_conn.execute(insert, pid, "rw_item", "51234", vid)
+    await owner_conn.execute(insert, pid, "other", "ABC-123", None)
+
+
+# The barcode fields as they stood before identifiers (1H): the move added
+# ``barcode_symbology`` and changed nothing else about them.
+BARCODE_FIELDS = {
+    ("ProductCreate", "barcode"): {
+        "anyOf": [{"maxLength": 32, "minLength": 4, "type": "string"}, {"type": "null"}],
+        "title": "Barcode",
+    },
+    ("ProductUpdate", "barcode"): {
+        "anyOf": [{"maxLength": 32, "minLength": 4, "type": "string"}, {"type": "null"}],
+        "title": "Barcode",
+    },
+    ("ProductUpdate", "clear_barcode"): {
+        "default": False,
+        "title": "Clear Barcode",
+        "type": "boolean",
+    },
+    ("ProductOut", "barcode"): {
+        "anyOf": [{"type": "string"}, {"type": "null"}],
+        "title": "Barcode",
+    },
+    ("ProductListItem", "barcode"): {
+        "anyOf": [{"type": "string"}, {"type": "null"}],
+        "title": "Barcode",
+    },
+    ("SearchHit", "barcode"): {"anyOf": [{"type": "string"}, {"type": "null"}], "title": "Barcode"},
+}
+
+
+def test_openapi_barcode_fields_keep_their_shape():
+    from app.main import app
+
+    doc = app.openapi()
+    schemas = doc["components"]["schemas"]
+    found = {
+        (name, field): spec
+        for name, schema in schemas.items()
+        for field, spec in schema.get("properties", {}).items()
+        if field in {"barcode", "clear_barcode"}
+    }
+    assert found == BARCODE_FIELDS
+    [param] = [
+        p for p in doc["paths"]["/api/v1/products"]["get"]["parameters"] if p["name"] == "barcode"
+    ]
+    assert param == {
+        "description": "exact barcode match",
+        "in": "query",
+        "name": "barcode",
+        "required": False,
+        "schema": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "description": "exact barcode match",
+            "title": "Barcode",
+        },
+    }
 
 
 async def test_receipt_barcode_rung_matches_any_form(admin_client, admin, db_session):
