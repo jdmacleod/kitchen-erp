@@ -162,3 +162,22 @@ describe("purchases: find and sort (UI-3.22)", () => {
     ).toBe(true);
   });
 });
+
+describe("purchases: the find field and the URL", () => {
+  it("keeps every letter when the typist pauses about as long as the debounce (issue 401)", async () => {
+    const calls = mockApi(
+      routes(() => jsonResponse(200, { items: [manualPurchase], next_cursor: null })),
+    );
+    // A key lands just after the debounce settles, before its URL write renders.
+    const user = userEvent.setup({ delay: 305 });
+    renderApp("/shop/purchases");
+    await screen.findByRole("table", { name: "Purchases" });
+
+    await user.type(screen.getByLabelText("Find a store or item"), "blueberries");
+    expect(screen.getByLabelText("Find a store or item")).toHaveValue("blueberries");
+    await waitFor(() =>
+      expect(listCalls(calls).some((c) => c.query.get("q") === "blueberries")).toBe(true),
+    );
+    expect(screen.getByLabelText("Find a store or item")).toHaveValue("blueberries");
+  }, 15000);
+});

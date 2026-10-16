@@ -40,8 +40,8 @@ import {
 } from "../../components/ui";
 import { moneyForQty } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
-import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useSearchText } from "../../lib/useSearchText";
 import {
   piecesFit,
   ProductForm,
@@ -85,21 +85,8 @@ export function ProductsPage() {
       { replace: true },
     );
 
-  const [text, setText] = useState(q);
-  // The field follows ?q= when it changes from outside (Back, a link), and the
-  // URL takes only text the debounce has settled on, so an old pending value
-  // cannot be written back over the new one.
-  const [seenQ, setSeenQ] = useState(q);
-  if (q !== seenQ) {
-    setSeenQ(q);
-    setText(q);
-  }
-  const debounced = useDebouncedValue(text, 250);
-  useEffect(() => {
-    if (debounced === text && debounced.trim() !== q) setParam("q", debounced.trim() || null);
-    // Only the typed text drives the URL; q changing on its own (Back) is read below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debounced]);
+  // The field and ?q= stay in step (lib/useSearchText).
+  const [text, setText] = useSearchText(q, (v) => setParam("q", v));
 
   const products = useProducts({ q, category, includeInactive, noPhoto });
   const items = products.data?.pages.flatMap((p) => p.items) ?? [];
