@@ -32,6 +32,7 @@ from app.services import (
     line_words,
     naming_candidates,
     naming_words,
+    new_products,
     product_same,
     resolution,
 )
@@ -359,7 +360,8 @@ async def name_product(
 ) -> tuple[uuid.UUID, int]:
     """Create one row's product, or use the existing one it names, and apply it to
     every waiting line of its group."""
-    if not await resolution.queued_line_ids(db, row.vendor_id, row.raw_text_norm):
+    queued = await resolution.queued_line_ids(db, row.vendor_id, row.raw_text_norm)
+    if not queued:
         raise ApiError(409, "already_identified", "These lines have been identified already.")
     if row.product_id is not None:
         product = await db.get(Product, row.product_id)
@@ -392,7 +394,8 @@ async def name_product(
         )
         # The same product under another ingredient is offered too (#348).
         await product_same.refuse_same(db, payload)
-        product = await catalog.create_product(db, payload)
+        per_weight = await new_products.lines_per_weight(db, queued)
+        product = await catalog.create_product(db, payload, per_weight=per_weight)
     applied = await resolution.apply_to_identify(
         db,
         user,

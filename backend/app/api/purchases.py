@@ -58,6 +58,7 @@ from app.services import (
     catalog,
     naming,
     naming_model,
+    new_products,
     pricebook,
     pricebook_views,
     product_same,
@@ -557,7 +558,9 @@ async def resolve_line(
     product_id = payload.product_id
     if payload.product is not None:
         await product_same.refuse_same(db, payload.product)
-        product_id = (await catalog.create_product(db, payload.product)).id
+        per_weight = await new_products.lines_per_weight(db, [line_id])
+        product = await catalog.create_product(db, payload.product, per_weight=per_weight)
+        product_id = product.id
     purchase = await resolution.decide_line(
         db,
         user,
