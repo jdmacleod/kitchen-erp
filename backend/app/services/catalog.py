@@ -1051,22 +1051,13 @@ async def create_product(
             if ingredient is None:
                 raise ApiError(404, "not_found", "No such ingredient.")
             ingredient_id = payload.ingredient_id
-        begin = await new_products.start(
-            db,
-            ingredient,
-            name=payload.name,
-            brand=payload.brand,
-            kind=payload.kind,
-            barcode=payload.barcode,
-            exclusive_vendor_id=payload.exclusive_vendor_id,
-            per_weight=per_weight,
-        )
+        begin = await new_products.for_create(db, ingredient, payload, per_weight=per_weight)
         product = Product(
             ingredient_id=ingredient_id,
             brand=begin.brand,
             name=begin.name,
-            pack_qty=payload.pack_qty,
-            pack_unit=payload.pack_unit,
+            pack_qty=begin.pack_qty,
+            pack_unit=begin.pack_unit,
             pack_count=payload.pack_count,
             piece_name=_piece_name(payload.piece_name),
             kind=begin.kind,
@@ -1099,13 +1090,13 @@ def _piece_name(name: str | None) -> str | None:
 
 
 async def _check_pieces(db: AsyncSession, product: Product) -> None:
-    """Pieces belong to a mass or volume pack: a count pack already says how many."""
+    """Pieces belong to a mass or volume pack: a count or a bunch has none (issue 371)."""
     if product.pack_count is None:
         return
     with db.no_autoflush:  # the change is checked before it is written
         units = await load_units(db)
     unit = units.get(product.pack_unit or "")
-    if product.pack_qty is None or unit is None or unit.dimension == "count":
+    if product.pack_qty is None or unit is None or unit.dimension not in ("mass", "volume"):
         raise ApiError(
             422,
             "pieces_need_size",

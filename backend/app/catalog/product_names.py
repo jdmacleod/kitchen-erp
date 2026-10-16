@@ -63,7 +63,8 @@ _QTY = (
     r"|boxes|box|jars?|pieces|pcs|each|ea|rolls|links|slices|sheets|eggs|bars|cups|pods)\b"
 )
 # Words that only say how the pack is sold: "Bag", "Clamshell", "Each", "Can".
-# "Bunch" stays in a name: no unit says it, so the name is where it is kept.
+# "Bunch" is not one of them: it goes only when the pack is in bunches (``drop_bunch``),
+# so a name keeps it while nothing else says so (issue 371).
 _CONTAINERS = (
     r"(?:bag|bottle|box|can|carton|clamshell|container|each|jar|pack|package|pouch|tub|tin|"
     r"case|loaf|bundle|tray)"
@@ -164,11 +165,38 @@ def produce_name(name: str) -> str:
     return text[:1].upper() + text[1:] if name.strip()[:1].isupper() else text
 
 
+# "Bunch" in a name (issue 371): the word, a trailing ", 1 bunch" or " (bunch)", and a
+# leading "Bunch of" or "1 bunch". Each is matched against a name with its whitespace
+# collapsed, with bounded runs only, so no pattern rescans untrusted text.
+_BUNCH_WORD = re.compile(r"\bbunch(?:es)?\b", re.IGNORECASE)
+_BUNCH_TAIL = re.compile(r"(?:\s?[,\-–:|/]\s?|\s|\s?\()(?:1\s?)?bunch(?:es)?\.?\)?$", re.IGNORECASE)
+_BUNCH_LEAD = re.compile(
+    r"^(?:1\s?)?bunch(?:es)?(?:\s?[,\-–:]\s?|\s)(?:of\s)?(?=\S)", re.IGNORECASE
+)
+
+
+def says_bunch(name: str | None) -> bool:
+    """Whether a name says the food is sold by the bunch: "Cilantro bunch"."""
+    return bool(name) and _BUNCH_WORD.search(name or "") is not None
+
+
+def drop_bunch(name: str) -> str:
+    """The name without "bunch", for a product whose pack says it ("1 bunch"); the name
+    as given when nothing else would be left, or when "bunch" sits mid-name."""
+    text = " ".join(name.split())
+    text = _BUNCH_TAIL.sub("", text).strip(" ,-–:|/")
+    text = _BUNCH_LEAD.sub("", text).strip()
+    if not text:
+        return name.strip()
+    return text[:1].upper() + text[1:] if name.strip()[:1].isupper() else text
+
+
 def short_name(
     title: str,
     brand: str | None = None,
     *,
     has_pack: bool = True,
+    bunch_pack: bool = False,
     produce: bool = False,
     brand_keys: frozenset[str] | set[str] = frozenset(),
     proper_nouns: frozenset[str] | set[str] = frozenset(),
@@ -179,7 +207,8 @@ def short_name(
     keys) are dropped from the front, and a trailing ", Brand" too. Pack text is
     dropped from the end only when the product's pack is known (``has_pack``), so
     nothing is lost. For ``produce``, a leading "Fresh" and a trailing ", 1 ct" go
-    too (``produce_name``). ``proper_nouns`` (lowercase) keep their capitals.
+    too (``produce_name``). "Bunch" goes only when the pack is in bunches
+    (``bunch_pack``). ``proper_nouns`` (lowercase) keep their capitals.
     """
     from app.catalog.brand_names import NEVER_BRANDS, is_brand_key, name_key
 
@@ -187,6 +216,8 @@ def short_name(
     text = _BANNER.sub("", original).strip()
     if produce:
         text = produce_name(text)
+    if bunch_pack:
+        text = drop_bunch(text)
     # Another product's brand that is also a word for the food ("Stone", "Organic")
     # stays in this name; the product's own brand goes unless it only describes it.
     keys = {k for k in brand_keys if is_brand_key(k)}

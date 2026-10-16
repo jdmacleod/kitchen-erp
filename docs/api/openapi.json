@@ -1970,7 +1970,8 @@
               "usda_link",
               "ingredient_merge",
               "product_name",
-              "product_brand"
+              "product_brand",
+              "product_pack"
             ],
             "title": "Kind",
             "type": "string"
@@ -9825,7 +9826,8 @@
               "no_density",
               "unknown_measure",
               "no_pack",
-              "no_qty"
+              "no_qty",
+              "no_bunch_weight"
             ],
             "title": "Status",
             "type": "string"
@@ -9970,7 +9972,8 @@
               "no_density",
               "unknown_measure",
               "no_pack",
-              "no_qty"
+              "no_qty",
+              "no_bunch_weight"
             ],
             "title": "Status",
             "type": "string"
@@ -27112,7 +27115,7 @@
     },
     "/api/v1/products/short-name": {
       "get": {
-        "description": "A product title as a short name: no brand in front, no pack size (#347).",
+        "description": "A product title as a short name: no brand in front, no pack size (#347); no\n\"bunch\" when the pack is in bunches (issue 371).",
         "operationId": "product_short_name_api_v1_products_short_name_get",
         "parameters": [
           {
@@ -27151,6 +27154,25 @@
               "default": false,
               "title": "Has Pack",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "the pack's unit, if any",
+            "in": "query",
+            "name": "pack_unit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the pack's unit, if any",
+              "title": "Pack Unit"
             }
           }
         ],

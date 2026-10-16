@@ -276,6 +276,11 @@ _BRIDGE_FIX = {
         "Set packs",
         "Set each pack on Needs a bridge; the count drops as you go.",
     ),
+    "no_bunch_weight": (
+        "a bunch weighed",
+        "Weigh bunches",
+        "Their prices compare per bunch until one bunch is weighed, then by weight.",
+    ),
     "no_density": ("a density", "Add densities", "Each is added once, on its ingredient."),
     "unknown_measure": ("a measure", "Add measures", "Each is added once, on its ingredient."),
     "no_qty": ("a quantity", "Check products", "A price was recorded without a quantity."),

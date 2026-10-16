@@ -11,6 +11,7 @@ Rules (04, 2E "Showing a unit price"):
 - weight, metric: per kg;
 - volume: per fl oz (US) or per L (metric);
 - count: each;
+- bunch: a bunch, for a price not yet weighed (issue 371); never restated per lb;
 - 2 decimal places, or 3 when the price is under $1, so close small prices differ.
 """
 
@@ -35,7 +36,10 @@ LABELS: dict[str, str] = {
     "kg": "kg",
     "l": "L",
     "each": "each",
+    "bunch": "bunch",
 }
+# Per-piece and per-bunch prices are shown as they are stored; nothing restates them.
+_AS_STORED = frozenset({"each", "bunch"})
 
 _TWO = Decimal("0.01")
 _THREE = Decimal("0.001")
@@ -68,8 +72,8 @@ def display_unit(norm_unit: str, system: DisplaySystem, mass: str) -> str | None
         return mass
     if norm_unit == "ml":
         return "fl_oz" if system == "us" else "l"
-    if norm_unit == "each":
-        return "each"
+    if norm_unit in _AS_STORED:
+        return norm_unit
     return None
 
 
@@ -85,7 +89,7 @@ def per_unit(norm_price: Decimal, norm_unit: str, target: str) -> Decimal:
     """
     if norm_unit == target:
         return norm_price
-    if target == "each" or norm_unit == "each":
+    if target in _AS_STORED or norm_unit in _AS_STORED:
         raise ValueError(f"cannot restate a price per {norm_unit} per {target}")
     unit = _UNITS[target]
     if unit.dimension != _UNITS[norm_unit].dimension:
