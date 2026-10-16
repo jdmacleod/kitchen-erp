@@ -5,6 +5,8 @@ Vendors, pages and products are invented.
 
 from __future__ import annotations
 
+import json
+import uuid
 from pathlib import Path
 
 import pytest
@@ -107,6 +109,32 @@ async def test_candidates_carry_verdicts_in_order_and_preselect_nothing(
     assert body["match"]["preselect"] is None and body["match"]["strong"] is None
 
 
+async def test_a_proposal_matched_before_2p_gets_verdicts_on_read(
+    admin_client, admin, store, jams, owner_conn
+):
+    """Criterion 101: the stored match holds no verdicts, so a match written before
+    2P, in its older shape, is labelled when it is read."""
+    proposal = await clip(admin, store, "Fernhill Plum Jam, 8 oz")
+    older = {
+        "strong": None,
+        "preselect": None,
+        "candidates": [
+            {"product_id": jams[key]["id"], "name": jams[key]["name"], "score": "0.5"}
+            for key in ("variant", "similar", "other_size", "same")
+        ],
+    }
+    await owner_conn.execute(
+        "UPDATE product_proposal SET match = $1::jsonb WHERE id = $2",
+        json.dumps(older),
+        proposal.id,
+    )
+    body = await read(admin_client, proposal.id)
+    assert [(c["product_id"], c["verdict"]) for c in body["candidates"]] == [
+        (jams[key]["id"], key) for key in ("same", "similar", "other_size", "variant")
+    ]
+    assert body["match"]["preselect"] is None
+
+
 async def test_a_deactivated_candidate_is_left_out(admin_client, admin, store, jams):
     proposal = await clip(admin, store, "Fernhill Plum Jam, 8 oz")
     r = await admin_client.post(f"/api/v1/products/{jams['similar']['id']}/deactivate")
@@ -174,6 +202,33 @@ async def test_accepting_one_look_alike_gives_the_other_a_strong_match(admin_cli
         admin, store, "Quince Jam 8oz", page="https://shop.example.test/p/q2", gtin=code
     )
     assert third.match["preselect"] == f"update:{made}"
+
+
+async def test_a_product_that_gains_the_proposals_listing_is_a_strong_match(
+    admin_client, admin, store, owner_conn
+):
+    """Criterion 103, the shared listing: once a product holds the page the proposal was
+    clipped from, the rematch names it strongly and preselects "Update"."""
+    page = "https://shop.example.test/p/fernhill-rowan-jam"
+    proposal = await clip(admin, store, "Fernhill Rowan Jam, 8 oz", page=page)
+    made = await make_product(
+        admin_client, "Rowan jam", "Rowan Jam", brand="Fernhill", pack_qty="8", pack_unit="oz"
+    )
+    body = await read(admin_client, proposal.id)
+    assert body["match"]["strong"] is None and body["match"]["preselect"] is None
+    await owner_conn.execute(
+        "INSERT INTO vendor_listing (id, vendor_id, product_id, canonical_url, title, "
+        "last_captured_at, status) VALUES (gen_random_uuid(), $1, $2, $3, 'Rowan Jam', "
+        "now(), 'active')",
+        uuid.UUID(store["vendor"]["id"]),
+        uuid.UUID(made["id"]),
+        page,
+    )
+    async with get_sessionmaker()() as db:
+        assert await proposals.rematch_pending(db, uuid.UUID(made["id"])) == 1
+    body = await read(admin_client, proposal.id)
+    assert body["match"]["strong"] == {"product_id": made["id"], "reason": "listing"}
+    assert body["match"]["preselect"] == f"update:{made['id']}"
 
 
 async def test_a_merge_rematches_onto_the_survivor(admin_client, admin, store):

@@ -95,6 +95,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 178,
+    "skipped": [],
+    "text": "jgebpbhgmbggdain"
+  },
   "requests": [
     {
       "messages_digest": "koiafoicokjjdecj",

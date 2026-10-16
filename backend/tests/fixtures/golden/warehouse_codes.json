@@ -214,6 +214,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 515,
+    "skipped": [],
+    "text": "bhfbicnhndblefla"
+  },
   "requests": [
     {
       "messages_digest": "bmfmlelcppfdklnk",

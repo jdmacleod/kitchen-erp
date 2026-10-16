@@ -37,6 +37,17 @@ def ambiguous_eight() -> str:
     raise AssertionError("no ambiguous code found")
 
 
+def unambiguous_upce() -> str:
+    """Eight digits valid only as UPC-E, so the migration expands them without asking."""
+    for n in range(1, 100000):
+        body = f"0{n:06d}"
+        upca = upce_to_upca(body + "0")
+        code = body + str(check_digit(str(upca)[:-1]))
+        if not gs1_ok(code):
+            return code
+    raise AssertionError("no unambiguous UPC-E code found")
+
+
 async def _engine_reset() -> None:
     # Pooled connections hold statements prepared against the old schema.
     from app.core.db import dispose_engine
@@ -50,6 +61,7 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
     gtin = with_check(j("10614 14100004"))
     ean8 = with_check("9638507")
     ambiguous = ambiguous_eight()
+    upce_code = unambiguous_upce()
     seeded = {
         "upca": upca,
         "ean13": ean13,
@@ -59,6 +71,9 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
         "ambiguous": ambiguous,
         "plu_with_vendor": "4011",
         "plu_without_vendor": "4012",
+        "upce": upce_code,
+        "plu5_with_vendor": "94011",
+        "plu5_without_vendor": "94012",
         "bad_check": bad_check(with_check(j("04812 300002"))),
         "text": " ABC-123 ",
     }
@@ -90,7 +105,7 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
                 label,
                 "Invented Brand" if label == "upca" else None,
                 code,
-                vendor if label == "plu_with_vendor" else None,
+                vendor if label in ("plu_with_vendor", "plu5_with_vendor") else None,
                 i,
             )
         ids["no_barcode"] = uuid.uuid4()
@@ -109,10 +124,10 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
             text=True,
             check=True,
         )
-        assert "10 product barcodes would move" in dry.stdout
+        assert "13 product barcodes would move" in dry.stdout
         assert "kept as other codes" in dry.stdout
         with_barcode = "SELECT count(*) FROM product WHERE barcode IS NOT NULL"
-        assert await owner_conn.fetchval(with_barcode) == 10
+        assert await owner_conn.fetchval(with_barcode) == 13
 
         run_alembic("upgrade", "0017")
         rows = {
@@ -136,6 +151,12 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
             None,
         )
         assert by["bad_check"]["scheme"] == "other"
+        upce = by["upce"]
+        assert (upce["scheme"], upce["value"]) == ("gtin", upce_to_upca(upce_code).zfill(14))
+        plu5 = by["plu5_with_vendor"]
+        assert (plu5["scheme"], plu5["value"], plu5["vendor_id"]) == ("plu", "94011", vendor)
+        loose5 = by["plu5_without_vendor"]
+        assert (loose5["scheme"], loose5["value"], loose5["vendor_id"]) == ("other", "94012", None)
         assert by["text"]["value"] == " ABC-123 "
         assert {r["source"] for r in by.values()} == {"migrated_barcode"}
         assert all(by[label]["legacy_value"] == code for label, code in seeded.items())
@@ -143,6 +164,7 @@ async def test_barcodes_move_and_come_back(owner_conn: asyncpg.Connection):  # n
 
         kinds = {r["id"]: r["kind"] for r in await owner_conn.fetch("SELECT id, kind FROM product")}
         assert kinds[ids["plu_with_vendor"]] == "unbranded_vendor"
+        assert kinds[ids["plu5_with_vendor"]] == "unbranded_vendor"
         assert kinds[ids["upca"]] == "branded"  # a brand
         assert kinds[ids["ean8"]] == "branded"  # a barcode, no brand
         assert kinds[ids["no_barcode"]] == "loose"

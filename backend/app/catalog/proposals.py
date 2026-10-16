@@ -9,8 +9,10 @@ A model's answer can only fill a field: it ranks below every other source, and
 its confidence is capped (0.6 for text, 0.5 for a photo). Identity conflicts are
 flagged and never resolved silently: two different GTINs, or two pack sizes
 more than 5% apart. A person's choice settles a conflict, because it is not
-silent. An answer that only says "nothing" ("null", "none", "n/a", "unknown",
-"-") is no answer: it fills nothing, whatever its source but a person (#342).
+silent. A model's guess never opens one by itself: when another source gave the
+field, a model that disagrees is kept as an alternative only (issue 281). An
+answer that only says "nothing" ("null", "none", "n/a", "unknown", "-") is no
+answer: it fills nothing, whatever its source but a person (#342).
 
 Values are JSON-safe: decimals as strings (never floats), a pack as
 ``{"qty": "400", "unit": "g"}``, the pieces it holds as ``{"count": "4", "name": "link"}``
@@ -223,6 +225,10 @@ def packs_disagree(a: Any, b: Any) -> bool:
 def _conflicts(field: str, chosen: Candidate, others: list[Candidate]) -> bool:
     if chosen.source == "person":
         return False
+    if chosen.source != "model":
+        # A guess against what a page, a scan or a maker says is an alternative, not a
+        # question for the reviewer: it may have read a neighbouring product.
+        others = [o for o in others if o.source != "model"]
     if field == "gtin":
         return any(o.value != chosen.value for o in others)
     if field == "pack":

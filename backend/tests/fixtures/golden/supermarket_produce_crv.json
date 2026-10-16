@@ -239,6 +239,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 525,
+    "skipped": [],
+    "text": "ajjmkpljfclhnpdp"
+  },
   "requests": [
     {
       "messages_digest": "iobkmlmnnnklaikk",

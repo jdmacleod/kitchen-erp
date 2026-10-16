@@ -15,6 +15,9 @@ TABLES = (
     "ingest_stage_result",
     "product_stage_result",
     "lookup_answer",
+    # Append-only but for purging its page text on decision (criterion 78): the
+    # runtime role may update only ``payload``, never ``id``, and never delete.
+    "product_capture",
 )
 
 
