@@ -59,6 +59,21 @@ def test_a_wrong_check_digit_is_refused(body):
         gtin14(code)
 
 
+def test_an_eight_digit_code_with_a_wrong_check_digit_is_refused():
+    ean8 = bad_check(with_check("9638507"))  # number system 9: never UPC-E
+    for symbology in (None, "ean8"):
+        with pytest.raises(InvalidGtin):
+            gtin14(ean8, symbology)
+    upce = j("0425 2614")  # the textbook UPC-E, valid only read as UPC-E
+    assert gtin14(upce) == upce_to_upca(upce).zfill(14)
+    for symbology in (None, "upce"):
+        with pytest.raises(InvalidGtin):
+            gtin14(bad_check(upce), symbology)
+    assert lookup_keys(ean8) == []
+    with pytest.raises(InvalidGtin):
+        classify_barcode(ean8)
+
+
 def test_upce_expands_to_upca():
     # The textbook UPC-E example and its UPC-A expansion.
     assert upce_to_upca(j("0425 2614")) == j("0421 0000 5264")
@@ -170,6 +185,16 @@ def test_meat_attributes_validate():
         validate_attributes("meat", {"species": "unicorn"})
     with pytest.raises(ValueError):  # noqa: PT011
         validate_attributes("meat", {"species": "pork", "colour": "pink"})
+
+
+def test_seafood_attributes_validate():
+    stored = validate_attributes("seafood", {"species": "other", "form": "sliced"})
+    assert stored == {"species": "other", "form": "sliced"}
+    assert validate_attributes("seafood", {}) == {}
+    with pytest.raises(ValueError):  # noqa: PT011
+        validate_attributes("seafood", {"species": "kraken"})
+    with pytest.raises(ValueError):  # noqa: PT011
+        validate_attributes("seafood", {"species": "other", "fins": "two"})
 
 
 def test_categories_without_a_model_take_only_an_empty_object():
