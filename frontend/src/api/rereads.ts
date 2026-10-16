@@ -95,6 +95,8 @@ function useRereadMutation<I>(purchaseId: string, call: (input: I) => Promise<Re
       client.setQueryData(rereadKeys.latest(purchaseId), reread);
       void client.invalidateQueries({ queryKey: purchaseKeys.purchase(purchaseId) });
       void client.invalidateQueries({ queryKey: inboxKey });
+      // Applied or discarded, it leaves the drafts to re-check (issue 382).
+      void client.invalidateQueries({ queryKey: olderRulesKey });
     },
   });
 }
@@ -127,6 +129,50 @@ export function useDismissReread(purchaseId: string) {
   return useRereadMutation(purchaseId, (rereadId: string) =>
     api<Reread>(`/rereads/${enc(rereadId)}/dismiss`, { method: "POST" }),
   );
+}
+
+/** A draft whose re-check is ready with changes (issue 382). */
+export interface OlderReady {
+  reread_id: string;
+  purchase_id: string;
+  purchased_at: string;
+  store: string | null;
+  counts: RereadProposal["counts"];
+  /** After applying, the lines would match the receipt's total. */
+  adds_up: boolean;
+  /** After applying, how far they would still be off; null when they add up. */
+  off_by: string | null;
+}
+
+/** Drafts read with older line rules, and the re-checks waiting on a person. */
+export interface OlderRules {
+  rules_version: number;
+  older: number;
+  ready: OlderReady[];
+  /** What the last Re-check them did; null on a plain read. */
+  checked: { ready: number; no_changes: number; skipped: number } | null;
+}
+
+export const olderRulesKey = ["rereads", "older-rules"] as const;
+
+export function useOlderRules() {
+  return useQuery({
+    queryKey: olderRulesKey,
+    queryFn: () => api<OlderRules>("/rereads/older-rules"),
+  });
+}
+
+/** Re-check every draft read with older rules: no model, nothing applied. */
+export function useRecheckOlder() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<OlderRules>("/rereads/older-rules/recheck", { method: "POST" }),
+    onSuccess: (found) => {
+      client.setQueryData(olderRulesKey, found);
+      void client.invalidateQueries({ queryKey: ["rereads", "latest"] });
+      invalidatePurchases(client, "all");
+    },
+  });
 }
 
 /** What a failed re-read's reason means, in words (the codes are the stage's). */

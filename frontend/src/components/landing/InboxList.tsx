@@ -27,6 +27,8 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   product_update: { label: "Products", tone: "neutral" },
   // Receipts whose re-read would change their lines (04, 2S).
   reread: { label: "Re-read", tone: "neutral" },
+  // Drafts read with older line rules, to re-check together (issue 382).
+  older_rules: { label: "Re-read", tone: "neutral" },
   duplicates: { label: "Products", tone: "neutral" },
   ingredient_duplicates: { label: "Ingredients", tone: "neutral" },
   catalog_cleanup: { label: "Catalog", tone: "neutral" },

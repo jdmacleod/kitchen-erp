@@ -17,6 +17,7 @@ export type InboxKind =
   | "new_product"
   | "product_update"
   | "reread"
+  | "older_rules"
   | "duplicates"
   | "ingredient_duplicates"
   | "catalog_cleanup"
