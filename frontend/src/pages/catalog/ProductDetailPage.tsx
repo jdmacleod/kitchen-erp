@@ -256,7 +256,7 @@ function EditProductForm({ product }: { product: Product }) {
   const saved = () => notice.show({ tone: "success", message: "Saved." });
 
   const onSubmit = () => {
-    const problem = validateProductValues(values);
+    const problem = validateProductValues(values, product.barcode);
     setInvalid(problem);
     if (problem || !values.ingredient || values.ingredient.kind !== "existing") return;
 
@@ -289,7 +289,10 @@ function EditProductForm({ product }: { product: Product }) {
 
     const barcode = values.barcode.trim();
     if (barcode === "" && product.barcode !== null) input.clear_barcode = true;
-    else if (barcode !== "" && barcode !== product.barcode) input.barcode = barcode;
+    else if (barcode !== "" && barcode !== product.barcode) {
+      input.barcode = barcode;
+      if (values.barcode_symbology) input.barcode_symbology = values.barcode_symbology;
+    }
 
     if (values.quality_rating !== product.quality_rating)
       input.quality_rating = values.quality_rating;
@@ -319,6 +322,7 @@ function EditProductForm({ product }: { product: Product }) {
       idPrefix="edit-product"
       heading="Edit product"
       mode="edit"
+      savedBarcode={product.barcode}
       values={values}
       onChange={(next) => {
         notice.dismiss();

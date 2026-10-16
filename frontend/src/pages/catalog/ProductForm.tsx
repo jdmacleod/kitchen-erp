@@ -9,6 +9,10 @@ import {
   type Product,
   type Unit,
 } from "../../api/catalog";
+import {
+  BarcodeSymbologyPrompt,
+  SYMBOLOGY_REQUIRED,
+} from "../../components/catalog/BarcodeSymbologyPrompt";
 import { Disclosure, SelectField, TextAreaField } from "../../components/catalog/fields";
 import {
   choiceName,
@@ -21,6 +25,7 @@ import { RatingInput } from "../../components/catalog/RatingInput";
 import { ShortNameHint } from "../../components/catalog/ShortNameHint";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { Alert, Button, Field, sectionHeading } from "../../components/ui";
+import { asksSymbology, type BarcodeSymbology } from "../../lib/barcode";
 
 export interface ProductFormValues {
   ingredient: IngredientChoice | null;
@@ -32,6 +37,8 @@ export interface ProductFormValues {
   pack_count: string;
   piece_name: string;
   barcode: string;
+  /** The answer to "Is this EAN-8 or UPC-E?", for an eight-digit code that reads both ways. */
+  barcode_symbology: BarcodeSymbology | null;
   quality_rating: number | null;
   notes: string;
   density_override: string;
@@ -48,6 +55,7 @@ export function emptyProductValues(ingredient: IngredientChoice | null = null): 
     pack_count: "",
     piece_name: "",
     barcode: "",
+    barcode_symbology: null,
     quality_rating: null,
     notes: "",
     density_override: "",
@@ -65,6 +73,7 @@ export function productValues(p: Product): ProductFormValues {
     pack_count: p.pack_count ? String(p.pack_count) : "",
     piece_name: p.piece_name ?? "",
     barcode: p.barcode ?? "",
+    barcode_symbology: null,
     quality_rating: p.quality_rating,
     notes: p.notes ?? "",
     density_override: p.density_override ?? "",
@@ -72,8 +81,14 @@ export function productValues(p: Product): ProductFormValues {
   };
 }
 
-/** Client-side checks that mirror the server's pairing rules. Null when valid. */
-export function validateProductValues(v: ProductFormValues): string | null {
+/**
+ * Client-side checks that mirror the server's pairing rules. Null when valid.
+ * `savedBarcode` is the product's barcode when editing: an unchanged code isn't asked about.
+ */
+export function validateProductValues(
+  v: ProductFormValues,
+  savedBarcode?: string | null,
+): string | null {
   if (!v.ingredient) return "Choose an ingredient, or create a new one by name.";
   if (needsCategory(v.ingredient)) return "Choose a category for the new ingredient.";
   if (!v.name.trim()) return "A name is required.";
@@ -86,11 +101,18 @@ export function validateProductValues(v: ProductFormValues): string | null {
     if (!/^[1-9]\d{0,4}$/.test(v.pack_count.trim()))
       return "Pieces must be a whole number, like 5.";
   } else if (v.piece_name.trim()) return "Say how many pieces before naming one.";
-  if (v.barcode.trim() && v.barcode.trim().length < 4)
-    return "A barcode needs at least 4 characters.";
+  const barcode = barcodeProblem(v, savedBarcode);
+  if (barcode) return barcode;
   if (v.density_override.trim() && !isPositiveDecimal(v.density_override)) {
     return "Density override must be a positive number of grams per millilitre.";
   }
+  return null;
+}
+
+function barcodeProblem(v: ProductFormValues, savedBarcode?: string | null): string | null {
+  const code = v.barcode.trim();
+  if (code && code.length < 4) return "A barcode needs at least 4 characters.";
+  if (asksSymbology(code, savedBarcode) && !v.barcode_symbology) return SYMBOLOGY_REQUIRED;
   return null;
 }
 
@@ -123,6 +145,8 @@ interface ProductFormProps {
   formId?: string;
   /** Told what is typed in the ingredient search but not yet chosen. */
   onIngredientText?: (text: string) => void;
+  /** The product's saved barcode when editing; it is not asked about again. */
+  savedBarcode?: string | null;
 }
 
 const CANONICAL_DIMENSION: Record<string, string> = { g: "mass", ml: "volume", each: "count" };
@@ -174,6 +198,7 @@ export function ProductForm({
   layout = "page",
   formId,
   onIngredientText,
+  savedBarcode,
 }: ProductFormProps) {
   const units = useUnits();
   const existingId =
@@ -304,8 +329,16 @@ export function ProductForm({
         inputMode="numeric"
         autoComplete="off"
         value={values.barcode}
-        onChange={(e) => set("barcode", e.target.value)}
+        onChange={(e) => onChange({ ...values, barcode: e.target.value, barcode_symbology: null })}
         hint="As printed under the bars. Optional."
+      />
+      <BarcodeSymbologyPrompt
+        name={`${idPrefix}-barcode-symbology`}
+        barcode={values.barcode}
+        savedBarcode={savedBarcode}
+        value={values.barcode_symbology}
+        onChange={(v) => set("barcode_symbology", v)}
+        disabled={busy}
       />
 
       <RatingInput
