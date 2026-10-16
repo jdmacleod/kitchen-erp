@@ -99,3 +99,32 @@ class RereadOut(ApiModel):
                 "proposal": {k: proposal[k] for k in ("changes", "counts", "before", "after")},
             }
         return data
+
+
+class OlderReady(ApiModel):
+    """A draft whose re-check is ready with changes (issue 382)."""
+
+    reread_id: uuid.UUID
+    purchase_id: uuid.UUID
+    purchased_at: datetime
+    store: str | None
+    counts: RereadCounts
+    adds_up: bool  # after applying, the lines would match the receipt's total
+    off_by: str | None  # after applying, how far they would still be off
+
+
+class OlderChecked(ApiModel):
+    """What one Re-check them did: ready with changes, matching already, skipped."""
+
+    ready: int
+    no_changes: int
+    skipped: int
+
+
+class OlderRulesOut(ApiModel):
+    """Drafts read with older line rules, and the re-checks waiting on a person."""
+
+    rules_version: int
+    older: int
+    ready: list[OlderReady]
+    checked: OlderChecked | None

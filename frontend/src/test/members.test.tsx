@@ -1,8 +1,16 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { User } from "../api/types";
-import { adminUser, errorResponse, jsonResponse, memberUser, mockApi, renderApp } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  memberUser,
+  mockApi,
+  renderApp,
+  warmUp,
+} from "./helpers";
 
 // #75: members can be edited, deactivated and given a new password, and
 // anyone can change their own password.
@@ -18,6 +26,14 @@ function usersRoutes(state: { member: User }) {
     [`POST /users/${memberUser.id}/password`]: () => jsonResponse(200, state.member),
   };
 }
+
+// Any test can run first when the suite is shuffled, so the file's cold first
+// render happens here instead of inside one of them (issue 374).
+beforeAll(() =>
+  warmUp("/settings/users", usersRoutes({ member: memberUser }), (options) =>
+    screen.findByRole("button", { name: "Edit Member Example" }, options),
+  ),
+);
 
 describe("household members", () => {
   it("edits a member's name and role from a drawer", async () => {

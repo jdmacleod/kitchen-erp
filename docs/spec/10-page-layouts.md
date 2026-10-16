@@ -100,6 +100,18 @@ Route `/shop/purchases/{id}/reread`.
 - **After applying:** back on the purchase page with the Notice "Re-read applied: 4 lines changed." (committed: "…Commit to update its prices."). After discarding: the Notice "Re-read discarded."
 - **Phone:** each change is a card with the receipt text full width and before/after stacked; Apply is anchored in the thumb zone.
 
+## Re-check older readings (04, 2S, issue 382)
+
+Route `/shop/receipts/recheck`, reached from the inbox row "3 drafts were read with older rules"; no nav item.
+
+- **Breadcrumb:** Shop / Receipts.
+- **Header:** title "Re-check older readings", description "Drafts read before today's line rules. A re-check runs them on the same reading, instantly and with no model. Nothing changes until you apply a re-read." Primary "Re-check 3 drafts" while any wait; it reads "Re-checking…" while it runs.
+- **Waiting:** "3 drafts were read with older rules. Committed purchases are left out: re-read those one at a time from their page."
+- **After re-checking:** the Notice "Re-checked 5 drafts: 2 would change, 3 already match." (and "1 couldn't be re-checked" when one was skipped).
+- **Would change:** a section listing every draft with a re-read ready with changes, oldest receipt first, one card each: "Lantern Row Grocery receipt from Oct 3, 2026" (the date alone before a store is chosen), then the counts and what the sum would come to, "2 changed, 1 added · Adds up after" or "1 removed · Still off by $0.40 after", and "Review", which opens the re-read page for that draft. Applying or discarding it there takes it off the list.
+- **Nothing to do:** an empty state, "No draft waits for a re-check", with "Back to Home". An error loading the count is an error, never this empty state.
+- **Phone:** the cards stack, the text above "Review"; "Review" and the primary action are 44px.
+
 ## Removing lines and purchases (#72, #74)
 
 Behaviour is in 04, 2H; this is what the screens say. The server's `removal` preview drives every sentence, so the page never predicts on its own.

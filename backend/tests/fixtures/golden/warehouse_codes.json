@@ -211,7 +211,8 @@
       "printed_total": "79.80",
       "tax": "1.90",
       "tax_source": "lines"
-    }
+    },
+    "rules_version": 1
   },
   "requests": [
     {

@@ -607,6 +607,14 @@ Both use the purchase's own total and tax, as a person may have corrected them, 
 
 **Inbox.** Ready proposals with changes are one aggregate row, "3 re-read receipts to review", whose action opens the oldest. Pending and running re-reads count in the reading line as receipts being read.
 
+**Drafts read with older rules (issue 382).** The line rules are what Re-check runs: the deterministic passes, the price checks and the reconciliation (`app.ingest.assess`). They carry one version, `LINE_RULES_VERSION`, raised with any change that can turn the same reader's answer into different lines, flags or sums; a change only to the reader's prompt is a parser version instead, reached only by Read again. The `lines` stage result and every proposal record the version they were made under as `rules_version`, and an applied re-read's `lines` result carries its proposal's. A reading without it is older than version 1 (version 1 is the rules of #376, #379 and #383).
+
+- A draft is *read with older rules* when its latest `lines` result has `read_lines` (so Re-check works on it), its `rules_version` is below today's, its ingest job finished (not reading, failed or discarded), and it has no re-read open and none made under today's rules. A re-read under today's rules, whatever became of it (`no_changes`, `applied`, `dismissed`), records that the draft was checked, so a draft whose re-check changes nothing stops being counted. Nothing is written to a stage result to say so: they stay append-only.
+- Committed and reopened purchases are left out: applying a re-read to one reopens it or moves prices already committed, so it stays a choice made on its own page.
+- One aggregate inbox row, "3 drafts were read with older rules", with "Re-check them" (09). The count is one query over drafts, each looking up only its own job's latest `lines` result.
+- Re-check them runs Re-check on each such draft, oldest receipt first, exactly as on one receipt: no model, and every proposal waits for a person. A draft that cannot be re-checked at that moment (a re-read was opened meanwhile, its reading changed) is skipped and counted, never failed. The drafts whose lines would change are listed, each opening its proposal (10, "Re-check older readings").
+- `GET /rereads/older-rules` returns `rules_version`, `older` (the count), and `ready`: the drafts with a re-read ready with changes, each with `reread_id`, `purchase_id`, `purchased_at`, `store`, the proposal's `counts`, and whether the lines would add up after (`adds_up`, otherwise `off_by`). `POST /rereads/older-rules/recheck` re-checks them and returns the same with `checked: {ready, no_changes, skipped}`.
+
 **API.**
 
 - `POST /purchases/{id}/rereads` with `{"mode": "check" | "read"}` returns 201 and the re-read: `check` already `ready` or `no_changes`, `read` `pending`.
@@ -625,6 +633,8 @@ Both use the purchase's own total and tax, as a person may have corrected them, 
 113. Applying to a draft changes its lines as "Correct the lines" would for the same rows, sets the proposal's line-reading flags, and appends a `lines` stage result naming the re-read; header fields are unchanged.
 114. Applying to a committed purchase reopens it and emits or voids nothing; recommitting voids and records again only the observations of lines that changed or were removed.
 115. `kerp receipts reread --mode check` makes proposals only for receipts that would change, closes the rest as `no_changes`, counts the receipts it skipped for want of `read_lines`, and the inbox shows one aggregate row for the ready ones.
+116. (Issue 382.) A reading made today records today's `rules_version` and is not counted. A draft read under an older version, with `read_lines`, is counted once in the inbox's "read with older rules" row; a committed purchase, or a draft whose reading kept no `read_lines`, is not.
+117. (Issue 382.) Re-check them makes no model call and applies nothing: a draft that would change is listed with its ready proposal and its lines are as they were; a draft whose re-check changes nothing closes as `no_changes` and is no longer counted, and is counted again once the version is raised. Applying or discarding a listed proposal leaves it uncounted, and an applied re-read's `lines` result carries today's `rules_version`.
 
 ## Out of scope for Phase 2
 

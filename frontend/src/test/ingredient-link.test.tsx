@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { LinkPage, LinkRow, MergeResult } from "../api/ingredientLink";
 import { flour } from "./catalog-fixtures";
 import {
@@ -10,6 +10,7 @@ import {
   mockApi,
   renderApp,
   type RecordedCall,
+  warmUp,
 } from "./helpers";
 
 // Invented ingredients (1G, UI-5.3 to UI-5.5).
@@ -58,6 +59,16 @@ function routes(
     ...extra,
   };
 }
+
+// Any test can run first when the suite is shuffled, so the file's cold first
+// render happens here instead of inside one of them (issue 374).
+beforeAll(() =>
+  warmUp(
+    "/catalog/ingredients/link",
+    routes({ page: { to_review: [sorrel], skipped: [] } }),
+    (options) => screen.findByTestId("link-row", {}, options),
+  ),
+);
 
 describe("link page (1G)", () => {
   it("links a row, which leaves, and moves focus to the next row with an announcement", async () => {
