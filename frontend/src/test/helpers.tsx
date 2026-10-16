@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import type { User } from "../api/types";
@@ -100,6 +100,31 @@ export function renderApp(initial: string | { pathname: string; state?: unknown 
     </QueryClientProvider>,
   );
   return { ...result, client };
+}
+
+/**
+ * Render a page once and throw it away, for a file's `beforeAll`.
+ *
+ * The first render of the app in a test file is the cold one: it costs a few
+ * hundred milliseconds alone and several seconds on a loaded machine, past a
+ * `findBy` query's one-second default. With the tests shuffled, any test can be
+ * first, so the file pays that cost here, once, where the wait is meant to be
+ * long, and every test then starts warm (issue 374). `ready` waits for the
+ * page's data to show, so the components that draw it are warm too.
+ */
+export async function warmUp(
+  initial: string,
+  routes: Record<string, RouteHandler>,
+  ready: (options: { timeout: number }) => Promise<unknown>,
+): Promise<void> {
+  mockApi(routes);
+  renderApp(initial);
+  try {
+    await ready({ timeout: 8000 });
+  } finally {
+    cleanup();
+    vi.unstubAllGlobals();
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import type { ProductPhoto, ProductPhotoList } from "../api/productPhotos";
 import { flourProduct, flourProductId, units } from "./catalog-fixtures";
 import {
@@ -10,6 +10,7 @@ import {
   mockApi,
   renderApp,
   type RecordedCall,
+  warmUp,
 } from "./helpers";
 
 // 1I: the product page's Photos and Labels cards (10, PD4, PD16; UI-6.8–6.9)
@@ -69,6 +70,16 @@ function routes(
     ...extra,
   };
 }
+
+// Any test can run first when the suite is shuffled, so the file's cold first
+// render happens here instead of inside one of them (issue 374).
+beforeAll(() =>
+  warmUp(
+    `/catalog/products/${flourProductId}`,
+    routes(() => ({ items: [photo(mainId, { is_main: true })], primary_image_id: mainId })),
+    (options) => screen.findByTestId("main-photo", {}, options),
+  ),
+);
 
 describe("product photos", () => {
   it("shows the category placeholder and Add photo when there is no photo", async () => {
