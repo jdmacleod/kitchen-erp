@@ -1252,6 +1252,7 @@
       "tax": "10.44",
       "tax_source": "lines"
     },
+    "rules_version": 1,
     "unread_parts": []
   },
   "requests": [

@@ -4417,6 +4417,7 @@
               "new_product",
               "product_update",
               "reread",
+              "older_rules",
               "duplicates",
               "ingredient_duplicates",
               "catalog_cleanup",
@@ -10447,6 +10448,131 @@
           "stale_after_days"
         ],
         "title": "OfferList",
+        "type": "object"
+      },
+      "OlderChecked": {
+        "additionalProperties": false,
+        "description": "What one Re-check them did: ready with changes, matching already, skipped.",
+        "properties": {
+          "no_changes": {
+            "title": "No Changes",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ready",
+          "no_changes",
+          "skipped"
+        ],
+        "title": "OlderChecked",
+        "type": "object"
+      },
+      "OlderReady": {
+        "additionalProperties": false,
+        "description": "A draft whose re-check is ready with changes (issue 382).",
+        "properties": {
+          "adds_up": {
+            "title": "Adds Up",
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/RereadCounts"
+          },
+          "off_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Off By"
+          },
+          "purchase_id": {
+            "format": "uuid",
+            "title": "Purchase Id",
+            "type": "string"
+          },
+          "purchased_at": {
+            "format": "date-time",
+            "title": "Purchased At",
+            "type": "string"
+          },
+          "reread_id": {
+            "format": "uuid",
+            "title": "Reread Id",
+            "type": "string"
+          },
+          "store": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Store"
+          }
+        },
+        "required": [
+          "reread_id",
+          "purchase_id",
+          "purchased_at",
+          "store",
+          "counts",
+          "adds_up",
+          "off_by"
+        ],
+        "title": "OlderReady",
+        "type": "object"
+      },
+      "OlderRulesOut": {
+        "additionalProperties": false,
+        "description": "Drafts read with older line rules, and the re-checks waiting on a person.",
+        "properties": {
+          "checked": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OlderChecked"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "older": {
+            "title": "Older",
+            "type": "integer"
+          },
+          "ready": {
+            "items": {
+              "$ref": "#/components/schemas/OlderReady"
+            },
+            "title": "Ready",
+            "type": "array"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rules_version",
+          "older",
+          "ready",
+          "checked"
+        ],
+        "title": "OlderRulesOut",
         "type": "object"
       },
       "OpenRereadRef": {
@@ -29654,6 +29780,50 @@
         "summary": "Dismiss Relink",
         "tags": [
           "recipes"
+        ]
+      }
+    },
+    "/api/v1/rereads/older-rules": {
+      "get": {
+        "description": "How many drafts were read with older line rules, and the re-checks ready (issue 382).",
+        "operationId": "older_rules_api_v1_rereads_older_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OlderRulesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Older Rules",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/rereads/older-rules/recheck": {
+      "post": {
+        "description": "Re-check each of them with today's rules: no model, nothing applied.",
+        "operationId": "recheck_older_api_v1_rereads_older_rules_recheck_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OlderRulesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Recheck Older",
+        "tags": [
+          "purchases"
         ]
       }
     },

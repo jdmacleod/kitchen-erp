@@ -33,6 +33,7 @@ import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
 import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
 import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
+import { RecheckPage } from "./pages/purchases/RecheckPage";
 import { RereadPage } from "./pages/purchases/RereadPage";
 import { ShelfPricePage } from "./pages/purchases/ShelfPricePage";
 import { ToIdentifyPage } from "./pages/purchases/ToIdentifyPage";
@@ -103,6 +104,8 @@ export function App() {
             <Route path="/shop/purchases/:id/reread" element={<RereadPage />} />
             <Route path="/shop/receipts" element={<ReceiptsPage />} />
             <Route path="/shop/receipts/identify" element={<ToIdentifyPage />} />
+            {/* Drafts read with older line rules, reached from the inbox (issue 382). */}
+            <Route path="/shop/receipts/recheck" element={<RecheckPage />} />
             <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />
 
             {/* Plan (17, 4A–4B). The stop screen fills in with 4C. */}

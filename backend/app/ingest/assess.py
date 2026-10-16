@@ -32,6 +32,17 @@ LINE_READING_FLAGS = frozenset(
     }
 )
 
+# The line rules: what :func:`assess` makes of one reader's answer. A reading
+# records the version it was assessed under (``rules_version`` in its ``lines``
+# stage result and in a re-read's proposal), so the drafts read under older rules
+# can be found and re-checked together (issue 382). Bump it with any change that
+# can turn the same answer into different lines, flags or sums; a change only to
+# the reader's prompt is a parser version (lines.GENERIC_PARSER_VERSION) instead,
+# since only Read again reaches it. A reading without the key is older than 1.
+# 1: printed rows, savings already in a price and the receipt's own checks (#376),
+#    codes from the printed row (#379), a rate that names its currency (#383).
+LINE_RULES_VERSION = 1
+
 
 @dataclass
 class Assessed:

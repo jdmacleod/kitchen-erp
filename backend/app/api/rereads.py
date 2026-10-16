@@ -7,8 +7,8 @@ import uuid
 from fastapi import APIRouter, status
 
 from app.api.deps import CurrentUser, DbSession
-from app.schemas.rereads import RereadOut, RereadRequest
-from app.services import reread
+from app.schemas.rereads import OlderRulesOut, RereadOut, RereadRequest
+from app.services import reread, reread_older
 
 router = APIRouter(tags=["purchases"])
 
@@ -28,6 +28,19 @@ async def request_reread(
 @router.get("/purchases/{purchase_id}/rereads/latest", response_model=RereadOut)
 async def latest_reread(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> RereadOut:
     return RereadOut.model_validate(await reread.latest(db, purchase_id))
+
+
+# Declared before /rereads/{reread_id}, which would otherwise take the path.
+@router.get("/rereads/older-rules", response_model=OlderRulesOut)
+async def older_rules(_: CurrentUser, db: DbSession) -> OlderRulesOut:
+    """How many drafts were read with older line rules, and the re-checks ready (issue 382)."""
+    return OlderRulesOut.model_validate(await reread_older.overview(db))
+
+
+@router.post("/rereads/older-rules/recheck", response_model=OlderRulesOut)
+async def recheck_older(user: CurrentUser, db: DbSession) -> OlderRulesOut:
+    """Re-check each of them with today's rules: no model, nothing applied."""
+    return OlderRulesOut.model_validate(await reread_older.recheck(db, user))
 
 
 @router.get("/rereads/{reread_id}", response_model=RereadOut)
