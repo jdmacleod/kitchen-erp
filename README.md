@@ -240,6 +240,17 @@ links reach outside the deployment, and only when switched on.
   release. `kerp ingredients usda-candidates <fdc id | text>` lists raw or dry
   USDA records to choose a reference from.
 
+- **A vendor's abbreviations (#388).** Each product you confirm for a receipt
+  line teaches what the vendor's printed words stand for ("YGRT" for yogurt),
+  for that vendor and as a fallback for others. To learn from the lines
+  identified before this existed, run once after `kerp migrate`:
+
+  ```bash
+  docker compose exec api kerp naming learn-words
+  ```
+
+  Running it again adds nothing.
+
 - **OpenStreetMap links**, off unless `ENABLE_OVERPASS=true`. With it on, a
   location's card offers "Link to OpenStreetMap", which lists the places within
   250 m of its pin and fills in the address, hours, phone and website it is

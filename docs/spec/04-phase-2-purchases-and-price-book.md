@@ -270,6 +270,8 @@ A row that fails keeps its fields and shows its error; the others are unaffected
 
 **An existing product of the same name (#179).** A row whose name matches an active product of the same existing ingredient (ignoring case and spacing), including one an earlier row in the same request just created, is refused with `product_exists` and that product. The row then offers "Use {product}", which sends the row again with the product's id so its lines are identified as that product and nothing is created, and "Create another", which sends it with `allow_duplicate` for a product that really is different.
 
+**Learned words (#388).** Every confirmation that writes a product alias (`upsert_alias`: the naming pass, `POST /to-identify/apply`, review) also teaches what the vendor's printed words stand for. Each printed word that abbreviates exactly one word of the product's name, keeping its first letter and the rest in order ("YGRT" in "Greek yogurt"), counts once in `line_word` for that vendor and once for any vendor (a null `vendor_id`). A word already in the name, a unit code, a word with digits, or one two name words could stand for teaches nothing. A vendor's own expansions win, and the any-vendor row is the fallback for a word it hasn't printed yet. A person's undo counts it once less, and at zero it is no longer offered. `kerp naming learn-words` backfills from existing aliases, adding only pairs not yet known. Expansions are suggestions only: a line's printed and normalized text are never rewritten.
+
 ### Acceptance criteria
 
 60. With three or more groups waiting, the to-identify page offers the naming mode; with fewer it does not.
