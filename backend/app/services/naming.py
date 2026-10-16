@@ -27,7 +27,14 @@ from app.models import AppUser, NamingSuggestion, Product
 from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
-from app.services import catalog, line_words, naming_words, product_same, resolution
+from app.services import (
+    catalog,
+    line_words,
+    naming_candidates,
+    naming_words,
+    product_same,
+    resolution,
+)
 from app.units import UnitParseFailure, parse_unit
 
 log = get_logger(__name__)
@@ -104,6 +111,17 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
                 "model": asked.get((group["vendor_id"], norm)),
             }
         )
+    # Products the suggested ingredient already has, closest to the name first (#386).
+    ids = {
+        r["ingredient"].id for r in rows if r["ingredient"] and r["ingredient"].kind == "ingredient"
+    }
+    products = await naming_candidates.by_ingredient(db, ids)
+    for r in rows:
+        match = r["ingredient"]
+        found = products.get(match.id, []) if match and match.kind == "ingredient" else []
+        r["candidates"] = [
+            naming_candidates.brief(p) for p in naming_candidates.rank(r["name"], found)
+        ]
     return rows
 
 

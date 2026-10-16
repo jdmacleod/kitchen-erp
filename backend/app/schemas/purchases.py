@@ -488,6 +488,16 @@ class NameChange(ApiModel):
     source: Literal["learned", "spelling", "vocabulary"]
 
 
+class NamingCandidate(ApiModel):
+    """An existing product a naming row may be (#386)."""
+
+    id: uuid.UUID
+    name: str
+    brand: str | None
+    pack_qty: DecimalStr | None
+    pack_unit: str | None
+
+
 class NamingRow(ApiModel):
     """One waiting group with a suggested product (04, 2I)."""
 
@@ -503,6 +513,8 @@ class NamingRow(ApiModel):
     pack_qty: DecimalStr | None
     pack_unit: str | None
     model: ModelNaming | None
+    # Products the suggested ingredient already has, closest first (#386).
+    candidates: list[NamingCandidate]
 
 
 class NamingList(ApiModel):
