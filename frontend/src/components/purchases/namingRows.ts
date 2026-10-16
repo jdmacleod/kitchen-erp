@@ -38,6 +38,8 @@ export interface RowValue {
   duplicate: boolean;
   /** Which of the fields shown came from the model. */
   fromModel: { name: boolean; ingredient: boolean };
+  /** The model's name, offered beside one the wording already read (issue 387). */
+  modelOffer: string | null;
   /** The product's brand: typed, else the one the wording starts with (issue 390). */
   brand: string;
   /** The changed words to show as toggles, while the name is still built from them. */
@@ -68,11 +70,25 @@ function ingredientOf(
   return match ? choiceFromMatch(match) : null;
 }
 
-/** The model's answers for the fields a person hasn't edited and the wording left open. */
+/** Whether the model's name fills the Name or is only offered beside it (issue 387). */
+function modelName(row: NamingRow, fresh: string | null) {
+  const wordingRead = row.name_changes.length > 0 || row.brand !== null;
+  if (!wordingRead) return { name: fresh, offer: null };
+  return { name: null, offer: fresh !== null && fresh !== row.name ? fresh : null };
+}
+
+/**
+ * The model's answers for the fields a person hasn't edited and the wording left
+ * open. A name the wording already read (issues 384, 390) isn't replaced: the model's
+ * is offered beside it instead (issue 387).
+ */
 function modelAnswers(row: NamingRow, edit: RowEdit | undefined) {
   const model = row.model?.status === "done" ? row.model : null;
+  const fresh = edit?.name === undefined && model?.name ? model.name : null;
+  const { name, offer } = modelName(row, fresh);
   return {
-    name: edit?.name === undefined && model?.name ? model.name : null,
+    name,
+    offer,
     ingredient:
       edit?.ingredient === undefined && !row.ingredient && model?.ingredient
         ? model.ingredient
@@ -106,6 +122,7 @@ export function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
     brand: edit?.brand ?? row.brand ?? "",
     ingredient: ingredientOf(row, edit, model.ingredient),
     fromModel: { name: model.name !== null, ingredient: model.ingredient !== null },
+    modelOffer: model.offer,
     changes: fromWords ? row.name_changes : [],
   };
 }

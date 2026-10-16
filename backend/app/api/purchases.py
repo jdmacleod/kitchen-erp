@@ -9,6 +9,7 @@ from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
+from app.core.config import get_settings
 from app.schemas.pricebook_views import (
     BrandScope,
     CheapestOut,
@@ -56,6 +57,7 @@ from app.schemas.purchases import (
 from app.services import (
     catalog,
     naming,
+    naming_model,
     pricebook,
     pricebook_views,
     product_same,
@@ -627,8 +629,12 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
 
 @router.get("/to-identify/naming", response_model=NamingList)
 async def naming_rows(_: CurrentUser, db: DbSession) -> NamingList:
-    """Every waiting group with a suggested product, for naming them in bulk (2I)."""
-    return NamingList(items=await naming.naming_rows(db))
+    """Every waiting group with a suggested product, for naming them in bulk (2I).
+    With NAMING_AUTO_SUGGEST on, the rows never asked about go to the model now (#387)."""
+    rows = await naming.naming_rows(db)
+    if get_settings().naming_auto_suggest:
+        await naming_model.queue_unasked(db, rows)
+    return NamingList(items=rows)
 
 
 @router.post("/to-identify/naming/suggest", response_model=NamingAsked)

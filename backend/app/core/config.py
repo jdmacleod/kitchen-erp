@@ -108,6 +108,9 @@ class Settings(BaseSettings):
     # The lines stage's budget grows with the receipt: llm_timeout_seconds plus
     # this per line of receipt text. 25 item lines took 94.6 s against a flat 120.
     llm_lines_seconds_per_line: float = 3.0
+    # Ask the local model about unnamed rows as soon as the naming pass opens,
+    # rather than on a button press (#387). Off by default: it loads the model.
+    naming_auto_suggest: bool = False
     enable_overpass: bool = False
     enable_nominatim: bool = False
 
