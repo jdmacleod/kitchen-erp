@@ -9616,6 +9616,10 @@
             "title": "Candidates",
             "type": "array"
           },
+          "confident": {
+            "title": "Confident",
+            "type": "boolean"
+          },
           "ingredient": {
             "anyOf": [
               {
@@ -9625,6 +9629,18 @@
                 "type": "null"
               }
             ]
+          },
+          "latest_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest At"
           },
           "line_count": {
             "title": "Line Count",
@@ -9718,7 +9734,9 @@
           "pack_qty",
           "pack_unit",
           "model",
-          "candidates"
+          "candidates",
+          "latest_at",
+          "confident"
         ],
         "title": "NamingRow",
         "type": "object"

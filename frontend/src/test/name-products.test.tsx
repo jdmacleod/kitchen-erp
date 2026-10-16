@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { NamingRow } from "../api/naming";
 import type { ToIdentifyGroup } from "../api/purchases";
 import { flour, units } from "./catalog-fixtures";
@@ -54,6 +54,8 @@ const rows: NamingRow[] = [
     pack_unit: "kg",
     model: null,
     candidates: [],
+    latest_at: "2026-09-20T18:05:00Z",
+    confident: false,
   },
   {
     vendor,
@@ -68,6 +70,8 @@ const rows: NamingRow[] = [
     pack_unit: null,
     model: null,
     candidates: [],
+    latest_at: "2026-09-20T18:05:00Z",
+    confident: false,
   },
   {
     vendor,
@@ -82,6 +86,8 @@ const rows: NamingRow[] = [
     pack_unit: null,
     model: null,
     candidates: [],
+    latest_at: "2026-09-20T18:05:00Z",
+    confident: false,
   },
 ];
 
@@ -97,6 +103,9 @@ function routes(queue: ToIdentifyGroup[], post?: (call: RecordedCall) => Respons
     "POST /to-identify/name-products": post ?? (() => jsonResponse(200, { results: [] })),
   };
 }
+
+// Drafts are kept per browser (issue 389); each test starts with none.
+beforeEach(() => window.localStorage.clear());
 
 const three = [group("RVRBND BREAD FLR 2KG", 1), group("BNLS CHKN BRST", 2), group("OAT MILK", 3)];
 
@@ -585,5 +594,71 @@ describe("suggestions while typing a name (issue 385)", () => {
     expect(within(row).getByTestId("name-1-use")).toHaveTextContent(
       "Uses the existing product Boneless chicken breast",
     );
+  });
+});
+
+describe("moving through a long list (issue 389)", () => {
+  const otherVendor = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f6a01", name: "Tern Market" };
+  const many = (): NamingRow[] =>
+    Array.from({ length: 25 }, (_, i) => ({
+      ...rows[2],
+      vendor: i % 5 === 0 ? otherVendor : vendor,
+      raw_text_norm: `ITEM ${String(i).padStart(2, "0")}`,
+      name: `Item ${i}`,
+      name_words: ["item", String(i)],
+      line_count: i === 24 ? 3 : 1,
+      latest_at: `2026-09-${String(1 + (i % 28)).padStart(2, "0")}T18:00:00Z`,
+      confident: i === 21,
+      ingredient: rows[0].ingredient,
+    }));
+  const queue = many().map((r, i) => group(r.raw_text_norm ?? "", i));
+  const mock = () =>
+    mockApi({
+      ...routes(queue),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: many() }),
+    });
+
+  it("shows 20 rows, most lines then most recent first, and more on request", async () => {
+    mock();
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const list = await screen.findByRole("list", { name: "New products to name" });
+    const shown = () =>
+      within(list)
+        .getAllByRole("group", { name: /: ITEM \d+$/ })
+        .map((g) => g.getAttribute("aria-label"));
+    expect(shown()).toHaveLength(20);
+    expect(shown()[0]).toBe(`${vendor.name}: ITEM 24`); // three lines
+    expect(shown()[1]).toBe(`${vendor.name}: ITEM 23`); // then the latest
+    await user.click(screen.getByRole("button", { name: "Show 5 more (5 waiting)" }));
+    expect(shown()).toHaveLength(25);
+    await user.selectOptions(screen.getByRole("combobox", { name: "Store" }), otherVendor.id);
+    expect(shown()).toHaveLength(5);
+  });
+
+  it("ticks confident rows only, says what Create will do, and keeps drafts", async () => {
+    mock();
+    const user = userEvent.setup();
+    const first = renderApp("/shop/receipts/identify?mode=name");
+    const row21 = await screen.findByRole("group", { name: `${vendor.name}: ITEM 21` });
+    await user.click(screen.getByRole("button", { name: "Tick 1 confident row" }));
+    expect(within(row21).getByRole("checkbox")).toBeChecked();
+    expect(within(row21).getByText("Will be created")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create 1 product" })).toBeEnabled();
+
+    // Enter in Pack moves to the next row's Name.
+    const top = within(screen.getByRole("list", { name: "New products to name" })).getAllByRole(
+      "group",
+      { name: /: ITEM \d+$/ },
+    );
+    await user.click(within(top[0]).getByRole("textbox", { name: "Pack" }));
+    await user.keyboard("{Enter}");
+    expect(within(top[1]).getByRole("combobox", { name: "Name" })).toHaveFocus();
+
+    first.unmount();
+    renderApp("/shop/receipts/identify?mode=name");
+    expect(await screen.findByText("Restored 1 row you hadn't created.")).toBeInTheDocument();
+    const again = await screen.findByRole("group", { name: `${vendor.name}: ITEM 21` });
+    expect(within(again).getByRole("checkbox")).toBeChecked();
   });
 });

@@ -95,7 +95,7 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
         found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []
-        name, changes = await naming_words.suggest(db, known, group["vendor_id"], rest)
+        name, changes, unknown = await naming_words.suggest(db, known, group["vendor_id"], rest)
         rows.append(
             {
                 "vendor": {"id": group["vendor_id"], "name": group["vendor_name"]},
@@ -109,6 +109,13 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
                 "pack_qty": pack.qty if pack else None,
                 "pack_unit": pack.unit if pack else None,
                 "model": asked.get((group["vendor_id"], norm)),
+                "latest_at": group["lines"][0]["purchased_at"] if group["lines"] else None,
+                # Every field from a sure source: the name's words all read (learned
+                # or known), and an ingredient the wording names outright (#389).
+                "confident": unknown == 0
+                and all(c.source == "learned" for c in changes)
+                and bool(found)
+                and found[0].exact,
             }
         )
     # Products the suggested ingredient already has, closest to the name first (#386).

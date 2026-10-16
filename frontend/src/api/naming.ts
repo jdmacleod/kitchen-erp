@@ -43,6 +43,10 @@ export interface NamingRow {
   } | null;
   /** Products the suggested ingredient already has, closest first (issue 386). */
   candidates: NamingCandidate[];
+  /** When the group's latest line was bought (issue 389). */
+  latest_at: string | null;
+  /** Every field from a sure source: all words read, the ingredient named outright. */
+  confident: boolean;
 }
 
 export type NameProductRow = {
