@@ -24,6 +24,7 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
 import { NameChanges, nameFromWords } from "./NameChanges";
+import { NamingCandidates } from "./NamingCandidates";
 
 /** A product that already has the row's name and ingredient (issue 179). */
 interface ExistingProduct {
@@ -469,6 +470,13 @@ function NamingRowItem({
           {problem}
         </p>
       ) : null}
+      {value.use || existing ? null : (
+        <NamingCandidates
+          candidates={row.candidates}
+          disabled={busy}
+          onUse={(product) => onChange({ use: product, duplicate: false })}
+        />
+      )}
     </li>
   );
 }

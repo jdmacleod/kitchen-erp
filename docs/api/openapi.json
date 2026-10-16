@@ -9531,6 +9531,63 @@
         "title": "NamingAsked",
         "type": "object"
       },
+      "NamingCandidate": {
+        "additionalProperties": false,
+        "description": "An existing product a naming row may be (#386).",
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "pack_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Qty"
+          },
+          "pack_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pack Unit"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "brand",
+          "pack_qty",
+          "pack_unit"
+        ],
+        "title": "NamingCandidate",
+        "type": "object"
+      },
       "NamingList": {
         "additionalProperties": false,
         "properties": {
@@ -9552,6 +9609,13 @@
         "additionalProperties": false,
         "description": "One waiting group with a suggested product (04, 2I).",
         "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/NamingCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
           "ingredient": {
             "anyOf": [
               {
@@ -9653,7 +9717,8 @@
           "ingredient",
           "pack_qty",
           "pack_unit",
-          "model"
+          "model",
+          "candidates"
         ],
         "title": "NamingRow",
         "type": "object"

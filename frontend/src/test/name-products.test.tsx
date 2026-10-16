@@ -53,6 +53,7 @@ const rows: NamingRow[] = [
     pack_qty: "2",
     pack_unit: "kg",
     model: null,
+    candidates: [],
   },
   {
     vendor,
@@ -66,6 +67,7 @@ const rows: NamingRow[] = [
     pack_qty: null,
     pack_unit: null,
     model: null,
+    candidates: [],
   },
   {
     vendor,
@@ -79,6 +81,7 @@ const rows: NamingRow[] = [
     pack_qty: null,
     pack_unit: null,
     model: null,
+    candidates: [],
   },
 ];
 
@@ -496,5 +499,44 @@ describe("words the suggested name changed (issue 384)", () => {
     expect(
       within(row).queryByRole("list", { name: "Words changed from the receipt" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("products a row may already be (issue 386)", () => {
+  const known = { id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e09", name: "Riverbend bread flour" };
+  const withCandidates = (): NamingRow[] => [
+    {
+      ...rows[0],
+      candidates: [{ ...known, brand: "Riverbend", pack_qty: "2.000", pack_unit: "kg" }],
+    },
+    rows[1],
+    rows[2],
+  ];
+
+  it("offers them before Create, and using one sends its id", async () => {
+    const calls = mockApi({
+      ...routes(three),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: withCandidates() }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: RVRBND BREAD FLR 2KG` });
+    await user.click(within(row).getByRole("button", { name: "Use Riverbend bread flour · 2 kg" }));
+    expect(within(row).getByTestId("name-0-use")).toHaveTextContent(
+      "Uses the existing product Riverbend bread flour",
+    );
+    expect(within(row).queryByText("Maybe one you have:")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      rows: [
+        {
+          vendor_id: vendor.id,
+          raw_text_norm: "RVRBND BREAD FLR 2KG",
+          name: known.name,
+          product_id: known.id,
+        },
+      ],
+    });
   });
 });

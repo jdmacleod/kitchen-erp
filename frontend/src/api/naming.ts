@@ -13,6 +13,15 @@ export interface NameChange {
   source: "learned" | "spelling" | "vocabulary";
 }
 
+/** An existing product a row may be (issue 386). */
+export interface NamingCandidate {
+  id: string;
+  name: string;
+  brand: string | null;
+  pack_qty: string | null;
+  pack_unit: string | null;
+}
+
 /** A waiting group with the product its wording suggests. */
 export interface NamingRow {
   vendor: { id: string; name: string };
@@ -32,6 +41,8 @@ export interface NamingRow {
     name: string | null;
     ingredient: IngredientMatch | null;
   } | null;
+  /** Products the suggested ingredient already has, closest first (issue 386). */
+  candidates: NamingCandidate[];
 }
 
 export type NameProductRow = {
