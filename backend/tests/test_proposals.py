@@ -662,8 +662,9 @@ async def test_updating_a_product_keeps_its_pack_through_a_pack_conflict(admin_c
         admin_client, "Oats", "Hollow Creek oats", pack_qty="1", pack_unit="lb"
     )
     bare = await make_product(admin_client, "Porridge oats", "Hollow Creek oats, loose")
-    guess = Candidate("pack", {"qty": "16", "unit": "oz"}, "model", Decimal("0.6"))
-    result = await capture(user, page_evidence(store, gtin_value=None, more=[guess]))
+    # An adapter, not the model: a model's guess alone never opens a conflict (issue 281).
+    other = Candidate("pack", {"qty": "16", "unit": "oz"}, "adapter")
+    result = await capture(user, page_evidence(store, gtin_value=None, more=[other]))
     pid = result.proposal.id
     assert result.proposal.fields["pack"]["conflict"] is True
 
