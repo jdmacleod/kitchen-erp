@@ -36,6 +36,8 @@ const rows: NamingRow[] = [
     line_count: 2,
     raw_text: "RVRBND BREAD FLR 2KG 6.50",
     name: "Rvrbnd bread flr",
+    name_words: ["rvrbnd", "bread", "flr"],
+    name_changes: [],
     ingredient: {
       kind: "ingredient",
       id: flour.id,
@@ -58,6 +60,8 @@ const rows: NamingRow[] = [
     line_count: 1,
     raw_text: "BNLS CHKN BRST 8.40",
     name: "Bnls chkn brst",
+    name_words: ["bnls", "chkn", "brst"],
+    name_changes: [],
     ingredient: null,
     pack_qty: null,
     pack_unit: null,
@@ -69,6 +73,8 @@ const rows: NamingRow[] = [
     line_count: 1,
     raw_text: "OAT MILK 3.49",
     name: "Oat milk",
+    name_words: ["oat", "milk"],
+    name_changes: [],
     ingredient: null,
     pack_qty: null,
     pack_unit: null,
@@ -419,5 +425,76 @@ describe("naming new products in bulk", () => {
     expect(
       await screen.findByText("Created 1 product and identified 2 lines."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("words the suggested name changed (issue 384)", () => {
+  const yogurt: NamingRow = {
+    ...rows[0],
+    raw_text_norm: "HRBR YGRT PLN",
+    line_count: 1,
+    raw_text: "HRBR YGRT PLN 3.10",
+    name: "Hrbr yogurt plain",
+    name_words: ["hrbr", "ygrt", "pln"],
+    name_changes: [
+      { index: 1, printed: "ygrt", shown: "yogurt", source: "learned" },
+      { index: 2, printed: "pln", shown: "plain", source: "vocabulary" },
+    ],
+    pack_qty: null,
+    pack_unit: null,
+  };
+  const queue = [group("HRBR YGRT PLN", 4), group("BNLS CHKN BRST", 2), group("OAT MILK", 3)];
+
+  it("shows each change as a toggle, and undoing one puts the printed word back", async () => {
+    const calls = mockApi({
+      ...routes(queue),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: [yogurt, rows[1], rows[2]] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: HRBR YGRT PLN` });
+    const name = within(row).getByRole("textbox", { name: "Name" });
+    expect(name).toHaveValue("Hrbr yogurt plain");
+    const changed = within(row).getByRole("list", { name: "Words changed from the receipt" });
+    const learned = within(changed).getByRole("button", { name: /ygrt.*yogurt.*learned/ });
+    expect(learned).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(learned);
+    expect(name).toHaveValue("Hrbr ygrt plain");
+    expect(learned).toHaveAttribute("aria-pressed", "false");
+    expect(within(row).getByRole("checkbox")).toBeChecked();
+    await user.click(within(changed).getByRole("button", { name: /pln.*plain/ }));
+    expect(name).toHaveValue("Hrbr ygrt pln");
+
+    await user.click(screen.getByRole("button", { name: "Create 1 product" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    // Only the learned word is forgotten: a vocabulary guess has no count to lower.
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      rows: [
+        {
+          vendor_id: vendor.id,
+          raw_text_norm: "HRBR YGRT PLN",
+          name: "Hrbr ygrt pln",
+          ingredient_id: flour.id,
+          forget_words: [{ word: "ygrt", expansion: "yogurt" }],
+        },
+      ],
+    });
+  });
+
+  it("hides the toggles once the name is typed over", async () => {
+    mockApi({
+      ...routes(queue),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: [yogurt, rows[1], rows[2]] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: HRBR YGRT PLN` });
+    const name = within(row).getByRole("textbox", { name: "Name" });
+    await user.clear(name);
+    await user.type(name, "Greek yogurt");
+    expect(
+      within(row).queryByRole("list", { name: "Words changed from the receipt" }),
+    ).not.toBeInTheDocument();
   });
 });

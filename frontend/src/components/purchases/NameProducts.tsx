@@ -5,6 +5,7 @@ import {
   useNameProducts,
   useNamingRows,
   useSuggestNames,
+  type NameChange,
   type NameProductRow,
   type NamingRow,
 } from "../../api/naming";
@@ -22,6 +23,7 @@ import { UnitSelect } from "../catalog/UnitSelect";
 import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
+import { NameChanges, nameFromWords } from "./NameChanges";
 
 /** A product that already has the row's name and ingredient (issue 179). */
 interface ExistingProduct {
@@ -41,6 +43,8 @@ interface RowEdit {
   use?: ExistingProduct | null;
   /** Create a new product even though one has the same name and ingredient. */
   duplicate?: boolean;
+  /** Changed words the person put back as printed (issue 384). */
+  undone?: number[];
 }
 
 interface RowValue {
@@ -53,6 +57,9 @@ interface RowValue {
   duplicate: boolean;
   /** Which of the fields shown came from the model. */
   fromModel: { name: boolean; ingredient: boolean };
+  /** The changed words to show as toggles, while the name is still built from them. */
+  changes: NameChange[];
+  undone: ReadonlySet<number>;
 }
 
 function rowKey(row: NamingRow): string {
@@ -69,8 +76,16 @@ function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
   const modelName = edit?.name === undefined && !!model?.name;
   const modelIngredient = edit?.ingredient === undefined && !row.ingredient && !!model?.ingredient;
   const ingredient = row.ingredient ?? (modelIngredient ? model.ingredient : null);
+  const undone = new Set(edit?.undone ?? []);
+  const fromWords = edit?.name === undefined && !modelName;
   return {
-    name: edit?.name ?? (modelName ? model.name! : row.name),
+    name:
+      edit?.name ??
+      (modelName
+        ? model.name!
+        : undone.size > 0
+          ? nameFromWords(row.name_words, row.name_changes, undone)
+          : row.name),
     ingredient:
       edit?.ingredient !== undefined
         ? edit.ingredient
@@ -83,7 +98,16 @@ function valueOf(row: NamingRow, edit: RowEdit | undefined): RowValue {
     use: edit?.use ?? null,
     duplicate: edit?.duplicate ?? false,
     fromModel: { name: modelName, ingredient: modelIngredient },
+    changes: fromWords ? row.name_changes : [],
+    undone,
   };
+}
+
+/** The learned expansions a person undid on a row, to be offered less (issue 384). */
+function forgotten(row: NamingRow, v: RowValue) {
+  return row.name_changes
+    .filter((c) => c.source === "learned" && v.undone.has(c.index))
+    .map((c) => ({ word: c.printed, expansion: c.shown }));
 }
 
 /** Why a ticked row can't be sent yet, or null. */
@@ -161,6 +185,7 @@ export function NameProducts() {
             name: v.name.trim(),
             ...(v.packQty.trim() ? { pack_qty: v.packQty.trim(), pack_unit: v.packUnit } : {}),
             ...(v.duplicate ? { allow_duplicate: true } : {}),
+            ...(forgotten(row, v).length > 0 ? { forget_words: forgotten(row, v) } : {}),
             ...choiceInput(v.ingredient!),
           },
     );
@@ -356,6 +381,18 @@ function NamingRowItem({
               Suggested by the model
             </p>
           ) : null}
+          <NameChanges
+            changes={value.changes}
+            undone={value.undone}
+            disabled={busy}
+            onToggle={(index) =>
+              onChange({
+                undone: value.undone.has(index)
+                  ? [...value.undone].filter((i) => i !== index)
+                  : [...value.undone, index],
+              })
+            }
+          />
         </div>
         <div className="min-w-0">
           <IngredientPicker

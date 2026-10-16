@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
@@ -27,7 +27,7 @@ from app.models import AppUser, NamingSuggestion, Product
 from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
-from app.services import catalog, product_same, resolution
+from app.services import catalog, line_words, naming_words, product_same, resolution
 from app.units import UnitParseFailure, parse_unit
 
 log = get_logger(__name__)
@@ -82,18 +82,22 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
     # One load of every name and spelling serves all the groups (#183).
     index = await catalog.ingredient_index(db)
     asked = await _model_suggestions(db, index)
+    known = await naming_words.load(db)
     rows: list[dict] = []
     for group in await resolution.to_identify(db):
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
         found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []
+        name, changes = await naming_words.suggest(db, known, group["vendor_id"], rest)
         rows.append(
             {
                 "vendor": {"id": group["vendor_id"], "name": group["vendor_name"]},
                 "raw_text_norm": group["raw_text_norm"],
                 "line_count": group["line_count"],
                 "raw_text": group["lines"][0]["raw_text"] if group["lines"] else None,
-                "name": name_from_words(rest),
+                "name": name,
+                "name_words": [w.lower() for w in rest],
+                "name_changes": [asdict(c) for c in changes],
                 "ingredient": found[0] if found else None,
                 "pack_qty": pack.qty if pack else None,
                 "pack_unit": pack.unit if pack else None,
@@ -362,6 +366,9 @@ async def name_product(
         ignore=False,
         line_ids=None,
     )
+    # A suggested expansion the person undid is offered less from now on (#384).
+    for undone in row.forget_words:
+        await line_words.forget(db, row.vendor_id, undone.word, undone.expansion)
     return product.id, applied
 
 

@@ -479,6 +479,15 @@ class ModelNaming(ApiModel):
     ingredient: IngredientMatch | None
 
 
+class NameChange(ApiModel):
+    """A printed word shown as another in the suggested name (#384)."""
+
+    index: int
+    printed: str
+    shown: str
+    source: Literal["learned", "spelling", "vocabulary"]
+
+
 class NamingRow(ApiModel):
     """One waiting group with a suggested product (04, 2I)."""
 
@@ -487,6 +496,9 @@ class NamingRow(ApiModel):
     line_count: int
     raw_text: str | None
     name: str
+    # The printed words the name is built from, and each one it shows differently.
+    name_words: list[str]
+    name_changes: list[NameChange]
     ingredient: IngredientMatch | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
@@ -499,6 +511,11 @@ class NamingList(ApiModel):
 
 class NamingAsked(ApiModel):
     queued: int
+
+
+class ForgottenWord(ApiModel):
+    word: str = Field(min_length=1, max_length=40)
+    expansion: str = Field(min_length=1, max_length=60)
 
 
 class NameProductRow(ApiModel):
@@ -518,6 +535,8 @@ class NameProductRow(ApiModel):
     ingredient: IngredientCreate | None = None
     pack_qty: Decimal | None = Field(default=None, gt=0)
     pack_unit: str | None = Field(default=None, max_length=16)
+    # Learned expansions the person undid on this row, offered less from now on.
+    forget_words: list[ForgottenWord] = Field(default_factory=list, max_length=20)
 
     @model_validator(mode="after")
     def _fields(self):

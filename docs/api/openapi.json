@@ -3458,6 +3458,29 @@
         "title": "FileSource",
         "type": "object"
       },
+      "ForgottenWord": {
+        "additionalProperties": false,
+        "properties": {
+          "expansion": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Expansion",
+            "type": "string"
+          },
+          "word": {
+            "maxLength": 40,
+            "minLength": 1,
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "word",
+          "expansion"
+        ],
+        "title": "ForgottenWord",
+        "type": "object"
+      },
       "FromRecipeIn": {
         "additionalProperties": false,
         "properties": {
@@ -9270,6 +9293,41 @@
         "title": "ModelNaming",
         "type": "object"
       },
+      "NameChange": {
+        "additionalProperties": false,
+        "description": "A printed word shown as another in the suggested name (#384).",
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "printed": {
+            "title": "Printed",
+            "type": "string"
+          },
+          "shown": {
+            "title": "Shown",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "learned",
+              "spelling",
+              "vocabulary"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "printed",
+          "shown",
+          "source"
+        ],
+        "title": "NameChange",
+        "type": "object"
+      },
       "NameProductRow": {
         "additionalProperties": false,
         "description": "A row a person confirmed: its product, and the group it identifies.\n\n``product_id`` uses a product that already exists instead of creating one\n(#179). Without it, a new product whose name and ingredient match an active\nproduct is refused with ``product_exists`` unless ``allow_duplicate`` is set.",
@@ -9278,6 +9336,14 @@
             "default": false,
             "title": "Allow Duplicate",
             "type": "boolean"
+          },
+          "forget_words": {
+            "items": {
+              "$ref": "#/components/schemas/ForgottenWord"
+            },
+            "maxItems": 20,
+            "title": "Forget Words",
+            "type": "array"
           },
           "ingredient": {
             "anyOf": [
@@ -9514,6 +9580,20 @@
             "title": "Name",
             "type": "string"
           },
+          "name_changes": {
+            "items": {
+              "$ref": "#/components/schemas/NameChange"
+            },
+            "title": "Name Changes",
+            "type": "array"
+          },
+          "name_words": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Name Words",
+            "type": "array"
+          },
           "pack_qty": {
             "anyOf": [
               {
@@ -9568,6 +9648,8 @@
           "line_count",
           "raw_text",
           "name",
+          "name_words",
+          "name_changes",
           "ingredient",
           "pack_qty",
           "pack_unit",
