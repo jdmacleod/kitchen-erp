@@ -145,8 +145,11 @@ def _sentence_case(text: str, keep: set[str]) -> str:
 # end ("Fresh Lantern peppers, 1 ct"). Loose produce has no pack, so the pack rule
 # above never drops the count.
 _FRESH_LEAD = re.compile(r"^fresh\s+(?=\S)", re.IGNORECASE)
+# Matched against the name with its whitespace already collapsed, so every space
+# here is one optional character: an unbounded run before the "1" made each start
+# in a long run of spaces rescan it (polynomial on untrusted names).
 _ONE_COUNT = re.compile(
-    r"(?:\s*[,\-–:|/]\s*|\s+|\s*\()1\s{0,2}(?:ct|count|ea|each|pc|pcs|piece)\.?\)?\s*$",
+    r"(?:\s?[,\-–:|/]\s?|\s|\s?\()1\s?(?:ct|count|ea|each|pc|pcs|piece)\.?\)?$",
     re.IGNORECASE,
 )
 
@@ -154,7 +157,7 @@ _ONE_COUNT = re.compile(
 def produce_name(name: str) -> str:
     """A produce product's name without a leading "Fresh" or a trailing count of one;
     the name as given when nothing else would be left."""
-    text = _ONE_COUNT.sub("", name).strip(" ,-–:|/")
+    text = _ONE_COUNT.sub("", " ".join(name.split())).strip(" ,-–:|/")
     text = _FRESH_LEAD.sub("", text).strip()
     if not text:
         return name.strip()

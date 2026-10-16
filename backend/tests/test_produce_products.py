@@ -37,11 +37,23 @@ __all__ = ["user"]
         ("Lantern pears (1 each)", "Lantern pears"),
         ("Fresh", "Fresh"),
         ("Lantern peppers, 3 ct", "Lantern peppers, 3 ct"),
+        ("Lantern peppers ,  1  ct ", "Lantern peppers"),
     ],
 )
 def test_produce_names_lose_fresh_and_a_count_of_one(name, short):
     assert produce_name(name) == short
     assert produce_name(short) == short
+
+
+@pytest.mark.parametrize("name", [" " * 20000 + "x", "Lantern" + " " * 20000 + "1", "(" * 20000])
+def test_a_long_run_of_spaces_is_cheap(name):
+    # Names come from receipts and pages, untrusted: a pattern that rescans a run
+    # of spaces from every start would take seconds here.
+    import time
+
+    started = time.perf_counter()
+    produce_name(name)
+    assert time.perf_counter() - started < 0.5
 
 
 def test_the_short_name_drops_the_filler_only_for_produce():
