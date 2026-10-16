@@ -16,12 +16,21 @@ from PIL import Image
 
 from app.core.config import get_settings
 from app.schemas.products_interchange import FORMAT
+from tests import geo_helpers as gh
 from tests import test_products_helper as tph
 from tests.pricebook_helpers import make_product
 from tests.test_captures import UNKNOWN, with_check
 
 helper = tph.helper  # the stub helper: products:read and products:suggest tokens
 post_answer = tph.post_answer
+no_network = gh.no_network
+
+
+@pytest.fixture(autouse=True)
+def _offline(no_network: None) -> None:
+    """Criterion 83: every lookup here runs under the network guard."""
+    return None
+
 
 OTHER = with_check("5 0123 4500 028")  # a code another product holds
 

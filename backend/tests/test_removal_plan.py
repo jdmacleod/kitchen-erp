@@ -157,6 +157,41 @@ async def test_a_receipt_still_being_read_is_refused(admin_client, receipts_dir:
     assert (await admin_client.get(f"/api/v1/purchases/{pid}")).status_code == 200
 
 
+@pytest.mark.parametrize("status", ["pending", "running"])
+async def test_the_refusal_leaves_prices_job_and_photo_untouched(
+    admin_client, receipts_dir: Path, status: str
+):
+    loc = await make_location(admin_client, "Aspen Market", "Aspen Market")
+    pears = await make_product(admin_client, "Aspen pears", "Aspen pears")
+    upload, pid = await receipt_draft(
+        admin_client, f"refused-{status}", location_id=loc["id"], product_id=pears["id"]
+    )
+    assert (await admin_client.post(f"/api/v1/purchases/{pid}/commit")).status_code == 200
+    job_id = uuid.UUID(upload["job"]["id"])
+    await set_job_status(str(job_id), status)
+    before = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()
+    observations = {ln["observation_id"] for ln in before["lines"]}
+    assert observations and None not in observations
+    async with get_sessionmaker()() as db:
+        job = await db.get(IngestJob, job_id)
+        job_before = (job.status, job.stage, job.purchase_id, job.updated_at)
+
+    r = await _remove(admin_client, pid)
+    assert r.status_code == 409 and r.json()["error"]["code"] == "still_reading"
+
+    after = (await admin_client.get(f"/api/v1/purchases/{pid}")).json()
+    assert after["status"] == before["status"] == "committed"
+    assert after["voided_at"] is None
+    live = (await admin_client.get("/api/v1/price-observations")).json()["items"]
+    assert observations <= {o["id"] for o in live}
+    async with get_sessionmaker()() as db:
+        job = await db.get(IngestJob, job_id)
+        assert (job.status, job.stage, job.purchase_id, job.updated_at) == job_before
+    assert stored_photo(receipts_dir, upload["document"]).is_file()
+    image = await admin_client.get(f"/api/v1/receipts/{upload['document']['id']}/image")
+    assert image.status_code == 200
+
+
 async def test_a_failure_part_way_leaves_every_price_live(admin_client, monkeypatch):
     p = await _manual(admin_client)
     calls = 0
