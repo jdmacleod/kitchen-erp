@@ -1,6 +1,13 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 
-import { controlsUnder44, expectNoSidewaysScroll, login, loginAs, nextTag } from "./helpers";
+import {
+  controlsUnder44,
+  expectNoSidewaysScroll,
+  focusRingsMissing,
+  login,
+  loginAs,
+  nextTag,
+} from "./helpers";
 import { makeChosenTrip, makeTripWorld, type TripWorld } from "./trip-setup";
 
 /**
@@ -426,10 +433,10 @@ test(
 );
 
 test(
-  "Plan reads with no sideways scroll at 360 to 1000px, and the list, Trips, Compare and the stop screen keep 44px targets (UI-8.11, UI-8.19)",
+  "Plan reads with no sideways scroll at 360 to 1000px, and every Plan page keeps 44px targets and a visible focus ring (UI-8.11, UI-8.19)",
   BELOW_LG,
   async ({ page }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(150_000);
     const { world } = await setUp(page);
     const tripId = await makeChosenTrip(page.request, world);
     // Each page with its own content drawn, so what is measured is what a person sees.
@@ -446,14 +453,17 @@ test(
       await expect(content).toBeVisible();
       await expectNoSidewaysScroll(page, path);
     }
-    // The trip page is left out of the targets: its breadcrumb and the stop rows'
-    // product links are under 44px below lg, a gap the acceptance audit records.
-    for (const [path, content] of [pages.list, pages.trips, pages.compare, pages.stop]) {
+    // Every control a 44px target with a focus ring a keyboard user can see. The
+    // trip page's breadcrumb and stop rows' product links were short (issue 282).
+    const unringed: string[] = [];
+    for (const [path, content] of Object.values(pages)) {
       await page.goto(path);
       await expect(content).toBeVisible();
       small.push(...(await controlsUnder44(page, "main")).map((f) => `${path}: ${f}`));
+      unringed.push(...(await focusRingsMissing(page, "main")).map((f) => `${path}: ${f}`));
     }
     expect(small, "Plan controls under 44px").toEqual([]);
+    expect(unringed, "Plan controls with no visible focus ring").toEqual([]);
   },
 );
 
