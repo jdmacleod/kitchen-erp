@@ -141,11 +141,32 @@ def _sentence_case(text: str, keep: set[str]) -> str:
     return " ".join(out)
 
 
+# Retail filler on produce (issue 371): "Fresh" in front, and a count of one at the
+# end ("Fresh Lantern peppers, 1 ct"). Loose produce has no pack, so the pack rule
+# above never drops the count.
+_FRESH_LEAD = re.compile(r"^fresh\s+(?=\S)", re.IGNORECASE)
+_ONE_COUNT = re.compile(
+    r"(?:\s*[,\-–:|/]\s*|\s+|\s*\()1\s{0,2}(?:ct|count|ea|each|pc|pcs|piece)\.?\)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def produce_name(name: str) -> str:
+    """A produce product's name without a leading "Fresh" or a trailing count of one;
+    the name as given when nothing else would be left."""
+    text = _ONE_COUNT.sub("", name).strip(" ,-–:|/")
+    text = _FRESH_LEAD.sub("", text).strip()
+    if not text:
+        return name.strip()
+    return text[:1].upper() + text[1:] if name.strip()[:1].isupper() else text
+
+
 def short_name(
     title: str,
     brand: str | None = None,
     *,
     has_pack: bool = True,
+    produce: bool = False,
     brand_keys: frozenset[str] | set[str] = frozenset(),
     proper_nouns: frozenset[str] | set[str] = frozenset(),
 ) -> str:
@@ -154,12 +175,15 @@ def short_name(
     ``brand`` and ``brand_keys`` (other spellings of brands, as ``brand_names.name_key``
     keys) are dropped from the front, and a trailing ", Brand" too. Pack text is
     dropped from the end only when the product's pack is known (``has_pack``), so
-    nothing is lost. ``proper_nouns`` (lowercase) keep their capitals.
+    nothing is lost. For ``produce``, a leading "Fresh" and a trailing ", 1 ct" go
+    too (``produce_name``). ``proper_nouns`` (lowercase) keep their capitals.
     """
     from app.catalog.brand_names import NEVER_BRANDS, is_brand_key, name_key
 
     original = tidy(title) or ""
     text = _BANNER.sub("", original).strip()
+    if produce:
+        text = produce_name(text)
     # Another product's brand that is also a word for the food ("Stone", "Organic")
     # stays in this name; the product's own brand goes unless it only describes it.
     keys = {k for k in brand_keys if is_brand_key(k)}

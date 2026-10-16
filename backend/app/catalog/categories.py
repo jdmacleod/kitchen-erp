@@ -174,6 +174,12 @@ def key_from_name(name: str | None) -> CategoryKey | None:
     return None
 
 
+def is_produce(category: str | None, ingredient_name: str | None) -> bool:
+    """Whether an ingredient is fresh produce: filed under produce, and its own words
+    don't settle another category ("frozen peas", "dried figs") (issue 371)."""
+    return key(category) == "produce" and key_from_name(ingredient_name) is None
+
+
 # The filed keys a name word overrides (``misfiled``); "frozen" overrides any.
 # The others override only what their word rules out beyond doubt: a fish is no
 # meat, and a canned, dried or seasoning food is not kept in a fresh case. A fish
