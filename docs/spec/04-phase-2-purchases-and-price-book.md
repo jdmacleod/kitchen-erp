@@ -679,14 +679,14 @@ Foil, parchment, freezer bags and coffee filters are bought with the groceries a
 
 ### Acceptance criteria
 
-118. `GET /supply-categories` returns the five categories above, in order, to a signed-in person only.
-119. Marking a fixture line a supply sets `resolution = supply` and its category, writes a `supply` alias with that category, and leaves the line in the purchase's computed total; committing emits no observation for it, and it is not in the to-identify queue.
-120. On the next fixture receipt from that vendor with the same line, the line resolves as a supply of that category with no human action; with the alias unconfirmed, or only a fuzzy match, the line stays unmatched with a suggestion carrying the category.
-121. A decision giving a supply category together with a product, a new product or ignore, or an unknown category, is refused with 422 and changes nothing.
-122. A purchase's `supply_total` is its supply lines less their attached savings, and null with none; a location's price panel reports `supply_spend` from committed purchases only, within the period, as part of `spend`.
-123. Re-marking a supply in another category, or choosing a product for it, re-points its alias with a count of one and clears the line's category; a supply line made a fee loses its category.
-124. Marking a to-identify group a supply applies to every line in it, empties it from the queue and the inbox, and learns the alias.
-125. Migration 0063 is reversible: its downgrade turns supply lines back into unmatched lines (they rejoin the queue) and supply aliases into ignore aliases, and the database refuses a supply without a category or a category outside the list.
+120. `GET /supply-categories` returns the five categories above, in order, to a signed-in person only.
+121. Marking a fixture line a supply sets `resolution = supply` and its category, writes a `supply` alias with that category, and leaves the line in the purchase's computed total; committing emits no observation for it, and it is not in the to-identify queue.
+122. On the next fixture receipt from that vendor with the same line, the line resolves as a supply of that category with no human action; with the alias unconfirmed, or only a fuzzy match, the line stays unmatched with a suggestion carrying the category.
+123. A decision giving a supply category together with a product, a new product or ignore, or an unknown category, is refused with 422 and changes nothing.
+124. A purchase's `supply_total` is its supply lines less their attached savings, and null with none; a location's price panel reports `supply_spend` from committed purchases only, within the period, as part of `spend`.
+125. Re-marking a supply in another category, or choosing a product for it, re-points its alias with a count of one and clears the line's category; a supply line made a fee loses its category.
+126. Marking a to-identify group a supply applies to every line in it, empties it from the queue and the inbox, and learns the alias.
+127. Migration 0063 is reversible: its downgrade turns supply lines back into unmatched lines (they rejoin the queue) and supply aliases into ignore aliases, and the database refuses a supply without a category or a category outside the list.
 
 ## Out of scope for Phase 2
 
