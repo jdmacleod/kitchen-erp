@@ -467,6 +467,26 @@ test(
   },
 );
 
+test(
+  "A trip stop's item keeps its total on the name's first line below 1024px (ruling D1, 2026-10-16)",
+  BELOW_LG,
+  async ({ page }) => {
+    const { world } = await setUp(page);
+    const tripId = await makeChosenTrip(page.request, world);
+    await page.goto(`/plan/trips/${tripId}`);
+    const items = page.getByTestId("stop").first().getByTestId("stop-item");
+    await expect(items.first()).toBeVisible();
+    // The 44px product link once pushed the total onto a row of its own.
+    for (const item of await items.all()) {
+      const name = await item.getByRole("link").first().boundingBox();
+      const total = await item.locator(":scope > span").last().boundingBox();
+      expect(name && total, "item parts drawn").toBeTruthy();
+      expect(total!.y, "total on the name's row").toBeLessThan(name!.y + name!.height);
+      expect(total!.x, "total to the right of the name").toBeGreaterThan(name!.x);
+    }
+  },
+);
+
 test("Done here is reached and confirmed from the keyboard (criterion 27, UI-8.18)", async ({
   page,
 }) => {
