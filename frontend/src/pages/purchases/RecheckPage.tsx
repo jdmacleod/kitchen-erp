@@ -73,7 +73,7 @@ function ReadyRow({ item }: { item: OlderReady }) {
       : null;
   return (
     <li>
-      <Card className="flex flex-wrap items-center justify-between gap-3">
+      <Card className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <span className="min-w-0">
           <span className="block font-medium">{title}</span>
           <span className={`block ${muted}`}>
