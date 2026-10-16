@@ -515,6 +515,10 @@ class NamingRow(ApiModel):
     model: ModelNaming | None
     # Products the suggested ingredient already has, closest first (#386).
     candidates: list[NamingCandidate]
+    # When the group's latest line was bought, and whether every field came from
+    # a sure source, for sorting and "Tick confident rows" (#389).
+    latest_at: datetime | None
+    confident: bool
 
 
 class NamingList(ApiModel):

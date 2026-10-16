@@ -156,3 +156,16 @@ def suggest_words(
         elif shown := vocabulary.expansion(word):
             changes.append(WordChange(i, word, shown, "vocabulary"))
     return changes
+
+
+def unread(words: Sequence[str], changes: Sequence[WordChange], vocabulary: Vocabulary) -> int:
+    """How many printed words the name still shows as printed without knowing them."""
+    changed = {c.index for c in changes}
+    return sum(
+        1
+        for i, printed in enumerate(words)
+        if i not in changed
+        and (word := printed.casefold()).isalpha()
+        and not vocabulary.knows(word)
+        and isinstance(parse_unit(word), UnitParseFailure)
+    )

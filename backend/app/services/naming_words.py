@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import standard
-from app.catalog.line_words import Vocabulary, WordChange, suggest_words
+from app.catalog.line_words import Vocabulary, WordChange, suggest_words, unread
 from app.models import Ingredient, IngredientAlias, Product
 from app.services import line_words, spelling
 
@@ -50,8 +50,9 @@ async def load(db: AsyncSession) -> NamingWords:
 
 async def suggest(
     db: AsyncSession, known: NamingWords, vendor_id: uuid.UUID, words: list[str]
-) -> tuple[str, list[WordChange]]:
-    """The suggested name for these printed words, and each change made to them."""
+) -> tuple[str, list[WordChange], int]:
+    """The suggested name for these printed words, each change made to them, and how
+    many words it still shows as printed without knowing them (#389)."""
     if vendor_id not in known.learned:
         found = await line_words.expansions(db, vendor_id)
         known.learned[vendor_id] = {
@@ -66,7 +67,7 @@ async def suggest(
     shown = [w.lower() for w in words]
     for change in changes:
         shown[change.index] = change.shown
-    return sentence(shown), changes
+    return sentence(shown), changes, unread(words, changes, known.vocabulary)
 
 
 async def complete(
