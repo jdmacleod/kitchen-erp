@@ -1882,11 +1882,19 @@
             },
             "title": "Gone",
             "type": "array"
+          },
+          "held": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Held",
+            "type": "array"
           }
         },
         "required": [
           "applied",
-          "gone"
+          "gone",
+          "held"
         ],
         "title": "CleanupApplyOut",
         "type": "object"
@@ -1943,6 +1951,14 @@
             "title": "Choosable",
             "type": "boolean"
           },
+          "confidence": {
+            "enum": [
+              "sure",
+              "guess"
+            ],
+            "title": "Confidence",
+            "type": "string"
+          },
           "key": {
             "title": "Key",
             "type": "string"
@@ -1991,7 +2007,8 @@
           "reason",
           "ready",
           "value",
-          "choosable"
+          "choosable",
+          "confidence"
         ],
         "title": "CleanupSuggestionOut",
         "type": "object"
@@ -21636,7 +21653,7 @@
     },
     "/api/v1/catalog/cleanup/apply": {
       "post": {
-        "description": "Apply the suggestions named, as they stand now, with any category chosen instead.",
+        "description": "Apply the suggestions named, as they stand now, with any category chosen instead.\nA guess named with others is held back: guesses are accepted one at a time.",
         "operationId": "apply_suggestions_api_v1_catalog_cleanup_apply_post",
         "requestBody": {
           "content": {

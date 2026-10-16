@@ -5,8 +5,9 @@ what the catalog already holds that they would have prevented. Each finding is a
 suggestion with a stable key: the kind, the row and what it proposes, so a skip
 sticks until the data changes. Kinds:
 
-- ``category``: an ingredient without a category, with the likeliest one, or a
-  frozen food filed elsewhere; the person may choose another before accepting;
+- ``category``: an ingredient without a category, with the likeliest one, or one
+  filed where its name says otherwise (a frozen food, a fish under meat); the
+  person may choose another before accepting;
 - ``ingredient_name``: an ingredient name the 1G rules write differently;
 - ``usda_link``: a preferred USDA reference that doesn't fit, relinked to one
   that does or unlinked;
@@ -17,17 +18,18 @@ sticks until the data changes. Kinds:
   bunch or the piece, and the store's name is the vendor), or a brand on another
   loose product (which is then a branded or private-label one).
 
-Accepting calls the existing services; nothing is written here otherwise.
+Each suggestion is ``sure`` or a ``guess`` (issue 372; ``cleanup_ingredients``).
+Accepting several at once applies only the sure ones and the ones a person chose a
+value for; a guess is accepted on its own. Accepting calls the existing services;
+nothing else is written here, apart from the kept USDA guesses (``cleanup_guesses``).
 """
 
 from __future__ import annotations
 
-import hashlib
 import uuid
-from dataclasses import dataclass, replace
-from typing import Literal
+from dataclasses import replace
 
-from sqlalchemy import Text, cast, select, update
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,23 +38,19 @@ from app.catalog import proposals as merging
 from app.catalog.brand_names import is_never_brand
 from app.catalog.conform import conform, proper_noun_words
 from app.catalog.product_names import short_name
-from app.catalog.usda_fit import fits
 from app.core.errors import ApiError
 from app.models import AppUser
-from app.models.catalog import CleanupSkip, FdcFood, Ingredient, IngredientRef, Product
+from app.models.catalog import CleanupSkip, Ingredient, IngredientRef, Product
 from app.schemas.catalog import IngredientUpdate, ProductUpdate
 from app.services import (
     catalog,
-    ingredient_category,
+    cleanup_ingredients,
     ingredient_duplicates,
     ingredient_reconcile,
-    usda,
 )
+from app.services.cleanup_suggestion import Kind, Suggestion, suggestion_key
 from app.services.ingredient_names import brand_keys
 
-Kind = Literal[
-    "category", "ingredient_name", "usda_link", "ingredient_merge", "product_name", "product_brand"
-]
 KINDS: tuple[Kind, ...] = (
     "ingredient_merge",
     "usda_link",
@@ -61,37 +59,6 @@ KINDS: tuple[Kind, ...] = (
     "product_name",
     "product_brand",
 )
-
-
-@dataclass(frozen=True)
-class Suggestion:
-    key: str
-    kind: Kind
-    subject_id: uuid.UUID
-    subject: str
-    before: str
-    after: str
-    reason: str
-    # What accepting applies: a category, a name, a USDA id ("" unlinks), a
-    # survivor id, a kind, or "" to clear a brand.
-    value: str
-    other_id: uuid.UUID | None = None
-
-    @property
-    def ready(self) -> bool:
-        """Whether accepting it as offered applies something; a category nobody could
-        guess needs the person to choose one first."""
-        return self.kind != "category" or bool(self.value)
-
-    @property
-    def choosable(self) -> bool:
-        """Whether the person may choose the value: a category, from the nine keys."""
-        return self.kind == "category"
-
-
-def _key(kind: str, subject: uuid.UUID, value: str) -> str:
-    digest = hashlib.sha1(value.encode(), usedforsecurity=False).hexdigest()[:10]
-    return f"{kind}:{subject}:{digest}"
 
 
 async def _ingredients(db: AsyncSession) -> list[Ingredient]:
@@ -106,57 +73,6 @@ async def _ingredients(db: AsyncSession) -> list[Ingredient]:
     )
 
 
-async def _categories(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -> list[Suggestion]:
-    out = []
-    for i in rows:
-        if i.category:
-            # A frozen food filed elsewhere: the name settles it, whatever was chosen.
-            if (
-                category_keys.key_from_name(i.name) == "frozen"
-                and category_keys.key(i.category) != "frozen"
-            ):
-                out.append(
-                    Suggestion(
-                        _key("category", i.id, "frozen"),
-                        "category",
-                        i.id,
-                        i.name,
-                        i.category,
-                        "frozen",
-                        "the name says frozen",
-                        "frozen",
-                    )
-                )
-            continue
-        found = await ingredient_category.suggest(db, i.name) if guess else None
-        value = found.category if found and found.category else ""
-        reason = _SOURCE_REASONS.get(found.source, "") if found and found.source else ""
-        reason = reason or "no likely category: choose one"
-        # The key doesn't carry the guess: a skip holds until a category is set.
-        out.append(
-            Suggestion(
-                _key("category", i.id, ""),
-                "category",
-                i.id,
-                i.name,
-                "no category",
-                value or "choose one",
-                reason,
-                value,
-            )
-        )
-    return out
-
-
-_SOURCE_REASONS = {
-    "name": "its name says so",
-    "standard": "the standard list files it there",
-    "usda": "a guess from the USDA food group",
-    "clip": "the store page files it there",
-    "catalog": "a guess from similar ingredients",
-}
-
-
 def _names(rows: list[Ingredient], keys: set[str]) -> list[Suggestion]:
     out = []
     for i in rows:
@@ -164,7 +80,7 @@ def _names(rows: list[Ingredient], keys: set[str]) -> list[Suggestion]:
         if found.name and found.name != i.name:
             out.append(
                 Suggestion(
-                    _key("ingredient_name", i.id, found.name),
+                    suggestion_key("ingredient_name", i.id, found.name),
                     "ingredient_name",
                     i.id,
                     i.name,
@@ -177,44 +93,6 @@ def _names(rows: list[Ingredient], keys: set[str]) -> list[Suggestion]:
     return out
 
 
-async def _usda_links(db: AsyncSession, rows: list[Ingredient], *, guess: bool) -> list[Suggestion]:
-    by_id = {i.id: i for i in rows}
-    out = []
-    linked = await db.execute(
-        select(IngredientRef.ingredient_id, IngredientRef.external_id, FdcFood.description)
-        .join(FdcFood, cast(FdcFood.fdc_id, Text) == IngredientRef.external_id)
-        .where(IngredientRef.system == "fdc", IngredientRef.is_preferred)
-    )
-    for ingredient_id, fdc_id, description in linked:
-        ingredient = by_id.get(ingredient_id)
-        if ingredient is None:
-            continue
-        fit = fits(ingredient.name, description)
-        if fit.verdict == "fits":
-            continue
-        better = None
-        if guess:
-            found = await usda.candidates(db, ingredient.name, limit=5, fit_name=ingredient.name)
-            better = next(
-                (f for f in found if fits(ingredient.name, f.description).verdict == "fits"), None
-            )
-        value = str(better.fdc_id) if better else ""
-        after = better.description if better else "no USDA food"
-        out.append(
-            Suggestion(
-                _key("usda_link", ingredient_id, f"{fdc_id}>{value}"),
-                "usda_link",
-                ingredient_id,
-                ingredient.name,
-                description,
-                after,
-                fit.reason,
-                value,
-            )
-        )
-    return out
-
-
 async def _merges(db: AsyncSession) -> list[Suggestion]:
     out = []
     for pair in await ingredient_duplicates.find_duplicates(db):
@@ -222,7 +100,7 @@ async def _merges(db: AsyncSession) -> list[Suggestion]:
         other = pair.b if keep is pair.a else pair.a
         out.append(
             Suggestion(
-                _key("ingredient_merge", other.id, str(keep.id)),
+                suggestion_key("ingredient_merge", other.id, str(keep.id)),
                 "ingredient_merge",
                 other.id,
                 other.name,
@@ -263,7 +141,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
         if p.brand and is_never_brand(p.brand):
             out.append(
                 Suggestion(
-                    _key("product_brand", p.id, ""),
+                    suggestion_key("product_brand", p.id, ""),
                     "product_brand",
                     p.id,
                     p.name,
@@ -276,7 +154,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
         elif p.brand and loose and produce:
             out.append(
                 Suggestion(
-                    _key("product_brand", p.id, ""),
+                    suggestion_key("product_brand", p.id, ""),
                     "product_brand",
                     p.id,
                     p.name,
@@ -289,7 +167,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
         elif p.brand and merging.is_null_like(p.brand):
             out.append(
                 Suggestion(
-                    _key("product_brand", p.id, ""),
+                    suggestion_key("product_brand", p.id, ""),
                     "product_brand",
                     p.id,
                     p.name,
@@ -304,7 +182,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
             kind = "private_label" if p.brand_id is not None else "branded"
             out.append(
                 Suggestion(
-                    _key("product_brand", p.id, kind),
+                    suggestion_key("product_brand", p.id, kind),
                     "product_brand",
                     p.id,
                     p.name,
@@ -321,7 +199,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
         if short and short != p.name:
             out.append(
                 Suggestion(
-                    _key("product_name", p.id, short),
+                    suggestion_key("product_name", p.id, short),
                     "product_name",
                     p.id,
                     p.name,
@@ -342,8 +220,8 @@ async def suggestions(db: AsyncSession, *, guess: bool = True) -> list[Suggestio
     keys = await brand_keys(db)
     found = [
         *(await _merges(db) if guess else []),
-        *await _usda_links(db, rows, guess=guess),
-        *await _categories(db, rows, guess=guess),
+        *await cleanup_ingredients.usda_links(db, rows, guess=guess),
+        *await cleanup_ingredients.categories(db, rows, guess=guess),
         *_names(rows, keys),
         *await _products(db, keys),
     ]
@@ -365,11 +243,14 @@ async def skip(db: AsyncSession, user: AppUser, keys: list[str]) -> None:
 
 async def apply(
     db: AsyncSession, keys: list[str], chosen: dict[str, str] | None = None
-) -> tuple[int, list[str]]:
-    """Apply the suggestions named, as they are now; a key no longer offered is reported.
+) -> tuple[int, list[str], list[str]]:
+    """Apply the suggestions named, as they are now. Returns how many were applied, the
+    keys no longer offered, and the keys held back: a guess named with others.
 
     ``chosen`` maps a key to the value the person chose instead of the one offered:
-    a category key, for a category suggestion. Any other choice is refused."""
+    a category key, for a category suggestion. Any other choice is refused. A guess
+    is applied only when it is named alone or a person chose its value (issue 372):
+    "Accept these N" never applies one."""
     chosen = chosen or {}
     wanted = set(keys)
     current = {s.key: s for s in await suggestions(db) if s.key in wanted}
@@ -377,16 +258,22 @@ async def apply(
         s = current.get(key)
         if s is not None and not (s.choosable and value in category_keys.KEYS):
             raise ApiError(422, "cleanup_choice", f"{value!r} is not a choice for {s.subject!r}.")
-    applied = 0
+    alone = len(wanted) == 1
+    applied, held = 0, []
     for key in keys:
         s = current.get(key)
-        if s is not None and key in chosen:
-            s = replace(s, value=chosen[key])
-        if s is None or not s.ready:
+        if s is None:
+            continue
+        if key in chosen:
+            s = replace(s, value=chosen[key], confidence="sure")
+        if not s.ready:
+            continue
+        if s.confidence == "guess" and not alone:
+            held.append(key)
             continue
         await _apply_one(db, s)
         applied += 1
-    return applied, [k for k in keys if k not in current]
+    return applied, [k for k in keys if k not in current], held
 
 
 async def _apply_one(db: AsyncSession, s: Suggestion) -> None:

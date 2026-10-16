@@ -58,21 +58,45 @@ async def suggest(
     by_name = categories.key_from_name(name)
     if by_name == "frozen":
         return Suggestion(by_name, "name")
-    entry = match_entry(name)
-    if entry is not None and (key := categories.key(entry.category)) is not None:
-        return Suggestion(key, "standard")
+    if (standard := _from_standard(name)) is not None:
+        return standard
     if (chosen := await _from_choices(db, fdc_id, proposal_id)) is not None:
         return chosen
     if by_name is not None:
         return Suggestion(by_name, "name")
     if (key := await _from_catalog(db, name)) is not None:
         return Suggestion(key, "catalog")
+    if (key := await from_usda(db, name)) is not None:
+        return Suggestion(key, "usda")
+    return NONE
+
+
+def from_words(name: str) -> Suggestion | None:
+    """What the name alone settles, with no USDA food or page chosen: sources 0, 1 and 4.
+    Tidy the catalog (issue 372) asks these first, then the slower guesses."""
+    by_name = categories.key_from_name(name)
+    if by_name == "frozen":
+        return Suggestion(by_name, "name")
+    if (standard := _from_standard(name)) is not None:
+        return standard
+    return Suggestion(by_name, "name") if by_name is not None else None
+
+
+def _from_standard(name: str) -> Suggestion | None:
+    entry = match_entry(name)
+    if entry is not None and (key := categories.key(entry.category)) is not None:
+        return Suggestion(key, "standard")
+    return None
+
+
+async def from_usda(db: AsyncSession, name: str) -> CategoryKey | None:
+    """Source 6: the food group of the best USDA food whose description fits the name."""
     words = normalize_name(name).split()
     if words:
         for food in await usda.candidates(db, " ".join(words), limit=5, fit_name=name):
             if (key := categories.key(food.category)) is not None:
-                return Suggestion(key, "usda")
-    return NONE
+                return key
+    return None
 
 
 async def _from_choices(
@@ -94,10 +118,9 @@ async def _from_choices(
 
 async def _from_catalog(db: AsyncSession, name: str) -> CategoryKey | None:
     """The key most of the household's ingredients with this head noun have."""
-    words = normalize_name(name).split()
-    if not words:
+    head = head_noun(name)
+    if head is None:
         return None
-    head = words[-1]
     lowered = func.lower(Ingredient.name)
     rows = await db.execute(
         select(Ingredient.category).where(
@@ -106,9 +129,18 @@ async def _from_catalog(db: AsyncSession, name: str) -> CategoryKey | None:
             or_(lowered == head, lowered.like(f"% {head}")),
         )
     )
-    keys = Counter(k for (c,) in rows if (k := categories.key(c)) is not None)
+    return most_filed(Counter(k for (c,) in rows if (k := categories.key(c)) is not None))
+
+
+def head_noun(name: str) -> str | None:
+    """The word source 5 compares: the last of the normalized name."""
+    words = normalize_name(name).split()
+    return words[-1] if words else None
+
+
+def most_filed(keys: Counter[CategoryKey]) -> CategoryKey | None:
+    """The key most of them have; none on a tie, which says nothing about where one belongs."""
     if not keys:
         return None
     (best, count), *rest = [*keys.most_common(2), (None, 0)]
-    # A tie says nothing about where this one belongs.
     return best if rest[0][1] < count else None

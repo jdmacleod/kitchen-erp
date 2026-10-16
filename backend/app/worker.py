@@ -17,20 +17,31 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import get_settings
 from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
-from app.services import lookups, naming, product_jobs, recipes, reread, resolution
+from app.services import (
+    catalog_cleanup,
+    lookups,
+    naming,
+    product_jobs,
+    recipes,
+    reread,
+    resolution,
+)
 
 log = get_logger(__name__)
 
 # How often an idle worker checks for listings due a refresh (the interval itself
 # is LISTING_REFRESH_DAYS).
 LISTING_REFRESH_CHECK_SECONDS = 3600
+# How often an idle worker looks through the catalog as Tidy the catalog does, so
+# the page's USDA guesses are kept before anyone opens it (issue 372).
+CLEANUP_GUESS_SECONDS = 900
 
 
 def worker_id() -> str:
@@ -106,6 +117,25 @@ def prepare() -> bool:
     return resolution.install_default_ranker()
 
 
+async def _queue_listing_refreshes(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    try:
+        async with sessionmaker() as db:
+            queued = await lookups.queue_listing_refreshes(db)
+        if queued:
+            log.info("listing refreshes queued", extra={"count": queued})
+    except Exception as exc:
+        log.error("listing refresh error", extra=loop_error_fields(exc))
+
+
+async def _keep_cleanup_guesses(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    """Look through the catalog as the page would, which keeps any guess not yet kept."""
+    try:
+        async with sessionmaker() as db:
+            await catalog_cleanup.suggestions(db)
+    except Exception as exc:
+        log.error("cleanup guess error", extra=loop_error_fields(exc))
+
+
 async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -117,6 +147,7 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
     sessionmaker = get_sessionmaker()
     last_refresh = float("-inf")
     last_scan = float("-inf")
+    last_guess = float("-inf")
     while not stop.is_set():
         try:
             async with sessionmaker() as db:
@@ -137,13 +168,7 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
         # Idle: at most hourly, queue listings due a refresh for the products helper.
         if loop.time() - last_refresh >= LISTING_REFRESH_CHECK_SECONDS:
             last_refresh = loop.time()
-            try:
-                async with sessionmaker() as db:
-                    queued = await lookups.queue_listing_refreshes(db)
-                if queued:
-                    log.info("listing refreshes queued", extra={"count": queued})
-            except Exception as exc:
-                log.error("listing refresh error", extra=loop_error_fields(exc))
+            await _queue_listing_refreshes(sessionmaker)
         # Idle: every RECIPES_SCAN_SECONDS, bring the recipe index up to date with
         # the mount (07, 3A). A missing mount makes the scan a no-op.
         scan_seconds = get_settings().recipes_scan_seconds
@@ -156,6 +181,10 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
                     log.info("recipes scanned", extra=result.model_dump(mode="json"))
             except Exception as exc:
                 log.error("recipe scan error", extra=loop_error_fields(exc))
+        # Idle: keep Tidy the catalog's USDA guesses for the names that need them.
+        if loop.time() - last_guess >= CLEANUP_GUESS_SECONDS:
+            last_guess = loop.time()
+            await _keep_cleanup_guesses(sessionmaker)
         try:
             await asyncio.wait_for(stop.wait(), timeout=poll_seconds)
         except TimeoutError:

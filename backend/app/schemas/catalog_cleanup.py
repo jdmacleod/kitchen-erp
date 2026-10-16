@@ -28,6 +28,9 @@ class CleanupSuggestionOut(ApiModel):
     value: str
     # Whether the person may choose the value instead (a category, from the nine keys).
     choosable: bool
+    # "sure": a rule settled it, and "Accept these N" may apply it. "guess": a search
+    # or a resemblance found it; accepted one at a time, or with a value chosen (issue 372).
+    confidence: Literal["sure", "guess"]
 
 
 class CleanupOut(ApiModel):
@@ -47,3 +50,5 @@ class CleanupApplyOut(ApiModel):
     applied: int
     # Keys no longer offered: the data changed since the page was loaded.
     gone: list[str]
+    # Guesses named with others, left unapplied: a guess is accepted on its own.
+    held: list[str]

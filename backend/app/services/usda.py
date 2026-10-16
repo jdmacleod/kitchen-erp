@@ -443,7 +443,7 @@ async def suggest(db: AsyncSession, name: str, limit: int = 5) -> list[UsdaSugge
     return out
 
 
-_RAW_WORDS = ("raw", "dry", "dried", "uncooked", "unprepared")
+RAW_WORDS = ("raw", "dry", "dried", "uncooked", "unprepared")
 # Words that describe how a food was cooked, not what was bought.
 _COOKING = re.compile(
     r"\b(?:cooked|boiled|roasted|broiled|braised|pan-fried|pan-browned|fried|drained|"
@@ -493,7 +493,7 @@ async def candidates(
             return []
         head = food.description.split(",", 1)[0].strip().lower()
         target = uncooked_text(food.description)
-        raw = or_(*(lowered.contains(w) for w in _RAW_WORDS))
+        raw = or_(*(lowered.contains(w) for w in RAW_WORDS))
         stmt = (
             select(FdcFood)
             .where(core, lowered.startswith(head), raw, FdcFood.fdc_id != food.fdc_id)

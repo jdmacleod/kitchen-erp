@@ -129,3 +129,29 @@ def test_normalizing_first_changes_nothing(text):
 )
 def test_some_words_in_a_name_settle_its_category(name, expected):
     assert categories.key_from_name(name) == expected
+
+
+@pytest.mark.parametrize(
+    ("name", "filed", "expected"),
+    [
+        # A fish under meat is seafood; a frozen food anywhere else is frozen (issue 372).
+        ("lantern trout", "meat", "seafood"),
+        ("frozen lantern rolls", "bakery", "frozen"),
+        ("frozen lantern rolls", "lantern things", "frozen"),
+        ("canned lantern peas", "produce", "pantry"),
+        ("dried lantern shrimp", "seafood", "pantry"),
+        ("lantern seasoning", "meat", "spices"),
+        # Filed where the name puts it, or where it may well belong.
+        ("lantern trout", "seafood", None),
+        ("lantern trout", "frozen", None),
+        ("lantern tuna", "pantry", None),
+        ("lantern fish sauce", "pantry", None),
+        ("dried lantern leaves", "spices", None),
+        ("lantern spice cake", "bakery", None),
+        ("canned lantern peas", "lantern things", None),
+        ("lantern root", "produce", None),
+        ("lantern trout", None, None),
+    ],
+)
+def test_a_name_that_settles_another_category_finds_it_misfiled(name, filed, expected):
+    assert categories.misfiled(name, filed) == expected
