@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from hypothesis import example, given
 from hypothesis import strategies as st
@@ -6,6 +8,7 @@ from app.services.normalize import NORMALIZE_VERSION
 from app.services.normalize import normalize_receipt_text as norm
 from tests.normalize_v1 import normalize_v1
 from tests.normalize_v2 import normalize_v2
+from tests.normalize_v3 import normalize_v3
 
 TABLE = [
     ("ITAL BOMBA HOT PEP", "ITAL BOMBA HOT PEP"),
@@ -53,6 +56,17 @@ TABLE = [
     ("- 1234 - 5678 KELP T -", "KELP"),
     ("1234", "1234"),  # a lone code is the whole name
     ("T -", "T"),  # and so is a lone flag
+    # Version 4 (#399): a point between two digits stays, so a pack size reads.
+    ("OAT MILK 1.5L 3.49", "OAT MILK 1.5L"),
+    ("BREAD FLOUR STRNG 1.5KG 2.40", "BREAD FLOUR STRNG 1.5KG"),
+    ("RVRBND BREAD FLR 2KG 6.50", "RVRBND BREAD FLR 2KG"),
+    ("KELP NOODLE 0.5 KG", "KELP NOODLE 0.5 KG"),
+    ("GIN 1.75L 29.99", "GIN 1.75L"),  # a volume with two decimals is not a price
+    ("SYRUP 0.25ML", "SYRUP 0.25ML"),
+    ("FIELD TOM 2.31LB 1.20", "FIELD TOM LB"),  # a weight with two decimals still goes
+    ("1..5L", "1 5L"),  # a point next to a point is not between digits
+    ("LOOSE .5L", "LOOSE 5L"),
+    ("PACK 6,4", "PACK 6 4"),  # a comma outside a price is still punctuation
 ]
 
 
@@ -68,7 +82,7 @@ def test_idempotent(raw: str, _):
 
 
 def test_version_is_recorded_constant():
-    assert NORMALIZE_VERSION == "3"
+    assert NORMALIZE_VERSION == "4"
 
 
 # The differential tests against the frozen versions. Version 2 reads a comma
@@ -79,8 +93,9 @@ def test_version_is_recorded_constant():
 #     made a point.
 # Both halves matter: the second alone would allow a change to text with no comma.
 # Version 3 is version 2 run until the text stops changing, so it agrees with
-# version 2 wherever version 2 was already idempotent.
-_RECEIPT_ALPHABET = st.sampled_from(list("AB TX019.,@$/-*&%'\tLBOZKGEA"))
+# version 2 wherever version 2 was already idempotent. Version 4 agrees with
+# version 3 on any text with no point or comma between two digits.
+_RECEIPT_ALPHABET = st.sampled_from(list("AB TX019.,@$/-*&%'\tLBOZKGEAM"))
 
 
 def _v2_until_stable(raw: str) -> str:
@@ -105,20 +120,50 @@ def test_v2_reads_a_comma_as_v1_read_a_point(raw: str):
 @example(raw="0.B-")
 @example(raw="-1234 KELP")
 def test_v3_is_v2_until_stable(raw: str):
-    assert norm(raw) == _v2_until_stable(raw)
-
-
-@given(st.text(_RECEIPT_ALPHABET, max_size=40))
-@example(raw="0.B-")
-def test_v3_is_idempotent(raw: str):
-    once = norm(raw)
-    assert norm(once) == once
+    assert normalize_v3(raw) == _v2_until_stable(raw)
 
 
 @given(st.text(_RECEIPT_ALPHABET, max_size=40))
 def test_v3_of_a_v2_key_is_the_v3_key(raw: str):
     """Migration 0049 re-keys stored version 2 keys on their own, without the raw text."""
-    assert norm(normalize_v2(raw)) == norm(raw)
+    assert normalize_v3(normalize_v2(raw)) == normalize_v3(raw)
+
+
+_BETWEEN_DIGITS = re.compile(r"\d[.,]\d")
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+@example(raw="1.5L")
+@example(raw="KELP 1,75L")
+def test_v4_matches_v3_without_a_point_between_digits(raw: str):
+    if not _BETWEEN_DIGITS.search(raw):
+        assert norm(raw) == normalize_v3(raw)
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+@example(raw="0.B-")
+@example(raw="1.5.L")
+@example(raw="1.-5L")
+def test_v4_is_idempotent(raw: str):
+    once = norm(raw)
+    assert norm(once) == once
+
+
+@given(st.text(_RECEIPT_ALPHABET, max_size=40))
+def test_v4_leaves_a_v3_key_as_it_is(raw: str):
+    """Migration 0059 keeps the key of a line with no text: version 4 can't move it."""
+    key = normalize_v3(raw)
+    assert norm(key) == key
+
+
+def test_the_naming_pass_reads_the_pack_it_keeps():
+    from decimal import Decimal
+
+    from app.services.naming import read_pack
+
+    pack, rest = read_pack(norm("OAT MILK 1.5L 3.49").split())
+    assert pack is not None
+    assert (pack.qty, rest) == (Decimal("1.5"), ["OAT", "MILK"])
 
 
 @pytest.mark.parametrize(
