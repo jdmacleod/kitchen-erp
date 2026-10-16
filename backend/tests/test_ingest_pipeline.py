@@ -25,6 +25,7 @@ from app.services.ingest import sniff_mime
 from app.services.normalize import normalize_receipt_text
 from tests import geo_helpers as gh
 from tests import ingest_helpers as ih
+from tests.conftest import TESSERACT_SKIP
 from tests.geo_helpers import HOME_A, HOME_B, make_location, make_vendor
 from tests.ingest_helpers import (
     SpyAdapter,
@@ -234,7 +235,7 @@ def test_sniffer_returns_only_declared_formats():
         assert sniffed is None or sniffed in ingest_formats.BY_MIME
 
 
-@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason=TESSERACT_SKIP)
 @pytest.mark.parametrize("mime", [fmt.mime for fmt in ingest_formats.FORMATS])
 async def test_every_accepted_format_reaches_the_header_stage(
     mime: str,
@@ -273,7 +274,7 @@ async def test_every_accepted_format_reaches_the_header_stage(
     assert len(hits) >= 3, hits
 
 
-@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason=TESSERACT_SKIP)
 async def test_a_pdf_that_is_not_a_pdf_fails_with_a_code_naming_the_problem(
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,
@@ -297,7 +298,7 @@ async def test_a_pdf_that_is_not_a_pdf_fails_with_a_code_naming_the_problem(
     assert final.last_error_detail == "PdfiumError"
 
 
-@pytest.mark.skipif(shutil.which("tesseract") is None, reason="tesseract binary not installed")
+@pytest.mark.skipif(shutil.which("tesseract") is None, reason=TESSERACT_SKIP)
 async def test_no_adapter_could_read_it_says_why_each_one_declined(
     admin_client: httpx.AsyncClient,
     receipts_dir: Path,
