@@ -9,6 +9,7 @@ import { nextHourLocal } from "../components/plan/PlanTripDrawer";
 import { availableActions, matchActions } from "../lib/paletteActions";
 import { createQueryClient } from "../lib/queryClient";
 import { TripsPage } from "../pages/plan/TripsPage";
+import { colourOutsideItsMeaning } from "./colour-walk";
 import { chainLocation, homeBase, marketLocation } from "./geo-fixtures";
 import {
   adminUser,
@@ -402,5 +403,15 @@ describe("the trips list on a phone (UI-8.19)", () => {
     const [first] = await rows();
     expect(within(first).getByRole("link").className).toMatch(/min-h-11/);
     expect(screen.getByRole("button", { name: "Plan a trip" }).className).toMatch(/min-h-11/);
+  });
+});
+
+describe("colour on the trips list (UI-8.20)", () => {
+  it("walks every element: blue only on actions, olive only on Done", async () => {
+    mount();
+    await rows();
+    expect(
+      colourOutsideItsMeaning(screen.getByRole("main"), { olive: (_, text) => text === "Done" }),
+    ).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { IngredientMatch } from "../api/catalog";
+import type { InboxItem } from "../api/inbox";
 import type { ResolveDecision, ResolveQueue } from "../api/recipes";
 import {
   adminUser,
@@ -452,5 +453,67 @@ describe("the resolve page (UI-7.16)", () => {
       ingredient_id: "i-scallion",
     });
     expect(await screen.findByText("Every recipe name is resolved")).toBeInTheDocument();
+  });
+});
+
+describe("the Home badge after a decision (UI-7.2)", () => {
+  const identify: InboxItem = {
+    kind: "identify",
+    title: "2 receipt lines to identify",
+    detail: "Match them once.",
+    action_label: "Review lines",
+    action_route: "/shop/receipts/identify",
+    created_at: "2026-10-09T12:00:00Z",
+  };
+  const recipeRow = (names: number): InboxItem => ({
+    kind: "recipe",
+    title: `${names} recipe ${names === 1 ? "name" : "names"} to resolve`,
+    detail: "In 1 recipe. Say once which ingredient each name means.",
+    action_label: "Resolve",
+    action_route: "/cook/recipes/resolve",
+    created_at: "2026-10-09T12:00:00Z",
+  });
+
+  it("counts the recipe row once, and drops it from the badge without a reload once the last name is resolved", async () => {
+    // The inbox as the server keeps it: the recipe row counts the names still queued.
+    let queued = 1;
+    let inboxFetches = 0;
+    const calls = mount(
+      {
+        "GET /inbox": () => {
+          inboxFetches += 1;
+          return jsonResponse(200, {
+            items: queued > 0 ? [recipeRow(queued), identify] : [identify],
+            reading: { count: 0, oldest_at: null, stalled: false },
+          });
+        },
+        "POST /recipes/resolve": () => {
+          queued = 0;
+          return jsonResponse(
+            200,
+            decided({ name_norm: "mystery root", lines: 1, recipes: 1, remaining: 0 }),
+          );
+        },
+      },
+      { ...resolveQueue, items: [mysteryRoot] },
+    );
+    const user = userEvent.setup();
+    const badges = await screen.findAllByLabelText("2 things need you");
+    for (const badge of badges) expect(badge).toHaveTextContent("2");
+    const before = inboxFetches;
+
+    const [root] = await rows();
+    await user.type(within(root).getByRole("combobox", { name: "Choose an ingredient" }), "scal");
+    await waitFor(() => expect(within(root).getAllByRole("option").length).toBeGreaterThan(0));
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(decisions(calls)).toHaveLength(1));
+
+    // The decision re-reads the inbox, and the badge follows it on the same page.
+    const after = await screen.findAllByLabelText("1 thing needs you");
+    expect(after).toHaveLength(badges.length);
+    for (const badge of after) expect(badge).toHaveTextContent("1");
+    expect(inboxFetches).toBeGreaterThan(before);
+    expect(screen.queryByLabelText("2 things need you")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Resolve recipe names" })).toBeVisible();
   });
 });

@@ -9,6 +9,7 @@ import { createQueryClient } from "../lib/queryClient";
 import { StopPage } from "../pages/plan/StopPage";
 import { TripDetailPage } from "../pages/plan/TripDetailPage";
 import { units } from "./catalog-fixtures";
+import { colourOutsideItsMeaning } from "./colour-walk";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import {
   adminUser,
@@ -659,5 +660,17 @@ describe("the trip page at the store (UI-8.15)", () => {
     await screen.findAllByTestId("variant-card");
     expect(screen.queryByRole("link", { name: "Open this stop" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Start the trip" })).not.toBeInTheDocument();
+  });
+});
+
+describe("colour on the stop screen (UI-8.20)", () => {
+  it("walks every element: blue only on actions, squash only on stale, nothing olive or tomato", async () => {
+    mount();
+    await screen.findByRole("checkbox", { name: "Check Oat milk" });
+    expect(
+      colourOutsideItsMeaning(screen.getByRole("main"), {
+        squash: (_, text) => text === "stale",
+      }),
+    ).toEqual([]);
   });
 });
