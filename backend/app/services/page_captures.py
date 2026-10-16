@@ -39,7 +39,14 @@ from app.models import (
     ProductProposal,
 )
 from app.models.geo import Vendor
-from app.services import lookups, plugins, product_photos, proposals, vendor_pages
+from app.services import (
+    lookups,
+    page_reading,
+    plugins,
+    product_photos,
+    proposals,
+    vendor_pages,
+)
 from app.services.product_photos import PhotoUpload
 
 log = get_logger(__name__)
@@ -269,9 +276,11 @@ async def _queue_page_photos(
 
 
 async def run_job(db: AsyncSession, job: ProductJob) -> None:  # noqa: C901, PLR0915
-    """Retailer adapters, then the model over the page text; each only adds candidates."""
-    from app.services import identify
+    """Retailer adapters, then the model over the page text; each only adds candidates.
 
+    The model is told the product's name when the page or an adapter gives one, and
+    asked only about that product (issue 281, ``page_reading``).
+    """
     started = time.monotonic()
     capture = await db.get(ProductCapture, job.product_capture_id)
     proposal = (
@@ -296,10 +305,11 @@ async def run_job(db: AsyncSession, job: ProductJob) -> None:  # noqa: C901, PLR
     if queued:
         output["images_queued"] = queued
     text = page["dom_text"].strip()
+    title = page_reading.page_title([*merging.candidates_of(proposal.fields), *found])
     await db.commit()  # before any model call (F11-2)
     if text:
         try:
-            found.extend(await identify.read_text(text[:MODEL_TEXT_CHARS]))
+            found.extend(await page_reading.read_page(text[:MODEL_TEXT_CHARS], title))
         except ModelUnavailable as exc:
             if job.attempts < MAX_ATTEMPTS:
                 job.status = "pending"
