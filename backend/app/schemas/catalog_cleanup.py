@@ -8,7 +8,13 @@ from pydantic import Field
 from app.schemas.base import ApiModel
 
 CleanupKind = Literal[
-    "category", "ingredient_name", "usda_link", "ingredient_merge", "product_name", "product_brand"
+    "category",
+    "ingredient_name",
+    "usda_link",
+    "ingredient_merge",
+    "product_name",
+    "product_brand",
+    "product_pack",
 ]
 
 

@@ -21,15 +21,15 @@ idempotency_key(id, user_id FK, key, request_hash, status_code, response_body JS
 
 ```
 unit(
-  code TEXT PK,                      -- mg, g, kg, oz, lb, ml, l, tsp, tbsp, fl_oz, cup, pt, qt, gal, each, dozen
-  dimension CHECK IN (mass, volume, count),
-  to_base_factor NUMERIC,            -- unconstrained numeric: several factors have eleven decimals; multiply to reach g, ml, or each
+  code TEXT PK,                      -- mg, g, kg, oz, lb, ml, l, tsp, tbsp, fl_oz, cup, pt, qt, gal, each, dozen, bunch
+  dimension CHECK IN (mass, volume, count, bunch),
+  to_base_factor NUMERIC,            -- unconstrained numeric: several factors have eleven decimals; multiply to reach g, ml, each or bunch
   system CHECK IN (us, metric, any),
   aliases TEXT[]                     -- "pound", "lbs", "tablespoon", "T", ...
 )
 ```
 
-Conversions within a dimension are physical constants and live entirely in `to_base_factor`. There is no pairwise conversion table. Crossing dimensions requires a bridge, and bridges are per ingredient.
+Conversions within a dimension are physical constants and live entirely in `to_base_factor`. There is no pairwise conversion table. Crossing dimensions requires a bridge, and bridges are per ingredient. `bunch` is a dimension of its own (#371, migration 0062): a bunch is never a piece, and it reaches a weight only through the ingredient's measure labelled "bunch". It is never an ingredient's canonical unit.
 
 ```
 ingredient(
@@ -423,15 +423,15 @@ price_observation_void(                       -- append-only
 price_norm(                                   -- derived; rebuildable
   observation_id PK FK,
   canonical_qty NUMERIC?, norm_unit FK unit?, norm_unit_price NUMERIC(14,6)?,
-  status CHECK IN (ok, no_density, unknown_measure, no_pack),
-  bridge_kind CHECK IN (none, density, density_override, measure, pack),
+  status CHECK IN (ok, no_density, unknown_measure, no_pack, no_qty, no_bunch_weight),
+  bridge_kind CHECK IN (none, density, density_override, measure, pack, pack_count),
   bridge_source?, bridge_confirmed BOOLEAN?,   -- provenance copied from the conversion result
   convert_version TEXT,
   computed_at
 )
 ```
 
-An observation records only what was seen: this much money for this quantity in this unit. It never stores a normalized price, because normalization depends on densities and measures that improve over time. `price_norm` holds the normalized figure and is recomputed whenever a bridge that affects it changes; the provenance columns make "every observation that depended on this density" a query. A unique constraint on `purchase_line_id` is deliberately absent, because a voided observation stays in the table and the re-emitted one shares its line; the trigger enforces uniqueness among non-voided rows instead. Deposits and tax are never part of `price`. This supersedes the earlier sketch in which the normalized price sat on the observation itself.
+An observation records only what was seen: this much money for this quantity in this unit. It never stores a normalized price, because normalization depends on densities and measures that improve over time. `price_norm` holds the normalized figure and is recomputed whenever a bridge that affects it changes; the provenance columns make "every observation that depended on this density" a query. A unique constraint on `purchase_line_id` is deliberately absent, because a voided observation stays in the table and the re-emitted one shares its line; the trigger enforces uniqueness among non-voided rows instead. Deposits and tax are never part of `price`. This supersedes the earlier sketch in which the normalized price sat on the observation itself. A price in bunches whose ingredient has no "bunch" measure has status `no_bunch_weight` and still carries a figure: `canonical_qty` in bunches, `norm_unit` = `bunch` and the price per bunch, so it compares with other per-bunch prices until a bunch is weighed (#371).
 
 ### Product ingestion (2L–2N)
 

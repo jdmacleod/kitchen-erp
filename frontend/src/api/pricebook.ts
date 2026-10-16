@@ -393,6 +393,8 @@ export function bridgeFixLink(
       };
     case "no_pack":
       return { to: `/catalog/products/${enc(productId)}`, text: "Set the pack" };
+    case "no_bunch_weight":
+      return { to: "/catalog/bridges#products", text: "Weigh one bunch" };
     default:
       return { to: `/catalog/products/${enc(productId)}`, text: "Check the product" };
   }
@@ -404,4 +406,5 @@ export const normStatusText: Record<NormStatus, string> = {
   unknown_measure: "unknown measure",
   no_pack: "no pack size",
   no_qty: "no quantity",
+  no_bunch_weight: "bunch not weighed",
 };

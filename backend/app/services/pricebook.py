@@ -34,6 +34,7 @@ from app.services import recipe_cost_triggers
 from app.services.pagination import decode_cursor, encode_cursor
 from app.services.units import build_context
 from app.units import CanonicalQty, ConversionFailure, convert
+from app.units.convert import BUNCH
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 _SIX = Decimal("0.000001")
@@ -83,6 +84,18 @@ async def _norm_row(db: AsyncSession, observation: PriceObservation) -> PriceNor
             convert_version=result.version,
         )
     assert isinstance(result, ConversionFailure)  # noqa: S101
+    if result.bunches is not None and result.bunches > 0:
+        # Not weighed yet, but still a price per bunch: it compares with other
+        # per-bunch prices, and with everything once a bunch is weighed (issue 371).
+        return PriceNorm(
+            observation_id=observation.id,
+            canonical_qty=result.bunches,
+            norm_unit=BUNCH,
+            norm_unit_price=unit_price(observation.price, result.bunches),
+            status=result.code,
+            bridge_kind="none",
+            convert_version=result.version,
+        )
     return PriceNorm(
         observation_id=observation.id,
         status=result.code,

@@ -49,7 +49,7 @@ RESOLUTIONS = (
     "ignored",
 )
 OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
-NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
+NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty", "no_bunch_weight")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack", "pack_count")
 # What became of one file in an upload batch (issue 122).
 UPLOAD_OUTCOMES = ("new", "revived", "already_seen")

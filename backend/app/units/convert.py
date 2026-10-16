@@ -19,6 +19,12 @@ Resolution order is fixed and documented in the Phase 1 specification:
 5. It is a count unit with no measure or pack: `unknown_measure`, or `no_pack`
    when a product was supplied but has no pack.
 
+Bunches (issue 371) are a family of their own: a bunch is never a piece. A
+quantity in bunches, or a pack counted in bunches, reaches the canonical unit
+only through the ingredient's "bunch" measure (provenance `measure`, or `pack`
+via it). Without one it fails with `no_bunch_weight`, and the failure says how
+many bunches it was, so a price can still be compared per bunch.
+
 A null quantity fails with `no_qty`. There is no default density.
 """
 
@@ -29,13 +35,16 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Context, Decimal
 from typing import Literal
 
-from app.units.table import BASE_UNIT, Unit, units_by_code
+from app.units.table import CANONICAL_UNITS, Unit, units_by_code
 
-CONVERT_VERSION = "2"  # 2: "each" of a packed product is the pack; packs in pieces (issue 357)
+# 2: "each" of a packed product is the pack; packs in pieces (issue 357).
+# 3: bunches, through the ingredient's "bunch" measure only (issue 371).
+CONVERT_VERSION = "3"
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 
-FailureCode = Literal["no_density", "unknown_measure", "no_pack", "no_qty"]
+FailureCode = Literal["no_density", "unknown_measure", "no_pack", "no_qty", "no_bunch_weight"]
+BUNCH = "bunch"  # the unit, and the label of the measure that weighs one
 BridgeKind = Literal["none", "density", "density_override", "measure", "pack", "pack_count"]
 
 
@@ -104,6 +113,9 @@ class ConversionFailure:
     code: FailureCode
     message: str
     version: str = CONVERT_VERSION
+    # For `no_bunch_weight`: how many bunches the quantity was, so its price can
+    # still be compared per bunch (issue 371). None for every other failure.
+    bunches: Decimal | None = None
 
 
 def _mul(a: Decimal, b: Decimal) -> Decimal:
@@ -167,6 +179,36 @@ def _pieces(qty: Decimal, pack: Pack, units: Mapping[str, Unit], measures, canon
     )
 
 
+def _bunches(
+    bunches: Decimal, measures: tuple[Measure, ...], canonical: str
+) -> CanonicalQty | ConversionFailure:
+    """``bunches`` bunches through the ingredient's "bunch" measure, never anything else."""
+    measure = _find_measure(BUNCH, measures)
+    if measure is None:
+        return ConversionFailure(
+            "no_bunch_weight", "Nothing says what one bunch weighs.", bunches=bunches
+        )
+    return CanonicalQty(
+        _mul(bunches, measure.canonical_qty),
+        canonical,
+        Provenance("measure", measure.source, measure.confirmed, measure.label),
+    )
+
+
+def _bunch_pack(
+    each: Decimal, pack: Pack, measures: tuple[Measure, ...], canonical: str
+) -> CanonicalQty | ConversionFailure:
+    """``each`` packs of a pack counted in bunches ("1 bunch")."""
+    inner = _bunches(_mul(each, pack.qty), measures, canonical)
+    if isinstance(inner, ConversionFailure):
+        return inner
+    return CanonicalQty(
+        inner.qty,
+        canonical,
+        Provenance("pack", None, True, f"{pack.qty} {pack.unit}", via=inner.provenance),
+    )
+
+
 def _through_pack(
     each: Decimal, product: ProductContext, context: ConversionContext
 ) -> CanonicalQty | ConversionFailure:
@@ -176,6 +218,8 @@ def _through_pack(
     canonical = context.canonical_unit
     canonical_dim = units[canonical].dimension
     pack_dim = units[product.pack.unit].dimension if product.pack.unit in units else None
+    if pack_dim == "bunch":
+        return _bunch_pack(each, product.pack, context.measures, canonical)
     if canonical_dim == "count" and product.pack.count and pack_dim != "count":
         # The pack's stated pieces; its size never becomes a count (no piece weight).
         return CanonicalQty(
@@ -229,8 +273,8 @@ def convert(  # noqa: C901
     units = context.units
     canonical = context.canonical_unit
     canonical_dim = units[canonical].dimension
-    if BASE_UNIT[canonical_dim] != canonical:
-        raise ValueError(f"canonical unit must be one of {sorted(BASE_UNIT.values())}")
+    if canonical not in CANONICAL_UNITS:
+        raise ValueError(f"canonical unit must be one of {sorted(CANONICAL_UNITS)}")
 
     # 1. "each" of a product with a pack is one pack, before any measure: an
     # "each" measure weighs one piece, and a pack may hold many (issue 357).
@@ -252,6 +296,10 @@ def convert(  # noqa: C901
         return ConversionFailure(
             "unknown_measure", f"'{from_unit}' is neither a unit nor a measure of this ingredient."
         )
+
+    # Bunches: the "bunch" measure (already tried above) or a typed failure (issue 371).
+    if unit.dimension == "bunch":
+        return _bunches(_mul(qty, unit.to_base_factor), context.measures, canonical)
 
     # 2. Count unit with a pack. "1 each" of a packaged product means one pack,
     # whatever the canonical unit; other count units (dozen) reach a pack only

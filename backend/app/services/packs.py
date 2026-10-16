@@ -19,6 +19,7 @@ from decimal import ROUND_CEILING, ROUND_HALF_EVEN, Context, Decimal
 from typing import Protocol
 
 from app.units import ConversionContext, ConversionFailure, ProductContext, convert
+from app.units.convert import BUNCH
 
 CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 FOUR = Decimal("0.0001")
@@ -43,9 +44,12 @@ def pack_canonical_qty(product: Packaged, context: ConversionContext) -> Decimal
     if context.canonical_unit == "each" and product.pack_count:
         return Decimal(product.pack_count)
     inner = context.product
+    # A pack is expressed in units, never in measures, except a pack of bunches:
+    # only the ingredient's "bunch" measure weighs one (issue 371).
+    bunch = tuple(m for m in context.measures if m.label.strip().lower() == BUNCH)
     without_pack = replace(
         context,
-        measures=(),
+        measures=bunch if product.pack_unit == BUNCH else (),
         product=replace(inner, pack=None) if inner is not None else ProductContext(),
     )
     result = convert(product.pack_qty, product.pack_unit, without_pack)

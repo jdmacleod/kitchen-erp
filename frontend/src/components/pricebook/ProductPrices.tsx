@@ -5,13 +5,14 @@ import { useProductPrices } from "../../api/pricebook";
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { Alert, Card, focusRing, sectionHeading } from "../ui";
 import { PriceAge, PromoBadge, formatUnitPrice } from "./PriceAge";
-import { PriceHistoryChart } from "./PriceHistoryChart";
+import { PriceHistoryChart, chartable } from "./PriceHistoryChart";
 
 /** The product page's price history chart and latest-price-per-location table. */
 export function ProductPrices({ product }: { product: Product }) {
   const prices = useProductPrices(product.id);
+  // The chart's unit is its points' (issue 371: normalized, else per bunch).
   const unit =
-    prices.data?.points.find((p) => p.display_unit)?.display_unit ??
+    chartable(prices.data?.points ?? []).find((p) => p.display_unit)?.display_unit ??
     prices.data?.latest.find((l) => l.display_unit)?.display_unit ??
     null;
 

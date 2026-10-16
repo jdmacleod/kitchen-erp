@@ -12,7 +12,7 @@ from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import Categorized, IngredientCreate, IngredientMatch, ProductCreate
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import", "listing"]
-NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
+NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty", "no_bunch_weight"]
 BridgeKind = Literal["none", "density", "density_override", "measure", "pack", "pack_count"]
 
 

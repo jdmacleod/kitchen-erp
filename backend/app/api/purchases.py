@@ -765,7 +765,8 @@ async def cheapest(
     )
     return CheapestOut(
         items=items,
-        unit=ingredient.canonical_unit,
+        # The pins' unit: the canonical one, or per bunch when nothing else is priced.
+        unit=items[0]["norm_unit"] if items else ingredient.canonical_unit,
         display_unit=items[0]["display_unit"] if items else None,
     )
 

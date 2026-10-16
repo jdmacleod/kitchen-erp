@@ -1,6 +1,5 @@
-// Phase 2A/2B wire types and hooks: price observations (shelf prices) and
-// manual purchases. Decimals are strings end to end; timestamps are UTC ISO
-// strings and are localized only for display.
+// Phase 2A/2B wire types and hooks: price observations (shelf prices) and manual purchases.
+// Decimals are strings end to end; timestamps are UTC ISO strings, localized only for display.
 
 import {
   useInfiniteQuery,
@@ -19,10 +18,11 @@ import {
 } from "./catalog";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
+import type { NormStatus } from "./normStatus";
 
 // --- types ------------------------------------------------------------------
 
-export type NormStatus = "ok" | "no_density" | "unknown_measure" | "no_pack" | "no_qty";
+export type { NormStatus };
 /** `listing` is a price posted on a vendor's web page (2L), kept out of the default views. */
 export type ObservationSource = "receipt" | "manual" | "shelf" | "import" | "listing";
 export type PurchaseStatus = "draft" | "reviewed" | "committed" | "voided";
