@@ -184,12 +184,10 @@ def _check_barcodes() -> None:
     typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
 
 
-# The migrations that re-key receipt wording, oldest first, with the normalizer
-# version each moves to. A dry run reports on the first one not yet applied.
-_NORMALIZE_MIGRATIONS = (
-    ("0030", "0030_normalize_v2.py", "2"),
-    ("0049", "0049_normalize_v3.py", "3"),
-)
+# The migrations that re-key receipt wording, oldest first; each name gives its
+# revision and the normalizer version it moves to. A dry run reports on the first
+# one not yet applied.
+_NORMALIZE_MIGRATIONS = ("0030_normalize_v2.py", "0049_normalize_v3.py", "0059_normalize_v4.py")
 
 
 def _check_normalize() -> None:
@@ -203,7 +201,8 @@ def _check_normalize() -> None:
     from app.core.config import get_settings
 
     migrations = []
-    for revision, filename, version in _NORMALIZE_MIGRATIONS:
+    for filename in _NORMALIZE_MIGRATIONS:
+        revision, version = filename[:4], filename.removesuffix(".py").rsplit("_v", 1)[1]
         path = Path(__file__).resolve().parent.parent / "alembic/versions" / filename
         spec = importlib.util.spec_from_file_location(f"migration_{revision}", path)
         assert spec is not None and spec.loader is not None  # noqa: S101

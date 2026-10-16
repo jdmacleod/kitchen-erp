@@ -25,6 +25,15 @@ version 2 gave when run again and again until the text stopped changing, which
 for every other text is what version 2 gave once. Migration 0049 re-keys the
 stored lines, aliases and suggestions.
 
+Version 4 (#399) keeps a decimal point between two digits, so a pack size reads
+as printed: "OAT MILK 1.5L" stays "OAT MILK 1.5L" where version 3 gave
+"OAT MILK 1 5L", which named no size at all. Every other point still goes, and
+so does a price ("1.25" is removed before this step, as before). Text with no
+point or comma between two digits normalizes exactly as in version 3. A volume printed
+with two decimals ("1.75L") is no longer taken for a price. A comma between digits
+outside a price is still punctuation: "6,4" is as likely a count as a size.
+Migration 0059 re-keys the stored lines, aliases and suggestions.
+
 Any edit that alters output for any input must bump NORMALIZE_VERSION, because
 `purchase_line.raw_text_norm` is stored and aliases are matched against it.
 """
@@ -33,7 +42,7 @@ from __future__ import annotations
 
 import re
 
-NORMALIZE_VERSION = "3"
+NORMALIZE_VERSION = "4"
 
 _WS = re.compile(r"\s+")
 # A leading item code: 4+ digits, optionally with a letter prefix. Matched against
@@ -55,14 +64,21 @@ _CODE_TOKEN = re.compile(r"[A-Z]?\d{4,}")
 # holds two. The differential test against version 1 caught it.
 _PRICE = re.compile(
     r"(?:(?:\d++(?:[.,]\d++)?\s*+(?:LBS|LB|KG|OZ|EA)?\s*+@\s*+)?"
-    r"\$?-?\d++[.,]\d{2}(?:\s*+/\s*+(?:LB|KG|OZ|EA))?)"
+    r"\$?-?\d++[.,]\d{2}(?!M?L\b)(?:\s*+/\s*+(?:LB|KG|OZ|EA))?)"
 )
+# The (?!M?L\b) above is version 4's: a volume glued to its number ("1.75L",
+# "0.25ML") is a pack size, not a price. A weight glued to its number ("2.31LB")
+# is still removed, because a weighed item's weight changes from one purchase to
+# the next and would split one product's wording into many keys.
 # A bare "@" left over from a quantity. The surrounding whitespace used to be part
 # of this pattern, which made it rescan every run of spaces; the whitespace
 # collapse below already handles that, so matching the character alone is both
 # linear and equivalent.
 _BARE_AT = re.compile(r"@+")
-_NON_TEXT = re.compile(r"[^A-Z0-9&/%\'\- ]+")
+_NON_TEXT = re.compile(r"[^A-Z0-9&/%\'\-. ]+")
+# A point kept by _NON_TEXT that is not between two digits (version 4). Each
+# lookaround reads one character, so this is linear.
+_STRAY_POINT = re.compile(r"(?<!\d)\.|\.(?!\d)")
 
 # Trailing tax and category flags: F, T, N, B, TX, FS, NF, or an asterisk. By the
 # time this runs the text is whitespace-collapsed, so "is the last token a flag"
@@ -116,5 +132,6 @@ def normalize_receipt_text(raw: str) -> str:
     text = _PRICE.sub(" ", text)
     text = _BARE_AT.sub(" ", text)
     text = _NON_TEXT.sub(" ", text)
+    text = _STRAY_POINT.sub(" ", text)
     text = _WS.sub(" ", text).strip()
     return " ".join(_clean_ends(text.split(" ") if text else []))
