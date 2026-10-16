@@ -117,6 +117,7 @@ def make_proposal(
     )
     proposal["read_lines"] = read.model_dump(mode="json")
     proposal["printed_checks"] = assessed.passes.checks
+    proposal["rules_version"] = assess.LINE_RULES_VERSION
     if unread_parts:
         proposal["unread_parts"] = list(unread_parts)
     return proposal
@@ -340,6 +341,8 @@ def _applied_output(
         "purchase_flags": proposal["after"]["flags"],
         "read_lines": proposal["read_lines"],
     }
+    if "rules_version" in proposal:  # proposals made before issue 382 carry none
+        output["rules_version"] = proposal["rules_version"]
     if proposal.get("unread_parts"):
         output["unread_parts"] = proposal["unread_parts"]
     return output

@@ -23,6 +23,7 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     new_product      pending new-product proposals (2L)             one aggregate row
     product_update   pending product-update proposals (2N)          one aggregate row
     reread           re-read proposals ready with changes (04, 2S)  one aggregate row
+    older_rules      drafts read with older line rules (issue 382) one aggregate row
     posted_prices    refreshed posted prices awaiting a person (2N) one aggregate row
     recipe           recipe_resolution.queue_counts: recipe names    one aggregate row
                      that resolve to no ingredient (07, 3C)
@@ -61,6 +62,7 @@ from app.services import (
     proposals,
     purchases,
     recipe_resolution,
+    reread_older,
     resolution,
     unconfirmed_bridges,
     upload_batches,
@@ -475,6 +477,24 @@ async def _rereads(db: AsyncSession) -> list[InboxItem]:
     ]
 
 
+async def _older_rules(db: AsyncSession) -> list[InboxItem]:
+    """Drafts read with older line rules, one aggregate row (04, 2S; issue 382)."""
+    n, oldest = await reread_older.count(db)
+    if not n or oldest is None:
+        return []
+    noun, verb = ("draft was", "it") if n == 1 else ("drafts were", "them")
+    return [
+        InboxItem(
+            kind="older_rules",
+            title=f"{n} {noun} read with older rules",
+            detail="Re-checking is instant and asks no model. Nothing changes until you apply it.",
+            action_label=f"Re-check {verb}",
+            action_route="/shop/receipts/recheck",
+            created_at=oldest,
+        )
+    ]
+
+
 async def _duplicates(db: AsyncSession) -> list[InboxItem]:
     pairs = await product_duplicates.find_duplicates(db)
     if not pairs:
@@ -614,6 +634,7 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("new_product", _new_products),
     ("product_update", _product_updates),
     ("reread", _rereads),
+    ("older_rules", _older_rules),
     ("duplicates", _duplicates),
     ("ingredient_duplicates", _ingredient_duplicates),
     ("catalog_cleanup", _catalog_cleanup),

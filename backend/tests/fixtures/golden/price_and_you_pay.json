@@ -267,7 +267,8 @@
       "printed_total": "12.36",
       "tax": "0.00",
       "tax_source": "lines"
-    }
+    },
+    "rules_version": 1
   },
   "requests": [
     {

@@ -161,7 +161,8 @@
       "printed_total": "24.41",
       "tax": "0",
       "tax_source": "none"
-    }
+    },
+    "rules_version": 1
   },
   "requests": [
     {

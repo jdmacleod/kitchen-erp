@@ -311,6 +311,7 @@ async def stage_lines(ctx: StageContext) -> StageOutcome:
         "reconciliation": reconciliation,
         "printed_checks": passes.checks,
         "purchase_flags": purchase_flags,
+        "rules_version": assess.LINE_RULES_VERSION,
     }
     if reason is not None:
         output["reason"] = reason
