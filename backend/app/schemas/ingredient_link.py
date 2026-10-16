@@ -149,6 +149,23 @@ class UsdaRelinkIn(ApiModel):
     fdc_id: int | None = Field(gt=0)
 
 
+class UsdaReferenceOut(ApiModel):
+    """An ingredient's preferred USDA food and its refuse (07, 3D; issue 282)."""
+
+    fdc_id: int
+    description: str
+    # Inedible share as bought, in percent; null when USDA gives none.
+    refuse_pct: DecimalStr | None
+    # 1 − refuse / 100, as the fraction ``ingredient.yield_pct`` stores.
+    yield_pct: DecimalStr | None
+
+
+class IngredientUsdaOut(ApiModel):
+    """Null ``reference`` when the ingredient has no preferred USDA food in the loaded release."""
+
+    reference: UsdaReferenceOut | None
+
+
 class UsdaDecisionOut(ApiModel):
     saved: int
     ingredient: IngredientOut
