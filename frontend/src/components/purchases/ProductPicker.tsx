@@ -11,7 +11,9 @@ import {
   type SearchHit,
 } from "../../api/catalog";
 import { api } from "../../api/client";
+import { asksSymbology, type BarcodeSymbology } from "../../lib/barcode";
 import { AlreadyInCatalog, sameFromError } from "../catalog/AlreadyInCatalog";
+import { BarcodeSymbologyPrompt, SYMBOLOGY_REQUIRED } from "../catalog/BarcodeSymbologyPrompt";
 import { Badge, labelClass } from "../catalog/fields";
 import {
   choiceInput,
@@ -234,6 +236,7 @@ export function InlineProductCreate({
   const [brand, setBrand] = useState("");
   const [name, setName] = useState(initialName);
   const [barcode, setBarcode] = useState(initialBarcode ?? "");
+  const [symbology, setSymbology] = useState<BarcodeSymbology | null>(null);
   const [packQty, setPackQty] = useState("");
   const [packUnit, setPackUnit] = useState("");
   const [invalid, setInvalid] = useState<string | null>(null);
@@ -266,11 +269,16 @@ export function InlineProductCreate({
       setInvalid("Pack quantity must be a positive number.");
       return;
     }
+    if (asksSymbology(barcode) && !symbology) {
+      setInvalid(SYMBOLOGY_REQUIRED);
+      return;
+    }
     setInvalid(null);
 
     const input: ProductCreateInput = { name: name.trim(), ...choiceInput(ingredient) };
     if (brand.trim()) input.brand = brand.trim();
     if (barcode.trim()) input.barcode = barcode.trim();
+    if (symbology && asksSymbology(barcode)) input.barcode_symbology = symbology;
     if (hasQty) {
       input.pack_qty = packQty.trim();
       input.pack_unit = packUnit;
@@ -355,10 +363,20 @@ export function InlineProductCreate({
           inputMode="numeric"
           autoComplete="off"
           value={barcode}
-          onChange={(e) => setBarcode(e.target.value)}
+          onChange={(e) => {
+            setBarcode(e.target.value);
+            setSymbology(null);
+          }}
           disabled={busy}
         />
       ) : null}
+      <BarcodeSymbologyPrompt
+        name={`${id}-barcode-symbology`}
+        barcode={barcode}
+        value={symbology}
+        onChange={setSymbology}
+        disabled={busy}
+      />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field
           id={`${id}-pack-qty`}

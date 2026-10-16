@@ -503,6 +503,7 @@ function AddProductForm({
       }
     }
     if (values.barcode.trim()) input.barcode = values.barcode.trim();
+    if (values.barcode_symbology) input.barcode_symbology = values.barcode_symbology;
     if (values.quality_rating !== null) input.quality_rating = values.quality_rating;
     if (values.notes.trim()) input.notes = values.notes.trim();
     if (values.density_override.trim()) {
