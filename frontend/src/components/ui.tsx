@@ -1,7 +1,12 @@
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, Ref } from "react";
 
+/**
+ * The keyboard focus ring. Tailwind 4's outline-none sets --tw-outline-style to
+ * none and outline-2 draws with that variable, so the ring names its style
+ * (outline-solid) or it computes to no outline at all.
+ */
 export const focusRing =
-  "focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:focus-visible:outline-blue-400";
+  "focus:outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:focus-visible:outline-blue-400";
 
 const buttonVariants = {
   // Dark keeps blue-600: white on the remapped blue-500 is 3.7:1 and fails the 4.5:1 floor.
