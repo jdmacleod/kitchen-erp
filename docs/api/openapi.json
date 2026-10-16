@@ -29996,7 +29996,7 @@
     },
     "/api/v1/to-identify/naming": {
       "get": {
-        "description": "Every waiting group with a suggested product, for naming them in bulk (2I).",
+        "description": "Every waiting group with a suggested product, for naming them in bulk (2I).\nWith NAMING_AUTO_SUGGEST on, the rows never asked about go to the model now (#387).",
         "operationId": "naming_rows_api_v1_to_identify_naming_get",
         "responses": {
           "200": {

@@ -5,6 +5,7 @@ import { choiceName, IngredientPicker } from "../catalog/IngredientPicker";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Button, focusRing } from "../ui";
 import { BrandField } from "./BrandField";
+import { ModelOffer } from "./ModelOffer";
 import { NameChanges } from "./NameChanges";
 import { NameField } from "./NameField";
 import { NamingCandidates } from "./NamingCandidates";
@@ -59,6 +60,11 @@ export function NamingRowItem({
                   : [...value.undone, index],
               })
             }
+          />
+          <ModelOffer
+            name={value.modelOffer}
+            disabled={busy}
+            onUse={(name) => onChange({ name })}
           />
           <BrandField
             id={`${id}-brand`}

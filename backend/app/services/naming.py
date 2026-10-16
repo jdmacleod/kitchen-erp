@@ -22,7 +22,7 @@ from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
 from app.ingest.errors import IngestError
-from app.ingest.llm import LlmClient, suggest_name
+from app.ingest.llm import LlmClient
 from app.models import AppUser, NamingSuggestion, Product
 from app.models.catalog import Ingredient
 from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
@@ -287,7 +287,10 @@ async def run_suggestion_once(db: AsyncSession, *, client: LlmClient | None = No
     if suggestion is None:
         return False
     try:
-        answer = await suggest_name(suggestion.raw_text_norm, client=client)
+        # Imported here: naming_model reads the wording through this module.
+        from app.services import naming_model
+
+        answer = await naming_model.ask(db, suggestion, client=client)
     except IngestError as exc:
         suggestion.status, suggestion.error, suggestion.locked_at = "failed", exc.code, None
         await db.commit()

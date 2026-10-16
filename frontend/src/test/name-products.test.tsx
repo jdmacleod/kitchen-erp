@@ -714,3 +714,26 @@ describe("a brand on each row (issue 390)", () => {
     expect(sent.rows[0]).not.toHaveProperty("brand");
   });
 });
+
+describe("the model's name beside one the wording read (issue 387)", () => {
+  it("offers it instead of replacing the name, and using it fills the Name", async () => {
+    const read: NamingRow = {
+      ...rows[1],
+      name: "Boneless chicken brst",
+      name_changes: [{ index: 0, printed: "bnls", shown: "boneless", source: "learned" }],
+      model: { status: "done", name: "Chicken breast", ingredient: null },
+    };
+    mockApi({
+      ...routes(three),
+      "GET /to-identify/naming": () => jsonResponse(200, { items: [rows[0], read, rows[2]] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: BNLS CHKN BRST` });
+    const name = within(row).getByRole("combobox", { name: "Name" });
+    expect(name).toHaveValue("Boneless chicken brst");
+    await user.click(within(row).getByRole("button", { name: "Use “Chicken breast”" }));
+    expect(name).toHaveValue("Chicken breast");
+    expect(within(row).queryByRole("button", { name: /Use “/ })).not.toBeInTheDocument();
+  });
+});
