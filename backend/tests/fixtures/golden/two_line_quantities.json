@@ -181,6 +181,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 300,
+    "skipped": [],
+    "text": "mioaoelemlapgeml"
+  },
   "requests": [
     {
       "messages_digest": "fkdaofmjnpabggcm",

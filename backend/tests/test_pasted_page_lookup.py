@@ -15,6 +15,7 @@ import pytest
 
 from app.core.config import get_settings
 from app.schemas.products_interchange import FORMAT
+from tests import geo_helpers as gh
 from tests import test_products_helper as tph
 from tests.pricebook_helpers import make_location, make_product
 
@@ -22,6 +23,13 @@ SHOP = "https://www.hollow-creek-market.example.test"
 PAGE = f"{SHOP}/p/rolled-oats-1kg-4417"
 helper = tph.helper  # the stub helper: products:read and products:suggest tokens
 post_answer = tph.post_answer
+no_network = gh.no_network
+
+
+@pytest.fixture(autouse=True)
+def _offline(no_network: None) -> None:
+    """Criterion 83: every lookup here runs under the network guard."""
+    return None
 
 
 @pytest.fixture(autouse=True)

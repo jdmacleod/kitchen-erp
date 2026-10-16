@@ -11,7 +11,13 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.catalog.product_names import tidy
+from app.catalog.proposals import Candidate
+from app.core.db import get_sessionmaker
 from app.models import Product
+from app.services import proposals
+from app.services.proposals import Evidence
+from tests.pricebook_helpers import make_location
+from tests.test_naming import _queue as naming_queue
 
 TM, REG, COPY = chr(0x2122), chr(0x00AE), chr(0x00A9)
 NBSP, ZWSP = chr(0x00A0), chr(0x200B)
@@ -77,3 +83,70 @@ async def test_a_pasted_sign_still_finds_the_tidied_name(admin_client):
     assert (await admin_client.post("/api/v1/products", json=body)).status_code == 201
     r = await admin_client.get("/api/v1/products/search", params={"q": f"fernhill{REG} plum"})
     assert [h["name"] for h in r.json()["items"]] == ["Fernhill Plum Jam"]
+
+
+# --- the other save paths (criterion 106) ---------------------------------------------------
+
+
+async def _clip(admin, store: dict, title: str, brand: str, page: str):
+    evidence = Evidence(
+        candidates=[Candidate("title", title, "page_data"), Candidate("brand", brand, "page_data")],
+        listing={"vendor_id": store["vendor"]["id"], "canonical_url": page, "title": title},
+    )
+    async with get_sessionmaker()() as db:
+        result = await proposals.create_capture(
+            db,
+            user=admin,
+            channel="clip",
+            payload={"page": page},
+            evidence=evidence,
+            source_url=page,
+        )
+    return result.proposal
+
+
+async def test_an_accepted_proposal_is_tidied_as_new_and_as_an_update(admin_client, admin):
+    store = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    ing = (
+        await admin_client.post("/api/v1/ingredients", json={"name": "Kelp", "category": "pantry"})
+    ).json()
+    first = await _clip(
+        admin, store, f"Moss Bay{RSQUO}s Kelp{NBSP}Chips{TM}", f"Moss Bay{REG}", "https://a.test/1"
+    )
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{first.id}/accept",
+        json={"action": "new", "ingredient_id": ing["id"]},
+    )
+    assert r.status_code == 200, r.text
+    product_id = r.json()["product_id"]
+    made = (await admin_client.get(f"/api/v1/products/{product_id}")).json()
+    assert (made["name"], made["brand"]) == ("Moss Bay's Kelp Chips", "Moss Bay")
+
+    second = await _clip(admin, store, "Kelp chips", "Moss Bay", "https://a.test/2")
+    r = await admin_client.post(
+        f"/api/v1/product-proposals/{second.id}/accept",
+        json={
+            "action": "update",
+            "product_id": product_id,
+            "edits": {"title": f"Kelp Chips {EM_DASH} Sea Salt 4{DOUBLE_PRIME}"},
+        },
+    )
+    assert r.status_code == 200, r.text
+    updated = (await admin_client.get(f"/api/v1/products/{product_id}")).json()
+    assert updated["name"] == 'Kelp Chips - Sea Salt 4"'
+
+
+async def test_bulk_naming_tidies_the_name(admin_client, admin, db_session):
+    loc = await naming_queue(admin_client, admin, db_session)
+    row = {
+        "vendor_id": loc["vendor"]["id"],
+        "raw_text_norm": "BNLS CHKN BRST",
+        "name": f"Larkfield{TM} Chicken{NBSP}Breast",
+        "ingredient": {"name": "chicken breast", "category": "meat"},
+    }
+    r = await admin_client.post("/api/v1/to-identify/name-products", json={"rows": [row]})
+    assert r.status_code == 200, r.text
+    [result] = r.json()["results"]
+    assert result["error"] is None
+    product = (await admin_client.get(f"/api/v1/products/{result['product_id']}")).json()
+    assert product["name"] == "Larkfield Chicken Breast"

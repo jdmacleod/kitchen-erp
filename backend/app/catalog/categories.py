@@ -147,6 +147,10 @@ _SEAFOOD_WORDS = frozenset(
         "sole", "squid", "swordfish", "tilapia", "trout", "tuna", "whitefish", "yellowtail",
     }
 )  # fmt: skip
+# Foods named after a fish or shellfish without being one: "oyster mushrooms",
+# "oyster sauce", "fish sauce", "oyster crackers". With one of these words the
+# seafood word settles nothing, and other guesses decide.
+_NOT_SEAFOOD_WORDS = frozenset({"mushroom", "mushrooms", "sauce", "cracker", "crackers"})
 # How a food was kept or made, which puts it on a shelf rather than in the
 # produce, meat or seafood case: "canned chipotle peppers", "fried shallots".
 _SHELF_WORDS = frozenset({"canned", "jarred", "dried", "dehydrated", "crispy", "fried", "pickled"})
@@ -159,7 +163,8 @@ def key_from_name(name: str | None) -> CategoryKey | None:
     "frozen" anywhere wins: a frozen food is filed with the frozen foods whatever
     it is. Then a spice blend, a fish or shellfish, and a food kept on a shelf
     (canned, dried, fried). A fish that is canned or dried is pantry, so the shelf
-    words come before the fish."""
+    words come before the fish. A food only named after a fish ("oyster
+    mushrooms", "fish sauce") is settled by none of these."""
     if not name:
         return None
     words = normalize(re.sub(r"[^\w\s'-]", " ", name)).split()
@@ -169,7 +174,7 @@ def key_from_name(name: str | None) -> CategoryKey | None:
         return "spices"
     if _SHELF_WORDS.intersection(words):
         return "pantry"
-    if _SEAFOOD_WORDS.intersection(words):
+    if _SEAFOOD_WORDS.intersection(words) and not _NOT_SEAFOOD_WORDS.intersection(words):
         return "seafood"
     return None
 
