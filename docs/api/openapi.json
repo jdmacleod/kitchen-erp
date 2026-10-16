@@ -1329,6 +1329,24 @@
         "title": "Body_upload_receipt_api_v1_receipts_post",
         "type": "object"
       },
+      "BrandCompletions": {
+        "additionalProperties": false,
+        "description": "Known brand names for a row's Brand field (#390).",
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BrandCompletions",
+        "type": "object"
+      },
       "BrandFamilyList": {
         "additionalProperties": false,
         "properties": {
@@ -9337,6 +9355,18 @@
             "title": "Allow Duplicate",
             "type": "boolean"
           },
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "forget_words": {
             "items": {
               "$ref": "#/components/schemas/ForgottenWord"
@@ -9609,6 +9639,17 @@
         "additionalProperties": false,
         "description": "One waiting group with a suggested product (04, 2I).",
         "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand"
+          },
           "candidates": {
             "items": {
               "$ref": "#/components/schemas/NamingCandidate"
@@ -9730,6 +9771,7 @@
           "name",
           "name_words",
           "name_changes",
+          "brand",
           "ingredient",
           "pack_qty",
           "pack_unit",
@@ -29969,6 +30011,51 @@
           }
         },
         "summary": "Naming Rows",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/to-identify/naming/brands": {
+      "get": {
+        "description": "Known brands starting with what was typed in a row's Brand (#390).",
+        "operationId": "complete_brand_api_v1_to_identify_naming_brands_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "prefix",
+            "required": true,
+            "schema": {
+              "maxLength": 80,
+              "minLength": 1,
+              "title": "Prefix",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandCompletions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Brand",
         "tags": [
           "purchases"
         ]

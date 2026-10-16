@@ -95,16 +95,17 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
         found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []
-        name, changes, unknown = await naming_words.suggest(db, known, group["vendor_id"], rest)
+        named = await naming_words.suggest(db, known, group["vendor_id"], rest)
         rows.append(
             {
                 "vendor": {"id": group["vendor_id"], "name": group["vendor_name"]},
                 "raw_text_norm": group["raw_text_norm"],
                 "line_count": group["line_count"],
                 "raw_text": group["lines"][0]["raw_text"] if group["lines"] else None,
-                "name": name,
-                "name_words": [w.lower() for w in rest],
-                "name_changes": [asdict(c) for c in changes],
+                "name": named.name,
+                "name_words": named.words,
+                "name_changes": [asdict(c) for c in named.changes],
+                "brand": named.brand,
                 "ingredient": found[0] if found else None,
                 "pack_qty": pack.qty if pack else None,
                 "pack_unit": pack.unit if pack else None,
@@ -112,8 +113,8 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
                 "latest_at": group["lines"][0]["purchased_at"] if group["lines"] else None,
                 # Every field from a sure source: the name's words all read (learned
                 # or known), and an ingredient the wording names outright (#389).
-                "confident": unknown == 0
-                and all(c.source == "learned" for c in changes)
+                "confident": named.unread == 0
+                and all(c.source == "learned" for c in named.changes)
                 and bool(found)
                 and found[0].exact,
             }
@@ -327,7 +328,9 @@ def _folded(name: str) -> str:
     return " ".join(name.split()).casefold()
 
 
-async def _same_product(db: AsyncSession, name: str, ingredient_id: uuid.UUID) -> Product | None:
+async def _same_product(
+    db: AsyncSession, name: str, ingredient_id: uuid.UUID, brand: str | None = None
+) -> Product | None:
     """An active product of the ingredient with the same name key (2P): letter case,
     spacing, trademark signs, a printed size and the product's own brand aside."""
     rows = await db.execute(
@@ -335,13 +338,17 @@ async def _same_product(db: AsyncSession, name: str, ingredient_id: uuid.UUID) -
         .where(Product.ingredient_id == ingredient_id, Product.active)
         .order_by(Product.created_at, Product.id)
     )
-    key = sameness.name_key(name).words
+    key = sameness.name_key(name, brand).words
     if not key:
         folded = _folded(name)
         return next((p for p in rows.scalars() if _folded(p.name) == folded), None)
     return next(
         (p for p in rows.scalars() if sameness.name_key(p.name, p.brand).words == key), None
     )
+
+
+def _brand(text: str | None) -> str | None:
+    return (text or "").strip() or None
 
 
 async def name_product(
@@ -363,7 +370,7 @@ async def name_product(
             if ingredient_id is not None:
                 ingredient = None
         if ingredient_id is not None and not row.allow_duplicate:
-            same = await _same_product(db, row.name, ingredient_id)
+            same = await _same_product(db, row.name, ingredient_id, _brand(row.brand))
             if same is not None:
                 raise ApiError(
                     409,
@@ -373,6 +380,7 @@ async def name_product(
                 )
         payload = ProductCreate(
             name=row.name,
+            brand=_brand(row.brand),
             ingredient_id=ingredient_id,
             ingredient=ingredient,
             pack_qty=row.pack_qty,

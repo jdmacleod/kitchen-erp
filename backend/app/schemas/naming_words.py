@@ -14,3 +14,9 @@ class WordCompletion(ApiModel):
 
 class WordCompletions(ApiModel):
     items: list[WordCompletion]
+
+
+class BrandCompletions(ApiModel):
+    """Known brand names for a row's Brand field (#390)."""
+
+    items: list[str]

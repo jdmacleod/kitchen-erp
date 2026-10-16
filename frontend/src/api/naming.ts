@@ -32,6 +32,8 @@ export interface NamingRow {
   /** The printed words the name is built from, and each one it shows differently. */
   name_words: string[];
   name_changes: NameChange[];
+  /** A known brand the wording starts with, taken off the name (issue 390). */
+  brand: string | null;
   ingredient: IngredientMatch | null;
   pack_qty: string | null;
   pack_unit: string | null;
@@ -53,6 +55,7 @@ export type NameProductRow = {
   vendor_id: string;
   raw_text_norm: string;
   name: string;
+  brand?: string;
   pack_qty?: string;
   pack_unit?: string;
   /** Create it even though a product of the same name and ingredient exists (issue 179). */
@@ -132,6 +135,20 @@ export function useNameWords(vendorId: string, prefix: string) {
     select: (data) => data.items,
     enabled: /^\p{L}{2,}$/u.test(trimmed),
     staleTime: 30_000,
+    placeholderData: (previous) => previous,
+  });
+}
+
+/** Known brands starting with what was typed in a row's Brand (issue 390). */
+export function useBrandCompletions(prefix: string) {
+  const trimmed = prefix.trim();
+  return useQuery({
+    queryKey: [...purchaseKeys.toIdentify, "naming", "brands", trimmed],
+    queryFn: () =>
+      api<{ items: string[] }>(`/to-identify/naming/brands?prefix=${encodeURIComponent(trimmed)}`),
+    select: (data) => data.items,
+    enabled: trimmed.length >= 2,
+    staleTime: 60_000,
     placeholderData: (previous) => previous,
   });
 }

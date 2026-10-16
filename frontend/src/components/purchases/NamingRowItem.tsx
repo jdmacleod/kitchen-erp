@@ -4,6 +4,7 @@ import { hintClass } from "../catalog/fields";
 import { choiceName, IngredientPicker } from "../catalog/IngredientPicker";
 import { UnitSelect } from "../catalog/UnitSelect";
 import { Button, focusRing } from "../ui";
+import { BrandField } from "./BrandField";
 import { NameChanges } from "./NameChanges";
 import { NameField } from "./NameField";
 import { NamingCandidates } from "./NamingCandidates";
@@ -58,6 +59,13 @@ export function NamingRowItem({
                   : [...value.undone, index],
               })
             }
+          />
+          <BrandField
+            id={`${id}-brand`}
+            value={value.brand}
+            fromWording={row.brand !== null && value.brand === row.brand}
+            disabled={busy}
+            onChange={(brand) => onChange({ brand })}
           />
         </div>
         <div className="min-w-0">
