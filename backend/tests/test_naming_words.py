@@ -52,3 +52,25 @@ async def test_learned_words_fill_the_name_and_an_undo_is_forgotten(
     assert r.json()["results"][0]["error"] is None
     # Undone at the vendor and anywhere: the other line keeps its printed word.
     assert (await _rows(admin_client))["QPRT BAR"]["name_changes"] == []
+
+
+async def test_completions_offer_learned_words_first_then_the_vocabulary(
+    admin_client, admin, db_session
+):
+    await seed_units_via_service(db_session)
+    loc = await _waiting(admin_client, admin, db_session, ["QPRT BAR 2.10"])
+    vendor = uuid.UUID(loc["vendor"]["id"])
+    await line_words.learn(db_session, vendor, "QPRT", "Quaport")
+    await db_session.commit()
+    r = await admin_client.get(
+        "/api/v1/to-identify/naming/words", params={"vendor_id": str(vendor), "prefix": "qu"}
+    )
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    assert items[0] == {"word": "quaport", "source": "learned"}
+    # The standard list's words follow, shortest first ("quinoa" is on it).
+    assert {"word": "quinoa", "source": "vocabulary"} in items[1:]
+    one = await admin_client.get(
+        "/api/v1/to-identify/naming/words", params={"vendor_id": str(vendor), "prefix": "q"}
+    )
+    assert one.json()["items"] == []  # one letter completes too much

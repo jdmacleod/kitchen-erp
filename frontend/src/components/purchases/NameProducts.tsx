@@ -15,6 +15,7 @@ import { hintClass } from "../catalog/fields";
 import {
   choiceFromMatch,
   choiceInput,
+  choiceName,
   needsCategory,
   IngredientPicker,
   type IngredientChoice,
@@ -24,6 +25,7 @@ import { useWidePage } from "../chrome";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
 import { NameChanges, nameFromWords } from "./NameChanges";
+import { NameField } from "./NameField";
 import { NamingCandidates } from "./NamingCandidates";
 
 /** A product that already has the row's name and ingredient (issue 179). */
@@ -365,23 +367,18 @@ function NamingRowItem({
           </span>
         </label>
         <div className="flex min-w-0 flex-col gap-1">
-          <label htmlFor={`${id}-name`} className="text-sm font-medium">
-            Name
-          </label>
-          <input
+          <NameField
             id={`${id}-name`}
+            vendorId={row.vendor.id}
             value={value.name}
+            ingredientName={value.ingredient ? choiceName(value.ingredient) : null}
+            hint={value.fromModel.name ? "Suggested by the model" : undefined}
             disabled={busy}
-            autoComplete="off"
-            onChange={(e) => onChange({ name: e.target.value })}
-            aria-describedby={value.fromModel.name ? `${id}-name-model` : undefined}
-            className={`min-h-11 min-w-0 rounded-md border border-neutral-300 bg-white px-3 py-2 text-base text-neutral-900 lg:min-h-10 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 ${focusRing}`}
+            onChange={(name) => onChange({ name })}
+            onUse={(hit) =>
+              onChange({ use: { id: hit.id, name: hit.name, brand: hit.brand }, duplicate: false })
+            }
           />
-          {value.fromModel.name ? (
-            <p id={`${id}-name-model`} className={hintClass}>
-              Suggested by the model
-            </p>
-          ) : null}
           <NameChanges
             changes={value.changes}
             undone={value.undone}

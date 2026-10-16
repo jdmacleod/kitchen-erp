@@ -141,7 +141,9 @@ describe("naming new products in bulk", () => {
     const flourRow = within(list).getByRole("group", {
       name: `${vendor.name}: RVRBND BREAD FLR 2KG`,
     });
-    expect(within(flourRow).getByRole("textbox", { name: "Name" })).toHaveValue("Rvrbnd bread flr");
+    expect(within(flourRow).getByRole("combobox", { name: "Name" })).toHaveValue(
+      "Rvrbnd bread flr",
+    );
     expect(within(flourRow).getByRole("textbox", { name: "Pack" })).toHaveValue("2");
     expect(within(flourRow).getByTestId("name-0-ingredient-choice")).toHaveTextContent(flour.name);
     for (const box of within(list).getAllByRole("checkbox")) expect(box).not.toBeChecked();
@@ -152,7 +154,7 @@ describe("naming new products in bulk", () => {
       within(flourRow).getByRole("checkbox", { name: "Include RVRBND BREAD FLR 2KG" }),
     );
     const chickenRow = within(list).getByRole("group", { name: `${vendor.name}: BNLS CHKN BRST` });
-    const chickenName = within(chickenRow).getByRole("textbox", { name: "Name" });
+    const chickenName = within(chickenRow).getByRole("combobox", { name: "Name" });
     await user.clear(chickenName);
     await user.type(chickenName, "Chicken breast");
     expect(within(chickenRow).getByRole("checkbox")).toBeChecked();
@@ -231,7 +233,7 @@ describe("naming new products in bulk", () => {
 
     // A name typed before the model answers stays.
     const milkRow = within(list).getByRole("group", { name: `${vendor.name}: OAT MILK` });
-    const milkName = within(milkRow).getByRole("textbox", { name: "Name" });
+    const milkName = within(milkRow).getByRole("combobox", { name: "Name" });
     await user.clear(milkName);
     await user.type(milkName, "Oat milk, barista");
 
@@ -243,7 +245,7 @@ describe("naming new products in bulk", () => {
     );
     const chickenRow = within(list).getByRole("group", { name: `${vendor.name}: BNLS CHKN BRST` });
     await waitFor(() =>
-      expect(within(chickenRow).getByRole("textbox", { name: "Name" })).toHaveValue(
+      expect(within(chickenRow).getByRole("combobox", { name: "Name" })).toHaveValue(
         "Boneless chicken breast",
       ),
     );
@@ -279,7 +281,7 @@ describe("naming new products in bulk", () => {
     const flourRow = within(list).getByRole("group", {
       name: `${vendor.name}: RVRBND BREAD FLR 2KG`,
     });
-    const name = within(flourRow).getByRole("textbox", { name: "Name" });
+    const name = within(flourRow).getByRole("combobox", { name: "Name" });
     await user.clear(name);
     await user.type(name, "Riverbend bread flour");
     await user.click(screen.getByRole("button", { name: "Create 1 product" }));
@@ -456,7 +458,7 @@ describe("words the suggested name changed (issue 384)", () => {
     const user = userEvent.setup();
     renderApp("/shop/receipts/identify?mode=name");
     const row = await screen.findByRole("group", { name: `${vendor.name}: HRBR YGRT PLN` });
-    const name = within(row).getByRole("textbox", { name: "Name" });
+    const name = within(row).getByRole("combobox", { name: "Name" });
     expect(name).toHaveValue("Hrbr yogurt plain");
     const changed = within(row).getByRole("list", { name: "Words changed from the receipt" });
     const learned = within(changed).getByRole("button", { name: /ygrt.*yogurt.*learned/ });
@@ -493,7 +495,7 @@ describe("words the suggested name changed (issue 384)", () => {
     const user = userEvent.setup();
     renderApp("/shop/receipts/identify?mode=name");
     const row = await screen.findByRole("group", { name: `${vendor.name}: HRBR YGRT PLN` });
-    const name = within(row).getByRole("textbox", { name: "Name" });
+    const name = within(row).getByRole("combobox", { name: "Name" });
     await user.clear(name);
     await user.type(name, "Greek yogurt");
     expect(
@@ -538,5 +540,50 @@ describe("products a row may already be (issue 386)", () => {
         },
       ],
     });
+  });
+});
+
+describe("suggestions while typing a name (issue 385)", () => {
+  const hit = {
+    id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f5e19",
+    name: "Boneless chicken breast",
+    brand: null,
+    barcode: null,
+    pack_qty: "1.000",
+    pack_unit: "lb",
+    quality_rating: null,
+    ingredient: { id: flour.id, name: flour.name, canonical_unit: flour.canonical_unit },
+    match: "name",
+    score: "0.8",
+  };
+
+  it("offers products, word completions and the ingredient, and looks nothing up on load", async () => {
+    const calls = mockApi({
+      ...routes(three),
+      "GET /products/search": () => jsonResponse(200, { items: [hit], next_cursor: null }),
+      "GET /to-identify/naming/words": () =>
+        jsonResponse(200, { items: [{ word: "chicken", source: "learned" }] }),
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify?mode=name");
+    const row = await screen.findByRole("group", { name: `${vendor.name}: BNLS CHKN BRST` });
+    expect(calls.some((c) => c.path.startsWith("/products/search"))).toBe(false);
+
+    const name = within(row).getByRole("combobox", { name: "Name" });
+    await user.clear(name);
+    await user.type(name, "Boneless chi");
+    const finish = await within(row).findByRole("option", { name: "Finish the word as chicken" });
+    await user.click(finish);
+    expect(name).toHaveValue("Boneless chicken");
+
+    await user.type(name, " breast");
+    await user.click(
+      await within(row).findByRole("option", {
+        name: "Use the existing product Boneless chicken breast",
+      }),
+    );
+    expect(within(row).getByTestId("name-1-use")).toHaveTextContent(
+      "Uses the existing product Boneless chicken breast",
+    );
   });
 });

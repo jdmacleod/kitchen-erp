@@ -109,3 +109,25 @@ export function useNameProducts() {
     },
   });
 }
+
+/** A word completing the one being typed in a Name (issue 385). */
+export interface WordCompletion {
+  word: string;
+  source: "learned" | "vocabulary";
+}
+
+/** Completions for the word being typed; off until two letters are typed. */
+export function useNameWords(vendorId: string, prefix: string) {
+  const trimmed = prefix.trim();
+  return useQuery({
+    queryKey: [...purchaseKeys.toIdentify, "naming", "words", vendorId, trimmed],
+    queryFn: () =>
+      api<{ items: WordCompletion[] }>(
+        `/to-identify/naming/words?vendor_id=${encodeURIComponent(vendorId)}&prefix=${encodeURIComponent(trimmed)}`,
+      ),
+    select: (data) => data.items,
+    enabled: /^\p{L}{2,}$/u.test(trimmed),
+    staleTime: 30_000,
+    placeholderData: (previous) => previous,
+  });
+}

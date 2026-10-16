@@ -21100,6 +21100,46 @@
         "title": "WeighedLabel",
         "type": "object"
       },
+      "WordCompletion": {
+        "additionalProperties": false,
+        "properties": {
+          "source": {
+            "enum": [
+              "learned",
+              "vocabulary"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "word",
+          "source"
+        ],
+        "title": "WordCompletion",
+        "type": "object"
+      },
+      "WordCompletions": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WordCompletion"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "WordCompletions",
+        "type": "object"
+      },
       "app__schemas__captures__VendorRef": {
         "additionalProperties": false,
         "properties": {
@@ -29933,6 +29973,61 @@
           }
         },
         "summary": "Suggest Names",
+        "tags": [
+          "purchases"
+        ]
+      }
+    },
+    "/api/v1/to-identify/naming/words": {
+      "get": {
+        "description": "Words completing the one being typed: this vendor's learned ones, then the vocabulary's.",
+        "operationId": "complete_word_api_v1_to_identify_naming_words_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "vendor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Vendor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "prefix",
+            "required": true,
+            "schema": {
+              "maxLength": 40,
+              "minLength": 1,
+              "title": "Prefix",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WordCompletions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Word",
         "tags": [
           "purchases"
         ]
