@@ -86,6 +86,11 @@ These are real numbers from `fdc_profile.py` v2. Use them as acceptance checks f
 - 7,649 of 8,262 core foods have `food_portion` rows, including 1,661 of the 1,674 FNDDS-used SR foods.
 - `measure_unit` is almost always "undetermined". The real unit is free text in `modifier` ("cup, chopped", "tbsp", "medium", "slice", "cup (8 fl oz)"), so it needs a parser (the 1C importer's, #99).
 
+**Refuse.**
+
+- `food_component.csv` lists a food's parts. USDA's Download Field Descriptions (checked 2026-10-16 at `https://fdc.nal.usda.gov/docs/Download_Field_Descriptions_Oct2020.pdf`) give its columns as `id`, `fdc_id`, `name` ("the kind of component, e.g. bone"), `pct_weight` ("the weight of the component as a percentage of the total weight of the food"), `is_refuse` ("whether the component is refuse, i.e. not edible"), `gram_weight`, `data_points` and `min_year_acquired`. The Foundation Foods documentation adds that refuse is "expressed as a percentage of the total weight of the item as acquired and [is] used to compute the weight of the edible portion".
+- `kerp import usda` reads it when present and stores `fdc_food.refuse_pct`: the sum of `pct_weight` over a kept food's rows whose `is_refuse` is yes, rounded to three places; null for a food with no refuse row. The documentation does not say how `is_refuse` is spelled, so `Y`/`N`, `yes`/`no`, `true`/`false` and `1`/`0` are read and any other value is counted as skipped. A file missing `fdc_id`, `pct_weight` or `is_refuse` is not read at all, and the import says which column it lacks; a food whose refuse adds up to 100% or more is left out. The ingredient form offers `100 − refuse` as the yield (`07`, 3D).
+
 **Branded.**
 
 - 2.0M rows, 449 `branded_food_category` values, and a 954 MB CSV that is mostly label ingredient text.

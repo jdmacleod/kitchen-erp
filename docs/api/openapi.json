@@ -6015,6 +6015,27 @@
         "title": "IngredientUpdate",
         "type": "object"
       },
+      "IngredientUsdaOut": {
+        "additionalProperties": false,
+        "description": "Null ``reference`` when the ingredient has no preferred USDA food in the loaded release.",
+        "properties": {
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsdaReferenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "IngredientUsdaOut",
+        "type": "object"
+      },
       "IsOpenOut": {
         "additionalProperties": false,
         "properties": {
@@ -19092,6 +19113,50 @@
         "title": "UsdaDecisionOut",
         "type": "object"
       },
+      "UsdaReferenceOut": {
+        "additionalProperties": false,
+        "description": "An ingredient's preferred USDA food and its refuse (07, 3D; issue 282).",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fdc_id": {
+            "title": "Fdc Id",
+            "type": "integer"
+          },
+          "refuse_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refuse Pct"
+          },
+          "yield_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yield Pct"
+          }
+        },
+        "required": [
+          "fdc_id",
+          "description",
+          "refuse_pct",
+          "yield_pct"
+        ],
+        "title": "UsdaReferenceOut",
+        "type": "object"
+      },
       "UsdaRelinkIn": {
         "additionalProperties": false,
         "description": "The USDA food a person chose for the ingredient; null leaves it with none.",
@@ -23822,6 +23887,50 @@
           }
         },
         "summary": "Skip",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/ingredients/{ingredient_id}/usda": {
+      "get": {
+        "description": "The preferred USDA food and its refuse, for the yield suggestion (07, 3D). 404 not_found.",
+        "operationId": "ingredient_usda_api_v1_ingredients__ingredient_id__usda_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientUsdaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredient Usda",
         "tags": [
           "ingredient vocabulary"
         ]

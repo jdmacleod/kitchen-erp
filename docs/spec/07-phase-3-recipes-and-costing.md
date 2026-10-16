@@ -405,7 +405,15 @@ by dividing by `yield_pct`; `yield_mode` overrides per line. `yield_pct` has
 been on `ingredient` since 1G; 3D gives it a field on the ingredient form that
 offers the USDA refuse value when the ingredient has a reference, and an
 ingredient without one costs at 100% with the cost line saying so (Phase 3
-review, 2026-10-09). Consumed cost is canonical quantity times unit price.
+review, 2026-10-09). The refuse value is `fdc_food.refuse_pct`, which
+`kerp import usda` reads from `food_component.csv` (`12` §4); `GET
+/ingredients/{id}/usda` returns the preferred USDA food with it and the yield
+it implies, `1 − refuse / 100`. The form shows "USDA: X% refuse → yield Y%"
+under the yield field with a "Use Y%" button that puts Y in the field; it never
+fills the field by itself, and nothing changes until the person saves. It shows
+nothing when the ingredient has no USDA food in the loaded release or USDA
+gives that food no refuse figure, and says the yield matches when it already
+does (decision 2026-10-16, issue 282). Consumed cost is canonical quantity times unit price.
 Basket cost rounds each line up to whole packs of the product used and
 multiplies by that product's pack price; a product without a pack contributes
 its consumed cost. Ranges produce a low and a high for both figures.
