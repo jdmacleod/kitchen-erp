@@ -55,7 +55,7 @@ export function IngredientOffers({
               >
                 <th className="py-2 pr-3">Vendor</th>
                 <th className="hidden py-2 pr-3 sm:table-cell">Product</th>
-                <th className="py-2 pr-3 text-right">Per {ingredient.canonical_unit}</th>
+                <th className="py-2 pr-3 text-right">Unit price</th>
                 <th className="hidden py-2 sm:table-cell">Seen</th>
               </tr>
             </thead>

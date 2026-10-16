@@ -268,6 +268,8 @@ describe("the ingredient hub (UI-3.9, UI-3.10)", () => {
       history: () => jsonResponse(200, { days: 90, points: [], low: null, high: null }),
     });
     const table = await screen.findByRole("table", { name: "Prices by vendor" });
+    // Each price names its own display unit, so the column doesn't name one.
+    expect(within(table).getByRole("columnheader", { name: "Unit price" })).toBeInTheDocument();
     const rows = within(table).getAllByTestId("offer");
     expect(rows.map((r) => r.dataset.comparable)).toEqual(["true", "false"]);
     expect(rows[0]).toHaveTextContent("Same price at every location");
