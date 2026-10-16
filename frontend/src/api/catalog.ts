@@ -10,6 +10,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import type { CategoryKey } from "../components/CategoryChip";
+import type { BarcodeInput } from "../lib/barcode";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import { inboxKey } from "./inbox";
 import type { PhotoSummary } from "./productPhotos";
@@ -319,7 +320,7 @@ export interface ConvertInput {
   product_id?: string;
 }
 
-export interface ProductCreateInput {
+export interface ProductCreateInput extends BarcodeInput {
   ingredient_id?: string;
   ingredient?: IngredientCreateInput;
   brand?: string;
@@ -328,7 +329,6 @@ export interface ProductCreateInput {
   pack_unit?: string;
   pack_count?: number;
   piece_name?: string;
-  barcode?: string;
   quality_rating?: number;
   exclusive_vendor_id?: string;
   density_override?: string;
@@ -336,7 +336,7 @@ export interface ProductCreateInput {
   notes?: string;
 }
 
-export interface ProductUpdateInput {
+export interface ProductUpdateInput extends BarcodeInput {
   ingredient_id?: string;
   brand?: string | null;
   name?: string;
@@ -346,7 +346,6 @@ export interface ProductUpdateInput {
   pack_count?: number;
   piece_name?: string;
   clear_pieces?: boolean;
-  barcode?: string;
   clear_barcode?: boolean;
   quality_rating?: number | null;
   exclusive_vendor_id?: string;
@@ -390,6 +389,7 @@ export function validationMessages(e: unknown): string[] {
 const conflictMessages: Record<string, string> = {
   ingredient_name_taken: "An ingredient with that name already exists.",
   barcode_taken: "Another product already has that barcode.",
+  ambiguous_barcode: "Say whether the barcode is EAN-8 or UPC-E.",
   measure_label_taken: "This ingredient already has a measure with that label.",
   merge_self: "Choose another product to keep.",
   merge_target_merged: "That product was merged into another; choose the one it became.",
