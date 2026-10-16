@@ -16,6 +16,7 @@ const name = (n: number): CleanupSuggestion => ({
   ready: true,
   value: "",
   choosable: false,
+  confidence: "sure",
 });
 const unguessed: CleanupSuggestion = {
   key: "category:i1:x",
@@ -28,6 +29,7 @@ const unguessed: CleanupSuggestion = {
   ready: false,
   value: "",
   choosable: true,
+  confidence: "guess",
 };
 const guessed: CleanupSuggestion = {
   key: "category:i2:y",
@@ -40,6 +42,21 @@ const guessed: CleanupSuggestion = {
   ready: true,
   value: "meat",
   choosable: true,
+  confidence: "guess",
+};
+// A category the name settles (issue 372).
+const sure: CleanupSuggestion = {
+  key: "category:i3:z",
+  kind: "category",
+  subject_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b03",
+  subject: "lantern trout",
+  before: "meat",
+  after: "seafood",
+  reason: "the name says it's a fish or shellfish",
+  ready: true,
+  value: "seafood",
+  choosable: true,
+  confidence: "sure",
 };
 
 function routes(items: () => CleanupSuggestion[], onPost: (call: RecordedCall) => void) {
@@ -52,6 +69,7 @@ function routes(items: () => CleanupSuggestion[], onPost: (call: RecordedCall) =
       return jsonResponse(200, {
         applied: (call.body as { keys: string[] }).keys.length,
         gone: [],
+        held: [],
       });
     },
     "POST /catalog/cleanup/skip": (call: RecordedCall) => {
@@ -124,5 +142,40 @@ describe("tidy the catalog (issue 349)", () => {
       keys: [guessed.key, unguessed.key],
       chosen: { [guessed.key]: "seafood", [unguessed.key]: "pantry" },
     });
+  });
+
+  it("accepts guesses one at a time, and the sure ones together (issue 372)", async () => {
+    const other = {
+      ...sure,
+      key: "category:i4:w",
+      subject: "lantern cod",
+      subject_id: "0192a1b2-3c4d-7e5f-8a6b-1c2d3e4f7b04",
+    };
+    let items = [sure, other, guessed];
+    const posts: RecordedCall[] = [];
+    mockApi(
+      routes(
+        () => items,
+        (call) => {
+          posts.push(call);
+          const keys = (call.body as { keys: string[] }).keys;
+          items = items.filter((s) => !keys.includes(s.key));
+        },
+      ),
+    );
+    const user = userEvent.setup();
+    renderApp("/catalog/cleanup");
+    const cats = await screen.findByRole("list", { name: "Categories" });
+    const rows = within(cats).getAllByTestId("cleanup-row");
+    expect(within(rows[2]).getByText("Check this")).toBeInTheDocument();
+    expect(within(rows[0]).queryByText("Check this")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Accept these 2" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0].body).toEqual({ keys: [sure.key, other.key], chosen: {} });
+
+    await user.click(await screen.findByRole("button", { name: "Accept: lantern fish" }));
+    await waitFor(() => expect(posts).toHaveLength(2));
+    expect(posts[1].body).toEqual({ keys: [guessed.key], chosen: {} });
   });
 });

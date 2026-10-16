@@ -8,7 +8,7 @@ import {
   type CleanupSuggestion,
 } from "../../api/catalogCleanup";
 import { errorMessage } from "../../api/client";
-import { inputClass } from "../../components/catalog/fields";
+import { Badge, inputClass } from "../../components/catalog/fields";
 import { CATEGORY_KEYS } from "../../components/CategoryChip";
 import { useNotice } from "../../components/Notice";
 import { Alert, Button, Card, EmptyState, PageHeader, focusRing } from "../../components/ui";
@@ -27,12 +27,12 @@ const GROUPS: { kind: CleanupKind; title: string; hint: string }[] = [
   {
     kind: "usda_link",
     title: "USDA links",
-    hint: "USDA foods that name another food: relinked to one that fits, or unlinked.",
+    hint: "USDA foods that name another food: relinked to one that fits, or unlinked. A relink to a raw or dry Foundation record is sure; any other is a guess.",
   },
   {
     kind: "category",
     title: "Categories",
-    hint: "Ingredients without a category, or frozen foods filed elsewhere. Change the category if the guess is wrong.",
+    hint: "Ingredients without a category, or filed where the name says otherwise: a frozen food, a fish under meat. Change the category if the guess is wrong.",
   },
   {
     kind: "ingredient_name",
@@ -122,7 +122,11 @@ function Group({
   const visible = rows.slice(0, shown);
   const valueOf = (s: CleanupSuggestion) => chosen[s.key] ?? s.value;
   const canAccept = (s: CleanupSuggestion) => s.ready || (s.choosable && valueOf(s) !== "");
-  const ready = visible.filter(canAccept).map((s) => s.key);
+  // A guess is accepted one at a time, unless the person chose its value (issue 372).
+  const isGuess = (s: CleanupSuggestion) =>
+    s.confidence === "guess" && s.ready && !(s.key in chosen);
+  const ready = visible.filter((s) => canAccept(s) && !isGuess(s)).map((s) => s.key);
+  const guesses = rows.some(isGuess);
   const busy = apply.isPending || skip.isPending;
   const accept = (keys: string[]) =>
     apply.mutate(
@@ -131,12 +135,12 @@ function Group({
         chosen: Object.fromEntries(keys.filter((k) => k in chosen).map((k) => [k, chosen[k]])),
       },
       {
-        onSuccess: ({ applied, gone }) =>
+        onSuccess: ({ applied, gone, held }) =>
           notice.show({
-            tone: gone.length ? "info" : "success",
+            tone: gone.length || held.length ? "info" : "success",
             message: `Applied ${applied} ${applied === 1 ? "fix" : "fixes"}.${
               gone.length ? ` ${gone.length} had changed and were left.` : ""
-            }`,
+            }${held.length ? ` ${held.length} to check one at a time.` : ""}`,
           }),
       },
     );
@@ -154,6 +158,12 @@ function Group({
         ) : null}
       </div>
       <p className={`text-sm ${muted}`}>{hint}</p>
+      {guesses ? (
+        <p className={`text-sm ${muted}`}>
+          Rows marked “Check this” are guesses: accept them one at a time
+          {kind === "category" ? ", or choose the category first" : ""}.
+        </p>
+      ) : null}
       {apply.isError ? <Alert tone="error">{errorMessage(apply.error)}</Alert> : null}
       {skip.isError ? <Alert tone="error">{errorMessage(skip.error)}</Alert> : null}
       <Card>
@@ -164,24 +174,13 @@ function Group({
               className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
               data-testid="cleanup-row"
             >
-              <div className="min-w-0">
-                <Link to={subjectRoute(s)} className={`font-medium underline ${focusRing}`}>
-                  {s.subject}
-                </Link>
-                {s.choosable ? (
-                  <CategoryChoice
-                    suggestion={s}
-                    value={valueOf(s)}
-                    disabled={busy}
-                    onChange={(value) => setChosen({ ...chosen, [s.key]: value })}
-                  />
-                ) : (
-                  <p className="text-sm">
-                    <span className={muted}>{s.before}</span> → <span>{s.after}</span>
-                  </p>
-                )}
-                <p className={`text-xs ${muted}`}>{s.reason}</p>
-              </div>
+              <Proposal
+                suggestion={s}
+                guess={isGuess(s)}
+                value={valueOf(s)}
+                disabled={busy}
+                onChoose={(value) => setChosen({ ...chosen, [s.key]: value })}
+              />
               <div className="flex shrink-0 gap-2">
                 <Button
                   disabled={busy || !canAccept(s)}
@@ -211,6 +210,43 @@ function Group({
         </div>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * What a suggestion changes, from what, to what, and why. A guess carries a squash
+ * "Check this" badge (spec 08: squash is for anything the system is guessing).
+ */
+function Proposal({
+  suggestion: s,
+  guess,
+  value,
+  disabled,
+  onChoose,
+}: {
+  suggestion: CleanupSuggestion;
+  guess: boolean;
+  value: string;
+  disabled: boolean;
+  onChoose: (value: string) => void;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="flex flex-wrap items-center gap-2">
+        <Link to={subjectRoute(s)} className={`font-medium underline ${focusRing}`}>
+          {s.subject}
+        </Link>
+        {guess ? <Badge tone="warn">Check this</Badge> : null}
+      </p>
+      {s.choosable ? (
+        <CategoryChoice suggestion={s} value={value} disabled={disabled} onChange={onChoose} />
+      ) : (
+        <p className="text-sm">
+          <span className={muted}>{s.before}</span> → <span>{s.after}</span>
+        </p>
+      )}
+      <p className={`text-xs ${muted}`}>{s.reason}</p>
+    </div>
   );
 }
 
