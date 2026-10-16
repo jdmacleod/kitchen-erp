@@ -79,7 +79,14 @@ async def test_every_waiting_group_is_a_row_with_suggestions(admin_client, admin
         "broccoli",
     )
     flour = rows["RVRBND BREAD FLR 2KG"]
-    assert (flour["name"], flour["pack_qty"], flour["pack_unit"]) == ("Rvrbnd bread flr", "2", "kg")
+    # The standard list's "flour" is the one word FLR can stand for (#384).
+    assert (flour["name"], flour["pack_qty"], flour["pack_unit"]) == (
+        "Rvrbnd bread flour", "2", "kg"
+    )  # fmt: skip
+    assert flour["name_words"] == ["rvrbnd", "bread", "flr"]
+    assert flour["name_changes"] == [
+        {"index": 2, "printed": "flr", "shown": "flour", "source": "vocabulary"}
+    ]
     chicken = rows["BNLS CHKN BRST"]
     assert chicken["ingredient"] is None and chicken["pack_qty"] is None
 

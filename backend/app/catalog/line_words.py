@@ -9,6 +9,9 @@ nothing it can't be sure of. Pure: no database, no I/O.
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Literal
 
 from app.catalog.names import singular_word
 from app.units import UnitParseFailure, parse_unit
@@ -16,6 +19,7 @@ from app.units import UnitParseFailure, parse_unit
 _LETTERS = re.compile(r"[a-z]+")
 # A name word an abbreviation can stand for: shorter ones ("of", "in") are glue.
 _MIN_EXPANSION = 3
+_VOWELS = frozenset("aeiou")
 
 
 def _abbreviates(word: str, expansion: str) -> bool:
@@ -55,3 +59,100 @@ def align(raw_text_norm: str, product_name: str) -> list[tuple[str, str]]:
         if len(fits) == 1:
             pairs.append((word, fits[0]))
     return pairs
+
+
+# --- a suggested name from the printed words (#384) -----------------------------
+
+
+@dataclass(frozen=True)
+class WordChange:
+    """One printed word shown as another in the suggested name."""
+
+    index: int
+    printed: str
+    shown: str
+    source: Literal["learned", "spelling", "vocabulary"]
+
+
+@dataclass(frozen=True)
+class Vocabulary:
+    """The words an abbreviation may stand for, indexed by first and last letter."""
+
+    words: frozenset[str]
+    by_ends: Mapping[tuple[str, str], tuple[str, ...]]
+
+    @classmethod
+    def of(cls, texts: Iterable[str | None]) -> Vocabulary:
+        words = frozenset(
+            w
+            for text in texts
+            if text
+            for w in _LETTERS.findall(text.lower())
+            if len(w) >= _MIN_EXPANSION
+        )
+        ends: dict[tuple[str, str], list[str]] = {}
+        for w in sorted(words):
+            ends.setdefault((w[0], w[-1]), []).append(w)
+        return cls(words, {k: tuple(v) for k, v in ends.items()})
+
+    def knows(self, word: str) -> bool:
+        return word in self.words or singular_word(word) in self.words
+
+    def expansion(self, word: str) -> str | None:
+        """The one word ``word`` abbreviates, ending in the same letter.
+
+        With no confirmation behind it, a guess is made only for a word shaped
+        like an abbreviation: three letters or more, no vowel after the first
+        ("YGRT", "MSTRD"), and half the expansion's letters at least. A word
+        with vowels ("WINES", "CANS") may be a plain word, so it waits to be learned.
+        """
+        if len(word) < _MIN_EXPANSION or _VOWELS.intersection(word[1:]):
+            return None
+        fits = [
+            w
+            for w in self.by_ends.get((word[0], word[-1]), ())
+            if len(word) * 2 >= len(w) and _abbreviates(word, w)
+        ]
+        return fits[0] if len(fits) == 1 else None
+
+
+def _learned_expansion(word: str, learned: Mapping[str, Sequence[tuple[str, int]]]) -> str | None:
+    """The most confirmed learned expansion, unless another is confirmed as often."""
+    found = sorted(learned.get(word, ()), key=lambda e: -e[1])
+    if not found or (len(found) > 1 and found[0][1] == found[1][1]):
+        return None
+    return found[0][0]
+
+
+def suggest_words(
+    words: Sequence[str],
+    *,
+    learned: Mapping[str, Sequence[tuple[str, int]]],
+    spelled: Mapping[str, str],
+    vocabulary: Vocabulary,
+) -> list[WordChange]:
+    """How each printed word should be shown, in order of trust.
+
+    A word the vocabulary knows stays. Otherwise: this vendor's (or any vendor's)
+    learned expansion, then a one-edit spelling fix, then the one vocabulary word
+    it abbreviates. Two equally good answers mean no change, and a word the vendor
+    taught two meanings equally often isn't guessed from the vocabulary either.
+    ``learned`` maps a word to (expansion, count) pairs, ``spelled`` a word to its
+    fix, both casefolded.
+    """
+    changes: list[WordChange] = []
+    for i, printed in enumerate(words):
+        word = printed.casefold()
+        if not word.isalpha() or vocabulary.knows(word):
+            continue
+        if not isinstance(parse_unit(word), UnitParseFailure):
+            continue
+        if word in learned:
+            # This vendor taught the word: its answer, or none when two tie.
+            if shown := _learned_expansion(word, learned):
+                changes.append(WordChange(i, word, shown, "learned"))
+        elif shown := spelled.get(word):
+            changes.append(WordChange(i, word, shown.casefold(), "spelling"))
+        elif shown := vocabulary.expansion(word):
+            changes.append(WordChange(i, word, shown, "vocabulary"))
+    return changes

@@ -5,6 +5,14 @@ import type { IngredientCreateInput, IngredientMatch } from "./catalog";
 import { api } from "./client";
 import { invalidateObservations, invalidatePurchases, purchaseKeys } from "./purchases";
 
+/** A printed word shown as another in the suggested name (issue 384). */
+export interface NameChange {
+  index: number;
+  printed: string;
+  shown: string;
+  source: "learned" | "spelling" | "vocabulary";
+}
+
 /** A waiting group with the product its wording suggests. */
 export interface NamingRow {
   vendor: { id: string; name: string };
@@ -12,6 +20,9 @@ export interface NamingRow {
   line_count: number;
   raw_text: string | null;
   name: string;
+  /** The printed words the name is built from, and each one it shows differently. */
+  name_words: string[];
+  name_changes: NameChange[];
   ingredient: IngredientMatch | null;
   pack_qty: string | null;
   pack_unit: string | null;
@@ -31,6 +42,8 @@ export type NameProductRow = {
   pack_unit?: string;
   /** Create it even though a product of the same name and ingredient exists (issue 179). */
   allow_duplicate?: boolean;
+  /** Learned expansions the person undid, offered less from now on (issue 384). */
+  forget_words?: { word: string; expansion: string }[];
 } & ({ ingredient_id: string } | { ingredient: IngredientCreateInput } | { product_id: string });
 
 export interface NamedProduct {

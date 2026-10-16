@@ -8,7 +8,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from app.catalog.line_words import align
+from app.catalog.line_words import Vocabulary, align, suggest_words
 
 
 @pytest.mark.parametrize(
@@ -53,3 +53,51 @@ def test_a_pair_is_always_a_true_abbreviation_of_a_name_word(printed, name):
         assert _is_abbreviation(word, expansion)
     assert len({w for w, _ in pairs}) == len(pairs)
     assert align(" ".join(printed).upper(), name_text) == pairs
+
+
+# --- the suggested name (#384) --------------------------------------------------
+
+_VOCAB = Vocabulary.of(
+    ["Greek yogurt", "plain", "boneless chicken breast", "chickpeas", "flour", "braunschweiger"]
+)
+
+
+def _shown(words, learned=None, spelled=None):
+    changes = suggest_words(words, learned=learned or {}, spelled=spelled or {}, vocabulary=_VOCAB)
+    return [(c.index, c.printed, c.shown, c.source) for c in changes]
+
+
+def test_a_known_word_stays_and_an_abbreviation_with_one_reading_expands():
+    assert _shown(["GREEK", "YGRT", "PLN"]) == [
+        (1, "ygrt", "yogurt", "vocabulary"),
+        (2, "pln", "plain", "vocabulary"),
+    ]
+
+
+def test_a_learned_expansion_comes_first_and_a_tie_changes_nothing():
+    learned = {"chk": [("chickpeas", 3), ("chicken", 1)], "brst": [("breast", 2), ("bristle", 2)]}
+    # "chk" has two vocabulary readings, but this vendor taught one of them more often.
+    assert _shown(["CHK", "BRST"], learned) == [(0, "chk", "chickpeas", "learned")]
+
+
+def test_a_spelling_fix_comes_before_a_vocabulary_guess_and_units_stay():
+    assert _shown(["FLOUP", "OZ"], spelled={"floup": "FLOUR"}) == [
+        (0, "floup", "flour", "spelling")
+    ]
+
+
+def test_words_with_digits_or_two_readings_are_left_as_printed():
+    assert _shown(["CHK", "5PK"]) == []  # chicken or chickpeas: no guess
+
+
+def test_an_everyday_word_is_not_read_as_a_long_one():
+    assert _shown(["BAR"]) == []  # b…r fits braunschweiger, but keeps too little of it
+
+
+@given(words=_WORDS)
+def test_every_change_names_a_printed_word_and_an_offered_reading(words):
+    printed = [w.upper() for w in words]
+    for change in suggest_words(printed, learned={}, spelled={}, vocabulary=_VOCAB):
+        assert printed[change.index].casefold() == change.printed
+        assert change.shown in _VOCAB.words
+        assert _is_abbreviation(change.printed, change.shown)
