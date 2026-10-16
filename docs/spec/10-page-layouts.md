@@ -640,9 +640,21 @@ These phone screens are also the design brief for the Phase 6 native capture app
 
 - duplicate ingredients;
 - USDA links that name another food;
-- categories;
+- categories: an ingredient without one, or one that looks misfiled;
 - ingredient names;
 - product names that repeat the brand or the pack;
 - brands and kinds.
 
-Each row shows the subject (linked), before → after, and why, with **Accept** and **Skip**. A group shows 25 rows at a time, with "Show more" and **Accept these N** for the rows on screen. A category nothing could guess has no Accept: "Choose on its page" opens the ingredient. Accepting calls the existing services: ingredient update, merge, preferred USDA reference, product update. Nothing changes on loading the page. A skip is stored by key (`cleanup_skip`, migration 0056). The key carries what the suggestion proposes, so a skip lasts until the data changes.
+Each row shows the subject (linked), before → after, and why, with **Accept** and **Skip**. A group shows 25 rows at a time, with "Show more" and **Accept these N** for the rows on screen. A category row has a picker prefilled with the guess (#370); a category nothing could guess has no Accept until one is chosen. Accepting calls the existing services: ingredient update, merge, preferred USDA reference, product update. Nothing changes on loading the page. A skip is stored by key (`cleanup_skip`, migration 0056). The key carries what the suggestion proposes, so a skip lasts until the data changes.
+
+**Sure and guessed (issue 372).** Every suggestion has a `confidence`, `sure` or `guess`:
+
+- A category is sure when the name settles it (`name`), the standard list files it (`standard`) or a store page did (`clip`). One taken from the household's ingredients with the same head noun (`catalog`) or from a USDA food group (`usda`) is a guess.
+- A USDA relink is sure when the new record is a Foundation food that is raw or dry; any other relink is a guess. Unlinking is sure when the linked record names another food, and a guess when it names this food in another form.
+- Ingredient names, merges, product names and brands come from rules and are sure.
+
+**Accept these N** counts and applies only the sure rows, and rows whose category the person chose. A guess row carries a squash "Check this" badge and is accepted on its own, after a glance or a pick. The server enforces the same rule: `POST /catalog/cleanup/apply` with more than one key applies no guess without a chosen value and returns its key in `held`.
+
+**Looks misfiled.** A categorized ingredient is offered another category when its name settles it (`categories.misfiled`, from `key_from_name`), the same way as the frozen rule: "frozen" in the name is offered frozen from any category; a fish or shellfish filed under meat is offered seafood; a canned, dried, fried or pickled food, or a seasoning, filed in a fresh case (produce, meat, seafood, dairy) is offered pantry or spices. A name never overrides a filing it can't rule out: a fish under pantry or frozen may be canned or frozen, "dried oregano" stays a spice, and "fish sauce" stays in the pantry. These suggestions are sure.
+
+**Load time.** The page answers in under 500 ms on a 500-ingredient catalog. The slow guesses, a USDA search per ingredient for a category or a relink, are kept per ingredient name in `cleanup_guess` (migration 0060) under a catalog version: a digest of the guessing rules and the latest USDA release. A name not kept, or kept at another version, is searched again on the next look. The worker looks through the catalog every 15 minutes while idle, so guesses are usually kept before anyone opens the page. The head-noun guess is worked out from one query on each look, so it follows the household's latest categories.
