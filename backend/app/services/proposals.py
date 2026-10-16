@@ -48,7 +48,7 @@ from app.models import (
     VendorListing,
 )
 from app.models.geo import Vendor, VendorLocation, point_expr
-from app.services import brands, pricebook, product_photos
+from app.services import brands, new_products, pricebook, product_photos
 from app.services.catalog import search_products
 
 log = get_logger(__name__)
@@ -1045,19 +1045,21 @@ async def _product_for(
         return product, False
     if data.ingredient_id is None:
         raise ApiError(422, "ingredient_required", "Choose the ingredient this product is.")
-    if await db.get(Ingredient, data.ingredient_id) is None:
+    if (ingredient := await db.get(Ingredient, data.ingredient_id)) is None:
         raise ApiError(404, "not_found", "No such ingredient.")
-    name = str(merging.value(fields, "title") or "").strip()
-    if not name:
+    if not str(merging.value(fields, "title") or "").strip():
         raise ApiError(422, "name_required", "Give the product a name.")
-    brand = merging.value(fields, "brand")
-    gtin = merging.value(fields, "gtin")
+    # The kind, and for produce no store's brand and no retail filler (issue 371).
+    price = data.price or proposal.price
+    begin, fields = await new_products.from_fields(
+        db, ingredient, fields, kind=data.kind, price=price
+    )
     product = Product(
         id=new_id(),
         ingredient_id=data.ingredient_id,
-        name=name,
-        brand=str(brand).strip() if brand else None,
-        kind=data.kind or await _kind(db, brand, gtin),
+        name=begin.name,
+        brand=begin.brand,
+        kind=begin.kind,
         attributes={},
         field_source={},
     )
@@ -1066,14 +1068,6 @@ async def _product_for(
     await brands.link_product(db, product)
     await db.flush()
     return product, True
-
-
-async def _kind(db: AsyncSession, brand: Any, gtin: Any) -> str:
-    """A new product's kind when the person chose none: a store's own brand (16, 2R),
-    then branded for a brand or barcode, else loose."""
-    if await brands.is_house_brand(db, str(brand) if brand else None):
-        return "private_label"
-    return "branded" if (brand or gtin) else "loose"
 
 
 async def accept(
