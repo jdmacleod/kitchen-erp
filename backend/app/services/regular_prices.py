@@ -31,7 +31,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import unit_display
-from app.services.pricebook import unit_price
+from app.services.price_rounding import unit_price
 
 # The one flag that says a saving's own row proves it is in the item's price.
 ROW_PROVEN = "saving_in_price"
