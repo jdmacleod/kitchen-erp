@@ -125,6 +125,13 @@ def test_normalizing_first_changes_nothing(text):
         ("lantern masala", "spices"),
         ("lantern root", None),
         ("", None),
+        # Named after a fish or shellfish without being one.
+        ("oyster mushrooms", None),
+        ("lantern oyster sauce", None),
+        ("lantern fish sauce", None),
+        ("oyster crackers", None),
+        ("frozen oyster mushrooms", "frozen"),
+        ("dried oyster mushrooms", "pantry"),
     ],
 )
 def test_some_words_in_a_name_settle_its_category(name, expected):
@@ -151,6 +158,7 @@ def test_some_words_in_a_name_settle_its_category(name, expected):
         ("canned lantern peas", "lantern things", None),
         ("lantern root", "produce", None),
         ("lantern trout", None, None),
+        ("oyster mushrooms", "meat", None),
     ],
 )
 def test_a_name_that_settles_another_category_finds_it_misfiled(name, filed, expected):
