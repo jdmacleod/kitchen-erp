@@ -79,7 +79,7 @@ function modelName(row: NamingRow, fresh: string | null) {
 
 /**
  * The model's answers for the fields a person hasn't edited and the wording left
- * open. A name the wording already read (#384, #390) isn't replaced: the model's
+ * open. A name the wording already read (issues 384, 390) isn't replaced: the model's
  * is offered beside it instead (issue 387).
  */
 function modelAnswers(row: NamingRow, edit: RowEdit | undefined) {
