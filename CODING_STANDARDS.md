@@ -139,7 +139,10 @@ in `backend/pyproject.toml`. It runs in `make types` and in the CI job
 - **Lint (e2e):** `e2e/eslint.config.js`: typescript-eslint
   `recommendedTypeChecked` and `eslint-plugin-playwright` recommended (its
   warnings raised to errors), `eslint-config-prettier` last; `e2e/tsconfig.json`
-  is strict. Scripts `lint`, `typecheck`, `format:check`.
+  is strict. Scripts `lint`, `typecheck`, `format:check`. A browser test for one
+  side of lg carries the tag `@desktop-only` or `@below-lg`, and
+  `e2e/playwright.config.ts` leaves each tag out of the projects on the other
+  side, so a new test needs no `test.skip` on the project's name.
 - **Baseline:** findings that predate these rules are held in
   `frontend/eslint-suppressions.json` (595 findings in 163 files on 2026-10-13:
   mostly non-null assertions, function length, unnecessary conditions and

@@ -8,6 +8,7 @@ import { NoticeProvider } from "../components/Notice";
 import { createQueryClient } from "../lib/queryClient";
 import { ListPage } from "../pages/plan/ListPage";
 import { flour, ingredientMatch, units } from "./catalog-fixtures";
+import { colourOutsideItsMeaning } from "./colour-walk";
 import {
   adminUser,
   errorResponse,
@@ -539,5 +540,19 @@ describe("the list page: states and the phone (G11, UI-8.11)", () => {
       "min-h-11",
     );
     expect(screen.getByRole("button", { name: "Add" }).className).toContain("min-h-11");
+  });
+});
+
+describe("colour on the list (UI-8.20)", () => {
+  it("walks every element: blue only on actions, olive only on a checked circle, nothing squash or tomato", async () => {
+    mount();
+    await toGet();
+    await screen.findByText(/Checked \(/);
+    expect(
+      colourOutsideItsMeaning(screen.getByRole("main"), {
+        // A checked item's circle is the one success mark on the list.
+        olive: (el) => el.closest("[role=checkbox][aria-checked=true]") !== null,
+      }),
+    ).toEqual([]);
   });
 });

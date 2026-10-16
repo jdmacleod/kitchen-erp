@@ -3,11 +3,12 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Trip, TripCreateInput } from "../api/trips";
+import type { Annotation, Trip, TripCreateInput } from "../api/trips";
 import { tradeSentence } from "../api/trips";
 import { NoticeProvider } from "../components/Notice";
 import { createQueryClient } from "../lib/queryClient";
 import { TripDetailPage } from "../pages/plan/TripDetailPage";
+import { colourOutsideItsMeaning, type ColourMeanings } from "./colour-walk";
 import { chainLocation, marketLocation } from "./geo-fixtures";
 import {
   adminUser,
@@ -20,9 +21,12 @@ import {
 import { instances } from "./maplibre-stub";
 import { kitchen, planHealth, settings } from "./plan-fixtures";
 import {
+  balanced,
   balancedId,
+  cheapest,
   cheapestId,
   chosenTrip,
+  fastest,
   placeId,
   replannedTripId,
   trip,
@@ -167,6 +171,77 @@ describe("the three variants (UI-8.13, UI-8.20)", () => {
 });
 
 describe("notes and stops (UI-8.14)", () => {
+  // One note of every kind the planner writes, as sentences naming the item or store.
+  const everyKind: Annotation[] = [
+    {
+      kind: "forced_stop",
+      location_id: marketLocation.id,
+      text: "Only Pier Farmers Market sells Larkspur rolled oats.",
+    },
+    {
+      kind: "defer_suggestion",
+      item_id: "li-oats",
+      amount: "2.10",
+      text: "Larkspur rolled oats alone needs this stop; deferring it saves $2.10.",
+    },
+    {
+      kind: "stale_dependent",
+      amount: "6.40",
+      text: "$6.40 of the item cost rests on stale prices.",
+    },
+    {
+      kind: "unsourceable",
+      item_id: "li-saffron",
+      reason: "no_price",
+      text: "No store has a price for Moonglow saffron.",
+    },
+    {
+      kind: "estimated_legs",
+      text: "Two legs are estimates: the routing engine didn't answer for them.",
+    },
+    // Names only the location by id: the page adds the store's name after the sentence.
+    { kind: "hours_unknown", location_id: chainLocation.id, text: "Opening hours unknown." },
+    {
+      kind: "closed_excluded",
+      location_id: marketLocation.id,
+      text: "Pier Farmers Market is closed at every arrival and was left out.",
+    },
+  ];
+  const squash = new Set(["stale_dependent", "unsourceable", "estimated_legs"]);
+  const words: Record<string, string> = {
+    forced_stop: "forced stop",
+    defer_suggestion: "could defer",
+    stale_dependent: "stale",
+    unsourceable: "unsourceable",
+    estimated_legs: "estimated",
+    hours_unknown: "hours unknown",
+    closed_excluded: "closed",
+  };
+
+  it("says every kind of note as a neutral sentence with its word, squash only for stale, estimated and unsourceable (UI-8.14, criterion 28)", async () => {
+    mount({}, () =>
+      trip({ variants: [{ ...balanced, annotations: everyKind }, cheapest, fastest] }),
+    );
+    await cards();
+    const notes = screen.getAllByTestId("annotation");
+    expect(notes.map((n) => n.dataset.kind)).toEqual(everyKind.map((a) => a.kind));
+    for (const [i, note] of notes.entries()) {
+      const { kind, text } = everyKind[i];
+      const word = within(note).getByText(words[kind], { exact: true });
+      if (squash.has(kind)) expect(word.className, kind).toMatch(/amber/);
+      else expect(word.className, kind).not.toMatch(/amber|green|blue|red/);
+      // The sentence itself is neutral text, whatever the kind.
+      const sentence = within(note).getByText(
+        (_, el) => el?.tagName === "SPAN" && el.textContent.startsWith(text),
+      );
+      expect(sentence.className, kind).not.toMatch(/amber|green|blue|red/);
+    }
+    // A note that names only the location's id gets the store's name.
+    expect(notes[5]).toHaveTextContent(`Opening hours unknown. — ${chainLocation.name}`);
+    // A sentence that already names the store is not given it twice.
+    expect(notes[6].textContent.match(/Pier Farmers Market/g)).toHaveLength(1);
+  });
+
   it("lists the shown variant's notes as words, squash for stale and estimated", async () => {
     mount();
     await cards();
@@ -440,5 +515,47 @@ describe("the trip page on a phone (UI-8.19)", () => {
     // The map comes after the stops.
     const map = await screen.findByTestId("trip-map");
     expect(stops[1].compareDocumentPosition(map) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("colour on the trip page (UI-8.20)", () => {
+  // Olive for the cheapest word, squash for the warn words and the estimate hint,
+  // tomato for the destructive Abandon (08; UI-8.20).
+  const meanings: ColourMeanings = {
+    olive: (_, text) => text === "cheapest",
+    squash: (_, text) =>
+      ["stale", "estimated", "unsourceable"].includes(text) ||
+      text.startsWith("Drive times are estimates"),
+    tomato: (el, text) => el.tagName === "BUTTON" && text === "Abandon",
+  };
+
+  it("walks every element of a planned trip with every kind of note, and finds colour only where it means something", async () => {
+    const notes: Annotation[] = [
+      {
+        kind: "unsourceable",
+        item_id: "li-saffron",
+        text: "No store has a price for Moonglow saffron.",
+      },
+      {
+        kind: "forced_stop",
+        location_id: marketLocation.id,
+        text: "Only Pier Farmers Market sells Larkspur rolled oats.",
+      },
+      {
+        kind: "stale_dependent",
+        amount: "6.40",
+        text: "$6.40 of the item cost rests on stale prices.",
+      },
+    ];
+    mount({}, () => trip({ variants: [{ ...balanced, annotations: notes }, cheapest, fastest] }));
+    await cards();
+    await screen.findAllByTestId("annotation");
+    expect(colourOutsideItsMeaning(screen.getByRole("main"), meanings)).toEqual([]);
+  });
+
+  it("walks every element of a chosen trip the same way", async () => {
+    mount({}, () => chosenTrip());
+    await screen.findByText(/^Chosen /);
+    expect(colourOutsideItsMeaning(screen.getByRole("main"), meanings)).toEqual([]);
   });
 });
