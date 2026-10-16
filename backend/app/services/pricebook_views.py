@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.schemas.pricebook_views import BrandScope
-from app.services import compare_units, unit_display
+from app.services import compare_units, supplies, unit_display
 
 
 def stale_after_days() -> int:
@@ -384,6 +384,7 @@ async def location_panel(
     return {
         "last_visit": summary["last_visit"],
         "spend": Decimal(str(summary["spend"])),
+        "supply_spend": await supplies.supply_spend(db, location_id, since),
         "visits": int(summary["visits"]),
         "period_days": days,
         "recent": await unit_display.decorate_by_product(db, [_row(r) for r in recent.mappings()]),

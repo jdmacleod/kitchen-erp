@@ -476,10 +476,12 @@ async def apply_rows(  # noqa: C901
             if isinstance(row, ReadRow):
                 _take_reading(line, row)
             if line.resolved_by is not None and line.line_kind == "item":
-                # A person chose this line's product (or to ignore it): keep the
-                # choice, and learn it under the wording as now corrected.
+                # A person chose this line's product (or to ignore it, or that it is a
+                # supply): keep the choice, and learn it under the wording as now corrected.
                 if text_changed and vendor_id is not None and line.raw_text_norm:
-                    await upsert_alias(db, vendor_id, line.raw_text_norm, line.product_id)
+                    await upsert_alias(
+                        db, vendor_id, line.raw_text_norm, line.product_id, line.supply_category
+                    )
             elif needs_resolving:
                 to_resolve.append(line)
         ordered.append(line)
