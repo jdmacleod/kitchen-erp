@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.schemas.pricebook_views import BrandScope
-from app.services import compare_units, supplies, unit_display
+from app.services import compare_units, regular_prices, supplies, unit_display
 
 
 def stale_after_days() -> int:
@@ -49,6 +49,8 @@ _CELL_KEYS = (
     "norm_unit",
     "display_unit_price",
     "display_unit",
+    "regular_price",
+    "regular_display_unit_price",
     "stale",
 )
 
@@ -112,10 +114,10 @@ async def product_history(
         _params(pid=product_id),
     )
     mass = await _mass_for_product(db, product_id)
-    return {
-        "points": [unit_display.decorate(_row(r), mass) for r in points.mappings()],
-        "latest": [unit_display.decorate(_row(r), mass) for r in latest.mappings()],
-    }
+    point_rows = [unit_display.decorate(_row(r), mass) for r in points.mappings()]
+    latest_rows = [unit_display.decorate(_row(r), mass) for r in latest.mappings()]
+    await regular_prices.annotate(db, [*point_rows, *latest_rows], lambda _: mass)
+    return {"points": point_rows, "latest": latest_rows}
 
 
 # One point per day (the household's day), the cheapest that day with its product
@@ -174,6 +176,7 @@ async def ingredient_history(
         unit_display.decorate({k: v for k, v in r.items() if k not in _RANGE_KEYS}, mass)
         for r in rows
     ]
+    await regular_prices.annotate(db, points, lambda _: mass)
     unit = rows[0]["norm_unit"] if rows else None
     low = unit_display.shown(rows[0]["low"], unit, mass) if rows else None
     high = unit_display.shown(rows[0]["high"], unit, mass) if rows else None
@@ -236,6 +239,7 @@ async def ingredient_offers(
     )
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
     out = [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
+    await regular_prices.annotate(db, out, lambda _: mass)
     if exclude_stale:
         out = [r for r in out if not r["stale"]]
     return out
@@ -310,6 +314,8 @@ async def compare(
     cells = [
         unit_display.decorate(_row(r), masses.get(r["ingredient_id"])) for r in rows.mappings()
     ]
+    # Cheapest below stays on what was paid; the regular price is only shown (issue 381).
+    await regular_prices.annotate(db, cells, lambda c: masses.get(c["ingredient_id"]))
     vendors: dict[uuid.UUID, str] = {}
     for c in cells:
         vendors.setdefault(c["vendor_id"], c["vendor_name"])

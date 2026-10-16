@@ -66,6 +66,7 @@ from app.services import (
     product_same,
     proposals,
     purchases,
+    regular_prices,
     removal,
     reread,
     resolution,
@@ -81,8 +82,9 @@ from app.services import (
 router = APIRouter(tags=["purchases"])
 
 
-def observation_out(o, mass: str | None = None) -> ObservationOut:
-    """An observation; ``mass`` is its ingredient's display weight unit (issue 245)."""
+def observation_out(o, mass: str | None = None, regular=None) -> ObservationOut:
+    """An observation; ``mass`` is its ingredient's display weight unit (issue 245),
+    ``regular`` its regular price when its receipt row proves one (issue 381)."""
     return ObservationOut(
         id=o.id,
         product={
@@ -116,7 +118,8 @@ def observation_out(o, mass: str | None = None) -> ObservationOut:
         price=o.price,
         qty=o.qty,
         unit=o.unit,
-        is_promo=o.is_promo,
+        is_promo=o.is_promo or regular is not None,
+        regular_price=regular.price if regular is not None else None,
         source=o.source,
         listing_id=o.listing_id,
         voided=o.void is not None,
@@ -170,8 +173,11 @@ async def list_observations(
         cursor=cursor,
     )
     masses = await unit_display.mass_units(db, {o.product.ingredient_id for o in rows})
+    found = await regular_prices.regular_prices(db, (o.id for o in rows))
     return ObservationList(
-        items=[observation_out(o, masses.get(o.product.ingredient_id)) for o in rows],
+        items=[
+            observation_out(o, masses.get(o.product.ingredient_id), found.get(o.id)) for o in rows
+        ],
         next_cursor=next_cursor,
     )
 
@@ -207,7 +213,8 @@ async def get_observation(
     observation_id: uuid.UUID, _: CurrentUser, db: DbSession
 ) -> ObservationOut:
     o = await pricebook.get_observation(db, observation_id)
-    return observation_out(o, await _observation_mass(db, o))
+    found = await regular_prices.regular_prices(db, [o.id])
+    return observation_out(o, await _observation_mass(db, o), found.get(o.id))
 
 
 @router.post("/price-observations/{observation_id}/void", response_model=ObservationOut)

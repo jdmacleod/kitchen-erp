@@ -73,6 +73,9 @@ class ObservationOut(ApiModel):
     qty: DecimalStr
     unit: str
     is_promo: bool
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # `price`, which stays what was paid; null for every other price.
+    regular_price: DecimalStr | None = None
     source: ObservationSource
     # The vendor page a posted price came from (source = listing, 2L).
     listing_id: uuid.UUID | None = None

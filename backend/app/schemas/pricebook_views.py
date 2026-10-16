@@ -26,6 +26,10 @@ class HistoryPoint(ApiModel):
     # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
     display_unit_price: DecimalStr | None = None
     display_unit: str | None = None
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # what was paid (`price`), and per `display_unit`; null for every other price.
+    regular_price: DecimalStr | None = None
+    regular_display_unit_price: DecimalStr | None = None
     norm_status: str | None
     location_id: uuid.UUID
     location_name: str
@@ -52,6 +56,10 @@ class LatestAtLocation(ApiModel):
     # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
     display_unit_price: DecimalStr | None = None
     display_unit: str | None = None
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # what was paid (`price`), and per `display_unit`; null for every other price.
+    regular_price: DecimalStr | None = None
+    regular_display_unit_price: DecimalStr | None = None
     norm_status: str | None
     age_days: DecimalStr
     stale: bool
@@ -70,6 +78,10 @@ class IngredientPricePoint(ApiModel):
     # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
     display_unit_price: DecimalStr | None = None
     display_unit: str | None = None
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # what was paid (`price`), and per `display_unit`; null for every other price.
+    regular_price: DecimalStr | None = None
+    regular_display_unit_price: DecimalStr | None = None
     is_promo: bool
     source: str
     product_id: uuid.UUID
@@ -124,6 +136,10 @@ class Offer(ApiModel):
     # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
     display_unit_price: DecimalStr | None = None
     display_unit: str | None = None
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # what was paid (`price`), and per `display_unit`; null for every other price.
+    regular_price: DecimalStr | None = None
+    regular_display_unit_price: DecimalStr | None = None
     norm_status: str | None
     age_days: DecimalStr
     stale: bool
@@ -166,6 +182,10 @@ class CompareCell(ApiModel):
     # As shown (issue 245): per lb, oz or fl oz (or kg, L), from the server.
     display_unit_price: DecimalStr | None = None
     display_unit: str | None = None
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # what was paid (`price`), and per `display_unit`; null for every other price.
+    regular_price: DecimalStr | None = None
+    regular_display_unit_price: DecimalStr | None = None
     stale: bool
     cheapest: bool
 
