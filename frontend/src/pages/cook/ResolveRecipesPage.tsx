@@ -24,6 +24,7 @@ import {
   PageHeader,
   focusRing,
   secondaryLinkClass,
+  tapTarget,
 } from "../../components/ui";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -229,7 +230,10 @@ function ResolveRow({ item, proposals, modelConfigured, onAsked, onResolved }: R
         {titles.map((r, i) => (
           <span key={r.id}>
             {i > 0 ? ", " : ""}
-            <Link to={`/cook/recipes/${r.id}`} className={`rounded-sm underline ${focusRing}`}>
+            <Link
+              to={`/cook/recipes/${r.id}`}
+              className={`${tapTarget} rounded-sm underline ${focusRing}`}
+            >
               {r.title}
             </Link>
           </span>

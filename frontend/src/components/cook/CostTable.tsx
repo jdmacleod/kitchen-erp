@@ -116,7 +116,10 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
   const table = useRef<HTMLDivElement>(null);
   const pins = new Map(recipe.pins.map((p) => [p.name_norm, p]));
 
-  /** Focus the first `selector` in a row after `lineId`: the next line that needs one. */
+  /**
+   * Focus the first `selector` in a row after `lineId` (the recipe line's id):
+   * the next line that needs one.
+   */
   const focusNext = (lineId: string, selector: string) => {
     const rows = [...(table.current?.querySelectorAll<HTMLElement>("[data-line-id]") ?? [])];
     const index = rows.findIndex((r) => r.dataset.lineId === lineId);
@@ -167,9 +170,12 @@ export function CostTable({ cost, recipe }: { cost: RecipeCost; recipe: Recipe }
           </div>
         </div>
         <div role="rowgroup" className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          {/* Keyed by the recipe line, not the cost line: each decision and pin
+              recomputes the cost, whose lines come back with new ids, and rows
+              keyed by those remount and drop the keyboard focus. */}
           {cost.lines.map((line) => (
             <CostRow
-              key={line.id}
+              key={line.line.id}
               line={line}
               staleAfterDays={cost.stale_after_days}
               recipeId={recipe.id}
@@ -207,7 +213,7 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
       className={`grid gap-x-3 gap-y-1 px-3 py-3 lg:items-start lg:py-2 ${columns}`}
       data-testid="cost-row"
       data-status={line.status}
-      data-line-id={line.id}
+      data-line-id={line.line.id}
     >
       {/* Line: the text as written, in monospace, like a receipt's. */}
       <div role="cell" className="min-w-0 font-mono text-xs leading-5 break-words lg:text-sm">
@@ -327,13 +333,13 @@ function IngredientCell({ line, focusNext }: { line: CostLine; focusNext: RowPro
     rawName,
     onResolved: (decision) => {
       notice.show({ tone: "success", message: resolvedSentence(rawName, decision) });
-      focusNext(line.id, "[role='combobox']");
+      focusNext(line.line.id, "[role='combobox']");
     },
   });
   return (
     <>
       <DecisionPicker
-        id={`pick-${line.id}`}
+        id={`pick-${line.line.id}`}
         hideLabel
         rawName={rawName}
         decide={decide}
@@ -405,7 +411,7 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
     <div className="flex flex-col gap-1">
       {picking ? (
         <PinPicker
-          id={`pin-${line.id}`}
+          id={`pin-${line.line.id}`}
           ingredientId={ingredientId}
           ingredientName={ingredientName}
           disabled={busy}
@@ -417,7 +423,7 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
               {
                 onSuccess: () => {
                   setPicking(false);
-                  focusNext(line.id, "[data-pin]");
+                  focusNext(line.line.id, "[data-pin]");
                 },
                 onError: (e) => {
                   setPicking(false);
@@ -449,7 +455,7 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
 
 /** The row states, each in words (10, Row states; UI-7.9). */
 function RowWords({ line }: { line: CostLine }) {
-  const link = `rounded-sm font-medium underline ${focusRing}`;
+  const link = `${tapTarget} rounded-sm font-medium underline ${focusRing}`;
   switch (line.status) {
     case "unmapped":
       return <span className={muted}>Needs an ingredient</span>;

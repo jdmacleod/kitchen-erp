@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-import { controlsUnder44, expectNoSidewaysScroll, login, nextTag } from "./helpers";
+import {
+  controlsUnder44,
+  expectNoSidewaysScroll,
+  firstFocusOutlines,
+  focusedOutline,
+  login,
+  nextTag,
+} from "./helpers";
 
 // Names carry a per-run, per-worker stamp: repeated runs never collide on the
 // case-insensitive unique index, and neither do the five projects this spec
@@ -124,4 +131,47 @@ test("the phone shell shows the tab bar and every control is a 44px target", asy
     await expect(open).toBeHidden();
   }
   expect(small, "controls under 44px").toEqual([]);
+});
+
+/**
+ * The keyboard focus ring, app-wide (CLAUDE.md, UI conventions): Tab to the
+ * first controls in main on a page from each section and each draws a 2px solid
+ * outline; a mouse press focuses a button and draws none. Tailwind 4's
+ * outline-none once left the shared ring computing to no outline at all.
+ */
+test("Tab draws a 2px solid focus ring across the app, and a mouse press draws none", async ({
+  page,
+}) => {
+  await login(page);
+  const ring = { visible: true, style: "solid", width: "2px" };
+  for (const path of [
+    "/",
+    "/shop/purchases",
+    "/catalog/products",
+    "/catalog/vendors",
+    "/cook/recipes",
+  ]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const outlines = await firstFocusOutlines(page, "main", 3);
+    expect(outlines.length, `${path}: controls in main took focus`).toBeGreaterThan(0);
+    for (const outline of outlines)
+      expect(outline, `${path}: ${outline.label}`).toMatchObject(ring);
+  }
+
+  // A mouse press focuses the button without :focus-visible, so no ring. The
+  // pointer leaves before it lifts, so nothing is clicked.
+  await page.goto("/catalog/products");
+  const button = page.getByRole("main").getByRole("button").first();
+  await expect(button).toBeVisible();
+  await button.hover();
+  await page.mouse.down();
+  const pressed = await focusedOutline(page, "main");
+  await page.mouse.move(0, 0);
+  await page.mouse.up();
+  expect(pressed, "the press focused the button, with no ring").toMatchObject({
+    inScope: true,
+    visible: false,
+    style: "none",
+  });
 });

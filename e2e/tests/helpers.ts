@@ -134,3 +134,95 @@ export async function controlsUnder44(page: Page, scope: string): Promise<string
     return found;
   }, scope);
 }
+
+export interface FocusOutline {
+  label: string;
+  style: string;
+  width: string;
+  /** Whether the element matches :focus-visible. */
+  visible: boolean;
+  inScope: boolean;
+}
+
+/** The focused element's computed outline, and whether it is under `scope`. */
+export async function focusedOutline(page: Page, scope = "body"): Promise<FocusOutline> {
+  return page.evaluate((scope) => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el || el === document.body)
+      return { label: "<body>", style: "", width: "", visible: false, inScope: false };
+    const style = getComputedStyle(el);
+    return {
+      label: `<${el.tagName.toLowerCase()}> "${(el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 40)}"`,
+      style: style.outlineStyle,
+      width: style.outlineWidth,
+      visible: el.matches(":focus-visible"),
+      inScope: el.closest(scope) !== null,
+    };
+  }, scope);
+}
+
+/** Tabs from the top of the page and returns the outlines of the first `count` controls under `scope`. */
+export async function firstFocusOutlines(
+  page: Page,
+  scope: string,
+  count: number,
+  maxTabs = 80,
+): Promise<FocusOutline[]> {
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  const found: FocusOutline[] = [];
+  for (let i = 0; i < maxTabs && found.length < count; i++) {
+    await page.keyboard.press("Tab");
+    const ring = await focusedOutline(page, scope);
+    if (ring.inScope) found.push(ring);
+  }
+  return found;
+}
+
+/**
+ * Tabs through the page from the top and returns every control under `scope`
+ * that took focus without a visible focus indicator, described for the failure
+ * message. Focus arrives by the Tab key, so `:focus-visible` applies exactly as
+ * it does for a keyboard user. An indicator is a non-zero outline that is not
+ * `none`, or a box shadow (the ring utilities draw one).
+ */
+export async function focusRingsMissing(
+  page: Page,
+  scope: string,
+  maxTabs = 150,
+): Promise<string[]> {
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    window.scrollTo(0, 0);
+  });
+  const missing: string[] = [];
+  const seen = new Set<string>();
+  let inside = 0;
+  for (let i = 0; i < maxTabs; i++) {
+    await page.keyboard.press("Tab");
+    const found = await page.evaluate((scope) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (!el || el === document.body) return { key: "", inScope: false, ringed: true, label: "" };
+      if (!el.dataset.e2eFocusKey) el.dataset.e2eFocusKey = String(Math.random());
+      const style = getComputedStyle(el);
+      const outline = style.outlineStyle !== "none" && parseFloat(style.outlineWidth) > 0;
+      const shadow = style.boxShadow !== "none";
+      return {
+        key: el.dataset.e2eFocusKey,
+        inScope: el.closest(scope) !== null,
+        ringed: outline || shadow,
+        label: `<${el.tagName.toLowerCase()}> "${(el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 40)}"`,
+      };
+    }, scope);
+    if (!found.key) continue;
+    if (seen.has(found.key)) break; // back to the start
+    seen.add(found.key);
+    if (!found.inScope) {
+      if (inside > 0) break; // past the end of the scope
+      continue;
+    }
+    inside += 1;
+    if (!found.ringed) missing.push(found.label);
+  }
+  if (inside === 0) missing.push(`nothing under ${scope} took focus`);
+  return missing;
+}

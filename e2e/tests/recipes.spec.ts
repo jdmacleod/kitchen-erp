@@ -156,7 +156,13 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
   const names = await rows.evaluateAll((els) =>
     els.map((el) => el.getAttribute("data-resolve-row") ?? ""),
   );
-  const name = names.find((n) => !LEAVE_UNRESOLVED.has(n));
+  // The curry's names are cook-acceptance.spec.ts's to resolve, from the keyboard.
+  const curry = await rows.evaluateAll((els) =>
+    els
+      .filter((el) => el.textContent?.includes("Thai green curry"))
+      .map((el) => el.getAttribute("data-resolve-row") ?? ""),
+  );
+  const name = names.find((n) => !LEAVE_UNRESOLVED.has(n) && !curry.includes(n));
   expect(name, "a queued name no other spec relies on").toBeTruthy();
   const row = page.locator(`[data-resolve-row="${name}"]`);
   await expect(row).toContainText(/in \d+ recipes?:/);

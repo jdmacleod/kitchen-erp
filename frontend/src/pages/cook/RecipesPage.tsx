@@ -122,7 +122,7 @@ export function RecipesPage() {
           {waiting.title} ·{" "}
           <Link
             to={waiting.action_route}
-            className={`rounded-sm font-medium underline ${focusRing}`}
+            className={`${tapTarget} rounded-sm font-medium underline ${focusRing}`}
           >
             {waiting.action_label}
           </Link>

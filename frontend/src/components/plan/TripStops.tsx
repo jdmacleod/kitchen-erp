@@ -5,7 +5,7 @@ import { formatMoney, mul } from "../../lib/decimal";
 import { formatDateTime, formatKm, formatMinutes, formatTime } from "../../lib/format";
 import { navigateHref } from "../../lib/navigateLink";
 import { Badge, Disclosure } from "../catalog/fields";
-import { Button, secondaryLinkClass, sectionHeading } from "../ui";
+import { Button, focusRing, secondaryLinkClass, sectionHeading, tapTarget } from "../ui";
 
 interface TripStopsProps {
   variant: Variant;
@@ -22,6 +22,8 @@ interface TripStopsProps {
 }
 
 const muted = "text-neutral-600 dark:text-neutral-400";
+/** A text link in a stop's rows: a 44px target below lg, plain inline text at lg. */
+const stopLink = `${tapTarget} rounded-sm underline ${focusRing}`;
 
 /** The leg's minutes with the traffic multiplier the planner applied, for display. */
 export function legMinutes(stop: Pick<Stop, "leg_seconds" | "multiplier">): string {
@@ -130,7 +132,7 @@ function StopBody({
             className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
           >
             <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-              <Link to={`/catalog/products/${item.product_id}`} className="rounded-sm underline">
+              <Link to={`/catalog/products/${item.product_id}`} className={stopLink}>
                 {item.product_name}
               </Link>
               <span className={`tabular-nums ${muted}`}>
@@ -164,7 +166,7 @@ function StopBody({
           {stop.purchase_id ? (
             <>
               {" · "}
-              <Link to={`/shop/purchases/${stop.purchase_id}`} className="rounded-sm underline">
+              <Link to={`/shop/purchases/${stop.purchase_id}`} className={stopLink}>
                 Open the purchase
               </Link>
             </>
