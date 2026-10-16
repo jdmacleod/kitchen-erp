@@ -2,6 +2,8 @@
 
 Rounding rule (the only one in the price book): arithmetic in a 28-digit Decimal
 context; the normalized unit price is quantized to six places, ROUND_HALF_EVEN.
+It is defined once, in ``price_rounding.unit_price``, so read models can use it
+without importing this module.
 
 Recipe cost snapshots (07, 3D) are derived from these prices, so the paths that
 change what qualifies, or how a price normalizes, hand the change on to
