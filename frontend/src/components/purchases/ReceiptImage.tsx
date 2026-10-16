@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { receiptImageUrl } from "../../api/ingest";
 import { focusRing } from "../ui";
 
@@ -10,10 +10,10 @@ interface ReceiptImageProps {
   className?: string;
   /** Make the image a link that opens the full receipt; the fallback is never a link. */
   link?: { label: string };
-  /** Inline size, for a zoomed image wider than its frame. */
-  style?: CSSProperties;
   /** Dragging pans the frame around a zoomed image, so the browser's own drag is off. */
   draggable?: boolean;
+  /** Called once the image has loaded, so anything drawn over it can wait for it. */
+  onLoad?: () => void;
 }
 
 /**
@@ -26,8 +26,8 @@ export function ReceiptImage({
   width,
   className = "",
   link,
-  style,
   draggable,
+  onLoad,
 }: ReceiptImageProps) {
   // Remembered per image, so a new receipt gets its own attempt; `attempt`
   // remounts the <img> for Try again (an error response is not cached).
@@ -63,8 +63,8 @@ export function ReceiptImage({
       src={receiptImageUrl(documentId, width)}
       alt={alt}
       onError={() => setFailedFor(documentId)}
+      onLoad={onLoad}
       className={className}
-      style={style}
       draggable={draggable}
     />
   );

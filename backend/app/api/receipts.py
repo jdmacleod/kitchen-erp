@@ -24,13 +24,15 @@ from app.schemas.receipts import (
     ReceiptDocumentOut,
     ReceiptRemovedOut,
     ReceiptUploadOut,
+    RowBoxesOut,
+    RowBoxOut,
     StageResultOut,
     UploadBatchCreate,
     UploadBatchList,
     UploadBatchOut,
     UploadBatchSummaryOut,
 )
-from app.services import ingest, receipt_images, removal, upload_batches
+from app.services import ingest, receipt_images, removal, row_boxes, upload_batches
 
 router = APIRouter(tags=["receipts"])
 
@@ -165,6 +167,25 @@ def _summary(summary: upload_batches.BatchSummary) -> UploadBatchSummaryOut:
 @router.get("/receipts/{document_id}", response_model=ReceiptDocumentOut)
 async def get_receipt(document_id: uuid.UUID, _: CurrentUser, db: DbSession) -> ReceiptDocumentOut:
     return ReceiptDocumentOut.from_model(await ingest.get_document(db, document_id))
+
+
+@router.get("/purchases/{purchase_id}/row-boxes", response_model=RowBoxesOut)
+async def get_row_boxes(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> RowBoxesOut:
+    """Where each line's printed row sits on the receipt photo (04, 2S; issue 380).
+
+    Found by a local Tesseract pass after reading. A line whose row was not
+    found, or not matched with confidence, is left out; so is every line until
+    the pass has run.
+    """
+    found = await row_boxes.boxes_for_purchase(db, purchase_id)
+    return RowBoxesOut(
+        width=found.width,
+        height=found.height,
+        lines=[
+            RowBoxOut(line_id=b.line_id, left=b.left, top=b.top, width=b.width, height=b.height)
+            for b in found.lines
+        ],
+    )
 
 
 _IMAGE_HEADERS = {"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"}

@@ -1,5 +1,5 @@
 {
-  "backend/app/cli.py": 1389,
+  "backend/app/cli.py": 1275,
   "backend/app/ingest/llm.py": 820,
   "backend/app/ingest/structure.py": 858,
   "backend/app/services/catalog.py": 1414,
@@ -12,7 +12,7 @@
   "backend/app/services/trip_planner.py": 1131,
   "frontend/src/api/catalog.ts": 936,
   "frontend/src/api/purchases.ts": 892,
-  "frontend/src/components/purchases/ReviewPurchase.tsx": 1832,
+  "frontend/src/components/purchases/ReviewPurchase.tsx": 1823,
   "frontend/src/pages/catalog/ProductReviewPage.tsx": 1342,
   "frontend/src/pages/geo/MapPage.tsx": 1145,
   "frontend/src/pages/geo/VendorDetailPage.tsx": 1074,
