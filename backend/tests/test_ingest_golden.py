@@ -2,9 +2,10 @@
 
 The text reader and the header total rule moved out of the stages into
 ``app.ingest.readers`` so the reading benchmark measures the same code the
-pipeline runs. This test pins what the ``header`` and ``lines`` stages write,
-and the model requests they make, for every fixture, so a refactor of the
-reading path cannot change either without a failing test.
+pipeline runs. This test pins what the ``ocr``, ``header`` and ``lines`` stages
+write (the OCR text as a digest), and the model requests they make, for every
+fixture, so a refactor of the reading path cannot change either without a
+failing test.
 
 Regenerate only on purpose, when a change is meant to alter stage output:
 ``KERP_UPDATE_GOLDEN=1 uv run pytest tests/test_ingest_golden.py``. Review the
@@ -83,8 +84,11 @@ async def test_stage_outputs_match_golden(
     _, job = await upload_fixture(admin_client, fixture)
     await run_job(job["id"])
     outputs = await stage_outputs(admin_client, job["id"])
+    ocr = outputs["ocr"]
+    assert ocr["text"] == fixture.ocr_text
     actual = _scrub(
         {
+            "ocr": {**ocr, "text": _digest(ocr["text"])},
             "header": outputs["header"],
             "lines": outputs["lines"],
             "requests": [_request_record(r) for r in transport.requests],

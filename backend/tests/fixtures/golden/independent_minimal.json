@@ -164,6 +164,11 @@
     },
     "rules_version": 1
   },
+  "ocr": {
+    "chars": 276,
+    "skipped": [],
+    "text": "dminbdbhkafjkiff"
+  },
   "requests": [
     {
       "messages_digest": "anmiomjcnfjoghoc",

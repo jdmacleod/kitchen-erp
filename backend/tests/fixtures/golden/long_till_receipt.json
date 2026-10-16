@@ -1255,6 +1255,11 @@
     "rules_version": 1,
     "unread_parts": []
   },
+  "ocr": {
+    "chars": 1797,
+    "skipped": [],
+    "text": "kgikapodgemfgffn"
+  },
   "requests": [
     {
       "messages_digest": "pnliijoelhpgdbmd",
