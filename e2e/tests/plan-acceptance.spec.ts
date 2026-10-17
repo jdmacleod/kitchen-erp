@@ -589,37 +589,45 @@ test(
     }
 
     // Straight segments kitchen -> 1 -> 2 -> kitchen, drawn on the map; nothing off them.
-    const frame = (await canvas.boundingBox())!;
-    const centre = async (pin: typeof kitchen) => {
-      const b = (await pin.boundingBox())!;
-      return { x: b.x + b.width / 2 - frame.x, y: b.y + b.height / 2 - frame.y };
-    };
-    const k = await centre(kitchen);
-    const one = await centre(stops.nth(0));
-    const two = await centre(stops.nth(1));
-    // A control: the kitchen-to-stop-1 segment moved 40px aside, where no line runs.
-    const dx = one.x - k.x;
-    const dy = one.y - k.y;
-    const length = Math.hypot(dx, dy);
-    const aside = (p: { x: number; y: number }) => ({
-      x: p.x - (dy / length) * 40,
-      y: p.y + (dx / length) * 40,
-    });
+    // The map fits the trip into view after the pins first appear, so the pins'
+    // places are read again on every look: read once, they could be where the
+    // camera was before it moved, and every sample then misses the line.
     await expect
-      .poll(async () => {
-        const [first, second, back, off] = await darkAlong(
-          page,
-          await canvas.screenshot(),
-          frame.width,
-          [
-            { a: k, b: one },
-            { a: one, b: two },
-            { a: two, b: k },
-            { a: aside(k), b: aside(one) },
-          ],
-        );
-        return first > 0.6 && second > 0.6 && back > 0.6 && off < 0.2;
-      })
+      .poll(
+        async () => {
+          const frame = (await canvas.boundingBox())!;
+          const centre = async (pin: typeof kitchen) => {
+            const b = (await pin.boundingBox())!;
+            return { x: b.x + b.width / 2 - frame.x, y: b.y + b.height / 2 - frame.y };
+          };
+          const k = await centre(kitchen);
+          const one = await centre(stops.nth(0));
+          const two = await centre(stops.nth(1));
+          // A control: the kitchen-to-stop-1 segment moved 40px aside, where no line runs.
+          const dx = one.x - k.x;
+          const dy = one.y - k.y;
+          const length = Math.hypot(dx, dy);
+          const aside = (p: { x: number; y: number }) => ({
+            x: p.x - (dy / length) * 40,
+            y: p.y + (dx / length) * 40,
+          });
+          const [first, second, back, off] = await darkAlong(
+            page,
+            await canvas.screenshot(),
+            frame.width,
+            [
+              { a: k, b: one },
+              { a: one, b: two },
+              { a: two, b: k },
+              { a: aside(k), b: aside(one) },
+            ],
+          );
+          return first > 0.6 && second > 0.6 && back > 0.6 && off < 0.2;
+        },
+        // CI draws WebGL in software, and each look takes and decodes a
+        // screenshot, so the default 5 s allowed only a few looks there.
+        { timeout: 20_000 },
+      )
       .toBe(true);
 
     // Selecting a stop's pin marks the pin pressed and its stop selected.

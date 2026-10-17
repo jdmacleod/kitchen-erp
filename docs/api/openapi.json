@@ -1970,7 +1970,8 @@
               "usda_link",
               "ingredient_merge",
               "product_name",
-              "product_brand"
+              "product_brand",
+              "product_pack"
             ],
             "title": "Kind",
             "type": "string"
@@ -2184,6 +2185,28 @@
               }
             ],
             "title": "Quality Rating"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "stale": {
             "title": "Stale",
@@ -3851,6 +3874,28 @@
           "qty": {
             "title": "Qty",
             "type": "string"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "series": {
             "title": "Series",
@@ -5580,6 +5625,28 @@
             "title": "Product Name",
             "type": "string"
           },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
+          },
           "source": {
             "title": "Source",
             "type": "string"
@@ -6013,6 +6080,27 @@
           }
         },
         "title": "IngredientUpdate",
+        "type": "object"
+      },
+      "IngredientUsdaOut": {
+        "additionalProperties": false,
+        "description": "Null ``reference`` when the ingredient has no preferred USDA food in the loaded release.",
+        "properties": {
+          "reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsdaReferenceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "IngredientUsdaOut",
         "type": "object"
       },
       "IsOpenOut": {
@@ -6627,6 +6715,28 @@
             "title": "Qty",
             "type": "string"
           },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
+          },
           "stale": {
             "title": "Stale",
             "type": "boolean"
@@ -6837,6 +6947,24 @@
               }
             ],
             "title": "Product Id"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           }
         },
         "title": "LineDecision",
@@ -7358,6 +7486,24 @@
             },
             "title": "Suggestions",
             "type": "array"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           },
           "unit": {
             "anyOf": [
@@ -8379,6 +8525,11 @@
           },
           "spend": {
             "title": "Spend",
+            "type": "string"
+          },
+          "supply_spend": {
+            "default": "0",
+            "title": "Supply Spend",
             "type": "string"
           },
           "visits": {
@@ -9825,7 +9976,8 @@
               "no_density",
               "unknown_measure",
               "no_pack",
-              "no_qty"
+              "no_qty",
+              "no_bunch_weight"
             ],
             "title": "Status",
             "type": "string"
@@ -9970,7 +10122,8 @@
               "no_density",
               "unknown_measure",
               "no_pack",
-              "no_qty"
+              "no_qty",
+              "no_bunch_weight"
             ],
             "title": "Status",
             "type": "string"
@@ -10170,6 +10323,17 @@
           "qty": {
             "title": "Qty",
             "type": "string"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "source": {
             "enum": [
@@ -10399,6 +10563,28 @@
               }
             ],
             "title": "Quality Rating"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "stale": {
             "title": "Stale",
@@ -13876,6 +14062,17 @@
             ],
             "title": "Subtotal"
           },
+          "supply_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Total"
+          },
           "tax": {
             "anyOf": [
               {
@@ -14042,6 +14239,24 @@
           "raw_text_norm": {
             "title": "Raw Text Norm",
             "type": "string"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           },
           "vendor_id": {
             "format": "uuid",
@@ -16250,6 +16465,79 @@
         "title": "ResolveRecipe",
         "type": "object"
       },
+      "RowBoxOut": {
+        "additionalProperties": false,
+        "description": "Where a line's printed row sits on the receipt photo, in the photo's pixels.",
+        "properties": {
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "left": {
+            "title": "Left",
+            "type": "integer"
+          },
+          "line_id": {
+            "format": "uuid",
+            "title": "Line Id",
+            "type": "string"
+          },
+          "top": {
+            "title": "Top",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "line_id",
+          "left",
+          "top",
+          "width",
+          "height"
+        ],
+        "title": "RowBoxOut",
+        "type": "object"
+      },
+      "RowBoxesOut": {
+        "additionalProperties": false,
+        "description": "The rows found on the receipt photo (04, 2S). ``width`` and ``height`` are\nthe upright photo's size the boxes are measured in; both are null, and\n``lines`` empty, when no boxes have been found.",
+        "properties": {
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/RowBoxOut"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "title": "RowBoxesOut",
+        "type": "object"
+      },
       "RowError": {
         "additionalProperties": false,
         "properties": {
@@ -18065,6 +18353,55 @@
         "title": "SummaryStop",
         "type": "object"
       },
+      "SupplyCategoryList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SupplyCategoryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SupplyCategoryList",
+        "type": "object"
+      },
+      "SupplyCategoryOut": {
+        "additionalProperties": false,
+        "description": "One kitchen supply category (2T), with what it covers.",
+        "properties": {
+          "examples": {
+            "title": "Examples",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "wraps",
+              "storage",
+              "cooking",
+              "filters",
+              "fuel"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "examples"
+        ],
+        "title": "SupplyCategoryOut",
+        "type": "object"
+      },
       "Trade": {
         "additionalProperties": false,
         "description": "The marginal trade against ``balanced``: more (positive) or less money\nout of pocket (items plus mileage), and more or fewer minutes.",
@@ -19017,6 +19354,50 @@
           "ingredient"
         ],
         "title": "UsdaDecisionOut",
+        "type": "object"
+      },
+      "UsdaReferenceOut": {
+        "additionalProperties": false,
+        "description": "An ingredient's preferred USDA food and its refuse (07, 3D; issue 282).",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "fdc_id": {
+            "title": "Fdc Id",
+            "type": "integer"
+          },
+          "refuse_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refuse Pct"
+          },
+          "yield_pct": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Yield Pct"
+          }
+        },
+        "required": [
+          "fdc_id",
+          "description",
+          "refuse_pct",
+          "yield_pct"
+        ],
+        "title": "UsdaReferenceOut",
         "type": "object"
       },
       "UsdaRelinkIn": {
@@ -23754,6 +24135,50 @@
         ]
       }
     },
+    "/api/v1/ingredients/{ingredient_id}/usda": {
+      "get": {
+        "description": "The preferred USDA food and its refuse, for the yield suggestion (07, 3D). 404 not_found.",
+        "operationId": "ingredient_usda_api_v1_ingredients__ingredient_id__usda_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ingredient_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Ingredient Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngredientUsdaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Ingredient Usda",
+        "tags": [
+          "ingredient vocabulary"
+        ]
+      }
+    },
     "/api/v1/listing-price-changes": {
       "get": {
         "operationId": "price_changes_api_v1_listing_price_changes_get",
@@ -27112,7 +27537,7 @@
     },
     "/api/v1/products/short-name": {
       "get": {
-        "description": "A product title as a short name: no brand in front, no pack size (#347).",
+        "description": "A product title as a short name: no brand in front, no pack size (#347); no\n\"bunch\" when the pack is in bunches (issue 371).",
         "operationId": "product_short_name_api_v1_products_short_name_get",
         "parameters": [
           {
@@ -27151,6 +27576,25 @@
               "default": false,
               "title": "Has Pack",
               "type": "boolean"
+            }
+          },
+          {
+            "description": "the pack's unit, if any",
+            "in": "query",
+            "name": "pack_unit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 16,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the pack's unit, if any",
+              "title": "Pack Unit"
             }
           }
         ],
@@ -28909,6 +29353,50 @@
         ]
       }
     },
+    "/api/v1/purchases/{purchase_id}/row-boxes": {
+      "get": {
+        "description": "Where each line's printed row sits on the receipt photo (04, 2S; issue 380).\n\nFound by a local Tesseract pass after reading. A line whose row was not\nfound, or not matched with confidence, is left out; so is every line until\nthe pass has run.",
+        "operationId": "get_row_boxes_api_v1_purchases__purchase_id__row_boxes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "purchase_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Purchase Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RowBoxesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Row Boxes",
+        "tags": [
+          "receipts"
+        ]
+      }
+    },
     "/api/v1/purchases/{purchase_id}/store-code-offer": {
       "get": {
         "description": "The store code the receipt printed, when review may offer to remember it (1F).",
@@ -30074,6 +30562,28 @@
         "summary": "Standard Ingredients",
         "tags": [
           "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/supply-categories": {
+      "get": {
+        "description": "The kitchen supply categories a line can be marked with, in order (04, 2T).",
+        "operationId": "supply_categories_api_v1_supply_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyCategoryList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Supply Categories",
+        "tags": [
+          "purchases"
         ]
       }
     },

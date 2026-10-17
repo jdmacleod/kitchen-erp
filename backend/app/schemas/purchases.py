@@ -8,11 +8,12 @@ from typing import Literal
 
 from pydantic import Field, model_validator
 
+from app.catalog.supplies import SupplyCategory
 from app.schemas.base import ApiModel, DecimalStr
 from app.schemas.catalog import Categorized, IngredientCreate, IngredientMatch, ProductCreate
 
 ObservationSource = Literal["receipt", "manual", "shelf", "import", "listing"]
-NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty"]
+NormStatus = Literal["ok", "no_density", "unknown_measure", "no_pack", "no_qty", "no_bunch_weight"]
 BridgeKind = Literal["none", "density", "density_override", "measure", "pack", "pack_count"]
 
 
@@ -72,6 +73,9 @@ class ObservationOut(ApiModel):
     qty: DecimalStr
     unit: str
     is_promo: bool
+    # Issue 381: the regular price when the receipt's row proves a saving already in
+    # `price`, which stays what was paid; null for every other price.
+    regular_price: DecimalStr | None = None
     source: ObservationSource
     # The vendor page a posted price came from (source = listing, 2L).
     listing_id: uuid.UUID | None = None
@@ -200,6 +204,8 @@ class LineOut(ApiModel):
     stored_in: Literal["room", "fridge", "freezer"] | None = None
     best_by: dt.date | None = None
     best_by_source: Literal["inferred", "printed", "person"] | None = None
+    # A kitchen supply's category (2T): set exactly when resolution is "supply".
+    supply_category: SupplyCategory | None = None
 
 
 class PurchaseLocationRef(ApiModel):
@@ -283,6 +289,8 @@ class PurchaseOut(ApiModel):
     removed_line_count: int | None = None
     # On a single receipt purchase that is not voided; null otherwise (04, 2S).
     reread: RereadState | None = None
+    # What its kitchen supply lines come to, less their savings (2T); null with none.
+    supply_total: DecimalStr | None = None
 
 
 class StoreCodeOfferOut(ApiModel):
@@ -326,13 +334,15 @@ class LineDecision(ApiModel):
     product_id: uuid.UUID | None = None
     ignore: bool = False
     product: ProductCreate | None = None  # create inline, then choose it
+    # A kitchen supply of this category (2T): spend only, no product and no price.
+    supply_category: SupplyCategory | None = None
     accepted_kind: Literal["alias", "fuzzy", "llm", "similar", "code"] | None = None
 
     @model_validator(mode="after")
     def _one(self):
-        given = sum(1 for x in (self.product_id, self.product) if x is not None) + int(self.ignore)
-        if given != 1:
-            raise ValueError("give exactly one of product_id, product, or ignore")
+        chosen = (self.product_id, self.product, self.supply_category)
+        if sum(1 for x in chosen if x is not None) + int(self.ignore) != 1:
+            raise ValueError("give exactly one of product_id, product, ignore, or supply_category")
         return self
 
 
@@ -458,17 +468,31 @@ class QueueApply(ApiModel):
     raw_text_norm: str
     product_id: uuid.UUID | None = None
     ignore: bool = False
+    supply_category: SupplyCategory | None = None
     line_ids: list[uuid.UUID] | None = None
 
     @model_validator(mode="after")
     def _one(self):
-        if self.ignore == (self.product_id is not None):
-            raise ValueError("give a product_id or ignore, not both")
+        given = (self.product_id is not None) + self.ignore + (self.supply_category is not None)
+        if given != 1:
+            raise ValueError("give exactly one of product_id, ignore, or supply_category")
         return self
 
 
 class QueueApplied(ApiModel):
     applied: int
+
+
+class SupplyCategoryOut(ApiModel):
+    """One kitchen supply category (2T), with what it covers."""
+
+    key: SupplyCategory
+    label: str
+    examples: str
+
+
+class SupplyCategoryList(ApiModel):
+    items: list[SupplyCategoryOut]
 
 
 class ModelNaming(ApiModel):

@@ -9,7 +9,8 @@ from app.units import SEED_UNITS, convert_between, units_by_code
 
 UNITS = units_by_code()
 BY_DIM = {
-    dim: [u.code for u in SEED_UNITS if u.dimension == dim] for dim in ("mass", "volume", "count")
+    dim: [u.code for u in SEED_UNITS if u.dimension == dim]
+    for dim in ("mass", "volume", "count", "bunch")
 }
 TOL = Decimal("1e-9")
 

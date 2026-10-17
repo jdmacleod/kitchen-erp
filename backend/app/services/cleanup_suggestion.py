@@ -8,7 +8,13 @@ from dataclasses import dataclass
 from typing import Literal
 
 Kind = Literal[
-    "category", "ingredient_name", "usda_link", "ingredient_merge", "product_name", "product_brand"
+    "category",
+    "ingredient_name",
+    "usda_link",
+    "ingredient_merge",
+    "product_name",
+    "product_brand",
+    "product_pack",
 ]
 # ``sure``: a rule settled it, so "Accept these N" may apply it with the rest.
 # ``guess``: a search or a resemblance found it; accepted one at a time.

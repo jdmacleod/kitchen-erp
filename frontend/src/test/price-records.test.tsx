@@ -148,4 +148,25 @@ describe("price records on the product page", () => {
     const list = await screen.findByRole("list", { name: "Price records" });
     expect(within(list).getByText(/Posted online, not counted in cheapest/)).toBeInTheDocument();
   });
+
+  it("shows a receipt price's regular price beside what was paid (issue 381)", async () => {
+    const paid = {
+      ...fromPurchase,
+      source: "receipt" as const,
+      price: "2.99",
+      is_promo: true,
+      regular_price: "3.49",
+    };
+    mockApi({
+      ...routes({ voided: new Set() }),
+      "GET /price-observations": () =>
+        jsonResponse(200, { items: [paid, shelf], next_cursor: null }),
+    });
+    renderApp(`/catalog/products/${flourProductId}`);
+    const list = await screen.findByRole("list", { name: "Price records" });
+    const [sale, plain] = await within(list).findAllByTestId("price-record");
+    expect(sale).toHaveTextContent("$2.99");
+    expect(within(sale).getByTestId("regular-price")).toHaveTextContent("regular $3.49");
+    expect(within(plain).queryByTestId("regular-price")).not.toBeInTheDocument();
+  });
 });

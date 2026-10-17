@@ -3,7 +3,7 @@ import type { PricePoint } from "../../api/pricebook";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { SERIES_COLOURS } from "../../lib/palette";
-import { formatUnitPrice } from "./PriceAge";
+import { formatUnitPrice, regularText } from "./PriceAge";
 
 // Six strokes, each paired with its own dash pattern and marker shape, so
 // series are told apart without colour.
@@ -27,6 +27,18 @@ interface PriceHistoryChartProps {
 }
 
 /**
+ * The points one chart draws, all in one unit: the normalized ones, or, for a product
+ * only ever priced per unweighed bunch, its per-bunch ones (issue 371).
+ */
+export function chartable<
+  T extends { norm_status: string | null; display_unit_price: string | null },
+>(points: T[]): T[] {
+  const priced = points.filter((p) => p.display_unit_price !== null);
+  const normalized = priced.filter((p) => p.norm_status === "ok");
+  return normalized.length ? normalized : priced.filter((p) => p.norm_status === "no_bunch_weight");
+}
+
+/**
  * Price per unit (per lb, oz or fl oz, as the server shows it) over time, one line per series (a chain-scoped
  * vendor or a single location), drawn with inline SVG. Promotional points get
  * a diamond marker and the word "sale" next to it, never colour alone.
@@ -34,7 +46,7 @@ interface PriceHistoryChartProps {
  */
 export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
   const chart = useMemo(() => {
-    const usable = points.filter((p) => p.norm_status === "ok" && p.display_unit_price !== null);
+    const usable = chartable(points);
     const skipped = points.length - usable.length;
     if (usable.length === 0)
       return {
@@ -155,7 +167,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
               {s.points.map((p) => (
                 <g key={p.observation_id} data-testid={p.is_promo ? "promo-point" : "price-point"}>
                   <title>
-                    {`${s.name}: ${formatUnitPrice(p.display_unit_price, p.display_unit)} on ${formatDate(p.observed_at)}${p.is_promo ? " (sale)" : ""}`}
+                    {`${s.name}: ${formatUnitPrice(p.display_unit_price, p.display_unit)} on ${formatDate(p.observed_at)}${p.is_promo ? ` (sale${regularText(p.regular_display_unit_price, p.display_unit)})` : ""}`}
                   </title>
                   {p.is_promo ? (
                     <>

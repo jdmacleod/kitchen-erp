@@ -1,4 +1,5 @@
 import { formatAge } from "../../api/pricebook";
+import { formatMoney } from "../../lib/decimal";
 import { Badge } from "../catalog/fields";
 
 /**
@@ -13,7 +14,9 @@ export function formatUnitPrice(
   if (!price || !unit) return "—";
   // The server's digits as sent: it already chose 2 or 3 places ("0.680" stays "0.680").
   const money = price.startsWith("-") ? `-$${price.slice(1)}` : `$${price}`;
-  return unit === "each" ? `${money} each` : `${money}/${unit}`;
+  if (unit === "each") return `${money} each`;
+  // A price per bunch nothing has weighed yet (issue 371): "$1.29 a bunch".
+  return unit === "bunch" ? `${money} a bunch` : `${money}/${unit}`;
 }
 
 interface PriceAgeProps {
@@ -42,4 +45,36 @@ export function QualityText({ rating }: { rating: number | null }) {
 /** "sale" for a promotional observation, in words. */
 export function PromoBadge({ promo }: { promo: boolean }) {
   return promo ? <Badge tone="good">sale</Badge> : null;
+}
+
+/**
+ * "regular $3.49" beside what was paid, when the receipt proved a saving already in
+ * the price (issue 381). Information, so neutral; the sale badge carries the olive.
+ * With `unit` it reads as a unit price ("regular $3.49/lb"), otherwise as money.
+ */
+export function RegularPrice({
+  price,
+  unit,
+  className = "",
+}: {
+  price: string | null | undefined;
+  unit?: string | null;
+  className?: string;
+}) {
+  if (!price) return null;
+  const text = unit === undefined ? formatMoney(price) : formatUnitPrice(price, unit);
+  return (
+    <span
+      className={`text-xs text-neutral-600 dark:text-neutral-400 ${className}`}
+      data-testid="regular-price"
+    >
+      regular {text}
+    </span>
+  );
+}
+
+/** The same words for a tooltip or label: ", regular $3.49/lb", or "". */
+export function regularText(price: string | null | undefined, unit?: string | null): string {
+  if (!price) return "";
+  return `, regular ${unit === undefined ? formatMoney(price) : formatUnitPrice(price, unit)}`;
 }

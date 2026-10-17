@@ -142,7 +142,7 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Receipt | Draft or reviewed purchase awaiting a location or commit; named by its store once one is set, so two from one day differ | "Finish the Tideline Market receipt from Sep 24" ("Finish the Sep 24 receipt" before a store is chosen) | Choose location / Review |
 | Careful look | A receipt draft held because its lines are far off its printed total (04, #121), in place of its Receipt row | "The Tideline Market receipt from Sep 24 needs a careful look" (the day alone before a store is chosen), detail "Its lines add up to 41.20, but the receipt says 12.85. The flagged lines are shown first." | Review |
 | Couldn't read | Failed ingest job (D4); drafts belonging to a failed job are not listed twice | "A receipt couldn't be read" | Open receipt (Retry and Enter by hand sit together on that page, G5) |
-| Identify | Unmatched lines on committed purchases, as one aggregate row (T6) | "23 receipt lines to identify" | Review lines → `/shop/receipts/identify` |
+| Identify | Unmatched lines on committed purchases, as one aggregate row (T6); ignored and kitchen supply lines (04, 2T) are not unmatched | "23 receipt lines to identify" | Review lines → `/shop/receipts/identify` |
 | Bridge | Products whose current observations failed to normalize (no density, unknown measure, no pack), one aggregate row (T7, #186); a product failing two ways counts once. The detail names the reason, or breaks the count down by reason when they differ | "71 products need a pack size before their prices compare" | Set packs / Add densities / Add measures / Review → `/catalog/bridges` |
 | Vendor suggestions | Pending `vendor_suggestion` rows, one aggregate row (03, 1F) | "7 vendor suggestions to review" | Review → `/catalog/vendors?suggestions=1` |
 | Link | Ingredients still To review against the standard list, one aggregate row (03, 1G) | "13 ingredients to link to the standard list" | Review → `/catalog/ingredients/link` |
@@ -167,6 +167,8 @@ API (T5): `GET /api/v1/inbox`.
 - **Freshness:** mutations that resolve an item invalidate the inbox, so it leaves without a manual refresh.
 
 The separate "Needs a bridge" and "To identify" nav items are removed; their pages remain, reached from inbox actions.
+
+Kitchen supplies (04, 2T, #262) add no section, route or inbox kind. A receipt line is marked a supply in review or on To identify, beside Ignore; the spend shows on the purchase page and in a location card's "Prices here" (10). Supplies stay inside Shop until a phase gives them products of their own.
 
 Phase 4 adds no inbox kind (17; Phase 4 review, 2026-10-12): a list, a claim, a plan or a stop is work a person chose, not something the system could not finish, so nothing in Plan feeds Needs you.
 

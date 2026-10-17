@@ -9,7 +9,6 @@ from fastapi import APIRouter, Query, status
 from fastapi.responses import JSONResponse
 
 from app.api.deps import CurrentUser, DbSession, Idempotency
-from app.core.config import get_settings
 from app.schemas.pricebook_views import (
     BrandScope,
     CheapestOut,
@@ -30,10 +29,6 @@ from app.schemas.purchases import (
     LineOut,
     LinesReplace,
     ManualPurchaseIn,
-    NameProductsIn,
-    NameProductsOut,
-    NamingAsked,
-    NamingList,
     NeedsBridgeItem,
     NeedsBridgeList,
     ObservationCreate,
@@ -42,9 +37,6 @@ from app.schemas.purchases import (
     PurchaseHeaderEdit,
     PurchaseList,
     PurchaseOut,
-    QueueApplied,
-    QueueApply,
-    QueueList,
     RecomputeOut,
     RememberCodeOut,
     RememberStoreCodeIn,
@@ -56,20 +48,19 @@ from app.schemas.purchases import (
 )
 from app.services import (
     catalog,
-    naming,
-    naming_model,
     new_products,
     pricebook,
     pricebook_views,
     product_same,
-    proposals,
     purchases,
+    regular_prices,
     removal,
     reread,
     resolution,
     review,
     spelling,
     store_codes,
+    supplies,
     unit_display,
     unit_switch,
     user_settings,
@@ -78,8 +69,9 @@ from app.services import (
 router = APIRouter(tags=["purchases"])
 
 
-def observation_out(o, mass: str | None = None) -> ObservationOut:
-    """An observation; ``mass`` is its ingredient's display weight unit (issue 245)."""
+def observation_out(o, mass: str | None = None, regular=None) -> ObservationOut:
+    """An observation; ``mass`` is its ingredient's display weight unit (issue 245),
+    ``regular`` its regular price when its receipt row proves one (issue 381)."""
     return ObservationOut(
         id=o.id,
         product={
@@ -113,7 +105,8 @@ def observation_out(o, mass: str | None = None) -> ObservationOut:
         price=o.price,
         qty=o.qty,
         unit=o.unit,
-        is_promo=o.is_promo,
+        is_promo=o.is_promo or regular is not None,
+        regular_price=regular.price if regular is not None else None,
         source=o.source,
         listing_id=o.listing_id,
         voided=o.void is not None,
@@ -167,8 +160,11 @@ async def list_observations(
         cursor=cursor,
     )
     masses = await unit_display.mass_units(db, {o.product.ingredient_id for o in rows})
+    found = await regular_prices.regular_prices(db, (o.id for o in rows))
     return ObservationList(
-        items=[observation_out(o, masses.get(o.product.ingredient_id)) for o in rows],
+        items=[
+            observation_out(o, masses.get(o.product.ingredient_id), found.get(o.id)) for o in rows
+        ],
         next_cursor=next_cursor,
     )
 
@@ -204,7 +200,8 @@ async def get_observation(
     observation_id: uuid.UUID, _: CurrentUser, db: DbSession
 ) -> ObservationOut:
     o = await pricebook.get_observation(db, observation_id)
-    return observation_out(o, await _observation_mass(db, o))
+    found = await regular_prices.regular_prices(db, [o.id])
+    return observation_out(o, await _observation_mass(db, o), found.get(o.id))
 
 
 @router.post("/price-observations/{observation_id}/void", response_model=ObservationOut)
@@ -316,6 +313,7 @@ async def purchase_out(
             stored_in=line.stored_in,  # type: ignore[arg-type]
             best_by=line.best_by,
             best_by_source=line.best_by_source,  # type: ignore[arg-type]
+            supply_category=line.supply_category,  # type: ignore[arg-type]
         )
         for line in purchase.lines
     ]
@@ -377,6 +375,7 @@ async def purchase_out(
         ),
         removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
         reread=await reread.state(db, purchase) if detail else None,  # type: ignore[arg-type]
+        supply_total=supplies.supply_total(purchase),
     )
 
 
@@ -568,6 +567,7 @@ async def resolve_line(
         line_id,
         product_id=product_id,
         ignore=payload.ignore,
+        supply_category=payload.supply_category,
         accepted_kind=payload.accepted_kind,
     )
     # Other queued lines with the new product's barcode resolve with it.
@@ -596,66 +596,6 @@ async def commit_purchase(purchase_id: uuid.UUID, user: CurrentUser, db: DbSessi
 @router.post("/purchases/{purchase_id}/reopen", response_model=PurchaseOut)
 async def reopen_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession) -> PurchaseOut:
     return await purchase_out(db, await resolution.reopen_purchase(db, purchase_id))
-
-
-@router.get("/to-identify", response_model=QueueList)
-async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
-    groups = await resolution.to_identify(db)
-    codes = await resolution.queue_codes(db, groups)
-    return QueueList(
-        items=[
-            {
-                "vendor": {"id": g["vendor_id"], "name": g["vendor_name"]},
-                "raw_text_norm": g["raw_text_norm"],
-                "line_count": g["line_count"],
-                "lines": g["lines"],
-                "code": codes.get((str(g["vendor_id"]), g["raw_text_norm"])),
-            }
-            for g in groups
-        ]
-    )
-
-
-@router.post("/to-identify/apply", response_model=QueueApplied)
-async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSession) -> QueueApplied:
-    n = await resolution.apply_to_identify(
-        db,
-        user,
-        vendor_id=payload.vendor_id,
-        raw_text_norm=payload.raw_text_norm,
-        product_id=payload.product_id,
-        ignore=payload.ignore,
-        line_ids=payload.line_ids,
-    )
-    return QueueApplied(applied=n)
-
-
-@router.get("/to-identify/naming", response_model=NamingList)
-async def naming_rows(_: CurrentUser, db: DbSession) -> NamingList:
-    """Every waiting group with a suggested product, for naming them in bulk (2I).
-    With NAMING_AUTO_SUGGEST on, the rows never asked about go to the model now (#387)."""
-    rows = await naming.naming_rows(db)
-    if get_settings().naming_auto_suggest:
-        await naming_model.queue_unasked(db, rows)
-    return NamingList(items=rows)
-
-
-@router.post("/to-identify/naming/suggest", response_model=NamingAsked)
-async def suggest_names(_: CurrentUser, db: DbSession) -> NamingAsked:
-    """Ask the model about the rows the wording couldn't name; the worker answers (N3)."""
-    return NamingAsked(queued=await naming.request_suggestions(db))
-
-
-@router.post("/to-identify/name-products", response_model=NameProductsOut)
-async def name_products(
-    payload: NameProductsIn, user: CurrentUser, db: DbSession
-) -> NameProductsOut:
-    """Create each confirmed row's product and identify its lines; each row stands alone."""
-    results = await naming.name_products(db, user, payload.rows)
-    # Proposals clipped before these products existed now see them (2P).
-    for product_id in dict.fromkeys(r["product_id"] for r in results if r.get("product_id")):
-        await proposals.rematch_pending(db, product_id)
-    return NameProductsOut(results=results)
 
 
 # --- price book views (2E) --------------------------------------------------
@@ -765,7 +705,8 @@ async def cheapest(
     )
     return CheapestOut(
         items=items,
-        unit=ingredient.canonical_unit,
+        # The pins' unit: the canonical one, or per bunch when nothing else is priced.
+        unit=items[0]["norm_unit"] if items else ingredient.canonical_unit,
         display_unit=items[0]["display_unit"] if items else None,
     )
 

@@ -13,6 +13,7 @@ import asyncio
 import os
 import signal
 import socket
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -32,6 +33,7 @@ from app.services import (
     recipes,
     reread,
     resolution,
+    row_boxes,
 )
 
 log = get_logger(__name__)
@@ -148,14 +150,18 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
     last_refresh = float("-inf")
     last_scan = float("-inf")
     last_guess = float("-inf")
+    unreadable_boxes: set[uuid.UUID] = set()
     while not stop.is_set():
         try:
             async with sessionmaker() as db:
                 ran = await run_once(db, locked_by=me)
-                # Receipts first, then a receipt read again (2S), then product
-                # work (1I), then one line for the naming pass (#88).
+                # Receipts first, then a receipt read again (2S), then the row
+                # boxes of one read receipt (issue 380), then product work (1I),
+                # then one line for the naming pass (#88).
                 if not ran:
                     ran = await reread.run_read_once(db, locked_by=me)
+                if not ran:
+                    ran = await row_boxes.run_once(db, unreadable_boxes)
                 if not ran:
                     ran = await product_jobs.run_once(db, locked_by=me)
                 if not ran:

@@ -248,9 +248,13 @@ async def product_short_name(
     title: str = Query(..., min_length=1, max_length=400),
     brand: str | None = Query(None, max_length=200),
     has_pack: bool = False,
+    pack_unit: str | None = Query(None, max_length=16, description="the pack's unit, if any"),
 ) -> ShortNameOut:
-    """A product title as a short name: no brand in front, no pack size (#347)."""
-    name = await product_short_names.suggest(db, title, brand, has_pack=has_pack)
+    """A product title as a short name: no brand in front, no pack size (#347); no
+    "bunch" when the pack is in bunches (issue 371)."""
+    name = await product_short_names.suggest(
+        db, title, brand, has_pack=has_pack, bunch_pack=pack_unit == "bunch"
+    )
     return ShortNameOut(name=name)
 
 

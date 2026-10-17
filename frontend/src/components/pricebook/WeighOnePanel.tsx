@@ -5,21 +5,26 @@ import { api, errorMessage } from "../../api/client";
 import { Alert, Button, Field } from "../ui";
 
 /**
- * "Weigh one" on a row whose pack is counted in pieces (issue 357). It saves the
- * ingredient's "each" measure, what one piece weighs or holds, once for the
- * ingredient. Every pack of N pieces under it is then priced through that
- * measure. Nothing is guessed: the person weighs one, or reads it from a label.
+ * "Weigh one" on a row whose pack is counted in pieces (issue 357), or "Weigh one
+ * bunch" on a row priced per bunch (issue 371). It saves the ingredient's "each" or
+ * "bunch" measure, what one piece or one bunch weighs or holds, once for the
+ * ingredient. Every pack of N pieces, or every bunch, under it is then priced
+ * through that measure. Nothing is guessed: the person weighs one, or reads it
+ * from a label.
  */
 export function WeighOnePanel({
   ingredientId,
   name,
   canonicalUnit,
+  measure = "each",
   onDone,
   onCancel,
 }: {
   ingredientId: string;
   name: string;
   canonicalUnit: CanonicalUnit;
+  /** The measure saved: one piece ("each") or one bunch. */
+  measure?: "each" | "bunch";
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -32,7 +37,7 @@ export function WeighOnePanel({
     mutationFn: () =>
       api(`/ingredients/${encodeURIComponent(ingredientId)}/measures`, {
         method: "POST",
-        body: { label: "each", canonical_qty: qty.trim(), source: "measured", confirmed: true },
+        body: { label: measure, canonical_qty: qty.trim(), source: "measured", confirmed: true },
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["price-book"] });
@@ -46,23 +51,30 @@ export function WeighOnePanel({
     setTried(true);
     if (valid) save.mutate();
   };
-  const verb = canonicalUnit === "ml" ? "holds" : "weighs";
+  const verb = canonicalUnit === "g" ? "weighs" : "holds";
+  const bunch = measure === "bunch";
+  const one = bunch ? `one bunch of ${name}` : `one ${name}`;
 
   return (
     <form
       onSubmit={submit}
-      aria-label={`What one ${name} ${verb}`}
+      aria-label={`What ${one} ${verb}`}
       className="flex flex-col gap-2 rounded-md border border-neutral-300 p-3 text-sm dark:border-neutral-700"
     >
       <p>
-        Packs of {name} are counted in pieces. Say what one {verb}, and every pack of it is priced
-        per {canonicalUnit}.
+        {bunch
+          ? `Bunches of ${name} compare only per bunch. Say what one bunch ${verb}, and every bunch of it is priced per ${canonicalUnit}.`
+          : `Packs of ${name} are counted in pieces. Say what one ${verb}, and every pack of it is priced per ${canonicalUnit}.`}
       </p>
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <Field
           id={`${id}-qty`}
-          label={`One ${name} ${verb} (${canonicalUnit})`}
-          hint="Weigh one, or read it from a label."
+          label={`${bunch ? "One bunch of" : "One"} ${name} ${verb} (${canonicalUnit})`}
+          hint={
+            bunch
+              ? "Weigh one bunch, or read it from a label."
+              : "Weigh one, or read it from a label."
+          }
           inputMode="decimal"
           value={qty}
           onChange={(e) => setQty(e.target.value)}
@@ -76,7 +88,9 @@ export function WeighOnePanel({
           </Button>
         </div>
       </div>
-      {tried && !valid ? <Alert tone="error">Give a positive number, like 67.</Alert> : null}
+      {tried && !valid ? (
+        <Alert tone="error">Give a positive number, like {bunch ? "90" : "67"}.</Alert>
+      ) : null}
       {save.isError ? <Alert tone="error">{errorMessage(save.error)}</Alert> : null}
     </form>
   );

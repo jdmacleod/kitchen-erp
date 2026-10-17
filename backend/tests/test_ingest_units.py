@@ -96,8 +96,11 @@ def test_refine_weighed_and_counted_patterns():
         4, _line("ONIONS 0.85 kg @ 2.20/kg 1.87", line_total="1.87", qty="0.85", unit="KG")
     )
     assert (kilo.qty, kilo.unit, kilo.unit_price) == (Decimal("0.85"), "kg", Decimal("2.20"))
-    odd = lines_mod.refine_line(5, _line("WIDGET 4.00", line_total="4.00", qty="1", unit="bunch"))
+    odd = lines_mod.refine_line(5, _line("WIDGET 4.00", line_total="4.00", qty="1", unit="sleeve"))
     assert odd.unit == "each" and "unknown_unit" in odd.flags
+    # A bunch is a unit of its own since issue 371, so it is kept, not flagged.
+    herbs = lines_mod.refine_line(5, _line("DILL 1.29", line_total="1.29", qty="1", unit="bunch"))
+    assert herbs.unit == "bunch" and "unknown_unit" not in herbs.flags
     discount = lines_mod.refine_line(6, _line("SAVINGS 1.00-", kind="discount", line_total="-1.00"))
     assert discount.line_total == Decimal("1.00") and discount.qty is None and discount.unit is None
 

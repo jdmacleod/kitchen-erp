@@ -8,7 +8,8 @@ export type CleanupKind =
   | "usda_link"
   | "ingredient_merge"
   | "product_name"
-  | "product_brand";
+  | "product_brand"
+  | "product_pack";
 
 /** One proposed fix (issue 349). */
 export interface CleanupSuggestion {

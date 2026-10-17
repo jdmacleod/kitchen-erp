@@ -16,7 +16,10 @@ one on it: their own name, a department header ("WET VEGETABLES - …") or a wor
   a helper is not kept either, only one the person typed;
 - with no brand and no barcode the kind is ``random_weight`` when it is priced per
   weight, else ``loose``;
-- the name drops a leading "Fresh" and a trailing ", 1 ct" (``product_names``).
+- the name drops a leading "Fresh" and a trailing ", 1 ct" (``product_names``);
+- with no pack given, a name that says "bunch" ("Cilantro bunch") makes the pack
+  "1 bunch", unless it was priced per weight; and with a pack in bunches the name
+  drops the word, since the pack says it (issue 371).
 """
 
 from __future__ import annotations
@@ -25,17 +28,21 @@ import re
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import categories
+from app.catalog import proposals as merging
 from app.catalog.brand_names import is_never_brand, name_key
-from app.catalog.product_names import produce_name
+from app.catalog.product_names import drop_bunch, produce_name, says_bunch
 from app.models import Ingredient, PurchaseLine
 from app.models.geo import Vendor
+from app.schemas.catalog import ProductCreate
 from app.services import brands
+from app.units.convert import BUNCH
 from app.units.table import units_by_code
 
 # A department or aisle header in capitals before a dash: "WET VEGETABLES - Herbs".
@@ -48,6 +55,8 @@ class Start:
     name: str
     brand: str | None
     kind: str
+    pack_qty: Decimal | None = None
+    pack_unit: str | None = None
 
 
 def is_produce(ingredient: Ingredient) -> bool:
@@ -101,12 +110,18 @@ async def start(
     barcode: str | None = None,
     exclusive_vendor_id: uuid.UUID | None = None,
     per_weight: bool = False,
+    pack: tuple[Decimal | None, str | None] = (None, None),
 ) -> Start:
-    """A new product's name, brand and kind; the produce defaults when it is produce."""
+    """A new product's name, brand, kind and pack; the produce defaults when it is produce."""
     produce = is_produce(ingredient)
+    pack_qty, pack_unit = pack
     if produce:
         name = produce_name(name)
         brand = await produce_brand(db, brand)
+        if pack_qty is None and not per_weight and says_bunch(name):
+            pack_qty, pack_unit = Decimal(1), BUNCH
+    if pack_unit == BUNCH:
+        name = drop_bunch(name)
     kind = kind or await kind_for(
         db,
         brand,
@@ -115,7 +130,24 @@ async def start(
         produce=produce,
         per_weight=per_weight,
     )
-    return Start(name.strip(), brand, kind)
+    return Start(name.strip(), brand, kind, pack_qty, pack_unit)
+
+
+async def for_create(
+    db: AsyncSession, ingredient: Ingredient, payload: ProductCreate, *, per_weight: bool
+) -> Start:
+    """How a product made from a ``ProductCreate`` starts: the form, a receipt line, naming."""
+    return await start(
+        db,
+        ingredient,
+        name=payload.name,
+        brand=payload.brand,
+        kind=payload.kind,
+        barcode=payload.barcode,
+        exclusive_vendor_id=payload.exclusive_vendor_id,
+        per_weight=per_weight,
+        pack=(payload.pack_qty, payload.pack_unit),
+    )
 
 
 async def lines_per_weight(db: AsyncSession, line_ids: list[uuid.UUID]) -> bool:
@@ -157,8 +189,26 @@ async def from_fields(
         kind=kind,
         barcode=fields["gtin"]["value"] if fields.get("gtin") else None,
         per_weight=priced_per_weight(price),
+        pack=_pack_of(fields),
     )
     settled = {**fields, "title": {**fields["title"], "value": begin.name}}
     if begin.brand is None:
         settled.pop("brand", None)
+    if begin.pack_unit == BUNCH and not fields.get("pack"):
+        # The title said "bunch", so the pack says it now, from the title's own source.
+        settled["pack"] = {
+            "value": {"qty": "1", "unit": BUNCH},
+            "source": fields["title"]["source"],
+            "alternatives": [],
+            "conflict": False,
+        }
     return begin, settled
+
+
+def _pack_of(fields: dict[str, Any]) -> tuple[Decimal | None, str | None]:
+    """A proposal's pack as (qty, unit), or (None, None) when it has none."""
+    pack = merging.value(fields, "pack")
+    try:
+        return Decimal(str(pack["qty"])), str(pack["unit"])
+    except (KeyError, TypeError, InvalidOperation):
+        return None, None

@@ -16,7 +16,9 @@ sticks until the data changes. Kinds:
 - ``product_brand``: a brand that only says "none" or describes the food
   ("Organic"), a brand on loose produce (cleared: produce is sold by weight, the
   bunch or the piece, and the store's name is the vendor), or a brand on another
-  loose product (which is then a branded or private-label one).
+  loose product (which is then a branded or private-label one);
+- ``product_pack``: produce whose name says "bunch" and whose pack doesn't, offered
+  the pack "1 bunch" (issue 371, ``cleanup_packs``).
 
 Each suggestion is ``sure`` or a ``guess`` (issue 372; ``cleanup_ingredients``).
 Accepting several at once applies only the sure ones and the ones a person chose a
@@ -45,6 +47,7 @@ from app.schemas.catalog import IngredientUpdate, ProductUpdate
 from app.services import (
     catalog,
     cleanup_ingredients,
+    cleanup_packs,
     ingredient_duplicates,
     ingredient_reconcile,
 )
@@ -58,6 +61,7 @@ KINDS: tuple[Kind, ...] = (
     "ingredient_name",
     "product_name",
     "product_brand",
+    "product_pack",
 )
 
 
@@ -124,6 +128,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
             Product.brand,
             Product.kind,
             Product.pack_qty,
+            Product.pack_unit,
             Product.brand_id,
             Ingredient.name.label("ingredient_name"),
             Ingredient.category,
@@ -194,6 +199,7 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
             p.name,
             brand,
             has_pack=p.pack_qty is not None,
+            bunch_pack=p.pack_unit == "bunch",
             produce=produce,
             brand_keys=keys,
             proper_nouns=proper,
@@ -214,6 +220,8 @@ async def _products(db: AsyncSession, keys: set[str]) -> list[Suggestion]:
                     short,
                 )
             )
+        if pack := cleanup_packs.bunch_pack(p, produce=produce):
+            out.append(pack)
     return out
 
 
@@ -307,3 +315,5 @@ async def _apply_one(db: AsyncSession, s: Suggestion) -> None:
     elif s.kind == "product_brand":
         update_ = ProductUpdate(kind=s.value) if s.value else ProductUpdate(brand=None)
         await catalog.update_product(db, s.subject_id, update_)
+    elif s.kind == "product_pack":
+        await cleanup_packs.apply(db, s.subject_id)

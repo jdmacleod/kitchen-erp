@@ -29,12 +29,12 @@ from app.schemas.catalog import IngredientCreate, IngredientMatch, ProductCreate
 from app.schemas.purchases import NameProductRow
 from app.services import (
     catalog,
+    identify_queue,
     line_words,
     naming_candidates,
     naming_words,
     new_products,
     product_same,
-    resolution,
 )
 from app.units import UnitParseFailure, parse_unit
 
@@ -92,7 +92,7 @@ async def naming_rows(db: AsyncSession) -> list[dict]:
     asked = await _model_suggestions(db, index)
     known = await naming_words.load(db)
     rows: list[dict] = []
-    for group in await resolution.to_identify(db):
+    for group in await identify_queue.to_identify(db):
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
         found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []
@@ -360,7 +360,7 @@ async def name_product(
 ) -> tuple[uuid.UUID, int]:
     """Create one row's product, or use the existing one it names, and apply it to
     every waiting line of its group."""
-    queued = await resolution.queued_line_ids(db, row.vendor_id, row.raw_text_norm)
+    queued = await identify_queue.queued_line_ids(db, row.vendor_id, row.raw_text_norm)
     if not queued:
         raise ApiError(409, "already_identified", "These lines have been identified already.")
     if row.product_id is not None:
@@ -396,7 +396,7 @@ async def name_product(
         await product_same.refuse_same(db, payload)
         per_weight = await new_products.lines_per_weight(db, queued)
         product = await catalog.create_product(db, payload, per_weight=per_weight)
-    applied = await resolution.apply_to_identify(
+    applied = await identify_queue.apply_to_identify(
         db,
         user,
         vendor_id=row.vendor_id,

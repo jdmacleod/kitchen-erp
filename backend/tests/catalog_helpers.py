@@ -165,3 +165,41 @@ def write_usda_usage_fixture(directory: Path) -> None:
         ["ingredient code", "Ingredient description", "Nutrient code", "FDC ID"],
         [[5555, "Onion, invented code", 203, 2001], [7777, "Something unresolved", 203, ""]],
     )
+    write_usda_components(directory)
+
+
+FOOD_COMPONENT_HEADER = [
+    "id",
+    "fdc_id",
+    "name",
+    "pct_weight",
+    "is_refuse",
+    "gram_weight",
+    "data_points",
+    "min_year_acquired",
+]
+
+
+def write_usda_components(
+    directory: Path, header: list[str] | None = None, rows: list[list] | None = None
+) -> None:
+    """``food_component.csv`` for the usage fixture (issue 282). Invented components.
+
+    Dun onion: two refuse parts, 6.5% and 3.25%, summed to 9.75%; tan onion: an
+    edible part only, so no refuse figure; garlic: one refuse part of 12.5%. The
+    branded food's refuse is not kept.
+    """
+    _write(
+        directory / "food_component.csv",
+        header or FOOD_COMPONENT_HEADER,
+        rows
+        if rows is not None
+        else [
+            [1, 2001, "Skin", "6.5", "Y", "", "", ""],
+            [2, 2001, "Root ends", "3.25", "Y", "", "", ""],
+            [3, 2001, "Edible flesh", "90.25", "N", "", "", ""],
+            [4, 2002, "Edible flesh", "100", "N", "", "", ""],
+            [5, 2003, "Papery skin", "12.5", "Y", "", "", ""],
+            [6, 2004, "Crumbs", "40", "Y", "", "", ""],
+        ],
+    )

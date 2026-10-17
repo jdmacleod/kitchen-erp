@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.schemas.pricebook_views import BrandScope
-from app.services import unit_display
+from app.services import compare_units, regular_prices, supplies, unit_display
 
 
 def stale_after_days() -> int:
@@ -49,6 +49,8 @@ _CELL_KEYS = (
     "norm_unit",
     "display_unit_price",
     "display_unit",
+    "regular_price",
+    "regular_display_unit_price",
     "stale",
 )
 
@@ -112,10 +114,10 @@ async def product_history(
         _params(pid=product_id),
     )
     mass = await _mass_for_product(db, product_id)
-    return {
-        "points": [unit_display.decorate(_row(r), mass) for r in points.mappings()],
-        "latest": [unit_display.decorate(_row(r), mass) for r in latest.mappings()],
-    }
+    point_rows = [unit_display.decorate(_row(r), mass) for r in points.mappings()]
+    latest_rows = [unit_display.decorate(_row(r), mass) for r in latest.mappings()]
+    await regular_prices.annotate(db, [*point_rows, *latest_rows], lambda _: mass)
+    return {"points": point_rows, "latest": latest_rows}
 
 
 # One point per day (the household's day), the cheapest that day with its product
@@ -136,6 +138,7 @@ _INGREDIENT_HISTORY_SQL = """
         WHERE p.ingredient_id = CAST(:iid AS uuid)
           AND pc.observed_at >= CAST(:since AS timestamptz)
           AND pc.norm_unit_price IS NOT NULL
+          AND pc.norm_unit = CAST(:unit AS text)
           AND (pc.purchase_line_id IS NULL OR pu.status = 'committed')
     ),
     price_range AS (
@@ -160,21 +163,20 @@ async def ingredient_history(
     settled yet, and its prices may still change.
     """
     since = datetime.now(UTC) - timedelta(days=days)
-    rows = list(
-        (
-            await db.execute(
-                text(
-                    _INGREDIENT_HISTORY_SQL.format(current=_view("price_current", include_posted))
-                ),
-                {"iid": ingredient_id, "since": since, "tz": get_settings().household_timezone},
-            )
-        ).mappings()
-    )
+    sql = text(_INGREDIENT_HISTORY_SQL.format(current=_view("price_current", include_posted)))
+    params = {"iid": ingredient_id, "since": since, "tz": get_settings().household_timezone}
+    # One unit per chart: the canonical unit's prices, else the per-bunch ones (issue 371).
+    rows: list = []
+    for unit in await compare_units.units_of(db, ingredient_id):
+        rows = list((await db.execute(sql, {**params, "unit": unit})).mappings())
+        if rows:
+            break
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
     points = [
         unit_display.decorate({k: v for k, v in r.items() if k not in _RANGE_KEYS}, mass)
         for r in rows
     ]
+    await regular_prices.annotate(db, points, lambda _: mass)
     unit = rows[0]["norm_unit"] if rows else None
     low = unit_display.shown(rows[0]["low"], unit, mass) if rows else None
     high = unit_display.shown(rows[0]["high"], unit, mass) if rows else None
@@ -229,13 +231,15 @@ async def ingredient_offers(
                   CAST(:min_quality AS integer))
               AND (CAST(:brand_scope AS text) = 'all'
                    OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
-            ORDER BY (ol.norm_unit_price IS NULL), ol.norm_unit_price, ol.observed_at DESC
+            ORDER BY (ol.norm_unit_price IS NULL), (ol.norm_unit IS DISTINCT FROM i.canonical_unit),
+                     ol.norm_unit_price, ol.observed_at DESC
             """  # noqa: S608
         ),
         _params(iid=ingredient_id, min_quality=min_quality, brand_scope=brand_scope),
     )
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
     out = [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
+    await regular_prices.annotate(db, out, lambda _: mass)
     if exclude_stale:
         out = [r for r in out if not r["stale"]]
     return out
@@ -294,7 +298,8 @@ async def compare(
             )
             SELECT DISTINCT ON (ingredient_id, vendor_id) *
             FROM offers
-            ORDER BY ingredient_id, vendor_id, norm_unit_price, observed_at DESC
+            ORDER BY ingredient_id, vendor_id, (norm_unit <> canonical_unit), norm_unit_price,
+                     observed_at DESC
             """  # noqa: S608
         ),
         _params(
@@ -309,6 +314,8 @@ async def compare(
     cells = [
         unit_display.decorate(_row(r), masses.get(r["ingredient_id"])) for r in rows.mappings()
     ]
+    # Cheapest below stays on what was paid; the regular price is only shown (issue 381).
+    await regular_prices.annotate(db, cells, lambda c: masses.get(c["ingredient_id"]))
     vendors: dict[uuid.UUID, str] = {}
     for c in cells:
         vendors.setdefault(c["vendor_id"], c["vendor_name"])
@@ -325,7 +332,8 @@ async def compare(
         if info is None:
             continue
         mine = [c for c in cells if c["ingredient_id"] == iid]
-        best = min((c["norm_unit_price"] for c in mine), default=None)
+        # Cheapest among prices in the same unit: per bunch against per bunch (issue 371).
+        best = compare_units.cheapest_by_unit(mine)
         out_rows.append(
             {
                 "ingredient_id": iid,
@@ -334,7 +342,7 @@ async def compare(
                 "cells": {
                     str(c["vendor_id"]): {
                         **{k: c[k] for k in _CELL_KEYS},
-                        "cheapest": best is not None and c["norm_unit_price"] == best,
+                        "cheapest": best.get(c["norm_unit"]) == c["norm_unit_price"],
                     }
                     for c in mine
                 },
@@ -382,6 +390,7 @@ async def location_panel(
     return {
         "last_visit": summary["last_visit"],
         "spend": Decimal(str(summary["spend"])),
+        "supply_spend": await supplies.supply_spend(db, location_id, since),
         "visits": int(summary["visits"]),
         "period_days": days,
         "recent": await unit_display.decorate_by_product(db, [_row(r) for r in recent.mappings()]),
@@ -405,7 +414,7 @@ async def cheapest_by_location(
                        vl.lat, vl.lon, v.id AS vendor_id, v.name AS vendor_name, v.kind,
                        ol.product_id, p.name AS product_name, p.quality_rating,
                        ol.observation_id, ol.observed_at, ol.is_promo,
-                       ol.norm_unit_price, ol.norm_unit,
+                       ol.norm_unit_price, ol.norm_unit, i.canonical_unit,
                        (CAST(:now AS timestamptz) - ol.observed_at)
                            > make_interval(days => {_STALE_SQL}) AS stale
                 FROM {_view("offer_latest", include_posted)} ol
@@ -423,13 +432,18 @@ async def cheapest_by_location(
             )
             SELECT DISTINCT ON (location_id) * FROM offers
             WHERE NOT CAST(:exclude_stale AS boolean) OR NOT stale
-            ORDER BY location_id, norm_unit_price, observed_at DESC
+            ORDER BY location_id, (norm_unit <> canonical_unit), norm_unit_price, observed_at DESC
             """  # noqa: S608
         ),
         _params(iid=ingredient_id, min_quality=min_quality, exclude_stale=exclude_stale),
     )
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
-    return [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
+    # The map ranks one unit: the canonical unit's prices, else the per-bunch ones.
+    found = compare_units.one_unit([_row(r) for r in rows.mappings()])
+    return [
+        unit_display.decorate({k: v for k, v in r.items() if k != "canonical_unit"}, mass)
+        for r in found
+    ]
 
 
 async def _mass_for_product(db: AsyncSession, product_id: uuid.UUID) -> str | None:
