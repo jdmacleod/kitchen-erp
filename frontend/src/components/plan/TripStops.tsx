@@ -129,7 +129,7 @@ function StopBody({
           <li
             key={item.id}
             data-testid="stop-item"
-            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 py-1.5"
           >
             <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
               <Link to={`/catalog/products/${item.product_id}`} className={stopLink}>
