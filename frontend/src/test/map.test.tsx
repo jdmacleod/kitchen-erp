@@ -690,6 +690,8 @@ describe("map price book (2E)", () => {
         jsonResponse(200, {
           last_visit: "2026-09-18T15:00:00Z",
           spend: call.query.get("days") === "90" ? "123.45" : "41.20",
+          // Kitchen supplies (spec 04, 2T): shown only when some of the spend was on them.
+          supply_spend: call.query.get("days") === "90" ? "7.60" : "0",
           visits: call.query.get("days") === "90" ? 6 : 2,
           period_days: Number(call.query.get("days")),
           recent: [
@@ -722,6 +724,7 @@ describe("map price book (2E)", () => {
     const prices = await screen.findByTestId("location-prices");
     await waitFor(() => expect(prices).toHaveTextContent("$41.20 over 2 visits in 30 days"));
     expect(prices).toHaveTextContent("Last visit");
+    expect(prices).not.toHaveTextContent("Kitchen supplies");
     const recent = within(prices).getByRole("list", { name: "Recent prices" });
     expect(
       within(recent).getByRole("link", { name: "Millstone All-Purpose Flour" }),
@@ -744,6 +747,7 @@ describe("map price book (2E)", () => {
         "$123.45 over 6 visits in 90 days",
       ),
     );
+    expect(screen.getByTestId("location-prices")).toHaveTextContent("Kitchen supplies$7.60 of it");
   });
   it("arrives ready to place when sent from a blocked entry form", async () => {
     // MapView ignores map clicks unless it is placing, so a link to a bare /map

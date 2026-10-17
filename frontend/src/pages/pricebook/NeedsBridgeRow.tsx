@@ -53,6 +53,11 @@ export function NeedsBridgeRow({
   // A pack counted in pieces is priced through what one piece weighs (issue 357).
   const inPieces =
     quickPack && counted(item.product.pack_unit) && item.ingredient.canonical_unit !== "each";
+  // A price per bunch is weighed through the ingredient's "bunch" measure (issue 371).
+  const bunch = item.status === "no_bunch_weight";
+  const weighed = bunch
+    ? `Saved what a bunch of ${name} weighs. Its bunches are priced through it.`
+    : `Saved what one ${name} weighs. Its packs in pieces are priced through it.`;
   return (
     <>
       <tr data-testid="needs-bridge">
@@ -117,9 +122,8 @@ export function NeedsBridgeRow({
             ingredientId={item.ingredient.id}
             name={item.ingredient.name}
             canonicalUnit={item.ingredient.canonical_unit}
-            onDone={() =>
-              done(`Saved what one ${name} weighs. Its packs in pieces are priced through it.`)
-            }
+            measure={bunch ? "bunch" : "each"}
+            onDone={() => done(weighed)}
             onCancel={onToggleWeigh}
           />
         </PanelRow>
@@ -154,7 +158,8 @@ function PanelRow({ id, children }: { id: string; children: ReactNode }) {
   );
 }
 
-/** What fixes the row: the pack editor, "Weigh one", or the link to the ingredient. */
+/** What fixes the row: the pack editor, "Weigh one" or "Weigh one bunch", or the link to
+ * the ingredient. */
 function FixCell({
   item,
   rowKey,
@@ -178,6 +183,19 @@ function FixCell({
 }) {
   const quickPack = item.status === "no_pack";
   const fix = bridgeFixLink(item.status, item.ingredient.id, item.product.id);
+  if (item.status === "no_bunch_weight") {
+    return (
+      <Button
+        variant="secondary"
+        className="whitespace-nowrap"
+        aria-expanded={weighing}
+        aria-controls={weighing ? `weigh-row-${rowKey}` : undefined}
+        onClick={onToggleWeigh}
+      >
+        Weigh one bunch
+      </Button>
+    );
+  }
   return quickPack ? (
     <div className="flex flex-col items-start gap-1">
       {inPieces ? (

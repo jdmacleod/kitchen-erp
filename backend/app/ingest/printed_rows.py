@@ -49,12 +49,24 @@ _MIN_KEY = 3
 _SAVING_WORDING = re.compile(r"sav|disc|coupon|member|card|reward|promo|deal|off\b", re.I)
 
 
-def _key(text: str) -> str:
+def row_key(text: str) -> str:
+    """A row's letters and digits, lower-cased: what matching compares."""
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
-def _rows(receipt_text: str) -> list[str]:
+def receipt_rows(receipt_text: str) -> list[str]:
+    """The receipt's non-blank rows, spaces collapsed, as ``printed_text`` keeps them."""
     return [" ".join(row.split()) for row in receipt_text.splitlines() if row.strip()]
+
+
+def row_holding(key: str, keys: list[str], start: int) -> int | None:
+    """The first row from ``start``, within the lookahead, whose key holds ``key``."""
+    if len(key) < _MIN_KEY:
+        return None
+    for j in range(start, min(start + _LOOKAHEAD, len(keys))):
+        if key in keys[j]:
+            return j
+    return None
 
 
 def anchor_rows(lines: list[ParsedLine], receipt_text: str) -> None:
@@ -65,18 +77,14 @@ def anchor_rows(lines: list[ParsedLine], receipt_text: str) -> None:
     then the second. A line with no such row keeps ``printed_row`` None; nothing
     is guessed. The model's ``raw_text`` is never changed.
     """
-    rows = _rows(receipt_text)
-    keys = [_key(row) for row in rows]
+    rows = receipt_rows(receipt_text)
+    keys = [row_key(row) for row in rows]
     at = 0
     for line in lines:
-        key = _key(line.raw_text)
-        if len(key) < _MIN_KEY:
-            continue
-        for j in range(at, min(at + _LOOKAHEAD, len(rows))):
-            if key in keys[j]:
-                line.printed_row = rows[j]
-                at = j + 1
-                break
+        j = row_holding(row_key(line.raw_text), keys, at)
+        if j is not None:
+            line.printed_row = rows[j]
+            at = j + 1
 
 
 def _one_digit_off(a: Decimal, b: Decimal) -> bool:
@@ -262,7 +270,7 @@ def printed_checks(receipt_text: str) -> dict[str, Any] | None:
     Each is read only when the receipt's wording names it, and left out when it
     is missing or ambiguous. None when none of them was found.
     """
-    rows = _rows(receipt_text)
+    rows = receipt_rows(receipt_text)
     out: dict[str, Any] = {}
     savings = _savings_total(rows)
     if savings is not None:

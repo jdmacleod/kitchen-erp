@@ -15,6 +15,10 @@ describe("formatUnitPrice", () => {
     expect(formatUnitPrice("1.29", "each")).toBe("$1.29 each");
   });
 
+  it("says a bunch after a price per bunch (issue 371)", () => {
+    expect(formatUnitPrice("1.29", "bunch")).toBe("$1.29 a bunch");
+  });
+
   it("shows a dash when nothing is normalized", () => {
     expect(formatUnitPrice(null, "lb")).toBe("—");
     expect(formatUnitPrice("2.99", null)).toBe("—");

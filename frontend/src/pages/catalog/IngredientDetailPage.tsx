@@ -38,6 +38,7 @@ import {
   type IngredientPageMode,
 } from "../../components/catalog/IngredientPageActions";
 import { TestBench } from "../../components/catalog/TestBench";
+import { YieldSuggestion } from "../../components/catalog/YieldSuggestion";
 import { CategoryChip } from "../../components/CategoryChip";
 import { UsedInRecipes } from "../../components/cook/UsedInRecipes";
 import { MoreActionsDialog, type MoreAction } from "../../components/MoreActionsDialog";
@@ -414,15 +415,22 @@ function EditDetailsForm({ ingredient, onDone }: { ingredient: Ingredient; onDon
           }
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            id="edit-yield"
-            label="Yield (%)"
-            inputMode="decimal"
-            autoComplete="off"
-            value={form.yield_percent}
-            onChange={(e) => set("yield_percent", e.target.value)}
-            hint="Usable share of what you buy, after trimming. Recipe costs gross up weights and volumes by it; 100 means no loss."
-          />
+          <div className="flex flex-col gap-2">
+            <Field
+              id="edit-yield"
+              label="Yield (%)"
+              inputMode="decimal"
+              autoComplete="off"
+              value={form.yield_percent}
+              onChange={(e) => set("yield_percent", e.target.value)}
+              hint="Usable share of what you buy, after trimming. Recipe costs gross up weights and volumes by it; 100 means no loss."
+            />
+            <YieldSuggestion
+              ingredientId={ingredient.id}
+              value={form.yield_percent}
+              onUse={(percent) => set("yield_percent", percent)}
+            />
+          </div>
           <SelectField
             id="edit-perishability"
             label="Perishability"

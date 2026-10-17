@@ -12,7 +12,9 @@ from app.models.base import Base
 class UnitRow(Base):
     __tablename__ = "unit"
     __table_args__ = (
-        CheckConstraint("dimension IN ('mass', 'volume', 'count')", name="ck_unit_dimension"),
+        CheckConstraint(
+            "dimension IN ('mass', 'volume', 'count', 'bunch')", name="ck_unit_dimension"
+        ),
         CheckConstraint("system IN ('us', 'metric', 'any')", name="ck_unit_system"),
     )
 

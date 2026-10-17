@@ -21,15 +21,15 @@ idempotency_key(id, user_id FK, key, request_hash, status_code, response_body JS
 
 ```
 unit(
-  code TEXT PK,                      -- mg, g, kg, oz, lb, ml, l, tsp, tbsp, fl_oz, cup, pt, qt, gal, each, dozen
-  dimension CHECK IN (mass, volume, count),
-  to_base_factor NUMERIC,            -- unconstrained numeric: several factors have eleven decimals; multiply to reach g, ml, or each
+  code TEXT PK,                      -- mg, g, kg, oz, lb, ml, l, tsp, tbsp, fl_oz, cup, pt, qt, gal, each, dozen, bunch
+  dimension CHECK IN (mass, volume, count, bunch),
+  to_base_factor NUMERIC,            -- unconstrained numeric: several factors have eleven decimals; multiply to reach g, ml, each or bunch
   system CHECK IN (us, metric, any),
   aliases TEXT[]                     -- "pound", "lbs", "tablespoon", "T", ...
 )
 ```
 
-Conversions within a dimension are physical constants and live entirely in `to_base_factor`. There is no pairwise conversion table. Crossing dimensions requires a bridge, and bridges are per ingredient.
+Conversions within a dimension are physical constants and live entirely in `to_base_factor`. There is no pairwise conversion table. Crossing dimensions requires a bridge, and bridges are per ingredient. `bunch` is a dimension of its own (#371, migration 0062): a bunch is never a piece, and it reaches a weight only through the ingredient's measure labelled "bunch". It is never an ingredient's canonical unit.
 
 ```
 ingredient(
@@ -368,23 +368,27 @@ purchase_line(
   line_kind CHECK IN (item, discount, tax, deposit, fee),
   product_id FK?, parent_line_id FK purchase_line?,   -- discounts and deposits attach to an item
   qty NUMERIC?, unit FK unit?, unit_price NUMERIC?, line_total NUMERIC,
-  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, similar, manual, unmatched, ignored),   -- the rung whose answer was used; 2K writes identifier
+  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, similar, manual, unmatched, ignored, supply),   -- the rung whose answer was used; 2K writes identifier; supply is a kitchen supply (2T)
   resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode, identifier and alias
   resolution_confidence NUMERIC?, flags TEXT[],
   removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
   stored_in CHECK IN (room, fridge, freezer)?, -- where it is kept (2Q); defaults from the ingredient once resolved
   best_by DATE?,                              -- a local date
   best_by_source CHECK IN (inferred, printed, person)?,   -- a person's null date is a cleared one
+  supply_category CHECK IN (wraps, storage, cooking, filters, fuel)?,   -- a kitchen supply's category (04, 2T)
   CHECK (line_kind = 'item' OR product_id IS NULL),
-  CHECK (best_by IS NULL OR best_by_source IS NOT NULL)
+  CHECK (best_by IS NULL OR best_by_source IS NOT NULL),
+  CHECK ((resolution = 'supply') = (supply_category IS NOT NULL) AND (resolution <> 'supply' OR product_id IS NULL))
 )
 
 receipt_alias(
   id, vendor_id FK, raw_text_norm TEXT,
-  disposition CHECK IN (product, ignore),
-  product_id FK?, confirmed_count INT, last_seen_at,
+  disposition CHECK IN (product, ignore, supply),
+  product_id FK?, supply_category CHECK IN (wraps, storage, cooking, filters, fuel)?,
+  confirmed_count INT, last_seen_at,
   UNIQUE (vendor_id, raw_text_norm),
-  CHECK ((disposition = 'product') = (product_id IS NOT NULL))
+  CHECK ((disposition = 'product') = (product_id IS NOT NULL)),
+  CHECK ((disposition = 'supply') = (supply_category IS NOT NULL))
 )
 
 normalize_v2_backup(                         -- rows migration 0030 changed or deleted (#125)
@@ -399,7 +403,7 @@ A line's inferred `best_by` is the purchase's local date plus the ingredient's k
 
 A purchase is removed by deleting it when none of its lines ever produced an observation, and by setting `status = voided` (and voiding its live observations) otherwise; see 04, 2H.
 
-`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` and `normalize_v3_backup` keep what migrations 0030 and 0049 changed so their downgrades can put it back, and each goes with its downgrade.
+`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `resolution = supply` and `disposition = supply` do the same for kitchen supplies used in cooking and storing food (foil, parchment, freezer bags, coffee filters, charcoal), keeping the line's amount and one category from `app/catalog/supplies.py` as kitchen supply spend; such a line has no product and emits no price, and cleaning, serving and appliance supplies stay ignored (04, 2T). `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` and `normalize_v3_backup` keep what migrations 0030 and 0049 changed so their downgrades can put it back, and each goes with its downgrade.
 
 ### The price book
 
@@ -423,15 +427,15 @@ price_observation_void(                       -- append-only
 price_norm(                                   -- derived; rebuildable
   observation_id PK FK,
   canonical_qty NUMERIC?, norm_unit FK unit?, norm_unit_price NUMERIC(14,6)?,
-  status CHECK IN (ok, no_density, unknown_measure, no_pack),
-  bridge_kind CHECK IN (none, density, density_override, measure, pack),
+  status CHECK IN (ok, no_density, unknown_measure, no_pack, no_qty, no_bunch_weight),
+  bridge_kind CHECK IN (none, density, density_override, measure, pack, pack_count),
   bridge_source?, bridge_confirmed BOOLEAN?,   -- provenance copied from the conversion result
   convert_version TEXT,
   computed_at
 )
 ```
 
-An observation records only what was seen: this much money for this quantity in this unit. It never stores a normalized price, because normalization depends on densities and measures that improve over time. `price_norm` holds the normalized figure and is recomputed whenever a bridge that affects it changes; the provenance columns make "every observation that depended on this density" a query. A unique constraint on `purchase_line_id` is deliberately absent, because a voided observation stays in the table and the re-emitted one shares its line; the trigger enforces uniqueness among non-voided rows instead. Deposits and tax are never part of `price`. This supersedes the earlier sketch in which the normalized price sat on the observation itself.
+An observation records only what was seen: this much money for this quantity in this unit. It never stores a normalized price, because normalization depends on densities and measures that improve over time. `price_norm` holds the normalized figure and is recomputed whenever a bridge that affects it changes; the provenance columns make "every observation that depended on this density" a query. A unique constraint on `purchase_line_id` is deliberately absent, because a voided observation stays in the table and the re-emitted one shares its line; the trigger enforces uniqueness among non-voided rows instead. Deposits and tax are never part of `price`. This supersedes the earlier sketch in which the normalized price sat on the observation itself. A price in bunches whose ingredient has no "bunch" measure has status `no_bunch_weight` and still carries a figure: `canonical_qty` in bunches, `norm_unit` = `bunch` and the price per bunch, so it compares with other per-bunch prices until a bunch is weighed (#371).
 
 ### Product ingestion (2L–2N)
 

@@ -6,7 +6,7 @@ import { bridgeFixLink, type Offer, type PriceFilters as Filters } from "../../a
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { whose } from "../catalog/StoreBrandBadge";
 import { focusRing, sectionHeading } from "../ui";
-import { PriceAge, PromoBadge, QualityText, formatUnitPrice } from "./PriceAge";
+import { PriceAge, PromoBadge, QualityText, RegularPrice, formatUnitPrice } from "./PriceAge";
 import { PriceFilters } from "./PriceFilters";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
@@ -55,7 +55,7 @@ export function IngredientOffers({
               >
                 <th className="py-2 pr-3">Vendor</th>
                 <th className="hidden py-2 pr-3 sm:table-cell">Product</th>
-                <th className="py-2 pr-3 text-right">Per {ingredient.canonical_unit}</th>
+                <th className="py-2 pr-3 text-right">Unit price</th>
                 <th className="hidden py-2 sm:table-cell">Seen</th>
               </tr>
             </thead>
@@ -81,6 +81,18 @@ export function IngredientOffers({
         </Link>
       </p>
     </section>
+  );
+}
+
+/** A price per bunch compares only with other bunches until one is weighed (issue 371). */
+function BunchCaption() {
+  return (
+    <Link
+      to="/catalog/bridges#products"
+      className={`flex min-h-11 items-center justify-end text-xs underline lg:min-h-0 ${focusRing}`}
+    >
+      Weigh one bunch to compare
+    </Link>
   );
 }
 
@@ -122,14 +134,25 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
       <td className="hidden py-2 pr-3 align-top sm:table-cell">{product}</td>
       <td className="py-2 pr-3 text-right align-top tabular-nums">
         {comparable ? (
-          <span className="font-medium">
-            {formatUnitPrice(o.display_unit_price, o.display_unit)}
-          </span>
+          <>
+            <span className="font-medium">
+              {formatUnitPrice(o.display_unit_price, o.display_unit)}
+            </span>{" "}
+            <PromoBadge promo={o.is_promo} />
+            <RegularPrice
+              price={o.regular_display_unit_price}
+              unit={o.display_unit}
+              className="block"
+            />
+            {o.norm_status === "no_bunch_weight" ? <BunchCaption /> : null}
+          </>
         ) : (
           <>
             <span className="block">
-              {formatMoney(o.price)} / {stripZeros(o.qty)} {o.unit}
+              {formatMoney(o.price)} / {stripZeros(o.qty)} {o.unit}{" "}
+              <PromoBadge promo={o.is_promo} />
             </span>
+            <RegularPrice price={o.regular_price} className="block" />
             {fix ? (
               <Link
                 to={fix.to}
@@ -141,8 +164,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
               <span className={`text-xs ${muted}`}>Can&apos;t compare yet</span>
             )}
           </>
-        )}{" "}
-        <PromoBadge promo={o.is_promo} />
+        )}
         <span className="mt-1 block sm:hidden">{seen}</span>
       </td>
       <td className="hidden py-2 align-top sm:table-cell">{seen}</td>

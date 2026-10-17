@@ -136,3 +136,23 @@ class ReceiptRemovedOut(ApiModel):
 class ConvertToManualOut(ApiModel):
     job: IngestJobOut
     purchase_id: uuid.UUID
+
+
+class RowBoxOut(ApiModel):
+    """Where a line's printed row sits on the receipt photo, in the photo's pixels."""
+
+    line_id: uuid.UUID
+    left: int
+    top: int
+    width: int
+    height: int
+
+
+class RowBoxesOut(ApiModel):
+    """The rows found on the receipt photo (04, 2S). ``width`` and ``height`` are
+    the upright photo's size the boxes are measured in; both are null, and
+    ``lines`` empty, when no boxes have been found."""
+
+    width: int | None = None
+    height: int | None = None
+    lines: list[RowBoxOut] = Field(default_factory=list)

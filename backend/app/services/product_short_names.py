@@ -17,11 +17,14 @@ from app.catalog.product_names import short_name
 from app.services.ingredient_names import brand_keys
 
 
-async def suggest(db: AsyncSession, title: str, brand: str | None, *, has_pack: bool) -> str:
+async def suggest(
+    db: AsyncSession, title: str, brand: str | None, *, has_pack: bool, bunch_pack: bool = False
+) -> str:
     return short_name(
         title,
         brand,
         has_pack=has_pack,
+        bunch_pack=bunch_pack,
         brand_keys=await brand_keys(db),
         proper_nouns=proper_noun_words(),
     )
@@ -33,6 +36,13 @@ async def for_proposal(db: AsyncSession, fields: dict[str, Any]) -> str | None:
     if not isinstance(title, str) or not title.strip():
         return None
     brand = merging.value(fields, "brand")
-    has_pack = merging.value(fields, "pack") is not None
-    found = await suggest(db, title, brand if isinstance(brand, str) else None, has_pack=has_pack)
+    pack = merging.value(fields, "pack")
+    bunch_pack = isinstance(pack, dict) and pack.get("unit") == "bunch"
+    found = await suggest(
+        db,
+        title,
+        brand if isinstance(brand, str) else None,
+        has_pack=pack is not None,
+        bunch_pack=bunch_pack,
+    )
     return found if found != title else None

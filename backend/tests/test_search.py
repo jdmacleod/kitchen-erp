@@ -39,11 +39,13 @@ async def test_results_are_grouped_with_labels_and_routes(admin_client, db_sessi
             "badge": None,
         }
     ]
+    # A produce name that says "bunch" is sold by the bunch, and the pack carries
+    # it, so the name drops the word (issue 371).
     assert body["products"] == [
         {
             "kind": "product",
             "id": product["id"],
-            "label": "Basil bunch",
+            "label": "Basil",
             "detail": "Leafwise · Basil",
             "route": f"/catalog/products/{product['id']}",
             "category_key": "produce",

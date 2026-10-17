@@ -17,16 +17,17 @@ async def make_receipt_purchase(
     *,
     purchased_at: datetime | None = None,
     total: str | None = None,
+    source: str = "receipt",
 ) -> str:
     """lines: dicts with raw_text, line_total and optional line_kind, qty, unit,
-    unit_price, flags, printed_text, and parent (a seq)."""
+    unit_price, flags, printed_text, in_price_amount, and parent (a seq)."""
     async with get_sessionmaker()() as db:
         purchase = Purchase(
             vendor_location_id=uuid.UUID(location_id),
             purchased_at=purchased_at or datetime(2026, 5, 2, 17, 30, tzinfo=UTC),
             total=Decimal(total) if total else sum(Decimal(ln["line_total"]) for ln in lines),
             status="draft",
-            source="receipt",
+            source=source,
             entered_by=user_id,
             flags=[],
         )
@@ -44,6 +45,9 @@ async def make_receipt_purchase(
                 flags=list(spec.get("flags", [])),
                 suggestions=[],
                 printed_text=spec.get("printed_text"),
+                in_price_amount=(
+                    Decimal(spec["in_price_amount"]) if spec.get("in_price_amount") else None
+                ),
             )
             purchase.lines.append(line)
             by_seq[seq] = line

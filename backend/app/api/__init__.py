@@ -23,6 +23,7 @@ from app.api import (
     recipes,
     rereads,
     search,
+    to_identify,
     units,
     users,
     vendor_suggestions,
@@ -42,6 +43,7 @@ router.include_router(geo.router)
 router.include_router(brands.router)
 router.include_router(naming_words.router)  # before purchases: a fixed path
 router.include_router(purchases.router)
+router.include_router(to_identify.router)
 router.include_router(rereads.router)
 router.include_router(receipts.router)
 router.include_router(recipes.router)

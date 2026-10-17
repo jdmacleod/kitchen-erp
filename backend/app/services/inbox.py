@@ -11,7 +11,7 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
                      (purchases.assess, #121); in place of its
                      receipt row
     receipt_failed   failed ingest jobs                             job
-    identify         resolution.to_identify (committed, unmatched)  one aggregate row
+    identify         identify_queue.to_identify (unmatched)         one aggregate row
     bridge           pricebook.needs_bridge (failed normalization)  one aggregate row
     vendor_suggest.. vendor_suggestion awaiting a decision (1F)     one aggregate row
     link             ingredients still unreviewed against the       one aggregate row
@@ -55,6 +55,7 @@ from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
     catalog_cleanup,
+    identify_queue,
     ingredient_duplicates,
     lookups,
     pricebook,
@@ -63,7 +64,6 @@ from app.services import (
     purchases,
     recipe_resolution,
     reread_older,
-    resolution,
     unconfirmed_bridges,
     upload_batches,
     usda_review,
@@ -248,7 +248,7 @@ async def _failed_reads(db: AsyncSession) -> list[InboxItem]:
 
 
 async def _identify(db: AsyncSession) -> list[InboxItem]:
-    groups = await resolution.to_identify(db)
+    groups = await identify_queue.to_identify(db)
     if not groups:
         return []
     lines = sum(g["line_count"] for g in groups)
@@ -275,6 +275,11 @@ _BRIDGE_FIX = {
         "a pack size",
         "Set packs",
         "Set each pack on Needs a bridge; the count drops as you go.",
+    ),
+    "no_bunch_weight": (
+        "a bunch weighed",
+        "Weigh bunches",
+        "Their prices compare per bunch until one bunch is weighed, then by weight.",
     ),
     "no_density": ("a density", "Add densities", "Each is added once, on its ingredient."),
     "unknown_measure": ("a measure", "Add measures", "Each is added once, on its ingredient."),

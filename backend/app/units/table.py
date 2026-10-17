@@ -7,10 +7,14 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
 
-Dimension = Literal["mass", "volume", "count"]
+# "bunch" is a family of its own (issue 371): a bunch is never a piece, and it
+# reaches a weight only through the ingredient's "bunch" measure.
+Dimension = Literal["mass", "volume", "count", "bunch"]
 System = Literal["us", "metric", "any"]
 
-BASE_UNIT: dict[str, str] = {"mass": "g", "volume": "ml", "count": "each"}
+BASE_UNIT: dict[str, str] = {"mass": "g", "volume": "ml", "count": "each", "bunch": "bunch"}
+# The units an ingredient is measured in. A bunch is never one: it has no fixed size.
+CANONICAL_UNITS = ("g", "ml", "each")
 
 # `T` and `t` are matched case-sensitively by the parser; every other alias is
 # matched case-insensitively. Aliases are stored lowercased except those two.
@@ -21,7 +25,7 @@ CASE_SENSITIVE_ALIASES: dict[str, str] = {"T": "tbsp", "t": "tsp"}
 class Unit:
     code: str
     dimension: Dimension
-    to_base_factor: Decimal  # multiply a quantity in this unit to reach g, ml, or each
+    to_base_factor: Decimal  # multiply a quantity in this unit to reach g, ml, each or bunch
     system: System
     aliases: tuple[str, ...]
 
@@ -80,6 +84,7 @@ SEED_UNITS: tuple[Unit, ...] = (
     _u("gal", "volume", "3785.411784", "us", "gallon", "gallons", "gals"),
     _u("each", "count", "1", "any", "ea", "piece", "pieces", "pc", "pcs", "unit", "units", "ct"),
     _u("dozen", "count", "12", "any", "doz", "dz", "dozens"),
+    _u("bunch", "bunch", "1", "any", "bunches", "bnch"),
 )
 
 

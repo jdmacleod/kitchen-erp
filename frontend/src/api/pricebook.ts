@@ -10,7 +10,18 @@ import type { NormStatus, ObservationSource } from "./purchases";
 
 // --- types ------------------------------------------------------------------
 
-export interface PricePoint {
+/**
+ * The regular price beside what was paid (issue 381): set only when the receipt's
+ * row proves a saving already in the price. `price` and every unit price stay what
+ * was paid, and cheapest reads those. The display figure is in the row's
+ * `display_unit`.
+ */
+export interface RegularPrice {
+  regular_price?: string | null;
+  regular_display_unit_price?: string | null;
+}
+
+export interface PricePoint extends RegularPrice {
   observation_id: string;
   observed_at: string;
   price: string;
@@ -33,7 +44,7 @@ export interface PricePoint {
   series: string;
 }
 
-export interface LatestPrice {
+export interface LatestPrice extends RegularPrice {
   location_id: string;
   location_name: string;
   vendor_id: string;
@@ -62,7 +73,7 @@ export interface ProductPrices {
 }
 
 /** Days before a price counts as stale, keyed by perishability. */
-export interface Offer {
+export interface Offer extends RegularPrice {
   product_id: string;
   product_name: string;
   brand: string | null;
@@ -100,7 +111,7 @@ export interface OfferList {
   stale_after_days: number;
 }
 
-export interface CompareCell {
+export interface CompareCell extends RegularPrice {
   product_id: string;
   product_name: string;
   brand: string | null;
@@ -141,6 +152,8 @@ export interface CompareResult {
 export interface PricePanel {
   last_visit: string | null;
   spend: string | null;
+  /** The part of spend that went on kitchen supplies (spec 04, 2T). */
+  supply_spend?: string | null;
   visits: number;
   period_days: number;
   recent: {
@@ -264,7 +277,7 @@ export function useIngredientOffers(ingredientId: string | undefined, filters: P
 }
 
 /** One day's cheapest normalized price, for the hub's sparkline (D22). */
-export interface IngredientPricePoint {
+export interface IngredientPricePoint extends RegularPrice {
   observation_id: string;
   observed_at: string;
   norm_unit_price: string;
@@ -393,6 +406,8 @@ export function bridgeFixLink(
       };
     case "no_pack":
       return { to: `/catalog/products/${enc(productId)}`, text: "Set the pack" };
+    case "no_bunch_weight":
+      return { to: "/catalog/bridges#products", text: "Weigh one bunch" };
     default:
       return { to: `/catalog/products/${enc(productId)}`, text: "Check the product" };
   }
@@ -404,4 +419,5 @@ export const normStatusText: Record<NormStatus, string> = {
   unknown_measure: "unknown measure",
   no_pack: "no pack size",
   no_qty: "no quantity",
+  no_bunch_weight: "bunch not weighed",
 };

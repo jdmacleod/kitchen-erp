@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
+import type { RegularPrice as RegularPriceFields } from "../../api/pricebook";
 import {
   sourceLabel,
   useObservations,
@@ -10,7 +11,7 @@ import {
 import { formatMoney, stripZeros } from "../../lib/decimal";
 import { formatDateTime } from "../../lib/format";
 import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from "../ui";
-import { PromoBadge } from "./PriceAge";
+import { PromoBadge, RegularPrice } from "./PriceAge";
 
 const muted = "text-neutral-600 dark:text-neutral-400";
 
@@ -87,7 +88,8 @@ export function recordKind(record: Pick<Observation, "source">): string {
   return `${sourceLabel[record.source]} purchase`;
 }
 
-function PriceRecord({ record }: { record: Observation }) {
+// The observations endpoint also sends the regular price (issue 381).
+function PriceRecord({ record }: { record: Observation & RegularPriceFields }) {
   const [voiding, setVoiding] = useState(false);
   const [reason, setReason] = useState("");
   const voidPrice = useVoidObservation();
@@ -120,7 +122,7 @@ function PriceRecord({ record }: { record: Observation }) {
         <div className={`flex min-w-0 flex-col ${record.voided ? muted : ""}`}>
           <span className={`tabular-nums ${record.voided ? "line-through" : ""}`}>
             {formatMoney(record.price)} / {stripZeros(record.qty)} {record.unit}{" "}
-            <PromoBadge promo={record.is_promo} />
+            <PromoBadge promo={record.is_promo} /> <RegularPrice price={record.regular_price} />
           </span>
           <span className={`text-xs ${muted}`}>
             {where} ·{" "}

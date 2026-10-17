@@ -25,8 +25,9 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
+from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship, validates
 
+from app.catalog.supplies import KEYS as SUPPLY_CATEGORIES
 from app.models.base import Base, Timestamped, UUIDPrimaryKey
 from app.models.catalog import Product
 from app.models.geo import GeographyPoint, VendorLocation
@@ -47,9 +48,11 @@ RESOLUTIONS = (
     "manual",
     "unmatched",
     "ignored",
+    # A kitchen supply (2T): spend only, never a product or a price.
+    "supply",
 )
 OBSERVATION_SOURCES = ("receipt", "manual", "shelf", "import", "listing")
-NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty")
+NORM_STATUSES = ("ok", "no_density", "unknown_measure", "no_pack", "no_qty", "no_bunch_weight")
 BRIDGE_KINDS = ("none", "density", "density_override", "measure", "pack", "pack_count")
 # What became of one file in an upload batch (issue 122).
 UPLOAD_OUTCOMES = ("new", "revived", "already_seen")
@@ -311,6 +314,14 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
         CheckConstraint(
             "best_by IS NULL OR best_by_source IS NOT NULL", name="ck_purchase_line_best_by"
         ),
+        CheckConstraint(
+            _in("supply_category", SUPPLY_CATEGORIES), name="ck_purchase_line_supply_category"
+        ),
+        CheckConstraint(
+            "(resolution = 'supply') = (supply_category IS NOT NULL) "
+            "AND (resolution <> 'supply' OR product_id IS NULL)",
+            name="ck_purchase_line_supply",
+        ),
     )
 
     purchase_id: Mapped[uuid.UUID] = mapped_column(
@@ -348,19 +359,35 @@ class PurchaseLine(UUIDPrimaryKey, Timestamped, Base):
     stored_in: Mapped[str | None] = mapped_column(String(8))
     best_by: Mapped[date | None] = mapped_column(Date)
     best_by_source: Mapped[str | None] = mapped_column(String(8))
+    # A kitchen supply's category (2T), set exactly when resolution is supply.
+    supply_category: Mapped[str | None] = mapped_column(String(16))
 
     purchase: Mapped[Purchase] = relationship(viewonly=True)
     product: Mapped[Product | None] = relationship(lazy="joined")
+
+    @validates("resolution")
+    def _resolution_set(self, _key: str, value: str) -> str:
+        # Every path that moves a line off supply drops its category with it.
+        if value != "supply":
+            self.supply_category = None
+        return value
 
 
 class ReceiptAlias(UUIDPrimaryKey, Timestamped, Base):
     __tablename__ = "receipt_alias"
     __table_args__ = (
         CheckConstraint(
-            "disposition IN ('product', 'ignore')", name="ck_receipt_alias_disposition"
+            "disposition IN ('product', 'ignore', 'supply')", name="ck_receipt_alias_disposition"
         ),
         CheckConstraint(
             "(disposition = 'product') = (product_id IS NOT NULL)", name="ck_receipt_alias_product"
+        ),
+        CheckConstraint(
+            "(disposition = 'supply') = (supply_category IS NOT NULL)",
+            name="ck_receipt_alias_supply",
+        ),
+        CheckConstraint(
+            _in("supply_category", SUPPLY_CATEGORIES), name="ck_receipt_alias_supply_category"
         ),
         UniqueConstraint("vendor_id", "raw_text_norm", name="uq_receipt_alias_vendor_text"),
     )
@@ -373,6 +400,8 @@ class ReceiptAlias(UUIDPrimaryKey, Timestamped, Base):
     product_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("product.id")
     )
+    # A kitchen supply's category (2T), set exactly when the disposition is supply.
+    supply_category: Mapped[str | None] = mapped_column(String(16))
     confirmed_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

@@ -16,7 +16,7 @@ interface UnitSelectProps {
   disabled?: boolean;
 }
 
-const dimensionOrder = ["mass", "volume", "count"];
+const dimensionOrder = ["mass", "volume", "count", "bunch"];
 
 function dimensionRank(d: string): number {
   const i = dimensionOrder.indexOf(d);

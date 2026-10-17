@@ -46,6 +46,7 @@ import { formatDate } from "../../lib/format";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
 import { useDebouncedValue } from "../../lib/useDebouncedValue";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { bridgeFix } from "./bridgeFix";
 
 /** What Capture, or any other opener, hands this page in router state. */
 export interface ShelfPriceState {
@@ -785,41 +786,6 @@ function PriceContext({ productId, store }: { productId: string; store: VendorLo
   );
 }
 
-/** What a price that could not be normalized is missing, in one sentence, and where to add it. */
-export function bridgeFix(
-  observation: Observation,
-): { reason: string; label: string; to: string } | null {
-  const { product, norm } = observation;
-  if (!norm || norm.status === "ok") return null;
-  const ingredient = `/catalog/ingredients/${product.ingredient.id}`;
-  switch (norm.status) {
-    case "no_density":
-      return {
-        reason: `It can't be compared yet: ${product.ingredient.name} has no density.`,
-        label: "Add a density",
-        to: `${ingredient}#density-heading`,
-      };
-    case "unknown_measure":
-      return {
-        reason: `It can't be compared yet: ${product.ingredient.name} has no measure named “${observation.unit}”.`,
-        label: "Add the measure",
-        to: `${ingredient}#measures-heading`,
-      };
-    case "no_pack":
-      return {
-        reason: `It can't be compared yet: ${productTitle(product)} has no pack size.`,
-        label: "Set the pack",
-        to: `/catalog/products/${product.id}`,
-      };
-    default:
-      return {
-        reason: "It can't be compared yet: the quantity could not be used.",
-        label: "Check the product",
-        to: `/catalog/products/${product.id}`,
-      };
-  }
-}
-
 /** What normalization made of the observation, or what it is missing and where to fix it. */
 export function ObservationResult({ observation }: { observation: Observation }) {
   const { product, norm } = observation;
@@ -897,6 +863,22 @@ export function ObservationResult({ observation }: { observation: Observation })
         <>
           {productTitle(product)} has no pack size, so “each” cannot be priced per{" "}
           {product.ingredient.canonical_unit}. {productLink("Set the pack")}.
+        </>
+      );
+      break;
+    case "no_bunch_weight":
+      // A price per bunch (issue 371): shown per bunch, by weight once a bunch is weighed.
+      missing = (
+        <>
+          {formatUnitPrice(norm.display_unit_price, norm.display_unit)}; nothing says what one bunch
+          weighs.{" "}
+          <Link
+            to="/catalog/bridges#products"
+            className={`rounded-sm font-medium underline ${focusRing}`}
+          >
+            Weigh one bunch
+          </Link>
+          .
         </>
       );
       break;

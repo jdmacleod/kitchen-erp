@@ -449,12 +449,20 @@ class FdcFood(Base):
     """A USDA FoodData Central food (1G): Foundation, SR Legacy or FNDDS survey."""
 
     __tablename__ = "fdc_food"
+    __table_args__ = (
+        CheckConstraint(
+            "refuse_pct IS NULL OR (refuse_pct >= 0 AND refuse_pct < 100)",
+            name="ck_fdc_food_refuse_pct",
+        ),
+    )
 
     fdc_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=False)
     data_type: Mapped[str] = mapped_column(String(40), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(Text)
     fndds_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Inedible share as bought, in percent, from food_component.csv (issue 282).
+    refuse_pct: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
 
 
 class FdcBranded(Base):

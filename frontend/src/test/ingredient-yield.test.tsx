@@ -7,6 +7,7 @@ import {
   percentToFraction,
   type Ingredient,
 } from "../api/catalog";
+import type { IngredientUsda } from "../api/usdaReference";
 import { flour, flourId, flourProduct, units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
@@ -171,5 +172,87 @@ describe("yield in the add drawer", () => {
       category: "produce",
       yield_pct: "0.6",
     });
+  });
+});
+
+describe("the USDA refuse offered as the yield (issue 282)", () => {
+  const usdaPath = `GET /ingredients/${flourId}/usda`;
+  const reference = (refuse_pct: string | null, yield_pct: string | null): IngredientUsda => ({
+    reference: { fdc_id: 9001, description: "Squash, invented, raw", refuse_pct, yield_pct },
+  });
+
+  function withUsda(usda: IngredientUsda, ingredient: Ingredient = flour) {
+    let current = ingredient;
+    return mockApi({
+      ...routes(
+        () => current,
+        (body) => {
+          current = { ...current, ...(body as Partial<Ingredient>) };
+          return current;
+        },
+      ),
+      [usdaPath]: () => jsonResponse(200, usda),
+    });
+  }
+
+  async function openForm() {
+    const user = userEvent.setup();
+    renderApp(`/catalog/ingredients/${flourId}`);
+    await screen.findByRole("heading", { name: flour.name });
+    await user.click(screen.getAllByRole("button", { name: "Edit details" })[0]);
+    return user;
+  }
+
+  it("offers 100 minus refuse, fills the field only when asked, and saves only on save", async () => {
+    const calls = withUsda(reference("12.500", "0.8750"));
+    const user = await openForm();
+
+    expect(
+      await screen.findByText("USDA: 12.5% refuse → yield 87.5% (Squash, invented, raw)"),
+    ).toBeInTheDocument();
+    const field = screen.getByLabelText("Yield (%)");
+    expect(field).toHaveValue("100");
+
+    await user.click(screen.getByRole("button", { name: "Use 87.5%" }));
+    expect(field).toHaveValue("87.5");
+    expect(screen.getByText("The yield matches it.")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+
+    await user.click(screen.getByRole("button", { name: "Save details" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ yield_pct: "0.875" });
+    expect(await screen.findByText("yield 87.5%")).toBeInTheDocument();
+  });
+
+  it("changes nothing when the form is cancelled after using the suggestion", async () => {
+    const calls = withUsda(reference("12.500", "0.8750"));
+    const user = await openForm();
+
+    await user.click(await screen.findByRole("button", { name: "Use 87.5%" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("button", { name: "Save details" })).not.toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+  });
+
+  it("says the yield matches when it already does", async () => {
+    withUsda(reference("12.500", "0.8750"), { ...flour, yield_pct: "0.8750" });
+    await openForm();
+
+    expect(await screen.findByText("The yield matches it.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Use / })).not.toBeInTheDocument();
+  });
+
+  it.each<[string, IngredientUsda]>([
+    ["no USDA food", { reference: null }],
+    ["a USDA food without a refuse figure", reference(null, null)],
+  ])("offers nothing for an ingredient with %s", async (_label, usda) => {
+    const calls = withUsda(usda);
+    await openForm();
+
+    await waitFor(() =>
+      expect(calls.some((c) => c.path === `/ingredients/${flourId}/usda`)).toBe(true),
+    );
+    expect(screen.queryByText(/refuse →/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Use / })).not.toBeInTheDocument();
   });
 });

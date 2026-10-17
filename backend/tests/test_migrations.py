@@ -30,4 +30,4 @@ async def test_downgrade_and_upgrade_round_trip(owner_conn: asyncpg.Connection):
     # The round trip recreated the unit table empty; later tests expect the seed.
 
     async with get_sessionmaker()() as db:
-        assert await seed_units(db) == 16
+        assert await seed_units(db) == 17

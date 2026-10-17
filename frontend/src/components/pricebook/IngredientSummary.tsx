@@ -2,7 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 import type { Ingredient } from "../../api/catalog";
 import type { IngredientPriceHistory, IngredientPricePoint } from "../../api/pricebook";
 import { formatDate } from "../../lib/format";
-import { formatUnitPrice } from "./PriceAge";
+import { RegularPrice, formatUnitPrice } from "./PriceAge";
 import { Sparkline } from "./Sparkline";
 
 const WINDOW_DAYS = 90;
@@ -58,6 +58,12 @@ export function IngredientSummary({
             <p className="font-display mt-1 text-2xl tabular-nums">
               {formatUnitPrice(best.display_unit_price, best.display_unit)}
             </p>
+            {/* What was paid is the best price; a regular price beside it is information. */}
+            <RegularPrice
+              price={best.regular_display_unit_price}
+              unit={best.display_unit}
+              className="block"
+            />
             <p className="text-sm text-green-900 dark:text-green-200">
               {best.product_name} · {best.vendor_name} · {formatDate(best.observed_at)}
             </p>

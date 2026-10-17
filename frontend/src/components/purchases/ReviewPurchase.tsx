@@ -31,6 +31,12 @@ import {
   type Suggestion,
 } from "../../api/purchases";
 import {
+  isSetAside,
+  suggestionText,
+  useSupplyCategories,
+  type SupplyCategory,
+} from "../../api/supplies";
+import {
   cmp,
   div,
   formatMoney,
@@ -57,6 +63,7 @@ import { SegmentedControl } from "../SegmentedControl";
 import { Alert, Button, Card, Field, focusRing, sectionHeading, tapTarget } from "../ui";
 import { BestBy } from "./BestBy";
 import { CorrectLines } from "./CorrectLines";
+import { SetAside, SupplyChoices } from "./KitchenSupply";
 import {
   LineFixes,
   LineFlags,
@@ -69,9 +76,10 @@ import {
   suspectLine,
 } from "./lineParts";
 import { ProductPicker } from "./ProductPicker";
-import { ReceiptZoom } from "./ReceiptZoom";
+import { imageColumns, ReceiptZoom } from "./ReceiptZoom";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { RereadLines } from "./RereadLines";
+import { LineActions } from "./ReviewLineActions";
 import { WhyOff } from "./WhyOff";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = {
@@ -89,6 +97,7 @@ const SHORTCUTS: [string, string][] = [
   ["Enter", "accept the top suggestion"],
   ["/", "choose or create a product"],
   ["i", "ignore the line"],
+  ["s", "mark it a kitchen supply"],
   ["e", "edit quantities and prices"],
   ["c", "commit"],
   ["Esc", "close"],
@@ -105,7 +114,9 @@ function isEditable(el: HTMLElement): boolean {
 
 /** The first suggestion a bare Enter would accept. */
 function topSuggestion(line: PurchaseLine): Suggestion | null {
-  return line.suggestions?.find((s) => s.product_id !== null || s.ignore) ?? null;
+  return (
+    line.suggestions?.find((s) => s.product_id !== null || s.ignore || !!s.supply_category) ?? null
+  );
 }
 
 /**
@@ -142,6 +153,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       )?.id ?? null,
   );
   const [picking, setPicking] = useState<string | null>(null);
+  // The line whose kitchen supply choices are open, where the picker opens (2T).
+  const [supplying, setSupplying] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const commitButton = useRef<HTMLButtonElement>(null);
@@ -186,7 +199,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     // household's first receipts that is every line. "Already in the price
     // book" was said then, when nothing had been added at all.
     const waiting = committed.lines.filter(
-      (l) => l.line_kind === "item" && !l.product && l.resolution !== "ignored",
+      (l) => l.line_kind === "item" && !l.product && !isSetAside(l),
     ).length;
     const lines = `${waiting} ${waiting === 1 ? "line waits" : "lines wait"} in To identify`;
     const priced = committed.lines.some((l) => l.observation_id);
@@ -245,6 +258,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const accept = (line: PurchaseLine, s: Suggestion) => {
     const accepted_kind = acceptedKindOf[s.kind];
     if (s.ignore) resolve.mutate({ lineId: line.id, ignore: true, accepted_kind });
+    else if (s.supply_category)
+      resolve.mutate({ lineId: line.id, supply_category: s.supply_category, accepted_kind });
     else if (s.product_id)
       resolve.mutate({ lineId: line.id, product_id: s.product_id, accepted_kind });
   };
@@ -261,19 +276,40 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
     );
   const openPicker = (line: PurchaseLine) => {
     setPicking(line.id);
+    setSupplying(null);
     setEditing(null);
     pendingFocus.current = `review-pick-${line.id}`;
   };
+  // Kitchen supply (2T): its choices take the picker's place and focus themselves.
+  const openSupply = (line: PurchaseLine) => {
+    setSupplying(line.id);
+    setPicking(null);
+    setEditing(null);
+  };
+  const supplyItem = (line: PurchaseLine | null) => {
+    if (line?.line_kind === "item") openSupply(line);
+  };
+  const supply = (line: PurchaseLine, supply_category: SupplyCategory) =>
+    resolve.mutate(
+      { lineId: line.id, supply_category },
+      {
+        onSuccess: () => {
+          setSupplying(null);
+          focusRow(line.id);
+        },
+      },
+    );
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     // The table has keys of its own; a stray "c" there must not open Commit.
     if (correcting) return;
     const target = event.target as HTMLElement;
     if (event.key === "Escape") {
-      if (picking || editing || confirming) {
+      if (picking || supplying || editing || confirming) {
         event.preventDefault();
         event.stopPropagation();
         setPicking(null);
+        setSupplying(null);
         setEditing(null);
         setConfirming(false);
         focusRow(current?.id ?? null);
@@ -312,6 +348,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         event.preventDefault();
         ignore(current);
         return;
+      case "s":
+        if (busy) return;
+        event.preventDefault();
+        supplyItem(current);
+        return;
       case "e":
         if (!current) return;
         event.preventDefault();
@@ -348,15 +389,20 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       ? neighbours(line)
       : { above: null, below: null },
     current: line.id === current?.id,
-    picking: picking === line.id,
+    // The supply choices open where the picker does, in a row under the line (2T).
+    picking: picking === line.id || supplying === line.id,
+    supplying: supplying === line.id,
     editing: editing === line.id,
     busy,
     onFocus: () => setCurrentId(line.id),
     onAccept: (s) => accept(line, s),
     onIgnore: () => ignore(line),
+    onOpenSupply: () => openSupply(line),
+    onSupply: (category) => supply(line, category),
     onOpenPicker: () => openPicker(line),
     onClosePicker: () => {
       setPicking(null);
+      setSupplying(null);
       focusRow(line.id);
     },
     onChoose: (productId) => choose(line, productId),
@@ -387,12 +433,13 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       ),
   });
 
-  // An ignored line, or a row kept at zero, never joins the to-identify queue.
+  // An ignored or kitchen supply line, or a row kept at zero, never joins the
+  // to-identify queue.
   const unresolved = purchasedItems(purchase).filter(
-    (l) => l.resolution !== "ignored" && (l.resolution === "unmatched" || !l.product),
+    (l) => !isSetAside(l) && (l.resolution === "unmatched" || !l.product),
   ).length;
   // Neither does it emit a price: what commits is the item lines less both.
-  const emitting = itemLines.filter((l) => l.resolution !== "ignored").length - unresolved;
+  const emitting = itemLines.filter((l) => !isSetAside(l)).length - unresolved;
   const mismatch = purchase.flags.some((f) => f === "reconcile_mismatch" || f === "total_mismatch");
   const suspectCount = lines.filter(suspectLine).length;
   // What the reader could not find is filled with a stand-in, and a stand-in
@@ -527,9 +574,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
             className="md:sticky md:top-4 md:self-start"
           >
             <ReceiptZoom
-              documentId={purchase.receipt_document_id}
+              purchase={purchase}
               wide={sideBySide}
               onWide={setSideBySide}
+              currentLine={current}
+              onSelectLine={showLine}
             />
           </Disclosure>
         ) : null}
@@ -926,11 +975,14 @@ interface ReviewLineProps {
   mergeInto: { above: PurchaseLine | null; below: PurchaseLine | null };
   current: boolean;
   picking: boolean;
+  supplying: boolean;
   editing: boolean;
   busy: boolean;
   onFocus: () => void;
   onAccept: (s: Suggestion) => void;
   onIgnore: () => void;
+  onOpenSupply: () => void;
+  onSupply: (category: SupplyCategory) => void;
   onOpenPicker: () => void;
   onClosePicker: () => void;
   onChoose: (productId: string) => void;
@@ -946,17 +998,6 @@ function lineTitle(l: PurchaseLine): string {
   return l.product ? productTitle(l.product) : (l.raw_text ?? `line ${l.seq}`);
 }
 
-/**
- * The image beside the lines. From lg the lines are a table that needs the
- * width, so the image stacks above it until xl; side by side, a person has
- * chosen half the page for the image while checking lines against it.
- */
-function imageColumns(sideBySide: boolean): string {
-  return sideBySide
-    ? "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-    : "md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]";
-}
-
 /** Flags that say what was done, not that anything needs a person (2S, U8). */
 const QUIET_FLAGS = ["parent_inferred", "saving_in_price"];
 
@@ -970,9 +1011,7 @@ export function needsYou(line: PurchaseLine): boolean {
   return (
     line.flags.some((f) => !QUIET_FLAGS.includes(f)) ||
     orphanSaving(line) ||
-    (isItem &&
-      line.resolution !== "ignored" &&
-      (!line.product || (line.suggestions?.length ?? 0) > 0))
+    (isItem && !isSetAside(line) && (!line.product || (line.suggestions?.length ?? 0) > 0))
   );
 }
 
@@ -1094,10 +1133,12 @@ function LineProduct({
   line,
   itemLines,
   picking,
+  supplying,
   busy,
   onAccept,
   onClosePicker,
   onChoose,
+  onSupply,
   onPatch,
   touch,
   compact,
@@ -1107,6 +1148,21 @@ function LineProduct({
   const suggestions = line.suggestions ?? [];
   const top = topSuggestion(line);
   const resolution = line.resolution as Resolution | null;
+  const setAside = isSetAside(line);
+  const categories = useSupplyCategories().data;
+  const said = (s: Suggestion) => suggestionText(s, categories);
+
+  if (supplying) {
+    return (
+      <SupplyChoices
+        id={`review-supply-${line.id}`}
+        subject={`line ${line.seq}`}
+        busy={busy}
+        onChoose={onSupply}
+        onCancel={onClosePicker}
+      />
+    );
+  }
 
   // A line not being worked on is one scannable line (#35): what it is, or what
   // is suggested. Its buttons appear when it becomes the current line.
@@ -1116,8 +1172,8 @@ function LineProduct({
       <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
         {line.product ? (
           <span className="min-w-0 truncate font-medium">{productTitle(line.product)}</span>
-        ) : resolution === "ignored" ? (
-          <span className="italic">ignored</span>
+        ) : setAside ? (
+          <SetAside line={line} />
         ) : isItem ? (
           <span className="font-medium text-amber-800 dark:text-amber-300">unidentified</span>
         ) : parent ? (
@@ -1130,9 +1186,9 @@ function LineProduct({
             {resolutionLabel[resolution] ?? resolution}
           </Badge>
         ) : null}
-        {top && !line.product && resolution !== "ignored" ? (
+        {top && !line.product && !setAside ? (
           <span className="min-w-0 truncate text-xs text-neutral-600 dark:text-neutral-400">
-            Suggested: {top.ignore ? "ignore this line" : top.label}
+            Suggested: {suggestionText(top, categories, "ignore this line")}
             {suggestions.length > 1 ? ` (+${suggestions.length - 1})` : ""}
           </span>
         ) : null}
@@ -1187,8 +1243,8 @@ function LineProduct({
           </Link>{" "}
           <CategoryChip category={line.product.category} categoryKey={line.product.category_key} />
         </>
-      ) : resolution === "ignored" ? (
-        <span className="italic">ignored</span>
+      ) : setAside ? (
+        <SetAside line={line} />
       ) : isItem ? (
         <span className="font-medium text-amber-800 dark:text-amber-300">unidentified</span>
       ) : (
@@ -1209,7 +1265,7 @@ function LineProduct({
       ) : null}
       {line.code_offer && line.product ? <RememberCode line={line} /> : null}
       {line.product && isItem ? <ReviewBestBy line={line} /> : null}
-      {suggestions.length > 0 && resolution !== "ignored" && !line.product ? (
+      {suggestions.length > 0 && !setAside && !line.product ? (
         <ul
           aria-label={`Suggestions for line ${line.seq}`}
           className={`mt-1 flex flex-col ${touch ? "gap-2" : "gap-1"}`}
@@ -1221,7 +1277,7 @@ function LineProduct({
                   type="button"
                   disabled={busy}
                   onClick={() => onAccept(s)}
-                  aria-label={`Accept ${s.ignore ? "ignoring this line" : s.label}`}
+                  aria-label={`Accept ${suggestionText(s, categories, "ignoring this line")}`}
                   className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm disabled:opacity-50 ${focusRing} ${
                     s === top
                       ? "border-neutral-400 bg-neutral-100 font-medium dark:border-neutral-600 dark:bg-neutral-800"
@@ -1229,7 +1285,7 @@ function LineProduct({
                   }`}
                 >
                   <span className="min-w-0">
-                    {s.ignore ? "Ignore this line" : s.label}
+                    {said(s)}
                     {s.brand_note ? (
                       <span className="block text-xs font-normal text-neutral-600 dark:text-neutral-400">
                         {s.brand_note}
@@ -1247,9 +1303,7 @@ function LineProduct({
                 key={`${s.kind}-${s.product_id ?? "ignore"}-${i}`}
                 className="flex flex-wrap items-center gap-1 text-xs"
               >
-                <span className={s === top ? "font-medium" : ""}>
-                  {s.ignore ? "Ignore this line" : s.label}
-                </span>
+                <span className={s === top ? "font-medium" : ""}>{said(s)}</span>
                 <Badge>{kindLabel(s)}</Badge>
                 {s.brand_note ? (
                   <span className="text-neutral-600 dark:text-neutral-400">{s.brand_note}</span>
@@ -1292,93 +1346,6 @@ function LineProduct({
         </label>
       ) : null}
     </>
-  );
-}
-
-/** Choose, Ignore, Re-resolve, Edit and Delete. 44px on a card, compact in the table. */
-function LineActions({
-  line,
-  picking,
-  editing,
-  busy,
-  onOpenPicker,
-  onIgnore,
-  onReResolve,
-  onEdit,
-  onDelete,
-  touch,
-}: LinePartProps & { touch?: boolean }) {
-  const size = touch
-    ? "min-h-11 px-3 text-sm"
-    : "min-h-11 lg:min-h-7 px-2 text-xs whitespace-nowrap";
-  const resolution = line.resolution as Resolution | null;
-  // A line that reached the price book asks first: deleting it voids its
-  // price (#72, D12). One that never did still goes in one click.
-  const [confirming, setConfirming] = useState(false);
-  const keep = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (confirming) keep.current?.focus();
-  }, [confirming]);
-  if (confirming) {
-    return (
-      <div
-        role="group"
-        aria-label={`Delete line ${line.seq}`}
-        className="flex flex-wrap items-center gap-2 rounded-md border border-red-300 bg-red-50 p-2 dark:border-red-900 dark:bg-red-950"
-      >
-        <span className="text-sm">Delete line {line.seq}? Its price is voided.</span>
-        <Button variant="danger" className={size} disabled={busy} onClick={onDelete}>
-          Delete
-        </Button>
-        <Button
-          ref={keep}
-          variant="secondary"
-          className={size}
-          onClick={() => {
-            setConfirming(false);
-            document.getElementById(`review-line-${line.id}`)?.focus();
-          }}
-        >
-          Keep it
-        </Button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      {line.line_kind === "item" ? (
-        <>
-          <Button
-            variant="secondary"
-            className={size}
-            disabled={busy || picking}
-            onClick={onOpenPicker}
-          >
-            {line.product ? "Change" : "Choose…"}
-          </Button>
-          {resolution !== "ignored" ? (
-            <Button variant="secondary" className={size} disabled={busy} onClick={onIgnore}>
-              Ignore
-            </Button>
-          ) : null}
-          <Button variant="ghost" className={size} disabled={busy} onClick={onReResolve}>
-            Re-resolve
-          </Button>
-        </>
-      ) : null}
-      <Button variant="ghost" className={size} disabled={busy || editing} onClick={onEdit}>
-        Edit
-      </Button>
-      <Button
-        variant="ghost"
-        className={`${size} text-red-700 dark:text-red-300`}
-        disabled={busy}
-        onClick={line.recorded ? () => setConfirming(true) : onDelete}
-        aria-label={`Delete line ${line.seq}`}
-      >
-        Delete
-      </Button>
-    </div>
   );
 }
 
