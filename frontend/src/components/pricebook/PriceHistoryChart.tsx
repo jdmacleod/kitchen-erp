@@ -3,7 +3,7 @@ import type { PricePoint } from "../../api/pricebook";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { SERIES_COLOURS } from "../../lib/palette";
-import { formatUnitPrice } from "./PriceAge";
+import { formatUnitPrice, regularText } from "./PriceAge";
 
 // Six strokes, each paired with its own dash pattern and marker shape, so
 // series are told apart without colour.
@@ -167,7 +167,7 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
               {s.points.map((p) => (
                 <g key={p.observation_id} data-testid={p.is_promo ? "promo-point" : "price-point"}>
                   <title>
-                    {`${s.name}: ${formatUnitPrice(p.display_unit_price, p.display_unit)} on ${formatDate(p.observed_at)}${p.is_promo ? " (sale)" : ""}`}
+                    {`${s.name}: ${formatUnitPrice(p.display_unit_price, p.display_unit)} on ${formatDate(p.observed_at)}${p.is_promo ? ` (sale${regularText(p.regular_display_unit_price, p.display_unit)})` : ""}`}
                   </title>
                   {p.is_promo ? (
                     <>

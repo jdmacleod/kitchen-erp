@@ -6,7 +6,7 @@ import { useCompare, type CompareCell, type PriceFilters as Filters } from "../.
 import { Badge } from "../../components/catalog/fields";
 import { IngredientPicker } from "../../components/catalog/IngredientPicker";
 import { KitchenTag } from "../../components/plan/KitchenTag";
-import { PriceAge, formatUnitPrice } from "../../components/pricebook/PriceAge";
+import { PriceAge, formatUnitPrice, regularText } from "../../components/pricebook/PriceAge";
 import { PriceFilters } from "../../components/pricebook/PriceFilters";
 import { SegmentedControl } from "../../components/SegmentedControl";
 import {
@@ -207,7 +207,9 @@ function CellView({ cell }: { cell: CompareCell }) {
         {cell.brand ? `${cell.brand} ` : ""}
         {cell.product_name}
         {cell.quality_rating !== null ? ` · ${cell.quality_rating}/5` : ""}
-        {cell.is_promo ? " · sale" : ""}
+        {cell.is_promo
+          ? ` · sale${regularText(cell.regular_display_unit_price, cell.display_unit)}`
+          : ""}
         {cell.is_store_brand
           ? ` · store brand${cell.brand_tier ? `, ${cell.brand_tier}` : ""}`
           : ""}

@@ -2186,6 +2186,28 @@
             ],
             "title": "Quality Rating"
           },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
+          },
           "stale": {
             "title": "Stale",
             "type": "boolean"
@@ -3852,6 +3874,28 @@
           "qty": {
             "title": "Qty",
             "type": "string"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "series": {
             "title": "Series",
@@ -5581,6 +5625,28 @@
             "title": "Product Name",
             "type": "string"
           },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
+          },
           "source": {
             "title": "Source",
             "type": "string"
@@ -6648,6 +6714,28 @@
           "qty": {
             "title": "Qty",
             "type": "string"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "stale": {
             "title": "Stale",
@@ -10236,6 +10324,17 @@
             "title": "Qty",
             "type": "string"
           },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
+          },
           "source": {
             "enum": [
               "receipt",
@@ -10464,6 +10563,28 @@
               }
             ],
             "title": "Quality Rating"
+          },
+          "regular_display_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Display Unit Price"
+          },
+          "regular_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Price"
           },
           "stale": {
             "title": "Stale",

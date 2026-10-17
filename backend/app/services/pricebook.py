@@ -2,6 +2,8 @@
 
 Rounding rule (the only one in the price book): arithmetic in a 28-digit Decimal
 context; the normalized unit price is quantized to six places, ROUND_HALF_EVEN.
+It is defined once, in ``price_rounding.unit_price``, so read models can use it
+without importing this module.
 
 Recipe cost snapshots (07, 3D) are derived from these prices, so the paths that
 change what qualifies, or how a price normalizes, hand the change on to
@@ -13,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from decimal import ROUND_HALF_EVEN, Context, Decimal
+from decimal import Decimal
 
 from sqlalchemy import delete, func, or_, select, text
 from sqlalchemy.exc import IntegrityError
@@ -32,17 +34,10 @@ from app.models import (
 from app.models.units import UnitRow
 from app.services import recipe_cost_triggers
 from app.services.pagination import decode_cursor, encode_cursor
+from app.services.price_rounding import unit_price
 from app.services.units import build_context
 from app.units import CanonicalQty, ConversionFailure, convert
 from app.units.convert import BUNCH
-
-_CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
-_SIX = Decimal("0.000001")
-
-
-def unit_price(price: Decimal, canonical_qty: Decimal) -> Decimal:
-    return _CTX.divide(price, canonical_qty).quantize(_SIX, rounding=ROUND_HALF_EVEN)
-
 
 # --- normalization ----------------------------------------------------------
 
