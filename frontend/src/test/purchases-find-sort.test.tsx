@@ -91,7 +91,9 @@ describe("purchases: find and sort (UI-3.22)", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("0 purchases match “blueberries”.")).toBeInTheDocument();
-  });
+    // The test's own waits allow 5 s each, so it can't be held to vitest's 5 s
+    // default as a whole: it timed out in CI with both waits still inside theirs.
+  }, 15000);
 
   it("sorts by a heading on the server, marks it with aria-sort, and reverses on a second click", async () => {
     const calls = mockApi(
