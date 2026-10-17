@@ -6859,6 +6859,24 @@
               }
             ],
             "title": "Product Id"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           }
         },
         "title": "LineDecision",
@@ -7380,6 +7398,24 @@
             },
             "title": "Suggestions",
             "type": "array"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           },
           "unit": {
             "anyOf": [
@@ -8401,6 +8437,11 @@
           },
           "spend": {
             "title": "Spend",
+            "type": "string"
+          },
+          "supply_spend": {
+            "default": "0",
+            "title": "Supply Spend",
             "type": "string"
           },
           "visits": {
@@ -13900,6 +13941,17 @@
             ],
             "title": "Subtotal"
           },
+          "supply_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Total"
+          },
           "tax": {
             "anyOf": [
               {
@@ -14066,6 +14118,24 @@
           "raw_text_norm": {
             "title": "Raw Text Norm",
             "type": "string"
+          },
+          "supply_category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "wraps",
+                  "storage",
+                  "cooking",
+                  "filters",
+                  "fuel"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Category"
           },
           "vendor_id": {
             "format": "uuid",
@@ -18160,6 +18230,55 @@
           "name"
         ],
         "title": "SummaryStop",
+        "type": "object"
+      },
+      "SupplyCategoryList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SupplyCategoryOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SupplyCategoryList",
+        "type": "object"
+      },
+      "SupplyCategoryOut": {
+        "additionalProperties": false,
+        "description": "One kitchen supply category (2T), with what it covers.",
+        "properties": {
+          "examples": {
+            "title": "Examples",
+            "type": "string"
+          },
+          "key": {
+            "enum": [
+              "wraps",
+              "storage",
+              "cooking",
+              "filters",
+              "fuel"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "examples"
+        ],
+        "title": "SupplyCategoryOut",
         "type": "object"
       },
       "Trade": {
@@ -30322,6 +30441,28 @@
         "summary": "Standard Ingredients",
         "tags": [
           "ingredient vocabulary"
+        ]
+      }
+    },
+    "/api/v1/supply-categories": {
+      "get": {
+        "description": "The kitchen supply categories a line can be marked with, in order (04, 2T).",
+        "operationId": "supply_categories_api_v1_supply_categories_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplyCategoryList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Supply Categories",
+        "tags": [
+          "purchases"
         ]
       }
     },

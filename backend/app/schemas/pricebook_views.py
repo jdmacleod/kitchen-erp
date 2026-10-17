@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import Field
@@ -208,6 +209,8 @@ class RecentPrice(ApiModel):
 class LocationPanel(ApiModel):
     last_visit: datetime | None
     spend: DecimalStr
+    # The part of spend that went on kitchen supplies (04, 2T).
+    supply_spend: DecimalStr = Decimal("0")
     visits: int
     period_days: int
     recent: list[RecentPrice]

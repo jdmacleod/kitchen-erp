@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { NamingRow } from "../api/naming";
-import type { ToIdentifyGroup } from "../api/purchases";
+import type { ToIdentifyGroup } from "../api/toIdentify";
 import { flour, units } from "./catalog-fixtures";
 import { chainLocation } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";

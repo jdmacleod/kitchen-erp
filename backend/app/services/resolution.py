@@ -3,7 +3,7 @@ suggestion, model suggestion, similar names, human. Only the first two resolve
 without a person.
 
 Also: alias learning on every human confirmation, the price sanity check, commit
-and reopen of receipt purchases, and the to-identify queue.
+and reopen of receipt purchases. The to-identify queue is ``identify_queue``.
 """
 
 from __future__ import annotations
@@ -23,7 +23,6 @@ from app.catalog import receipt_codes
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.core.logging import get_logger
-from app.ingest.lines import ZERO_ROW_FLAGS
 from app.models import (
     AppUser,
     IngestJob,
@@ -36,7 +35,7 @@ from app.models import (
     PurchaseLine,
     ReceiptAlias,
 )
-from app.models.geo import Vendor, VendorLocation
+from app.models.geo import Vendor
 from app.services import best_by, brands, pricebook, recipe_cost_triggers
 from app.services.aliases import upsert_alias
 from app.services.catalog import search_products
@@ -175,26 +174,6 @@ async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, d
     return out
 
 
-async def queue_codes(
-    db: AsyncSession, groups: list[dict[str, Any]]
-) -> dict[tuple[str, str | None], dict[str, str]]:
-    """Per to-identify group, the code its lines carry, read with its vendor's layout."""
-    out: dict[tuple[str, str | None], dict[str, str]] = {}
-    vendors: dict[str, Vendor | None] = {}
-    for group in groups:
-        key = str(group["vendor_id"])
-        if key not in vendors:
-            vendors[key] = await db.get(Vendor, uuid.UUID(key))
-        vendor = vendors[key]
-        if vendor is None or not group["lines"]:
-            continue
-        raw = group["lines"][0].get("raw_text") or ""
-        offer = receipt_codes.read(raw, vendor.code_position, vendor.rw_layout).offer
-        if offer is not None:
-            out[(key, group["raw_text_norm"])] = {"scheme": offer[0], "value": offer[1]}
-    return out
-
-
 async def remember_code(
     db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID
 ) -> ProductIdentifier:
@@ -289,7 +268,7 @@ async def fuzzy_aliases(db: AsyncSession, vendor_id: uuid.UUID, norm: str) -> li
     rows = await db.execute(
         text(
             """
-            SELECT id, raw_text_norm, disposition, product_id,
+            SELECT id, raw_text_norm, disposition, product_id, supply_category,
                    similarity(raw_text_norm, :t) AS score
             FROM receipt_alias
             WHERE vendor_id = :v AND raw_text_norm <> :t
@@ -304,6 +283,7 @@ async def fuzzy_aliases(db: AsyncSession, vendor_id: uuid.UUID, norm: str) -> li
             "kind": "fuzzy",
             "product_id": str(r["product_id"]) if r["product_id"] else None,
             "ignore": r["disposition"] == "ignore",
+            "supply_category": r["supply_category"],
             "label": r["raw_text_norm"],
             "score": str(Decimal(str(r["score"])).quantize(Decimal("0.001"))),
         }
@@ -416,9 +396,10 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
         if alias is not None:
             if alias.confirmed_count >= 1:
                 alias.last_seen_at = datetime.now(UTC)
-                if alias.disposition == "ignore":
+                if alias.disposition in ("ignore", "supply"):  # never a product or a price
                     line.product_id = None
-                    line.resolution = "ignored"
+                    line.resolution = "ignored" if alias.disposition == "ignore" else "supply"
+                    line.supply_category = alias.supply_category
                     line.resolved_by = None
                     line.suggestions = []
                     record["rung"] = "alias"
@@ -443,6 +424,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
                         "kind": "alias_unconfirmed",
                         "product_id": str(alias.product_id) if alias.product_id else None,
                         "ignore": alias.disposition == "ignore",
+                        "supply_category": alias.supply_category,
                         "label": alias.raw_text_norm,
                         "score": "1",
                     }
@@ -492,7 +474,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
             record["similar"] = len(suggestions)
 
     line.suggestions = suggestions
-    if line.resolution in ("barcode", "identifier", "alias"):
+    if line.resolution in ("barcode", "identifier", "alias", "supply"):
         # Re-resolving a previously auto-resolved line that no longer matches.
         line.resolution = "unmatched"
         line.product_id = None
@@ -506,7 +488,7 @@ async def resolve_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> dict[str
     records = []
     for line in purchase.lines:
         if (
-            line.resolution in ("manual", "ignored", "barcode", "identifier", "alias")
+            line.resolution in ("manual", "ignored", "supply", "barcode", "identifier", "alias")
             and line.resolved_by
         ):
             continue  # a person already decided
@@ -540,19 +522,20 @@ async def decide_line(
     *,
     product_id: uuid.UUID | None,
     ignore: bool,
+    supply_category: str | None = None,
     accepted_kind: str | None = None,
 ) -> Purchase:
-    """Choose a product, accept a suggestion, or mark the line ignored. Writes an alias.
-
-    On a committed purchase the observation is emitted now, dated to the purchase.
+    """Choose a product, accept a suggestion, or mark the line ignored or a kitchen
+    supply (2T). Writes an alias. On a committed purchase a product's observation is
+    emitted now, dated to the purchase; a supply keeps its amount and emits none.
     """
     purchase = await get_purchase(db, purchase_id, lock=True)
     ensure_not_voided(purchase)
     line = await _line_of(purchase, line_id)
     if line.line_kind != "item":
         raise ApiError(422, "not_an_item", "Only item lines resolve to products.")
-    if ignore == (product_id is not None):
-        raise ApiError(422, "validation_error", "Give a product_id or ignore, not both.")
+    if (product_id is not None) + ignore + (supply_category is not None) != 1:
+        raise ApiError(422, "validation_error", "Give one of product_id, ignore or supply.")
     if product_id is not None and await db.get(Product, product_id) is None:
         raise ApiError(404, "not_found", "No such product.")
     live = await live_observations(db, purchase)
@@ -563,6 +546,8 @@ async def decide_line(
     line.resolution = "ignored" if ignore else (accepted_kind or "manual")
     if line.resolution not in ("alias", "fuzzy", "llm", "similar", "manual", "ignored", "barcode"):
         line.resolution = "manual"
+    if supply_category is not None:
+        line.resolution, line.supply_category = "supply", supply_category
     line.resolved_by = user.id
     line.resolution_confidence = None
     line.suggestions = []
@@ -571,7 +556,8 @@ async def decide_line(
         norm = line.raw_text_norm or normalize_receipt_text(line.raw_text or "")
         line.raw_text_norm = norm
         if norm:
-            await upsert_alias(db, purchase.vendor_location.vendor_id, norm, product_id)
+            vendor_id = purchase.vendor_location.vendor_id
+            await upsert_alias(db, vendor_id, norm, product_id, supply_category)
     await db.flush()
     await best_by.refresh(db, purchase, [line], repointed=[line.id] if repointed else [])
     if purchase.status == "committed" and _resolved_item(line):
@@ -712,51 +698,7 @@ async def reopen_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
     return await get_purchase(db, purchase_id)
 
 
-# --- the to-identify queue -------------------------------------------------------
-
-
-async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
-    rows = await db.execute(
-        text(
-            """
-            SELECT v.id AS vendor_id, v.name AS vendor_name, pl.raw_text_norm,
-                   count(*) AS line_count,
-                   json_agg(json_build_object(
-                       'line_id', pl.id, 'purchase_id', p.id, 'raw_text', pl.raw_text,
-                       'purchased_at', p.purchased_at, 'line_total', pl.line_total::text,
-                       'qty', pl.qty::text, 'unit', pl.unit
-                   ) ORDER BY p.purchased_at DESC) AS lines
-            FROM purchase_line pl
-            JOIN purchase p ON p.id = pl.purchase_id
-            JOIN vendor_location vl ON vl.id = p.vendor_location_id
-            JOIN vendor v ON v.id = vl.vendor_id
-            WHERE p.status = 'committed' AND pl.line_kind = 'item'
-              AND pl.resolution = 'unmatched' AND pl.removed_at IS NULL
-              AND NOT pl.flags && CAST(:zero AS varchar[])
-            GROUP BY v.id, v.name, pl.raw_text_norm
-            ORDER BY max(p.purchased_at) DESC
-            """
-        ),
-        {"zero": list(ZERO_ROW_FLAGS)},
-    )
-    return [dict(r) for r in rows.mappings()]
-
-
-def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
-    return (
-        select(PurchaseLine.id, PurchaseLine.purchase_id)
-        .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
-        .join(VendorLocation, VendorLocation.id == Purchase.vendor_location_id)
-        .where(
-            Purchase.status == "committed",
-            PurchaseLine.line_kind == "item",
-            PurchaseLine.resolution == "unmatched",
-            PurchaseLine.raw_text_norm == raw_text_norm,
-            PurchaseLine.removed_at.is_(None),
-            ~PurchaseLine.flags.overlap(list(ZERO_ROW_FLAGS)),
-            VendorLocation.vendor_id == vendor_id,
-        )
-    )
+# --- lines waiting for a product's code --------------------------------------------
 
 
 async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) -> int:
@@ -830,42 +772,13 @@ async def match_all_waiting(db: AsyncSession, user: AppUser) -> tuple[int, int]:
     return resolved, len(products)
 
 
-async def queued_line_ids(
-    db: AsyncSession, vendor_id: uuid.UUID, raw_text_norm: str
-) -> list[uuid.UUID]:
-    """The group's lines still waiting in the to-identify queue."""
-    return [lid for lid, _ in (await db.execute(_queued(vendor_id, raw_text_norm))).all()]
-
-
-async def apply_to_identify(
-    db: AsyncSession,
-    user: AppUser,
-    *,
-    vendor_id: uuid.UUID,
-    raw_text_norm: str,
-    product_id: uuid.UUID | None,
-    ignore: bool,
-    line_ids: list[uuid.UUID] | None,
-) -> int:
-    """Identify one queued line and, unless narrowed, every other queued line with
-    the same vendor and normalized text. Each emits an observation dated to its purchase."""
-    rows = (await db.execute(_queued(vendor_id, raw_text_norm))).all()
-    targets = [(lid, pid) for lid, pid in rows if line_ids is None or lid in set(line_ids)]
-    for line_id, purchase_id in targets:
-        await decide_line(db, user, purchase_id, line_id, product_id=product_id, ignore=ignore)
-    return len(targets)
-
-
 __all__ = [
     "PriceObservationVoid",
-    "apply_to_identify",
     "commit_purchase",
     "decide_line",
-    "queued_line_ids",
     "reopen_purchase",
     "resolve_line",
     "resolve_purchase",
     "set_ranker",
-    "to_identify",
     "upsert_alias",
 ]

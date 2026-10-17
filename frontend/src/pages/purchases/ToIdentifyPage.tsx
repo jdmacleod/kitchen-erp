@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import {
-  purchaseErrorMessage,
-  useApplyToIdentify,
-  useRememberCode,
-  useToIdentify,
-  type ToIdentifyGroup,
-} from "../../api/purchases";
+import { purchaseErrorMessage, useRememberCode } from "../../api/purchases";
+import { useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/toIdentify";
 import { SelectField } from "../../components/catalog/fields";
 import { useNotice } from "../../components/Notice";
+import { SupplyChoices } from "../../components/purchases/KitchenSupply";
 import { NameProducts } from "../../components/purchases/NameProducts";
 import { ProductPicker } from "../../components/purchases/ProductPicker";
 import {
@@ -193,8 +189,16 @@ function GroupCard({
   };
   const [all, setAll] = useState(true);
   const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
+  // The kitchen supply choices (spec 04, 2T), open under the group's actions.
+  const [supplying, setSupplying] = useState(false);
+  const supplyButton = useRef<HTMLButtonElement>(null);
   const id = `identify-${index}`;
   const scope = () => (all ? {} : { line_ids: [lineId] });
+  const target = () => ({
+    vendor_id: group.vendor.id,
+    raw_text_norm: group.raw_text_norm ?? "",
+    ...scope(),
+  });
 
   return (
     <div
@@ -248,26 +252,40 @@ function GroupCard({
           }}
           disabled={apply.isPending}
         />
-        <div className="flex items-end">
+        <div className="flex flex-wrap items-end gap-2">
           <Button
             variant="secondary"
             disabled={apply.isPending}
             onClick={() => {
-              apply.mutate(
-                {
-                  vendor_id: group.vendor.id,
-                  raw_text_norm: group.raw_text_norm ?? "",
-                  ignore: true,
-                  ...scope(),
-                },
-                { onSuccess: (r) => onApplied(r, null) },
-              );
+              apply.mutate({ ...target(), ignore: true }, { onSuccess: (r) => onApplied(r, null) });
             }}
           >
             Ignore
           </Button>
+          <Button
+            ref={supplyButton}
+            variant="secondary"
+            disabled={apply.isPending}
+            onClick={() => setSupplying(true)}
+          >
+            Kitchen supply
+          </Button>
         </div>
       </div>
+      {supplying ? (
+        <SupplyChoices
+          id={`${id}-supply`}
+          subject={group.raw_text_norm ?? "this line"}
+          busy={apply.isPending}
+          onChoose={(supply_category) =>
+            apply.mutate({ ...target(), supply_category }, { onSuccess: (r) => onApplied(r, null) })
+          }
+          onCancel={() => {
+            setSupplying(false);
+            supplyButton.current?.focus();
+          }}
+        />
+      ) : null}
       <div className="flex flex-wrap items-end gap-3">
         {/* A group of one line has nothing else to apply to: "Apply to all 1"
             offered a choice that changed nothing (QA 2026-10-13). */}

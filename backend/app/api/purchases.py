@@ -52,10 +52,12 @@ from app.schemas.purchases import (
     RemovedOut,
     StoreCodeOfferOut,
     StoreCodeOfferResponse,
+    SupplyCategoryList,
     VoidIn,
 )
 from app.services import (
     catalog,
+    identify_queue,
     naming,
     naming_model,
     new_products,
@@ -70,6 +72,7 @@ from app.services import (
     review,
     spelling,
     store_codes,
+    supplies,
     unit_display,
     unit_switch,
     user_settings,
@@ -316,6 +319,7 @@ async def purchase_out(
             stored_in=line.stored_in,  # type: ignore[arg-type]
             best_by=line.best_by,
             best_by_source=line.best_by_source,  # type: ignore[arg-type]
+            supply_category=line.supply_category,  # type: ignore[arg-type]
         )
         for line in purchase.lines
     ]
@@ -377,6 +381,7 @@ async def purchase_out(
         ),
         removed_line_count=await purchases.removed_line_count(db, purchase.id) if detail else None,
         reread=await reread.state(db, purchase) if detail else None,  # type: ignore[arg-type]
+        supply_total=supplies.supply_total(purchase),
     )
 
 
@@ -568,6 +573,7 @@ async def resolve_line(
         line_id,
         product_id=product_id,
         ignore=payload.ignore,
+        supply_category=payload.supply_category,
         accepted_kind=payload.accepted_kind,
     )
     # Other queued lines with the new product's barcode resolve with it.
@@ -598,10 +604,16 @@ async def reopen_purchase(purchase_id: uuid.UUID, _: CurrentUser, db: DbSession)
     return await purchase_out(db, await resolution.reopen_purchase(db, purchase_id))
 
 
+@router.get("/supply-categories", response_model=SupplyCategoryList)
+async def supply_categories(_: CurrentUser) -> SupplyCategoryList:
+    """The kitchen supply categories a line can be marked with, in order (04, 2T)."""
+    return SupplyCategoryList(items=supplies.categories())  # type: ignore[arg-type]
+
+
 @router.get("/to-identify", response_model=QueueList)
 async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
-    groups = await resolution.to_identify(db)
-    codes = await resolution.queue_codes(db, groups)
+    groups = await identify_queue.to_identify(db)
+    codes = await identify_queue.queue_codes(db, groups)
     return QueueList(
         items=[
             {
@@ -618,7 +630,7 @@ async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
 
 @router.post("/to-identify/apply", response_model=QueueApplied)
 async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSession) -> QueueApplied:
-    n = await resolution.apply_to_identify(
+    n = await identify_queue.apply_to_identify(
         db,
         user,
         vendor_id=payload.vendor_id,
@@ -626,6 +638,7 @@ async def apply_to_identify(payload: QueueApply, user: CurrentUser, db: DbSessio
         product_id=payload.product_id,
         ignore=payload.ignore,
         line_ids=payload.line_ids,
+        supply_category=payload.supply_category,
     )
     return QueueApplied(applied=n)
 

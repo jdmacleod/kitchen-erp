@@ -368,23 +368,27 @@ purchase_line(
   line_kind CHECK IN (item, discount, tax, deposit, fee),
   product_id FK?, parent_line_id FK purchase_line?,   -- discounts and deposits attach to an item
   qty NUMERIC?, unit FK unit?, unit_price NUMERIC?, line_total NUMERIC,
-  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, similar, manual, unmatched, ignored),   -- the rung whose answer was used; 2K writes identifier
+  resolution CHECK IN (barcode, identifier, alias, fuzzy, llm, similar, manual, unmatched, ignored, supply),   -- the rung whose answer was used; 2K writes identifier; supply is a kitchen supply (2T)
   resolved_by FK app_user?,                   -- the person who confirmed it; null only for barcode, identifier and alias
   resolution_confidence NUMERIC?, flags TEXT[],
   removed_at?, removed_by FK app_user?,       -- a recorded line taken off its purchase (#72); set together
   stored_in CHECK IN (room, fridge, freezer)?, -- where it is kept (2Q); defaults from the ingredient once resolved
   best_by DATE?,                              -- a local date
   best_by_source CHECK IN (inferred, printed, person)?,   -- a person's null date is a cleared one
+  supply_category CHECK IN (wraps, storage, cooking, filters, fuel)?,   -- a kitchen supply's category (04, 2T)
   CHECK (line_kind = 'item' OR product_id IS NULL),
-  CHECK (best_by IS NULL OR best_by_source IS NOT NULL)
+  CHECK (best_by IS NULL OR best_by_source IS NOT NULL),
+  CHECK ((resolution = 'supply') = (supply_category IS NOT NULL) AND (resolution <> 'supply' OR product_id IS NULL))
 )
 
 receipt_alias(
   id, vendor_id FK, raw_text_norm TEXT,
-  disposition CHECK IN (product, ignore),
-  product_id FK?, confirmed_count INT, last_seen_at,
+  disposition CHECK IN (product, ignore, supply),
+  product_id FK?, supply_category CHECK IN (wraps, storage, cooking, filters, fuel)?,
+  confirmed_count INT, last_seen_at,
   UNIQUE (vendor_id, raw_text_norm),
-  CHECK ((disposition = 'product') = (product_id IS NOT NULL))
+  CHECK ((disposition = 'product') = (product_id IS NOT NULL)),
+  CHECK ((disposition = 'supply') = (supply_category IS NOT NULL))
 )
 
 normalize_v2_backup(                         -- rows migration 0030 changed or deleted (#125)
@@ -399,7 +403,7 @@ A line's inferred `best_by` is the purchase's local date plus the ingredient's k
 
 A purchase is removed by deleting it when none of its lines ever produced an observation, and by setting `status = voided` (and voiding its live observations) otherwise; see 04, 2H.
 
-`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` and `normalize_v3_backup` keep what migrations 0030 and 0049 changed so their downgrades can put it back, and each goes with its downgrade.
+`resolution = ignored` and `disposition = ignore` handle the paper towels and batteries that share a receipt with the groceries: once told, the system stops asking. `resolution = supply` and `disposition = supply` do the same for kitchen supplies used in cooking and storing food (foil, parchment, freezer bags, coffee filters, charcoal), keeping the line's amount and one category from `app/catalog/supplies.py` as kitchen supply spend; such a line has no product and emits no price, and cleaning, serving and appliance supplies stay ignored (04, 2T). `flags` carries review hints such as `price_outlier` or `reconcile_mismatch`. Aliases are keyed by vendor, not location, because a chain abbreviates consistently across its stores. A trigram index on `raw_text_norm` supports fuzzy matching. `raw_text_norm` holds the output of the normalizer version in force (04, 2D); `normalize_v2_backup` and `normalize_v3_backup` keep what migrations 0030 and 0049 changed so their downgrades can put it back, and each goes with its downgrade.
 
 ### The price book
 

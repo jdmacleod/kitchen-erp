@@ -19,6 +19,7 @@ import {
 import { api, isApiError, newIdempotencyKey } from "./client";
 import type { PriceScope, VendorKind } from "./geo";
 import type { NormStatus } from "./normStatus";
+import type { SupplyCategory } from "./supplies";
 
 // --- types ------------------------------------------------------------------
 
@@ -102,7 +103,8 @@ export type Resolution =
   | "similar"
   | "manual"
   | "unmatched"
-  | "ignored";
+  | "ignored"
+  | "supply";
 export type SuggestionKind = "alias_unconfirmed" | "fuzzy" | "llm" | "similar" | "code";
 export type AcceptedKind = "alias" | "fuzzy" | "llm" | "similar" | "code";
 
@@ -110,6 +112,8 @@ export interface Suggestion {
   kind: SuggestionKind;
   product_id: string | null;
   ignore: boolean;
+  /** Set when accepting it marks the line a kitchen supply of this category (2T). */
+  supply_category?: SupplyCategory | null;
   label: string;
   score: string;
   /** "X is Y's own brand" when it is another store family's brand (2R-2). */
@@ -158,6 +162,8 @@ export interface PurchaseLine {
   stored_in?: StoragePlace | null;
   best_by?: string | null;
   best_by_source?: BestBySource | null;
+  /** A kitchen supply's category (2T), set exactly when resolution is "supply". */
+  supply_category?: SupplyCategory | null;
 }
 
 export type StoragePlace = "room" | "fridge" | "freezer";
@@ -237,6 +243,8 @@ export interface Purchase {
   removed_line_count?: number | null;
   /** What "Re-read lines" can offer (04, 2S); null in lists, on a voided or non-receipt purchase. */
   reread?: RereadState | null;
+  /** What its kitchen supply lines come to, less their savings (2T); null with none. */
+  supply_total?: string | null;
 }
 
 export interface PrintedChecks {
@@ -306,9 +314,12 @@ export interface PurchaseFilters {
   dir?: SortDir;
 }
 
-/** Exactly one of product_id, ignore, or product. */
+/** Exactly one of product_id, ignore, a kitchen supply's category, or product. */
 export type ResolveInput = (
-  { product_id: string } | { ignore: true } | { product: ProductCreateInput }
+  | { product_id: string }
+  | { ignore: true }
+  | { supply_category: SupplyCategory }
+  | { product: ProductCreateInput }
 ) & {
   accepted_kind?: AcceptedKind;
 };
@@ -347,31 +358,6 @@ export interface PurchaseHeaderInput {
   total?: string;
   ledger_txn_ref?: string;
 }
-
-export interface ToIdentifyLine {
-  line_id: string;
-  purchase_id: string;
-  raw_text: string | null;
-  purchased_at: string;
-  line_total: string | null;
-  qty: string | null;
-  unit: string | null;
-}
-
-export interface ToIdentifyGroup {
-  vendor: { id: string; name: string };
-  raw_text_norm: string | null;
-  line_count: number;
-  lines: ToIdentifyLine[];
-  /** The item code these lines carry where the vendor prints codes (2K). */
-  code?: CodeOffer | null;
-}
-
-export type ToIdentifyApplyInput = {
-  vendor_id: string;
-  raw_text_norm: string;
-  line_ids?: string[];
-} & ({ product_id: string } | { ignore: true });
 
 // --- errors -----------------------------------------------------------------
 
@@ -791,31 +777,6 @@ export function useReopenPurchase(purchaseId: string) {
   );
 }
 
-// --- to-identify queue ------------------------------------------------------
-
-export function useToIdentify() {
-  return useQuery({
-    queryKey: purchaseKeys.toIdentify,
-    queryFn: () => api<{ items: ToIdentifyGroup[] }>("/to-identify"),
-    select: (data) => data.items,
-  });
-}
-
-export function useApplyToIdentify() {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: ToIdentifyApplyInput) =>
-      api<{ applied: number }>("/to-identify/apply", { method: "POST", body: input }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: purchaseKeys.toIdentify });
-      // "all": this applies a product to lines in purchases this hook never
-      // loaded, so their cached details are stale too, not just the lists.
-      invalidatePurchases(client, "all");
-      invalidateObservations(client);
-    },
-  });
-}
-
 /**
  * The unit a product was last bought in, or null when it has never been
  * bought or the endpoint is missing. Used only as a form default.
@@ -859,6 +820,7 @@ export const resolutionLabel: Record<Resolution, string> = {
   manual: "chosen",
   unmatched: "unmatched",
   ignored: "ignored",
+  supply: "kitchen supply",
 };
 
 /** Lines a reviewer need not look at: resolved automatically and unflagged. */
