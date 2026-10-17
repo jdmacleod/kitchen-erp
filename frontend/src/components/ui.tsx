@@ -54,6 +54,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 /** A caller's own minimum height, which replaces the default rather than competing with it. */
 const OWN_MIN_HEIGHT = /(^|\s)(lg:)?min-h-/;
+// The same holds for display: a caller's unprefixed "hidden" (as in "hidden
+// lg:inline-flex") lost to the default inline-flex, so a desktop-only button
+// showed on phones. A caller that sets its own display gets no default.
+const OWN_DISPLAY = /(^|\s)(hidden|block|inline-block|inline|flex|grid|contents)(\s|$)/;
 
 export function Button({
   variant = "primary",
@@ -65,10 +69,11 @@ export function Button({
   // which class came last: "min-h-11 lg:min-h-8" from a caller lost to the
   // default lg:min-h-10, so every compact desktop button was 40px (QA 2026-10-13).
   const height = OWN_MIN_HEIGHT.test(className) ? "" : "min-h-11 lg:min-h-10";
+  const display = OWN_DISPLAY.test(className) ? "" : "inline-flex";
   return (
     <button
       type={type}
-      className={`inline-flex ${height} items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${buttonVariants[variant]} ${focusRing} ${className}`}
+      className={`${display} ${height} items-center justify-center rounded-md px-3 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed ${buttonVariants[variant]} ${focusRing} ${className}`}
       {...rest}
     />
   );
