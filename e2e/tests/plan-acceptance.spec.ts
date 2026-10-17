@@ -476,14 +476,20 @@ test(
     await page.goto(`/plan/trips/${tripId}`);
     const items = page.getByTestId("stop").first().getByTestId("stop-item");
     await expect(items.first()).toBeVisible();
-    // The 44px product link once pushed the total onto a row of its own.
-    for (const item of await items.all()) {
-      const name = await item.getByRole("link").first().boundingBox();
-      const total = await item.locator(":scope > span").last().boundingBox();
-      expect(name && total, "item parts drawn").toBeTruthy();
-      expect(total!.y, "total on the name's row").toBeLessThan(name!.y + name!.height);
-      expect(total!.x, "total to the right of the name").toBeGreaterThan(name!.x);
-    }
+    // The 44px product link once pushed the total onto a row of its own. Both
+    // boxes are read in one call, from one layout: read in two, a reflow between
+    // them (the map settling beside the stops) put them a line apart in CI.
+    await expect
+      .poll(() =>
+        items.evaluateAll((rows) =>
+          rows.map((row) => {
+            const name = row.querySelector("a")!.getBoundingClientRect();
+            const total = (row.lastElementChild as HTMLElement).getBoundingClientRect();
+            return total.top < name.bottom && total.left > name.left;
+          }),
+        ),
+      )
+      .not.toContain(false);
   },
 );
 
