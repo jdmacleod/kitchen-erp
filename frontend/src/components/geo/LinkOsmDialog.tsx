@@ -72,7 +72,7 @@ export function LinkOsmDialog({
       </p>
       {candidates.isPending ? (
         <p role="status" className={`text-sm ${muted}`}>
-          Searching near this pin… OpenStreetMap can take up to half a minute.
+          Searching near this pin… OpenStreetMap can take up to a minute.
         </p>
       ) : candidates.isError && isIntegrationDisabled(candidates.error) ? (
         <p role="status" className={`text-sm ${muted}`}>
