@@ -1,4 +1,4 @@
-import type { HouseBrand } from "../../api/catalog";
+import type { HouseBrand } from "../../api/productDetails";
 import { Badge } from "./fields";
 
 /**

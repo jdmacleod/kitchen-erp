@@ -415,7 +415,12 @@ How a loose product is sold: per weight (`random_weight`), per bunch (a pack of 
 - grade;
 - form (whole, sliced, cubed or ground).
 
-Other categories accept an empty object.
+Produce has one too (added 2026-10-19):
+
+- organic (true or false). Organic and conventional of one food are two products of one ingredient. A new produce product whose name or brand says "Organic" or "Organics" starts marked organic, even when that word is dropped as a brand. Offers and the comparison grid carry `organic` and take `organic_scope` (all, organic or conventional, default all).
+- grade (small, medium, large, extra large or jumbo). A grade sets two products apart only when they are sold by the piece; sold by weight, a large and a small cost the same per pound.
+
+A product moved to an ingredient whose category has no place for its attributes loses them. Other categories accept an empty object.
 
 **Whose value wins.** `product.field_source` records where each field came from, as `vendor.field_source` does (1F). When a person accepts a proposal (04, 2L), what they chose is written. Only an answer the lookup helper sends after a proposal was decided (04, 2N) uses 1F's rule, and then a person's edit always wins.
 

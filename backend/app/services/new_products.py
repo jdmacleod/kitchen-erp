@@ -17,6 +17,8 @@ one on it: their own name, a department header ("WET VEGETABLES - …") or a wor
 - with no brand and no barcode the kind is ``random_weight`` when it is priced per
   weight, else ``loose``;
 - the name drops a leading "Fresh" and a trailing ", 1 ct" (``product_names``);
+- "Organic" in the name or the brand ("Organic bananas", a store's organic line)
+  marks the product organic in its attributes, even when the brand is dropped;
 - with no pack given, a name that says "bunch" ("Cilantro bunch") makes the pack
   "1 bunch", unless it was priced per weight; and with a pack in bunches the name
   drops the word, since the pack says it (issue 371).
@@ -27,7 +29,7 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -47,6 +49,7 @@ from app.units.table import units_by_code
 
 # A department or aisle header in capitals before a dash: "WET VEGETABLES - Herbs".
 _DEPARTMENT = re.compile(r"^[A-Z][A-Z&/' ]*[A-Z]\s*[-–:]")
+_ORGANIC = re.compile(r"\borganics?\b", re.IGNORECASE)
 _UNITS = units_by_code()
 
 
@@ -57,6 +60,7 @@ class Start:
     kind: str
     pack_qty: Decimal | None = None
     pack_unit: str | None = None
+    attributes: dict[str, Any] = field(default_factory=dict)
 
 
 def is_produce(ingredient: Ingredient) -> bool:
@@ -115,7 +119,10 @@ async def start(
     """A new product's name, brand, kind and pack; the produce defaults when it is produce."""
     produce = is_produce(ingredient)
     pack_qty, pack_unit = pack
+    attributes: dict[str, Any] = {}
     if produce:
+        if _ORGANIC.search(name) or _ORGANIC.search(brand or ""):
+            attributes["organic"] = True
         name = produce_name(name)
         brand = await produce_brand(db, brand)
         if pack_qty is None and not per_weight and says_bunch(name):
@@ -130,7 +137,7 @@ async def start(
         produce=produce,
         per_weight=per_weight,
     )
-    return Start(name.strip(), brand, kind, pack_qty, pack_unit)
+    return Start(name.strip(), brand, kind, pack_qty, pack_unit, attributes)
 
 
 async def for_create(

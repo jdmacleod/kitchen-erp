@@ -2166,6 +2166,11 @@
             "title": "Observed At",
             "type": "string"
           },
+          "organic": {
+            "default": false,
+            "title": "Organic",
+            "type": "boolean"
+          },
           "product_id": {
             "format": "uuid",
             "title": "Product Id",
@@ -2293,6 +2298,16 @@
               }
             ],
             "title": "Min Quality"
+          },
+          "organic_scope": {
+            "default": "all",
+            "enum": [
+              "all",
+              "organic",
+              "conventional"
+            ],
+            "title": "Organic Scope",
+            "type": "string"
           }
         },
         "required": [
@@ -10509,6 +10524,11 @@
             "format": "date-time",
             "title": "Observed At",
             "type": "string"
+          },
+          "organic": {
+            "default": false,
+            "title": "Organic",
+            "type": "boolean"
           },
           "pack_qty": {
             "anyOf": [
@@ -23852,6 +23872,23 @@
                 "national"
               ],
               "title": "Brand Scope",
+              "type": "string"
+            }
+          },
+          {
+            "description": "all offers, organic only, or conventional only",
+            "in": "query",
+            "name": "organic_scope",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "all offers, organic only, or conventional only",
+              "enum": [
+                "all",
+                "organic",
+                "conventional"
+              ],
+              "title": "Organic Scope",
               "type": "string"
             }
           }

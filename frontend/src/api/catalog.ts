@@ -13,6 +13,7 @@ import type { CategoryKey } from "../components/CategoryChip";
 import type { BarcodeInput } from "../lib/barcode";
 import { api, isApiError, newIdempotencyKey } from "./client";
 import { inboxKey } from "./inbox";
+import type { HouseBrand, ProductAttributes } from "./productDetails";
 import type { PhotoSummary } from "./productPhotos";
 import type { ListResponse } from "./types";
 
@@ -178,21 +179,10 @@ export interface Product {
   photo?: PhotoSummary | null;
   /** A store's own brand, or null for a national or unknown one (2R). */
   house_brand?: HouseBrand | null;
+  /** Category details: for produce, whether it is organic and its size grade. */
+  attributes?: ProductAttributes;
   created_at: string;
   updated_at: string;
-}
-
-export type BrandTier =
-  "value" | "standard" | "premium" | "organic" | "natural" | "prepared" | "specialty";
-
-/** The store brand a product's brand names: whose it is and its tier (2R). */
-export interface HouseBrand {
-  key: string;
-  name: string;
-  tier: BrandTier;
-  current: boolean;
-  replaced_by_name?: string | null;
-  family: { key: string; name: string; kind: "retailer" | "wholesaler" | "cooperative" };
 }
 
 /** The latest committed purchase of a product (T16): what was paid, where and when. */
@@ -334,6 +324,7 @@ export interface ProductCreateInput extends BarcodeInput {
   density_override?: string;
   density_override_source?: BridgeSource;
   notes?: string;
+  attributes?: ProductAttributes;
 }
 
 export interface ProductUpdateInput extends BarcodeInput {
@@ -354,6 +345,7 @@ export interface ProductUpdateInput extends BarcodeInput {
   density_override_source?: BridgeSource;
   clear_density_override?: boolean;
   notes?: string | null;
+  attributes?: ProductAttributes;
 }
 
 // --- helpers ----------------------------------------------------------------

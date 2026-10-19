@@ -1,4 +1,4 @@
-import type { BrandScope, PriceFilters as Filters } from "../../api/pricebook";
+import type { BrandScope, OrganicScope, PriceFilters as Filters } from "../../api/pricebook";
 import { SelectField } from "../catalog/fields";
 import { focusRing } from "../ui";
 
@@ -9,7 +9,7 @@ interface PriceFiltersProps {
   /** Hide the promo toggle where it does not apply. */
   promo?: boolean;
   stale?: boolean;
-  /** Offer the store-brand filter (2R-3): only where the server supports it. */
+  /** Offer the store-brand and organic filters (2R-3): only where the server supports them. */
   brands?: boolean;
 }
 
@@ -51,6 +51,19 @@ export function PriceFilters({
           <option value="all">All brands</option>
           <option value="store">Store brands</option>
           <option value="national">National brands</option>
+        </SelectField>
+      ) : null}
+      {brands ? (
+        <SelectField
+          id={`${id}-organic-scope`}
+          label="Organic"
+          value={value.organic_scope ?? "all"}
+          onChange={(e) => onChange({ ...value, organic_scope: e.target.value as OrganicScope })}
+          className="w-44"
+        >
+          <option value="all">Organic or not</option>
+          <option value="organic">Organic only</option>
+          <option value="conventional">Not organic</option>
         </SelectField>
       ) : null}
       {stale ? (

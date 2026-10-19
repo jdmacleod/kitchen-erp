@@ -37,7 +37,9 @@ import { formatDateTime } from "../../lib/format";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 import {
+  choiceIsProduce,
   piecesFit,
+  produceAttributes,
   ProductForm,
   productValues,
   validateProductValues,
@@ -308,6 +310,16 @@ function EditProductForm({ product }: { product: Product }) {
     ) {
       input.density_override = density;
       input.density_override_source = values.density_override_source;
+    }
+
+    if (choiceIsProduce(values)) {
+      const attributes = produceAttributes(values);
+      const before = product.attributes ?? {};
+      if (
+        Boolean(before.organic) !== Boolean(attributes.organic) ||
+        (before.grade ?? undefined) !== attributes.grade
+      )
+        input.attributes = attributes;
     }
 
     if (Object.keys(input).length === 0) {

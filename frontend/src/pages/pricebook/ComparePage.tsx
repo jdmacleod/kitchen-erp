@@ -207,6 +207,7 @@ function CellView({ cell }: { cell: CompareCell }) {
         {cell.brand ? `${cell.brand} ` : ""}
         {cell.product_name}
         {cell.quality_rating !== null ? ` · ${cell.quality_rating}/5` : ""}
+        {cell.organic ? " · organic" : ""}
         {cell.is_promo
           ? ` · sale${regularText(cell.regular_display_unit_price, cell.display_unit)}`
           : ""}

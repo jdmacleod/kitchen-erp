@@ -11,6 +11,8 @@ from app.schemas.base import ApiModel, DecimalStr
 
 # Which brands an offer list keeps (16, 2R-3): all, store brands, or national ones.
 BrandScope = Literal["all", "store", "national"]
+# Which produce an offer list keeps: all, only organic, or only conventional.
+OrganicScope = Literal["all", "organic", "conventional"]
 
 
 class HistoryPoint(ApiModel):
@@ -117,6 +119,8 @@ class Offer(ApiModel):
     brand_tier: str | None = None
     brand_family_name: str | None = None
     is_store_brand: bool = False
+    # Marked organic in the product's attributes (produce only).
+    organic: bool = False
     quality_rating: int | None
     pack_qty: DecimalStr | None
     pack_unit: str | None
@@ -159,6 +163,8 @@ class CompareIn(ApiModel):
     include_posted: bool = False
     # Keep all offers, only store brands, or only national and unknown brands (2R-3).
     brand_scope: BrandScope = "all"
+    # Keep all offers, only organic ones, or only conventional ones.
+    organic_scope: OrganicScope = "all"
     # Only prices at this kitchen's locations (17, 4A, L3); unset, every kitchen's.
     home_base_id: uuid.UUID | None = None
 
@@ -171,6 +177,8 @@ class CompareCell(ApiModel):
     brand_tier: str | None = None
     brand_family_name: str | None = None
     is_store_brand: bool = False
+    # Marked organic in the product's attributes (produce only).
+    organic: bool = False
     quality_rating: int | None
     location_id: uuid.UUID
     location_name: str

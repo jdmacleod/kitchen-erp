@@ -10,6 +10,11 @@ import {
   type Unit,
 } from "../../api/catalog";
 import {
+  PRODUCE_GRADES,
+  type ProduceGrade,
+  type ProductAttributes,
+} from "../../api/productDetails";
+import {
   BarcodeSymbologyPrompt,
   SYMBOLOGY_REQUIRED,
 } from "../../components/catalog/BarcodeSymbologyPrompt";
@@ -25,7 +30,7 @@ import {
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { ShortNameHint } from "../../components/catalog/ShortNameHint";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { Alert, Button, Field, sectionHeading } from "../../components/ui";
+import { Alert, Button, Field, focusRing, sectionHeading } from "../../components/ui";
 import { asksSymbology, type BarcodeSymbology } from "../../lib/barcode";
 
 export interface ProductFormValues {
@@ -44,6 +49,9 @@ export interface ProductFormValues {
   notes: string;
   density_override: string;
   density_override_source: BridgeSource;
+  /** Produce only: grown organically, and the size grade ("" for none). */
+  organic: boolean;
+  grade: ProduceGrade | "";
 }
 
 export function emptyProductValues(ingredient: IngredientChoice | null = null): ProductFormValues {
@@ -61,6 +69,8 @@ export function emptyProductValues(ingredient: IngredientChoice | null = null): 
     notes: "",
     density_override: "",
     density_override_source: "label",
+    organic: false,
+    grade: "",
   };
 }
 
@@ -79,7 +89,32 @@ export function productValues(p: Product): ProductFormValues {
     notes: p.notes ?? "",
     density_override: p.density_override ?? "",
     density_override_source: p.density_override_source ?? "label",
+    organic: Boolean(p.attributes?.organic),
+    grade: p.attributes?.grade ?? "",
   };
+}
+
+/** Whether the chosen ingredient is produce, so the form's organic and grade apply. */
+export function choiceIsProduce(v: ProductFormValues): boolean {
+  return v.ingredient?.kind === "existing" && v.ingredient.ingredient.category_key === "produce";
+}
+
+/**
+ * A new product's attributes, when the form sets any. Unset, the server reads
+ * "Organic" from the name or brand itself.
+ */
+export function attributesInput(v: ProductFormValues): { attributes?: ProductAttributes } {
+  if (!choiceIsProduce(v)) return {};
+  const attributes = produceAttributes(v);
+  return Object.keys(attributes).length > 0 ? { attributes } : {};
+}
+
+/** The produce attributes the form's values give: organic only when ticked. */
+export function produceAttributes(v: ProductFormValues): ProductAttributes {
+  const out: ProductAttributes = {};
+  if (v.organic) out.organic = true;
+  if (v.grade) out.grade = v.grade;
+  return out;
 }
 
 /**
@@ -290,6 +325,35 @@ export function ProductForm({
         hasPack={values.pack_qty.trim() !== "" || values.pack_unit !== ""}
         onUse={() => onChange({ ...values, pack_qty: "1", pack_unit: "bunch" })}
       />
+
+      {chosen.data?.category_key === "produce" ? (
+        <div className="grid items-end gap-4 sm:grid-cols-2">
+          <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
+            <input
+              id={`${idPrefix}-organic`}
+              type="checkbox"
+              checked={values.organic}
+              onChange={(e) => set("organic", e.target.checked)}
+              className={`size-4 ${focusRing}`}
+            />
+            Organic
+          </label>
+          <SelectField
+            id={`${idPrefix}-grade`}
+            label="Size grade"
+            value={values.grade}
+            onChange={(e) => set("grade", e.target.value as ProduceGrade | "")}
+            hint="Only for produce sold by the piece."
+          >
+            <option value="">None</option>
+            {PRODUCE_GRADES.map((g) => (
+              <option key={g.value} value={g.value}>
+                {g.label}
+              </option>
+            ))}
+          </SelectField>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
