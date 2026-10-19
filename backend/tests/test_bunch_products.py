@@ -14,7 +14,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from app.catalog.product_names import drop_bunch, says_bunch, short_name
-from app.catalog.proposals import Candidate
+from app.catalog.proposals import Candidate, packs_disagree
 from app.services.proposals import Evidence
 from tests.catalog_helpers import make_ingredient, make_product, seed_units_via_service
 from tests.pricebook_helpers import make_location
@@ -25,6 +25,14 @@ PAGE = "https://www.quill-grocers.example.test/p/vellum-cress-2207"
 __all__ = ["user"]
 
 # --- pure ------------------------------------------------------------------------
+
+
+def test_bunch_packs_compare_with_each_other_and_never_with_pieces():
+    one, two = {"qty": "1", "unit": "bunch"}, {"qty": "2", "unit": "bunch"}
+    assert not packs_disagree(one, {"qty": "1", "unit": "bunch"})
+    assert packs_disagree(one, two)
+    # A bunch is never a piece: different families always disagree, without raising.
+    assert packs_disagree(one, {"qty": "1", "unit": "each"})
 
 
 @pytest.mark.parametrize(
@@ -170,3 +178,12 @@ async def test_cleanup_leaves_a_weighed_pack_alone(admin_client, cress):
         admin_client, cress["id"], "Vellum cress bunch", pack_qty="200", pack_unit="g"
     )
     assert by_kind(await suggestions(admin_client), "product_pack") == []
+
+
+async def test_needs_you_loads_with_two_bunch_products(admin_client, cress):
+    # Two bunch packs of one food once made the duplicate check raise, and the
+    # whole Needs you list answered 500.
+    await make_product(admin_client, cress["id"], "Vellum cress", pack_qty="1", pack_unit="bunch")
+    await make_product(admin_client, cress["id"], "Vellum cress", pack_qty="2", pack_unit="bunch")
+    r = await admin_client.get("/api/v1/inbox")
+    assert r.status_code == 200, r.text
