@@ -17,6 +17,7 @@ from app.schemas.pricebook_views import (
     IngredientPriceHistory,
     LocationPanel,
     OfferList,
+    OrganicScope,
     ProductHistory,
 )
 from app.schemas.purchases import (
@@ -642,6 +643,9 @@ async def ingredient_offers(
     brand_scope: Annotated[
         BrandScope, Query(description="all offers, store brands only, or national only (2R)")
     ] = "all",
+    organic_scope: Annotated[
+        OrganicScope, Query(description="all offers, organic only, or conventional only")
+    ] = "all",
 ) -> OfferList:
     await catalog.get_ingredient(db, ingredient_id)
     items = await pricebook_views.ingredient_offers(
@@ -652,6 +656,7 @@ async def ingredient_offers(
         exclude_promo=exclude_promo,
         include_posted=include_posted,
         brand_scope=brand_scope,
+        organic_scope=organic_scope,
     )
     return OfferList(items=items, stale_after_days=pricebook_views.stale_after_days())
 
@@ -668,6 +673,7 @@ async def compare(payload: CompareIn, _: CurrentUser, db: DbSession) -> CompareO
         exclude_promo=payload.exclude_promo,
         include_posted=payload.include_posted,
         brand_scope=payload.brand_scope,
+        organic_scope=payload.organic_scope,
         home_base_id=payload.home_base_id,
     )
     return CompareOut(**result, stale_after_days=pricebook_views.stale_after_days())

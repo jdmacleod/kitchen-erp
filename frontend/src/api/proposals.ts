@@ -4,9 +4,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CategoryKey } from "../components/CategoryChip";
-import { catalogKeys, type HouseBrand } from "./catalog";
+import { catalogKeys } from "./catalog";
 import { API_BASE, ApiError, api } from "./client";
 import { inboxKey } from "./inbox";
+import type { HouseBrand } from "./productDetails";
 import type { PhotoRole, PhotoSummary, ProductPhoto } from "./productPhotos";
 import type { ErrorEnvelope } from "./types";
 

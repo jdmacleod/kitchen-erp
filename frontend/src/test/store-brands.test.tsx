@@ -3,8 +3,9 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { HouseBrand, Product } from "../api/catalog";
+import type { Product } from "../api/catalog";
 import type { BrandFamily, Vendor } from "../api/geo";
+import type { HouseBrand } from "../api/productDetails";
 import { flourProduct, flourProductId, units } from "./catalog-fixtures";
 import { chainVendor, chainVendorId, homeBase } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";

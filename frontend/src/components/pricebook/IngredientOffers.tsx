@@ -111,6 +111,7 @@ function OfferRow({ offer: o, ingredient }: { offer: Offer; ingredient: Ingredie
       <span className={`block text-xs ${muted}`}>
         {formatPack(o.pack_qty, o.pack_unit) ? `${formatPack(o.pack_qty, o.pack_unit)} · ` : ""}
         <QualityText rating={o.quality_rating} />
+        {o.organic ? " · Organic" : null}
         {o.is_store_brand ? (
           <span title={o.brand_family_name ? `${whose(o.brand_family_name)} own brand` : undefined}>
             {" · "}Store brand{o.brand_tier ? `, ${o.brand_tier}` : ""}

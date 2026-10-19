@@ -346,6 +346,33 @@ describe("store brands on offers (2R-3)", () => {
   });
 });
 
+describe("organic offers", () => {
+  it("marks an organic offer and sends the organic filter", async () => {
+    const organic = { ...offers[0], organic: true };
+    const calls = mockApi({
+      ...baseRoutes(),
+      [`GET /ingredients/${flourId}`]: () => jsonResponse(200, flour),
+      [`GET /ingredients/${flourId}/offers`]: (call: RecordedCall) => {
+        const scope = call.query.get("organic_scope");
+        const items = scope === "organic" ? [organic] : [organic, offers[1]];
+        return jsonResponse(200, { items, stale_after_days: 90 });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/ingredients/${flourId}`);
+    const table = await screen.findByRole("table", { name: "Prices by vendor" });
+    const rows = within(table).getAllByTestId("offer");
+    expect(rows[0]).toHaveTextContent("Organic");
+    expect(rows[1]).not.toHaveTextContent("Organic");
+    const offersCalls = () =>
+      calls.filter((c) => c.path.startsWith(`/ingredients/${flourId}/offers`));
+    expect(offersCalls().at(-1)?.query.has("organic_scope")).toBe(false);
+
+    await user.selectOptions(screen.getByLabelText("Organic"), "organic");
+    await waitFor(() => expect(offersCalls().at(-1)?.query.get("organic_scope")).toBe("organic"));
+  });
+});
+
 describe("needs a bridge", () => {
   it("links each failed normalization to where it is fixed", async () => {
     const items: NeedsBridgeItem[] = [

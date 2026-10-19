@@ -43,6 +43,7 @@ import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { useSearchText } from "../../lib/useSearchText";
 import {
+  attributesInput,
   piecesFit,
   ProductForm,
   emptyProductValues,
@@ -510,7 +511,7 @@ function AddProductForm({
       input.density_override = values.density_override.trim();
       input.density_override_source = values.density_override_source;
     }
-    send(input);
+    send({ ...input, ...attributesInput(values) });
   };
 
   const send = (input: ProductCreateInput & { allow_duplicate?: boolean }) => {

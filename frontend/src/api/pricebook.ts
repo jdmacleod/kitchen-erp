@@ -79,6 +79,8 @@ export interface Offer extends RegularPrice {
   brand: string | null;
   /** A store's own brand (2R-3): its tier and family; false for national or unknown. */
   is_store_brand?: boolean;
+  /** Marked organic on the product (produce). */
+  organic?: boolean;
   brand_tier?: string | null;
   brand_family_name?: string | null;
   quality_rating: number | null;
@@ -117,6 +119,8 @@ export interface CompareCell extends RegularPrice {
   brand: string | null;
   /** A store's own brand (2R-3): its tier and family; false for national or unknown. */
   is_store_brand?: boolean;
+  /** Marked organic on the product (produce). */
+  organic?: boolean;
   brand_tier?: string | null;
   brand_family_name?: string | null;
   quality_rating: number | null;
@@ -221,6 +225,8 @@ export interface NeedsBridgeItem {
 
 /** Which brands an offer list keeps (2R-3). */
 export type BrandScope = "all" | "store" | "national";
+/** Which produce an offer list keeps: all, organic only, or conventional only. */
+export type OrganicScope = "all" | "organic" | "conventional";
 
 export interface PriceFilters {
   min_quality?: number | "";
@@ -228,6 +234,8 @@ export interface PriceFilters {
   exclude_promo?: boolean;
   /** Offers and compare only; the cheapest-price read ignores it. */
   brand_scope?: BrandScope;
+  /** Offers and compare only, like `brand_scope`. */
+  organic_scope?: OrganicScope;
 }
 
 export interface CompareInput extends PriceFilters {
@@ -269,6 +277,10 @@ export function useIngredientOffers(ingredientId: string | undefined, filters: P
           exclude_promo: filters.exclude_promo,
           brand_scope:
             filters.brand_scope && filters.brand_scope !== "all" ? filters.brand_scope : undefined,
+          organic_scope:
+            filters.organic_scope && filters.organic_scope !== "all"
+              ? filters.organic_scope
+              : undefined,
         })}`,
       ),
     enabled: Boolean(ingredientId),
@@ -327,6 +339,8 @@ export function useCompare(input: CompareInput) {
       if (input.exclude_stale) body.exclude_stale = true;
       if (input.exclude_promo) body.exclude_promo = true;
       if (input.brand_scope && input.brand_scope !== "all") body.brand_scope = input.brand_scope;
+      if (input.organic_scope && input.organic_scope !== "all")
+        body.organic_scope = input.organic_scope;
       if (input.home_base_id) body.home_base_id = input.home_base_id;
       return api<CompareResult>("/price-book/compare", { method: "POST", body });
     },

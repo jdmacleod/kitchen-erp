@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.schemas.pricebook_views import BrandScope
+from app.schemas.pricebook_views import BrandScope, OrganicScope
 from app.services import compare_units, regular_prices, supplies, unit_display
 
 
@@ -39,6 +39,7 @@ _CELL_KEYS = (
     "brand_tier",
     "brand_family_name",
     "is_store_brand",
+    "organic",
     "quality_rating",
     "location_id",
     "location_name",
@@ -151,6 +152,12 @@ _INGREDIENT_HISTORY_SQL = """
 
 _RANGE_KEYS = ("day", "low", "high")
 
+# Keep all offers, or only the products marked organic, or only those that are not.
+_ORGANIC_SQL = (
+    "(CAST(:organic_scope AS text) = 'all' OR (CAST(:organic_scope AS text) = 'organic')"
+    " = coalesce((p.attributes->>'organic')::boolean, false))"
+)
+
 
 async def ingredient_history(
     db: AsyncSession, ingredient_id: uuid.UUID, days: int, *, include_posted: bool = False
@@ -200,9 +207,11 @@ async def ingredient_offers(
     exclude_promo: bool = False,
     include_posted: bool = False,
     brand_scope: BrandScope = "all",
+    organic_scope: OrganicScope = "all",
 ) -> list[dict[str, Any]]:
     """An ingredient's latest offers, cheapest first. `brand_scope` keeps all, only
-    store brands, or only national and unknown brands (16, 2R-3)."""
+    store brands, or only national and unknown brands (16, 2R-3); `organic_scope`
+    all, only organic or only conventional."""
     view = _view("offer_latest_regular" if exclude_promo else "offer_latest", include_posted)
     rows = await db.execute(
         text(
@@ -210,6 +219,7 @@ async def ingredient_offers(
             SELECT ol.product_id, p.name AS product_name, p.brand, p.quality_rating,
                    b.tier AS brand_tier, bf.name AS brand_family_name,
                    (b.id IS NOT NULL) AS is_store_brand,
+                   coalesce((p.attributes->>'organic')::boolean, false) AS organic,
                    p.pack_qty, p.pack_unit,
                    ol.applies_to_location_id AS location_id, vl.name AS location_name,
                    v.id AS vendor_id, v.name AS vendor_name, v.price_scope,
@@ -231,11 +241,17 @@ async def ingredient_offers(
                   CAST(:min_quality AS integer))
               AND (CAST(:brand_scope AS text) = 'all'
                    OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
+              AND {_ORGANIC_SQL}
             ORDER BY (ol.norm_unit_price IS NULL), (ol.norm_unit IS DISTINCT FROM i.canonical_unit),
                      ol.norm_unit_price, ol.observed_at DESC
             """  # noqa: S608
         ),
-        _params(iid=ingredient_id, min_quality=min_quality, brand_scope=brand_scope),
+        _params(
+            iid=ingredient_id,
+            min_quality=min_quality,
+            brand_scope=brand_scope,
+            organic_scope=organic_scope,
+        ),
     )
     mass = (await unit_display.mass_units(db, [ingredient_id])).get(ingredient_id)
     out = [unit_display.decorate(_row(r), mass) for r in rows.mappings()]
@@ -254,6 +270,7 @@ async def compare(
     exclude_promo: bool = False,
     include_posted: bool = False,
     brand_scope: BrandScope = "all",
+    organic_scope: OrganicScope = "all",
     home_base_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """Vendors as columns, ingredients as rows, best qualifying normalized price per cell.
@@ -273,6 +290,7 @@ async def compare(
                        ol.product_id, p.name AS product_name, p.brand, p.quality_rating,
                        b.tier AS brand_tier, bf.name AS brand_family_name,
                    (b.id IS NOT NULL) AS is_store_brand,
+                   coalesce((p.attributes->>'organic')::boolean, false) AS organic,
                        ol.applies_to_location_id AS location_id, vl.name AS location_name,
                        ol.observation_id, ol.observed_at, ol.is_promo,
                        ol.norm_unit_price, ol.norm_unit,
@@ -288,6 +306,7 @@ async def compare(
                 WHERE p.ingredient_id = ANY(CAST(:ids AS uuid[])) AND ol.norm_unit_price IS NOT NULL
                   AND (CAST(:brand_scope AS text) = 'all'
                        OR (CAST(:brand_scope AS text) = 'store') = (p.brand_id IS NOT NULL))
+                  AND {_ORGANIC_SQL}
                   AND (CAST(:min_quality AS integer) IS NULL OR coalesce(p.quality_rating, 0) >=
                       CAST(:min_quality AS integer))
                   AND (NOT CAST(:exclude_stale AS boolean) OR NOT (
@@ -307,6 +326,7 @@ async def compare(
             min_quality=min_quality,
             exclude_stale=exclude_stale,
             brand_scope=brand_scope,
+            organic_scope=organic_scope,
             home_base_id=home_base_id,
         ),
     )

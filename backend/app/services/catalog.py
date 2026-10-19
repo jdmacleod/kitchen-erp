@@ -1061,7 +1061,7 @@ async def create_product(
             pack_count=payload.pack_count,
             piece_name=_piece_name(payload.piece_name),
             kind=begin.kind,
-            attributes=_attributes(ingredient, payload.attributes),
+            attributes=_attributes(ingredient, {**begin.attributes, **(payload.attributes or {})}),
             quality_rating=payload.quality_rating,
             exclusive_vendor_id=payload.exclusive_vendor_id,
             density_override=payload.density_override,
@@ -1152,6 +1152,16 @@ async def update_product(  # noqa: C901, PLR0912, PLR0915
         ingredient = await db.get(Ingredient, data.get("ingredient_id") or product.ingredient_id)
         assert ingredient is not None  # noqa: S101
         data["attributes"] = _attributes(ingredient, data["attributes"])
+    elif data.get("ingredient_id") not in (None, product.ingredient_id) and product.attributes:
+        # Moved to another ingredient: details its category has no place for are dropped.
+        moved_to = await db.get(Ingredient, data["ingredient_id"])
+        if moved_to is not None:
+            try:
+                data["attributes"] = validate_attributes(
+                    categories.key(moved_to.category), product.attributes
+                )
+            except ValueError:
+                data["attributes"] = {}
     if data.pop("clear_exclusive_vendor", False):
         product.exclusive_vendor_id = None
     if data.pop("clear_density_override", False):

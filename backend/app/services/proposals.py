@@ -1060,7 +1060,7 @@ async def _product_for(
         name=begin.name,
         brand=begin.brand,
         kind=begin.kind,
-        attributes={},
+        attributes=begin.attributes,
         field_source={},
     )
     db.add(product)
