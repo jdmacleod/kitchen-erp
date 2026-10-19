@@ -254,7 +254,9 @@ links reach outside the deployment, and only when switched on.
 - **OpenStreetMap links**, off unless `ENABLE_OVERPASS=true`. With it on, a
   location's card offers "Link to OpenStreetMap", which lists the places within
   250 m of its pin and fills in the address, hours, phone and website it is
-  missing; anything you typed stays. To re-read every linked location later:
+  missing; anything you typed stays. The public Overpass server is often busy;
+  `OVERPASS_URLS` lists servers to try in order (each one receives the pins
+  searched around). To re-read every linked location later:
 
   ```bash
   docker compose exec api kerp osm refresh --all-linked

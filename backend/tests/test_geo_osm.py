@@ -146,7 +146,7 @@ async def test_candidates_query_user_agent_and_cache(
 
     assert len(overpass.requests) == 1
     request = overpass.requests[0]
-    assert request["url"] == osm.OVERPASS_URL
+    assert request["url"] == osm.endpoints()[0] == "https://overpass-api.de/api/interpreter"
     assert request["user_agent"].startswith("kitchen-erp/")
     assert f"around:5000,{HOME_A[0]},{HOME_A[1]}" in request["query"]
     for value in osm.SHOP_VALUES:
@@ -289,15 +289,77 @@ async def test_refresh_updates_hours_but_keeps_user_edits(
     assert gone.status_code == 404 and gone.json()["error"]["code"] == "osm_object_not_found"
 
 
-async def test_upstream_failure_is_a_502(
+async def test_a_busy_server_is_asked_once_more_then_reported_busy(
     admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
 ):
     overpass.status_code = 429
     home = await make_home_base(admin_client, "Home", HOME_A)
     r = await admin_client.get(candidates_url(home["id"]))
+    assert r.status_code == 503
+    assert r.json()["error"]["code"] == "overpass_busy"
+    assert "Try again" in r.json()["error"]["message"]
+    assert len(overpass.requests) == 1 + osm.BUSY_RETRIES
+
+
+async def test_a_busy_answer_then_a_good_one_succeeds(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
+):
+    overpass.elements = [osm_node(1, "Tide Market", *NEAR_A)]
+    overpass.script = [504]
+    home = await make_home_base(admin_client, "Home", HOME_A)
+    r = await admin_client.get(candidates_url(home["id"]))
+    assert r.status_code == 200 and len(r.json()["items"]) == 1
+    assert len(overpass.requests) == 2
+
+
+async def test_a_silent_server_gives_way_to_the_next(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network, monkeypatch
+):
+    monkeypatch.setattr(
+        get_settings(), "overpass_urls", "https://one.invalid/api, https://two.invalid/api"
+    )
+    overpass.elements = [osm_node(1, "Tide Market", *NEAR_A)]
+    overpass.script = [httpx.ReadTimeout("no answer")]
+    home = await make_home_base(admin_client, "Home", HOME_A)
+    r = await admin_client.get(candidates_url(home["id"]))
+    assert r.status_code == 200 and len(r.json()["items"]) == 1
+    # A server that never answered is not asked twice.
+    assert [q["url"] for q in overpass.requests] == [
+        "https://one.invalid/api",
+        "https://two.invalid/api",
+    ]
+
+
+async def test_a_silent_server_is_reported_busy(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
+):
+    overpass.script = [httpx.ReadTimeout("no answer")]
+    home = await make_home_base(admin_client, "Home", HOME_A)
+    r = await admin_client.get(candidates_url(home["id"]))
+    assert r.status_code == 503 and r.json()["error"]["code"] == "overpass_busy"
+
+
+async def test_no_connection_is_reported_as_unreachable(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
+):
+    overpass.script = [httpx.ConnectError("refused")]
+    home = await make_home_base(admin_client, "Home", HOME_A)
+    r = await admin_client.get(candidates_url(home["id"]))
     assert r.status_code == 502
     assert r.json()["error"]["code"] == "overpass_unavailable"
-    assert r.json()["error"]["details"] == {"status": 429}
+    assert "internet connection" in r.json()["error"]["message"]
+
+
+async def test_a_refused_query_is_not_retried(
+    admin_client: httpx.AsyncClient, overpass: FakeOverpass, no_network
+):
+    overpass.status_code = 400
+    home = await make_home_base(admin_client, "Home", HOME_A)
+    r = await admin_client.get(candidates_url(home["id"]))
+    assert r.status_code == 502
+    assert r.json()["error"]["code"] == "overpass_rejected"
+    assert r.json()["error"]["details"] == {"status": 400}
+    assert len(overpass.requests) == 1
 
 
 async def test_cache_expires_after_ttl(overpass: FakeOverpass, tmp_path):
