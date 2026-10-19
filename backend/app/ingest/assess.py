@@ -41,7 +41,10 @@ LINE_READING_FLAGS = frozenset(
 # since only Read again reaches it. A reading without the key is older than 1.
 # 1: printed rows, savings already in a price and the receipt's own checks (#376),
 #    codes from the printed row (#379), a rate that names its currency (#383).
-LINE_RULES_VERSION = 1
+# 2: a weight printed with its gross in brackets, a weight printed above its item
+#    that the model left out, and a saving read after a later item put back under
+#    the item printed above it.
+LINE_RULES_VERSION = 2
 
 
 @dataclass

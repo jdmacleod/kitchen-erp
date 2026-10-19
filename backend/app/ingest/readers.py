@@ -81,7 +81,8 @@ def apply_printed_total(header: ReceiptHeader, text: str) -> tuple[ReceiptHeader
     TOTAL (or AMOUNT/BALANCE DUE) wins over a different model total, which may
     be an item price that is printed too; a bare BALANCE line only fills in a
     total the model missed or invented. A model total that is a savings
-    summary's total is dropped, flagged ``savings_total_rejected``.
+    summary's total, or is printed only on rows that name savings, coupons or
+    discounts, is dropped, flagged ``savings_total_rejected``.
 
     A bare BALANCE also wins when the model's total is printed only on the
     payment slip below the sale (a "TOTAL AMOUNT" OCR misread there) and the
@@ -89,7 +90,10 @@ def apply_printed_total(header: ReceiptHeader, text: str) -> tuple[ReceiptHeader
     flagged ``total_from_balance``.
     """
     flags: list[str] = []
-    if header.total is not None and header.total in header_stage.savings_block_totals(text):
+    if header.total is not None and (
+        header.total in header_stage.savings_block_totals(text)
+        or header_stage.only_on_savings_rows(header.total, text)
+    ):
         # What a savings summary says was saved, never what was paid (#121).
         header = header.model_copy(update={"total": None})
         flags.append("savings_total_rejected")

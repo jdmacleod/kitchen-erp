@@ -37,8 +37,10 @@ from app.ingest.lines import (
 from app.ingest.printed_rows import (
     anchor_rows,
     printed_checks,
+    quantity_from_text,
     savings_already_netted,
     savings_in_price,
+    savings_under_their_items,
 )
 from app.ingest.schemas import ReceiptLines
 
@@ -75,7 +77,7 @@ from app.ingest.schemas import ReceiptLines
 # deposit_total: a line that totals the deposits already read counts for
 #   nothing (pattern 14).
 # qty_from_text: an item takes the count or weight printed on the row beneath
-#   it, which the model left out (pattern 15).
+#   or above it, which the model left out (printed_rows.quantity_from_text).
 STRUCTURE_FLAGS = frozenset(
     {
         "qty_from_prefix",
@@ -118,7 +120,8 @@ def post_passes(
 ) -> PostPasses:
     """Every deterministic pass over the model's lines, in the stage's order."""
     parsed = parse_model_lines(result)
-    anchor_rows(parsed, receipt_text)
+    rows_at = anchor_rows(parsed, receipt_text)
+    parsed = savings_under_their_items(parsed, receipt_text, rows_at)
     checks = printed_checks(receipt_text)
     parsed, merged = merge_quantity_lines(parsed)
     parsed, dropped = fold_regular_prices(parsed)
@@ -796,49 +799,6 @@ def deposit_rows(lines: list[ParsedLine]) -> None:
             line.flags.append("deposit_total")
 
 
-# --- 15. A count or weight row the model left out ----------------------------
-
-
-def quantity_from_text(lines: list[ParsedLine], receipt_text: str) -> None:
-    """An item takes the count or weight printed beneath it, when the model
-    left that row out.
-
-    merge_quantity_lines joins a quantity row to its item when the model reads
-    the row. When the model leaves it out, the item stays at a quantity of one.
-    The receipt text still has the row: if the row printed just beneath the
-    item's own row holds only a quantity at a rate, prints no amount of its own,
-    comes to the item's amount, and no line read it, the item takes that
-    quantity and rate. The amount is never changed.
-    """
-    rows = _rows(receipt_text)
-    if not rows:
-        return
-    read = {" ".join(line.raw_text.split()).lower() for line in lines}
-    for line in lines:
-        if line.line_kind != "item" or line.line_total <= 0:
-            continue
-        if line.qty not in (None, Decimal("1")) or any(
-            f in QTY_FLAGS and f != "qty_assumed" for f in line.flags
-        ):
-            continue
-        at = [i for i, row in enumerate(rows) if _same_row(row, line.raw_text)]
-        if len(at) != 1 or at[0] + 1 >= len(rows):
-            continue
-        below = rows[at[0] + 1]
-        printed = quantity_only(below)
-        if (
-            printed is None
-            or printed.amount is not None
-            or " ".join(below.split()).lower() in read
-            or not printed.comes_to(line.line_total)
-        ):
-            continue
-        line.qty, line.unit, line.unit_price = printed.qty, printed.unit, printed.rate
-        line.flags = [f for f in line.flags if f != "qty_assumed"] + ["qty_from_text"]
-        if printed.unit_misread:
-            line.flags.append("unit_misread")
-
-
 __all__ = [
     "STRUCTURE_FLAGS",
     "PostPasses",
@@ -849,7 +809,6 @@ __all__ = [
     "payment_rows",
     "points_not_money",
     "post_passes",
-    "quantity_from_text",
     "quantity_prefix",
     "regular_price_from_text",
     "savings_printed_negative",

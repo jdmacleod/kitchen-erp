@@ -456,8 +456,9 @@ async def match_location(  # noqa: C901, PLR0912
 
 
 # A total line as a till prints it: the label, anything (stars, a colon), then the
-# amount at the end of the line. Not a subtotal, a "you saved" line, or an account
-# balance (points, a gift card, store credit) printed after the sale.
+# amount at the end of the line. Not a subtotal, a "you saved" line, what the coupons
+# or discounts came to ("TOTAL COUPONS $ 4.15", printed after the sale), or an
+# account balance (points, a gift card, store credit) printed after the sale.
 _AMOUNT = r"(\d{1,3}(?:[,.]\d{3})+[.,]\d{2}|\d{1,6}[.,]\d{2})"
 _TOTAL_LINE = re.compile(
     r"\b(?P<label>total|balance(?:\s+due)?|amount\s+due)\b[^0-9\n]*?" + _AMOUNT + r"\s*$",
@@ -465,6 +466,7 @@ _TOTAL_LINE = re.compile(
 )
 _NOT_TOTAL = re.compile(
     r"sub\s*-?\s*total|sav(?:ed|ings?)|tax\s+total|items?\b|"
+    r"total\s+(?:coupons?|discounts?)\b|\b(?:coupons?|discounts?)\s+total|"
     r"points?|rewards?|gift|card\s+bal|credit|loyalty|member|remaining|available|previous|prior",
     re.IGNORECASE,
 )
@@ -569,6 +571,13 @@ _PAYMENT_ROW = re.compile(
     r"approv|auth|account|card",
     re.IGNORECASE,
 )
+
+
+def only_on_savings_rows(amount: Decimal, text: str) -> bool:
+    """Whether ``amount`` is printed, and only on rows that name savings, coupons
+    or discounts ("TOTAL COUPONS $ 4.15", "Annual Card Savings $4.15")."""
+    rows = rows_printing(amount, text)
+    return bool(rows) and all(_SAVINGS_HEADING.search(row) for row in rows)
 
 
 def only_on_payment_rows(amount: Decimal, text: str) -> bool:

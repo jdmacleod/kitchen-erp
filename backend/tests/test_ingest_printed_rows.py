@@ -241,3 +241,66 @@ async def test_a_read_receipt_keeps_its_rows_savings_and_checks(admin_client, re
         ("0.0000", "0.5000"),
         ("0.0000", "1.1500"),
     ]
+
+
+# --- A saving the model read after a later item -----------------------------
+
+# Each item is printed at what was paid, its saving beneath for information.
+_SAVED_BENEATH = """\
+FENWICK OATS 3.40 F
+SC LARKSPUR SAVED YOU 0.60
+CINDER PLUMS 4.15 F
+SC LARKSPUR SAVED YOU 0.60
+COPPER JAM 2.65 F
+SC LARKSPUR SAVED YOU 1.10
+TAX 0.00
+**** BALANCE 10.20
+TOTAL COUPONS $ 2.30
+"""
+
+
+def test_a_saving_read_out_of_order_goes_back_under_its_item():
+    # The model listed both 0.60 savings after the jam, so by their place in the
+    # list all three hung on the jam.
+    read = _read(
+        rows=(
+            ("FENWICK OATS 3.40 F", "item", "3.40"),
+            ("CINDER PLUMS 4.15 F", "item", "4.15"),
+            ("COPPER JAM 2.65 F", "item", "2.65"),
+            ("SC LARKSPUR SAVED YOU 0.60", "discount", "0.60"),
+            ("SC LARKSPUR SAVED YOU 0.60", "discount", "0.60"),
+            ("SC LARKSPUR SAVED YOU 1.10", "discount", "1.10"),
+            ("TAX 0.00", "tax", "0.00"),
+        ),
+        text=_SAVED_BENEATH,
+        total="10.20",
+    )
+    shape = [(line.raw_text, line.parent_seq, line.printed_row is not None) for line in read.lines]
+    assert shape == [
+        ("FENWICK OATS 3.40 F", None, True),
+        ("SC LARKSPUR SAVED YOU 0.60", 1, True),
+        ("CINDER PLUMS 4.15 F", None, True),
+        ("SC LARKSPUR SAVED YOU 0.60", 3, True),
+        ("COPPER JAM 2.65 F", None, True),
+        ("SC LARKSPUR SAVED YOU 1.10", 5, True),
+        ("TAX 0.00", None, True),
+    ]
+    # The prices already include the savings: the lines add up to the balance.
+    assert [line.in_price_amount for line in read.lines if line.line_kind == "discount"] == [
+        Decimal("0.60"),
+        Decimal("0.60"),
+        Decimal("1.10"),
+    ]
+
+
+def test_a_saving_the_model_attached_is_left_where_it_put_it():
+    read = _read(
+        rows=(
+            ("FENWICK OATS 3.40 F", "item", "3.40"),
+            ("CINDER PLUMS 4.15 F", "item", "4.15"),
+            ("SC LARKSPUR SAVED YOU 0.60", "discount", "0.60", 0),
+        ),
+        text=_SAVED_BENEATH,
+        total=None,
+    )
+    assert [line.parent_seq for line in read.lines] == [None, None, 1]

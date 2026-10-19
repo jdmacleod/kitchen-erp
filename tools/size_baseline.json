@@ -1,7 +1,7 @@
 {
   "backend/app/cli.py": 1275,
   "backend/app/ingest/llm.py": 820,
-  "backend/app/ingest/structure.py": 858,
+  "backend/app/ingest/structure.py": 817,
   "backend/app/services/catalog.py": 1414,
   "backend/app/services/geo.py": 1001,
   "backend/app/services/lookups.py": 964,
