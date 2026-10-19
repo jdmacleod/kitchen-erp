@@ -172,11 +172,12 @@ def test_the_word_index_misses_no_pair_whose_words_agree(rows):
     names = [
         (uuid.UUID(int=i + 1), name + tail, brand) for i, (name, brand, tail) in enumerate(rows)
     ]
-    sets = {pid: sameness.word_sets(sameness.Facts(name=n, brand=b)) for pid, n, b in names}
+    facts = {pid: sameness.Facts(name=n, brand=b) for pid, n, b in names}
+    sets = {pid: sameness.word_sets(f) for pid, f in facts.items()}
     every = sorted(
         (a, b) for a in sets for b in sets if a < b and sameness.words_agree(sets[a], sets[b])
     )
-    assert product_duplicates._word_pairs(names) == every
+    assert product_duplicates._word_pairs(facts) == every
 
 
 async def _queries(db_session, compute) -> int:
@@ -207,5 +208,31 @@ async def test_the_inbox_row_costs_the_same_queries_for_a_few_products_or_many(
     [row] = await inbox._duplicates(db_session)
     pairs = await product_duplicates.find_duplicates(db_session)
     assert row.title == f"{len(pairs)} possible duplicate products"
-    # Names, the trigram check on the candidates, the products and their two relations.
-    assert many == few <= 5
+    # Produce bought by weight, names, the trigram check on the candidates, the products
+    # and their two relations.
+    assert many == few <= 6
+
+
+# --- produce: organic and size grades -------------------------------------------------
+
+
+async def test_produce_grades_merge_by_weight_and_organic_never(admin_client, db_session):
+    from tests.catalog_helpers import make_ingredient, seed_units_via_service
+    from tests.pricebook_helpers import make_location, shelf
+
+    await seed_units_via_service(db_session)
+    pears = (await make_ingredient(admin_client, "lantern pears", category="produce"))["id"]
+    loc = await make_location(admin_client, "Quill Grocers", "Quill Grocers Uptown")
+    # Bought by the pound: the grade says nothing, so these two are one product.
+    weighed = await _product(admin_client, pears, "Large lantern pears")
+    loose = await _product(admin_client, pears, "Lantern pears")
+    for p in (weighed, loose):
+        await shelf(admin_client, p["id"], loc["id"], "2.40", qty="1.2", unit="lb")
+    # Organic is another product, by weight or not.
+    await _product(admin_client, pears, "Organic lantern pears", kind="random_weight")
+    # By the piece, a jumbo and a small onion are two products.
+    onions = (await make_ingredient(admin_client, "lantern onions", category="produce"))["id"]
+    await _product(admin_client, onions, "Jumbo lantern onion")
+    await _product(admin_client, onions, "Small lantern onion")
+
+    assert await _pairs(admin_client) == [tuple(sorted((weighed["id"], loose["id"])))]

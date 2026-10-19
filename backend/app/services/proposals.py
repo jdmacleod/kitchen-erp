@@ -365,7 +365,7 @@ async def _proposal_brand_id(db: AsyncSession, fields: dict[str, Any]) -> uuid.U
     return found.id if found else None
 
 
-def product_facts(product: Product) -> sameness.Facts:
+def product_facts(product: Product, *, produce_by_weight: bool = False) -> sameness.Facts:
     gtin = next(
         (i.value for i in product.identifiers if i.scheme == "gtin" and i.vendor_id is None), None
     )
@@ -381,6 +381,9 @@ def product_facts(product: Product) -> sameness.Facts:
         gtin=gtin,
         ingredient_id=product.ingredient_id,
         brand_id=product.brand_id,
+        organic=(product.attributes or {}).get("organic"),
+        grade=(product.attributes or {}).get("grade"),
+        produce_by_weight=produce_by_weight,
     )
 
 

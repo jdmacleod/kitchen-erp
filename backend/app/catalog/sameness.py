@@ -51,6 +51,13 @@ DISTINGUISHING = frozenset(
     | {"organic", "decaf", "plain", "unsweetened", "seedless", "large", "small", "jumbo"}
 )
 
+# "Organic" is decided once, below, from the product's attribute or its words, and never
+# counts as a word: an organic product and a conventional one are always variants.
+_ORGANIC = frozenset({"organic", "organics"})
+# Produce size grades. Sold by weight a large and a small cost the same per pound, so
+# there the words are filler; sold by the piece they make different products.
+GRADES = frozenset({"small", "medium", "large", "jumbo", "xl"})
+
 _MARKS = re.compile(r"[™®©℠]")
 _APOSTROPHES = re.compile(r"['’`]")
 # A printed size: "6 x 330 ml", "10 oz", "8 ct", "12 in", '12"'. Bounded like extract's.
@@ -130,6 +137,12 @@ class Facts:
     # The brand row the brand names, when the brand dataset knows it (16, 2R-2): two
     # spellings of one brand are one brand.
     brand_id: uuid.UUID | None = None
+    # Produce attributes (03, 1H): organic when known (None: the words decide), and
+    # the size grade.
+    organic: bool | None = None
+    grade: str | None = None
+    # Produce bought by weight: its size grade says nothing about the product.
+    produce_by_weight: bool = False
 
 
 @dataclass(frozen=True)
@@ -183,31 +196,47 @@ class WordSets:
 
     need: frozenset[str]
     cover: frozenset[str]
+    organic: bool = False
 
 
 def word_sets(facts: Facts) -> WordSets:
     """The name key's words less a brand written at the end of a brandless name (need),
     and what answers for another name's words (cover): the key's words, the brand's words
-    ("Organic" in "Fernhill Organic", which the other name lost to its brand) and the
-    numbers of a printed size ("10" against '10"')."""
+    ("Smokehouse" in "Fernhill Smokehouse", which the other name lost to its brand) and
+    the numbers of a printed size ("10" against '10"').
+
+    "Organic" is left to :func:`is_organic`. A size grade is filler for produce sold by
+    weight; for produce sold by the piece its grade attribute counts as words."""
     key = name_key(facts.name, facts.brand)
-    return WordSets(
-        need=key.words - _tail(facts),
-        cover=key.words | frozenset(_words(facts.brand or "")) | key.size_numbers,
-    )
+    need = key.words - _tail(facts) - _ORGANIC
+    cover = key.words | frozenset(_words(facts.brand or "")) | key.size_numbers
+    if facts.produce_by_weight:
+        need -= GRADES
+    elif facts.grade:
+        graded = frozenset(facts.grade.split("_"))
+        need |= graded
+        cover |= graded
+    return WordSets(need=need, cover=cover - _ORGANIC, organic=is_organic(facts))
+
+
+def is_organic(facts: Facts) -> bool:
+    """The organic attribute when set, else whether the name or the brand says so."""
+    if facts.organic is not None:
+        return facts.organic
+    return bool(_ORGANIC & (set(_words(facts.name)) | set(_words(facts.brand or ""))))
 
 
 def words_agree(a: WordSets, b: WordSets) -> bool:
-    """Neither name has a word the other can't answer for: compare's words test, and so
-    true of every pair it calls ``same``."""
-    return a.need <= b.cover and b.need <= a.cover
+    """Neither name has a word the other can't answer for, and both or neither are
+    organic: compare's words test, and so true of every pair it calls ``same``."""
+    return a.need <= b.cover and b.need <= a.cover and a.organic == b.organic
 
 
 def compare(a: Facts, b: Facts) -> Verdict:
     """The verdict on two products, symmetric in its kind."""
     wa, wb = word_sets(a), word_sets(b)
-    only_a = tuple(sorted(wa.need - wb.cover))
-    only_b = tuple(sorted(wb.need - wa.cover))
+    only_a = tuple(sorted(wa.need - wb.cover | ({"organic"} if wa.organic > wb.organic else set())))
+    only_b = tuple(sorted(wb.need - wa.cover | ({"organic"} if wb.organic > wa.organic else set())))
     if only_a or only_b:
         if all(w in DISTINGUISHING for w in only_a + only_b):
             return Verdict("variant", ("words",), only_a, only_b)

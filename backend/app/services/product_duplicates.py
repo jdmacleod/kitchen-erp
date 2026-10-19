@@ -3,9 +3,10 @@
 Pairs of active products whose names could be the same by their words (found through an
 index of words, not by comparing every pair) and share enough trigrams are compared; the
 sameness rules keep only those they call the same product, so a different size or a
-different variant is never offered. A pair a person marked "Not the same" is remembered
-in ``product_distinct_pair`` and never offered again. Nothing is merged here: "Merge…"
-is the product merge (#179).
+different variant is never offered. Produce bought by weight has its size grade read as
+filler there, and an organic product is never the same as a conventional one. A pair a
+person marked "Not the same" is remembered in ``product_distinct_pair`` and never offered
+again. Nothing is merged here: "Merge…" is the product merge (#179).
 """
 
 from __future__ import annotations
@@ -49,15 +50,26 @@ class DuplicatePair:
     reasons: tuple[str, ...]
 
 
-def _word_pairs(
-    names: list[tuple[uuid.UUID, str, str | None]],
-) -> list[tuple[uuid.UUID, uuid.UUID]]:
+# Active produce bought by weight: a random-weight product, or one with a price for a
+# weight. Its size grade is filler to the sameness rules.
+_PRODUCE_BY_WEIGHT_SQL = text(
+    """
+    SELECT p.id
+    FROM product p
+    JOIN ingredient i ON i.id = p.ingredient_id
+    WHERE p.active AND lower(i.category) = 'produce'
+      AND (p.kind = 'random_weight' OR EXISTS (
+          SELECT 1 FROM price_observation o JOIN unit u ON u.code = o.unit
+          WHERE o.product_id = p.id AND u.dimension = 'mass'
+      ))
+    """
+)
+
+
+def _word_pairs(facts: dict[uuid.UUID, sameness.Facts]) -> list[tuple[uuid.UUID, uuid.UUID]]:
     """Pairs (lower id first) whose names pass the sameness words test, found through an
     index of the words that answer for others, so a catalog isn't compared pair by pair."""
-    sets = {
-        pid: sameness.word_sets(sameness.Facts(name=name, brand=brand))
-        for pid, name, brand in names
-    }
+    sets = {pid: sameness.word_sets(f) for pid, f in facts.items()}
     covering: dict[str, set[uuid.UUID]] = defaultdict(set)
     for pid, words in sets.items():
         for word in words.cover:
@@ -74,10 +86,22 @@ def _word_pairs(
 
 async def find_duplicates(db: AsyncSession) -> list[DuplicatePair]:
     """Every pair of active products the sameness rules call the same, by name."""
-    names = (
-        await db.execute(select(Product.id, Product.name, Product.brand).where(Product.active))
-    ).tuples()
-    candidates = _word_pairs(list(names))
+    by_weight = set((await db.execute(_PRODUCE_BY_WEIGHT_SQL)).scalars())
+    rows = await db.execute(
+        select(Product.id, Product.name, Product.brand, Product.attributes).where(Product.active)
+    )
+    candidates = _word_pairs(
+        {
+            pid: sameness.Facts(
+                name=name,
+                brand=brand,
+                organic=(attributes or {}).get("organic"),
+                grade=(attributes or {}).get("grade"),
+                produce_by_weight=pid in by_weight,
+            )
+            for pid, name, brand, attributes in rows.tuples()
+        }
+    )
     if not candidates:
         return []
     rows = await db.execute(
@@ -97,7 +121,9 @@ async def find_duplicates(db: AsyncSession) -> list[DuplicatePair]:
             )
         ).scalars()
     }
-    facts = {pid: product_facts(p) for pid, p in products.items()}
+    facts = {
+        pid: product_facts(p, produce_by_weight=pid in by_weight) for pid, p in products.items()
+    }
     out = []
     for a, b in pairs:
         verdict = sameness.compare(facts[a], facts[b])
