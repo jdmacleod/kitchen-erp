@@ -67,6 +67,9 @@ class IngredientRef:
     # `@&flour{100%g}`: more of an ingredient named earlier (cooklang-rs's `&`
     # modifier). Still a line of its own, so the amount adds to the first one.
     reference: bool = False
+    # `@white wine|wine{}`: the name the step shows instead (cooklang-rs's alias
+    # extension). The ingredient is `raw_name`; the alias never names one.
+    alias: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

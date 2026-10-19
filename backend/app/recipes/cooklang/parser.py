@@ -10,6 +10,9 @@ The grammar, as this parser reads it:
 - `@name{qty%unit}(note)`, `#name{qty}`, `~name{qty%unit}`; `@name`, `#name`
   and `~name` without braces are single words; `~{qty%unit}` is anonymous;
   `@?name` and `#?name` are optional.
+- `@name|alias{…}` is the ingredient `name`, shown as `alias` (the cooklang-rs
+  alias extension). A name that starts with `|` has no ingredient before the
+  alias; it stays as written and `hints.alias_hints` says what to write.
 - `@&name` refers to an ingredient named earlier, and `@&(~1)name`, `@&(2)name`,
   `@&(=2)name` and `@&(=~1)name` to an earlier step or section (the cooklang-rs
   extensions; see `references.py`). A target that doesn't come before the
@@ -301,7 +304,8 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
                 return ParseError(f"note on `@{name}` is never closed", line_number, end + 1)
             note = line[end + 1 : note_close].strip() or None
             end = note_close + 1
-        item = _build(marker, name or None, body, note, optional, line_number)
+        name, alias = _alias(marker, name)
+        item = _build(marker, name or None, body, note, optional, line_number, alias)
         return _place(as_reference(item, target), at, end, j, j + len(name)), end
 
     # Single-word form: name characters, allowing a joiner between two of them.
@@ -316,6 +320,15 @@ def _component(line: str, at: int, line_number: int) -> tuple[Item, int] | Parse
         return None
     item = as_reference(_build(marker, name, "", None, optional, line_number), target)
     return _place(item, at, k, j, k), k
+
+
+def _alias(marker: str, name: str) -> tuple[str, str | None]:
+    """`white wine|wine` as the ingredient and the name shown; a name with nothing
+    before its `|` (or not an ingredient) is left as written."""
+    head, pipe, tail = name.partition("|")
+    if marker != "@" or not pipe or not head.strip():
+        return name, None
+    return head.rstrip(), tail.strip() or None
 
 
 def _place(item: Item, start: int, end: int, name_start: int, name_end: int) -> Item:
@@ -351,7 +364,13 @@ def _find_close(line: str, start: int) -> int | None:
 
 
 def _build(
-    marker: str, name: str | None, body: str, note: str | None, optional: bool, line: int
+    marker: str,
+    name: str | None,
+    body: str,
+    note: str | None,
+    optional: bool,
+    line: int,
+    alias: str | None = None,
 ) -> Item:
     quantity_text, percent, unit_text = body.partition("%")
     unit = unit_text.strip() if percent else ""
@@ -368,6 +387,7 @@ def _build(
         note=note,
         optional=optional,
         line=line,
+        alias=alias,
     )
 
 

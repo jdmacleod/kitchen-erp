@@ -137,20 +137,22 @@ def lint(path: Path | None = PATH_OPTION, strict: bool = STRICT_OPTION) -> None:
 
 
 def _reference_hints(files: list[CookFile]) -> int:
-    """Print each line written as an ingredient that reads as an `@&` reference (issue 367)."""
+    """Print each ingredient line that reads as an `@&` reference (issue 367), or
+    that names no ingredient before a `|`."""
     from app.recipes.cooklang import Recipe
-    from app.recipes.cooklang.hints import reference_hints
+    from app.recipes.cooklang.hints import alias_hints, reference_hints
 
     count = 0
     for f in files:
         if not isinstance(f.parsed, Recipe):
             continue
-        for hint in reference_hints(f.parsed):
-            count += 1
-            typer.echo(
-                f"{'refer':<8} {f.rel}:{hint.line}  @{hint.written} {hint.why}: "
-                f"write {hint.suggestion}"
-            )
+        for tag, found in (("refer", reference_hints), ("alias", alias_hints)):
+            for hint in found(f.parsed):
+                count += 1
+                typer.echo(
+                    f"{tag:<8} {f.rel}:{hint.line}  @{hint.written} {hint.why}: "
+                    f"write {hint.suggestion}"
+                )
     return count
 
 

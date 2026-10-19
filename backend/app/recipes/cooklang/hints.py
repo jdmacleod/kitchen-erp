@@ -1,4 +1,6 @@
-"""Lines that read as a reference but are written as an ingredient (issue 367).
+"""Ingredient lines that don't say what their writer meant.
+
+References (issue 367): lines that read as a reference but are written as an ingredient.
 
 `@sauce{1%portion}` in a recipe with a `= Sauce` section, or `@noodles{1%portion}`
 after `@noodles{1%lb}`, become ingredient lines of their own: unmatched, or a
@@ -60,6 +62,29 @@ def reference_hints(recipe: Recipe) -> list[ReferenceHint]:
                 first.setdefault(key, ref)
         if section.name:
             sections.setdefault(name_key(section.name), number)
+    return hints
+
+
+def alias_hints(recipe: Recipe) -> list[ReferenceHint]:
+    """Each ingredient whose name starts with `|`, or still holds one: `|` only
+    gives a display name (`@white wine|wine{}`), and CookLang has no way to say
+    "this or that". The first food is the ingredient; the others go in its note."""
+    hints: list[ReferenceHint] = []
+    for section in recipe.sections:
+        for step in section.steps:
+            for ref in step.ingredients:
+                if "|" not in ref.raw_name:
+                    continue
+                first, *others = [p.strip() for p in ref.raw_name.split("|") if p.strip()]
+                note = f"(or {' or '.join(others)})" if others else ""
+                hints.append(
+                    ReferenceHint(
+                        ref.line,
+                        ref.raw_name,
+                        f"@{first}{_quantity_text(ref)}{note}",
+                        "names no ingredient before its `|`, which only gives a display name",
+                    )
+                )
     return hints
 
 
