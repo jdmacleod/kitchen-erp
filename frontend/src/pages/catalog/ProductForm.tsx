@@ -327,8 +327,8 @@ export function ProductForm({
       />
 
       {chosen.data?.category_key === "produce" ? (
-        <div className="grid items-end gap-4 sm:grid-cols-2">
-          <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
+        <div className="grid items-start gap-4 sm:grid-cols-2">
+          <label className="inline-flex min-h-11 items-center gap-2 text-sm sm:mt-6 lg:min-h-10">
             <input
               id={`${idPrefix}-organic`}
               type="checkbox"
