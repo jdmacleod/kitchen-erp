@@ -23,8 +23,10 @@ OZ16 = {"qty": "16", "unit": "oz"}
 G227 = {"qty": "227", "unit": "g"}  # 8 oz, within 5%
 
 
-def facts(name, brand=None, pack=None, gtin=None, ingredient_id=None):
-    return Facts(name=name, brand=brand, pack=pack, gtin=gtin, ingredient_id=ingredient_id)
+def facts(name, brand=None, pack=None, gtin=None, ingredient_id=None, **produce):
+    return Facts(
+        name=name, brand=brand, pack=pack, gtin=gtin, ingredient_id=ingredient_id, **produce
+    )
 
 
 @pytest.mark.parametrize(
@@ -163,4 +165,67 @@ def test_words_agree_is_compares_words_test(a, b):
     holds exactly when compare finds no word on either side that the other lacks."""
     verdict = compare(a, b)
     agree = words_agree(word_sets(a), word_sets(b))
+    assert agree == (not verdict.only_a and not verdict.only_b)
+
+
+# --- produce: organic and size grades -------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "kind"),
+    [
+        # The organic attribute speaks for the name, and against it.
+        (facts("Lantern pears", organic=True), facts("Organic lantern pears"), "same"),
+        (facts("Lantern pears", organic=True), facts("Lantern pears"), "variant"),
+        (facts("Organic lantern pears", organic=False), facts("Lantern pears"), "same"),
+        (facts("Lantern pears", organic=True), facts("Lantern pears", organic=False), "variant"),
+        (facts("Lantern pears", "Tall Grass Organics"), facts("Organic lantern pears"), "same"),
+        # Sold by weight, a size grade is filler; sold by the piece it is not.
+        (
+            facts("Large lantern pears", produce_by_weight=True),
+            facts("Lantern pears", produce_by_weight=True),
+            "same",
+        ),
+        (facts("Large lantern pear"), facts("Lantern pear"), "variant"),
+        (facts("Jumbo lantern onion"), facts("Small lantern onion"), "variant"),
+        # A grade attribute on produce sold by the piece counts as its words.
+        (facts("Lantern pear", grade="large"), facts("Lantern pear"), "variant"),
+        (facts("Lantern pear", grade="large"), facts("Large lantern pear"), "same"),
+        (
+            facts("Lantern pear", grade="extra_large"),
+            facts("Lantern pear", grade="large"),
+            "variant",
+        ),
+        # Never across organic, even by weight.
+        (
+            facts("Lantern pears", organic=True, produce_by_weight=True),
+            facts("Large lantern pears", produce_by_weight=True),
+            "variant",
+        ),
+    ],
+)
+def test_produce_attributes_decide_organic_and_grade(a, b, kind):
+    assert compare(a, b).kind == kind
+    assert compare(b, a).kind == kind
+
+
+_produce_facts = st.builds(
+    facts,
+    _close_names,
+    st.one_of(st.none(), st.sampled_from(["Fernhill", "Fernhill Organic"])),
+    organic=st.one_of(st.none(), st.booleans()),
+    grade=st.one_of(st.none(), st.sampled_from(["small", "large", "extra_large"])),
+    produce_by_weight=st.booleans(),
+)
+
+
+@given(_produce_facts, _produce_facts)
+def test_organic_and_conventional_are_never_the_same(a, b):
+    from app.catalog.sameness import is_organic
+
+    if compare(a, b).kind == "same":
+        assert is_organic(a) == is_organic(b)
+    assert compare(a, b).kind == compare(b, a).kind
+    agree = words_agree(word_sets(a), word_sets(b))
+    verdict = compare(a, b)
     assert agree == (not verdict.only_a and not verdict.only_b)
