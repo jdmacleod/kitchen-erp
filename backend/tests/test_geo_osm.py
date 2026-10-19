@@ -1,9 +1,11 @@
 """OpenStreetMap adoption (criteria 24-26) and the no-network guarantee when disabled (25)."""
 
+import re
 import socket
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import httpx
 import pytest
@@ -360,6 +362,15 @@ async def test_a_refused_query_is_not_retried(
     assert r.json()["error"]["code"] == "overpass_rejected"
     assert r.json()["error"]["details"] == {"status": 400}
     assert len(overpass.requests) == 1
+
+
+def test_a_search_waits_for_a_queued_answer_inside_the_web_proxy_budget():
+    # Answers from a queued public server took 31-33 s (2026-10-19); waiting less gave up on them.
+    assert osm.REQUEST_TIMEOUT_SECONDS >= 60
+    nginx = (Path(__file__).parents[2] / "frontend" / "nginx.conf").read_text()
+    proxy = int(re.search(r"proxy_read_timeout (\d+)s;", nginx).group(1))
+    longest = osm.QUERY_BUDGET_SECONDS + osm.CONNECT_TIMEOUT_SECONDS + osm.MIN_INTERVAL_SECONDS
+    assert longest < proxy
 
 
 async def test_cache_expires_after_ttl(overpass: FakeOverpass, tmp_path):

@@ -37,7 +37,13 @@ log = get_logger(__name__)
 USER_AGENT = "kitchen-erp/0.1 (self-hosted household kitchen system; Overpass client)"
 MIN_INTERVAL_SECONDS = 2.0
 CACHE_TTL = timedelta(hours=24)
-REQUEST_TIMEOUT_SECONDS = 30.0
+# A public server queues a query before running it, and its [timeout:25] counts only
+# the run: answers took 31-33 s on 2026-10-19, so 30 s gave up on answers on their way.
+REQUEST_TIMEOUT_SECONDS = 75.0
+# Everything one search may spend across retries and servers, inside the web
+# proxy's 120 s; an attempt never starts with less than MIN_ATTEMPT_SECONDS left.
+QUERY_BUDGET_SECONDS = 100.0
+MIN_ATTEMPT_SECONDS = 10.0
 # An unreachable server says so in seconds, not after a whole answer's budget.
 CONNECT_TIMEOUT_SECONDS = 5.0
 # A public Overpass server that is at capacity answers at once (429, or a 502/503/504
@@ -207,10 +213,10 @@ cache = CandidateCache()
 http_transport: httpx.AsyncBaseTransport | None = None
 
 
-def http_client() -> httpx.AsyncClient:
+def http_client(read_seconds: float = REQUEST_TIMEOUT_SECONDS) -> httpx.AsyncClient:
     return httpx.AsyncClient(
         headers={"User-Agent": USER_AGENT},
-        timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS, connect=CONNECT_TIMEOUT_SECONDS),
+        timeout=httpx.Timeout(read_seconds, connect=CONNECT_TIMEOUT_SECONDS),
         transport=http_transport,
     )
 
@@ -293,12 +299,12 @@ def endpoints() -> list[str]:
 pause: Callable[[float], Awaitable[None]] = asyncio.sleep
 
 
-async def _post(url: str, ql: str) -> httpx.Response | str:
+async def _post(url: str, ql: str, read_seconds: float) -> httpx.Response | str:
     """The server's response, or why there was none: "busy" (no answer in time)
     or "unreachable" (no connection). Failures are logged with their cause."""
     started = time.monotonic()
     try:
-        async with http_client() as client:
+        async with http_client(read_seconds) as client:
             return await client.post(url, data={"data": ql})
     except httpx.HTTPError as exc:
         # A connection that opened but never answered is a busy server.
@@ -318,10 +324,14 @@ async def _query(ql: str) -> list[dict[str, Any]]:
     """POST an Overpass QL query to each server in turn; parse elements as Decimal."""
     ensure_enabled()
     reasons: list[str] = []
+    deadline = time.monotonic() + QUERY_BUDGET_SECONDS
     for url in endpoints():
         for attempt in range(BUSY_RETRIES + 1):
             await limiter.wait()
-            got = await _post(url, ql)
+            left = deadline - time.monotonic()
+            if left < MIN_ATTEMPT_SECONDS:
+                break
+            got = await _post(url, ql, min(REQUEST_TIMEOUT_SECONDS, left))
             if isinstance(got, str):
                 reasons.append(got)
                 break  # a silent or unreachable server is not asked again
