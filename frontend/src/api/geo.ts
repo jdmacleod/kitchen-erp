@@ -262,6 +262,11 @@ export function isIntegrationDisabled(e: unknown): boolean {
   return isApiError(e) && e.code === INTEGRATION_DISABLED;
 }
 
+/** True when OpenStreetMap's place search was busy or out of reach: worth another try. */
+export function isOsmRetryable(e: unknown): boolean {
+  return isApiError(e) && (e.code === "overpass_busy" || e.code === "overpass_unavailable");
+}
+
 const knownMessages: Record<string, string> = {
   vendor_name_taken: "A vendor with that name already exists.",
   parent_is_stall: "A stall cannot contain stalls; choose the market itself.",

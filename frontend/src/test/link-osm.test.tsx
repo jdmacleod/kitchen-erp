@@ -131,6 +131,52 @@ describe("link to OpenStreetMap", () => {
     expect(await screen.findByText("No OpenStreetMap places within 250 m.")).toBeInTheDocument();
   });
 
+  it("says when OpenStreetMap is busy and tries again on request", async () => {
+    let answer = () =>
+      errorResponse(
+        503,
+        "overpass_busy",
+        "OpenStreetMap's place search is busy right now. Try again in a minute.",
+      );
+    const calls = mockApi(
+      routes(() => chainLocation, {
+        [`GET /vendor-locations/${chainLocation.id}/osm-candidates`]: () => answer(),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/vendors/${chainVendorId}`);
+
+    await user.click(
+      await screen.findByRole("button", { name: `Link ${chainLocation.name} to OpenStreetMap` }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/busy right now/);
+    answer = () => jsonResponse(200, { items: [] });
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("No OpenStreetMap places within 250 m.")).toBeInTheDocument();
+    const asked = calls.filter((c) => c.path.endsWith("/osm-candidates"));
+    expect(asked).toHaveLength(2);
+  });
+
+  it("offers no retry for a refused query", async () => {
+    mockApi(
+      routes(() => chainLocation, {
+        [`GET /vendor-locations/${chainLocation.id}/osm-candidates`]: () =>
+          errorResponse(
+            502,
+            "overpass_rejected",
+            "OpenStreetMap's place search refused the request (HTTP 400).",
+          ),
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/vendors/${chainVendorId}`);
+    await user.click(
+      await screen.findByRole("button", { name: `Link ${chainLocation.name} to OpenStreetMap` }),
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(/HTTP 400/);
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
   it("unlinks a linked location and keeps its values", async () => {
     let location: VendorLocation = {
       ...chainLocation,

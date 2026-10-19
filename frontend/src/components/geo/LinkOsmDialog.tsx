@@ -3,6 +3,7 @@ import {
   formatDistance,
   geoErrorMessage,
   isIntegrationDisabled,
+  isOsmRetryable,
   useLinkCandidates,
   useLinkOsm,
   vendorKindLabel,
@@ -71,14 +72,14 @@ export function LinkOsmDialog({
       </p>
       {candidates.isPending ? (
         <p role="status" className={`text-sm ${muted}`}>
-          Searching near this pin…
+          Searching near this pin… OpenStreetMap can take up to half a minute.
         </p>
       ) : candidates.isError && isIntegrationDisabled(candidates.error) ? (
         <p role="status" className={`text-sm ${muted}`}>
           OpenStreetMap lookups are off. Set ENABLE_OVERPASS=true on the server to use them.
         </p>
       ) : candidates.isError ? (
-        <Alert tone="error">{geoErrorMessage(candidates.error)}</Alert>
+        <SearchError error={candidates.error} search={candidates} />
       ) : items.length === 0 ? (
         <p className={`text-sm ${muted}`}>No OpenStreetMap places within 250 m.</p>
       ) : (
@@ -154,5 +155,29 @@ export function LinkOsmDialog({
         </Button>
       </div>
     </Dialog>
+  );
+}
+
+/** Why the search failed, with another try when OpenStreetMap was busy or out of reach. */
+function SearchError({
+  error,
+  search,
+}: {
+  error: unknown;
+  search: { isFetching: boolean; refetch: () => Promise<unknown> };
+}) {
+  return (
+    <div className="flex flex-col items-start gap-2">
+      <Alert tone="error">{geoErrorMessage(error)}</Alert>
+      {isOsmRetryable(error) ? (
+        <Button
+          variant="secondary"
+          disabled={search.isFetching}
+          onClick={() => void search.refetch()}
+        >
+          {search.isFetching ? "Searching…" : "Try again"}
+        </Button>
+      ) : null}
+    </div>
   );
 }

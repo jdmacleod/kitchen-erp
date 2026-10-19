@@ -38,6 +38,7 @@ services:
       OCR_VISION_TIMEOUT_SECONDS: ${OCR_VISION_TIMEOUT_SECONDS:-300}
       NAMING_AUTO_SUGGEST: ${NAMING_AUTO_SUGGEST:-false}
       ENABLE_OVERPASS: ${ENABLE_OVERPASS:-false}
+      OVERPASS_URLS: ${OVERPASS_URLS:-https://overpass-api.de/api/interpreter}
       ENABLE_NOMINATIM: ${ENABLE_NOMINATIM:-false}
       TILES_PATH: /data/tiles
       RECEIPTS_PATH: /data/receipts

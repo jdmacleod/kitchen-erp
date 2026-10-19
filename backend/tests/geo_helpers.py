@@ -92,6 +92,9 @@ class FakeOverpass:
     elements: list[dict[str, Any]] = field(default_factory=list)
     requests: list[dict[str, Any]] = field(default_factory=list)
     status_code: int = 200
+    # Answers for the next requests, in order, before ``status_code`` applies again:
+    # a status, or an httpx exception the "server" raises (a timeout, a refused connection).
+    script: list[int | Exception] = field(default_factory=list)
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         query = parse_qs(request.content.decode()).get("data", [""])[0]
@@ -102,7 +105,13 @@ class FakeOverpass:
                 "query": query,
             }
         )
-        if self.status_code != 200:
+        if self.script:
+            step = self.script.pop(0)
+            if isinstance(step, Exception):
+                raise step
+            if step != 200:
+                return httpx.Response(step, text="busy")
+        elif self.status_code != 200:
             return httpx.Response(self.status_code, text="busy")
         if "around:" in query:
             elements = self.elements
@@ -146,6 +155,10 @@ def osm_node(
     return element
 
 
+async def _no_pause(_seconds: float) -> None:
+    return None
+
+
 @pytest.fixture
 def overpass(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Iterator[FakeOverpass]:
     """Enable the integration against a mocked transport, zero rate-limit wait, temp cache."""
@@ -154,6 +167,7 @@ def overpass(monkeypatch: pytest.MonkeyPatch, tmp_path) -> Iterator[FakeOverpass
     monkeypatch.setattr(osm, "http_transport", httpx.MockTransport(fake.handler))
     monkeypatch.setattr(osm, "cache_dir", lambda: tmp_path / "osm-cache")
     monkeypatch.setattr(osm, "limiter", osm.RateLimiter(0))
+    monkeypatch.setattr(osm, "pause", _no_pause)
     osm.cache.clear()
     yield fake
     osm.cache.clear()

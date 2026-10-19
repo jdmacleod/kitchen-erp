@@ -112,6 +112,9 @@ class Settings(BaseSettings):
     # rather than on a button press (#387). Off by default: it loads the model.
     naming_auto_suggest: bool = False
     enable_overpass: bool = False
+    # Overpass servers to ask, in order, comma-separated: a busy or silent one
+    # gives way to the next. Each is a third party that receives the pin.
+    overpass_urls: str = "https://overpass-api.de/api/interpreter"
     enable_nominatim: bool = False
 
     tiles_path: str = "/data/tiles"

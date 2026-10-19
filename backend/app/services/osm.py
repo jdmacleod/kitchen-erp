@@ -34,11 +34,17 @@ from app.services.opening_hours import validate_hours
 
 log = get_logger(__name__)
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 USER_AGENT = "kitchen-erp/0.1 (self-hosted household kitchen system; Overpass client)"
 MIN_INTERVAL_SECONDS = 2.0
 CACHE_TTL = timedelta(hours=24)
 REQUEST_TIMEOUT_SECONDS = 30.0
+# An unreachable server says so in seconds, not after a whole answer's budget.
+CONNECT_TIMEOUT_SECONDS = 5.0
+# A public Overpass server that is at capacity answers at once (429, or a 502/503/504
+# "all query workers are busy"); it is asked once more after a pause, then the next.
+BUSY_STATUSES = frozenset({429, 502, 503, 504})
+BUSY_RETRIES = 1
+BUSY_RETRY_SECONDS = 5.0
 
 SHOP_VALUES = (
     "supermarket",
@@ -204,7 +210,7 @@ http_transport: httpx.AsyncBaseTransport | None = None
 def http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
         headers={"User-Agent": USER_AGENT},
-        timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS),
+        timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS, connect=CONNECT_TIMEOUT_SECONDS),
         transport=http_transport,
     )
 
@@ -278,24 +284,78 @@ def _candidate(element: dict[str, Any]) -> OsmCandidate | None:
     )
 
 
-async def _query(ql: str) -> list[dict[str, Any]]:
-    """POST an Overpass QL query; parse elements. Numbers are parsed as Decimal."""
-    ensure_enabled()
-    await limiter.wait()
+def endpoints() -> list[str]:
+    """The Overpass servers to ask, in order (``OVERPASS_URLS``)."""
+    return [u.strip() for u in get_settings().overpass_urls.split(",") if u.strip()]
+
+
+# Tests set this to a no-op; production waits between asking a busy server twice.
+pause: Callable[[float], Awaitable[None]] = asyncio.sleep
+
+
+async def _post(url: str, ql: str) -> httpx.Response | str:
+    """The server's response, or why there was none: "busy" (no answer in time)
+    or "unreachable" (no connection). Failures are logged with their cause."""
+    started = time.monotonic()
     try:
         async with http_client() as client:
-            response = await client.post(OVERPASS_URL, data={"data": ql})
+            return await client.post(url, data={"data": ql})
     except httpx.HTTPError as exc:
-        raise ApiError(
-            502, "overpass_unavailable", "The Overpass API could not be reached."
-        ) from exc
-    if response.status_code != 200:
-        raise ApiError(
-            502,
-            "overpass_unavailable",
-            "The Overpass API rejected the request.",
-            {"status": response.status_code},
+        # A connection that opened but never answered is a busy server.
+        why = "busy" if isinstance(exc, httpx.ReadTimeout | httpx.PoolTimeout) else "unreachable"
+        log.warning(
+            "overpass request failed",
+            extra={
+                "host": urlsplit(url).hostname,
+                "error": type(exc).__name__,
+                "seconds": round(time.monotonic() - started, 1),
+            },
         )
+        return why
+
+
+async def _query(ql: str) -> list[dict[str, Any]]:
+    """POST an Overpass QL query to each server in turn; parse elements as Decimal."""
+    ensure_enabled()
+    reasons: list[str] = []
+    for url in endpoints():
+        for attempt in range(BUSY_RETRIES + 1):
+            await limiter.wait()
+            got = await _post(url, ql)
+            if isinstance(got, str):
+                reasons.append(got)
+                break  # a silent or unreachable server is not asked again
+            if got.status_code == 200:
+                return _elements(got)
+            log.warning(
+                "overpass refused the request",
+                extra={"host": urlsplit(url).hostname, "status": got.status_code},
+            )
+            if got.status_code not in BUSY_STATUSES:
+                raise ApiError(
+                    502,
+                    "overpass_rejected",
+                    f"OpenStreetMap's place search refused the request (HTTP {got.status_code}).",
+                    {"status": got.status_code},
+                )
+            reasons.append("busy")
+            if attempt < BUSY_RETRIES:
+                await pause(BUSY_RETRY_SECONDS)
+    if "busy" in reasons:
+        raise ApiError(
+            503,
+            "overpass_busy",
+            "OpenStreetMap's place search is busy right now. Try again in a minute.",
+            {"servers": len(endpoints())},
+        )
+    raise ApiError(
+        502,
+        "overpass_unavailable",
+        "This server could not reach OpenStreetMap's place search. Check its internet connection.",
+    )
+
+
+def _elements(response: httpx.Response) -> list[dict[str, Any]]:
     try:
         body = response.json(parse_float=Decimal)
     except ValueError as exc:
