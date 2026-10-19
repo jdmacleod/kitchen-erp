@@ -2178,6 +2178,15 @@ ingredients:
     keep: {room: null, fridge: null, freezer: 60}
     unit: ml
     fdc: 168815
+  - key: fuji-apple
+    name: "Fuji apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 167793
+    spellings: ["apples fuji", "fuji"]
   - key: furikake
     name: "furikake"
     category: spices
@@ -2185,6 +2194,15 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: gala-apple
+    name: "Gala apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 168204
+    spellings: ["apples gala", "gala"]
   - key: galangal
     name: "galangal"
     category: produce
@@ -2291,6 +2309,15 @@ ingredients:
     unit: g
     spellings: ["korean chili paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: golden-delicious-apple
+    name: "Golden Delicious apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 168202
+    spellings: ["apples golden delicious", "golden delicious"]
   - key: gouda
     name: "gouda"
     category: dairy
@@ -2305,6 +2332,15 @@ ingredients:
     keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174957
+  - key: granny-smith-apple
+    name: "Granny Smith apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 168203
+    spellings: ["apples granny smith", "granny smith"]
   - key: granola
     name: "granola"
     category: pantry
@@ -2678,6 +2714,16 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169640
+  - key: honeycrisp-apple
+    name: "Honeycrisp apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 1750343
+    spellings: ["apples honeycrisp", "honeycrisp"]
+    note: "USDA has only a Foundation record for it, without portions."
   - key: honeydew
     name: "honeydew"
     category: produce
@@ -4039,6 +4085,15 @@ ingredients:
     unit: g
     spellings: ["thai red curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: red-delicious-apple
+    name: "Red Delicious apple"
+    proper_noun: true
+    category: produce
+    perishability: refrigerated
+    keep: {room: 1, fridge: 21, freezer: null}
+    unit: g
+    fdc: 168201
+    spellings: ["apples red delicious", "red delicious"]
   - key: red-onion
     name: "red onion"
     category: produce
