@@ -55,6 +55,41 @@ def test_a_saving_on_an_item_does_not_hide_the_balance_below_it():
     assert header_stage.printed_total_line(text) == (Decimal("5.20"), True)
 
 
+# A till that prints each item at what was paid, its saving beneath for
+# information, and what the savings and coupons came to after the sale.
+_COUPONS_FOOTER = [
+    "FENWICK OATS              6.40 F",
+    "SC LARKSPUR SAVED YOU     1.15",
+    "CINDER PLUMS              3.00 F",
+    "**** BALANCE              9.40",
+    "VISA                      9.40",
+    "TOTAL NUMBER OF ITEMS SOLD = 2",
+    "LARKSPUR SAVINGS         $1.15",
+    "TOTAL COUPONS            $ 1.15",
+    "Annual Card Savings      $1.15",
+]
+
+
+def test_what_the_coupons_came_to_is_never_the_receipt_total():
+    text = "\n".join([*_COUPONS_FOOTER[:5], "REF#: 0042 TOTAL: 9.40", *_COUPONS_FOOTER[5:]])
+    assert header_stage.printed_total_line(text) == (Decimal("9.40"), True)
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("9.40")), text)
+    assert fixed.total == Decimal("9.40") and flags == []
+
+
+def test_a_model_total_printed_only_as_savings_gives_way_to_the_balance():
+    text = "\n".join(_COUPONS_FOOTER)
+    assert header_stage.printed_total_line(text) == (Decimal("9.40"), False)
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("1.15")), text)
+    assert fixed.total == Decimal("9.40")
+    assert flags == ["savings_total_rejected", "total_from_text"]
+
+
+def test_a_total_after_coupons_is_still_the_total():
+    text = "FENWICK OATS 6.40\nCoupon 1.00-\nTOTAL AFTER COUPONS 5.40"
+    assert header_stage.printed_total_line(text) == (Decimal("5.40"), True)
+
+
 # --- 8. The printed date and time -------------------------------------------
 
 

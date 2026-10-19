@@ -634,3 +634,48 @@ def test_an_item_takes_the_count_printed_beneath_it():
     # 2 @ 1.99 is 3.98, not the jam's 4.10: left as read.
     jam = by["COPPER JAM 4.10"]
     assert (jam.qty, jam.flags) == (Decimal("1"), [])
+
+
+# A till that prints the weight first, with its tare: net, then gross in brackets.
+_WEIGHT_ABOVE_TEXT = """\
+COPPER JAM 4.10 F
+1.24 (1.25) lb @ 2.99 /lb
+WT PLUMS HEATH 3.71 F
+0.38 (0.39) lb @ 1.79 /lb
+WT BEETS GOLD 0.68 F
+"""
+
+
+def test_an_item_takes_the_weight_printed_above_it():
+    lines = _passes(
+        ("COPPER JAM 4.10 F", "item", "4.10"),
+        ("WT PLUMS HEATH 3.71 F", "item", "3.71"),
+        ("WT BEETS GOLD 0.68 F", "item", "0.68"),
+        text=_WEIGHT_ABOVE_TEXT,
+    )
+    by = _by_text(lines)
+    plums, beets = by["WT PLUMS HEATH 3.71 F"], by["WT BEETS GOLD 0.68 F"]
+    assert (plums.qty, plums.unit, plums.unit_price, plums.line_total) == (
+        Decimal("1.24"),
+        "lb",
+        Decimal("2.99"),
+        Decimal("3.71"),
+    )
+    assert (beets.qty, beets.unit, beets.unit_price) == (Decimal("0.38"), "lb", Decimal("1.79"))
+    assert "qty_from_text" in plums.flags and "qty_from_text" in beets.flags
+    # The plums' weight is printed beneath the jam, but 1.24 lb at 2.99 is not 4.10.
+    jam = by["COPPER JAM 4.10 F"]
+    assert (jam.qty, jam.flags) == (Decimal("1"), [])
+
+
+def test_a_weight_row_both_neighbours_fit_is_left_alone():
+    text = "HEATH PLUMS 2.37\n3 @ 0.79\nCOPPER JAM 2.37\n"
+    lines = _passes(
+        ("HEATH PLUMS 2.37", "item", "2.37"),
+        ("COPPER JAM 2.37", "item", "2.37"),
+        text=text,
+    )
+    # The plums take it, being first; the jam may not take it again.
+    plums, jam = lines
+    assert plums.qty == Decimal("3") and "qty_from_text" in plums.flags
+    assert (jam.qty, jam.flags) == (Decimal("1"), [])

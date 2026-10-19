@@ -56,6 +56,9 @@ def _shape(lines: list[lines_mod.ParsedLine]) -> list[tuple]:
         ("0.84 lb @ 1.49 USD/lb", ("0.84", "lb", "1.49", None)),
         ("1.10 kg @ 3.20 US$/kg", ("1.10", "kg", "3.20", None)),
         ("0.84 1b @ 1.49 USD/1b", ("0.84", "lb", "1.49", None)),  # "lb" garbled too
+        # A till that weighs with a tare: the net weight, then the gross in brackets.
+        ("1.24 (1.25) lb @ 2.99 /lb", ("1.24", "lb", "2.99", None)),
+        ("0.38 ( 0.39 ) lb @ 1.79 /lb", ("0.38", "lb", "1.79", None)),
     ],
 )
 def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
