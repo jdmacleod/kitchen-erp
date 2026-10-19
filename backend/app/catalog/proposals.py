@@ -27,7 +27,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from app.units.convert import convert_between
-from app.units.table import Unit, units_by_code
+from app.units.table import BASE_UNIT, Unit, units_by_code
 
 SOURCES = (
     "person",
@@ -206,11 +206,8 @@ def _pack_grams(pack: Any) -> tuple[str, Decimal] | None:
         qty, unit = Decimal(str(pack["qty"])), _UNITS[pack["unit"]]
     except (KeyError, TypeError, InvalidOperation):
         return None
-    return unit.dimension, convert_between(qty, unit.code, _base(unit.dimension), _UNITS)
-
-
-def _base(dimension: str) -> str:
-    return {"mass": "g", "volume": "ml"}.get(dimension, "each")
+    # Each family's own base: a bunch is never a piece (issue 371).
+    return unit.dimension, convert_between(qty, unit.code, BASE_UNIT[unit.dimension], _UNITS)
 
 
 def packs_disagree(a: Any, b: Any) -> bool:

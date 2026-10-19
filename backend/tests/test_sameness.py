@@ -108,7 +108,7 @@ _packs = st.one_of(
     st.builds(
         lambda q, u: {"qty": str(q), "unit": u},
         st.integers(min_value=1, max_value=5000),
-        st.sampled_from(["g", "kg", "oz", "lb", "ml", "l", "fl_oz", "each"]),
+        st.sampled_from(["g", "kg", "oz", "lb", "ml", "l", "fl_oz", "each", "bunch"]),
     ),
 )
 _gtins = st.one_of(st.none(), st.sampled_from(["00000000000017", "00000000000024"]))
@@ -229,3 +229,23 @@ def test_organic_and_conventional_are_never_the_same(a, b):
     agree = words_agree(word_sets(a), word_sets(b))
     verdict = compare(a, b)
     assert agree == (not verdict.only_a and not verdict.only_b)
+
+
+# --- a pack in bunches (issue 371) -------------------------------------------------------
+
+
+def test_a_bunch_pack_compares_with_any_other_pack():
+    bunch = {"qty": "1", "unit": "bunch"}
+    assert (
+        compare(facts("Lantern radishes", pack=bunch), facts("Lantern radishes", pack=bunch)).kind
+        == "same"
+    )
+    pound = {"qty": "1", "unit": "lb"}
+    each = {"qty": "1", "unit": "each"}
+    for other in (pound, each):
+        assert compare(
+            facts("Lantern radishes", pack=bunch), facts("Lantern radishes", pack=other)
+        ).kind in (
+            "same",
+            "other_size",
+        )
