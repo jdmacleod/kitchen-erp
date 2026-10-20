@@ -14,6 +14,7 @@ import {
   PageHeader,
   secondaryLinkClass,
 } from "../../components/ui";
+import { onClipSaved } from "../../lib/clipFor";
 import { usePageTitle } from "../../lib/usePageTitle";
 import { useSearchText } from "../../lib/useSearchText";
 
@@ -28,6 +29,9 @@ type SetParams = (patch: Record<string, string | null>) => void;
 export function ToIdentifyPage() {
   usePageTitle("To identify");
   const queue = useToIdentify();
+  // A page clipped in another window may be for one of these groups (04, 2D).
+  const refetch = queue.refetch;
+  useEffect(() => onClipSaved(() => void refetch()), [refetch]);
   const groups = queue.data ?? [];
   // Naming in bulk (N1): offered once a few groups wait, in the URL so Back leaves it.
   const [params, setParams] = useSearchParams();

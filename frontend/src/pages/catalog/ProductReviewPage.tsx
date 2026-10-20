@@ -39,6 +39,7 @@ import {
   type IngredientChoice,
 } from "../../components/catalog/IngredientPicker";
 import { ProductThumb } from "../../components/catalog/ProductThumb";
+import { identifiedNote, StatusNotice } from "../../components/catalog/ProposalStatusNotice";
 import { whose } from "../../components/catalog/StoreBrandBadge";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
 import { useNavigateWithNotice } from "../../components/Notice";
@@ -364,7 +365,7 @@ function Review({ proposal }: { proposal: Proposal }) {
       onSuccess: (done) => {
         const name = title || "the product";
         void goNext({
-          message: `${input.action === "new" ? "Added" : "Updated"} ${name}.`,
+          message: `${input.action === "new" ? "Added" : "Updated"} ${name}.${identifiedNote(done)}`,
           productId: done.result?.product_id,
         });
       },
@@ -1209,56 +1210,6 @@ function ReviewTile({
         Hide
       </label>
     </li>
-  );
-}
-
-function StatusNotice({ proposal }: { proposal: Proposal }) {
-  const product = useProduct(
-    proposal.status === "accepted" ? (proposal.product_id ?? undefined) : undefined,
-  );
-  if (proposal.status === "pending") return null;
-  const when = proposal.decided_at ? formatDate(proposal.decided_at) : "";
-  if (proposal.status === "superseded") {
-    const newer = proposal.result?.superseded_by;
-    return (
-      <Alert tone="info" className="mb-4">
-        A newer capture replaced this
-        {newer ? (
-          <>
-            {" · "}
-            <Link
-              to={`/catalog/products/review/${newer}`}
-              className={`rounded-sm font-medium underline ${focusRing}`}
-            >
-              Open it
-            </Link>
-          </>
-        ) : null}
-      </Alert>
-    );
-  }
-  if (proposal.status === "accepted") {
-    return (
-      <Alert tone="info" className="mb-4">
-        Accepted {when}
-        {proposal.product_id ? (
-          <>
-            {" · "}
-            <Link
-              to={`/catalog/products/${proposal.product_id}`}
-              className={`rounded-sm font-medium underline ${focusRing}`}
-            >
-              Open {product.data?.name ?? "the product"}
-            </Link>
-          </>
-        ) : null}
-      </Alert>
-    );
-  }
-  return (
-    <Alert tone="info" className="mb-4">
-      Rejected {when}. The capture is kept.
-    </Alert>
   );
 }
 

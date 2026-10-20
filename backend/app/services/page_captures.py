@@ -72,6 +72,8 @@ class PageCapture:
     images: list[tuple[str, str]] = field(default_factory=list)  # (address, base64)
     vendor_id: uuid.UUID | None = None
     without_store: bool = False
+    # (vendor_id, raw_text_norm): the To identify group it was clipped for (04, 2D).
+    for_lines: tuple[uuid.UUID, str] | None = None
 
 
 def check_sizes(data: PageCapture) -> list[tuple[str, bytes]]:
@@ -245,6 +247,9 @@ async def capture_page(  # noqa: C901
             # stored: the helper may fetch them. With adapters installed the extract
             # job decides, since an adapter may know which images are this product's.
             await lookups.queue_page_images(db, result.proposal, data.image_urls)
+    if data.for_lines is not None and result.proposal.status == "pending":
+        # The same page clipped again for other lines: the latest lines win.
+        result.proposal.for_vendor_id, result.proposal.for_raw_text_norm = data.for_lines
     await db.commit()
     await db.refresh(result.proposal)
     return result

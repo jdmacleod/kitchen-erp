@@ -114,6 +114,18 @@ Route `/shop/receipts/recheck`, reached from the inbox row "3 drafts were read w
 - **Nothing to do:** an empty state, "No draft waits for a re-check", with "Back to Home". An error loading the count is an error, never this empty state.
 - **Phone:** the cards stack, the text above "Review"; "Review" and the primary action are 44px.
 
+## To identify (2D, 2I)
+
+Route `/shop/receipts/identify`; no nav item, reached from the inbox. Title "To identify", description "Receipt lines that don't have a product yet. Match one and the vendor's wording is learned." Primary "Name the new products" (bulk naming) once three groups wait; "One at a time" returns.
+
+- **Filters:** Wording (word starts, in the wording or a line as printed), Store with each store's group count, and Order (newest first, most lines first, A–Z), all in the address. "Showing 25 of 112 groups (288 in all)", then "Show 25 more (87 waiting)". Nothing kept: "No lines match" with Clear filters.
+- **Each group:** the wording in mono and "at <store>", its line count; each line's date (a link to its purchase), its printed text when it differs, and total. Then, when they apply:
+  - "Search <store> for "<brand name>"", the store's search page in a new tab;
+  - "Clip a product page for these lines", which becomes "The next product page you clip is for these lines.", or "Clipped: <title>, waiting for review · Review it";
+  - "Also waiting at <store> (n). Show them together".
+- **Answering:** the Product picker (with New product), Ignore and Kitchen supply; "Maybe one you have: Use <product>" buttons; "Apply to all n" or one line. An answered group leaves, and focus moves to the next group's product box.
+- **Phone:** filters stack; every button and link is 44px.
+
 ## Removing lines and purchases (#72, #74)
 
 Behaviour is in 04, 2H; this is what the screens say. The server's `removal` preview drives every sentence, so the page never predicts on its own.
@@ -500,6 +512,7 @@ A small window, about 420×560, with no app chrome. h1 "Save this product".
   - A failed save says what happened to the page and what to do next, ending "Try again, or paste the address in Add product." It never repeats a photo upload's wording: a page image that can't be used is skipped by the server, and an older server's refusal reads "Couldn't save this page: one of its images isn't a photo Kitchen ERP can use." A server failure reads "Couldn't save this page: something went wrong in Kitchen ERP."
   - "Already saved · Open it".
   - Success: "Saved · Review it in Needs you". The window stays open until closed.
+  - A To identify card marked the lines it is for (04, 2D): a checkbox "Use for HC ROLLED OATS at Juniper Market (2 lines)", ticked when the page is that store's. When the page is already a product, a secondary "Use <product> for <wording>" identifies the lines at once and says "Identified 2 lines as <product>."
 
 ## Settings: capture (2M; PD19)
 

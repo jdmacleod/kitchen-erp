@@ -72,6 +72,13 @@ def _whole(value: Any) -> Any:
     return value
 
 
+class ForLines(ApiModel):
+    """A To identify group: one vendor's waiting lines with this wording (04, 2D)."""
+
+    vendor_id: uuid.UUID
+    raw_text_norm: Annotated[str, Field(min_length=1, max_length=500)]
+
+
 class PageCaptureIn(ApiModel):
     """What the bookmarklet collects, or just a pasted address (2M).
 
@@ -90,6 +97,8 @@ class PageCaptureIn(ApiModel):
     images: list[CapturedImage] = Field(default=[], max_length=4)
     vendor_id: uuid.UUID | None = None
     without_store: bool = False
+    # The waiting lines this page was clipped for: accepting it identifies them.
+    for_lines: ForLines | None = None
 
     @model_validator(mode="before")
     @classmethod

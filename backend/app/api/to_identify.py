@@ -39,6 +39,7 @@ async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
     codes = await identify_queue.queue_codes(db, groups)
     others = identify_queue.elsewhere(groups)
     rows = await naming.naming_rows(db, groups)
+    clipped = await identify_queue.waiting_proposals(db)
     items = []
     for g, row in zip(groups, rows, strict=True):
         key = (str(g["vendor_id"]), g["raw_text_norm"])
@@ -57,6 +58,7 @@ async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
                 "suggested_brand": row["brand"],
                 "candidates": row["candidates"],
                 "elsewhere": others.get(key, []),
+                "waiting_proposal": clipped.get((key[0], key[1] or "")),
             }
         )
     return QueueList(items=items)

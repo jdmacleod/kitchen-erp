@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { purchaseErrorMessage, useRememberCode } from "../../api/purchases";
 import { useApplyToIdentify, type ToIdentifyGroup } from "../../api/toIdentify";
+import { clipKey, setClipTarget, useClipTargetKey } from "../../lib/clipFor";
 import { formatMoney } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { SelectField } from "../catalog/fields";
@@ -311,6 +312,7 @@ function SearchStore({ group }: { group: ToIdentifyGroup }) {
         href={href}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => markClip(group)}
         className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
       >
         Search {group.vendor.name} for “{words}”
@@ -319,7 +321,7 @@ function SearchStore({ group }: { group: ToIdentifyGroup }) {
   );
 }
 
-/** Where else to look: the store's search page, and other stores with the same wording. */
+/** Where else to look: the store's search page, a page clipped for these lines, other stores. */
 function GroupHints({
   group,
   onWording,
@@ -330,7 +332,58 @@ function GroupHints({
   return (
     <>
       <SearchStore group={group} />
+      <ClipFor group={group} />
       <Elsewhere group={group} onWording={onWording} />
     </>
+  );
+}
+
+/** Mark the group the next clipped page is for, so accepting that page identifies it. */
+function markClip(group: ToIdentifyGroup) {
+  if (!group.raw_text_norm) return;
+  setClipTarget({
+    vendor_id: group.vendor.id,
+    vendor_name: group.vendor.name,
+    raw_text_norm: group.raw_text_norm,
+    line_count: group.line_count,
+  });
+}
+
+/**
+ * A page clipped for these lines waits for review; or the next page clipped is for
+ * them; or a button that makes it so.
+ */
+function ClipFor({ group }: { group: ToIdentifyGroup }) {
+  const target = useClipTargetKey();
+  const waiting = group.waiting_proposal;
+  if (waiting)
+    return (
+      <p className="text-sm">
+        Clipped: {waiting.title ?? "a product page"}, waiting for review ·{" "}
+        <Link
+          to={`/catalog/products/review/${waiting.id}`}
+          className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
+        >
+          Review it
+        </Link>
+      </p>
+    );
+  if (!group.raw_text_norm) return null;
+  if (target === clipKey(group.vendor.id, group.raw_text_norm))
+    return (
+      <p role="status" className="text-sm text-neutral-700 dark:text-neutral-300">
+        The next product page you clip is for these lines.
+      </p>
+    );
+  return (
+    <p className="text-sm">
+      <button
+        type="button"
+        className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
+        onClick={() => markClip(group)}
+      >
+        Clip a product page for these lines
+      </button>
+    </p>
   );
 }

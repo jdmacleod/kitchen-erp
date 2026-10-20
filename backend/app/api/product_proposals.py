@@ -22,7 +22,14 @@ from app.schemas.proposals import (
     ProposalOut,
     ProposalSummary,
 )
-from app.services import brands, lookups, product_short_names, proposals, resolution
+from app.services import (
+    brands,
+    identify_queue,
+    lookups,
+    product_short_names,
+    proposals,
+    resolution,
+)
 
 router = APIRouter(tags=["product proposals"])
 
@@ -59,6 +66,7 @@ async def proposal_out(db: AsyncSession, proposal: ProductProposal) -> ProposalO
         result=proposal.result,
         created_at=proposal.created_at,
         short_title=await product_short_names.for_proposal(db, proposal.fields),
+        for_lines=await identify_queue.lines_for(db, proposal),  # type: ignore[arg-type]
     )
 
 
@@ -126,6 +134,8 @@ async def accept_proposal(
         if (accepted.result or {}).get("identifiers"):
             # Receipt lines that print the new code and wait in the queue resolve now.
             await resolution.match_waiting(db, user, accepted.product_id)
+        # Clipped for waiting receipt lines: they are this product now (2D).
+        await identify_queue.identify_for_proposal(db, user, accepted)
         accepted = await proposals.get_proposal(db, proposal_id)
     return await proposal_out(db, accepted)
 

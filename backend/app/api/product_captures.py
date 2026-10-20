@@ -126,6 +126,9 @@ async def capture_page(
             images=[(i.url, i.data_base64) for i in payload.images],
             vendor_id=payload.vendor_id,
             without_store=payload.without_store,
+            for_lines=(payload.for_lines.vendor_id, payload.for_lines.raw_text_norm)
+            if payload.for_lines
+            else None,
         ),
     )
     body = (await proposal_out(db, result.proposal)).model_dump(mode="json")
