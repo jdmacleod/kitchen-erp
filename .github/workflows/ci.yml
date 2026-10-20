@@ -34,6 +34,21 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
+      # pg_dump and pg_restore must match the server's major version (16), as in
+      # backend/Dockerfile: a newer pg_dump writes `SET transaction_timeout`,
+      # which PostgreSQL 16 rejects, and the backup round trip fails. The
+      # runner's own client follows the image (ubuntu-26.04 ships a newer one).
+      - name: PostgreSQL 16 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+          echo /usr/lib/postgresql/16/bin >> "$GITHUB_PATH"
       - name: Create the runtime role
         run: |
           PGPASSWORD=ci-owner-pw psql -h 127.0.0.1 -p 5433 -U kerp_owner -d kerp \
