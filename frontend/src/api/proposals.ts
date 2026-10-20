@@ -149,10 +149,17 @@ export interface Proposal {
   /** With no house brand: the families whose own-brand barcode prefix the code starts with (2R-3). */
   barcode_families?: { id: string; key: string; name: string; kind: string }[];
   decided_at: string | null;
-  result: { product_id?: string; superseded_by?: string } | null;
+  result: { product_id?: string; superseded_by?: string; identified_lines?: number } | null;
   created_at: string;
   /** The title as a short name, no brand in front or pack size (issue 347); null when already short. */
   short_title?: string | null;
+  /** The To identify group it was clipped for (04, 2D): accepting identifies its lines. */
+  for_lines?: {
+    vendor_id: string;
+    vendor_name: string;
+    raw_text_norm: string;
+    waiting: number;
+  } | null;
 }
 
 export interface ProposalSummary {

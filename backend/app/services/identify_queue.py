@@ -13,9 +13,10 @@ from typing import Any
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.catalog import proposals as merging
 from app.catalog import receipt_codes
 from app.ingest.lines import ZERO_ROW_FLAGS
-from app.models import AppUser, Purchase, PurchaseLine
+from app.models import AppUser, ProductProposal, Purchase, PurchaseLine
 from app.models.geo import Vendor, VendorLocation
 from app.services.resolution import decide_line
 
@@ -142,3 +143,62 @@ async def apply_to_identify(
             supply_category=supply_category,
         )
     return len(targets)
+
+
+# --- clips for waiting lines (04, 2D) ------------------------------------------------
+
+
+async def waiting_proposals(db: AsyncSession) -> dict[tuple[str, str], dict[str, Any]]:
+    """Per group, the newest pending proposal clipped for its lines, by its title."""
+    rows = await db.scalars(
+        select(ProductProposal)
+        .where(
+            ProductProposal.status == "pending",
+            ProductProposal.for_vendor_id.is_not(None),
+        )
+        .order_by(ProductProposal.created_at)
+    )
+    return {
+        (str(p.for_vendor_id), p.for_raw_text_norm or ""): {
+            "id": p.id,
+            "title": merging.value(p.fields, "title"),
+        }
+        for p in rows
+    }
+
+
+async def lines_for(db: AsyncSession, proposal: ProductProposal) -> dict[str, Any] | None:
+    """The group a proposal was clipped for, with how many of its lines still wait."""
+    if proposal.for_vendor_id is None or not proposal.for_raw_text_norm:
+        return None
+    vendor = await db.get(Vendor, proposal.for_vendor_id)
+    if vendor is None:
+        return None
+    waiting = await queued_line_ids(db, vendor.id, proposal.for_raw_text_norm)
+    return {
+        "vendor_id": vendor.id,
+        "vendor_name": vendor.name,
+        "raw_text_norm": proposal.for_raw_text_norm,
+        "waiting": len(waiting),
+    }
+
+
+async def identify_for_proposal(db: AsyncSession, user: AppUser, proposal: ProductProposal) -> int:
+    """Once a clipped proposal is accepted, identify the lines it was clipped for as its
+    product, and record how many in its result. Lines answered meanwhile are left be."""
+    if proposal.product_id is None or proposal.for_vendor_id is None:
+        return 0
+    if not proposal.for_raw_text_norm:
+        return 0
+    applied = await apply_to_identify(
+        db,
+        user,
+        vendor_id=proposal.for_vendor_id,
+        raw_text_norm=proposal.for_raw_text_norm,
+        product_id=proposal.product_id,
+        ignore=False,
+        line_ids=None,
+    )
+    proposal.result = {**(proposal.result or {}), "identified_lines": applied}
+    await db.commit()
+    return applied

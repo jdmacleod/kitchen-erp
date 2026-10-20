@@ -37,6 +37,8 @@ export interface ToIdentifyGroup {
   candidates?: NamingCandidate[];
   /** Other stores where the same wording waits. */
   elsewhere?: ToIdentifyElsewhere[];
+  /** A page clipped for these lines, waiting for review: accepting it identifies them. */
+  waiting_proposal?: { id: string; title: string | null } | null;
 }
 
 export interface ToIdentifyElsewhere {

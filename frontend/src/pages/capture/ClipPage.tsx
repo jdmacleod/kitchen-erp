@@ -3,8 +3,16 @@ import { ApiError, api, errorMessage, isApiError, newIdempotencyKey } from "../.
 import { useVendors } from "../../api/geo";
 import type { KnownProduct, Proposal } from "../../api/proposals";
 import { useLogin, useMe } from "../../api/queries";
+import {
+  ClipForLinesChoice,
+  clipSaved,
+  linesFor,
+  usesTarget,
+  UseKnownForLines,
+} from "../../components/capture/ClipForLines";
 import { Alert, Button, Field, focusRing } from "../../components/ui";
 import { CLIP_VERSION } from "../../lib/bookmarklet";
+import { readClipTarget } from "../../lib/clipFor";
 import { usePageTitle } from "../../lib/usePageTitle";
 
 /** What the bookmarklet sends; everything in it is untrusted and checked here. */
@@ -218,6 +226,12 @@ function Preview({
   const [busy, setBusy] = useState(false);
   const key = useRef(newIdempotencyKey());
   const vendors = useVendors("", false, preview !== null && preview.vendor === null);
+  // The lines a To identify card marked (04, 2D): for them by default when the page
+  // is that store's.
+  const [target] = useState(() => readClipTarget());
+  const [useFor, setUseFor] = useState<boolean | null>(null);
+  const storeId = preview?.vendor?.id ?? (vendorId || null);
+  const forLines = usesTarget(target, useFor, storeId);
 
   useEffect(() => {
     let live = true;
@@ -244,6 +258,7 @@ function Preview({
         channel: "clip",
         vendor_id: preview?.vendor ? preview.vendor.id : vendorId || undefined,
         without_store: !preview?.vendor && !vendorId && withoutStore,
+        for_lines: linesFor(target, forLines),
       };
       const response = await fetch("/api/v1/product-captures", {
         method: "POST",
@@ -269,6 +284,7 @@ function Preview({
           err.details,
         );
       }
+      clipSaved(forLines);
       onSaved(payload as Proposal, response.status === 200);
     } catch (e) {
       setError(e);
@@ -331,6 +347,12 @@ function Preview({
         </div>
       ) : null}
       {preview?.known ? <KnownNotice known={preview.known} /> : null}
+      {preview?.known && target ? (
+        <UseKnownForLines target={target} product={preview.known} />
+      ) : null}
+      {target ? (
+        <ClipForLinesChoice target={target} checked={forLines} onChange={setUseFor} />
+      ) : null}
       {error ? <Alert tone="error">{clipErrorMessage(error)}</Alert> : null}
       <div className="flex gap-2">
         <Button disabled={busy || preview === null || needsChoice} onClick={() => void save()}>

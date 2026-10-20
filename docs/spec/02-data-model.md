@@ -455,7 +455,8 @@ product_proposal(
   status CHECK IN (pending, accepted, rejected, superseded),
   fields JSONB, match JSONB, listing JSONB?, price JSONB?,
   listing_key TEXT GENERATED, gtin_key TEXT GENERATED,   -- partial UNIQUE indexes WHERE status = 'pending'
-  decided_at?, decided_by FK app_user?, result JSONB?
+  decided_at?, decided_by FK app_user?, result JSONB?,
+  for_vendor_id FK vendor? ON DELETE SET NULL, for_raw_text_norm TEXT?   -- 04 2D: the waiting lines it was clipped for
 )
 
 lookup_request(

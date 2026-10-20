@@ -3531,6 +3531,29 @@
         "title": "FileSource",
         "type": "object"
       },
+      "ForLines": {
+        "additionalProperties": false,
+        "description": "A To identify group: one vendor's waiting lines with this wording (04, 2D).",
+        "properties": {
+          "raw_text_norm": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Raw Text Norm",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "raw_text_norm"
+        ],
+        "title": "ForLines",
+        "type": "object"
+      },
       "ForgottenWord": {
         "additionalProperties": false,
         "properties": {
@@ -11110,6 +11133,16 @@
             "title": "Dom Text",
             "type": "string"
           },
+          "for_lines": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ForLines"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "image_urls": {
             "default": [],
             "items": {
@@ -13289,6 +13322,37 @@
         "title": "ProposalFieldOut",
         "type": "object"
       },
+      "ProposalForLines": {
+        "additionalProperties": false,
+        "description": "The waiting receipt lines a proposal was clipped for, and how many still wait.",
+        "properties": {
+          "raw_text_norm": {
+            "title": "Raw Text Norm",
+            "type": "string"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "vendor_name",
+          "raw_text_norm",
+          "waiting"
+        ],
+        "title": "ProposalForLines",
+        "type": "object"
+      },
       "ProposalList": {
         "additionalProperties": false,
         "properties": {
@@ -13366,6 +13430,16 @@
             },
             "title": "Fields",
             "type": "object"
+          },
+          "for_lines": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalForLines"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "house_brand": {
             "anyOf": [
@@ -14390,6 +14464,16 @@
           },
           "vendor": {
             "$ref": "#/components/schemas/QueueVendor"
+          },
+          "waiting_proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QueueProposal"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -14484,6 +14568,33 @@
           "items"
         ],
         "title": "QueueList",
+        "type": "object"
+      },
+      "QueueProposal": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "QueueProposal",
         "type": "object"
       },
       "QueueVendor": {

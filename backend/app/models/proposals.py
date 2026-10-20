@@ -60,6 +60,10 @@ class ProductProposal(UUIDPrimaryKey, Timestamped, Base):
             "kind <> 'product_update' OR product_id IS NOT NULL",
             name="ck_product_proposal_update_target",
         ),
+        CheckConstraint(
+            "for_vendor_id IS NULL OR for_raw_text_norm IS NOT NULL",
+            name="ck_product_proposal_for_lines",
+        ),
         # The pending-only unique indexes on listing_key and gtin_key are in migration 0021.
     )
 
@@ -90,3 +94,9 @@ class ProductProposal(UUIDPrimaryKey, Timestamped, Base):
         UUID(as_uuid=True), ForeignKey("app_user.id")
     )
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    # The waiting receipt lines it was clipped for (04, 2D; 0065): accepting it
+    # identifies that vendor's group of lines with this wording as the product.
+    for_vendor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendor.id", ondelete="SET NULL")
+    )
+    for_raw_text_norm: Mapped[str | None] = mapped_column(Text)

@@ -467,6 +467,11 @@ class QueueElsewhere(ApiModel):
     line_count: int
 
 
+class QueueProposal(ApiModel):
+    id: uuid.UUID
+    title: str | None
+
+
 class QueueVendor(VendorSummary):
     # Its search page with {q} where the words go, when the household gave one.
     search_url: str | None = None
@@ -486,6 +491,8 @@ class QueueGroup(ApiModel):
     # Products the wording's ingredient already has, closest first (#386).
     candidates: list[NamingCandidate] = Field(default_factory=list)
     elsewhere: list[QueueElsewhere] = Field(default_factory=list)
+    # A clip for these lines waiting for review: accepting it identifies them.
+    waiting_proposal: QueueProposal | None = None
 
 
 class QueueList(ApiModel):
