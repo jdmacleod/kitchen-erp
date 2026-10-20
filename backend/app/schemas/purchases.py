@@ -449,6 +449,24 @@ class VendorSummary(ApiModel):
     name: str
 
 
+class NamingCandidate(ApiModel):
+    """An existing product a naming row may be (#386)."""
+
+    id: uuid.UUID
+    name: str
+    brand: str | None
+    pack_qty: DecimalStr | None
+    pack_unit: str | None
+
+
+class QueueElsewhere(ApiModel):
+    """Another vendor where the same wording waits."""
+
+    vendor_id: uuid.UUID
+    vendor_name: str
+    line_count: int
+
+
 class QueueGroup(ApiModel):
     vendor: VendorSummary
     raw_text_norm: str | None
@@ -457,6 +475,12 @@ class QueueGroup(ApiModel):
     # The item code these lines carry where the vendor prints codes (04, 2K): once
     # identified, the person may remember it for the product.
     code: CodeOffer | None = None
+    # The name and brand the wording suggests, as in bulk naming (2I).
+    suggested_name: str | None = None
+    suggested_brand: str | None = None
+    # Products the wording's ingredient already has, closest first (#386).
+    candidates: list[NamingCandidate] = Field(default_factory=list)
+    elsewhere: list[QueueElsewhere] = Field(default_factory=list)
 
 
 class QueueList(ApiModel):
@@ -510,16 +534,6 @@ class NameChange(ApiModel):
     printed: str
     shown: str
     source: Literal["learned", "spelling", "vocabulary"]
-
-
-class NamingCandidate(ApiModel):
-    """An existing product a naming row may be (#386)."""
-
-    id: uuid.UUID
-    name: str
-    brand: str | None
-    pack_qty: DecimalStr | None
-    pack_unit: str | None
 
 
 class NamingRow(ApiModel):
