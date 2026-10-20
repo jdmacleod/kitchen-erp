@@ -11,6 +11,7 @@ from pydantic import Field, model_validator
 
 from app.models.geo import HomeBase, Vendor, VendorLocation
 from app.schemas.base import ApiModel, DecimalStr
+from app.schemas.vendor_interchange import SearchUrl
 from app.services.geo import sources_of
 from app.services.opening_hours import effective_hours
 
@@ -99,6 +100,8 @@ class VendorUpdate(ApiModel):
     price_scope: PriceScope | None = None
     website: str | None = Field(default=None, max_length=500)
     shop_url: str | None = Field(default=None, max_length=500)
+    # Its search page with {q} where the words go, so a waiting line can be looked for.
+    search_url: SearchUrl | None = None
     notes: str | None = None
     brand: Brand | None = None
     wikidata: Wikidata | None = None
@@ -126,6 +129,7 @@ class VendorOut(VendorRef):
     slug: str
     website: str | None
     shop_url: str | None = None
+    search_url: str | None = None
     brand: str | None
     wikidata: str | None
     notes: str | None
@@ -147,6 +151,7 @@ class VendorOut(VendorRef):
             slug=vendor.slug,
             website=vendor.website,
             shop_url=vendor.shop_url,
+            search_url=vendor.search_url,
             brand=vendor.brand,
             wikidata=vendor.wikidata,
             notes=vendor.notes,

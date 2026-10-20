@@ -23,7 +23,8 @@ export interface ToIdentifyLine {
 }
 
 export interface ToIdentifyGroup {
-  vendor: { id: string; name: string };
+  /** With its search page when the household gave one (04, 2D). */
+  vendor: { id: string; name: string; search_url?: string | null };
   raw_text_norm: string | null;
   line_count: number;
   lines: ToIdentifyLine[];

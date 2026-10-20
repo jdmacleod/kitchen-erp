@@ -30,6 +30,10 @@ _SLUG = r"[a-z0-9][a-z0-9-]*"
 LocationKey = Annotated[str, Field(pattern=rf"^{_SLUG}/{_SLUG}$", max_length=250)]
 Text = Annotated[str, Field(max_length=500)]
 
+# A store's search page with {q} where the words go, exactly once (04, 2D); empty clears.
+SEARCH_URL_PATTERN = r"^(|https?://[^\s{}]+\{q\}[^\s{}]*|https?://[^\s{}]*\{q\})$"
+SearchUrl = Annotated[str, Field(max_length=500, pattern=SEARCH_URL_PATTERN)]
+
 
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -130,12 +134,21 @@ class VendorEntry(_Strict):
     code_position: CodePositionEntry | None = None
     # /2: where it sells online when that is another site (13, 3.4).
     shop_url: Text | None = None
+    # /2: its search page, so a receipt line can be looked for there.
+    search_url: SearchUrl | None = None
     sources: dict[str, FieldSourceEntry] = Field(default_factory=dict)
     locations: list[LocationEntry] = Field(default_factory=list)
     household: HouseholdVendor | None = None
 
 
-V2_VENDOR_FIELDS = ("platform", "fetch_policy", "rw_layout", "code_position", "shop_url")
+V2_VENDOR_FIELDS = (
+    "platform",
+    "fetch_policy",
+    "rw_layout",
+    "code_position",
+    "shop_url",
+    "search_url",
+)
 
 
 def uses_v2(vendors: list[VendorEntry]) -> bool:

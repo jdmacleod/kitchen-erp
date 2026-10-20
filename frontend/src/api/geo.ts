@@ -64,6 +64,8 @@ export interface Vendor extends VendorRef {
   website: string | null;
   /** Where it sells online when that is another site, e.g. a delivery storefront (13, 3.4). */
   shop_url?: string | null;
+  /** Its search page, with {q} where the words go (04, 2D). */
+  search_url?: string | null;
   brand: string | null;
   wikidata: string | null;
   notes: string | null;
@@ -185,6 +187,7 @@ export interface VendorUpdateInput {
   price_scope?: PriceScope;
   website?: string | null;
   shop_url?: string | null;
+  search_url?: string | null;
   notes?: string | null;
   fetch_policy?: FetchPolicy;
   /** Whose house brands its stores sell (2R); null clears a wrong link. */

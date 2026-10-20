@@ -14389,7 +14389,7 @@
             "title": "Suggested Name"
           },
           "vendor": {
-            "$ref": "#/components/schemas/VendorSummary"
+            "$ref": "#/components/schemas/QueueVendor"
           }
         },
         "required": [
@@ -14484,6 +14484,37 @@
           "items"
         ],
         "title": "QueueList",
+        "type": "object"
+      },
+      "QueueVendor": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "search_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Url"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "QueueVendor",
         "type": "object"
       },
       "ReceiptDocumentOut": {
@@ -20272,6 +20303,19 @@
               }
             ]
           },
+          "search_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^(|https?://[^\\s{}]+\\{q\\}[^\\s{}]*|https?://[^\\s{}]*\\{q\\})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Url"
+          },
           "shop_url": {
             "anyOf": [
               {
@@ -20535,6 +20579,17 @@
               }
             ],
             "title": "Refresh Unreachable Since"
+          },
+          "search_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Url"
           },
           "shop_url": {
             "anyOf": [
@@ -21471,6 +21526,17 @@
             ],
             "title": "Refresh Unreachable Since"
           },
+          "search_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Url"
+          },
           "shop_url": {
             "anyOf": [
               {
@@ -21669,6 +21735,19 @@
               }
             ],
             "title": "Price Scope"
+          },
+          "search_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "pattern": "^(|https?://[^\\s{}]+\\{q\\}[^\\s{}]*|https?://[^\\s{}]*\\{q\\})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Search Url"
           },
           "shop_url": {
             "anyOf": [

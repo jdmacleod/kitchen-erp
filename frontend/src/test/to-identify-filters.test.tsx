@@ -2,7 +2,13 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { ToIdentifyGroup } from "../api/toIdentify";
-import { filterGroups, matchesText, storeCounts } from "../components/purchases/identifyList";
+import {
+  filterGroups,
+  matchesText,
+  searchHref,
+  searchWords,
+  storeCounts,
+} from "../components/purchases/identifyList";
 import { units } from "./catalog-fixtures";
 import { chainVendor, chainVendorId, marketVendor, marketVendorId } from "./geo-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp, type RecordedCall } from "./helpers";
@@ -126,7 +132,9 @@ describe("to-identify filters", () => {
     await user.click(screen.getByRole("button", { name: "Show 5 more (5 waiting)" }));
     expect(cardNames()).toHaveLength(30);
   });
+});
 
+describe("to-identify card hints", () => {
   it("applies a product the wording's ingredient already has in one click", async () => {
     const onions: ToIdentifyGroup = {
       ...group("chain", "GRN ONIONS"),
@@ -183,5 +191,36 @@ describe("to-identify filters", () => {
     );
     expect(screen.getByLabelText("Store")).toHaveValue("");
     expect(screen.getByLabelText("Wording")).toHaveValue("GRN ONIONS");
+  });
+
+  it("builds a store search link from the suggested name, or the wording", () => {
+    const named = { ...queue[0], suggested_name: "Green onions", suggested_brand: "Hilltop" };
+    expect(searchWords(named)).toBe("Hilltop Green onions");
+    expect(searchWords(queue[0])).toBe("grn onions");
+    const page = "https://shop.example.test/search?q={q}";
+    expect(searchHref(page, "Green & red onions")).toBe(
+      "https://shop.example.test/search?q=Green%20%26%20red%20onions",
+    );
+    expect(searchHref(null, "onions")).toBeNull();
+    expect(searchHref(page, " ")).toBeNull();
+    expect(searchHref("javascript:alert({q})", "onions")).toBeNull();
+  });
+
+  it("links a card to its store's search page in a new tab", async () => {
+    const page = "https://shop.example.test/search?q={q}";
+    const onions: ToIdentifyGroup = {
+      ...queue[0],
+      vendor: { ...queue[0].vendor, search_url: page },
+      suggested_name: "Grn onions",
+    };
+    mockApi(routes([onions, queue[1]]));
+    renderApp("/shop/receipts/identify");
+    const link = await screen.findByRole("link", {
+      name: `Search ${chainVendor.name} for “Grn onions”`,
+    });
+    expect(link).toHaveAttribute("href", "https://shop.example.test/search?q=Grn%20onions");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getAllByRole("link", { name: /^Search / })).toHaveLength(1);
   });
 });

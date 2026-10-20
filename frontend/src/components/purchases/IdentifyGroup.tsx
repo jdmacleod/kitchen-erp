@@ -7,6 +7,7 @@ import { formatDate } from "../../lib/format";
 import { SelectField } from "../catalog/fields";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
+import { searchHref, searchWords } from "./identifyList";
 import { SupplyChoices } from "./KitchenSupply";
 import { NamingCandidates } from "./NamingCandidates";
 import { ProductPicker } from "./ProductPicker";
@@ -108,7 +109,7 @@ export function GroupCard({
       <GroupHeading group={group} />
       {apply.error ? <Alert tone="error">{purchaseErrorMessage(apply.error)}</Alert> : null}
       <GroupLines group={group} />
-      <Elsewhere group={group} onWording={onWording} />
+      <GroupHints group={group} onWording={onWording} />
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <ProductPicker
           id={id}
@@ -296,5 +297,40 @@ function Elsewhere({
         Show them together
       </button>
     </p>
+  );
+}
+
+/** "Search <store> for …": the store's own search page, in a new tab, to find a new product. */
+function SearchStore({ group }: { group: ToIdentifyGroup }) {
+  const words = searchWords(group);
+  const href = searchHref(group.vendor.search_url, words);
+  if (!href) return null;
+  return (
+    <p className="text-sm">
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
+      >
+        Search {group.vendor.name} for “{words}”
+      </a>
+    </p>
+  );
+}
+
+/** Where else to look: the store's search page, and other stores with the same wording. */
+function GroupHints({
+  group,
+  onWording,
+}: {
+  group: ToIdentifyGroup;
+  onWording: (text: string) => void;
+}) {
+  return (
+    <>
+      <SearchStore group={group} />
+      <Elsewhere group={group} onWording={onWording} />
+    </>
   );
 }

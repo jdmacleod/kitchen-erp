@@ -64,3 +64,18 @@ export function storeCounts(
   }
   return [...out.values()].sort((a, b) => b.groups - a.groups || a.name.localeCompare(b.name));
 }
+
+/** The words a store's site is searched for: the suggested brand and name, else the wording. */
+export function searchWords(group: ToIdentifyGroup): string {
+  const named = [group.suggested_brand, group.suggested_name].filter(Boolean).join(" ");
+  return named || (group.raw_text_norm ?? "").toLowerCase();
+}
+
+/**
+ * The store's search page for these words, or null without a page or words. The
+ * address is the household's own setting and only ever opened by a person.
+ */
+export function searchHref(template: string | null | undefined, words: string): string | null {
+  if (!template || !words.trim() || !/^https?:\/\//.test(template)) return null;
+  return template.replace("{q}", encodeURIComponent(words.trim()));
+}

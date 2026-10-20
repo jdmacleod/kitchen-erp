@@ -132,3 +132,23 @@ async def test_an_online_shop_address_round_trips_as_v2(
     assert next(v for v in out["vendors"] if v["key"] == "cardinal-foods")["shop_url"] == shop
     again = await imported(admin_client, v2(entry))
     assert again["counts"]["updated"] == 0
+
+
+async def test_a_search_page_round_trips_as_v2(
+    admin_client: httpx.AsyncClient, owner_conn: asyncpg.Connection
+):
+    """A vendor's search page (04, 2D) is a /2 field, and must say where the words go."""
+    search = "https://cardinal-foods.example.test/search?q={q}"
+    bad = vendor(
+        "cardinal-foods", "Cardinal Foods", search_url="https://cardinal-foods.example.test/"
+    )
+    r = await post(admin_client, v2(bad), dry_run=True)
+    assert r.status_code == 422
+    entry = vendor("cardinal-foods", "Cardinal Foods", search_url=search)
+    await imported(admin_client, v2(entry))
+    assert (
+        await owner_conn.fetchval("SELECT search_url FROM vendor WHERE slug = 'cardinal-foods'")
+        == search
+    )
+    out = await export_json(admin_client)
+    assert next(v for v in out["vendors"] if v["key"] == "cardinal-foods")["search_url"] == search
