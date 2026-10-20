@@ -74,8 +74,8 @@ describe("a vendor's online shop", () => {
     renderApp(`/catalog/vendors/${chainVendorId}`);
     await user.click(await screen.findByRole("button", { name: "Edit vendor" }));
     let form = await screen.findByRole("form", { name: "Edit vendor" });
-    // "{{" types one brace: user-event reads "{" as the start of a key name.
-    await user.type(within(form).getByLabelText("Search page"), search.replace("{", "{{"));
+    // "{{" types one brace: user-event reads each "{" as the start of a key name.
+    await user.type(within(form).getByLabelText("Search page"), search.replaceAll("{", "{{"));
     await user.click(within(form).getByRole("button", { name: "Save vendor" }));
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(1));
     expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ search_url: search });
