@@ -46,6 +46,14 @@ export function formatTime(iso: string | null | undefined): string {
  * A moment as a distance from now, for "indexed 3 hours ago": minutes under an
  * hour, hours under a day, days under a month, then the date. Display only.
  */
+/** A moment for "since …": the time alone today ("10:50 AM"), the date too otherwise. */
+export function formatSince(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toDateString() === now.toDateString() ? timeOnly.format(d) : dateTime.format(d);
+}
+
 export function formatRelative(iso: string | null | undefined, now: number = Date.now()): string {
   if (!iso) return "";
   const then = new Date(iso).getTime();

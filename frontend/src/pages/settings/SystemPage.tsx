@@ -20,13 +20,22 @@ function Checks() {
     );
   }
   if (health.isError) return <Alert tone="error">{errorMessage(health.error)}</Alert>;
-  const checks = Object.entries((health.data.checks ?? {}) as Record<string, { status?: string }>);
+  const checks = Object.entries(
+    (health.data.checks ?? {}) as Record<string, { status?: string; summary?: string | null }>,
+  );
   if (checks.length === 0) return null;
   return (
     <ul aria-label="Checks" className="divide-y divide-neutral-200 dark:divide-neutral-800">
       {checks.map(([name, check]) => (
         <li key={name} className="flex items-center justify-between gap-3 py-2 text-sm">
-          <span className="first-letter:uppercase">{name.replace(/_/g, " ")}</span>
+          <span>
+            <span className="block first-letter:uppercase">{name.replace(/_/g, " ")}</span>
+            {check.summary ? (
+              <span className="block text-xs text-neutral-600 dark:text-neutral-400">
+                {check.summary}
+              </span>
+            ) : null}
+          </span>
           <Badge tone={checkTone[check.status ?? ""] ?? "neutral"}>
             {check.status ?? "unknown"}
           </Badge>

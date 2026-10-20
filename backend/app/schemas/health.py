@@ -11,6 +11,8 @@ CheckStatus = Literal["ok", "degraded", "failed"]
 class Check(ApiModel):
     status: CheckStatus
     detail: dict[str, Any] | None = None
+    # One line a person can read beside the status ("checked in 1 min ago").
+    summary: str | None = None
 
 
 class HealthOut(ApiModel):

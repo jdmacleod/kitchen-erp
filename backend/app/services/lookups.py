@@ -466,15 +466,14 @@ async def close_vendor_refreshes(db: AsyncSession, vendor_id: uuid.UUID) -> int:
     return result.rowcount or 0
 
 
-async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
-    """What the helper is asked to answer, oldest first.
+def _offered(query: Any, now: datetime) -> Any:
+    """``query`` narrowed to the open requests the helper is offered.
 
     A page request is held back while its vendor's pages may not be fetched or
     its refreshes are paused, even if it was queued before that changed: a
     listing refresh (vendor of the listing) and a clip's request for its price
     (vendor named by the proposal's listing).
     """
-    now = datetime.now(UTC)
     clip_vendor = aliased(Vendor)
 
     def fetchable(v: Any) -> Any:
@@ -484,31 +483,27 @@ async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupReques
         )
 
     clip_page = and_(LookupRequest.kind == "page", LookupRequest.proposal_id.is_not(None))
-    return list(
-        (
-            await db.execute(
-                select(LookupRequest)
-                .outerjoin(VendorListing, VendorListing.id == LookupRequest.listing_id)
-                .outerjoin(Vendor, Vendor.id == VendorListing.vendor_id)
-                .outerjoin(ProductProposal, ProductProposal.id == LookupRequest.proposal_id)
-                .outerjoin(
-                    clip_vendor,
-                    cast(clip_vendor.id, String) == ProductProposal.listing["vendor_id"].astext,
-                )
-                .where(
-                    LookupRequest.status == "open",
-                    or_(LookupRequest.listing_id.is_(None), fetchable(Vendor)),
-                    or_(
-                        not_(clip_page),
-                        clip_vendor.id.is_(None),
-                        fetchable(clip_vendor),
-                    ),
-                )
-                .order_by(LookupRequest.created_at, LookupRequest.id)
-                .limit(limit)
-            )
-        ).scalars()
+    return (
+        query.outerjoin(VendorListing, VendorListing.id == LookupRequest.listing_id)
+        .outerjoin(Vendor, Vendor.id == VendorListing.vendor_id)
+        .outerjoin(ProductProposal, ProductProposal.id == LookupRequest.proposal_id)
+        .outerjoin(
+            clip_vendor,
+            cast(clip_vendor.id, String) == ProductProposal.listing["vendor_id"].astext,
+        )
+        .where(
+            LookupRequest.status == "open",
+            or_(LookupRequest.listing_id.is_(None), fetchable(Vendor)),
+            or_(not_(clip_page), clip_vendor.id.is_(None), fetchable(clip_vendor)),
+        )
     )
+
+
+async def open_requests(db: AsyncSession, limit: int = 100) -> list[LookupRequest]:
+    """What the helper is asked to answer, oldest first (see ``_offered``)."""
+    query = _offered(select(LookupRequest), datetime.now(UTC))
+    query = query.order_by(LookupRequest.created_at, LookupRequest.id).limit(limit)
+    return list((await db.execute(query)).scalars())
 
 
 async def get_request(db: AsyncSession, request_id: uuid.UUID, *, lock: bool = False):
@@ -941,12 +936,14 @@ async def counts(db: AsyncSession) -> dict[str, Any]:
             .where(ListingPriceChange.status == "pending")
         )
     ).scalar_one()
+    # Only what the helper is offered and someone still needs (not a decided proposal's).
+    still_needed = or_(LookupRequest.proposal_id.is_(None), ProductProposal.status == "pending")
     overdue = (
         await db.execute(
-            select(func.count(), func.min(LookupRequest.created_at)).where(
-                LookupRequest.status == "open",
-                LookupRequest.kind.in_(("gtin", "page", "name")),
-            )
+            _offered(
+                select(func.count(LookupRequest.id), func.min(LookupRequest.created_at)),
+                datetime.now(UTC),
+            ).where(LookupRequest.kind.in_(("gtin", "page", "name")), still_needed)
         )
     ).one()
     return {"price_changes": int(pending_prices), "waiting": int(overdue[0]), "since": overdue[1]}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime, timedelta
 from functools import cache
 from pathlib import Path
 
@@ -10,7 +11,7 @@ import httpx
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from alembic.util.exc import CommandError
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -125,6 +126,45 @@ def check_product_adapters() -> Check:
     return Check(status=status, detail={"adapters": found})
 
 
+# The helper asks for work about once a minute; ten quiet minutes means it stopped.
+HELPER_QUIET = timedelta(minutes=10)
+
+
+def _ago(moment: datetime, now: datetime) -> str:
+    minutes = int((now - moment).total_seconds() // 60)
+    if minutes < 60:
+        return f"{max(minutes, 0)} min ago"
+    hours = minutes // 60
+    return f"{hours} h ago" if hours < 48 else f"{hours // 24} days ago"
+
+
+async def check_lookup_helper(db: AsyncSession) -> Check:
+    """Whether the products helper is asking for work: when its token was last used.
+    Not set up is fine (it is optional); set up and quiet is degraded."""
+    from app.models import ApiToken
+    from app.services.lookups import HELPER_SCOPES
+
+    try:
+        rows = (
+            await db.execute(
+                select(ApiToken.scopes, ApiToken.last_used_at).where(ApiToken.revoked_at.is_(None))
+            )
+        ).all()
+    except Exception as exc:
+        return Check(status="failed", detail={"error": type(exc).__name__})
+    used = [last for scopes, last in rows if set(scopes) & set(HELPER_SCOPES)]
+    if not used:
+        return Check(status="ok", detail={"configured": False}, summary="not set up")
+    seen = max((u for u in used if u is not None), default=None)
+    if seen is None:
+        return Check(status="degraded", detail={"configured": True}, summary="never checked in")
+    now = datetime.now(UTC)
+    detail = {"configured": True, "last_seen": seen.isoformat()}
+    if now - seen > HELPER_QUIET:
+        return Check(status="degraded", detail=detail, summary=f"last checked in {_ago(seen, now)}")
+    return Check(status="ok", detail=detail, summary=f"checked in {_ago(seen, now)}")
+
+
 async def health(db: AsyncSession) -> HealthOut:
     checks = {
         "database": await check_database(db),
@@ -132,6 +172,7 @@ async def health(db: AsyncSession) -> HealthOut:
         "model_server": await check_model_server(),
         "ingest_queue": await check_ingest_queue(db),
         "product_adapters": check_product_adapters(),
+        "lookup_helper": await check_lookup_helper(db),
     }
     if any(c.status == "failed" for c in checks.values()):
         overall = "failed"

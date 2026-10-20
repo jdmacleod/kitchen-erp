@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { errorMessage } from "../../api/client";
 import type { InboxItem, InboxKind } from "../../api/inbox";
 import { readingSentence, readingTotal, useInbox } from "../../api/inbox";
-import { formatTime } from "../../lib/format";
+import { formatSince } from "../../lib/format";
 import { ingestErrorText } from "../../lib/ingestErrors";
 import { Badge, type BadgeTone } from "../catalog/fields";
 import { useChrome } from "../chrome";
@@ -172,7 +172,7 @@ export function ReadingLine() {
         className="mb-3 rounded-md border border-amber-400 px-3 py-2 text-sm text-amber-900 dark:border-amber-600 dark:text-amber-200"
       >
         {overdue} {overdue === 1 ? "lookup" : "lookups"} waiting for the lookup helper since{" "}
-        {formatTime(reading.lookups_since)} ·{" "}
+        {formatSince(reading.lookups_since)} ·{" "}
         <Link
           to="/settings/system"
           className={`${tapTarget} rounded-sm font-medium underline ${focusRing}`}
