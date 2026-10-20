@@ -113,6 +113,8 @@ class Vendor(UUIDPrimaryKey, Timestamped, Base):
     # Where it sells online when that is another site, such as a storefront on a
     # delivery platform: a clipped page on either host is this vendor's (13, 3.4).
     shop_url: Mapped[str | None] = mapped_column(String(500))
+    # Its search page, with {q} where the words go (04, 2D; 0064).
+    search_url: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # {field: {source, ref, checked_at, imported}}; see services.geo.write_unless_edited.

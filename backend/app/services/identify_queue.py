@@ -24,7 +24,7 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
     rows = await db.execute(
         text(
             """
-            SELECT v.id AS vendor_id, v.name AS vendor_name, pl.raw_text_norm,
+            SELECT v.id AS vendor_id, v.name AS vendor_name, v.search_url, pl.raw_text_norm,
                    count(*) AS line_count,
                    json_agg(json_build_object(
                        'line_id', pl.id, 'purchase_id', p.id, 'raw_text', pl.raw_text,
@@ -38,7 +38,7 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
             WHERE p.status = 'committed' AND pl.line_kind = 'item'
               AND pl.resolution = 'unmatched' AND pl.removed_at IS NULL
               AND NOT pl.flags && CAST(:zero AS varchar[])
-            GROUP BY v.id, v.name, pl.raw_text_norm
+            GROUP BY v.id, v.name, v.search_url, pl.raw_text_norm
             ORDER BY max(p.purchased_at) DESC
             """
         ),

@@ -290,6 +290,8 @@ def _v2_vendor_values(entry: VendorEntry) -> list[tuple[str, Any]]:
         values.append(("code_position", entry.code_position.model_dump()))
     if entry.shop_url is not None:
         values.append(("shop_url", geo._clean(entry.shop_url)))
+    if entry.search_url is not None:
+        values.append(("search_url", geo._clean(entry.search_url)))
     return values
 
 

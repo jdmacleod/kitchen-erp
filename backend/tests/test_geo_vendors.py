@@ -21,6 +21,7 @@ async def test_create_get_patch(admin_client: httpx.AsyncClient):
         "price_scope",
         "website",
         "shop_url",
+        "search_url",
         "notes",
         "active",
         "created_at",

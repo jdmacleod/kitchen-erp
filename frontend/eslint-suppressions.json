@@ -783,13 +783,13 @@
   },
   "src/pages/geo/VendorDetailPage.tsx": {
     "@typescript-eslint/no-deprecated": {
-      "count": 3
+      "count": 2
     },
     "complexity": {
-      "count": 4
+      "count": 3
     },
     "max-lines-per-function": {
-      "count": 4
+      "count": 3
     }
   },
   "src/pages/geo/VendorsPage.tsx": {

@@ -440,7 +440,7 @@ def apply_vendor_changes(vendor: Vendor, changes: dict[str, Any]) -> None:
     for field in ("kind", "price_scope"):
         if field in changes:
             setattr(vendor, field, changes[field])
-    for field in ("website", "shop_url"):
+    for field in ("website", "shop_url", "search_url"):
         if field in changes:
             setattr(vendor, field, _clean(changes[field]))
     for field in ("brand", "wikidata"):

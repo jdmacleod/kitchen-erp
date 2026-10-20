@@ -44,7 +44,11 @@ async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
         key = (str(g["vendor_id"]), g["raw_text_norm"])
         items.append(
             {
-                "vendor": {"id": g["vendor_id"], "name": g["vendor_name"]},
+                "vendor": {
+                    "id": g["vendor_id"],
+                    "name": g["vendor_name"],
+                    "search_url": g["search_url"],
+                },
                 "raw_text_norm": g["raw_text_norm"],
                 "line_count": g["line_count"],
                 "lines": g["lines"],

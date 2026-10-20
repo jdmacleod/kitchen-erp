@@ -221,6 +221,7 @@ vendor(
   price_scope CHECK IN (chain, location) DEFAULT location,
   website?, notes?,
   shop_url?,                                 -- 13 3.4: its online shop on another site; clips there are its
+  search_url?,                               -- 04 2D: its search page, {q} where the words go; linked from waiting lines
   slug UNIQUE?,                              -- 1F: the stable key in kitchen-erp-vendors files
   brand?, wikidata?,                         -- 1F
   field_source JSONB DEFAULT '{}',           -- 1F: {field: {source, ref, checked_at, imported}}

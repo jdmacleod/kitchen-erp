@@ -2,8 +2,6 @@ import { useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
 import {
-  PRICE_SCOPES,
-  VENDOR_KINDS,
   formatLatLon,
   geoErrorMessage,
   priceScopeLabel,
@@ -17,7 +15,6 @@ import {
   shareState,
   useUnlinkOsm,
   useUpdateLocation,
-  useBrandFamilies,
   useUpdateVendor,
   useVendor,
   vendorKindLabel,
@@ -37,6 +34,7 @@ import {
   TextAreaField,
 } from "../../components/catalog/fields";
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
+import { EditVendorForm } from "../../components/geo/EditVendorForm";
 import { LinkOsmDialog } from "../../components/geo/LinkOsmDialog";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
@@ -248,136 +246,6 @@ function PostedPrices({ vendor }: { vendor: Vendor }) {
         {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
         {check.isError ? <Alert tone="error">{geoErrorMessage(check.error)}</Alert> : null}
       </div>
-    </Card>
-  );
-}
-
-function EditVendorForm({ vendor, onDone }: { vendor: Vendor; onDone: () => void }) {
-  const update = useUpdateVendor(vendor.id);
-  const [form, setForm] = useState({
-    name: vendor.name,
-    kind: vendor.kind,
-    price_scope: vendor.price_scope,
-    website: vendor.website ?? "",
-    shop_url: vendor.shop_url ?? "",
-    notes: vendor.notes ?? "",
-    brand_family_id: vendor.brand_family?.id ?? "",
-  });
-  const families = useBrandFamilies();
-  const retailers = (families.data?.items ?? []).filter((f) => f.kind === "retailer");
-  const [invalid, setInvalid] = useState<string | null>(null);
-  const set = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) =>
-    setForm((f) => ({ ...f, [key]: value }));
-
-  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!form.name.trim()) {
-      setInvalid("A name is required.");
-      return;
-    }
-    setInvalid(null);
-    const input: Parameters<typeof update.mutate>[0] = {};
-    if (form.name.trim() !== vendor.name) input.name = form.name.trim();
-    if (form.kind !== vendor.kind) input.kind = form.kind;
-    if (form.price_scope !== vendor.price_scope) input.price_scope = form.price_scope;
-    if ((form.website.trim() || null) !== vendor.website)
-      input.website = form.website.trim() || null;
-    if ((form.shop_url.trim() || null) !== (vendor.shop_url ?? null))
-      input.shop_url = form.shop_url.trim() || null;
-    if ((form.notes.trim() || null) !== vendor.notes) input.notes = form.notes.trim() || null;
-    if ((form.brand_family_id || null) !== (vendor.brand_family?.id ?? null))
-      input.brand_family_id = form.brand_family_id || null;
-    if (Object.keys(input).length === 0) {
-      onDone();
-      return;
-    }
-    update.mutate(input, { onSuccess: onDone });
-  };
-
-  return (
-    <Card>
-      <form
-        onSubmit={onSubmit}
-        className="flex flex-col gap-4"
-        aria-labelledby="edit-vendor-heading"
-        noValidate
-      >
-        <h2 id="edit-vendor-heading" className={sectionHeading}>
-          Edit vendor
-        </h2>
-        {invalid ? <Alert tone="error">{invalid}</Alert> : null}
-        {update.isError ? <Alert tone="error">{geoErrorMessage(update.error)}</Alert> : null}
-        <Field
-          id="edit-vendor-name"
-          label="Name"
-          autoComplete="off"
-          required
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
-        <RadioGroup
-          name="edit-vendor-kind"
-          legend="Kind"
-          options={VENDOR_KINDS.map((k) => ({ value: k, label: vendorKindLabel[k] }))}
-          value={form.kind}
-          onChange={(v) => set("kind", v)}
-        />
-        <RadioGroup
-          name="edit-vendor-scope"
-          legend="Price scope"
-          options={PRICE_SCOPES.map((s) => ({ value: s, label: priceScopeLabel[s] }))}
-          value={form.price_scope}
-          onChange={(v) => set("price_scope", v)}
-        />
-        <Field
-          id="edit-vendor-website"
-          label="Website"
-          type="url"
-          autoComplete="off"
-          value={form.website}
-          onChange={(e) => set("website", e.target.value)}
-        />
-        <Field
-          id="edit-vendor-shop-url"
-          label="Online shop"
-          hint="Where it sells online when that is another site, such as a storefront on a delivery service. Pages you clip there count as this store’s."
-          type="url"
-          autoComplete="off"
-          placeholder="https://"
-          value={form.shop_url}
-          onChange={(e) => set("shop_url", e.target.value)}
-        />
-        {retailers.length > 0 || vendor.brand_family ? (
-          <SelectField
-            id="edit-vendor-brand-family"
-            label="Store brands"
-            hint="Whose own brands this store sells. Matched from the brand list when it's imported; your choice is kept."
-            value={form.brand_family_id}
-            onChange={(e) => set("brand_family_id", e.target.value)}
-          >
-            <option value="">None or not known</option>
-            {retailers.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </SelectField>
-        ) : null}
-        <TextAreaField
-          id="edit-vendor-notes"
-          label="Notes"
-          value={form.notes}
-          onChange={(e) => set("notes", e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save vendor"}
-          </Button>
-          <Button variant="secondary" onClick={onDone}>
-            Cancel
-          </Button>
-        </div>
-      </form>
     </Card>
   );
 }

@@ -467,8 +467,13 @@ class QueueElsewhere(ApiModel):
     line_count: int
 
 
+class QueueVendor(VendorSummary):
+    # Its search page with {q} where the words go, when the household gave one.
+    search_url: str | None = None
+
+
 class QueueGroup(ApiModel):
-    vendor: VendorSummary
+    vendor: QueueVendor
     raw_text_norm: str | None
     line_count: int
     lines: list[QueueLine]
