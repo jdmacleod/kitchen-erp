@@ -32,7 +32,7 @@ export interface ToIdentifyGroup {
   /** The name and brand the wording suggests, as bulk naming would (2I). */
   suggested_name?: string | null;
   suggested_brand?: string | null;
-  /** Products the wording's ingredient already has, closest first (#386). */
+  /** Products the wording's ingredient already has, closest first (issue 386). */
   candidates?: NamingCandidate[];
   /** Other stores where the same wording waits. */
   elsewhere?: ToIdentifyElsewhere[];
