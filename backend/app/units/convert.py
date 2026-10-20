@@ -3,7 +3,10 @@
 Resolution order is fixed and documented in the Phase 1 specification:
 
 1. `from_unit` is a named measure label for the ingredient: multiply by its
-   canonical quantity. The one exception is "each" when a product with a pack
+   canonical quantity. When the canonical unit is a count, a size grade
+   ("large", "extra large") names which pieces, not a fraction of one: "12
+   large" eggs are 12 eggs, whatever the "large" measure weighs against a
+   medium one. The one exception is "each" when a product with a pack
    is supplied: that is one pack (step 2), even if the ingredient has an
    "each" measure, which then weighs the pack's pieces (issue 357).
 2. `from_unit` is a count unit and a product with a pack is supplied: convert
@@ -39,7 +42,12 @@ from app.units.table import CANONICAL_UNITS, Unit, units_by_code
 
 # 2: "each" of a packed product is the pack; packs in pieces (issue 357).
 # 3: bunches, through the ingredient's "bunch" measure only (issue 371).
-CONVERT_VERSION = "3"
+# 4: a size grade of an ingredient counted in pieces is that many pieces.
+CONVERT_VERSION = "4"
+
+# Words that grade a piece by size. For an ingredient counted in pieces they
+# say which pieces, never how many: "12 large" is 12.
+SIZE_GRADES = frozenset({"small", "medium", "large", "extra large", "extra-large", "xl", "jumbo"})
 
 _CTX = Context(prec=28, rounding=ROUND_HALF_EVEN)
 
@@ -264,6 +272,23 @@ def _through_pack(
     )
 
 
+def _named(qty: Decimal, from_unit: str, context: ConversionContext) -> CanonicalQty | None:
+    """``qty`` in a measure of the ingredient, or None when ``from_unit`` names none.
+    A size grade of an ingredient counted in pieces is that many pieces."""
+    canonical = context.canonical_unit
+    units = context.units
+    if units[canonical].dimension == "count" and from_unit.strip().lower() in SIZE_GRADES:
+        return CanonicalQty(_mul(qty, units[canonical].to_base_factor), canonical, NO_BRIDGE)
+    measure = _find_measure(from_unit, context.measures)
+    if measure is None:
+        return None
+    return CanonicalQty(
+        _mul(qty, measure.canonical_qty),
+        canonical,
+        Provenance("measure", measure.source, measure.confirmed, measure.label),
+    )
+
+
 def convert(  # noqa: C901
     qty: Decimal | None, from_unit: str, context: ConversionContext
 ) -> CanonicalQty | ConversionFailure:
@@ -282,14 +307,10 @@ def convert(  # noqa: C901
     if from_unit == "each" and product is not None and product.pack is not None:
         return _through_pack(_mul(qty, units["each"].to_base_factor), product, context)
 
-    # 1. Named measure.
-    measure = _find_measure(from_unit, context.measures)
-    if measure is not None:
-        return CanonicalQty(
-            _mul(qty, measure.canonical_qty),
-            canonical,
-            Provenance("measure", measure.source, measure.confirmed, measure.label),
-        )
+    # 1. Named measure, or a size grade of pieces.
+    named = _named(qty, from_unit, context)
+    if named is not None:
+        return named
 
     unit = units.get(from_unit)
     if unit is None:

@@ -187,8 +187,8 @@ def test_invalid_canonical_unit_is_a_programming_error():
 
 
 def test_results_carry_version():
-    assert ok(convert(D("1"), "g", FLOUR)).version == "3"
-    assert fail(convert(None, "g", FLOUR), "no_qty").version == "3"
+    assert ok(convert(D("1"), "g", FLOUR)).version == "4"
+    assert fail(convert(None, "g", FLOUR), "no_qty").version == "4"
 
 
 def test_each_with_pack_in_count_canonical_means_one_pack():
