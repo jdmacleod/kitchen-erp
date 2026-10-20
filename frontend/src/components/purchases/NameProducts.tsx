@@ -31,7 +31,14 @@ const PAGE = 20;
  * Name every waiting group's product in one pass (04, 2I; #88). Each row starts
  * from the line's wording and is created only once a person has ticked it (N5).
  */
-export function NameProducts() {
+export function NameProducts({
+  vendor,
+  onVendor,
+}: {
+  /** The store filter, shared with the one-at-a-time list through the address. */
+  vendor: string;
+  onVendor: (id: string) => void;
+}) {
   // Four fields a row, the ingredient picker among them, need more than reading width.
   useWidePage();
   const naming = useNamingRows(true);
@@ -40,7 +47,6 @@ export function NameProducts() {
   const notice = useNotice();
   // Unsent edits survive a reload (issue 389).
   const [edits, setEdits] = useState<Record<string, RowEdit>>(loadDrafts);
-  const [vendor, setVendor] = useState("");
   const [shown, setShown] = useState(PAGE);
   const restored = useRef(false);
   const [problems, setProblems] = useState<Record<string, string>>({});
@@ -235,7 +241,7 @@ export function NameProducts() {
         vendors={vendors}
         vendor={vendor}
         onVendor={(id) => {
-          setVendor(id);
+          onVendor(id);
           setShown(PAGE);
         }}
         confident={confident.length}

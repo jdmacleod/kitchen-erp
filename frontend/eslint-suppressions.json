@@ -958,11 +958,6 @@
       "count": 1
     }
   },
-  "src/pages/purchases/ToIdentifyPage.tsx": {
-    "max-lines-per-function": {
-      "count": 1
-    }
-  },
   "src/pages/settings/CapturePage.tsx": {
     "jsx-a11y/anchor-is-valid": {
       "count": 1

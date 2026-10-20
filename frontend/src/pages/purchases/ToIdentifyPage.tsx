@@ -1,29 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
-import { purchaseErrorMessage, useRememberCode } from "../../api/purchases";
-import { useApplyToIdentify, useToIdentify, type ToIdentifyGroup } from "../../api/toIdentify";
-import { SelectField } from "../../components/catalog/fields";
-import { useNotice } from "../../components/Notice";
-import { SupplyChoices } from "../../components/purchases/KitchenSupply";
+import { useToIdentify, type ToIdentifyGroup } from "../../api/toIdentify";
+import { IdentifyFilters } from "../../components/purchases/IdentifyFilters";
+import { GroupCard, RememberOffer, type Offer } from "../../components/purchases/IdentifyGroup";
+import { filterGroups, readSort, storeCounts } from "../../components/purchases/identifyList";
 import { NameProducts } from "../../components/purchases/NameProducts";
-import { ProductPicker } from "../../components/purchases/ProductPicker";
 import {
   Alert,
   Button,
   Card,
   EmptyState,
   PageHeader,
-  focusRing,
   secondaryLinkClass,
 } from "../../components/ui";
-import { formatMoney } from "../../lib/decimal";
-import { formatDate } from "../../lib/format";
 import { usePageTitle } from "../../lib/usePageTitle";
+import { useSearchText } from "../../lib/useSearchText";
+
+/** Sets or clears address parameters together, replacing the history entry. */
+type SetParams = (patch: Record<string, string | null>) => void;
 
 /**
  * Unmatched lines across every committed purchase, grouped by vendor and
- * normalized text so one answer can settle every instance at once.
+ * normalized text so one answer can settle every instance at once. Store,
+ * wording and order narrow the list and live in the address, as does the mode.
  */
 export function ToIdentifyPage() {
   usePageTitle("To identify");
@@ -33,23 +33,20 @@ export function ToIdentifyPage() {
   const [params, setParams] = useSearchParams();
   const naming = params.get("mode") === "name";
   const offerNaming = !naming && groups.length >= NAMING_MIN;
-  // Once a group is answered it leaves the list, and the next one is where the
-  // work continues: its product box takes focus (#88).
-  const focusKey = useRef<string | null>(null);
+  const setParam: SetParams = (patch) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        for (const [key, value] of Object.entries(patch)) {
+          if (value) next.set(key, value);
+          else next.delete(key);
+        }
+        return next;
+      },
+      { replace: true },
+    );
   // An answered group with an item code: the person may remember it (2K).
   const [offer, setOffer] = useState<Offer | null>(null);
-  useEffect(() => {
-    const key = focusKey.current;
-    if (key === null) return;
-    focusKey.current = null;
-    const at = groups.findIndex((g) => groupKey(g) === key);
-    // Its product box, or the ingredient box of the new product it is being given.
-    if (at >= 0)
-      (
-        document.getElementById(`identify-${at}`) ??
-        document.getElementById(`identify-${at}-new-ingredient`)
-      )?.focus();
-  });
 
   return (
     <>
@@ -58,17 +55,20 @@ export function ToIdentifyPage() {
         description="Receipt lines that don't have a product yet. Match one and the vendor's wording is learned."
       >
         {offerNaming ? (
-          <Button onClick={() => setParams({ mode: "name" })}>Name the new products</Button>
+          <Button onClick={() => setParam({ mode: "name" })}>Name the new products</Button>
         ) : null}
         {naming ? (
-          <Button variant="secondary" onClick={() => setParams({})}>
+          <Button variant="secondary" onClick={() => setParam({ mode: null })}>
             One at a time
           </Button>
         ) : null}
       </PageHeader>
       {offer ? <RememberOffer offer={offer} onDone={() => setOffer(null)} /> : null}
       {naming ? (
-        <NameProducts />
+        <NameProducts
+          vendor={params.get("store") ?? ""}
+          onVendor={(id) => setParam({ store: id || null })}
+        />
       ) : queue.isPending ? (
         <p role="status" className="text-sm text-neutral-600 dark:text-neutral-400">
           Loading…
@@ -87,22 +87,7 @@ export function ToIdentifyPage() {
           Every committed receipt line has a product or is ignored.
         </EmptyState>
       ) : (
-        <ul aria-label="Lines to identify" className="flex flex-col gap-4">
-          {groups.map((g, i) => (
-            <li key={groupKey(g)}>
-              <Card>
-                <GroupCard
-                  group={g}
-                  index={i}
-                  onAnswered={(next) => {
-                    focusKey.current = groupKey(groups[i + 1] ?? groups[i - 1]);
-                    setOffer(next);
-                  }}
-                />
-              </Card>
-            </li>
-          ))}
-        </ul>
+        <QueueList groups={groups} params={params} setParam={setParam} onOffer={setOffer} />
       )}
     </>
   );
@@ -110,213 +95,115 @@ export function ToIdentifyPage() {
 
 /** How many groups must wait before naming them in bulk is offered (N1). */
 const NAMING_MIN = 3;
+/** Groups shown at once; more on request. */
+const PAGE = 25;
 
 function groupKey(g: ToIdentifyGroup | undefined): string | null {
   return g ? `${g.vendor.id}:${g.raw_text_norm}` : null;
 }
 
-interface Offer {
-  purchaseId: string;
-  lineId: string;
-  code: string;
-  product: string;
-}
+/** The filter bar and the groups it keeps, a page at a time. */
+function QueueList({
+  groups,
+  params,
+  setParam,
+  onOffer,
+}: {
+  groups: ToIdentifyGroup[];
+  params: URLSearchParams;
+  setParam: SetParams;
+  onOffer: (offer: Offer | null) => void;
+}) {
+  const store = params.get("store") ?? "";
+  const q = params.get("q") ?? "";
+  const sort = readSort(params.get("sort"));
+  const [text, setText] = useSearchText(q, (v) => setParam({ q: v }));
+  const listed = filterGroups(groups, { store, q, sort });
+  const [shown, setShown] = useState(PAGE);
+  // A new filter starts from the top of its list.
+  const filterKey = `${store}|${q}|${sort}`;
+  const [seenFilter, setSeenFilter] = useState(filterKey);
+  if (filterKey !== seenFilter) {
+    setSeenFilter(filterKey);
+    setShown(PAGE);
+  }
+  const page = listed.slice(0, shown);
+  // Once a group is answered it leaves the list, and the next one is where the
+  // work continues: its product box takes focus (#88).
+  const focusKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = focusKey.current;
+    if (key === null) return;
+    focusKey.current = null;
+    const at = page.findIndex((g) => groupKey(g) === key);
+    // Its product box, or the ingredient box of the new product it is being given.
+    if (at >= 0)
+      (
+        document.getElementById(`identify-${at}`) ??
+        document.getElementById(`identify-${at}-new-ingredient`)
+      )?.focus();
+  });
+  const clear = () => {
+    setText("");
+    setParam({ q: null, store: null, sort: null });
+  };
 
-/** "Remember {code} for {product}" after a group with an item code is answered (2K). */
-function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) {
-  const remember = useRememberCode(offer.purchaseId);
   return (
-    <div
-      role="status"
-      className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700"
-    >
-      {remember.isSuccess ? (
-        <span>
-          Remembered {offer.code} for {offer.product}.
-        </span>
+    <>
+      <IdentifyFilters
+        stores={storeCounts(groups)}
+        store={store}
+        onStore={(id) => setParam({ store: id || null })}
+        text={text}
+        onText={setText}
+        sort={sort}
+        onSort={(s) => setParam({ sort: s === "newest" ? null : s })}
+      />
+      {listed.length === 0 ? (
+        <EmptyState
+          title="No lines match"
+          action={
+            <Button variant="secondary" onClick={clear}>
+              Clear filters
+            </Button>
+          }
+        >
+          {groups.length} {groups.length === 1 ? "group waits" : "groups wait"} in all.
+        </EmptyState>
       ) : (
         <>
-          <span>This line carries the item code {offer.code}.</span>
-          <Button
-            variant="secondary"
-            disabled={remember.isPending}
-            onClick={() => remember.mutate(offer.lineId)}
-          >
-            Remember {offer.code} for {offer.product}
-          </Button>
-          {remember.isError ? (
-            <span className="text-red-800 dark:text-red-300">
-              {purchaseErrorMessage(remember.error)}
-            </span>
+          <p role="status" className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
+            Showing {page.length} of {listed.length} {listed.length === 1 ? "group" : "groups"}
+            {listed.length < groups.length ? ` (${groups.length} in all)` : ""}
+          </p>
+          <ul aria-label="Lines to identify" className="flex flex-col gap-4">
+            {page.map((g, i) => (
+              <li key={groupKey(g)}>
+                <Card>
+                  <GroupCard
+                    group={g}
+                    index={i}
+                    onAnswered={(next) => {
+                      focusKey.current = groupKey(page[i + 1] ?? page[i - 1]);
+                      onOffer(next);
+                    }}
+                  />
+                </Card>
+              </li>
+            ))}
+          </ul>
+          {listed.length > page.length ? (
+            <Button
+              variant="secondary"
+              className="mt-4 self-start"
+              onClick={() => setShown(shown + PAGE)}
+            >
+              Show {Math.min(PAGE, listed.length - page.length)} more ({listed.length - page.length}{" "}
+              waiting)
+            </Button>
           ) : null}
         </>
       )}
-      <Button variant="secondary" onClick={onDone}>
-        {remember.isSuccess ? "Done" : "No thanks"}
-      </Button>
-    </div>
-  );
-}
-
-function GroupCard({
-  group,
-  index,
-  onAnswered,
-}: {
-  group: ToIdentifyGroup;
-  index: number;
-  onAnswered: (offer: Offer | null) => void;
-}) {
-  const apply = useApplyToIdentify();
-  const notice = useNotice();
-  // The group leaves the list once applied, so the confirmation lives in the Notice.
-  const onApplied = ({ applied }: { applied: number }, chosen: string | null) => {
-    notice.show({
-      tone: "success",
-      message: `Applied to ${applied} ${applied === 1 ? "line" : "lines"}.`,
-    });
-    const first = all ? group.lines[0] : group.lines.find((l) => l.line_id === lineId);
-    onAnswered(
-      group.code && chosen && first
-        ? {
-            purchaseId: first.purchase_id,
-            lineId: first.line_id,
-            code: group.code.value,
-            product: chosen,
-          }
-        : null,
-    );
-  };
-  const [all, setAll] = useState(true);
-  const [lineId, setLineId] = useState(group.lines[0]?.line_id ?? "");
-  // The kitchen supply choices (spec 04, 2T), open under the group's actions.
-  const [supplying, setSupplying] = useState(false);
-  const supplyButton = useRef<HTMLButtonElement>(null);
-  const id = `identify-${index}`;
-  const scope = () => (all ? {} : { line_ids: [lineId] });
-  const target = () => ({
-    vendor_id: group.vendor.id,
-    raw_text_norm: group.raw_text_norm ?? "",
-    ...scope(),
-  });
-
-  return (
-    <div
-      className="flex flex-col gap-3"
-      role="group"
-      aria-label={`${group.vendor.name}: ${group.raw_text_norm ?? "(no text)"}`}
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-medium">
-          <span className="font-mono">{group.raw_text_norm ?? "(no text)"}</span>
-          <span className="text-neutral-600 dark:text-neutral-400"> at {group.vendor.name}</span>
-        </h2>
-        <span className="text-xs text-neutral-600 dark:text-neutral-400">
-          {group.line_count} {group.line_count === 1 ? "line" : "lines"}
-        </span>
-      </div>
-      {apply.error ? <Alert tone="error">{purchaseErrorMessage(apply.error)}</Alert> : null}
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-700 dark:text-neutral-300">
-        {group.lines.map((l) => (
-          <li key={l.line_id}>
-            <Link
-              to={`/shop/purchases/${l.purchase_id}`}
-              className={`rounded-sm underline ${focusRing}`}
-            >
-              {formatDate(l.purchased_at)}
-            </Link>
-            {l.raw_text && l.raw_text !== group.raw_text_norm ? (
-              <span className="font-mono"> {l.raw_text}</span>
-            ) : null}
-            {l.line_total !== null ? <span> · {formatMoney(l.line_total)}</span> : null}
-          </li>
-        ))}
-      </ul>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-        <ProductPicker
-          id={id}
-          label="Product"
-          value={null}
-          lineText={group.raw_text_norm}
-          onChange={(p) => {
-            if (!p) return;
-            apply.mutate(
-              {
-                vendor_id: group.vendor.id,
-                raw_text_norm: group.raw_text_norm ?? "",
-                product_id: p.id,
-                ...scope(),
-              },
-              { onSuccess: (r) => onApplied(r, p.name) },
-            );
-          }}
-          disabled={apply.isPending}
-        />
-        <div className="flex flex-wrap items-end gap-2">
-          <Button
-            variant="secondary"
-            disabled={apply.isPending}
-            onClick={() => {
-              apply.mutate({ ...target(), ignore: true }, { onSuccess: (r) => onApplied(r, null) });
-            }}
-          >
-            Ignore
-          </Button>
-          <Button
-            ref={supplyButton}
-            variant="secondary"
-            disabled={apply.isPending}
-            onClick={() => setSupplying(true)}
-          >
-            Kitchen supply
-          </Button>
-        </div>
-      </div>
-      {supplying ? (
-        <SupplyChoices
-          id={`${id}-supply`}
-          subject={group.raw_text_norm ?? "this line"}
-          busy={apply.isPending}
-          onChoose={(supply_category) =>
-            apply.mutate({ ...target(), supply_category }, { onSuccess: (r) => onApplied(r, null) })
-          }
-          onCancel={() => {
-            setSupplying(false);
-            supplyButton.current?.focus();
-          }}
-        />
-      ) : null}
-      <div className="flex flex-wrap items-end gap-3">
-        {/* A group of one line has nothing else to apply to: "Apply to all 1"
-            offered a choice that changed nothing (QA 2026-10-13). */}
-        {group.line_count > 1 ? (
-          <label className="inline-flex min-h-11 lg:min-h-10 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={all}
-              onChange={(e) => setAll(e.target.checked)}
-              className={`size-4 ${focusRing}`}
-            />
-            Apply to all {group.line_count}
-          </label>
-        ) : null}
-        {!all && group.lines.length > 1 ? (
-          <SelectField
-            id={`${id}-line`}
-            label="Only this line"
-            value={lineId}
-            onChange={(e) => setLineId(e.target.value)}
-            className="w-56"
-          >
-            {group.lines.map((l) => (
-              <option key={l.line_id} value={l.line_id}>
-                {formatDate(l.purchased_at)}{" "}
-                {l.line_total !== null ? formatMoney(l.line_total) : ""}
-              </option>
-            ))}
-          </SelectField>
-        ) : null}
-      </div>
-    </div>
+    </>
   );
 }
