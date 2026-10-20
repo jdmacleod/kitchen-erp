@@ -27,7 +27,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from app.units.convert import convert_between
-from app.units.table import Unit, units_by_code
+from app.units.table import BASE_UNIT, Unit, units_by_code
 
 SOURCES = (
     "person",
@@ -210,7 +210,9 @@ def _pack_grams(pack: Any) -> tuple[str, Decimal] | None:
 
 
 def _base(dimension: str) -> str:
-    return {"mass": "g", "volume": "ml"}.get(dimension, "each")
+    # The unit table's own base, so a new family (bunch, issue 371) is never sent
+    # to another family's base unit.
+    return BASE_UNIT[dimension]
 
 
 def packs_disagree(a: Any, b: Any) -> bool:
