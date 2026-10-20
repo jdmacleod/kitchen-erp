@@ -332,7 +332,7 @@ export function stewCost(over: Partial<RecipeCost> = {}): RecipeCost {
       }),
       costLine(stewLines[4], {
         status: "unconvertible",
-        failure_code: "needs_density",
+        failure_code: "no_density",
         quantity: null,
         price: null,
         consumed_cost: null,
