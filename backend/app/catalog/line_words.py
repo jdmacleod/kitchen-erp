@@ -76,10 +76,10 @@ class WordChange:
 
 @dataclass(frozen=True)
 class Vocabulary:
-    """The words an abbreviation may stand for, indexed by first and last letter."""
+    """The words an abbreviation may stand for, indexed by first letter."""
 
     words: frozenset[str]
-    by_ends: Mapping[tuple[str, str], tuple[str, ...]]
+    by_first: Mapping[str, tuple[str, ...]]
 
     @classmethod
     def of(cls, texts: Iterable[str | None]) -> Vocabulary:
@@ -90,30 +90,43 @@ class Vocabulary:
             for w in _LETTERS.findall(text.lower())
             if len(w) >= _MIN_EXPANSION
         )
-        ends: dict[tuple[str, str], list[str]] = {}
+        first: dict[str, list[str]] = {}
         for w in sorted(words):
-            ends.setdefault((w[0], w[-1]), []).append(w)
-        return cls(words, {k: tuple(v) for k, v in ends.items()})
+            first.setdefault(w[0], []).append(w)
+        return cls(words, {k: tuple(v) for k, v in first.items()})
 
     def knows(self, word: str) -> bool:
         return word in self.words or singular_word(word) in self.words
 
+    def fits(self, word: str) -> list[str]:
+        """The vocabulary words ``word`` could stand for, alphabetically: it keeps
+        their first letter, the rest in order, and half their letters at least."""
+        return [
+            w
+            for w in self.by_first.get(word[:1], ())
+            if len(word) * 2 >= len(w) and _abbreviates(word, w)
+        ]
+
     def expansion(self, word: str) -> str | None:
-        """The one word ``word`` abbreviates, ending in the same letter.
+        """The one word ``word`` fits, when it also ends in the same letter.
 
         With no confirmation behind it, a guess is made only for a word shaped
         like an abbreviation: three letters or more, no vowel after the first
-        ("YGRT", "MSTRD"), and half the expansion's letters at least. A word
-        with vowels ("WINES", "CANS") may be a plain word, so it waits to be learned.
+        ("YGRT", "MSTRD"). A word with vowels ("WINES", "CANS") may be a plain
+        word, so it waits to be learned.
+
+        The guess is made only when the word fits one vocabulary word (a word
+        and its plural are one). Sharing the last letter is asked of that one
+        word, never used to choose between two: "ZNL" ends like "zonkel", but a
+        printer that drops a last vowel makes it "zinlo" just as well. A second
+        fit leaves the word as printed until a person names it.
         """
         if len(word) < _MIN_EXPANSION or _VOWELS.intersection(word[1:]):
             return None
-        fits = [
-            w
-            for w in self.by_ends.get((word[0], word[-1]), ())
-            if len(word) * 2 >= len(w) and _abbreviates(word, w)
-        ]
-        return fits[0] if len(fits) == 1 else None
+        fits = self.fits(word)
+        if len({singular_word(w) for w in fits}) != 1:
+            return None
+        return next((w for w in fits if w[-1] == word[-1]), None)
 
 
 def _learned_expansion(word: str, learned: Mapping[str, Sequence[tuple[str, int]]]) -> str | None:
@@ -134,9 +147,10 @@ def suggest_words(
     """How each printed word should be shown, in order of trust.
 
     A word the vocabulary knows stays. Otherwise: this vendor's (or any vendor's)
-    learned expansion, then a one-edit spelling fix, then the one vocabulary word
-    it abbreviates. Two equally good answers mean no change, and a word the vendor
-    taught two meanings equally often isn't guessed from the vocabulary either.
+    learned expansion, then a one-edit spelling fix, then the vocabulary word it
+    abbreviates when it fits no other. Two answers mean no change: a second
+    vocabulary fit, or two meanings the vendor taught equally often (and then the
+    vocabulary isn't asked either).
     ``learned`` maps a word to (expansion, count) pairs, ``spelled`` a word to its
     fix, both casefolded.
     """

@@ -5,10 +5,11 @@ from __future__ import annotations
 import re
 
 import pytest
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from app.catalog.line_words import Vocabulary, align, suggest_words
+from app.catalog.names import singular_word
 
 
 @pytest.mark.parametrize(
@@ -101,3 +102,63 @@ def test_every_change_names_a_printed_word_and_an_offered_reading(words):
         assert printed[change.index].casefold() == change.printed
         assert change.shown in _VOCAB.words
         assert _is_abbreviation(change.printed, change.shown)
+
+
+# --- a vocabulary guess needs the only fit (#384) -------------------------------
+
+_INVENTED = Vocabulary.of(
+    [
+        "Zonkel bars",
+        "zinlo",
+        "morvated",
+        "mirtadel",
+        "quembert",
+        "quemberts",
+        "plosk",
+        "palisokarine",
+    ]
+)
+
+
+@pytest.mark.parametrize(
+    ("printed", "shown"),
+    [
+        ("ZNL", None),  # zonkel ends in l, but zinlo fits too
+        ("MRTD", None),  # morvated or mirtadel: the one ending in d is no likelier
+        ("ZNKL", "zonkel"),  # the only fit
+        ("QMBRT", "quembert"),  # a word and its plural are one reading
+        ("PLSK", "plosk"),  # four letters keep too little of palisokarine to fit it
+        ("ZNKLS", None),  # nothing fits: "zonkels" isn't a known word
+    ],
+)
+def test_a_vocabulary_word_is_shown_only_when_no_other_fits(printed, shown):
+    changes = suggest_words([printed], learned={}, spelled={}, vocabulary=_INVENTED)
+    assert [c.shown for c in changes] == ([shown] if shown else [])
+
+
+def test_a_learned_word_still_wins_where_the_vocabulary_has_two_fits():
+    learned = {"znl": [("zanderblin", 2)]}
+    changes = suggest_words(["ZNL"], learned=learned, spelled={}, vocabulary=_INVENTED)
+    assert [(c.shown, c.source) for c in changes] == [("zanderblin", "learned")]
+
+
+@st.composite
+def _two_readings(draw):
+    """A consonant abbreviation and two words it abbreviates, vowels added."""
+    word = draw(st.text(alphabet="bcdfghjklmnpqrstvwxz", min_size=3, max_size=6))
+    pads = st.lists(st.text(alphabet="aeiou", max_size=1), min_size=len(word), max_size=len(word))
+    tails = st.sampled_from(["", "e", "o"])
+    readings = [
+        "".join(c + p for c, p in zip(word, draw(pads), strict=True)) + draw(tails)
+        for _ in range(2)
+    ]
+    return word, readings
+
+
+@given(case=_two_readings(), others=_WORDS)
+def test_with_two_vocabulary_words_fitting_no_vocabulary_change_is_made(case, others):
+    word, readings = case
+    vocabulary = Vocabulary.of([*readings, *others])
+    assume(len({singular_word(w) for w in vocabulary.fits(word)}) > 1)
+    changes = suggest_words([word.upper()], learned={}, spelled={}, vocabulary=vocabulary)
+    assert [c for c in changes if c.source == "vocabulary"] == []
