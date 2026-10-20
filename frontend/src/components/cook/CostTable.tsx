@@ -453,6 +453,36 @@ function PinControls({ line, recipeId, pin, ingredientId, ingredientName, focusN
   );
 }
 
+/**
+ * What an unconvertible line is missing, by the conversion's failure code, and
+ * where to add it: a density, a measure named like the line's unit, the weight
+ * of one bunch (issue 371) or a pack size.
+ */
+export function conversionFix(line: CostLine): { label: string; to: string | null } {
+  const ingredient = line.line.ingredient_id
+    ? `/catalog/ingredients/${line.line.ingredient_id}`
+    : null;
+  const at = (anchor: string) => (ingredient ? `${ingredient}#${anchor}` : null);
+  switch (line.failure_code) {
+    case "unknown_measure":
+      return {
+        label: line.line.unit_text ? `add a “${line.line.unit_text}” measure` : "add a measure",
+        to: at("measures-heading"),
+      };
+    case "no_bunch_weight":
+      return { label: "weigh one bunch", to: at("measures-heading") };
+    case "no_pack": {
+      const product = line.price?.product_id;
+      return {
+        label: "set the pack size",
+        to: product ? `/catalog/products/${product}` : ingredient,
+      };
+    }
+    default:
+      return { label: "add density", to: at("density-heading") };
+  }
+}
+
 /** The row states, each in words (10, Row states; UI-7.9). */
 function RowWords({ line }: { line: CostLine }) {
   const link = `${tapTarget} rounded-sm font-medium underline ${focusRing}`;
@@ -468,22 +498,21 @@ function RowWords({ line }: { line: CostLine }) {
           </Link>
         </span>
       );
-    case "unconvertible":
+    case "unconvertible": {
+      const fix = conversionFix(line);
       return (
         <span className={muted}>
           Can&apos;t convert yet ·{" "}
-          {line.line.ingredient_id ? (
-            <Link
-              to={`/catalog/ingredients/${line.line.ingredient_id}#density-heading`}
-              className={link}
-            >
-              add density
+          {fix.to ? (
+            <Link to={fix.to} className={link}>
+              {fix.label}
             </Link>
           ) : (
-            "add density"
+            fix.label
           )}
         </span>
       );
+    }
     case "negligible":
       return <span className={muted}>Not costed</span>;
     default:
