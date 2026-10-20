@@ -22,6 +22,13 @@ Resolution order is fixed and documented in the Phase 1 specification:
 5. It is a count unit with no measure or pack: `unknown_measure`, or `no_pack`
    when a product was supplied but has no pack.
 
+A product that says what its pieces are called ("10.5 oz, 1 loaf") makes that word a
+unit of its own, tried before the ingredient's measures: "0.5 loaf" is half of the
+pack's size over its pieces (provenance `pack`). Bread is sold by the loaf, and a
+loaf weighs what its label says, not what a loaf of another bread does.
+
+Measure labels and piece names match their plurals too: "2 loaves" is two "loaf".
+
 Bunches (issue 371) are a family of their own: a bunch is never a piece. A
 quantity in bunches, or a pack counted in bunches, reaches the canonical unit
 only through the ingredient's "bunch" measure (provenance `measure`, or `pack`
@@ -43,7 +50,8 @@ from app.units.table import CANONICAL_UNITS, Unit, units_by_code
 # 2: "each" of a packed product is the pack; packs in pieces (issue 357).
 # 3: bunches, through the ingredient's "bunch" measure only (issue 371).
 # 4: a size grade of an ingredient counted in pieces is that many pieces.
-CONVERT_VERSION = "4"
+# 5: a product's named pieces ("loaf") are a unit; measures match plurals.
+CONVERT_VERSION = "5"
 
 # Words that grade a piece by size. For an ingredient counted in pieces they
 # say which pieces, never how many: "12 large" is 12.
@@ -74,6 +82,10 @@ class Pack:
 @dataclass(frozen=True, slots=True)
 class ProductContext:
     pack: Pack | None = None
+    # What one of its pieces is called ("loaf") with the pack that weighs them: kept
+    # apart from `pack`, which costing drops for a product it did not pin.
+    piece_name: str | None = None
+    piece_pack: Pack | None = None
     density_g_per_ml: Decimal | None = None
     density_source: str | None = None
     density_confirmed: bool = False
@@ -144,12 +156,82 @@ def convert_between(
     return _div(_mul(qty, src.to_base_factor), dst.to_base_factor)
 
 
+def _singulars(word: str) -> set[str]:
+    """What a plural word may be the plural of: "loaves" may be "loaf" or "loave".
+    Only ever compared with a label, so a reading that is no word finds nothing."""
+    out = set()
+    if word.endswith("ves"):
+        out |= {word[:-3] + "f", word[:-3] + "fe"}
+    if word.endswith("ies"):
+        out.add(word[:-3] + "y")
+    if word.endswith("es"):
+        out.add(word[:-2])
+    if word.endswith("s") and not word.endswith("ss"):
+        out.add(word[:-1])
+    return out
+
+
+def _same_word(asked: str, name: str) -> bool:
+    """Whether ``asked`` is ``name`` or its plural ("loaves" is "loaf")."""
+    wanted, have = asked.strip().lower(), name.strip().lower()
+    return wanted == have or have in _singulars(wanted)
+
+
 def _find_measure(label: str, measures: tuple[Measure, ...]) -> Measure | None:
-    wanted = label.strip().lower()
-    for measure in measures:
-        if measure.label.strip().lower() == wanted:
-            return measure
+    for exact in (True, False):
+        for measure in measures:
+            same = measure.label.strip().lower() == label.strip().lower()
+            if same if exact else _same_word(label, measure.label):
+                return measure
     return None
+
+
+def _product_pieces(
+    qty: Decimal, from_unit: str, context: ConversionContext
+) -> CanonicalQty | ConversionFailure | None:
+    """``qty`` of the product's named pieces ("0.5 loaf"), or None when ``from_unit`` is
+    not what its pieces are called. One piece is the pack's size over its pieces."""
+    product = context.product
+    if product is None or not product.piece_name or product.piece_pack is None:
+        return None
+    if not _same_word(from_unit, product.piece_name):
+        return None
+    pack = product.piece_pack
+    units = context.units
+    if pack.unit not in units or units[pack.unit].dimension in ("count", "bunch"):
+        return None  # "8 each, 8 rolls" names pieces but weighs none of them
+    whole = convert(
+        pack.qty,
+        pack.unit,
+        ConversionContext(
+            canonical_unit=context.canonical_unit,
+            density_g_per_ml=context.density_g_per_ml,
+            density_source=context.density_source,
+            density_confirmed=context.density_confirmed,
+            product=ProductContext(
+                density_g_per_ml=product.density_g_per_ml,
+                density_source=product.density_source,
+                density_confirmed=product.density_confirmed,
+            ),
+            units=units,
+        ),
+    )
+    if isinstance(whole, ConversionFailure):
+        return whole
+    count = Decimal(pack.count or 1)
+    return CanonicalQty(
+        _div(_mul(qty, whole.qty), count),
+        context.canonical_unit,
+        Provenance(
+            "pack",
+            None,
+            True,
+            f"{pack.qty} {pack.unit} a {product.piece_name}"
+            if count == 1
+            else f"{pack.qty} {pack.unit}, {pack.count} pieces",
+            via=whole.provenance if whole.provenance.bridge_kind != "none" else None,
+        ),
+    )
 
 
 # Measure labels that stand for one of the ingredient, the most general first.
@@ -307,8 +389,8 @@ def convert(  # noqa: C901
     if from_unit == "each" and product is not None and product.pack is not None:
         return _through_pack(_mul(qty, units["each"].to_base_factor), product, context)
 
-    # 1. Named measure, or a size grade of pieces.
-    named = _named(qty, from_unit, context)
+    # 1. The product's own pieces ("loaf"), then a named measure or a size grade.
+    named = _product_pieces(qty, from_unit, context) or _named(qty, from_unit, context)
     if named is not None:
         return named
 
