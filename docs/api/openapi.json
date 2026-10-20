@@ -14291,9 +14291,42 @@
         "title": "QueueApply",
         "type": "object"
       },
+      "QueueElsewhere": {
+        "additionalProperties": false,
+        "description": "Another vendor where the same wording waits.",
+        "properties": {
+          "line_count": {
+            "title": "Line Count",
+            "type": "integer"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          },
+          "vendor_name": {
+            "title": "Vendor Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "vendor_name",
+          "line_count"
+        ],
+        "title": "QueueElsewhere",
+        "type": "object"
+      },
       "QueueGroup": {
         "additionalProperties": false,
         "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/NamingCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
           "code": {
             "anyOf": [
               {
@@ -14303,6 +14336,13 @@
                 "type": "null"
               }
             ]
+          },
+          "elsewhere": {
+            "items": {
+              "$ref": "#/components/schemas/QueueElsewhere"
+            },
+            "title": "Elsewhere",
+            "type": "array"
           },
           "line_count": {
             "title": "Line Count",
@@ -14325,6 +14365,28 @@
               }
             ],
             "title": "Raw Text Norm"
+          },
+          "suggested_brand": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Brand"
+          },
+          "suggested_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Name"
           },
           "vendor": {
             "$ref": "#/components/schemas/VendorSummary"
@@ -30626,6 +30688,7 @@
     },
     "/api/v1/to-identify": {
       "get": {
+        "description": "Every waiting group, with what bulk naming would suggest for it (2D, 2I).",
         "operationId": "to_identify_api_v1_to_identify_get",
         "responses": {
           "200": {

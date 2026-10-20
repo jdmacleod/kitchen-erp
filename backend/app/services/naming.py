@@ -84,15 +84,18 @@ def name_from_words(words: list[str]) -> str:
     return text[:1].upper() + text[1:]
 
 
-async def naming_rows(db: AsyncSession) -> list[dict]:
-    """One row per waiting group, with a suggested name, ingredient and pack, and
-    the model's suggestion when one was asked for."""
+async def naming_rows(db: AsyncSession, groups: list[dict] | None = None) -> list[dict]:
+    """One row per waiting group, in the queue's order, with a suggested name,
+    ingredient and pack, and the model's suggestion when one was asked for. The
+    one-at-a-time list passes the groups it already loaded."""
     # One load of every name and spelling serves all the groups (#183).
     index = await catalog.ingredient_index(db)
     asked = await _model_suggestions(db, index)
     known = await naming_words.load(db)
     rows: list[dict] = []
-    for group in await identify_queue.to_identify(db):
+    if groups is None:
+        groups = await identify_queue.to_identify(db)
+    for group in groups:
         norm = group["raw_text_norm"] or ""
         pack, rest = read_pack(norm.split())
         found = await catalog.ingredients_in_text(db, norm, limit=1, index=index) if norm else []

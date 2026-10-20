@@ -187,6 +187,10 @@ function QueueList({
                       focusKey.current = groupKey(page[i + 1] ?? page[i - 1]);
                       onOffer(next);
                     }}
+                    onWording={(wording) => {
+                      setText(wording);
+                      setParam({ q: wording, store: null });
+                    }}
                   />
                 </Card>
               </li>

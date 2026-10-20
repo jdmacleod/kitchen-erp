@@ -3,6 +3,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./client";
+import type { NamingCandidate } from "./naming";
 import {
   invalidateObservations,
   invalidatePurchases,
@@ -28,6 +29,19 @@ export interface ToIdentifyGroup {
   lines: ToIdentifyLine[];
   /** The item code these lines carry where the vendor prints codes (2K). */
   code?: CodeOffer | null;
+  /** The name and brand the wording suggests, as bulk naming would (2I). */
+  suggested_name?: string | null;
+  suggested_brand?: string | null;
+  /** Products the wording's ingredient already has, closest first (#386). */
+  candidates?: NamingCandidate[];
+  /** Other stores where the same wording waits. */
+  elsewhere?: ToIdentifyElsewhere[];
+}
+
+export interface ToIdentifyElsewhere {
+  vendor_id: string;
+  vendor_name: string;
+  line_count: number;
 }
 
 export type ToIdentifyApplyInput = {

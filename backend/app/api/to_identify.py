@@ -34,20 +34,28 @@ async def supply_categories(_: CurrentUser) -> SupplyCategoryList:
 
 @router.get("/to-identify", response_model=QueueList)
 async def to_identify(_: CurrentUser, db: DbSession) -> QueueList:
+    """Every waiting group, with what bulk naming would suggest for it (2D, 2I)."""
     groups = await identify_queue.to_identify(db)
     codes = await identify_queue.queue_codes(db, groups)
-    return QueueList(
-        items=[
+    others = identify_queue.elsewhere(groups)
+    rows = await naming.naming_rows(db, groups)
+    items = []
+    for g, row in zip(groups, rows, strict=True):
+        key = (str(g["vendor_id"]), g["raw_text_norm"])
+        items.append(
             {
                 "vendor": {"id": g["vendor_id"], "name": g["vendor_name"]},
                 "raw_text_norm": g["raw_text_norm"],
                 "line_count": g["line_count"],
                 "lines": g["lines"],
-                "code": codes.get((str(g["vendor_id"]), g["raw_text_norm"])),
+                "code": codes.get(key),
+                "suggested_name": row["name"] or None,
+                "suggested_brand": row["brand"],
+                "candidates": row["candidates"],
+                "elsewhere": others.get(key, []),
             }
-            for g in groups
-        ]
-    )
+        )
+    return QueueList(items=items)
 
 
 @router.post("/to-identify/apply", response_model=QueueApplied)

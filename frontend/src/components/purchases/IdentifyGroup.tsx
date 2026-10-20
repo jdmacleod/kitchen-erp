@@ -8,6 +8,7 @@ import { SelectField } from "../catalog/fields";
 import { useNotice } from "../Notice";
 import { Alert, Button, focusRing } from "../ui";
 import { SupplyChoices } from "./KitchenSupply";
+import { NamingCandidates } from "./NamingCandidates";
 import { ProductPicker } from "./ProductPicker";
 
 /** An answered group that carried an item code, offered to be remembered (2K). */
@@ -58,10 +59,13 @@ export function GroupCard({
   group,
   index,
   onAnswered,
+  onWording,
 }: {
   group: ToIdentifyGroup;
   index: number;
   onAnswered: (offer: Offer | null) => void;
+  /** Show every store's groups with this wording. */
+  onWording: (text: string) => void;
 }) {
   const apply = useApplyToIdentify();
   const notice = useNotice();
@@ -104,6 +108,7 @@ export function GroupCard({
       <GroupHeading group={group} />
       {apply.error ? <Alert tone="error">{purchaseErrorMessage(apply.error)}</Alert> : null}
       <GroupLines group={group} />
+      <Elsewhere group={group} onWording={onWording} />
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <ProductPicker
           id={id}
@@ -139,6 +144,16 @@ export function GroupCard({
           </Button>
         </div>
       </div>
+      <NamingCandidates
+        candidates={group.candidates ?? []}
+        disabled={apply.isPending}
+        onUse={(c) =>
+          apply.mutate(
+            { ...target(), product_id: c.id },
+            { onSuccess: (r) => onApplied(r, c.name) },
+          )
+        }
+      />
       {supplying ? (
         <SupplyChoices
           id={`${id}-supply`}
@@ -249,5 +264,37 @@ function GroupHeading({ group }: { group: ToIdentifyGroup }) {
         {group.line_count} {group.line_count === 1 ? "line" : "lines"}
       </span>
     </div>
+  );
+}
+
+/** "Also waiting at": the same wording at other stores, one click to list them together. */
+function Elsewhere({
+  group,
+  onWording,
+}: {
+  group: ToIdentifyGroup;
+  onWording: (text: string) => void;
+}) {
+  const others = group.elsewhere ?? [];
+  if (others.length === 0 || !group.raw_text_norm) return null;
+  const wording = group.raw_text_norm;
+  return (
+    <p className="text-sm text-neutral-700 dark:text-neutral-300">
+      Also waiting at{" "}
+      {others.map((o, i) => (
+        <span key={o.vendor_id}>
+          {i > 0 ? ", " : ""}
+          {o.vendor_name} ({o.line_count})
+        </span>
+      ))}
+      .{" "}
+      <button
+        type="button"
+        className={`rounded-sm text-blue-700 underline dark:text-blue-300 ${focusRing}`}
+        onClick={() => onWording(wording)}
+      >
+        Show them together
+      </button>
+    </p>
   );
 }

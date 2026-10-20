@@ -47,6 +47,30 @@ async def to_identify(db: AsyncSession) -> list[dict[str, Any]]:
     return [dict(r) for r in rows.mappings()]
 
 
+def elsewhere(groups: list[dict[str, Any]]) -> dict[tuple[str, str | None], list[dict]]:
+    """Per group, the other vendors where the same wording waits, most lines first:
+    one answer may serve them all, though each vendor learns its own wording."""
+    by_text: dict[str, list[dict[str, Any]]] = {}
+    for g in groups:
+        if g["raw_text_norm"]:
+            by_text.setdefault(g["raw_text_norm"], []).append(g)
+    out: dict[tuple[str, str | None], list[dict]] = {}
+    for same in by_text.values():
+        if len(same) < 2:
+            continue
+        for g in same:
+            out[(str(g["vendor_id"]), g["raw_text_norm"])] = [
+                {
+                    "vendor_id": o["vendor_id"],
+                    "vendor_name": o["vendor_name"],
+                    "line_count": o["line_count"],
+                }
+                for o in sorted(same, key=lambda o: (-o["line_count"], o["vendor_name"]))
+                if o is not g
+            ]
+    return out
+
+
 def _queued(vendor_id: uuid.UUID, raw_text_norm: str):
     return (
         select(PurchaseLine.id, PurchaseLine.purchase_id)
