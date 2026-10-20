@@ -65,6 +65,10 @@ async def build_context(
             density_g_per_ml=product.density_override,
             density_source=product.density_override_source,
             density_confirmed=product.density_override_confirmed,
+            piece_name=product.piece_name,
+            piece_pack=Pack(product.pack_qty, product.pack_unit, product.pack_count)
+            if product.pack_qty is not None and product.piece_name
+            else None,
         )
     return ConversionContext(
         canonical_unit=ingredient.canonical_unit,

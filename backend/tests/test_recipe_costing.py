@@ -853,3 +853,36 @@ async def test_each_basis_has_a_snapshot_with_its_own_key(
     assert body["basis"] == basis
     assert body["window_days"] == (90 if basis == "average" else None)
     assert body["totals"]["consumed_cost"] == "0.8000"
+
+
+# --- bread sold by the loaf: a product's named pieces are a unit -------------------------
+
+SANDWICH = """---
+title: Harbor sandwich
+---
+
+Split @harbor loaf{0.5%loaf} and fill it with @barley{200%g}.
+"""
+
+
+async def test_half_a_loaf_is_costed_through_the_loaf_the_label_weighs(
+    admin_client: httpx.AsyncClient,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """A 10 oz loaf at $3.00 sold as "10 oz, 1 loaf": 0.5 loaf is 5 oz, so $1.50."""
+    pantry = await barley_only(admin_client)
+    loaf = await make_product(
+        admin_client,
+        "Harbor loaf",
+        "Harbor sourdough",
+        pack_qty="10",
+        pack_unit="oz",
+        pack_count=1,
+        piece_name="loaf",
+    )
+    await shelf(admin_client, loaf["id"], pantry["loc"]["id"], "3.00")
+    recipe = await indexed(admin_client, recipes_repo, "harbor-sandwich.cook", SANDWICH)
+    bread = lines_by_name(await cost(admin_client, recipe["id"]))["harbor loaf"]
+    assert bread["status"] == "priced", bread
+    assert D(bread["consumed_cost"]) == D("1.5000")
+    assert bread["bridge_kind"] == "pack" and bread["bridge_confirmed"] is True
