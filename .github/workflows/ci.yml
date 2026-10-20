@@ -11,7 +11,10 @@ permissions:
 jobs:
   backend:
     name: Backend tests
-    runs-on: ubuntu-latest
+    # Pinned: the backup tests run the runner's own pg_dump and pg_restore against the
+    # Postgres 16 service, and ubuntu-26.04's newer client writes dumps 16 can't restore.
+    # Move with the server's major version, never with ubuntu-latest.
+    runs-on: ubuntu-24.04
     services:
       db:
         image: postgis/postgis:16-3.5
