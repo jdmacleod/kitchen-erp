@@ -208,3 +208,38 @@ def test_migration_scripts_are_read_once():
     from app.services.health import _scripts
 
     assert _scripts() is _scripts()
+
+
+async def lookup_helper(admin_client: httpx.AsyncClient) -> dict:
+    r = await admin_client.get("/api/v1/health")
+    return r.json()["checks"]["lookup_helper"]
+
+
+async def test_the_lookup_helper_is_fine_when_not_set_up(admin_client: httpx.AsyncClient):
+    check = await lookup_helper(admin_client)
+    assert (check["status"], check["summary"]) == ("ok", "not set up")
+
+
+async def test_the_lookup_helper_says_when_it_last_checked_in(
+    admin_client: httpx.AsyncClient, owner_conn
+):
+    from tests.test_scopes import token
+
+    helper = await token(admin_client, "products:read", "products:suggest")
+    check = await lookup_helper(admin_client)
+    assert (check["status"], check["summary"]) == ("degraded", "never checked in")
+
+    # The helper asks for work with its token alone (no session), and the check reads it.
+    from app.main import app
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        r = await c.get("/api/v1/lookup-requests", headers=helper)
+    assert r.status_code == 200, r.text
+    check = await lookup_helper(admin_client)
+    assert check["status"] == "ok" and check["summary"].startswith("checked in"), check
+
+    await owner_conn.execute("UPDATE api_token SET last_used_at = now() - interval '3 hours'")
+    check = await lookup_helper(admin_client)
+    assert (check["status"], check["summary"]) == ("degraded", "last checked in 3 h ago")

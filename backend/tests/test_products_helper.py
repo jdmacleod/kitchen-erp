@@ -390,6 +390,42 @@ async def test_an_overdue_lookup_gets_its_own_reading_line(admin_client, owner_c
     assert reading["lookups_overdue"] == 1 and reading["lookups_since"] is not None
 
 
+async def test_a_lookup_nobody_needs_is_not_waiting_on_the_helper(admin_client, owner_conn):
+    """A decided proposal's lookup, or one held back from the helper (a capture-only
+    store), once read as "1 lookup waiting for the lookup helper" for a week."""
+    proposal_id = await proposal_from_scan(admin_client)
+    await ask(admin_client, proposal_id)
+    await owner_conn.execute("UPDATE lookup_request SET created_at = now() - interval '7 days'")
+    await owner_conn.execute(
+        "UPDATE product_proposal SET status = 'rejected' WHERE id = $1", uuid.UUID(proposal_id)
+    )
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert reading["lookups_overdue"] == 0
+
+    # Pending again, but now a clip's page lookup at a store whose pages are never fetched.
+    location = await make_location(admin_client, "Kelp Street Grocer", "Kelp Street")
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'capture_only' WHERE id = $1",
+        uuid.UUID(location["vendor"]["id"]),
+    )
+    await owner_conn.execute(
+        "UPDATE product_proposal SET status = 'pending', "
+        "listing = jsonb_build_object('vendor_id', $2::text) WHERE id = $1",
+        uuid.UUID(proposal_id),
+        location["vendor"]["id"],
+    )
+    await owner_conn.execute("UPDATE lookup_request SET kind = 'page'")
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert reading["lookups_overdue"] == 0
+    # The helper isn't offered it either: the count and the queue agree.
+    await owner_conn.execute(
+        "UPDATE vendor SET fetch_policy = 'server_fetch' WHERE id = $1",
+        uuid.UUID(location["vendor"]["id"]),
+    )
+    reading = (await admin_client.get("/api/v1/inbox")).json()["reading"]
+    assert reading["lookups_overdue"] == 1
+
+
 async def test_photographed_products_queue_nothing_by_themselves(admin_client, owner_conn):
     """Only what a person asks about goes to the helper, unless the setting is on."""
     await post_photos(admin_client, photo(barcode=UNKNOWN))
