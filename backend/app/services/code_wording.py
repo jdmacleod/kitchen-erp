@@ -3,22 +3,22 @@
 A weighed-item label's item code is read with the vendor's layout. At some
 counters several items print the same code, and the digit that tells them apart
 falls outside the layout. So a weighed code identifies a line on its own only
-when the line's wording is already known for that product at that vendor; any
-other line keeps the match as a suggestion for a person to confirm. GTINs,
-PLUs and vendor SKUs name one item and are not checked.
+when the line's wording is already known for that product at that vendor, or,
+with none known yet, when no other wording there prints the code; any other
+line keeps the match as a suggestion for a person to confirm. GTINs, PLUs and
+vendor SKUs name one item and are not checked.
 """
 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterable
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog import receipt_codes
-from app.models import Product, ProductIdentifier, Purchase, PurchaseLine, ReceiptAlias
+from app.models import Purchase, PurchaseLine, ReceiptAlias
 from app.models.geo import Vendor, VendorLocation
 from app.services.normalize import normalize_receipt_text
 
@@ -38,7 +38,11 @@ def prints_code(line: PurchaseLine, vendor: Vendor, value: str) -> bool:
 
 
 async def known_wordings(db: AsyncSession, product_id: uuid.UUID, vendor_id: uuid.UUID) -> set[str]:
-    """The wordings a person or the ladder has already tied to the product at the vendor."""
+    """The wordings a person, or an alias a person confirmed, has tied to the product here.
+
+    Lines the code itself identified do not count: a counter code that once
+    identified another item's line must not vouch for that line's wording.
+    """
     aliases = select(ReceiptAlias.raw_text_norm).where(
         ReceiptAlias.vendor_id == vendor_id,
         ReceiptAlias.product_id == product_id,
@@ -51,7 +55,7 @@ async def known_wordings(db: AsyncSession, product_id: uuid.UUID, vendor_id: uui
         .where(
             VendorLocation.vendor_id == vendor_id,
             PurchaseLine.product_id == product_id,
-            PurchaseLine.resolution != "unmatched",
+            PurchaseLine.resolution.not_in(("unmatched", "identifier", "barcode")),
             PurchaseLine.removed_at.is_(None),
             PurchaseLine.raw_text_norm.is_not(None),
         )
@@ -60,67 +64,10 @@ async def known_wordings(db: AsyncSession, product_id: uuid.UUID, vendor_id: uui
     return {w for w in found if w}
 
 
-async def agrees(
-    db: AsyncSession,
-    line: PurchaseLine,
-    product_id: uuid.UUID,
-    vendor_id: uuid.UUID,
-    known: set[str] | None = None,
-) -> bool:
-    """Whether a weighed code may identify the line as the product on its own.
-
-    ``known`` is the wordings to require; without it they are looked up, and a
-    product with no wording yet at the vendor takes the first one it is read on.
-    """
-    if known is None:
-        known = await known_wordings(db, product_id, vendor_id)
-        if not known:
-            return True
-    return wording_of(line) in known
-
-
-async def waiting_known(
-    db: AsyncSession, product_id: uuid.UUID, lines: Iterable[tuple[PurchaseLine, Vendor]]
-) -> dict[uuid.UUID, set[str]]:
-    """Per vendor, the wordings a weighed code may identify among waiting lines.
-
-    When the product has no wording yet at a vendor, its waiting lines may take
-    the code only if they all read alike: two wordings on one code is the sign
-    of a counter code, so every one of them waits for a person.
-    """
-    rw = (
-        await db.execute(
-            select(ProductIdentifier.vendor_id, ProductIdentifier.value).where(
-                ProductIdentifier.product_id == product_id, ProductIdentifier.scheme == RW
-            )
-        )
-    ).all()
-    codes: dict[uuid.UUID, set[str]] = {}
-    for vendor_id, value in rw:
-        if vendor_id is not None:
-            codes.setdefault(vendor_id, set()).add(value)
-    seen: dict[uuid.UUID, set[str]] = {}
-    for line, vendor in lines:
-        if any(prints_code(line, vendor, v) for v in codes.get(vendor.id, ())):
-            seen.setdefault(vendor.id, set()).add(wording_of(line))
-    out: dict[uuid.UUID, set[str]] = {}
-    for vendor_id, wordings in seen.items():
-        known = await known_wordings(db, product_id, vendor_id)
-        out[vendor_id] = known or (wordings if len(wordings) == 1 else set())
-    return out
-
-
-async def shared_wordings(
-    db: AsyncSession, vendor: Vendor, value: str, line: PurchaseLine
-) -> list[dict[str, Any]]:
-    """Other wordings that print this weighed code at the vendor, most lines first.
-
-    Lines already tied to the line's product, and lines that read like it, are
-    not counted: only a different item behind the same code is.
-    """
-    if line.product_id is None:
-        return []
-    allowed = await known_wordings(db, line.product_id, vendor.id) | {wording_of(line)}
+async def _other_wordings(
+    db: AsyncSession, vendor: Vendor, value: str, line: PurchaseLine, allowed: set[str]
+) -> dict[str, int]:
+    """Wordings outside ``allowed`` that print this weighed code at the vendor, with line counts."""
     candidates = (
         (
             await db.execute(
@@ -140,22 +87,53 @@ async def shared_wordings(
         .scalars()
         .all()
     )
-    groups: dict[str, dict[str, Any]] = {}
+    counts: dict[str, int] = {}
     for other in candidates:
         wording = wording_of(other)
-        if wording in allowed or not prints_code(other, vendor, value):
-            continue
-        group = groups.setdefault(wording, {"text": wording, "lines": 0})
-        group["lines"] += 1
-    return sorted(groups.values(), key=lambda g: (-g["lines"], g["text"]))
+        if wording not in allowed and prints_code(other, vendor, value):
+            counts[wording] = counts.get(wording, 0) + 1
+    return counts
 
 
-def held_suggestion(product: Product, value: str) -> dict[str, Any]:
-    """The code match offered, not applied, on a line whose wording differs."""
+async def agrees(
+    db: AsyncSession, line: PurchaseLine, product_id: uuid.UUID, vendor: Vendor, value: str
+) -> bool:
+    """Whether the weighed code ``value`` may identify the line as the product on its own.
+
+    Yes when the line's wording is known for the product at the vendor. With no
+    wording known yet, yes only when no other wording at the vendor prints the
+    code: two wordings on one code is the sign of a counter code, so neither takes it.
+    """
+    known = await known_wordings(db, product_id, vendor.id)
+    if known:
+        return wording_of(line) in known
+    return not await _other_wordings(db, vendor, value, line, {wording_of(line)})
+
+
+async def shared_wordings(
+    db: AsyncSession, vendor: Vendor, value: str, line: PurchaseLine
+) -> list[dict[str, Any]]:
+    """Other wordings that print this weighed code at the vendor, most lines first.
+
+    Wordings already tied to the line's product, and the line's own, are not
+    counted: only a different item behind the same code is.
+    """
+    if line.product_id is None:
+        return []
+    allowed = await known_wordings(db, line.product_id, vendor.id) | {wording_of(line)}
+    counts = await _other_wordings(db, vendor, value, line, allowed)
+    groups = [{"text": text, "lines": n} for text, n in counts.items()]
+    return sorted(groups, key=lambda g: (-g["lines"], g["text"]))
+
+
+def code_suggestion(
+    product_id: uuid.UUID, name: str, value: str, *, held: bool = False
+) -> dict[str, Any]:
+    """A code match offered for a person to tap; ``held`` when the line reads differently."""
     return {
         "kind": "code",
-        "product_id": str(product.id),
+        "product_id": str(product_id),
         "ignore": False,
-        "label": f"{product.name} (code {value}, other wording)",
+        "label": f"{name} (code {value}, other wording)" if held else f"{name} (code {value})",
         "score": "1",
     }

@@ -13,7 +13,7 @@ import { searchHref, searchWords } from "./identifyList";
 import { SupplyChoices } from "./KitchenSupply";
 import { NamingCandidates } from "./NamingCandidates";
 import { ProductPicker } from "./ProductPicker";
-import { heldNote, SharedCodeWarning, sharedWordings } from "./RememberCode";
+import { heldNote, SharedCodeWarning, sharedWordings, type SharedWording } from "./RememberCode";
 
 /** An answered group that carried an item code, offered to be remembered (2K). */
 export interface Offer {
@@ -26,7 +26,9 @@ export interface Offer {
 /** "Remember {code} for {product}" after a group with an item code is answered (2K). */
 export function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) {
   const remember = useRememberCode(offer.purchaseId);
-  const shared = sharedWordings(remember.error);
+  // Kept while "Remember anyway" is in flight, so the warning does not flicker away.
+  const [confirming, setConfirming] = useState<SharedWording[] | null>(null);
+  const shared = sharedWordings(remember.error) ?? (remember.isPending ? confirming : null);
   const held = heldNote(remember.data);
   const send = (sharedOk: boolean) => remember.mutate({ lineId: offer.lineId, sharedOk });
   return (
@@ -43,7 +45,10 @@ export function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => v
           code={offer.code}
           wordings={shared}
           pending={remember.isPending}
-          onRemember={() => send(true)}
+          onRemember={() => {
+            setConfirming(shared);
+            send(true);
+          }}
           onCancel={onDone}
         />
       ) : (

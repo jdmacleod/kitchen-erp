@@ -6,7 +6,7 @@ import type { PurchaseLine } from "../../api/purchases";
 import { useRememberCode, type RememberedCode } from "../../api/rememberCode";
 import { Alert, Button } from "../ui";
 
-/** Another wording that prints the same weighed-item code at this store (#448). */
+/** Another wording that prints the same weighed-item code at this store (issue 448). */
 export interface SharedWording {
   text: string;
   lines: number;
@@ -16,7 +16,8 @@ export interface SharedWording {
 export function sharedWordings(e: unknown): SharedWording[] | null {
   if (!isApiError(e) || e.code !== "code_shared") return null;
   const found = e.details?.wordings;
-  return Array.isArray(found) ? (found as SharedWording[]) : [];
+  // Without the wordings there is nothing to warn about by name; the plain error shows.
+  return Array.isArray(found) && found.length > 0 ? (found as SharedWording[]) : null;
 }
 
 /**
@@ -76,12 +77,14 @@ export function RememberCode({ line }: { line: PurchaseLine }) {
   const { id = "" } = useParams<{ id: string }>();
   const remember = useRememberCode(id);
   const [dismissed, setDismissed] = useState(false);
+  // Kept while "Remember anyway" is in flight, so the warning does not flicker away.
+  const [confirming, setConfirming] = useState<SharedWording[] | null>(null);
   // The offer goes once the code is known, but lines it left waiting are still worth a word.
   const held = heldNote(remember.data);
   if (held) return <span className="mt-1 block text-xs">{held}</span>;
   if (dismissed || !line.code_offer || !line.product) return null;
   const code = line.code_offer.value;
-  const shared = sharedWordings(remember.error);
+  const shared = sharedWordings(remember.error) ?? (remember.isPending ? confirming : null);
   const send = (sharedOk: boolean) => remember.mutate({ lineId: line.id, sharedOk });
   return (
     <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
@@ -90,7 +93,10 @@ export function RememberCode({ line }: { line: PurchaseLine }) {
           code={code}
           wordings={shared}
           pending={remember.isPending}
-          onRemember={() => send(true)}
+          onRemember={() => {
+            setConfirming(shared);
+            send(true);
+          }}
           onCancel={() => setDismissed(true)}
         />
       ) : (

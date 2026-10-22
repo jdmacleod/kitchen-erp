@@ -12,7 +12,7 @@ export interface RememberedCode {
 
 /**
  * Remember a line's code for its product at its vendor; only ever on a person's click (2K).
- * A weighed code other wording also prints is refused as `code_shared` until `sharedOk` (#448).
+ * A weighed code other wording also prints is refused as `code_shared` until `sharedOk` (issue 448).
  */
 export function useRememberCode(purchaseId: string) {
   const client = useQueryClient();

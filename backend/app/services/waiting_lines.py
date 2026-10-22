@@ -9,8 +9,6 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import AppUser, ProductIdentifier, Purchase, PurchaseLine
-from app.models.geo import Vendor, VendorLocation
-from app.services import code_wording
 from app.services.purchases import get_purchase
 from app.services.resolution import code_rung, commit_purchase
 
@@ -45,10 +43,8 @@ async def match_waiting(
         return 0
     rows = (
         await db.execute(
-            select(PurchaseLine, Vendor)
+            select(PurchaseLine.id, PurchaseLine.purchase_id)
             .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
-            .join(VendorLocation, VendorLocation.id == Purchase.vendor_location_id)
-            .join(Vendor, Vendor.id == VendorLocation.vendor_id)
             .where(
                 Purchase.status == "committed",
                 PurchaseLine.line_kind == "item",
@@ -61,10 +57,9 @@ async def match_waiting(
             )
         )
     ).all()
-    known = await code_wording.waiting_known(db, product_id, [(ln, v) for ln, v in rows])
     waiting: dict[uuid.UUID, set[uuid.UUID]] = {}
-    for line, _ in rows:
-        waiting.setdefault(line.purchase_id, set()).add(line.id)
+    for line_id, purchase_id in rows:
+        waiting.setdefault(purchase_id, set()).add(line_id)
     resolved = 0
     for purchase_id, line_ids in waiting.items():
         purchase = await get_purchase(db, purchase_id, lock=True)
@@ -75,7 +70,7 @@ async def match_waiting(
                 # Only the code rung: a line that merely contains the digits must
                 # not wait on aliases or the model while a person saves a product.
                 record: dict[str, Any] = {"rung": None}
-                await code_rung(db, line, vendor_id, record, known.get(vendor_id))  # type: ignore[arg-type]
+                await code_rung(db, line, vendor_id, record)
                 if record["rung"] == "identifier":
                     changed = True
                     resolved += 1

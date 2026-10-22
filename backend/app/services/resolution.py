@@ -143,16 +143,7 @@ async def _loose_code_suggestions(
             )
         )
     ).all()
-    return [
-        {
-            "kind": "code",
-            "product_id": str(pid),
-            "ignore": False,
-            "label": f"{name} (code {value})",
-            "score": "1",
-        }
-        for value, pid, name in rows
-    ]
+    return [code_wording.code_suggestion(pid, name, value) for value, pid, name in rows]
 
 
 async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, dict[str, str]]:
@@ -189,17 +180,6 @@ async def remember_code(
         raise ApiError(409, "no_code", "This line has no code to remember for its product.")
     vendor = purchase.vendor_location.vendor  # type: ignore[union-attr]
     vendor_id = vendor.id
-    if offer["scheme"] == code_wording.RW and not shared_ok:
-        shared = await code_wording.shared_wordings(db, vendor, offer["value"], line)
-        if shared:
-            count = sum(g["lines"] for g in shared)
-            raise ApiError(
-                409,
-                "code_shared",
-                f"{offer['value']} also reads on {count} {'line' if count == 1 else 'lines'} "
-                "with other wording. It may name the counter, not the item.",
-                {"wordings": shared},
-            )
     owner = (
         await db.execute(
             select(ProductIdentifier.product_id).where(
@@ -217,6 +197,17 @@ async def remember_code(
             f"{other.name if other else 'Another product'} already has that code here.",
             {"product_id": str(owner), "name": other.name if other else None},
         )
+    if offer["scheme"] == code_wording.RW and not shared_ok:
+        shared = await code_wording.shared_wordings(db, vendor, offer["value"], line)
+        if shared:
+            count = sum(g["lines"] for g in shared)
+            raise ApiError(
+                409,
+                "code_shared",
+                f"{offer['value']} also reads on {count} {'line' if count == 1 else 'lines'} "
+                "with other wording. It may name the counter, not the item.",
+                {"wordings": shared},
+            )
     identifier = ProductIdentifier(
         product_id=line.product_id,
         scheme=offer["scheme"],
@@ -354,13 +345,11 @@ async def code_rung(
     line: PurchaseLine,
     vendor_id: uuid.UUID | None,
     record: dict[str, Any],
-    known: set[str] | None = None,
 ) -> receipt_codes.LineCodes:
     """The identifier rung alone: resolve the line when it prints a product's code.
 
     Sets ``record["rung"]`` to "identifier" when it resolved; returns the codes read.
-    A weighed code on a line whose wording differs only suggests (``record["held"]``);
-    ``known`` is the wordings it may take, when the caller has worked them out.
+    A weighed code on a line whose wording differs only suggests (``record["held"]``).
     """
     vendor = await db.get(Vendor, vendor_id) if vendor_id is not None else None
     codes = receipt_codes.read(
@@ -373,10 +362,12 @@ async def code_rung(
     if (
         found is not None
         and found[1] == code_wording.RW
-        and vendor_id is not None
-        and not await code_wording.agrees(db, line, found[0].id, vendor_id, known)
+        and vendor is not None
+        and not await code_wording.agrees(db, line, found[0].id, vendor, found[2])
     ):
-        record["held"] = code_wording.held_suggestion(found[0], found[2])
+        record["held"] = code_wording.code_suggestion(
+            found[0].id, found[0].name, found[2], held=True
+        )
         found = None
     if found is not None:
         product = found[0]
@@ -412,8 +403,8 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
     codes = await code_rung(db, line, vendor_id, record)
     if record["rung"] == "identifier":
         return record
-    if "held" in record:
-        suggestions.append(record.pop("held"))
+    # A held code match leaves the line to the name rungs: it is likely another item.
+    held = record.pop("held", None)
     # A digit run anywhere else is only ever a suggestion.
     suggestions.extend(await _loose_code_suggestions(db, codes, vendor_id))
 
@@ -506,6 +497,8 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
             )
             record["similar"] = len(suggestions)
 
+    if held is not None:
+        suggestions.insert(0, held)
     line.suggestions = suggestions
     if line.resolution in ("barcode", "identifier", "alias", "supply"):
         # Re-resolving a previously auto-resolved line that no longer matches.

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncpg
 
 from app.core.db import get_sessionmaker
-from app.services.waiting_lines import match_all_waiting
+from app.services.waiting_lines import match_all_waiting, match_waiting
 from tests.pricebook_helpers import make_location, make_product
 from tests.resolution_helpers import make_receipt_purchase
 from tests.test_item_codes import label, remember
@@ -142,3 +142,77 @@ async def test_a_weighed_code_only_this_wording_prints_is_remembered_at_once(
     assert r.json()["scheme"] == "rw_item" and r.json()["held"] == []
     after = (await _lines(admin_client, purchase))["CTR CHEESE ONE"]
     assert next(ln for ln in after if ln["id"] == second["id"])["resolution"] == "identifier"
+
+
+async def test_a_line_another_product_names_is_judged_by_that_products_wordings(
+    admin_client, admin, db_session, owner_conn: asyncpg.Connection
+):
+    """Matching A's code also selects a label whose price digits hold it; B's code decides B."""
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    cheese = await make_product(admin_client, "Cheese A", "Counter cheese A")
+    olives = await make_product(admin_client, "Olives", "Counter olives")
+    olive_line = {"raw_text": f"{label('2 54321 12345')} CTR OLIVES", "line_total": "4.10"}
+    purchase = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A, olive_line])
+    await remember(owner_conn, olives["id"], "rw_item", "54321", loc["vendor"]["id"])
+    await remember(owner_conn, cheese["id"], "rw_item", CODE, loc["vendor"]["id"])
+    held: list[dict] = []
+    async with get_sessionmaker()() as db:
+        await match_waiting(db, admin, cheese["id"], held)
+    lines = await _lines(admin_client, purchase)
+    assert lines["CTR OLIVES"][0]["product"]["id"] == olives["id"]
+    assert lines["CTR CHEESE ONE"][0]["product"]["id"] == cheese["id"]
+    assert held == []
+
+
+async def test_a_new_receipt_with_two_wordings_and_none_known_holds_both(
+    admin_client, admin, db_session, owner_conn: asyncpg.Connection
+):
+    """A code added from a page or an edit: no wording is known, so neither line takes it first."""
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    cheese_a = await make_product(admin_client, "Cheese A", "Counter cheese A")
+    await remember(owner_conn, cheese_a["id"], "rw_item", CODE, loc["vendor"]["id"])
+    purchase = await make_receipt_purchase(admin.id, loc["id"], [CHEESE_B, CHEESE_A])
+    lines = (await resolve(admin_client, purchase, db_session))["lines"]
+    assert [ln["resolution"] for ln in lines] == ["unmatched", "unmatched"]
+    for line in lines:
+        assert line["suggestions"][0]["kind"] == "code"
+        assert line["suggestions"][0]["product_id"] == cheese_a["id"]
+
+
+async def test_a_line_the_code_identified_does_not_vouch_for_its_wording(
+    admin_client, admin, db_session, owner_conn: asyncpg.Connection
+):
+    """History from before the check: the code identified the other item's line on its own."""
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    cheese_a = await make_product(admin_client, "Cheese A", "Counter cheese A")
+    await remember(owner_conn, cheese_a["id"], "rw_item", CODE, loc["vendor"]["id"])
+    earlier = await make_receipt_purchase(admin.id, loc["id"], [CHEESE_B])
+    [old] = (await resolve(admin_client, earlier, db_session))["lines"]
+    assert old["resolution"] == "identifier"  # the only wording, so it took the code
+    await owner_conn.execute("DELETE FROM product_identifier WHERE value = $1", CODE)
+
+    purchase = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A])
+    [line] = (await _lines(admin_client, purchase))["CTR CHEESE ONE"]
+    await _identify(admin_client, purchase, line, cheese_a)
+    r = await admin_client.post(f"/api/v1/purchases/{purchase}/lines/{line['id']}/remember-code")
+    assert r.status_code == 409, r.text
+    assert r.json()["error"]["details"]["wordings"] == [{"text": "CTR CHEESE TWO", "lines": 1}]
+
+
+async def test_a_held_line_is_still_offered_similar_names(
+    admin_client, admin, db_session, owner_conn: asyncpg.Connection
+):
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    cheese_a = await make_product(admin_client, "Cheese A", "Counter cheese A")
+    smoked = await make_product(admin_client, "Smoked gouda", "Deli smoked gouda")
+    # Wording far from cheese A's alias, so no fuzzy alias speaks for it.
+    gouda = {"raw_text": f"{label('2 12345 70000')} DELI SMOKED GOUDA", "line_total": "7.40"}
+    first = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A])
+    [line] = (await _lines(admin_client, first))["CTR CHEESE ONE"]
+    await _identify(admin_client, first, line, cheese_a)
+    await remember(owner_conn, cheese_a["id"], "rw_item", CODE, loc["vendor"]["id"])
+    later = await make_receipt_purchase(admin.id, loc["id"], [gouda])
+    [held] = (await resolve(admin_client, later, db_session))["lines"]
+    assert held["resolution"] == "unmatched"
+    assert held["suggestions"][0]["product_id"] == cheese_a["id"]
+    assert smoked["id"] in [s["product_id"] for s in held["suggestions"][1:]]
