@@ -225,6 +225,7 @@ describe("to-identify queue", () => {
             scheme: "vendor_sku",
             value: "88001",
             product_id: hits[1].id,
+            held: [],
           });
         },
     });
@@ -240,5 +241,52 @@ describe("to-identify queue", () => {
     await user.click(remember);
     expect(await screen.findByText(`Remembered 88001 for ${hits[1].name}.`)).toBeInTheDocument();
     expect(remembered).toBe(1);
+  });
+
+  it("asks again before remembering a weighed code other wording also prints (#448)", async () => {
+    const coded: ToIdentifyGroup = { ...group, code: { scheme: "rw_item", value: "12345" } };
+    const sent: unknown[] = [];
+    mockApi({
+      ...baseRoutes(),
+      "GET /to-identify": () => jsonResponse(200, { items: sent.length === 0 ? [coded] : [] }),
+      [`POST /purchases/${receiptPurchaseId}/lines/${group.lines[0].line_id}/remember-code`]: (
+        call,
+      ) => {
+        sent.push(call.body);
+        if (sent.length === 1) {
+          return jsonResponse(409, {
+            error: {
+              code: "code_shared",
+              message: "12345 also reads on 2 lines with other wording.",
+              details: { wordings: [{ text: "CTR CHEESE B", lines: 2 }] },
+            },
+          });
+        }
+        return jsonResponse(200, {
+          scheme: "rw_item",
+          value: "12345",
+          product_id: hits[1].id,
+          held: [
+            { purchase_id: receiptPurchaseId, line_id: "held-1", text: "CTR CHEESE B" },
+            { purchase_id: receiptPurchaseId, line_id: "held-2", text: "CTR CHEESE B" },
+          ],
+        });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp("/shop/receipts/identify");
+    const card = await screen.findByRole("group", { name: "Millstone Market: RVRBND BREAD FLR" });
+    await user.type(within(card).getByRole("combobox", { name: "Product" }), "flour");
+    await user.click(await screen.findByRole("option", { name: /Bread Flour/ }));
+    await user.click(
+      await screen.findByRole("button", { name: `Remember 12345 for ${hits[1].name}` }),
+    );
+    expect(await screen.findByText("CTR CHEESE B")).toBeInTheDocument();
+    expect(screen.getByText(/It may name the counter, not the item/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Remember anyway" }));
+    expect(
+      await screen.findByText(/2 waiting lines read differently, so they stay in To identify/),
+    ).toBeInTheDocument();
+    expect(sent).toEqual([{ shared_ok: false }, { shared_ok: true }]);
   });
 });

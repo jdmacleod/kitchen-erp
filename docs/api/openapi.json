@@ -3816,6 +3816,40 @@
         "title": "HealthOut",
         "type": "object"
       },
+      "HeldLine": {
+        "additionalProperties": false,
+        "description": "A waiting line that prints the code but reads differently, left for a person.",
+        "properties": {
+          "line_id": {
+            "format": "uuid",
+            "title": "Line Id",
+            "type": "string"
+          },
+          "purchase_id": {
+            "format": "uuid",
+            "title": "Purchase Id",
+            "type": "string"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "purchase_id",
+          "line_id",
+          "text"
+        ],
+        "title": "HeldLine",
+        "type": "object"
+      },
       "HelperStatus": {
         "additionalProperties": false,
         "description": "Whether \"Look this up online\" is offered: a products helper token exists (PD8).",
@@ -15807,10 +15841,30 @@
         "title": "RelinkProposal",
         "type": "object"
       },
+      "RememberCodeIn": {
+        "additionalProperties": false,
+        "description": "A second click: remember a weighed code other wording also prints (#448).",
+        "properties": {
+          "shared_ok": {
+            "default": false,
+            "title": "Shared Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "RememberCodeIn",
+        "type": "object"
+      },
       "RememberCodeOut": {
         "additionalProperties": false,
         "description": "The code now known for the line's product at this vendor.",
         "properties": {
+          "held": {
+            "items": {
+              "$ref": "#/components/schemas/HeldLine"
+            },
+            "title": "Held",
+            "type": "array"
+          },
           "product_id": {
             "format": "uuid",
             "title": "Product Id",
@@ -29256,7 +29310,7 @@
     },
     "/api/v1/purchases/{purchase_id}/lines/{line_id}/remember-code": {
       "post": {
-        "description": "Remember the line's code for its product at this vendor (04, 2K).",
+        "description": "Remember the line's code for its product at this vendor (04, 2K).\n\nA weighed code other wording also prints answers 409 ``code_shared`` until\n``shared_ok``; waiting lines that read differently are listed, not identified.",
         "operationId": "remember_line_code_api_v1_purchases__purchase_id__lines__line_id__remember_code_post",
         "parameters": [
           {
@@ -29280,6 +29334,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RememberCodeIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {

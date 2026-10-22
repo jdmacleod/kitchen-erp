@@ -46,9 +46,9 @@ from app.services import (
     product_same,
     product_short_names,
     proposals,
-    resolution,
     unit_switch,
     usda,
+    waiting_lines,
 )
 
 router = APIRouter(tags=["catalog"])
@@ -276,7 +276,7 @@ async def create_product(
     # Proposals clipped before this product existed now see it (2P).
     await proposals.rematch_pending(db, row.id)
     if payload.barcode:
-        await resolution.match_waiting(db, user, row.id)
+        await waiting_lines.match_waiting(db, user, row.id)
     row = await catalog.get_product(db, row.id)
     return await guard.commit(201, ProductOut.model_validate(row).model_dump(mode="json"))
 
@@ -313,7 +313,7 @@ async def update_product(
 ) -> ProductOut:
     row = await catalog.update_product(db, product_id, payload)
     if payload.barcode:
-        await resolution.match_waiting(db, user, product_id)
+        await waiting_lines.match_waiting(db, user, product_id)
         row = await catalog.get_product(db, product_id)
     return ProductOut.model_validate(row)
 

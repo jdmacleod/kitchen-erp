@@ -12,7 +12,7 @@ from pathlib import Path
 from app.core.db import get_sessionmaker
 from app.models import ProductIdentifier
 from app.services.importer import import_export, load_export
-from app.services.resolution import match_all_waiting
+from app.services.waiting_lines import match_all_waiting
 from tests.pricebook_helpers import make_location, make_product
 
 UPC = "036000291452"

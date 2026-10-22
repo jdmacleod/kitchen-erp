@@ -39,6 +39,7 @@ from app.schemas.purchases import (
     PurchaseList,
     PurchaseOut,
     RecomputeOut,
+    RememberCodeIn,
     RememberCodeOut,
     RememberStoreCodeIn,
     RemovalOut,
@@ -65,6 +66,7 @@ from app.services import (
     unit_display,
     unit_switch,
     user_settings,
+    waiting_lines,
 )
 
 router = APIRouter(tags=["purchases"])
@@ -576,7 +578,7 @@ async def resolve_line(
         payload.product is not None
         and payload.product.barcode
         and product_id is not None
-        and await resolution.match_waiting(db, user, product_id)
+        and await waiting_lines.match_waiting(db, user, product_id)
     ):
         purchase = await purchases.get_purchase(db, purchase_id)
     return await purchase_out(db, purchase)
@@ -721,10 +723,20 @@ async def cheapest(
     "/purchases/{purchase_id}/lines/{line_id}/remember-code", response_model=RememberCodeOut
 )
 async def remember_line_code(
-    purchase_id: uuid.UUID, line_id: uuid.UUID, user: CurrentUser, db: DbSession
+    purchase_id: uuid.UUID,
+    line_id: uuid.UUID,
+    user: CurrentUser,
+    db: DbSession,
+    body: RememberCodeIn | None = None,
 ) -> RememberCodeOut:
-    """Remember the line's code for its product at this vendor (04, 2K)."""
-    found = await resolution.remember_code(db, purchase_id, line_id)
-    out = RememberCodeOut(scheme=found.scheme, value=found.value, product_id=found.product_id)  # type: ignore[arg-type]
-    await resolution.match_waiting(db, user, out.product_id)
-    return out
+    """Remember the line's code for its product at this vendor (04, 2K).
+
+    A weighed code other wording also prints answers 409 ``code_shared`` until
+    ``shared_ok``; waiting lines that read differently are listed, not identified.
+    """
+    shared_ok = body.shared_ok if body is not None else False
+    found = await resolution.remember_code(db, purchase_id, line_id, shared_ok=shared_ok)
+    scheme, value, product_id = found.scheme, found.value, found.product_id
+    held: list[dict] = []
+    await waiting_lines.match_waiting(db, user, product_id, held)
+    return RememberCodeOut(scheme=scheme, value=value, product_id=product_id, held=held)  # type: ignore[arg-type]

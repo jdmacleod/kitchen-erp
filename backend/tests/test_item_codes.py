@@ -152,7 +152,12 @@ async def test_identifying_a_line_offers_its_code_and_records_it_only_on_a_click
 
     r = await admin_client.post(f"/api/v1/purchases/{purchase}/lines/{line['id']}/remember-code")
     assert r.status_code == 200, r.text
-    assert r.json() == {"scheme": "vendor_sku", "value": "88001", "product_id": bananas["id"]}
+    assert r.json() == {
+        "scheme": "vendor_sku",
+        "value": "88001",
+        "product_id": bananas["id"],
+        "held": [],
+    }
     assert await owner_conn.fetchval(count) == 1
     [line] = (await admin_client.get(f"/api/v1/purchases/{purchase}")).json()["lines"]
     assert line["code_offer"] is None

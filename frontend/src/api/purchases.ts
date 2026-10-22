@@ -593,19 +593,6 @@ export function useResolveLine(purchaseId: string) {
   );
 }
 
-/** Remember a line's code for its product at its vendor; only ever on a person's click (2K). */
-export function useRememberCode(purchaseId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (lineId: string) =>
-      api<{ scheme: string; value: string; product_id: string }>(
-        `/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/remember-code`,
-        { method: "POST" },
-      ),
-    onSuccess: () => void client.invalidateQueries({ queryKey: purchaseKeys.purchase(purchaseId) }),
-  });
-}
-
 export function useReResolveLine(purchaseId: string) {
   return usePurchaseMutation(purchaseId, (lineId: string) =>
     api<Purchase>(`/purchases/${enc(purchaseId)}/lines/${enc(lineId)}/re-resolve`, {
