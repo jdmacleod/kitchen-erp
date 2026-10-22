@@ -17,8 +17,8 @@ from tests.test_item_codes import label, remember
 from tests.test_resolution import resolve
 
 CODE = "12345"
-CHEESE_A = {"raw_text": f"{label('2 12345 10000')} CTR CHEESE A", "line_total": "6.10"}
-CHEESE_B = {"raw_text": f"{label('2 12345 70000')} CTR CHEESE B", "line_total": "7.40"}
+CHEESE_A = {"raw_text": f"{label('2 12345 10000')} CTR CHEESE ONE", "line_total": "6.10"}
+CHEESE_B = {"raw_text": f"{label('2 12345 70000')} CTR CHEESE TWO", "line_total": "7.40"}
 
 
 async def _waiting(admin_client, admin, db_session, loc: dict, lines: list[dict]) -> str:
@@ -52,7 +52,7 @@ async def test_remembering_a_code_other_wording_prints_asks_first_and_identifies
     purchase = await _waiting(
         admin_client, admin, db_session, loc, [CHEESE_A, CHEESE_A, CHEESE_B, CHEESE_B]
     )
-    first_a = (await _lines(admin_client, purchase))["CTR CHEESE A"][0]
+    first_a = (await _lines(admin_client, purchase))["CTR CHEESE ONE"][0]
     await _identify(admin_client, purchase, first_a, cheese_a)
     remember_url = f"/api/v1/purchases/{purchase}/lines/{first_a['id']}/remember-code"
     count = f"SELECT count(*) FROM product_identifier WHERE value = '{CODE}'"
@@ -61,17 +61,17 @@ async def test_remembering_a_code_other_wording_prints_asks_first_and_identifies
     assert r.status_code == 409, r.text
     error = r.json()["error"]
     assert error["code"] == "code_shared"
-    assert error["details"]["wordings"] == [{"text": CHEESE_B["raw_text"], "lines": 2}]
+    assert error["details"]["wordings"] == [{"text": "CTR CHEESE TWO", "lines": 2}]
     assert await owner_conn.fetchval(count) == 0  # nothing without the second click
 
     r = await admin_client.post(remember_url, json={"shared_ok": True})
     assert r.status_code == 200, r.text
     lines = await _lines(admin_client, purchase)
     held = {h["line_id"] for h in r.json()["held"]}
-    assert held == {ln["id"] for ln in lines["CTR CHEESE B"]}
+    assert held == {ln["id"] for ln in lines["CTR CHEESE TWO"]}
     # The other line that reads like it is identified; the other wording waits.
-    assert {ln["product"]["id"] for ln in lines["CTR CHEESE A"]} == {cheese_a["id"]}
-    for line in lines["CTR CHEESE B"]:
+    assert {ln["product"]["id"] for ln in lines["CTR CHEESE ONE"]} == {cheese_a["id"]}
+    for line in lines["CTR CHEESE TWO"]:
         assert line["resolution"] == "unmatched"
         assert line["suggestions"][0]["kind"] == "code"
         assert line["suggestions"][0]["product_id"] == cheese_a["id"]
@@ -84,7 +84,7 @@ async def test_a_new_receipt_reading_differently_is_only_offered_the_code(
     cheese_a = await make_product(admin_client, "Cheese A", "Counter cheese A")
     first = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A])
     await _identify(
-        admin_client, first, (await _lines(admin_client, first))["CTR CHEESE A"][0], cheese_a
+        admin_client, first, (await _lines(admin_client, first))["CTR CHEESE ONE"][0], cheese_a
     )
     await remember(owner_conn, cheese_a["id"], "rw_item", CODE, loc["vendor"]["id"])
 
@@ -125,7 +125,7 @@ async def test_waiting_lines_that_all_read_alike_take_a_new_code(
     await remember(owner_conn, cheese_a["id"], "rw_item", CODE, loc["vendor"]["id"])
     async with get_sessionmaker()() as db:
         assert await match_all_waiting(db, admin) == (2, 1)
-    lines = (await _lines(admin_client, alike))["CTR CHEESE A"]
+    lines = (await _lines(admin_client, alike))["CTR CHEESE ONE"]
     assert {ln["product"]["id"] for ln in lines} == {cheese_a["id"]}
 
 
@@ -135,10 +135,10 @@ async def test_a_weighed_code_only_this_wording_prints_is_remembered_at_once(
     loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
     cheese_a = await make_product(admin_client, "Cheese A", "Counter cheese A")
     purchase = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A, CHEESE_A])
-    first, second = (await _lines(admin_client, purchase))["CTR CHEESE A"]
+    first, second = (await _lines(admin_client, purchase))["CTR CHEESE ONE"]
     await _identify(admin_client, purchase, first, cheese_a)
     r = await admin_client.post(f"/api/v1/purchases/{purchase}/lines/{first['id']}/remember-code")
     assert r.status_code == 200, r.text
     assert r.json()["scheme"] == "rw_item" and r.json()["held"] == []
-    after = (await _lines(admin_client, purchase))["CTR CHEESE A"]
+    after = (await _lines(admin_client, purchase))["CTR CHEESE ONE"]
     assert next(ln for ln in after if ln["id"] == second["id"])["resolution"] == "identifier"

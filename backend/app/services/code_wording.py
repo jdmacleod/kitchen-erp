@@ -145,7 +145,7 @@ async def shared_wordings(
         wording = wording_of(other)
         if wording in allowed or not prints_code(other, vendor, value):
             continue
-        group = groups.setdefault(wording, {"text": other.raw_text or wording, "lines": 0})
+        group = groups.setdefault(wording, {"text": wording, "lines": 0})
         group["lines"] += 1
     return sorted(groups.values(), key=lambda g: (-g["lines"], g["text"]))
 

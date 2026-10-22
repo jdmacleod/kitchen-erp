@@ -1191,7 +1191,7 @@ function LineProduct({
             {suggestions.length > 1 ? ` (+${suggestions.length - 1})` : ""}
           </span>
         ) : null}
-        {line.code_offer && line.product ? <RememberCode line={line} /> : null}
+        <RememberCode line={line} />
       </span>
     );
   }
@@ -1262,7 +1262,7 @@ function LineProduct({
           ) : null}
         </span>
       ) : null}
-      {line.code_offer && line.product ? <RememberCode line={line} /> : null}
+      <RememberCode line={line} />
       {line.product && isItem ? <ReviewBestBy line={line} /> : null}
       {suggestions.length > 0 && !setAside && !line.product ? (
         <ul

@@ -85,4 +85,44 @@ describe("remembering an item code in review", () => {
     await user.click(skip);
     expect(asked).toBe(1);
   });
+
+  it("still says which waiting lines were left once the offer has gone (#448)", async () => {
+    const chosen: PurchaseLine = {
+      ...aliasLine,
+      resolution: "manual",
+      raw_text: "CTR CHEESE A",
+      code_offer: { scheme: "rw_item", value: "12345" },
+    };
+    let remembered = false;
+    mockApi({
+      "GET /auth/me": () => jsonResponse(200, adminUser),
+      "GET /health": () => jsonResponse(200, { status: "ok" }),
+      "GET /units": () => jsonResponse(200, { items: units }),
+      "GET /vendor-locations": () => jsonResponse(200, { items: [chainLocation, marketLocation] }),
+      "GET /ingest-jobs": () => jsonResponse(200, { items: [] }),
+      "GET /ingredients": () => jsonResponse(200, { items: [], next_cursor: null }),
+      // Once the code is known, the line no longer offers it.
+      [`GET ${base}`]: () =>
+        jsonResponse(200, {
+          ...receiptPurchase,
+          lines: [remembered ? { ...chosen, code_offer: null } : chosen],
+        }),
+      [`POST ${base}/lines/${chosen.id}/remember-code`]: () => {
+        remembered = true;
+        return jsonResponse(200, {
+          scheme: "rw_item",
+          value: "12345",
+          product_id: aliasLine.product?.id ?? "",
+          held: [{ purchase_id: "other", line_id: "held-1", text: "CTR CHEESE B" }],
+        });
+      },
+    });
+    const user = userEvent.setup();
+    renderApp(`/shop${base}`);
+    const [button] = await screen.findAllByRole("button", { name: /Remember 12345 for/ });
+    await user.click(button);
+    expect((await screen.findAllByText(/1 waiting line reads differently/)).length).toBeGreaterThan(
+      0,
+    );
+  });
 });
