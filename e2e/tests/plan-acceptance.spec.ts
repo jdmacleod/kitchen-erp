@@ -410,16 +410,19 @@ test(
       ["/catalog/products", "/api/v1/products", other.name],
     ] as const) {
       await page.goto(path);
-      await expect(page.locator("main").getByRole("table").first()).toBeVisible();
+      // The list itself: counts beside it (Show voided) are household-wide and
+      // may answer after the rows, or change as other workers void (issue 436).
+      const rows = page.locator("main").getByRole("table").first();
+      await expect(rows).toBeVisible();
       await expect(page.locator("main")).not.toContainText("Loading…");
-      const before = await page.locator("main").textContent();
+      const before = await rows.textContent();
       api.length = 0;
       await switchTo(to);
       expect(
         api.filter((p) => p.startsWith(own)),
         `${path} fetched again`,
       ).toEqual([]);
-      await expect(page.locator("main"), `${path} changed`).toHaveText(before ?? "");
+      await expect(rows, `${path} changed`).toHaveText(before ?? "");
     }
 
     // The list is scoped: a switch fetches the other kitchen's list and the page follows.
