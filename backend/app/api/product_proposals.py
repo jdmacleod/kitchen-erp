@@ -28,7 +28,7 @@ from app.services import (
     lookups,
     product_short_names,
     proposals,
-    resolution,
+    waiting_lines,
 )
 
 router = APIRouter(tags=["product proposals"])
@@ -133,7 +133,7 @@ async def accept_proposal(
         await proposals.rematch_pending(db, accepted.product_id)
         if (accepted.result or {}).get("identifiers"):
             # Receipt lines that print the new code and wait in the queue resolve now.
-            await resolution.match_waiting(db, user, accepted.product_id)
+            await waiting_lines.match_waiting(db, user, accepted.product_id)
         # Clipped for waiting receipt lines: they are this product now (2D).
         await identify_queue.identify_for_proposal(db, user, accepted)
         accepted = await proposals.get_proposal(db, proposal_id)

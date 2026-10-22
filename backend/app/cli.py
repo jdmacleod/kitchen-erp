@@ -1007,7 +1007,7 @@ def match_waiting(user_email: str = MATCH_AS) -> None:
 
     from app.core.db import dispose_engine, get_sessionmaker
     from app.models import AppUser
-    from app.services.resolution import match_all_waiting
+    from app.services.waiting_lines import match_all_waiting
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:

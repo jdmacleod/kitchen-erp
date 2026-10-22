@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router";
-import { purchaseErrorMessage, useRememberCode } from "../../api/purchases";
+import { purchaseErrorMessage } from "../../api/purchases";
+import { useRememberCode } from "../../api/rememberCode";
 import { useApplyToIdentify, type ToIdentifyGroup } from "../../api/toIdentify";
 import { clipKey, setClipTarget, useClipTargetKey } from "../../lib/clipFor";
 import { formatMoney } from "../../lib/decimal";
@@ -12,6 +13,7 @@ import { searchHref, searchWords } from "./identifyList";
 import { SupplyChoices } from "./KitchenSupply";
 import { NamingCandidates } from "./NamingCandidates";
 import { ProductPicker } from "./ProductPicker";
+import { heldNote, SharedCodeWarning, sharedWordings, type SharedWording } from "./RememberCode";
 
 /** An answered group that carried an item code, offered to be remembered (2K). */
 export interface Offer {
@@ -24,6 +26,11 @@ export interface Offer {
 /** "Remember {code} for {product}" after a group with an item code is answered (2K). */
 export function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => void }) {
   const remember = useRememberCode(offer.purchaseId);
+  // Kept while "Remember anyway" is in flight, so the warning does not flicker away.
+  const [confirming, setConfirming] = useState<SharedWording[] | null>(null);
+  const shared = sharedWordings(remember.error) ?? (remember.isPending ? confirming : null);
+  const held = heldNote(remember.data);
+  const send = (sharedOk: boolean) => remember.mutate({ lineId: offer.lineId, sharedOk });
   return (
     <div
       role="status"
@@ -31,16 +38,23 @@ export function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => v
     >
       {remember.isSuccess ? (
         <span>
-          Remembered {offer.code} for {offer.product}.
+          Remembered {offer.code} for {offer.product}.{held ? ` ${held}` : ""}
         </span>
+      ) : shared ? (
+        <SharedCodeWarning
+          code={offer.code}
+          wordings={shared}
+          pending={remember.isPending}
+          onRemember={() => {
+            setConfirming(shared);
+            send(true);
+          }}
+          onCancel={onDone}
+        />
       ) : (
         <>
           <span>This line carries the item code {offer.code}.</span>
-          <Button
-            variant="secondary"
-            disabled={remember.isPending}
-            onClick={() => remember.mutate(offer.lineId)}
-          >
+          <Button variant="secondary" disabled={remember.isPending} onClick={() => send(false)}>
             Remember {offer.code} for {offer.product}
           </Button>
           {remember.isError ? (
@@ -50,9 +64,11 @@ export function RememberOffer({ offer, onDone }: { offer: Offer; onDone: () => v
           ) : null}
         </>
       )}
-      <Button variant="secondary" onClick={onDone}>
-        {remember.isSuccess ? "Done" : "No thanks"}
-      </Button>
+      {shared && !remember.isSuccess ? null : (
+        <Button variant="secondary" onClick={onDone}>
+          {remember.isSuccess ? "Done" : "No thanks"}
+        </Button>
+      )}
     </div>
   );
 }

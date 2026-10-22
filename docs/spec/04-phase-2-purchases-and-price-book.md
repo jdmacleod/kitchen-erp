@@ -339,6 +339,8 @@ The code is read before normalization strips leading codes from `raw_text_norm`,
 
 **Learning a code.** When a reviewer identifies a line that carries a code (in review or the to-identify queue), the form offers "Remember {code} for {product}". Accepting records the identifier for that vendor. Nothing is recorded without that click.
 
+**Counter codes (amendment, 2026-10-22, #448).** At some counters several items print the same weighed-item code, because the digit that tells them apart falls outside the vendor's label layout. So an `rw_item` code identifies a line on its own only when the line's normalized wording is already known for that product at that vendor: one of its aliases, or a line a person identified as it. Lines the code itself identified do not count, so a code that once identified another item's line never vouches for it. With no wording known yet, the code identifies a line only when no other wording at the vendor prints it, on a new receipt and in the queue alike. A line that prints the code but reads differently keeps the match as its top suggestion for a person to tap, and still gets the alias, model and similar-name rungs, since it is likely another item. Remembering a weighed code that other wording at the vendor already prints asks again first ("{code} also reads on CTR CHEESE TWO (2 lines). It may name the counter, not the item."), and records it only on "Remember anyway"; the response lists the waiting lines left for a person. GTINs, PLUs and vendor SKUs name one item and are not checked.
+
 **Count first.** Before this sub-phase is built, a counts-only query on the household's committed receipts reports, per vendor, how many lines carry a code-shaped token. Only aggregate counts leave the database. If few do, the order of the remaining sub-phases is revisited.
 
 ### Acceptance criteria
@@ -346,6 +348,7 @@ The code is read before normalization strips leading codes from `raw_text_norm`,
 70. A synthetic warehouse-style receipt fixture carries item codes in the leading position, one of which matches a seeded `rw_item` for its vendor. That line resolves with `resolution = identifier`, and an outlier price on it is flagged as for aliases.
 71. A digit run of the same length elsewhere on a line, or on a receipt from a vendor without `code_position`, produces a suggestion, never a resolution.
 72. Identifying a queued line that carries a code offers to remember the code, and records it only on confirmation.
+72a. Two lines at one vendor print the same weighed-item code with different wording. Remembering the code for one asks again, records nothing until confirmed, and then identifies only the waiting lines that read like it; the others stay in the queue with the code match as a suggestion. A later receipt line that reads differently is offered the match, never identified by it (#448).
 
 ## 2L — Product proposals and review
 

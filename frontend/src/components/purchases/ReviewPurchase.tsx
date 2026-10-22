@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import { Link, useParams } from "react-router";
 import { isPositiveDecimal, productTitle, trimDecimal } from "../../api/catalog";
-import { errorMessage } from "../../api/client";
 import { useLocations } from "../../api/geo";
 import { locationCandidates, useIngestJob, useIngestJobs } from "../../api/ingest";
 import {
@@ -18,7 +17,6 @@ import {
   usePatchPurchase,
   useReResolveLine,
   useRememberStoreCode,
-  useRememberCode,
   useResolveLine,
   useStoreCodeOffer,
   type AcceptedKind,
@@ -77,6 +75,7 @@ import {
 } from "./lineParts";
 import { ProductPicker } from "./ProductPicker";
 import { imageColumns, ReceiptZoom } from "./ReceiptZoom";
+import { RememberCode } from "./RememberCode";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { RereadLines } from "./RereadLines";
 import { LineActions } from "./ReviewLineActions";
@@ -1192,7 +1191,7 @@ function LineProduct({
             {suggestions.length > 1 ? ` (+${suggestions.length - 1})` : ""}
           </span>
         ) : null}
-        {line.code_offer && line.product ? <RememberCode line={line} /> : null}
+        <RememberCode line={line} />
       </span>
     );
   }
@@ -1263,7 +1262,7 @@ function LineProduct({
           ) : null}
         </span>
       ) : null}
-      {line.code_offer && line.product ? <RememberCode line={line} /> : null}
+      <RememberCode line={line} />
       {line.product && isItem ? <ReviewBestBy line={line} /> : null}
       {suggestions.length > 0 && !setAside && !line.product ? (
         <ul
@@ -1773,27 +1772,5 @@ function ReviewBestBy({ line }: { line: PurchaseLine }) {
     <div className="mt-1 text-sm">
       <BestBy purchaseId={id} line={line} inReview />
     </div>
-  );
-}
-
-/** "Remember {code} for {product}" (04, 2K): nothing is recorded without this click. */
-function RememberCode({ line }: { line: PurchaseLine }) {
-  const { id = "" } = useParams<{ id: string }>();
-  const remember = useRememberCode(id);
-  if (!line.code_offer || !line.product) return null;
-  return (
-    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-      <Button
-        variant="secondary"
-        className="min-h-11 px-2 text-xs lg:min-h-8"
-        disabled={remember.isPending}
-        onClick={() => remember.mutate(line.id)}
-      >
-        Remember {line.code_offer.value} for {productTitle(line.product)}
-      </Button>
-      {remember.isError ? (
-        <span className="text-red-800 dark:text-red-300">{errorMessage(remember.error)}</span>
-      ) : null}
-    </span>
   );
 }

@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import or_, select, text, update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -36,7 +36,7 @@ from app.models import (
     ReceiptAlias,
 )
 from app.models.geo import Vendor
-from app.services import best_by, brands, pricebook, recipe_cost_triggers
+from app.services import best_by, brands, code_wording, pricebook, recipe_cost_triggers
 from app.services.aliases import upsert_alias
 from app.services.catalog import search_products
 from app.services.normalize import NORMALIZE_VERSION, normalize_receipt_text
@@ -87,18 +87,18 @@ def install_default_ranker() -> bool:
 
 async def _identified(
     db: AsyncSession, codes: receipt_codes.LineCodes, vendor_id: uuid.UUID | None
-) -> Product | None:
-    """The active product a line's codes name, if one does."""
+) -> tuple[Product, str, str] | None:
+    """The active product a line's codes name, with the (scheme, value) that named it."""
     for code in codes.gtins:
         product = await _by_identifier(db, "gtin", code, None)
         if product is not None:
-            return product
+            return product, "gtin", code
     if vendor_id is None:
         return None
     for scheme, value in codes.positioned:
         product = await _by_identifier(db, scheme, value, vendor_id)
         if product is not None:
-            return product
+            return product, scheme, value
     return None
 
 
@@ -143,16 +143,7 @@ async def _loose_code_suggestions(
             )
         )
     ).all()
-    return [
-        {
-            "kind": "code",
-            "product_id": str(pid),
-            "ignore": False,
-            "label": f"{name} (code {value})",
-            "score": "1",
-        }
-        for value, pid, name in rows
-    ]
+    return [code_wording.code_suggestion(pid, name, value) for value, pid, name in rows]
 
 
 async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, dict[str, str]]:
@@ -175,15 +166,20 @@ async def code_offers(db: AsyncSession, purchase: Purchase) -> dict[uuid.UUID, d
 
 
 async def remember_code(
-    db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID
+    db: AsyncSession, purchase_id: uuid.UUID, line_id: uuid.UUID, *, shared_ok: bool = False
 ) -> ProductIdentifier:
-    """Record the line's code for its product at this vendor; only on a person's click."""
+    """Record the line's code for its product at this vendor; only on a person's click.
+
+    A weighed-item code already printed on lines with other wording may name the
+    counter, not the item: that asks again, and ``shared_ok`` is the second click.
+    """
     purchase = await get_purchase(db, purchase_id, lock=True)
     line = await _line_of(purchase, line_id)
     offer = (await code_offers(db, purchase)).get(line.id)
     if offer is None or line.product_id is None:
         raise ApiError(409, "no_code", "This line has no code to remember for its product.")
-    vendor_id = purchase.vendor_location.vendor_id  # type: ignore[union-attr]
+    vendor = purchase.vendor_location.vendor  # type: ignore[union-attr]
+    vendor_id = vendor.id
     owner = (
         await db.execute(
             select(ProductIdentifier.product_id).where(
@@ -201,6 +197,17 @@ async def remember_code(
             f"{other.name if other else 'Another product'} already has that code here.",
             {"product_id": str(owner), "name": other.name if other else None},
         )
+    if offer["scheme"] == code_wording.RW and not shared_ok:
+        shared = await code_wording.shared_wordings(db, vendor, offer["value"], line)
+        if shared:
+            count = sum(g["lines"] for g in shared)
+            raise ApiError(
+                409,
+                "code_shared",
+                f"{offer['value']} also reads on {count} {'line' if count == 1 else 'lines'} "
+                "with other wording. It may name the counter, not the item.",
+                {"wordings": shared},
+            )
     identifier = ProductIdentifier(
         product_id=line.product_id,
         scheme=offer["scheme"],
@@ -333,12 +340,16 @@ def _note(shortlist: list[dict[str, Any]], product_id: str) -> dict[str, str]:
     return {"brand_note": entry["brand_note"]} if entry and "brand_note" in entry else {}
 
 
-async def _by_code(
-    db: AsyncSession, line: PurchaseLine, vendor_id: uuid.UUID | None, record: dict[str, Any]
+async def code_rung(
+    db: AsyncSession,
+    line: PurchaseLine,
+    vendor_id: uuid.UUID | None,
+    record: dict[str, Any],
 ) -> receipt_codes.LineCodes:
     """The identifier rung alone: resolve the line when it prints a product's code.
 
     Sets ``record["rung"]`` to "identifier" when it resolved; returns the codes read.
+    A weighed code on a line whose wording differs only suggests (``record["held"]``).
     """
     vendor = await db.get(Vendor, vendor_id) if vendor_id is not None else None
     codes = receipt_codes.read(
@@ -347,8 +358,19 @@ async def _by_code(
         vendor.rw_layout if vendor else None,
     )
     record["code"] = codes.offer[1] if codes.offer else None
-    product = await _identified(db, codes, vendor_id)
-    if product is not None:
+    found = await _identified(db, codes, vendor_id)
+    if (
+        found is not None
+        and found[1] == code_wording.RW
+        and vendor is not None
+        and not await code_wording.agrees(db, line, found[0].id, vendor, found[2])
+    ):
+        record["held"] = code_wording.code_suggestion(
+            found[0].id, found[0].name, found[2], held=True
+        )
+        found = None
+    if found is not None:
+        product = found[0]
         line.product_id = product.id
         line.resolution = "identifier"
         line.resolved_by = None
@@ -378,9 +400,11 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
 
     # 1. Identifier (2K): a GTIN, a weighed-item label, or a code where the vendor
     # prints them. Read from the raw text, before normalization drops leading codes.
-    codes = await _by_code(db, line, vendor_id, record)
+    codes = await code_rung(db, line, vendor_id, record)
     if record["rung"] == "identifier":
         return record
+    # A held code match leaves the line to the name rungs: it is likely another item.
+    held = record.pop("held", None)
     # A digit run anywhere else is only ever a suggestion.
     suggestions.extend(await _loose_code_suggestions(db, codes, vendor_id))
 
@@ -473,6 +497,8 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
             )
             record["similar"] = len(suggestions)
 
+    if held is not None:
+        suggestions.insert(0, held)
     line.suggestions = suggestions
     if line.resolution in ("barcode", "identifier", "alias", "supply"):
         # Re-resolving a previously auto-resolved line that no longer matches.
@@ -698,82 +724,9 @@ async def reopen_purchase(db: AsyncSession, purchase_id: uuid.UUID) -> Purchase:
     return await get_purchase(db, purchase_id)
 
 
-# --- lines waiting for a product's code --------------------------------------------
-
-
-async def match_waiting(db: AsyncSession, user: AppUser, product_id: uuid.UUID) -> int:
-    """Run the code rung again over queued lines that print one of the product's codes.
-
-    A product often gains its barcode after the receipts that bought it were read:
-    a clipped page, an edit, a remembered code. Lines already in the to-identify
-    queue are not read again on their own, so this gives them the identifier rung
-    a new receipt gets, and prices the ones it resolves. Aliases, similar names
-    and the model are left to the queue, so saving a product never waits on them.
-    Returns how many resolved.
-    """
-    codes = (
-        await db.execute(
-            select(ProductIdentifier.scheme, ProductIdentifier.value).where(
-                ProductIdentifier.product_id == product_id
-            )
-        )
-    ).all()
-    # A barcode may be printed without its leading zeros; the ladder reads it exactly.
-    cores = {value.lstrip("0") if scheme == "gtin" else value for scheme, value in codes}
-    cores = {c for c in cores if len(c) >= 3}
-    if not cores:
-        return 0
-    rows = (
-        await db.execute(
-            select(PurchaseLine.id, PurchaseLine.purchase_id)
-            .join(Purchase, Purchase.id == PurchaseLine.purchase_id)
-            .where(
-                Purchase.status == "committed",
-                PurchaseLine.line_kind == "item",
-                PurchaseLine.resolution == "unmatched",
-                PurchaseLine.removed_at.is_(None),
-                or_(
-                    *(PurchaseLine.raw_text.contains(c, autoescape=True) for c in cores),
-                    *(PurchaseLine.printed_text.contains(c, autoescape=True) for c in cores),
-                ),
-            )
-        )
-    ).all()
-    waiting: dict[uuid.UUID, set[uuid.UUID]] = {}
-    for line_id, purchase_id in rows:
-        waiting.setdefault(purchase_id, set()).add(line_id)
-    resolved = 0
-    for purchase_id, line_ids in waiting.items():
-        purchase = await get_purchase(db, purchase_id, lock=True)
-        changed = False
-        vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
-        for line in purchase.lines:
-            if line.id in line_ids and line.resolution == "unmatched":
-                # Only the code rung: a line that merely contains the digits must
-                # not wait on aliases or the model while a person saves a product.
-                record: dict[str, Any] = {"rung": None}
-                await _by_code(db, line, vendor_id, record)
-                if record["rung"] == "identifier":
-                    changed = True
-                    resolved += 1
-        await db.commit()
-        if changed:
-            await commit_purchase(db, user, purchase_id)
-    return resolved
-
-
-async def match_all_waiting(db: AsyncSession, user: AppUser) -> tuple[int, int]:
-    """``match_waiting`` for every product with a code: a catch-up for codes added
-    before lines matched on their own. Returns (lines resolved, products checked)."""
-    products = (await db.execute(select(ProductIdentifier.product_id).distinct())).scalars().all()
-    resolved = 0
-    for product_id in products:
-        resolved += await match_waiting(db, user, product_id)
-    return resolved, len(products)
-
-
 __all__ = [
     "PriceObservationVoid",
+    "code_rung",
     "commit_purchase",
     "decide_line",
     "reopen_purchase",

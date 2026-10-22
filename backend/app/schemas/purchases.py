@@ -641,9 +641,24 @@ class NameProductsOut(ApiModel):
     results: list[NamedProduct]
 
 
+class RememberCodeIn(ApiModel):
+    """A second click: remember a weighed code other wording also prints (#448)."""
+
+    shared_ok: bool = False
+
+
+class HeldLine(ApiModel):
+    """A waiting line that prints the code but reads differently, left for a person."""
+
+    purchase_id: uuid.UUID
+    line_id: uuid.UUID
+    text: str | None
+
+
 class RememberCodeOut(ApiModel):
     """The code now known for the line's product at this vendor."""
 
     scheme: Literal["vendor_sku", "rw_item", "plu"]
     value: str
     product_id: uuid.UUID
+    held: list[HeldLine] = Field(default_factory=list)
