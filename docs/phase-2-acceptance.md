@@ -11,6 +11,7 @@ frontend unit tests under `frontend/src/test/`, browser tests under `e2e/tests/`
 | 3 | Unnormalizable observation stored intact with a failure status | `test_pricebook.py::test_unnormalizable_observation_is_stored_with_failure_status` |
 | 4 | Density change recomputes exactly the dependents | `test_pricebook.py::test_density_change_recomputes_exactly_the_dependents` (same-dimension row's `computed_at` untouched) |
 | 5 | Truncate and `kerp recompute-norms` reproduces the table (all columns but `computed_at`) | `test_pricebook.py::test_truncate_and_recompute_reproduces_all_but_computed_at` |
+| 5a | `kerp migrate` rebuilds prices and recipe costs from an older `convert_version` in one transaction, keeping snapshots, and nothing when current | `test_derived_versions.py` (both tests) |
 | 6 | Voided observation absent from all views, present for audit | `test_pricebook.py::test_void_hides_from_views_but_keeps_audit` |
 | 7 | Chain scope fans out to every active location; location scope does not | `test_pricebook.py::test_chain_scope_fans_out_and_location_scope_does_not` |
 | 8 | Excluding promotions falls back to the latest regular price | `test_pricebook.py::test_promo_exclusion_falls_back_to_latest_regular` (`offer_latest_regular`) |

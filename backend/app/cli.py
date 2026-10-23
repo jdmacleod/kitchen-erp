@@ -112,7 +112,7 @@ def migrate(
         help="Only count how the next re-keying migration changes receipt wording; change nothing.",
     ),
 ) -> None:
-    """Apply migrations as the owner role, then seed reference units (idempotent)."""
+    """Apply migrations as the owner role, seed units, and rebuild stale prices (idempotent)."""
     if check_barcodes:
         _check_barcodes()
         return
@@ -121,7 +121,7 @@ def migrate(
         return
     _run_alembic(command.upgrade, revision, "migrating")
     if revision == "head":
-        _seed_units()
+        _seed_units(refresh=True)
 
 
 def _check_barcodes() -> None:
@@ -245,15 +245,17 @@ def _check_normalize() -> None:
     typer.echo("Nothing was changed. Run `kerp migrate` to apply.")
 
 
-def _seed_units() -> None:
+def _seed_units(*, refresh: bool = False) -> None:
     from app.core.db import dispose_engine, get_sessionmaker
+    from app.services.derived_versions import refresh_if_stale
     from app.services.units import seed_units as _seed
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
-            n = await _seed(db)
+            typer.echo(f"seeded {await _seed(db)} units")
+            if refresh:
+                await refresh_if_stale(db, typer.echo)
         await dispose_engine()
-        typer.echo(f"seeded {n} units")
 
     asyncio.run(_run())
 
@@ -870,9 +872,8 @@ def recompute_norms() -> None:
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
-            n = await recompute_all(db)
+            typer.echo(f"recomputed {await recompute_all(db)} normalizations")
         await dispose_engine()
-        typer.echo(f"recomputed {n} normalizations")
 
     asyncio.run(_run())
 
@@ -885,9 +886,8 @@ def recompute_costs() -> None:
 
     async def _run() -> None:
         async with get_sessionmaker()() as db:
-            n = await recompute_all(db)
+            typer.echo(f"recomputed costs for {await recompute_all(db)} recipes")
         await dispose_engine()
-        typer.echo(f"recomputed costs for {n} recipes")
 
     asyncio.run(_run())
 
