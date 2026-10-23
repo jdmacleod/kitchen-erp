@@ -4,6 +4,10 @@ Every ``price_norm`` row records the ``CONVERT_VERSION`` that produced it. When
 a deploy brings a new version, the stored conversions and the recipe cost
 snapshots built on them are stale, so ``kerp migrate`` rebuilds both. Both are
 derived data (non-negotiable 5): a rebuild loses nothing.
+
+The rebuild is one transaction: stopped part way, it leaves the stale rows as
+they were, and the next ``kerp migrate`` finds them again. Snapshots are
+recomputed in place, so the cost history of earlier recipe versions is kept.
 """
 
 from __future__ import annotations
@@ -13,7 +17,7 @@ from collections.abc import Callable
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import PriceNorm
+from app.models import PriceNorm, Recipe
 from app.services import pricebook, recipe_costing
 from app.units.convert import CONVERT_VERSION
 
@@ -38,7 +42,13 @@ async def refresh_if_stale(db: AsyncSession, say: Callable[[str], object]) -> bo
         f"Unit conversion is now version {CONVERT_VERSION}; prices were normalized "
         f"with version {', '.join(stale)}. Rebuilding prices and recipe costs…"
     )
-    norms = await pricebook.recompute_all(db)
-    recipes = await recipe_costing.recompute_all(db)
-    say(f"  recomputed {norms} normalizations and costs for {recipes} recipes")
+    observations = await db.execute(
+        select(PriceNorm.observation_id).where(PriceNorm.convert_version != CONVERT_VERSION)
+    )
+    norms = await pricebook.normalize_core(db, list(observations.scalars()))
+    recipes = list((await db.execute(select(Recipe.id).order_by(Recipe.path))).scalars())
+    for recipe_id in recipes:
+        await recipe_costing.recompute_recipe_core(db, recipe_id)
+    await db.commit()
+    say(f"  recomputed {norms} normalizations and costs for {len(recipes)} recipes")
     return True
