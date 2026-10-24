@@ -448,6 +448,8 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const linesPartial = purchase.flags.includes("lines_partial");
   // Rows the scan prints like purchases that no line accounts for (issue 181).
   const rowsNotRead = purchase.flags.includes("rows_not_read") && purchase.status !== "committed";
+  // The rows themselves, when the reading kept them (older readings did not).
+  const unreadRows = purchase.printed_checks?.unread_rows ?? [];
   // Lines read without their decimal point, when putting it back makes the lines
   // match the printed total (#59). Offered, never applied without a click.
   const decimalSuspects = purchase.flags.includes("decimals_restore_total")
@@ -543,8 +545,24 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
       ) : null}
       {rowsNotRead && !linesPartial ? (
         <Alert tone="info">
-          Some rows on the receipt print an amount but were not read as lines. Compare the lines
-          with the receipt image and add any that are missing.
+          {unreadRows.length > 0 ? (
+            <>
+              {unreadRows.length === 1
+                ? "This row on the receipt prints an amount but was not read as a line:"
+                : "These rows on the receipt print an amount but were not read as lines:"}
+              <ul className="my-1 list-disc pl-5 font-mono text-xs">
+                {unreadRows.map((row, i) => (
+                  <li key={i}>{row}</li>
+                ))}
+              </ul>
+              Check them against the receipt image and add any that are purchases with Add a line.
+            </>
+          ) : (
+            <>
+              Some rows on the receipt print an amount but were not read as lines. Compare the lines
+              with the receipt image and add any that are missing.
+            </>
+          )}
         </Alert>
       ) : null}
       {dateMissing ? (

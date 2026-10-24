@@ -11692,6 +11692,20 @@
               }
             ],
             "title": "Savings Total"
+          },
+          "unread_rows": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unread Rows"
           }
         },
         "title": "PrintedChecks",
