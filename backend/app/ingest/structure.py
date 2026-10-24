@@ -43,6 +43,7 @@ from app.ingest.printed_rows import (
     savings_under_their_items,
 )
 from app.ingest.schemas import ReceiptLines
+from app.ingest.tax_rows import tax_from_print, tax_from_rate
 
 # Flags set by the passes below. Each names what was changed and why.
 # qty_from_prefix: "2 QTY NAME" printed its count before the name (pattern 1).
@@ -58,6 +59,9 @@ from app.ingest.schemas import ReceiptLines
 #   loyalty sentence; kept for review, never dropped (pattern 6).
 # tax_from_rate: the tax line was read at its taxable base; it takes the amount
 #   the base at the printed rate comes to (pattern 7).
+# tax_from_print: no line holds the tax and the header read none, but the receipt
+#   prints its tax as "<base> @ <rate>% = <amount>" rows whose bases add up to the
+#   items read; a tax line is added from each row that charges tax (pattern 7a).
 # negative_from_text: an item whose amount is printed with a trailing minus
 #   ("10.00-") is a saving, and became a discount (pattern 8).
 # points_not_money: a loyalty-points count ("1300 PTS") read as an amount counts
@@ -134,6 +138,7 @@ def post_passes(
     flag_footer_rows(parsed)
     unjoined_quantity_rows(parsed)
     tax_from_rate(parsed)
+    tax_from_print(parsed, receipt_text, header_tax)
     deposit_rows(parsed)
     rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
@@ -469,36 +474,6 @@ def flag_footer_rows(lines: list[ParsedLine]) -> None:
             and (_FOOTER_WORDS.search(text) or len(re.findall(r"[A-Za-z]{2,}", text)) >= 5)
         ):
             line.flags.append("footer_text")
-
-
-# --- 7. A tax line read at its base -----------------------------------------
-
-_PERCENT = re.compile(r"(\d+(?:[.,]\d+)?)\s*%")
-
-
-def tax_from_rate(lines: list[ParsedLine]) -> None:
-    """A tax line printing "<base> @ <rate>% = <amount>" takes the amount.
-
-    Only when the line was read at an amount it prints and the base at the
-    rate comes, to the cent, to another amount it prints.
-    """
-    for line in lines:
-        if line.line_kind != "tax":
-            continue
-        rate = _PERCENT.search(line.raw_text)
-        if rate is None:
-            continue
-        percent = Decimal(rate.group(1).replace(",", "."))
-        rest = line.raw_text[: rate.start()] + " " + line.raw_text[rate.end() :]
-        amounts = _amounts(rest)
-        if line.line_total not in amounts:
-            continue
-        base = line.line_total
-        for amount in amounts:
-            if amount != base and abs(base * percent / 100 - amount) <= CENTS:
-                line.line_total = amount
-                line.flags.append("tax_from_rate")
-                break
 
 
 # --- 8. A saving printed negative, read as an item ---------------------------

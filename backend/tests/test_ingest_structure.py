@@ -10,6 +10,7 @@ from decimal import Decimal
 import pytest
 
 from app.ingest import structure
+from app.ingest.lines import reconcile
 from app.ingest.schemas import ReceiptLine, ReceiptLines
 
 
@@ -263,6 +264,73 @@ def test_a_tax_line_read_at_its_base_takes_the_amount():
 def test_a_tax_line_read_right_is_left_alone():
     (line,) = _passes(("SALES TAX 31.40 @ 8.25% = 2.59", "tax", "2.59"))
     assert line.line_total == Decimal("2.59") and line.flags == []
+
+
+# --- 7a. A tax table the model left out ------------------------------------
+
+_TAX_TABLE = """MOSSGLEN CRACKERS          6.20 F
+HEARTH CANDLES            12.50 T
+SUBTOTAL                  18.70
+       6.20 @ 0.000% =     0.00
+Tax   12.50 @ 9.500% =     1.19
+TOTAL                     19.89
+"""
+
+
+def _tax_lines(lines):
+    return [line for line in lines if line.line_kind == "tax"]
+
+
+def test_a_tax_table_the_model_left_out_is_read_from_the_print():
+    lines = _passes(
+        ("MOSSGLEN CRACKERS 6.20 F", "item", "6.20"),
+        ("HEARTH CANDLES 12.50 T", "item", "12.50"),
+        text=_TAX_TABLE,
+        total="19.89",
+    )
+    (tax,) = _tax_lines(lines)  # the 0% row adds no line
+    assert tax.line_total == Decimal("1.19")
+    assert tax.flags == ["tax_from_print"]
+    assert tax.raw_text == "Tax   12.50 @ 9.500% =     1.19"
+    assert tax.seq == 3
+    assert not reconcile(lines, Decimal("19.89"), None)["mismatch"]
+
+
+def test_bases_that_miss_an_item_add_no_tax():
+    # One item was not read, so the bases come to more than the items: the
+    # table is not trusted and the gap stays for review.
+    lines = _passes(("HEARTH CANDLES 12.50 T", "item", "12.50"), text=_TAX_TABLE)
+    assert _tax_lines(lines) == []
+
+
+def test_a_row_whose_rate_does_not_give_its_amount_adds_no_tax():
+    text = _TAX_TABLE.replace("1.19", "1.91")
+    lines = _passes(
+        ("MOSSGLEN CRACKERS 6.20 F", "item", "6.20"),
+        ("HEARTH CANDLES 12.50 T", "item", "12.50"),
+        text=text,
+    )
+    assert _tax_lines(lines) == []
+
+
+def test_a_tax_line_already_read_or_a_header_tax_is_left_alone():
+    lines = _passes(
+        ("MOSSGLEN CRACKERS 6.20 F", "item", "6.20"),
+        ("HEARTH CANDLES 12.50 T", "item", "12.50"),
+        ("Tax 12.50 @ 9.500% = 1.19", "tax", "1.19"),
+        text=_TAX_TABLE,
+    )
+    assert [line.flags for line in _tax_lines(lines)] == [[]]
+    with_header = structure.post_passes(
+        _model(
+            ("MOSSGLEN CRACKERS 6.20 F", "item", "6.20"),
+            ("HEARTH CANDLES 12.50 T", "item", "12.50"),
+        ),
+        _TAX_TABLE,
+        None,
+        Decimal("1.19"),
+    ).lines
+    assert _tax_lines(with_header) == []
 
 
 # --- 8. A saving printed negative, read as an item ---------------------------
