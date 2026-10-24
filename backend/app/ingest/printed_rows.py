@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import Any
 
 from app.ingest.lines import (
+    _REGULAR_PRICE,
     CENTS,
     QTY_FLAGS,
     RECONCILE_TOLERANCE,
@@ -383,9 +384,15 @@ def _last_amount(row: str) -> Decimal | None:
 
 
 def _savings_total(rows: list[str]) -> Decimal | None:
-    """A savings total: on the row that names it, or the next "total" row under it."""
+    """A savings total: on the row that names it, or the next "total" row under it.
+
+    A regular-price note under one item ("Regular Price 0.79, You saved 0.10") is
+    that item's saving, not the receipt's, and is passed over.
+    """
     for i, row in enumerate(rows):
         if not _SAVINGS_HEAD.search(row) or _PERCENT_ROW.search(row):
+            continue
+        if _REGULAR_PRICE.search(row):
             continue
         amount = _last_amount(row)
         if amount is not None:
