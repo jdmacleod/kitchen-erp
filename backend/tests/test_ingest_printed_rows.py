@@ -225,7 +225,12 @@ async def test_a_read_receipt_keeps_its_rows_savings_and_checks(admin_client, re
     done = await ih.run_job(job["id"])
     body = (await admin_client.get(f"/api/v1/purchases/{done.purchase_id}")).json()
     assert body["trust"] == "adds_up"
-    assert body["printed_checks"] == {"savings_total": "2.15", "item_count": 4, "payment": "12.36"}
+    assert body["printed_checks"] == {
+        "savings_total": "2.15",
+        "item_count": 4,
+        "payment": "12.36",
+        "unread_rows": None,  # every printed row was read
+    }
     lines = body["lines"]
     assert [line["raw_text"] for line in lines if line["line_kind"] == "item"] == [
         "MEADOW TORTILLAS",
