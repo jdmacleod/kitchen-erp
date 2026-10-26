@@ -29,6 +29,9 @@ def _key(name: str) -> str | None:
         ("organic red wine vinegar", "red-wine-vinegar"),  # a word that isn't identity
         ("large eggs", "egg"),
         ("Organic Carrots", "carrot"),
+        ("dark rum", "dark-rum"),  # a style beats its spirit
+        ("fresh orange juice", "orange-juice"),
+        ("cocktail cherries", "cocktail-cherry"),
     ],
 )
 def test_a_name_finds_its_entry(name, key):
@@ -43,6 +46,7 @@ def test_a_name_finds_its_entry(name, key):
         "milk",  # was offered a 2% milk: the entry is more specific than the name
         "smoked onion",  # the name has a qualifier the entry lacks
         "sweet paprika",
+        "vermouth",  # sweet and dry are both more specific: neither is offered
         "Quince paste",  # nothing on the list is a paste of quince
         "",
         "12 oz",

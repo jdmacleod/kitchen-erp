@@ -23,14 +23,15 @@ def test_the_review_decisions_are_in_the_list():
     keys = set(by_key())
     # Flat: the abstract parents are gone (VC6).
     assert not {"butter", "milk", "cheese", "chicken", "vinegar", "cooking-oil"} & keys
-    # VI1 beans split; VI2 lemon parts; VI3 drinks; VI4 toasted sesame oil.
+    # VI1 beans split; VI2 lemon parts (juice an entry since Tier F, as lime's is);
+    # VI3 drinks; VI4 toasted sesame oil.
     assert {
         "dried-black-beans",
         "canned-black-beans",
         "dried-kidney-beans",
         "canned-kidney-beans",
     } <= keys
-    assert {"lemon", "bottled-lemon-juice"} <= keys and not {"lemon-juice", "lemon-zest"} & keys
+    assert {"lemon", "lemon-juice", "bottled-lemon-juice"} <= keys and "lemon-zest" not in keys
     assert {"coffee", "red-wine", "white-wine", "beer", "vodka", "rum", "whiskey"} <= keys
     assert {"sesame-oil", "toasted-sesame-oil"} <= keys
 
@@ -62,6 +63,24 @@ def test_the_seasonal_produce_decisions_are_in_the_list():
     # "sweet corn"; loose kernels reference the frozen record.
     assert (entry["corn-on-the-cob"].fdc, entry["corn-kernels"].fdc) == (169998, 168398)
     assert named[normalize_name("sweet corn")] == "corn-on-the-cob"
+
+
+def test_the_bar_decisions_are_in_the_list():
+    # Tier F: a bare word that names several bottles is no entry's spelling, so typing
+    # it lists them all; a style is its own entry; a maker's bottle keeps its name.
+    entries = standard_list().ingredients
+    named = {normalize_name(t): e.key for e in entries for t in (e.name, *e.spellings)}
+    for word in ("vermouth", "maraschino", "chartreuse", "coconut cream", "rye", "bitters"):
+        assert normalize_name(word) not in named, word
+    assert named[normalize_name("white rum")] == "rum"
+    assert named[normalize_name("triple sec")] == "orange-liqueur"
+    assert named[normalize_name("champagne")] == "sparkling-wine"
+    assert named[normalize_name("maraschino cherry")] == "cocktail-cherry"
+    assert named[normalize_name("aromatic bitters")] == "angostura-bitters"
+    entry = by_key()
+    assert {"bourbon", "rye-whiskey", "scotch-whisky", "dark-rum", "prosecco"} <= set(entry)
+    assert entry["campari"].proper_noun and entry["campari"].name == "Campari"
+    assert all(entry[k].unit == "ml" for k in ("lemon-juice", "simple-syrup", "orange-juice"))
 
 
 def test_proper_nouns_are_the_only_capitals():
