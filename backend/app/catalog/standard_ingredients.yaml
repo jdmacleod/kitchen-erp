@@ -21,6 +21,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171267
+  - key: absinthe
+    name: "absinthe"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: acorn-squash
     name: "acorn squash"
     category: produce
@@ -113,6 +120,22 @@ ingredients:
     keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170567
+  - key: amaretto
+    name: "amaretto"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["amaretto liqueur"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: amaro-nonino
+    name: "Amaro Nonino"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: anaheim-pepper
     name: "Anaheim pepper"
     proper_noun: true
@@ -146,6 +169,15 @@ ingredients:
     unit: g
     spellings: ["andouille sausage"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: angostura-bitters
+    name: "Angostura bitters"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["aromatic bitters", "angostura"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: anise-seed
     name: "anise seed"
     category: spices
@@ -154,6 +186,14 @@ ingredients:
     unit: g
     fdc: 171316
     spellings: ["aniseed"]
+  - key: aperol
+    name: "Aperol"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: apple
     name: "apple"
     category: produce
@@ -445,6 +485,14 @@ ingredients:
     unit: g
     fdc: 169145
     spellings: ["beetroot"]
+  - key: benedictine
+    name: "Bénédictine"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: bitter-melon
     name: "bitter melon"
     category: produce
@@ -554,6 +602,14 @@ ingredients:
     unit: g
     fdc: 171613
     spellings: ["stock cubes", "bouillon granules"]
+  - key: bourbon
+    name: "bourbon"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["bourbon whiskey"]
+    note: "USDA's one whiskey record is whiskey's, and no two entries share a reference."
   - key: brandy
     name: "brandy"
     category: beverages
@@ -708,6 +764,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169975
+  - key: cachaca
+    name: "cachaça"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: cake-flour
     name: "cake flour"
     category: pantry
@@ -729,6 +792,14 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 180}
     unit: g
     fdc: 172178
+  - key: campari
+    name: "Campari"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: canadian-bacon
     name: "Canadian bacon"
     proper_noun: true
@@ -994,6 +1065,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 300}
     unit: g
     fdc: 169988
+  - key: celery-salt
+    name: "celery salt"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's salt record is salt's, and no two entries share a reference."
   - key: celery-seed
     name: "celery seed"
     category: spices
@@ -1200,6 +1278,13 @@ ingredients:
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
+  - key: cinnamon-syrup
+    name: "cinnamon syrup"
+    category: pantry
+    perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: null}
+    unit: ml
+    note: "Made at home or bought; USDA has no record for it."
   - key: club-soda
     name: "club soda"
     category: beverages
@@ -1208,6 +1293,14 @@ ingredients:
     unit: ml
     fdc: 174842
     spellings: ["soda water"]
+  - key: cocktail-cherry
+    name: "cocktail cherry"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 180, freezer: null}
+    unit: each
+    fdc: 167766
+    spellings: ["maraschino cherry", "luxardo cherry", "brandied cherry"]
   - key: cocktail-sauce
     name: "cocktail sauce"
     category: pantry
@@ -1259,6 +1352,29 @@ ingredients:
     unit: g
     spellings: ["coffee beans", "ground coffee"]
     note: "USDA records only brewed coffee; the list means the beans or grounds you buy."
+  - key: coffee-liqueur
+    name: "coffee liqueur"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 175097
+    spellings: ["kahlúa"]
+  - key: cognac
+    name: "cognac"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; brandy has no reference either."
+  - key: cola
+    name: "cola"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 174852
+    spellings: ["cola soda"]
   - key: colby
     name: "colby"
     category: dairy
@@ -1426,6 +1542,15 @@ ingredients:
     keep: {room: null, fridge: 14, freezer: null}
     unit: g
     fdc: 173418
+  - key: cream-of-coconut
+    name: "cream of coconut"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 7, freezer: null}
+    unit: ml
+    fdc: 170171
+    spellings: ["sweetened cream of coconut"]
+    note: "Sweetened, for drinks; unsweetened coconut cream is not this entry."
   - key: cream-of-mushroom-soup
     name: "cream of mushroom soup"
     category: pantry
@@ -1441,6 +1566,22 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175041
+  - key: creme-de-mure
+    name: "crème de mûre"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["blackberry liqueur"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: creme-de-violette
+    name: "crème de violette"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["violet liqueur"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: creme-fraiche
     name: "crème fraîche"
     category: dairy
@@ -1515,6 +1656,14 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169226
+  - key: dark-rum
+    name: "dark rum"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["aged rum", "gold rum", "jamaican rum"]
+    note: "USDA's one rum record is rum's, and no two entries share a reference."
   - key: dark-soy-sauce
     name: "dark soy sauce"
     category: pantry
@@ -1753,6 +1902,22 @@ ingredients:
     unit: g
     fdc: 2644281
     spellings: ["cannellini beans", "white beans", "navy beans", "great northern beans"]
+  - key: dry-sherry
+    name: "dry sherry"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 60, freezer: null}
+    unit: ml
+    spellings: ["fino sherry", "manzanilla sherry"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: dry-vermouth
+    name: "dry vermouth"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 60, freezer: null}
+    unit: ml
+    spellings: ["french vermouth", "white vermouth"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: duck
     name: "duck"
     category: meat
@@ -1850,6 +2015,15 @@ ingredients:
     unit: g
     fdc: 169382
     spellings: ["enoki"]
+  - key: espresso
+    name: "espresso"
+    category: beverages
+    perishability: fresh
+    keep: {room: null, fridge: 1, freezer: null}
+    unit: ml
+    fdc: 171891
+    spellings: ["espresso shot"]
+    note: "The brewed shot; coffee is the beans or grounds you buy."
   - key: evaporated-milk
     name: "evaporated milk"
     category: pantry
@@ -1865,6 +2039,14 @@ ingredients:
     unit: ml
     fdc: 748608
     spellings: ["evoo"]
+  - key: falernum
+    name: "falernum"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["velvet falernum"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: farmer-cheese
     name: "farmer cheese"
     category: dairy
@@ -2262,6 +2444,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174846
+  - key: ginger-beer
+    name: "ginger beer"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA records ginger ale but not ginger beer."
   - key: glass-noodles
     name: "glass noodles"
     category: pantry
@@ -2378,6 +2567,20 @@ ingredients:
     keep: {room: 10, fridge: 7, freezer: null}
     unit: g
     fdc: 174673
+  - key: grapefruit-juice
+    name: "grapefruit juice"
+    category: beverages
+    perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 90}
+    unit: ml
+    fdc: 173039
+  - key: grapefruit-soda
+    name: "grapefruit soda"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: grapes
     name: "grapes"
     category: produce
@@ -2411,6 +2614,14 @@ ingredients:
     keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170427
+  - key: green-chartreuse
+    name: "green Chartreuse"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: green-curry-paste
     name: "green curry paste"
     category: pantry
@@ -2442,6 +2653,14 @@ ingredients:
     unit: g
     fdc: 170419
     spellings: ["peas"]
+  - key: grenadine
+    name: "grenadine"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 90, freezer: null}
+    unit: ml
+    fdc: 168088
+    spellings: ["grenadine syrup"]
   - key: ground-allspice
     name: "ground allspice"
     category: spices
@@ -2714,6 +2933,21 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 169640
+  - key: honey-ginger-syrup
+    name: "honey-ginger syrup"
+    category: pantry
+    perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
+    unit: ml
+    spellings: ["ginger honey syrup"]
+    note: "Made at home or bought; USDA has no record for it."
+  - key: honey-syrup
+    name: "honey syrup"
+    category: pantry
+    perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
+    unit: ml
+    note: "Made at home or bought; USDA has no record for it."
   - key: honeycrisp-apple
     name: "Honeycrisp apple"
     proper_noun: true
@@ -2793,6 +3027,15 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171893
+  - key: islay-scotch
+    name: "Islay Scotch"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["peated scotch", "islay whisky"]
+    note: "USDA's one whiskey record is whiskey's, and no two entries share a reference."
   - key: italian-bread
     name: "Italian bread"
     proper_noun: true
@@ -2917,6 +3160,14 @@ ingredients:
     unit: g
     fdc: 168457
     spellings: ["dried kelp", "konbu"]
+  - key: kosher-salt
+    name: "kosher salt"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["coarse salt"]
+    note: "USDA's salt record is salt's, and no two entries share a reference."
   - key: kumquat
     name: "kumquat"
     category: produce
@@ -2986,7 +3237,26 @@ ingredients:
     measures:
       - {label: "tbsp juice", qty: "0.33"}
       - {label: "tsp zest", qty: "0.33"}
-    note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"). The measures below are household estimates to confirm."
+    note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"), as on lime; a recipe that measures the juice uses lemon juice. The measures below are household estimates to confirm."
+  - key: lemon-juice
+    name: "lemon juice"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 3, freezer: 90}
+    unit: ml
+    fdc: 167747
+    spellings: ["fresh lemon juice"]
+  - key: lemon-peel
+    name: "lemon peel"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
+    unit: g
+    fdc: 167749
+    spellings: ["lemon twist"]
+    measures:
+      - {label: "twist", qty: "2"}
+    note: "The twist below is a household estimate to confirm."
   - key: lemongrass
     name: "lemongrass"
     category: produce
@@ -3018,6 +3288,15 @@ ingredients:
     unit: ml
     fdc: 170857
     spellings: ["coffee cream", "table cream"]
+  - key: lillet-blanc
+    name: "Lillet Blanc"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 60, freezer: null}
+    unit: ml
+    spellings: ["lillet", "kina lillet"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: lima-beans
     name: "lima beans"
     category: produce
@@ -3137,6 +3416,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 169661
+  - key: maraschino-liqueur
+    name: "maraschino liqueur"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "Not the cherries: those are cocktail cherry. USDA has no plain record for it; add a reference in review if one fits."
   - key: margarine
     name: "margarine"
     category: dairy
@@ -3204,6 +3490,13 @@ ingredients:
     keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     spellings: ["meyer lemons"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: mezcal
+    name: "mezcal"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: microgreens
     name: "microgreens"
@@ -3439,6 +3732,64 @@ ingredients:
     unit: g
     fdc: 2258591
     note: "Foundation record: SR Legacy has no orange sweet pepper."
+  - key: orange-bitters
+    name: "orange bitters"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: orange-curacao
+    name: "orange curaçao"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["dry curaçao", "curaçao"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: orange-juice
+    name: "orange juice"
+    category: beverages
+    perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: 90}
+    unit: ml
+    fdc: 169098
+    spellings: ["fresh orange juice"]
+  - key: orange-liqueur
+    name: "orange liqueur"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["triple sec", "cointreau"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: orange-peel
+    name: "orange peel"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 7, freezer: null}
+    unit: g
+    fdc: 169103
+    spellings: ["orange twist"]
+    measures:
+      - {label: "twist", qty: "3"}
+    note: "The twist below is a household estimate to confirm."
+  - key: orgeat
+    name: "orgeat"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 90, freezer: null}
+    unit: ml
+    spellings: ["orgeat syrup", "almond syrup"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: overproof-rum
+    name: "overproof rum"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["151 rum"]
+    note: "USDA's one rum record is rum's, and no two entries share a reference."
   - key: oxtail
     name: "oxtail"
     category: meat
@@ -3557,6 +3908,20 @@ ingredients:
     keep: {room: 2, fridge: 2, freezer: null}
     unit: g
     fdc: 169108
+  - key: passion-fruit-liqueur
+    name: "passion fruit liqueur"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: passion-fruit-puree
+    name: "passion fruit purée"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: 3, freezer: 240}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pasta
     name: "dried pasta"
     category: pantry
@@ -3588,6 +3953,14 @@ ingredients:
     keep: {room: 2, fridge: 3, freezer: 60}
     unit: g
     fdc: 169928
+  - key: peach-puree
+    name: "peach purée"
+    category: frozen
+    perishability: frozen
+    keep: {room: null, fridge: 3, freezer: 240}
+    unit: ml
+    spellings: ["white peach purée"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: peanut-butter
     name: "peanut butter"
     category: pantry
@@ -3669,6 +4042,14 @@ ingredients:
     unit: g
     fdc: 171579
     spellings: ["basil pesto", "pesto sauce"]
+  - key: peychauds-bitters
+    name: "Peychaud's bitters"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: phyllo-dough
     name: "phyllo dough"
     category: bakery
@@ -3699,6 +4080,20 @@ ingredients:
     keep: {room: 3, fridge: 7, freezer: null}
     unit: g
     fdc: 169124
+  - key: pineapple-juice
+    name: "pineapple juice"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 5, freezer: null}
+    unit: ml
+    fdc: 169947
+  - key: pisco
+    name: "pisco"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: pistachios
     name: "pistachios"
     category: pantry
@@ -3922,6 +4317,13 @@ ingredients:
     unit: g
     spellings: ["prosciutto crudo", "parma ham"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: prosecco
+    name: "prosecco"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 3, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: provolone
     name: "provolone"
     category: dairy
@@ -4055,6 +4457,13 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 167755
+  - key: raspberry-syrup
+    name: "raspberry syrup"
+    category: pantry
+    perishability: refrigerated
+    keep: {room: null, fridge: 14, freezer: null}
+    unit: ml
+    note: "Made at home or bought; USDA has no record for it."
   - key: red-bell-pepper
     name: "red bell pepper"
     category: produce
@@ -4145,6 +4554,14 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: null}
     unit: g
     fdc: 167758
+  - key: rhum-agricole
+    name: "rhum agricole"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["agricole rum"]
+    note: "USDA's one rum record is rum's, and no two entries share a reference."
   - key: ribeye-steak
     name: "ribeye steak"
     category: meat
@@ -4245,6 +4662,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 174817
+    spellings: ["white rum", "light rum", "silver rum"]
   - key: russet-potato
     name: "russet potato"
     category: produce
@@ -4268,6 +4686,14 @@ ingredients:
     keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 172684
+  - key: rye-whiskey
+    name: "rye whiskey"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["rye whisky"]
+    note: "USDA's one whiskey record is whiskey's, and no two entries share a reference."
   - key: safflower-oil
     name: "safflower oil"
     category: pantry
@@ -4402,6 +4828,15 @@ ingredients:
     keep: {room: null, fridge: 3, freezer: 90}
     unit: g
     fdc: 174220
+  - key: scotch-whisky
+    name: "Scotch whisky"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["scotch", "blended scotch", "scotch whiskey"]
+    note: "USDA's one whiskey record is whiskey's, and no two entries share a reference."
   - key: sea-bass
     name: "sea bass"
     category: seafood
@@ -4551,6 +4986,14 @@ ingredients:
     unit: g
     spellings: ["szechuan peppercorns", "szechuan pepper"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: simple-syrup
+    name: "simple syrup"
+    category: pantry
+    perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: null}
+    unit: ml
+    spellings: ["sugar syrup"]
+    note: "Made at home or bought; USDA has no record for it."
   - key: sirloin-steak
     name: "sirloin steak"
     category: meat
@@ -4674,6 +5117,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["seltzer"]
+  - key: sparkling-wine
+    name: "sparkling wine"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 3, freezer: null}
+    unit: ml
+    spellings: ["champagne", "cava"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: speck
     name: "speck"
     category: meat
@@ -4779,6 +5230,13 @@ ingredients:
     unit: g
     fdc: 2727572
     spellings: ["strip steak", "new york strip", "ny strip"]
+  - key: sugar-cube
+    name: "sugar cube"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: each
+    note: "USDA's sugar record is granulated sugar's, and no two entries share a reference."
   - key: sumac
     name: "sumac"
     category: spices
@@ -4824,6 +5282,14 @@ ingredients:
     keep: {room: 90, fridge: 365, freezer: 730}
     unit: g
     fdc: 170562
+  - key: superfine-sugar
+    name: "superfine sugar"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["caster sugar", "bar sugar"]
+    note: "USDA's sugar record is granulated sugar's, and no two entries share a reference."
   - key: sweet-and-sour-sauce
     name: "sweet and sour sauce"
     category: pantry
@@ -4854,6 +5320,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168561
+  - key: sweet-vermouth
+    name: "sweet vermouth"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 60, freezer: null}
+    unit: ml
+    spellings: ["rosso vermouth", "red vermouth", "italian vermouth"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: sweetened-condensed-milk
     name: "sweetened condensed milk"
     category: pantry
@@ -4962,6 +5436,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
+    spellings: ["blanco tequila", "silver tequila"]
   - key: teriyaki-sauce
     name: "teriyaki sauce"
     category: pantry
@@ -5025,6 +5500,13 @@ ingredients:
     fdc: 170457
     spellings: ["roma tomato", "plum tomato"]
     note: "Varieties such as Roma are products or a recipe note, not separate entries."
+  - key: tomato-juice
+    name: "tomato juice"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 5, freezer: null}
+    unit: ml
+    fdc: 170458
   - key: tomato-paste
     name: "tomato paste"
     category: pantry
@@ -5190,6 +5672,20 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     fdc: 173471
+  - key: vanilla-syrup
+    name: "vanilla syrup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 90, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: vanilla-vodka
+    name: "vanilla vodka"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA's one vodka record is vodka's, and no two entries share a reference."
   - key: veal-cutlets
     name: "veal cutlets"
     category: meat
@@ -5370,6 +5866,14 @@ ingredients:
     keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 169383
+  - key: yellow-chartreuse
+    name: "yellow Chartreuse"
+    proper_noun: true
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: yellow-mustard
     name: "yellow mustard"
     category: pantry
