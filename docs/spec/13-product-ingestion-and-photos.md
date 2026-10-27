@@ -119,6 +119,21 @@ MeatAttributes
 
 The species and primal values feed ingredient matching (the 1G ingredient vocabulary). The other values are display and filter attributes. Vocabulary beyond this list is an open question (§11).
 
+Amended 2026-10-27 (03, 1H, "Commodities and varieties"): meat also takes `lean_pct` (50–99) and `organic`, and stores `grade` in lower case. Seafood has its own model, and every other category takes `organic`:
+
+```
+SeafoodAttributes
+  species:        salmon | tuna | shrimp | cod | ... | other   # market species
+  species_detail: str | None    # FDA Seafood List market name: "Atlantic", "sockeye"
+  origin:         wild | farmed | None
+  count_size:     str | None    # pieces per pound: "26/30", "U15"
+  form:           whole | fillet | loin | steak | sliced | peeled | smoked | canned | None
+  organic:        bool | None
+
+ProduceAttributes   organic, grade, variety (str | None: "Honeycrisp")
+GeneralAttributes   organic
+```
+
 ### 3.4 `vendor` and `vendor_location` (altered)
 
 ```

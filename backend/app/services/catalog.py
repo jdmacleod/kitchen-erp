@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.catalog import categories, keep, perishability, standard
-from app.catalog.attributes import validate_attributes
+from app.catalog.attributes import fitting, validate_attributes
 from app.catalog.categories import CategoryKey
 from app.catalog.identifiers import (
     AmbiguousCode,
@@ -1156,12 +1156,7 @@ async def update_product(  # noqa: C901, PLR0912, PLR0915
         # Moved to another ingredient: details its category has no place for are dropped.
         moved_to = await db.get(Ingredient, data["ingredient_id"])
         if moved_to is not None:
-            try:
-                data["attributes"] = validate_attributes(
-                    categories.key(moved_to.category), product.attributes
-                )
-            except ValueError:
-                data["attributes"] = {}
+            data["attributes"] = fitting(categories.key(moved_to.category), product.attributes)
     if data.pop("clear_exclusive_vendor", False):
         product.exclusive_vendor_id = None
     if data.pop("clear_density_override", False):

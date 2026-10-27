@@ -115,7 +115,12 @@ async def test_product_create_from_the_standard_list(admin_client, db_session):
         a.name_norm: (a.kind, a.source)
         for a in (await db_session.execute(select(IngredientAlias))).scalars()
     }
-    assert spellings == {"lemons": ("inflection", "generated")}
+    # A cultivar's name is a spelling of its commodity (03, 1H amendment 2026-10-27).
+    assert spellings == {
+        "lemons": ("inflection", "generated"),
+        "meyer lemon": ("synonym", "standard"),
+        "meyer lemons": ("synonym", "standard"),
+    }
 
 
 async def test_standard_spellings_are_stored(admin_client, db_session):

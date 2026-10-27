@@ -33,9 +33,12 @@ def test_produce_refuses_what_it_has_no_place_for(data):
         validate_attributes("produce", data)
 
 
-def test_other_foods_still_take_none():
-    with pytest.raises(ValueError, match="has no product attributes"):
-        validate_attributes("pantry", {"organic": True})
+def test_other_foods_take_organic_and_nothing_else():
+    # Organic is a product's fact for every food, not only produce (03, 1H, 2026-10-27).
+    assert validate_attributes("pantry", {"organic": True}) == {"organic": True}
+    assert validate_attributes(None, {"organic": False}) == {"organic": False}
+    with pytest.raises(ValueError, match="validation error"):
+        validate_attributes("dairy", {"grade": "large"})
 
 
 # --- the product form ---------------------------------------------------------------
@@ -78,10 +81,13 @@ async def test_what_the_person_sets_wins(admin_client, peppers):
     assert p["attributes"] == {"organic": False, "grade": "large"}
 
 
-async def test_other_foods_are_not_marked(admin_client, peppers):
+async def test_other_foods_are_marked_organic_too(admin_client, peppers):
+    # Organic is a fact of any product (03, 1H amendment 2026-10-27).
     oats = await make_ingredient(admin_client, "lantern oats", category="pantry")
     p = await make_product(admin_client, oats["id"], "Organic rolled oats")
-    assert p["attributes"] == {}
+    assert p["attributes"] == {"organic": True}
+    plain = await make_product(admin_client, oats["id"], "Rolled oats")
+    assert plain["attributes"] == {}
 
 
 async def test_a_grade_is_set_and_checked(admin_client, peppers):
@@ -96,14 +102,18 @@ async def test_a_grade_is_set_and_checked(admin_client, peppers):
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_attributes"
 
 
-async def test_a_product_moved_out_of_produce_drops_them(admin_client, peppers):
+async def test_a_product_moved_out_of_produce_keeps_only_organic(admin_client, peppers):
     p = await make_product(admin_client, peppers["id"], "Organic lantern peppers")
+    r = await admin_client.patch(
+        f"/api/v1/products/{p['id']}", json={"attributes": {"organic": True, "grade": "large"}}
+    )
     other = await make_ingredient(admin_client, "lantern chiles", category="produce")
     r = await admin_client.patch(f"/api/v1/products/{p['id']}", json={"ingredient_id": other["id"]})
-    assert r.json()["attributes"] == {"organic": True}
+    assert r.json()["attributes"] == {"organic": True, "grade": "large"}
     jar = await make_ingredient(admin_client, "lantern pepper relish", category="pantry")
     r = await admin_client.patch(f"/api/v1/products/{p['id']}", json={"ingredient_id": jar["id"]})
-    assert r.status_code == 200 and r.json()["attributes"] == {}
+    # The pantry has no size grades; organic it keeps.
+    assert r.status_code == 200 and r.json()["attributes"] == {"organic": True}
 
 
 # --- a clip accepted as a new product --------------------------------------------------

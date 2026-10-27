@@ -24,6 +24,7 @@ from functools import cache
 
 from app.catalog import standard
 from app.catalog.names import normalize_name, plural, plural_word, singulars, spellings
+from app.catalog.product_facts import variety_words
 
 # Words that describe how a food was bought, not which food it is. Data, not
 # logic: add to it freely, but never a word that names a variety ("whole",
@@ -103,6 +104,9 @@ def match_entry(name: str) -> standard.StandardEntry | None:
     if split is None:
         return None
     head, qualifiers = split
+    # A cultivar names a product of the commodity, not another food (03, 1H): "SweeTango
+    # apple" is an apple.
+    qualifiers -= variety_words(head, qualifiers)
     best: dict[str, standard.StandardEntry] = {}
     best_size = -1
     for key in _head_keys(head):

@@ -318,8 +318,13 @@ function EditProductForm({ product }: { product: Product }) {
       if (
         Boolean(before.organic) !== Boolean(attributes.organic) ||
         (before.grade ?? undefined) !== attributes.grade
-      )
-        input.attributes = attributes;
+      ) {
+        // The form edits organic and grade; the rest (a variety) is kept as it was.
+        const kept = Object.fromEntries(
+          Object.entries(before).filter(([key]) => key !== "organic" && key !== "grade"),
+        );
+        input.attributes = { ...kept, ...attributes };
+      }
     }
 
     if (Object.keys(input).length === 0) {
