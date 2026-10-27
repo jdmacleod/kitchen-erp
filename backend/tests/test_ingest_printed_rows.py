@@ -201,6 +201,20 @@ def test_a_savings_total_on_its_own_row():
     assert printed_checks("TOTAL 30.39\nYOU SAVED TODAY 6.48\n") == {"savings_total": "6.48"}
 
 
+def test_an_items_regular_price_note_is_not_the_savings_total():
+    text = (
+        "FERNLEAF BASIL 1.15 F\n"
+        "Regular Price 1.35 , You saved 0.20\n"
+        "MOSSGLEN OATS 4.05 F\n"
+        "Regular Price 4.80 , You saved 0.75\n"
+        "BALANCE 5.20\n"
+        "Thanks for shopping, you saved:\n"
+        "on 2 deal items, 0.95\n"
+        "And overall, you SAVED 0.95 Today!!\n"
+    )
+    assert printed_checks(text) == {"savings_total": "0.95"}
+
+
 def test_cash_and_change_are_not_a_payment():
     assert printed_checks("TOTAL 8.12\nCASH 10.00\nCHANGE 1.88\n") is None
 

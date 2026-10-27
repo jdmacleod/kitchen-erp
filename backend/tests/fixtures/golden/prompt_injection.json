@@ -166,7 +166,7 @@
       "tax": "0.00",
       "tax_source": "lines"
     },
-    "rules_version": 2
+    "rules_version": 3
   },
   "ocr": {
     "chars": 367,

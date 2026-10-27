@@ -221,6 +221,8 @@ const FLAG_LABELS: Record<string, string> = {
   regular_price_from_text: "regular price restored",
   footer_text: "footer text?",
   tax_from_rate: "tax from its rate",
+  // A tax table the reader left out, read from its "base @ rate% = amount" rows.
+  tax_from_print: "tax read from the print",
   // A saving printed "8.00-", points read as money, a payment read as an item.
   negative_from_text: "printed as a saving",
   points_not_money: "points, not money",

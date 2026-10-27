@@ -44,7 +44,10 @@ LINE_READING_FLAGS = frozenset(
 # 2: a weight printed with its gross in brackets, a weight printed above its item
 #    that the model left out, and a saving read after a later item put back under
 #    the item printed above it.
-LINE_RULES_VERSION = 2
+# 3: a tax table the model left out, read from its "<base> @ <rate>% = <amount>"
+#    rows when the bases add up to the items (tax_from_print); an item's
+#    regular-price note is no longer read as the receipt's savings total.
+LINE_RULES_VERSION = 3
 
 
 @dataclass
