@@ -737,6 +737,9 @@ async def test_a_priced_row_the_model_left_out_flags_the_purchase(
     purchase, lines = await _purchase_with_lines(lines_out["purchase_id"])
     assert "rows_not_read" in purchase.flags
     assert not any("honey" in (line.raw_text or "") for line in lines)
+    # Review names the row: it travels with the receipt's printed checks.
+    shown = await admin_client.get(f"/api/v1/purchases/{lines_out['purchase_id']}")
+    assert shown.json()["printed_checks"]["unread_rows"] == ["Local honey 12oz      9.00"]
 
     # Committing is the reviewer's answer: the prompt does not stay on the record.
     pid = lines_out["purchase_id"]

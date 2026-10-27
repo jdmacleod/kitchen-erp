@@ -251,6 +251,8 @@ export interface PrintedChecks {
   savings_total?: string | null;
   item_count?: number | null;
   payment?: string | null;
+  /** Rows printed like purchases that no line accounts for, as the scan reads them. */
+  unread_rows?: string[] | null;
 }
 
 export interface RereadState {

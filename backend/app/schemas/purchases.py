@@ -244,6 +244,8 @@ class PrintedChecks(ApiModel):
     savings_total: DecimalStr | None = None
     item_count: int | None = None
     payment: DecimalStr | None = None
+    # Rows printed like purchases that no line accounts for, as the scan reads them.
+    unread_rows: list[str] | None = None
 
 
 class PurchaseOut(ApiModel):

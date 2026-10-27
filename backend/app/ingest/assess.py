@@ -85,8 +85,10 @@ def assess(
         # lines are missing rather than let the receipt look complete (#60).
         flags.append("lines_partial")
     if passes.unread_rows:
-        # Rows the scan prints like purchases that no line accounts for (#181).
+        # Rows the scan prints like purchases that no line accounts for (#181),
+        # kept with the receipt's checks so review can name them.
         flags.append("rows_not_read")
+        passes.checks = {**(passes.checks or {}), "unread_rows": list(passes.unread_rows)}
     lines_stage.check_prices(parsed, printed_total)
     lines_stage.flag_amounts_not_in_scan(parsed, receipt_text)
     if printed_total is not None and not appears_in(printed_total, receipt_text):
