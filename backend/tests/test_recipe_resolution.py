@@ -177,7 +177,8 @@ async def test_the_queue_groups_names_most_used_first_with_proposals(
     # covers each later tier on its own).
     assert [p["tier"] for p in items["fresh basil"]["proposals"]] == ["standard"]
     assert all(len(i["proposals"]) <= 3 for i in body["items"])
-    assert items["lemon juice"]["proposals"] == []
+    [proposal] = items["lemon juice"]["proposals"]  # an entry since Tier F, as lime juice
+    assert (proposal["tier"], proposal["standard_key"]) == ("standard", "lemon-juice")
     # The queue is the inbox row (UI-7.2), one row however many names wait.
     [row] = await inbox_kinds(admin_client)
     assert row["title"] == "7 recipe names to resolve"
