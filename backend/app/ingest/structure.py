@@ -151,6 +151,8 @@ def post_passes(
         None if printed_savings is None else Decimal(printed_savings),
     )
     payment_rows(parsed, printed_total, header_tax)
+    # Again, once a payment read as an item no longer hides the items' sum.
+    tax_from_print(parsed, receipt_text, header_tax)
     unread = rows_not_read(parsed, receipt_text, merged + dropped, printed_total)
     return PostPasses(_renumber(parsed), merged, dropped, unread, checks)
 

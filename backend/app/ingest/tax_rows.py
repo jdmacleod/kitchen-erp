@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from app.ingest.lines import CENTS, ParsedLine, _amounts
+from app.ingest.lines import CENTS, ParsedLine, _amounts, printed_text
 
 # --- 7. A tax line read at its base -----------------------------------------
 
@@ -47,6 +47,16 @@ _TAX_AT_RATE = re.compile(
 )
 
 
+# A percentage row worded as a saving: "Discount 10.00 @ 10% = 1.00" takes money off.
+_SAVING_WORDING = re.compile(
+    r"sav|disc|coupon|cpn|\boff\b|promo|mark\s*down|mkdn|price\s*cut", re.IGNORECASE
+)
+
+
+def _squeezed(text: str) -> str:
+    return " ".join(text.split())
+
+
 def _decimal(token: str) -> Decimal:
     return Decimal(token.replace(",", "."))
 
@@ -63,14 +73,18 @@ def tax_from_print(lines: list[ParsedLine], receipt_text: str, header_tax: Decim
     The rows are only trusted when each base at its rate comes to its amount,
     to the cent, and the bases together come to the items read (before or after
     their savings), so a misread base or a missing item adds nothing. Each row
-    that charges tax becomes a tax line; a 0% row adds none.
+    that charges tax becomes a tax line; a 0% row adds none. A row already read
+    as a line, or worded as a saving, is not part of the table.
     """
     if header_tax is not None or any(line.line_kind == "tax" for line in lines):
         return
+    read = {_squeezed(printed_text(line)) for line in lines} | {
+        _squeezed(line.raw_text) for line in lines
+    }
     found: list[tuple[str, Decimal, Decimal]] = []
     for row in _rows(receipt_text):
         match = _TAX_AT_RATE.search(row)
-        if match is None:
+        if match is None or _squeezed(row) in read or _SAVING_WORDING.search(row):
             continue
         base, percent, amount = (_decimal(g) for g in match.groups())
         if abs(base * percent / 100 - amount) > CENTS:

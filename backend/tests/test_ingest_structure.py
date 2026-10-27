@@ -333,6 +333,34 @@ def test_a_tax_line_already_read_or_a_header_tax_is_left_alone():
     assert _tax_lines(with_header) == []
 
 
+@pytest.mark.parametrize("read_as", ["Discount 10.00 @ 10% = 1.00", "MEMBER PRICE CUT"])
+def test_a_percentage_saving_is_not_a_tax_row(read_as):
+    # The saving's row has the table's shape and its base is the items, but it
+    # takes money off: read as a line, or worded as a saving, it adds no tax.
+    lines = _passes(
+        ("BRIARWOOD SOAP 10.00", "item", "10.00"),
+        (read_as, "discount", "1.00", 0),
+        text="BRIARWOOD SOAP   10.00\nDiscount 10.00 @ 10% = 1.00\nTOTAL   9.00\n",
+        total="9.00",
+    )
+    assert _tax_lines(lines) == []
+    assert not reconcile(lines, Decimal("9.00"), None)["mismatch"]
+
+
+def test_a_payment_read_as_an_item_does_not_hide_the_tax_table():
+    # Before the cash row is cleared, the items come to more than the bases.
+    text = "BRIARWOOD SOAP   10.00\nTax 10.00 @ 10% = 1.00\nTOTAL   11.00\nCASH   11.00\n"
+    lines = _passes(
+        ("BRIARWOOD SOAP 10.00", "item", "10.00"),
+        ("CASH 11.00", "item", "11.00"),
+        text=text,
+        total="11.00",
+    )
+    (tax,) = _tax_lines(lines)
+    assert tax.line_total == Decimal("1.00") and tax.flags == ["tax_from_print"]
+    assert not reconcile(lines, Decimal("11.00"), None)["mismatch"]
+
+
 # --- 8. A saving printed negative, read as an item ---------------------------
 
 
