@@ -242,10 +242,14 @@ def word_sets(facts: Facts) -> WordSets:
     the numbers of a printed size ("10" against '10"').
 
     "Organic" is left to :func:`is_organic`. A size grade is filler for produce sold by
-    weight; for produce sold by the piece its grade attribute counts as words."""
+    weight; for produce sold by the piece its grade attribute counts as words. A detail
+    answers for its words: "Choice strip steak" and "Strip steak" graded choice agree."""
     key = name_key(facts.name, facts.brand)
     need = key.words - _tail(facts) - _ORGANIC
-    cover = key.words | frozenset(_words(facts.brand or "")) | key.size_numbers
+    detail_words = frozenset(
+        _stem(w) for _, v in facts.details for w in _words(v.replace("_", " "))
+    )
+    cover = key.words | frozenset(_words(facts.brand or "")) | key.size_numbers | detail_words
     if facts.produce_by_weight:
         need -= GRADES
     elif facts.grade:

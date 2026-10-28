@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 ProductKind = Literal["branded", "private_label", "random_weight", "loose", "unbranded_vendor"]
 PRODUCT_KINDS: tuple[str, ...] = (
@@ -30,10 +30,21 @@ MEAT_SPECIES: tuple[str, ...] = get_args(MeatSpecies)
 MeatForm = Literal["whole", "sliced", "cubed", "ground"]
 
 
-class MeatAttributes(BaseModel):
+class _SpeciesFirst(BaseModel):
+    """Meat and seafood: organic may stand alone, but every other detail is of a species."""
+
+    @model_validator(mode="after")
+    def _species_before_details(self):
+        set_ = {k for k, v in self if v is not None} - {"organic"}
+        if set_ and getattr(self, "species", None) is None:
+            raise ValueError("species is required with the other details")
+        return self
+
+
+class MeatAttributes(_SpeciesFirst):
     model_config = ConfigDict(extra="forbid")
 
-    species: MeatSpecies
+    species: MeatSpecies | None = None
     primal: str | None = Field(default=None, max_length=60)
     cut: str | None = Field(default=None, max_length=60)
     bone: Literal["bone_in", "boneless"] | None = None
@@ -65,10 +76,10 @@ SeafoodForm = Literal["whole", "fillet", "loin", "steak", "sliced", "peeled", "s
 COUNT_SIZE = r"(?:\d{1,3}/\d{1,3}|U\d{1,3})"
 
 
-class SeafoodAttributes(BaseModel):
+class SeafoodAttributes(_SpeciesFirst):
     model_config = ConfigDict(extra="forbid")
 
-    species: SeafoodSpecies
+    species: SeafoodSpecies | None = None
     species_detail: str | None = Field(default=None, max_length=40)
     origin: Literal["wild", "farmed"] | None = None
     count_size: str | None = Field(default=None, pattern=f"^{COUNT_SIZE}$")
@@ -123,13 +134,21 @@ def validate_attributes(category_key: str | None, data: dict[str, Any] | None) -
 
 def fitting(category_key: str | None, data: dict[str, Any] | None) -> dict[str, Any]:
     """What of a product's attributes another category has a place for: organic stays
-    when produce moves to the pantry; a meat's species doesn't survive the move."""
+    when produce moves to the pantry; a meat's species doesn't survive the move. A value
+    the new category refuses (a meat grade as a produce size) is dropped alone; details
+    that need a species the new category lacks leave organic."""
     model = MODELS.get(category_key or "", GeneralAttributes)
     kept = {k: v for k, v in (data or {}).items() if k in model.model_fields}
-    try:
-        return validate_attributes(category_key, kept)
-    except ValueError:
-        return {}
+    while kept:
+        try:
+            return validate_attributes(category_key, kept)
+        except ValidationError as exc:
+            bad = {e["loc"][0] for e in exc.errors() if e["loc"]} & kept.keys()
+            fewer = {k: v for k, v in kept.items() if (k not in bad if bad else k == "organic")}
+        if fewer == kept:
+            return {}
+        kept = fewer
+    return {}
 
 
 def is_organic(attributes: dict[str, Any] | None) -> bool:

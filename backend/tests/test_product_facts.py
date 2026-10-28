@@ -156,7 +156,18 @@ def test_whatever_the_words_say_is_a_valid_attribute_set(words, case):
 def test_a_move_keeps_what_the_new_food_has_a_place_for():
     assert fitting("pantry", {"organic": True, "variety": "Fuji"}) == {"organic": True}
     assert fitting("seafood", {"species": "pork", "bone": "boneless"}) == {}
-    assert fitting("meat", {"organic": True, "grade": "large"}) == {}  # no species: nothing
+    # No species to hang details on, or a value the category refuses: organic stays.
+    assert fitting("meat", {"organic": True, "grade": "large"}) == {"organic": True}
+    assert fitting("produce", {"organic": True, "grade": "choice"}) == {"organic": True}
+    assert fitting("seafood", {"organic": True, "variety": "Fuji"}) == {"organic": True}
+
+
+def test_meat_and_seafood_take_organic_alone_but_no_other_detail_without_a_species():
+    assert validate_attributes("meat", {"organic": True}) == {"organic": True}
+    assert validate_attributes("seafood", {"organic": True}) == {"organic": True}
+    for key, data in [("meat", {"bone": "boneless"}), ("seafood", {"origin": "wild"})]:
+        with pytest.raises(ValueError, match="species is required"):
+            validate_attributes(key, data)
 
 
 @pytest.mark.parametrize(
@@ -204,3 +215,22 @@ def test_a_meat_grade_is_an_attribute_not_a_word():
     # One product graded, the other not: nothing disagrees, so they stay the same.
     graded = _attrs("Strip steak", {"species": "beef", "grade": "choice"})
     assert compare(graded, _attrs("Strip steak", {"species": "beef"})).kind == "same"
+
+
+def test_the_species_a_name_says_wins_over_the_one_its_cut_implies():
+    assert facts.meat("Pork sirloin roast", "pork roast")["species"] == "pork"
+    assert facts.meat("Lamb steak", "lamb chop")["species"] == "lamb"
+    assert facts.meat("Tarn sirloin tips", "sirloin")["species"] == "beef"
+    assert facts.meat("Organic tarn roast", "roast") == {"organic": True}
+
+
+def test_a_lean_share_out_of_range_is_left_unset():
+    assert facts.lean_pct("40% lean tarn blend") is None
+
+
+def test_a_grade_in_one_name_is_answered_by_the_others_attribute():
+    a = _attrs("Choice strip steak", {"species": "beef", "grade": "choice"})
+    b = _attrs("Strip steak", {"species": "beef", "grade": "choice"})
+    assert compare(a, b).kind == "same" and compare(b, a).kind == "same"
+    # Without the attribute the word still tells them apart.
+    assert compare(a, _attrs("Strip steak", {"species": "beef"})).kind != "same"

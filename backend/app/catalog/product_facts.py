@@ -43,13 +43,14 @@ VARIETIES: dict[str, tuple[str, ...]] = {
     "banana": ("Cavendish", "Manzano"),
 }  # fmt: skip
 
-_MEAT_SPECIES_WORDS = {
-    "beef": "beef", "steak": "beef", "ribeye": "beef", "sirloin": "beef", "brisket": "beef",
+# The species a name says outright; failing that, the one its cut implies ("Pork
+# sirloin" is pork though sirloin alone is beef).
+_MEAT_SPECIES_NAMES = {s: s for s in ("beef", "pork", "chicken", "turkey", "lamb", "goat", "duck")}
+_MEAT_CUT_SPECIES = {
+    "steak": "beef", "ribeye": "beef", "sirloin": "beef", "brisket": "beef",
     "chuck": "beef", "tri tip": "beef", "filet mignon": "beef", "flap": "beef",
     "new york strip": "beef", "eye round": "beef", "eye of round": "beef",
-    "pork": "pork", "bacon": "pork", "ham": "pork", "prosciutto": "pork",
-    "pancetta": "pork", "chicken": "chicken", "turkey": "turkey", "lamb": "lamb",
-    "goat": "goat", "duck": "duck",
+    "bacon": "pork", "ham": "pork", "prosciutto": "pork", "pancetta": "pork",
 }  # fmt: skip
 
 _SEAFOOD_DETAILS: dict[str, tuple[str, ...]] = {
@@ -125,7 +126,7 @@ def organic(name: str, brand: str | None = None) -> bool:
 def lean_pct(name: str) -> int | None:
     """80 for "80/20" or "80% lean"; a pair must add up to 100."""
     name = " ".join(name.split())
-    if m := _LEAN_WORD.search(name):
+    if (m := _LEAN_WORD.search(name)) and 50 <= int(m.group(1)) <= 99:
         return int(m.group(1))
     for m in _LEAN.finditer(name):
         lean, fat = int(m.group(1)), int(m.group(2))
@@ -166,11 +167,11 @@ def _words_facts(text: str, table: tuple[tuple[str, tuple[tuple[str, str], ...]]
 
 
 def meat(name: str, ingredient_name: str, brand: str | None = None) -> dict[str, Any]:
-    """Meat attributes the words say, or {} when they don't name the species."""
+    """Meat attributes the words say; organic alone when they don't name the species."""
     species_of = _text(f"{name} {ingredient_name}")
-    species = _first(species_of, _MEAT_SPECIES_WORDS)
+    species = _first(species_of, _MEAT_SPECIES_NAMES) or _first(species_of, _MEAT_CUT_SPECIES)
     if species is None:
-        return {}
+        return {"organic": True} if organic(name, brand) else {}
     out: dict[str, Any] = {"species": species, **_words_facts(_text(name), _MEAT_WORDS)}
     if _has(species_of, "ground"):
         out["form"] = "ground"
@@ -182,12 +183,12 @@ def meat(name: str, ingredient_name: str, brand: str | None = None) -> dict[str,
 
 
 def seafood(name: str, ingredient_name: str, brand: str | None = None) -> dict[str, Any]:
-    """Seafood attributes the words say, or {} when they don't name the species."""
+    """Seafood attributes the words say; organic alone when they don't name the species."""
     text = _text(name)
     names = {s: s for s in SEAFOOD_SPECIES if s != "other"} | _SEAFOOD_PLURALS
     species = _first(_text(f"{name} {ingredient_name}"), names)
     if species is None:
-        return {}
+        return {"organic": True} if organic(name, brand) else {}
     out: dict[str, Any] = {"species": species, **_words_facts(text, _SEAFOOD_WORDS)}
     details = {d: d for d in _SEAFOOD_DETAILS.get(species, ())}
     if (detail := _first(text, tuple(details.items()))) is not None:

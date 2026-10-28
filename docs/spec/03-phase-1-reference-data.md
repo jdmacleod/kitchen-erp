@@ -420,7 +420,7 @@ Produce has one too (added 2026-10-19):
 - organic (true or false). Organic and conventional of one food are two products of one ingredient. A new produce product whose name or brand says "Organic" or "Organics" starts marked organic, even when that word is dropped as a brand. Offers and the comparison grid carry `organic` and take `organic_scope` (all, organic or conventional, default all).
 - grade (small, medium, large, extra large or jumbo). A grade sets two products apart only when they are sold by the piece; sold by weight, a large and a small cost the same per pound.
 
-A product moved to an ingredient keeps the attributes its new category has a place for and loses the rest. Other categories accept only `organic`.
+A product moved to an ingredient keeps the attributes its new category has a place for and loses the rest. A value the new category refuses is dropped on its own; details that need a species the new category lacks leave `organic`. Other categories accept only `organic`.
 
 **Commodities and varieties (amendment, 2026-10-27).** An ingredient is a commodity, and a product carries what tells its items apart. This is the shape the produce and food trade already use. PLU codes encode commodity, variety and size, with a 9 prefix for organic; GS1's product classification files by commodity and records organic as an attribute; USDA FoodData Central and USDA Foods name an item commodity-first, with the variety as a qualifier ("Apples, fuji, with skin, raw"). So:
 
@@ -437,7 +437,7 @@ The attributes:
 - produce: as above, plus `variety` (free text, up to 40 characters, as the store names it);
 - every other category: `organic`.
 
-A new product starts with the facts its words give (`product_facts.facts_for`): organic in the name or brand, a cultivar, and for meat and seafood the species, bone, skin, form, grade, lean ratio, origin and count size. Facts are read only when the words name the species; nothing is guessed from a brand ("Tarn Select" grades nothing: only "USDA Select" does). The person's own attributes win. Meat and seafood with no brand and no barcode, and no kind chosen, start as Weighed: they are sold by weight at a counter.
+A new product starts with the facts its words give (`product_facts.facts_for`): organic in the name or brand, a cultivar, and for meat and seafood the species, bone, skin, form, grade, lean ratio, origin and count size. Facts are read only when the words name the species, and a species the name says outright wins over one its cut implies ("pork sirloin" is pork); nothing is guessed from a brand ("Tarn Select" grades nothing: only "USDA Select" does). The person's own attributes win. Meat and seafood with no brand and no barcode, and no kind chosen, start as Weighed: they are sold by weight at a counter.
 
 Two products that both set one of variety, lean ratio, species, market name, origin, count size, bone, skin, form, cut or a meat grade, to different values, are variants (04, 2P), whatever their names say.
 
