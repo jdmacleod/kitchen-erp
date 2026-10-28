@@ -2,6 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Ingredient, Product } from "../api/catalog";
+import { keepFields } from "../lib/productAttributes";
+import { choiceCategory, emptyProductValues } from "../pages/catalog/ProductForm";
 import { flour, flourId, flourProduct, flourProductId, units } from "./catalog-fixtures";
 import { adminUser, jsonResponse, mockApi, renderApp } from "./helpers";
 
@@ -75,12 +77,72 @@ describe("produce attributes", () => {
     });
   });
 
-  it("leaves other foods without the fields", async () => {
+  it("offers other foods organic alone", async () => {
     mockApi(routes(flourProduct, flour));
     renderApp(`/catalog/products/${flourProductId}`);
     const form = await screen.findByRole("form", { name: "Edit product" });
     await within(form).findByLabelText("Pack quantity");
-    expect(within(form).queryByLabelText("Organic")).not.toBeInTheDocument();
+    expect(within(form).getByLabelText("Organic")).toBeInTheDocument();
     expect(within(form).queryByLabelText("Size grade")).not.toBeInTheDocument();
+    expect(within(form).queryByLabelText("Variety")).not.toBeInTheDocument();
+  });
+
+  it("records a meat's species, bone and lean ratio, and asks for the species first", async () => {
+    const thigh: Ingredient = {
+      ...peppers,
+      name: "hen thigh",
+      category: "meat",
+      category_key: "meat",
+    };
+    const meatProduct: Product = {
+      ...pepperProduct,
+      ingredient: { ...pepperProduct.ingredient, category: "meat", category_key: "meat" },
+      name: "Hen thighs",
+    };
+    const calls = mockApi({
+      ...routes(meatProduct, thigh),
+      [`PATCH /products/${flourProductId}`]: () => jsonResponse(200, meatProduct),
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/${flourProductId}`);
+    const form = await screen.findByRole("form", { name: "Edit product" });
+
+    await user.selectOptions(await within(form).findByLabelText("Bone"), "boneless");
+    await user.click(within(form).getByRole("button", { name: "Save changes" }));
+    expect(
+      await within(form).findByText("Choose the species before its other details."),
+    ).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+
+    await user.selectOptions(within(form).getByLabelText("Species"), "chicken");
+    await user.type(within(form).getByLabelText("Lean %"), "85");
+    await user.click(within(form).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      attributes: { bone: "boneless", species: "chicken", lean_pct: 85 },
+    });
+  });
+
+  it("keeps only what a product's new category shows", () => {
+    const meat = { species: "chicken", bone: "boneless", organic: true, primal: "leg" };
+    expect(keepFields("produce", meat)).toEqual({ organic: true });
+    expect(keepFields("meat", { variety: "Lantern Gold", organic: true })).toEqual({
+      organic: true,
+    });
+  });
+
+  it("shows a standard-list ingredient's details, and a new one's organic alone", () => {
+    const standard = emptyProductValues({
+      kind: "standard",
+      key: "hen-thigh",
+      name: "hen thigh",
+      canonical_unit: "g",
+      category: "meat",
+      category_key: "meat",
+    });
+    expect(choiceCategory(standard)).toBe("meat");
+    expect(
+      choiceCategory(emptyProductValues({ kind: "new", name: "tarn", category: "Meat" })),
+    ).toBe(null);
   });
 });
