@@ -1918,7 +1918,7 @@ ingredients:
     keep: {room: 180, fridge: 180, freezer: null}
     unit: g
     fdc: 171724
-    spellings: ["zante currants", "currants"]
+    spellings: ["zante currants"]
   - key: dried-dill
     name: "dried dill"
     category: spices
@@ -3179,6 +3179,14 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171893
+  - key: instant-tapioca
+    name: "instant tapioca"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["minute tapioca", "quick-cooking tapioca", "quick cooking tapioca"]
+    note: "Pre-cooked granules for thickening pies; tapioca starch and tapioca pearls are other entries. USDA has no plain record for it."
   - key: instant-yeast
     name: "instant yeast"
     category: pantry
@@ -5682,7 +5690,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
-    spellings: ["tapioca flour", "instant tapioca", "minute tapioca"]
+    spellings: ["tapioca flour"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: taro
     name: "taro"
