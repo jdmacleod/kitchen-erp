@@ -61,8 +61,9 @@ _SEAFOOD_DETAILS: dict[str, tuple[str, ...]] = {
 }
 _SEAFOOD_PLURALS = {"anchovies": "anchovy", "sardines": "sardine", "scallops": "scallop"}
 
-_LEAN = re.compile(r"\b(\d{2})\s*%?\s*/\s*(\d{1,2})\s*%?(?!\d)")
-_LEAN_WORD = re.compile(r"\b(\d{2})\s*%\s*lean\b", re.IGNORECASE)
+# Read over single-spaced text, so each gap is one optional space and the match stays linear.
+_LEAN = re.compile(r"\b(\d{2}) ?%? ?/ ?(\d{1,2}) ?%?(?!\d)")
+_LEAN_WORD = re.compile(r"\b(\d{2}) ?% ?lean\b", re.IGNORECASE)
 _COUNT = re.compile(rf"(?<![\w/]){COUNT_SIZE}(?![\w/])", re.IGNORECASE)
 
 
@@ -123,6 +124,7 @@ def organic(name: str, brand: str | None = None) -> bool:
 
 def lean_pct(name: str) -> int | None:
     """80 for "80/20" or "80% lean"; a pair must add up to 100."""
+    name = " ".join(name.split())
     if m := _LEAN_WORD.search(name):
         return int(m.group(1))
     for m in _LEAN.finditer(name):

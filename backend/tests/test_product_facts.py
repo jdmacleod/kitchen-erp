@@ -120,6 +120,11 @@ def test_lean_ratio_reads_both_ways_of_writing_it(lean, fat):
     assert facts.lean_pct(f"{lean}% / {fat}% ground pork") == lean
 
 
+def test_a_long_run_of_spaces_reads_quickly():
+    assert facts.lean_pct("80" + " " * 50_000 + "/x ground pork") is None
+    assert facts.lean_pct("80   /   20 ground pork") == 80
+
+
 def test_a_pair_that_is_no_ratio_is_not_a_lean_share():
     assert facts.lean_pct("Pack of 12/24 hot dogs") is None
     assert facts.lean_pct("Ground pork, 1 lb") is None

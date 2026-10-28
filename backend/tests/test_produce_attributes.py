@@ -107,6 +107,7 @@ async def test_a_product_moved_out_of_produce_keeps_only_organic(admin_client, p
     r = await admin_client.patch(
         f"/api/v1/products/{p['id']}", json={"attributes": {"organic": True, "grade": "large"}}
     )
+    assert r.status_code == 200
     other = await make_ingredient(admin_client, "lantern chiles", category="produce")
     r = await admin_client.patch(f"/api/v1/products/{p['id']}", json={"ingredient_id": other["id"]})
     assert r.json()["attributes"] == {"organic": True, "grade": "large"}
