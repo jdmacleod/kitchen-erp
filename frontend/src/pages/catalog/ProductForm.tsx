@@ -9,11 +9,8 @@ import {
   type Product,
   type Unit,
 } from "../../api/catalog";
-import {
-  PRODUCE_GRADES,
-  type ProduceGrade,
-  type ProductAttributes,
-} from "../../api/productDetails";
+import type { ProductAttributes } from "../../api/productDetails";
+import { AttributeFields } from "../../components/catalog/AttributeFields";
 import {
   BarcodeSymbologyPrompt,
   SYMBOLOGY_REQUIRED,
@@ -30,8 +27,14 @@ import {
 import { RatingInput } from "../../components/catalog/RatingInput";
 import { ShortNameHint } from "../../components/catalog/ShortNameHint";
 import { UnitSelect } from "../../components/catalog/UnitSelect";
-import { Alert, Button, Field, focusRing, sectionHeading } from "../../components/ui";
+import { Alert, Button, Field, sectionHeading } from "../../components/ui";
 import { asksSymbology, type BarcodeSymbology } from "../../lib/barcode";
+import {
+  attributeProblem,
+  keepFields,
+  attributesToSend,
+  type AttributeValues,
+} from "../../lib/productAttributes";
 
 export interface ProductFormValues {
   ingredient: IngredientChoice | null;
@@ -49,9 +52,8 @@ export interface ProductFormValues {
   notes: string;
   density_override: string;
   density_override_source: BridgeSource;
-  /** Produce only: grown organically, and the size grade ("" for none). */
-  organic: boolean;
-  grade: ProduceGrade | "";
+  /** The category's details (03, 1H): every stored attribute, so unshown ones are kept. */
+  attributes: AttributeValues;
 }
 
 export function emptyProductValues(ingredient: IngredientChoice | null = null): ProductFormValues {
@@ -69,8 +71,7 @@ export function emptyProductValues(ingredient: IngredientChoice | null = null): 
     notes: "",
     density_override: "",
     density_override_source: "label",
-    organic: false,
-    grade: "",
+    attributes: {},
   };
 }
 
@@ -89,32 +90,29 @@ export function productValues(p: Product): ProductFormValues {
     notes: p.notes ?? "",
     density_override: p.density_override ?? "",
     density_override_source: p.density_override_source ?? "label",
-    organic: Boolean(p.attributes?.organic),
-    grade: p.attributes?.grade ?? "",
+    attributes: { ...(p.attributes ?? {}) },
   };
 }
 
-/** Whether the chosen ingredient is produce, so the form's organic and grade apply. */
-export function choiceIsProduce(v: ProductFormValues): boolean {
-  return v.ingredient?.kind === "existing" && v.ingredient.ingredient.category_key === "produce";
+/**
+ * The chosen ingredient's category key, whose details the form shows: an existing or a
+ * standard-list ingredient's own. A new one's typed category has no key until the server
+ * reads it, so it shows organic alone; the server reads the rest from the name.
+ */
+export function choiceCategory(v: ProductFormValues): string | null | undefined {
+  const choice = v.ingredient;
+  if (choice?.kind === "existing") return choice.ingredient.category_key;
+  if (choice?.kind === "standard") return choice.category_key;
+  return null;
 }
 
 /**
- * A new product's attributes, when the form sets any. Unset, the server reads
- * "Organic" from the name or brand itself.
+ * A new product's attributes, when the form sets any. Unset, the server reads what the
+ * name and brand say ("Organic", a cultivar, a meat's cut) itself.
  */
 export function attributesInput(v: ProductFormValues): { attributes?: ProductAttributes } {
-  if (!choiceIsProduce(v)) return {};
-  const attributes = produceAttributes(v);
+  const attributes = attributesToSend(v.attributes);
   return Object.keys(attributes).length > 0 ? { attributes } : {};
-}
-
-/** The produce attributes the form's values give: organic only when ticked. */
-export function produceAttributes(v: ProductFormValues): ProductAttributes {
-  const out: ProductAttributes = {};
-  if (v.organic) out.organic = true;
-  if (v.grade) out.grade = v.grade;
-  return out;
 }
 
 /**
@@ -142,7 +140,7 @@ export function validateProductValues(
   if (v.density_override.trim() && !isPositiveDecimal(v.density_override)) {
     return "Density override must be a positive number of grams per millilitre.";
   }
-  return null;
+  return attributeProblem(choiceCategory(v), v.attributes);
 }
 
 function barcodeProblem(v: ProductFormValues, savedBarcode?: string | null): string | null {
@@ -283,7 +281,16 @@ export function ProductForm({
       <IngredientPicker
         id={`${idPrefix}-ingredient`}
         value={values.ingredient}
-        onChange={(choice) => set("ingredient", choice)}
+        onChange={(choice) => {
+          const next = { ...values, ingredient: choice };
+          // Another food's details have no place here: keep only what it shows. A
+          // cleared choice keeps them until the next one is picked.
+          const attributes =
+            !choice || choiceCategory(next) === choiceCategory(values)
+              ? values.attributes
+              : keepFields(choiceCategory(next), values.attributes);
+          onChange({ ...next, attributes });
+        }}
         onTextChange={onIngredientText}
         allowCreate={mode === "create"}
         disabled={busy}
@@ -326,33 +333,13 @@ export function ProductForm({
         onUse={() => onChange({ ...values, pack_qty: "1", pack_unit: "bunch" })}
       />
 
-      {chosen.data?.category_key === "produce" ? (
-        <div className="grid items-start gap-4 sm:grid-cols-2">
-          <label className="inline-flex min-h-11 items-center gap-2 text-sm sm:mt-6 lg:min-h-10">
-            <input
-              id={`${idPrefix}-organic`}
-              type="checkbox"
-              checked={values.organic}
-              onChange={(e) => set("organic", e.target.checked)}
-              className={`size-4 ${focusRing}`}
-            />
-            Organic
-          </label>
-          <SelectField
-            id={`${idPrefix}-grade`}
-            label="Size grade"
-            value={values.grade}
-            onChange={(e) => set("grade", e.target.value as ProduceGrade | "")}
-            hint="Only for produce sold by the piece."
-          >
-            <option value="">None</option>
-            {PRODUCE_GRADES.map((g) => (
-              <option key={g.value} value={g.value}>
-                {g.label}
-              </option>
-            ))}
-          </SelectField>
-        </div>
+      {values.ingredient ? (
+        <AttributeFields
+          idPrefix={idPrefix}
+          categoryKey={choiceCategory(values)}
+          values={values.attributes}
+          onChange={(attributes) => set("attributes", attributes)}
+        />
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
