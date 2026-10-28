@@ -137,9 +137,20 @@ test("the cost table reads without horizontal scroll at 390px", async ({ page },
  * The resolve page (07 criterion 28; UI-7.16). One decision for a name applies
  * to every recipe using it, so this runs in one project only: every project
  * shares the backend, and two of them deciding the same name at once would race.
- * Names other specs rely on staying unresolved are left alone.
+ * Names other specs rely on staying unresolved are left alone, and so are names that
+ * are a standard entry's spelling ("butter" for unsalted butter): the picker offers
+ * that entry instead of the name itself or "Create new ingredient".
  */
 const LEAVE_UNRESOLVED = new Set(["arborio rice", "water"]);
+const STANDARD_SPELLINGS = new Set([
+  "butter",
+  "flour",
+  "sugar",
+  "yeast",
+  "cinnamon",
+  "nutmeg",
+  "cloves",
+]);
 
 test("resolving a name on the resolve page writes the spelling and the recipe page shows the ingredient", async ({
   page,
@@ -162,7 +173,9 @@ test("resolving a name on the resolve page writes the spelling and the recipe pa
       .filter((el) => el.textContent?.includes("Thai green curry"))
       .map((el) => el.getAttribute("data-resolve-row") ?? ""),
   );
-  const name = names.find((n) => !LEAVE_UNRESOLVED.has(n) && !curry.includes(n));
+  const name = names.find(
+    (n) => !LEAVE_UNRESOLVED.has(n) && !STANDARD_SPELLINGS.has(n) && !curry.includes(n),
+  );
   expect(name, "a queued name no other spec relies on").toBeTruthy();
   const row = page.locator(`[data-resolve-row="${name}"]`);
   await expect(row).toContainText(/in \d+ recipes?:/);

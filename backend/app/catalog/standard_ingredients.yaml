@@ -42,7 +42,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 175043
-    spellings: ["dry yeast"]
+    spellings: ["dry yeast", "yeast"]
   - key: agar
     name: "agar"
     category: pantry
@@ -82,7 +82,15 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 168894
-    spellings: ["ap flour", "plain flour"]
+    spellings: ["ap flour", "plain flour", "flour", "all purpose flour"]
+  - key: allspice-berries
+    name: "allspice berries"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["whole allspice", "pimento berries"]
+    note: "USDA's record is the ground form's, and no two entries share a reference."
   - key: almond-butter
     name: "almond butter"
     category: pantry
@@ -90,6 +98,14 @@ ingredients:
     keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 168588
+  - key: almond-extract
+    name: "almond extract"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["pure almond extract"]
+    note: "USDA records only vanilla extract."
   - key: almond-flour
     name: "almond flour"
     category: pantry
@@ -209,6 +225,13 @@ ingredients:
     perishability: refrigerated
     keep: {room: null, fridge: 10, freezer: null}
     unit: ml
+  - key: apple-pie-spice
+    name: "apple pie spice"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: apricot
     name: "apricot"
     category: produce
@@ -525,7 +548,16 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170931
-    note: "Whole peppercorns become their own entry when a recipe needs them."
+    spellings: ["ground black pepper"]
+    note: "Whole peppercorns are black peppercorns."
+  - key: black-peppercorns
+    name: "black peppercorns"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["whole black peppercorns", "peppercorns", "whole peppercorns"]
+    note: "USDA's pepper record is ground pepper's, and no two entries share a reference."
   - key: black-vinegar
     name: "black vinegar"
     category: pantry
@@ -692,6 +724,7 @@ ingredients:
     keep: {room: 120, fridge: null, freezer: null}
     unit: g
     fdc: 168833
+    spellings: ["light brown sugar"]
   - key: brownie-mix
     name: "brownie mix"
     category: pantry
@@ -759,6 +792,14 @@ ingredients:
     keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 169295
+  - key: butterscotch-chips
+    name: "butterscotch chips"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["butterscotch morsels"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: cabbage
     name: "cabbage"
     category: produce
@@ -811,6 +852,14 @@ ingredients:
     unit: g
     fdc: 167869
     spellings: ["back bacon"]
+  - key: candied-citrus-peel
+    name: "candied citrus peel"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
+    unit: g
+    spellings: ["mixed peel", "candied orange peel", "candied lemon peel"]
+    note: "USDA's candied fruit record is mixed fruit, not peel."
   - key: canned-black-beans
     name: "canned black beans"
     category: pantry
@@ -1280,6 +1329,16 @@ ingredients:
     unit: g
     fdc: 169997
     spellings: ["fresh coriander", "coriander leaves"]
+  - key: cinnamon-sticks
+    name: "cinnamon sticks"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["cassia bark", "whole cinnamon"]
+    measures:
+      - {label: "stick", qty: "3"}
+    note: "The stick below is a household estimate to confirm. USDA's record is the ground form's, and no two entries share a reference."
   - key: cinnamon-syrup
     name: "cinnamon syrup"
     category: pantry
@@ -1408,6 +1467,14 @@ ingredients:
     unit: ml
     fdc: 171430
     spellings: ["nonstick spray", "oil spray"]
+  - key: coriander-seed
+    name: "coriander seed"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["whole coriander", "whole coriander seed"]
+    note: "USDA's coriander seed record is the ground spice's (ground coriander), and no two entries share a reference."
   - key: corn-chips
     name: "corn chips"
     category: pantry
@@ -1614,6 +1681,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     spellings: ["canned crushed tomatoes"]
+  - key: crystallized-ginger
+    name: "crystallized ginger"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
+    unit: g
+    spellings: ["candied ginger"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: cucumber
     name: "cucumber"
     category: produce
@@ -1658,6 +1733,28 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: null}
     unit: g
     fdc: 169226
+  - key: dark-brown-sugar
+    name: "dark brown sugar"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 120, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's brown sugar record is brown sugar's, and no two entries share a reference."
+  - key: dark-chocolate
+    name: "dark chocolate"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 170273
+    spellings: ["bittersweet chocolate", "bittersweet chocolate chips", "dark chocolate chips"]
+  - key: dark-corn-syrup
+    name: "dark corn syrup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    fdc: 168836
   - key: dark-rum
     name: "dark rum"
     category: beverages
@@ -1704,6 +1801,14 @@ ingredients:
     keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     spellings: ["delicata"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: diastatic-malt-powder
+    name: "diastatic malt powder"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["diastatic malt"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: dijon-mustard
     name: "Dijon mustard"
@@ -1806,6 +1911,14 @@ ingredients:
     unit: g
     fdc: 2758976
     spellings: ["craisins"]
+  - key: dried-currants
+    name: "dried currants"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
+    unit: g
+    fdc: 171724
+    spellings: ["zante currants"]
   - key: dried-dill
     name: "dried dill"
     category: spices
@@ -1950,6 +2063,16 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 173461
+  - key: dutch-process-cocoa
+    name: "Dutch-process cocoa"
+    proper_noun: true
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 169594
+    spellings: ["dutch process cocoa", "dutched cocoa", "dutch cocoa", "dutch-process cocoa powder"]
+    note: "Alkalized; cocoa powder is the natural kind, and recipes leaven the two differently."
   - key: egg
     name: "egg"
     category: dairy
@@ -2026,6 +2149,14 @@ ingredients:
     fdc: 171891
     spellings: ["espresso shot"]
     note: "The brewed shot; coffee is the beans or grounds you buy."
+  - key: espresso-powder
+    name: "espresso powder"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["instant espresso", "instant espresso powder"]
+    note: "USDA's instant coffee record is instant coffee's, and no two entries share a reference."
   - key: evaporated-milk
     name: "evaporated milk"
     category: pantry
@@ -2129,6 +2260,14 @@ ingredients:
     unit: g
     spellings: ["chinese five spice", "five spice"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: flaky-sea-salt
+    name: "flaky sea salt"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["flaky salt", "flake salt"]
+    note: "USDA's salt record is salt's, and no two entries share a reference."
   - key: flank-steak
     name: "flank steak"
     category: meat
@@ -2165,6 +2304,14 @@ ingredients:
     keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 170843
+  - key: food-coloring
+    name: "food coloring"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["food colouring", "gel food coloring"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: french-bread
     name: "French bread"
     proper_noun: true
@@ -2362,6 +2509,14 @@ ingredients:
     keep: {room: null, fridge: null, freezer: 60}
     unit: ml
     fdc: 168815
+  - key: fruit-pectin
+    name: "fruit pectin"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 168821
+    spellings: ["pectin", "powdered pectin"]
   - key: furikake
     name: "furikake"
     category: spices
@@ -2482,6 +2637,14 @@ ingredients:
     unit: g
     spellings: ["korean chili paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: golden-syrup
+    name: "golden syrup"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["light treacle"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: gouda
     name: "gouda"
     category: dairy
@@ -2489,6 +2652,13 @@ ingredients:
     keep: {room: null, fridge: 180, freezer: 180}
     unit: g
     fdc: 171241
+  - key: graham-cracker-crumbs
+    name: "graham cracker crumbs"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 240, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's graham cracker record is graham crackers', and no two entries share a reference."
   - key: graham-crackers
     name: "graham crackers"
     category: pantry
@@ -2517,7 +2687,7 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 169655
-    spellings: ["white sugar"]
+    spellings: ["white sugar", "sugar"]
   - key: grape-leaves
     name: "grape leaves"
     category: pantry
@@ -2580,6 +2750,14 @@ ingredients:
     keep: {room: null, fridge: 4, freezer: 180}
     unit: g
     fdc: 170427
+  - key: green-cardamom-pods
+    name: "green cardamom pods"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["cardamom pods", "whole cardamom"]
+    note: "USDA's record is the ground form's, and no two entries share a reference."
   - key: green-chartreuse
     name: "green Chartreuse"
     proper_noun: true
@@ -2619,6 +2797,14 @@ ingredients:
     unit: g
     fdc: 170419
     spellings: ["peas"]
+  - key: green-peppercorns
+    name: "green peppercorns"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["dried green peppercorns"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: grenadine
     name: "grenadine"
     category: pantry
@@ -2657,6 +2843,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171320
+    spellings: ["cinnamon"]
   - key: ground-cloves
     name: "ground cloves"
     category: spices
@@ -2664,6 +2851,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171321
+    spellings: ["cloves"]
   - key: ground-coriander
     name: "ground coriander"
     category: spices
@@ -2671,7 +2859,6 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 170922
-    spellings: ["coriander seed"]
   - key: ground-cumin
     name: "ground cumin"
     category: spices
@@ -2717,6 +2904,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 171326
+    spellings: ["nutmeg"]
   - key: ground-pork
     name: "ground pork"
     category: meat
@@ -2877,6 +3065,14 @@ ingredients:
     unit: ml
     fdc: 170859
     spellings: ["heavy whipping cream", "whipping cream"]
+  - key: high-gluten-flour
+    name: "high-gluten flour"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["high gluten flour"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: hoisin-sauce
     name: "hoisin sauce"
     category: pantry
@@ -2983,6 +3179,22 @@ ingredients:
     keep: {room: 730, fridge: null, freezer: null}
     unit: g
     fdc: 171893
+  - key: instant-tapioca
+    name: "instant tapioca"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["minute tapioca", "quick-cooking tapioca", "quick cooking tapioca"]
+    note: "Pre-cooked granules for thickening pies; tapioca starch and tapioca pearls are other entries. USDA has no plain record for it."
+  - key: instant-yeast
+    name: "instant yeast"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["rapid rise yeast", "quick rise yeast", "bread machine yeast"]
+    note: "USDA's dry yeast record is active dry yeast's, and no two entries share a reference."
   - key: islay-scotch
     name: "Islay Scotch"
     proper_noun: true
@@ -3195,6 +3407,13 @@ ingredients:
       - {label: "tbsp juice", qty: "0.33"}
       - {label: "tsp zest", qty: "0.33"}
     note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"), as on lime; a recipe that measures the juice uses lemon juice. The measures below are household estimates to confirm. A cultivar is a variety of this ingredient's products, not an ingredient of its own (03, 1H amendment 2026-10-27)."
+  - key: lemon-extract
+    name: "lemon extract"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA records only vanilla extract."
   - key: lemon-juice
     name: "lemon juice"
     category: produce
@@ -3439,6 +3658,13 @@ ingredients:
     unit: g
     fdc: 168879
     spellings: ["arborio rice", "calrose rice"]
+  - key: meringue-powder
+    name: "meringue powder"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mezcal
     name: "mezcal"
     category: beverages
@@ -3614,6 +3840,13 @@ ingredients:
     unit: g
     spellings: ["nooch"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: oat-flour
+    name: "oat flour"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 90, fridge: 180, freezer: 365}
+    unit: g
+    fdc: 2261421
   - key: oat-milk
     name: "oat milk"
     category: beverages
@@ -3687,6 +3920,13 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: orange-blossom-water
+    name: "orange blossom water"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: orange-curacao
     name: "orange curaçao"
     category: beverages
@@ -3695,6 +3935,13 @@ ingredients:
     unit: ml
     spellings: ["dry curaçao", "curaçao"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: orange-extract
+    name: "orange extract"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA records only vanilla extract."
   - key: orange-juice
     name: "orange juice"
     category: beverages
@@ -3886,6 +4133,13 @@ ingredients:
     keep: {room: null, fridge: 14, freezer: 30}
     unit: g
     fdc: 170204
+  - key: pastry-flour
+    name: "pastry flour"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 1104913
   - key: pea-shoots
     name: "pea shoots"
     category: produce
@@ -3916,6 +4170,14 @@ ingredients:
     keep: {room: 180, fridge: null, freezer: null}
     unit: g
     fdc: 174266
+  - key: peanut-butter-chips
+    name: "peanut butter chips"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["peanut butter morsels"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: peanut-oil
     name: "peanut oil"
     category: pantry
@@ -3968,6 +4230,13 @@ ingredients:
     unit: g
     fdc: 171249
     spellings: ["pecorino", "romano cheese"]
+  - key: peppermint-extract
+    name: "peppermint extract"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "USDA records only vanilla extract."
   - key: pepperoni
     name: "pepperoni"
     category: meat
@@ -4303,6 +4572,14 @@ ingredients:
     keep: {room: 7, fridge: 14, freezer: null}
     unit: g
     fdc: 168448
+  - key: pumpkin-pie-spice
+    name: "pumpkin pie spice"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 171332
+    spellings: ["pumpkin spice"]
   - key: pumpkin-seeds
     name: "pumpkin seeds"
     category: pantry
@@ -4348,6 +4625,14 @@ ingredients:
     unit: g
     spellings: ["panela cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: quick-oats
+    name: "quick oats"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["quick-cooking oats", "quick cooking oats"]
+    note: "USDA's oats record is rolled oats', and no two entries share a reference."
   - key: quinoa
     name: "quinoa"
     category: pantry
@@ -4488,6 +4773,15 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 172438
+  - key: refrigerated-pie-crust
+    name: "refrigerated pie crust"
+    category: bakery
+    perishability: refrigerated
+    keep: {room: null, fridge: 30, freezer: 240}
+    unit: g
+    fdc: 167932
+    spellings: ["pie dough", "rolled pie crust"]
+    note: "Frozen pie crust, in its pan, is its own entry."
   - key: rhubarb
     name: "rhubarb"
     category: produce
@@ -4596,6 +4890,14 @@ ingredients:
     unit: g
     spellings: ["romesco sauce"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: rose-water
+    name: "rose water"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["rosewater"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: rum
     name: "rum"
     category: beverages
@@ -4627,6 +4929,14 @@ ingredients:
     keep: {room: 2, fridge: 7, freezer: 90}
     unit: g
     fdc: 172684
+  - key: rye-flour
+    name: "rye flour"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 90, fridge: 180, freezer: 365}
+    unit: g
+    fdc: 2512375
+    spellings: ["dark rye flour", "medium rye flour"]
   - key: rye-whiskey
     name: "rye whiskey"
     category: beverages
@@ -4694,7 +5004,7 @@ ingredients:
     unit: g
     fdc: 173468
     spellings: ["table salt"]
-    note: "Kosher and flaky salt become their own entries when a recipe needs them."
+    note: "Kosher salt, sea salt and flaky sea salt are their own entries."
   - key: salt-pork
     name: "salt pork"
     category: meat
@@ -4725,6 +5035,14 @@ ingredients:
     unit: g
     spellings: ["sambal"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: sanding-sugar
+    name: "sanding sugar"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["coarse sugar", "decorating sugar"]
+    note: "USDA's sugar record is granulated sugar's, and no two entries share a reference."
   - key: sandwich-bread
     name: "white sandwich bread"
     category: bakery
@@ -4785,6 +5103,14 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 175142
+  - key: sea-salt
+    name: "sea salt"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["fine sea salt"]
+    note: "USDA's salt record is salt's, and no two entries share a reference."
   - key: seaweed-snacks
     name: "seaweed snacks"
     category: pantry
@@ -5101,6 +5427,14 @@ ingredients:
     keep: {room: null, fridge: 5, freezer: null}
     unit: g
     spellings: ["mesclun", "salad mix"]
+  - key: sprinkles
+    name: "sprinkles"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["nonpareils", "jimmies"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: squid
     name: "squid"
     category: seafood
@@ -5124,6 +5458,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
+    spellings: ["star anise pods", "whole star anise"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: star-fruit
     name: "star fruit"
@@ -5349,6 +5684,14 @@ ingredients:
     unit: g
     fdc: 169717
     spellings: ["tapioca"]
+  - key: tapioca-starch
+    name: "tapioca starch"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["tapioca flour"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: taro
     name: "taro"
     category: produce
@@ -5409,6 +5752,14 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 180}
     unit: g
     fdc: 175176
+  - key: tipo-00-flour
+    name: "00 flour"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 2003586
+    spellings: ["tipo 00 flour", "doppio zero flour"]
   - key: toasted-sesame-oil
     name: "toasted sesame oil"
     category: pantry
@@ -5417,6 +5768,13 @@ ingredients:
     unit: ml
     spellings: ["dark sesame oil"]
     note: "USDA has no separate record for toasted sesame oil."
+  - key: toffee-bits
+    name: "toffee bits"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: tofu
     name: "tofu"
     category: produce
@@ -5598,6 +5956,7 @@ ingredients:
     keep: {room: null, fridge: 30, freezer: 180}
     unit: g
     fdc: 173430
+    spellings: ["butter"]
   - key: unsweetened-chocolate
     name: "unsweetened chocolate"
     category: pantry
@@ -5606,6 +5965,22 @@ ingredients:
     unit: g
     fdc: 167568
     spellings: ["baking chocolate"]
+  - key: vanilla-bean
+    name: "vanilla bean"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
+    unit: each
+    spellings: ["vanilla pod"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: vanilla-bean-paste
+    name: "vanilla bean paste"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["vanilla paste"]
+    note: "USDA records only vanilla extract."
   - key: vanilla-extract
     name: "vanilla extract"
     category: pantry
@@ -5642,6 +6017,14 @@ ingredients:
     keep: {room: 180, fridge: null, freezer: null}
     unit: ml
     note: "USDA has no record for generic vegetable oil (FNDDS \"Vegetable oil, NFS\" is code-only)."
+  - key: vital-wheat-gluten
+    name: "vital wheat gluten"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 168147
+    spellings: ["wheat gluten"]
   - key: vodka
     name: "vodka"
     category: beverages
@@ -5731,6 +6114,14 @@ ingredients:
     unit: g
     fdc: 170933
     spellings: ["ground white pepper"]
+  - key: white-peppercorns
+    name: "white peppercorns"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    spellings: ["whole white peppercorns"]
+    note: "USDA's pepper record is ground pepper's, and no two entries share a reference."
   - key: white-wine
     name: "white wine"
     category: beverages
@@ -5747,6 +6138,13 @@ ingredients:
     unit: g
     fdc: 171447
     spellings: ["roasting chicken"]
+  - key: whole-cloves
+    name: "whole cloves"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's record is the ground form's, and no two entries share a reference."
   - key: whole-milk
     name: "whole milk"
     category: dairy
@@ -5754,6 +6152,15 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 90}
     unit: ml
     fdc: 171265
+  - key: whole-nutmeg
+    name: "whole nutmeg"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    measures:
+      - {label: "nutmeg", qty: "6"}
+    note: "The nutmeg below is a household estimate to confirm. USDA's record is the ground form's, and no two entries share a reference."
   - key: whole-wheat-bread
     name: "whole wheat bread"
     category: bakery

@@ -83,6 +83,42 @@ def test_the_bar_decisions_are_in_the_list():
     assert all(entry[k].unit == "ml" for k in ("lemon-juice", "simple-syrup", "orange-juice"))
 
 
+def test_the_baking_decisions_are_in_the_list():
+    # Tier G: a whole spice is its own entry and a bare spice word means the ground one;
+    # the four bare staples name what a baking recipe means by them.
+    named = {
+        normalize_name(t): e.key
+        for e in standard_list().ingredients
+        for t in (e.name, *e.spellings)
+    }
+    for word, key in [
+        ("cinnamon", "ground-cinnamon"),
+        ("nutmeg", "ground-nutmeg"),
+        ("cloves", "ground-cloves"),
+        ("allspice", "ground-allspice"),
+        ("sugar", "granulated-sugar"),
+        ("flour", "all-purpose-flour"),
+        ("butter", "unsalted-butter"),
+        ("yeast", "active-dry-yeast"),
+        ("whole allspice", "allspice-berries"),
+        ("star anise pods", "star-anise"),
+        ("bittersweet chocolate", "dark-chocolate"),
+    ]:
+        assert named[normalize_name(word)] == key, word
+    assert normalize_name("pie crust") not in named  # frozen or refrigerated
+    assert named[normalize_name("coriander seed")] == "coriander-seed"  # no longer ground's
+    entry = by_key()
+    whole = (
+        "whole-cloves",
+        "whole-nutmeg",
+        "cinnamon-sticks",
+        "green-cardamom-pods",
+        "black-peppercorns",
+    )
+    assert all(entry[k].category == "spices" and entry[k].fdc is None for k in whole)
+    assert entry["dutch-process-cocoa"].proper_noun
+
+
 def test_proper_nouns_are_the_only_capitals():
     capitalized = {e.key for e in standard_list().ingredients if e.name != e.name.lower()}
     assert capitalized == {e.key for e in standard_list().ingredients if e.proper_noun}

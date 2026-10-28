@@ -32,6 +32,16 @@ def _key(name: str) -> str | None:
         ("dark rum", "dark-rum"),  # a style beats its spirit
         ("fresh orange juice", "orange-juice"),
         ("cocktail cherries", "cocktail-cherry"),
+        ("cinnamon", "ground-cinnamon"),  # a bare spice is the ground one
+        ("cinnamon sticks", "cinnamon-sticks"),
+        ("whole black peppercorns", "black-peppercorns"),
+        ("sugar", "granulated-sugar"),  # a bare staple
+        ("organic sugar", "granulated-sugar"),
+        ("peanut butter", "peanut-butter"),  # the more specific entry still wins
+        ("palm sugar", "palm-sugar"),
+        ("instant yeast", "instant-yeast"),
+        ("00 flour", "tipo-00-flour"),
+        ("minute tapioca", "instant-tapioca"),  # granules, not the starch
     ],
 )
 def test_a_name_finds_its_entry(name, key):
@@ -47,6 +57,10 @@ def test_a_name_finds_its_entry(name, key):
         "smoked onion",  # the name has a qualifier the entry lacks
         "sweet paprika",
         "vermouth",  # sweet and dry are both more specific: neither is offered
+        "garlic cloves",  # garlic is not a qualifier ground cloves allows
+        "apple butter",  # a food word blocks the bare staple
+        "pie crust",  # frozen and refrigerated are both more specific
+        "fresh currants",  # berries, not the dried Zante grapes
         "Quince paste",  # nothing on the list is a paste of quince
         "",
         "12 oz",
