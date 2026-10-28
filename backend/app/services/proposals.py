@@ -381,9 +381,8 @@ def product_facts(product: Product, *, produce_by_weight: bool = False) -> samen
         gtin=gtin,
         ingredient_id=product.ingredient_id,
         brand_id=product.brand_id,
-        organic=(product.attributes or {}).get("organic"),
-        grade=(product.attributes or {}).get("grade"),
         produce_by_weight=produce_by_weight,
+        **sameness.attribute_facts(product.attributes),
     )
 
 

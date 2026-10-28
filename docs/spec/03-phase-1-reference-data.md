@@ -406,7 +406,7 @@ The migration sets kinds from evidence: an exclusive vendor gives Market stall; 
 
 How a loose product is sold: per weight (`random_weight`), per bunch (a pack of "1 bunch"), or per piece (a pack in `each`). Per-bunch prices compare per bunch until a bunch is weighed (04, "Showing a unit price" and 2E).
 
-**Attributes.** `product.attributes` holds kind-specific details, validated by a Pydantic model chosen from the kind and the ingredient's category. Only meat and seafood have one in 1H:
+**Attributes.** `product.attributes` holds kind-specific details, validated by a Pydantic model chosen from the kind and the ingredient's category. Only meat and seafood had one in 1H:
 
 - species;
 - primal and cut, as free text;
@@ -420,7 +420,26 @@ Produce has one too (added 2026-10-19):
 - organic (true or false). Organic and conventional of one food are two products of one ingredient. A new produce product whose name or brand says "Organic" or "Organics" starts marked organic, even when that word is dropped as a brand. Offers and the comparison grid carry `organic` and take `organic_scope` (all, organic or conventional, default all).
 - grade (small, medium, large, extra large or jumbo). A grade sets two products apart only when they are sold by the piece; sold by weight, a large and a small cost the same per pound.
 
-A product moved to an ingredient whose category has no place for its attributes loses them. Other categories accept an empty object.
+A product moved to an ingredient keeps the attributes its new category has a place for and loses the rest. A value the new category refuses is dropped on its own; details that need a species the new category lacks leave `organic`. Other categories accept only `organic`.
+
+**Commodities and varieties (amendment, 2026-10-27).** An ingredient is a commodity, and a product carries what tells its items apart. This is the shape the produce and food trade already use. PLU codes encode commodity, variety and size, with a 9 prefix for organic; GS1's product classification files by commodity and records organic as an attribute; USDA FoodData Central and USDA Foods name an item commodity-first, with the variety as a qualifier ("Apples, fuji, with skin, raw"). So:
+
+1. A proper-noun cultivar (Fuji, Honeycrisp, Yukon Gold, Hass, Meyer, Walla Walla) is a produce product's `variety`, on a product of the commodity's ingredient ("apple", "potato"). A type that recipes call for by name and don't swap freely stays an ingredient of its own: red onion, cherry tomato, sweet potato, cremini, scallion. The standard list has no cultivar entries; a cultivar's name is a spelling of its commodity, and the matcher reads a commodity's cultivar words as not naming another food (`catalog/product_facts.VARIETIES`).
+2. A meat ingredient is a species and cut (chicken thigh, ribeye steak, pork shoulder), after the institutional meat buying specifications and FoodData Central. Bone, skin, form, grade and lean ratio are attributes. Ground meat stays its own ingredient ("ground beef"), because it is its own item and recipe term.
+3. A seafood ingredient is a market species (salmon, shrimp, tuna). The FDA Seafood List's finer market name ("Atlantic", "sockeye") is `species_detail`, beside `origin` (wild or farmed, never guessed from the species) and `count_size` (pieces per pound, "26/30" or "U15").
+4. Organic is an attribute of any product. The name may say it; the attribute decides.
+5. A recipe line for "apple" costs from every apple. Guidance about which cultivar suits it belongs in the line's note, or a pin to one product (07, 3C).
+
+The attributes:
+
+- meat: as above, plus `lean_pct` (50 to 99: 80 for "80/20") and `organic`; `grade` is stored in lower case ("choice", "prime");
+- seafood: `species` (a market species, or other), `species_detail`, `origin`, `count_size`, `form` (whole, fillet, loin, steak, sliced, peeled, smoked or canned) and `organic`;
+- produce: as above, plus `variety` (free text, up to 40 characters, as the store names it);
+- every other category: `organic`.
+
+A new product starts with the facts its words give (`product_facts.facts_for`): organic in the name or brand, a cultivar, and for meat and seafood the species, bone, skin, form, grade, lean ratio, origin and count size. Facts are read only when the words name the species, and a species the name says outright wins over one its cut implies ("pork sirloin" is pork); nothing is guessed from a brand ("Tarn Select" grades nothing: only "USDA Select" does). The person's own attributes win. Meat and seafood with no brand and no barcode, and no kind chosen, start as Weighed: they are sold by weight at a counter.
+
+Two products that both set one of variety, lean ratio, species, market name, origin, count size, bone, skin, form, cut or a meat grade, to different values, are variants (04, 2P), whatever their names say.
 
 **Whose value wins.** `product.field_source` records where each field came from, as `vendor.field_source` does (1F). When a person accepts a proposal (04, 2L), what they chose is written. Only an answer the lookup helper sends after a proposal was decided (04, 2N) uses 1F's rule, and then a person's edit always wins.
 
@@ -507,6 +526,10 @@ The first is an `active` product photo; the label roles never become the main ph
 100. Media requires a session or token, answers `private, immutable` caching, and is served under `/api/v1` with no proxy change.
 101. `kerp backup` and `kerp restore` include originals and masks, and restore reports any hash mismatch. Privileges after restore equal those after migrating, `product_stage_result` included.
 102. With no mask, a photo is processed without a cutout. With a mask posted by a stub helper, it gets `cutout_source = tool`.
+103. A cultivar's name ("Honeycrisp apple", "fuji") matches its commodity's standard entry, and the standard list has no cultivar entries; a type recipes name ("red potato", "sweet potato") keeps its own entry.
+104. Whatever a new product's words say gives a valid attribute set for its ingredient's category: variety and organic for produce; species, bone, skin, form, grade and lean ratio for meat; species, market name, origin, count size and form for seafood; organic for any other food. The person's own attributes win.
+105. A new meat or seafood product with no brand, no barcode and no kind chosen starts as Weighed.
+106. Two products that set an item attribute (variety, lean ratio, a meat grade, origin, ...) to different values are variants; a product moved to another category keeps only the attributes that category takes.
 
 ## Out of scope for Phase 1
 

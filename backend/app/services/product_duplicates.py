@@ -95,9 +95,8 @@ async def find_duplicates(db: AsyncSession) -> list[DuplicatePair]:
             pid: sameness.Facts(
                 name=name,
                 brand=brand,
-                organic=(attributes or {}).get("organic"),
-                grade=(attributes or {}).get("grade"),
                 produce_by_weight=pid in by_weight,
+                **sameness.attribute_facts(attributes),
             )
             for pid, name, brand, attributes in rows.tuples()
         }

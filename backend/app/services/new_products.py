@@ -16,6 +16,12 @@ one on it: their own name, a department header ("WET VEGETABLES - …") or a wor
   a helper is not kept either, only one the person typed;
 - with no brand and no barcode the kind is ``random_weight`` when it is priced per
   weight, else ``loose``;
+- a cultivar in the name ("Honeycrisp apples") is its ``variety`` (03, 1H amendment
+  2026-10-27).
+
+Meat and seafood with no brand and no barcode are weighed at a counter, so their kind
+is ``random_weight``. For every food, the words' facts (``product_facts``: organic,
+species, bone, lean ratio, ...) start the attributes; the person's own win.
 - the name drops a leading "Fresh" and a trailing ", 1 ct" (``product_names``);
 - "Organic" in the name or the brand ("Organic bananas", a store's organic line)
   marks the product organic in its attributes, even when the brand is dropped;
@@ -36,7 +42,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog import categories
+from app.catalog import categories, product_facts
 from app.catalog import proposals as merging
 from app.catalog.brand_names import is_never_brand, name_key
 from app.catalog.product_names import drop_bunch, produce_name, says_bunch
@@ -49,7 +55,6 @@ from app.units.table import units_by_code
 
 # A department or aisle header in capitals before a dash: "WET VEGETABLES - Herbs".
 _DEPARTMENT = re.compile(r"^[A-Z][A-Z&/' ]*[A-Z]\s*[-–:]")
-_ORGANIC = re.compile(r"\borganics?\b", re.IGNORECASE)
 _UNITS = units_by_code()
 
 
@@ -93,15 +98,17 @@ async def kind_for(
     exclusive_vendor_id: uuid.UUID | None = None,
     produce: bool = False,
     per_weight: bool = False,
+    by_weight: bool = False,
 ) -> str:
-    """The kind a product starts with when the person chose none."""
+    """The kind a product starts with when the person chose none. ``by_weight``: a food
+    sold by weight at a counter (meat, seafood), weighed whenever it has no brand."""
     if await brands.is_house_brand(db, brand):
         return "private_label"
     if exclusive_vendor_id is not None:
         return "unbranded_vendor"
     if (brand or "").strip() or barcode:
         return "branded"
-    return "random_weight" if produce and per_weight else "loose"
+    return "random_weight" if by_weight or (produce and per_weight) else "loose"
 
 
 async def start(
@@ -118,11 +125,11 @@ async def start(
 ) -> Start:
     """A new product's name, brand, kind and pack; the produce defaults when it is produce."""
     produce = is_produce(ingredient)
+    category = categories.key(ingredient.category)
     pack_qty, pack_unit = pack
-    attributes: dict[str, Any] = {}
+    # What the words say: organic, a cultivar, meat and seafood facts (03, 1H).
+    attributes = product_facts.facts_for(category, name, ingredient.name, brand)
     if produce:
-        if _ORGANIC.search(name) or _ORGANIC.search(brand or ""):
-            attributes["organic"] = True
         name = produce_name(name)
         brand = await produce_brand(db, brand)
         if pack_qty is None and not per_weight and says_bunch(name):
@@ -136,6 +143,7 @@ async def start(
         exclusive_vendor_id=exclusive_vendor_id,
         produce=produce,
         per_weight=per_weight,
+        by_weight=category in ("meat", "seafood"),
     )
     return Start(name.strip(), brand, kind, pack_qty, pack_unit, attributes)
 

@@ -201,6 +201,8 @@ ingredients:
     keep: {room: 1, fridge: 21, freezer: null}
     unit: g
     fdc: 171688
+    spellings: ["fuji apple", "apples fuji", "fuji", "gala apple", "apples gala", "gala", "golden delicious apple", "apples golden delicious", "golden delicious", "granny smith apple", "apples granny smith", "granny smith", "honeycrisp apple", "apples honeycrisp", "honeycrisp", "red delicious apple", "apples red delicious", "red delicious"]
+    note: "A cultivar is a variety of this ingredient's products, not an ingredient of its own (03, 1H amendment 2026-10-27). USDA's cultivar records: Fuji apple 167793, Gala apple 168204, Golden Delicious apple 168202, Granny Smith apple 168203, Honeycrisp apple 1750343, Red Delicious apple 168201."
   - key: apple-cider
     name: "apple cider"
     category: beverages
@@ -2360,15 +2362,6 @@ ingredients:
     keep: {room: null, fridge: null, freezer: 60}
     unit: ml
     fdc: 168815
-  - key: fuji-apple
-    name: "Fuji apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 167793
-    spellings: ["apples fuji", "fuji"]
   - key: furikake
     name: "furikake"
     category: spices
@@ -2376,15 +2369,6 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
-  - key: gala-apple
-    name: "Gala apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 168204
-    spellings: ["apples gala", "gala"]
   - key: galangal
     name: "galangal"
     category: produce
@@ -2498,15 +2482,6 @@ ingredients:
     unit: g
     spellings: ["korean chili paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
-  - key: golden-delicious-apple
-    name: "Golden Delicious apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 168202
-    spellings: ["apples golden delicious", "golden delicious"]
   - key: gouda
     name: "gouda"
     category: dairy
@@ -2521,15 +2496,6 @@ ingredients:
     keep: {room: 240, fridge: null, freezer: null}
     unit: g
     fdc: 174957
-  - key: granny-smith-apple
-    name: "Granny Smith apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 168203
-    spellings: ["apples granny smith", "granny smith"]
   - key: granola
     name: "granola"
     category: pantry
@@ -2948,16 +2914,6 @@ ingredients:
     keep: {room: null, fridge: 14, freezer: null}
     unit: ml
     note: "Made at home or bought; USDA has no record for it."
-  - key: honeycrisp-apple
-    name: "Honeycrisp apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 1750343
-    spellings: ["apples honeycrisp", "honeycrisp"]
-    note: "USDA has only a Foundation record for it, without portions."
   - key: honeydew
     name: "honeydew"
     category: produce
@@ -3234,10 +3190,11 @@ ingredients:
     keep: {room: 10, fridge: 7, freezer: null}
     unit: each
     fdc: 167746
+    spellings: ["meyer lemon", "meyer lemons"]
     measures:
       - {label: "tbsp juice", qty: "0.33"}
       - {label: "tsp zest", qty: "0.33"}
-    note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"), as on lime; a recipe that measures the juice uses lemon juice. The measures below are household estimates to confirm."
+    note: "Zest and juice are recipe notes on lemon (\"juice of 1 lemon\"), as on lime; a recipe that measures the juice uses lemon juice. The measures below are household estimates to confirm. A cultivar is a variety of this ingredient's products, not an ingredient of its own (03, 1H amendment 2026-10-27)."
   - key: lemon-juice
     name: "lemon juice"
     category: produce
@@ -3482,15 +3439,6 @@ ingredients:
     unit: g
     fdc: 168879
     spellings: ["arborio rice", "calrose rice"]
-  - key: meyer-lemon
-    name: "Meyer lemon"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 10, fridge: 7, freezer: null}
-    unit: each
-    spellings: ["meyer lemons"]
-    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: mezcal
     name: "mezcal"
     category: beverages
@@ -4277,6 +4225,8 @@ ingredients:
     keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     fdc: 170026
+    spellings: ["yukon gold potato", "gold potato"]
+    note: "A cultivar is a variety of this ingredient's products, not an ingredient of its own (03, 1H amendment 2026-10-27). USDA's cultivar records: Yukon Gold potato 2346403."
   - key: potato-chips
     name: "potato chips"
     category: pantry
@@ -4494,15 +4444,6 @@ ingredients:
     unit: g
     spellings: ["thai red curry paste"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
-  - key: red-delicious-apple
-    name: "Red Delicious apple"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 1, fridge: 21, freezer: null}
-    unit: g
-    fdc: 168201
-    spellings: ["apples red delicious", "red delicious"]
   - key: red-onion
     name: "red onion"
     category: produce
@@ -5905,15 +5846,6 @@ ingredients:
     unit: g
     spellings: ["choy sum", "yu choy sum"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
-  - key: yukon-gold-potato
-    name: "Yukon Gold potato"
-    proper_noun: true
-    category: produce
-    perishability: refrigerated
-    keep: {room: 30, fridge: 7, freezer: null}
-    unit: g
-    fdc: 2346403
-    spellings: ["gold potato"]
   - key: zaatar
     name: "za'atar"
     category: spices

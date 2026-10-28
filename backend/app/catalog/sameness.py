@@ -16,7 +16,8 @@ brand or filler words. The comparison gives one of four verdicts:
 Two names also agree when one has only a brand the other lacks: the other's brand
 field, or a ", Brand" segment ending a brandless name; or a bare number the other
 prints as part of a size (10 against 10").
-- ``variant``: the keys differ only by distinguishing words (red against white, hot
+- ``variant``: both set an item attribute differently (variety, lean ratio, species,
+  bone, ...), or the keys differ only by distinguishing words (red against white, hot
   against sweet), or the keys agree and the GTINs differ.
 - ``similar``: anything else.
 
@@ -32,6 +33,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Literal
 
+from app.catalog.attributes import PRODUCE_GRADES
 from app.catalog.extract import size_from_text
 from app.catalog.proposals import _pack_grams, packs_disagree
 
@@ -143,6 +145,40 @@ class Facts:
     grade: str | None = None
     # Produce bought by weight: its size grade says nothing about the product.
     produce_by_weight: bool = False
+    # Attributes that tell items of one commodity apart (variety, lean ratio, species,
+    # bone, ...) as sorted (key, value) pairs: two products that disagree on one are
+    # variants whatever their names say (03, 1H amendment 2026-10-27).
+    details: tuple[tuple[str, str], ...] = ()
+
+
+# Attribute keys that make a different item when two products both set them differently.
+DETAIL_KEYS = frozenset(
+    {"variety", "lean_pct", "species", "species_detail", "origin", "count_size"}
+    | {"bone", "skin", "form", "cut"}
+)
+
+
+def attribute_facts(attributes: dict[str, Any] | None) -> dict[str, Any]:
+    """``Facts`` fields from a product's stored attributes: organic, a produce size grade,
+    and the details. A meat grade ("choice") is a detail, never words."""
+    attrs = attributes or {}
+    grade = attrs.get("grade")
+    details = {k: str(v).lower() for k, v in attrs.items() if k in DETAIL_KEYS and v is not None}
+    if grade is not None and grade not in PRODUCE_GRADES:
+        details["grade"] = str(grade).lower()
+        grade = None
+    return {
+        "organic": attrs.get("organic"),
+        "grade": grade,
+        "details": tuple(sorted(details.items())),
+    }
+
+
+def _details_disagree(a: Facts, b: Facts) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The details both set to different values, as "key value" from each side."""
+    da, db = dict(a.details), dict(b.details)
+    keys = sorted(k for k in da.keys() & db.keys() if da[k] != db[k])
+    return tuple(f"{k} {da[k]}" for k in keys), tuple(f"{k} {db[k]}" for k in keys)
 
 
 @dataclass(frozen=True)
@@ -206,10 +242,14 @@ def word_sets(facts: Facts) -> WordSets:
     the numbers of a printed size ("10" against '10"').
 
     "Organic" is left to :func:`is_organic`. A size grade is filler for produce sold by
-    weight; for produce sold by the piece its grade attribute counts as words."""
+    weight; for produce sold by the piece its grade attribute counts as words. A detail
+    answers for its words: "Choice strip steak" and "Strip steak" graded choice agree."""
     key = name_key(facts.name, facts.brand)
     need = key.words - _tail(facts) - _ORGANIC
-    cover = key.words | frozenset(_words(facts.brand or "")) | key.size_numbers
+    detail_words = frozenset(
+        _stem(w) for _, v in facts.details for w in _words(v.replace("_", " "))
+    )
+    cover = key.words | frozenset(_words(facts.brand or "")) | key.size_numbers | detail_words
     if facts.produce_by_weight:
         need -= GRADES
     elif facts.grade:
@@ -234,6 +274,9 @@ def words_agree(a: WordSets, b: WordSets) -> bool:
 
 def compare(a: Facts, b: Facts) -> Verdict:
     """The verdict on two products, symmetric in its kind."""
+    detail_a, detail_b = _details_disagree(a, b)
+    if detail_a:
+        return Verdict("variant", ("attributes",), detail_a, detail_b)
     wa, wb = word_sets(a), word_sets(b)
     only_a = tuple(sorted(wa.need - wb.cover | ({"organic"} if wa.organic > wb.organic else set())))
     only_b = tuple(sorted(wb.need - wa.cover | ({"organic"} if wb.organic > wa.organic else set())))

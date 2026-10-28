@@ -56,6 +56,25 @@ describe("produce attributes", () => {
     });
   });
 
+  it("keeps a variety when organic changes", async () => {
+    const honeyed = { ...pepperProduct, attributes: { variety: "Lantern Gold" } };
+    const calls = mockApi({
+      ...routes(honeyed, peppers),
+      [`PATCH /products/${flourProductId}`]: () =>
+        jsonResponse(200, { ...honeyed, attributes: { variety: "Lantern Gold", organic: true } }),
+    });
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/${flourProductId}`);
+    const form = await screen.findByRole("form", { name: "Edit product" });
+
+    await user.click(await within(form).findByLabelText("Organic"));
+    await user.click(within(form).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      attributes: { variety: "Lantern Gold", organic: true },
+    });
+  });
+
   it("leaves other foods without the fields", async () => {
     mockApi(routes(flourProduct, flour));
     renderApp(`/catalog/products/${flourProductId}`);
