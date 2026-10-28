@@ -34,12 +34,11 @@ import {
   sectionHeading,
 } from "../../components/ui";
 import { formatDateTime } from "../../lib/format";
+import { attributesToSend, sameAttributes } from "../../lib/productAttributes";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 import {
-  choiceIsProduce,
   piecesFit,
-  produceAttributes,
   ProductForm,
   productValues,
   validateProductValues,
@@ -312,22 +311,9 @@ function EditProductForm({ product }: { product: Product }) {
       input.density_override_source = values.density_override_source;
     }
 
-    if (choiceIsProduce(values)) {
-      const attributes = produceAttributes(values);
-      const before = product.attributes ?? {};
-      if (
-        Boolean(before.organic) !== Boolean(attributes.organic) ||
-        (before.grade ?? undefined) !== attributes.grade
-      ) {
-        // The form edits organic and grade; the rest (a variety) is kept as it was,
-        // unless the product moves: another food's details have no place in produce.
-        const moved = input.ingredient_id !== undefined;
-        const kept = Object.fromEntries(
-          Object.entries(before).filter(([key]) => !moved && key !== "organic" && key !== "grade"),
-        );
-        input.attributes = { ...kept, ...attributes };
-      }
-    }
+    // Every stored attribute starts in the form, so sending the set keeps what it doesn't show.
+    const attributes = attributesToSend(values.attributes);
+    if (!sameAttributes(attributes, product.attributes ?? {})) input.attributes = attributes;
 
     if (Object.keys(input).length === 0) {
       saved();
