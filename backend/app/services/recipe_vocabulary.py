@@ -88,7 +88,8 @@ def _standard_target(ctx: Context, name_norm: str) -> tuple[str, TargetKind] | N
     itself to create from. An inactive ingredient holding the entry offers
     nothing, as in ``recipe_resolution._standard_tier``.
     """
-    entry = match_entry(name_norm)
+    # Prep words are the prep tier's, which keeps them as the note.
+    entry = match_entry(name_norm, prep=False)
     if entry is None:
         return None
     existing = ctx.index.by_slug.get(entry.key)

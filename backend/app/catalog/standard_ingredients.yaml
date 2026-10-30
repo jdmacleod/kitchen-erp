@@ -5134,7 +5134,7 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     fdc: 167976
-    spellings: ["chocolate chips", "semisweet chocolate chips"]
+    spellings: ["chocolate chips", "semisweet chocolate chips", "semi-sweet chocolate"]
   - key: semolina
     name: "semolina"
     category: pantry

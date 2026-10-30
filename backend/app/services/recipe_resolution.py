@@ -227,8 +227,8 @@ Proposer = Callable[[AsyncSession, Context, str], Awaitable[list[ResolveProposal
 
 
 async def _standard_tier(db: AsyncSession, ctx: Context, name_norm: str) -> list[ResolveProposal]:
-    """An exact standard-list entry: its catalog ingredient, or creating one from it."""
-    entry = match_entry(name_norm)
+    """A standard-list entry, prep words left to the prep tier: its ingredient, or one to create."""
+    entry = match_entry(name_norm, prep=False)
     if entry is None:
         return []
     existing = ctx.index.by_slug.get(entry.key)
