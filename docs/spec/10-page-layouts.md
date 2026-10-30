@@ -453,6 +453,12 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 - After the merge the Notice reads "Merged into {kept}." with "Open {kept}", and the page shows the merged state.
 - **Merged product:** a neutral notice under the header, "Merged into {kept}. Its prices, codes, photos and receipt wordings are there now.", linking to the kept product. The header has no actions.
 
+**Product page: codes (#448).**
+
+- A "Codes" card sits after Category, shown only when the product has a code: "Receipt lines and scans that print one of these are identified as this product." Each row reads "{code} · {kind}", then " at {store}" for a store's code and " · remembered from a receipt" when a receipt taught it ("12345 · Weighed-item code at Tideline Market · remembered from a receipt"). The kinds are Barcode, PLU, Item number and Weighed-item code.
+- The barcode row reads "Changed in Edit product". Every other row has "Forget" (secondary), which opens a tomato panel under the row: "Forget {code} ({kind})?", "Lines it already identified keep this product. New lines that print it wait to be identified.", then Forget (danger) and Cancel, with focus on Cancel. After it, the row leaves and a status line reads "Forgot {code}."
+- A merged product shows no Codes card; its codes are the kept product's.
+
 **Product page: price records (#73).**
 
 - A "Price records" card sits under the prices chart and lists every current price for the product: amount per quantity, location, date, and whether it was a shelf price or came from a purchase.

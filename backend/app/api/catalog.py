@@ -37,10 +37,12 @@ from app.schemas.catalog import (
     ShortNameOut,
     UsdaSuggestionList,
 )
+from app.schemas.product_codes import ProductCodeList, ProductCodeOut
 from app.services import (
     catalog,
     ingredient_category,
     ingredient_names,
+    product_codes,
     product_duplicates,
     product_merge,
     product_same,
@@ -346,6 +348,23 @@ async def merge_product(
     done = await product_merge.merge(db, body.survivor_id, product_id)
     await proposals.rematch_pending(db, body.survivor_id)
     return ProductMergeOut(**asdict(done))
+
+
+@router.get("/products/{product_id}/codes", response_model=ProductCodeList)
+async def list_product_codes(
+    product_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> ProductCodeList:
+    """The codes the product is known by: its barcode, PLUs, store item numbers (1H)."""
+    codes = await product_codes.list_codes(db, product_id)
+    return ProductCodeList(items=[ProductCodeOut(**asdict(c)) for c in codes])
+
+
+@router.delete("/products/{product_id}/codes/{code_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def forget_product_code(
+    product_id: uuid.UUID, code_id: uuid.UUID, _: CurrentUser, db: DbSession
+) -> None:
+    """Forget a remembered code (#448); lines it identified keep their product."""
+    await product_codes.forget_code(db, product_id, code_id)
 
 
 @router.post("/products/{product_id}/density-override/confirm", response_model=ProductOut)
