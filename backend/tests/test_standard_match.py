@@ -60,6 +60,12 @@ def _key(name: str) -> str | None:
         ("whole cloves", "whole-cloves"),
         ("whole milk", "whole-milk"),
         ("crushed red pepper", "red-pepper-flakes"),  # "crushed" is not preparation
+        ("chopped cherry peppers", "pickled-cherry-peppers"),  # Tier H: named for the jar
+        ("black eyed peas", "dried-black-eyed-peas"),
+        ("duck legs", "duck-legs"),  # a cut beside its animal
+        ("duck breast", "duck"),
+        ("rice flour", "rice-flour"),  # glutinous rice flour is its own entry
+        ("'nduja", "nduja"),
     ],
 )
 def test_a_name_finds_its_entry(name, key):
@@ -81,6 +87,8 @@ def test_a_name_finds_its_entry(name, key):
         "apple butter",  # a food word blocks the bare staple
         "pie crust",  # frozen and refrigerated are both more specific
         "fresh currants",  # berries, not the dried Zante grapes
+        "himalayan pink salt",  # not pink curing salt
+        "beef roast",  # a raw cut, not the deli meat
         "Quince paste",  # nothing on the list is a paste of quince
         "",
         "12 oz",
