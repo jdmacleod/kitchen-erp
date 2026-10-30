@@ -10,11 +10,13 @@ wine" → the same). An entry matches when:
 - every one of its qualifiers is among the name's, in any order;
 - the name's other qualifiers are only words that don't change what the food
   is ("organic", "fresh", "large"; ``NOT_IDENTITY``), or how a cook readied it
-  ("sliced", "freshly"; the recipes' prep words plus ``PREPARATION``). A few
-  form words are let through too, but only for a head no entry splits by them
-  (``FORM_WORDS``): "ground black pepper" is black pepper, while "ground cloves"
-  stays apart from whole cloves. Callers with a prep tier of their own pass
-  ``prep=False`` and keep the stripped words as the line's note.
+  ("sliced", "freshly"; the recipes' prep words plus ``PREPARATION``). Two form
+  words are let through too, but only for a head no entry's name splits by them
+  (``FORM_WORDS``): "fine salt" is salt, while "toasted sesame oil" keeps its
+  own entry. "ground" and "whole" always count: a food's ground and whole forms
+  can sit under different heads (black pepper, black peppercorns). Callers with
+  a prep tier of their own pass ``prep=False`` and keep the stripped words as the
+  line's note.
 
 A hyphen is a space to the matcher (#462): "all purpose flour" meets
 "all-purpose flour". Stored names keep their hyphens.
@@ -50,9 +52,11 @@ NOT_IDENTITY = frozenset(
 # that never make a food another food (#463).
 PREPARATION = frozenset({"cracked", "freshly"})
 
-# Form words that name a food for some heads (ground cloves, whole cloves,
-# toasted sesame oil) and only describe it for others (ground black pepper).
-FORM_WORDS = frozenset({"ground", "whole", "fine", "toasted"})
+# Form words that name a food for some heads (toasted sesame oil, fine sea salt)
+# and only describe it for others (fine salt, toasted almonds). Never "ground" or
+# "whole": the matcher can't see a split across heads (black pepper, black
+# peppercorns).
+FORM_WORDS = frozenset({"fine", "toasted"})
 
 
 @dataclass(frozen=True)

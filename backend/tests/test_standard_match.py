@@ -56,7 +56,7 @@ def _key(name: str) -> str | None:
         ("chopped dark chocolate", "dark-chocolate"),
         ("sliced almonds", "almonds"),
         ("toasted sesame oil", "toasted-sesame-oil"),  # the more specific entry still wins
-        ("ground cloves", "ground-cloves"),  # a head split by form keeps the form
+        ("ground cloves", "ground-cloves"),  # ground and whole always count
         ("whole cloves", "whole-cloves"),
         ("whole milk", "whole-milk"),
         ("crushed red pepper", "red-pepper-flakes"),  # "crushed" is not preparation
@@ -76,6 +76,8 @@ def test_a_name_finds_its_entry(name, key):
         "sweet paprika",
         "vermouth",  # sweet and dry are both more specific: neither is offered
         "garlic cloves",  # garlic is not a qualifier ground cloves allows
+        "whole black pepper",  # black pepper is the ground form; whole is peppercorns
+        "ground peppercorns",
         "apple butter",  # a food word blocks the bare staple
         "pie crust",  # frozen and refrigerated are both more specific
         "fresh currants",  # berries, not the dried Zante grapes
