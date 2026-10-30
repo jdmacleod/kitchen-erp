@@ -15,6 +15,7 @@ import {
 import { errorMessage, isApiError } from "../../api/client";
 import { Badge, ConfirmedBadge } from "../../components/catalog/fields";
 import { ProductCategoryCard } from "../../components/catalog/ProductCategoryCard";
+import { ProductCodesCard } from "../../components/catalog/ProductCodesCard";
 import { ProductLookUpCard } from "../../components/catalog/ProductLookUpCard";
 import { ProductMergePanel } from "../../components/catalog/ProductMergePanel";
 import { ProductLabelsCard, ProductPhotosCard } from "../../components/catalog/ProductPhotosCard";
@@ -219,6 +220,7 @@ function ProductDetail({ product }: { product: Product }) {
         ) : null}
 
         <ProductCategoryCard product={product} />
+        {merged ? null : <ProductCodesCard productId={product.id} />}
         <ProductPrices product={product} />
         <PriceRecords productId={product.id} />
 
