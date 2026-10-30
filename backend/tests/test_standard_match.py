@@ -8,7 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.catalog.standard_match import NOT_IDENTITY, match_entry, split_name
+from app.catalog.standard_match import NOT_IDENTITY, PREPARATION, match_entry, split_name
+from app.recipes.prep import prep_words
 
 
 def _key(name: str) -> str | None:
@@ -42,6 +43,23 @@ def _key(name: str) -> str | None:
         ("instant yeast", "instant-yeast"),
         ("00 flour", "tipo-00-flour"),
         ("minute tapioca", "instant-tapioca"),  # granules, not the starch
+        ("all purpose flour", "all-purpose-flour"),  # a hyphen is a space (#462)
+        ("self rising flour", "self-rising-flour"),
+        ("five spice powder", "five-spice-powder"),
+        ("semi-sweet chocolate", "semisweet-chocolate"),
+        ("honey ginger syrup", "honey-ginger-syrup"),
+        ("honey-ginger syrup", "honey-ginger-syrup"),
+        ("ground black pepper", "black-pepper"),  # preparation is not identity (#463)
+        ("freshly ground black pepper", "black-pepper"),
+        ("cracked black pepper", "black-pepper"),
+        ("fine salt", "salt"),
+        ("chopped dark chocolate", "dark-chocolate"),
+        ("sliced almonds", "almonds"),
+        ("toasted sesame oil", "toasted-sesame-oil"),  # the more specific entry still wins
+        ("ground cloves", "ground-cloves"),  # ground and whole always count
+        ("whole cloves", "whole-cloves"),
+        ("whole milk", "whole-milk"),
+        ("crushed red pepper", "red-pepper-flakes"),  # "crushed" is not preparation
     ],
 )
 def test_a_name_finds_its_entry(name, key):
@@ -58,6 +76,8 @@ def test_a_name_finds_its_entry(name, key):
         "sweet paprika",
         "vermouth",  # sweet and dry are both more specific: neither is offered
         "garlic cloves",  # garlic is not a qualifier ground cloves allows
+        "whole black pepper",  # black pepper is the ground form; whole is peppercorns
+        "ground peppercorns",
         "apple butter",  # a food word blocks the bare staple
         "pie crust",  # frozen and refrigerated are both more specific
         "fresh currants",  # berries, not the dried Zante grapes
@@ -86,3 +106,13 @@ def test_split_name_takes_the_head_noun_last_or_first_before_a_comma():
 def test_words_that_name_a_variety_are_never_ignored():
     # "whole milk" is not "milk", and "sweet paprika" is not "paprika".
     assert {"whole", "baby", "sweet", "smoked", "red"}.isdisjoint(NOT_IDENTITY)
+
+
+def test_preparation_words_never_name_a_variety():
+    assert {"whole", "ground", "toasted", "fine"}.isdisjoint(PREPARATION | prep_words())
+
+
+def test_a_caller_with_its_own_prep_tier_keeps_the_old_refusal():
+    assert match_entry("sliced almonds", prep=False) is None
+    assert match_entry("cracked black pepper", prep=False) is None
+    assert _key("almonds") == "almonds"

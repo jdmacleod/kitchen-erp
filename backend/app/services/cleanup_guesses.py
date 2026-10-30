@@ -23,7 +23,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.catalog import categories, names, usda_fit
+from app.catalog import categories, names, standard_match, usda_fit
 from app.models import CleanupGuess, FdcRelease
 from app.services import ingredient_category, usda
 
@@ -40,7 +40,8 @@ class Kept:
 def rules_version() -> str:
     """A digest of the modules whose rules shape a guess: new rules guess again."""
     digest = hashlib.sha1(usedforsecurity=False)
-    for module in (usda_fit, usda, categories, names, ingredient_category, sys.modules[__name__]):
+    modules = (usda_fit, usda, categories, names, standard_match, ingredient_category)
+    for module in (*modules, sys.modules[__name__]):
         digest.update(Path(module.__file__ or "").read_bytes())
     return digest.hexdigest()[:12]
 
