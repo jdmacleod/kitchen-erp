@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { catalogErrorMessage } from "../../api/catalog";
 import { useForgetProductCode, useProductCodes, type ProductCode } from "../../api/productCodes";
-import { Alert, Button, Card, sectionHeading } from "../ui";
+import { Alert, Button, Card, focusRing, sectionHeading } from "../ui";
+
+const HEADING = "heading";
 
 const SCHEME_LABELS: Record<ProductCode["scheme"], string> = {
   gtin: "Barcode",
@@ -31,63 +33,91 @@ export function ProductCodesCard({ productId }: { productId: string }) {
   const forget = useForgetProductCode(productId);
   const [asking, setAsking] = useState<ProductCode | null>(null);
   const [forgot, setForgot] = useState<string | null>(null);
+  // Where focus goes once the panel closes: a row id (back to its Forget, on Cancel)
+  // or the heading (the row itself is gone). Applied after the render that closes it.
+  const refocus = useRef<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const forgetButtons = useRef(new Map<string, HTMLButtonElement>());
+  useEffect(() => {
+    const target = refocus.current;
+    if (target === null) return;
+    const el = target === HEADING ? heading.current : forgetButtons.current.get(target);
+    if (!el) return;
+    el.focus();
+    refocus.current = null;
+  });
 
   if (codes.isError) return <Alert tone="error">{catalogErrorMessage(codes.error)}</Alert>;
-  if (!codes.data || codes.data.length === 0) return null;
+  // The card stays after its last code is forgotten, so the confirmation is still read.
+  if (!codes.data || (codes.data.length === 0 && !forgot)) return null;
 
   return (
     <Card>
-      <h2 className={`${sectionHeading} mb-1`}>Codes</h2>
+      <h2 ref={heading} tabIndex={-1} className={`${sectionHeading} mb-1 ${focusRing}`}>
+        Codes
+      </h2>
       <p className="mb-3 text-sm text-neutral-600 dark:text-neutral-400">
         Receipt lines and scans that print one of these are identified as this product.
       </p>
-      <ul className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
-        {codes.data.map((code) => (
-          <li key={code.id} className="flex flex-col gap-2 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span>
-                <span className="font-medium tabular-nums">{code.value}</span>
-                <span className="text-neutral-600 dark:text-neutral-400">
-                  {" "}
-                  · {codeLabel(code)}
-                  {code.source === "receipt" ? " · remembered from a receipt" : ""}
+      {codes.data.length === 0 ? (
+        <p className="text-sm">This product has no codes now.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-neutral-200 dark:divide-neutral-700">
+          {codes.data.map((code) => (
+            <li key={code.id} className="flex flex-col gap-2 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span>
+                  <span className="font-medium tabular-nums">{code.value}</span>
+                  <span className="text-neutral-600 dark:text-neutral-400">
+                    {" "}
+                    · {codeLabel(code)}
+                    {code.source === "receipt" ? " · remembered from a receipt" : ""}
+                  </span>
                 </span>
-              </span>
-              {code.is_barcode ? (
-                <span className="text-xs text-neutral-600 dark:text-neutral-400">
-                  Changed in Edit product
-                </span>
-              ) : asking?.id === code.id ? null : (
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setForgot(null);
-                    forget.reset();
-                    setAsking(code);
+                {code.is_barcode ? (
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                    Changed in Edit product
+                  </span>
+                ) : asking?.id === code.id ? null : (
+                  <Button
+                    ref={(el) => {
+                      if (el) forgetButtons.current.set(code.id, el);
+                      else forgetButtons.current.delete(code.id);
+                    }}
+                    variant="secondary"
+                    onClick={() => {
+                      setForgot(null);
+                      forget.reset();
+                      setAsking(code);
+                    }}
+                  >
+                    Forget
+                  </Button>
+                )}
+              </div>
+              {asking?.id === code.id ? (
+                <ForgetConfirm
+                  code={code}
+                  busy={forget.isPending}
+                  onCancel={() => {
+                    setAsking(null);
+                    refocus.current = code.id;
                   }}
-                >
-                  Forget
-                </Button>
-              )}
-            </div>
-            {asking?.id === code.id ? (
-              <ForgetConfirm
-                code={code}
-                busy={forget.isPending}
-                onCancel={() => setAsking(null)}
-                onForget={() =>
-                  forget.mutate(code.id, {
-                    onSuccess: () => {
-                      setAsking(null);
-                      setForgot(`Forgot ${code.value}.`);
-                    },
-                  })
-                }
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
+                  onForget={() =>
+                    forget.mutate(code.id, {
+                      onSuccess: () => {
+                        setAsking(null);
+                        setForgot(`Forgot ${code.value}.`);
+                        refocus.current = HEADING;
+                      },
+                    })
+                  }
+                />
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
       {forgot ? (
         <p role="status" className="mt-2 text-sm">
           {forgot}

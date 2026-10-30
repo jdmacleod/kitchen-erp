@@ -2,8 +2,9 @@
 
 Remembering a code takes a person's click, and so does forgetting one. A code that
 names the counter rather than the item would otherwise keep identifying the wrong
-lines. Forgetting removes the identifier only: lines it already identified keep
-their product, and their prices stay where a person can see and correct them.
+lines. Forgetting removes the identifier and the suggestions it left on waiting
+lines. Lines it already identified keep their product, and their prices stay
+where a person can see and correct them.
 """
 
 from __future__ import annotations
@@ -11,12 +12,14 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.catalog.identifiers import display
 from app.core.errors import ApiError
+from app.models import PurchaseLine
 from app.models.geo import Vendor
 from app.services.catalog import get_product
 
@@ -74,4 +77,26 @@ async def forget_code(db: AsyncSession, product_id: uuid.UUID, code_id: uuid.UUI
             409, "barcode_field", "This is the product's barcode. Clear it in Edit product."
         )
     product.identifiers.remove(code)
+    await _drop_suggestions(db, product_id, code.value)
     await db.commit()
+
+
+def _offers_code(suggestion: dict[str, Any], product_id: uuid.UUID, value: str) -> bool:
+    # A code suggestion names its code only in its label (code_wording.code_suggestion).
+    return (
+        suggestion.get("kind") == "code"
+        and suggestion.get("product_id") == str(product_id)
+        and f"(code {value}" in str(suggestion.get("label", ""))
+    )
+
+
+async def _drop_suggestions(db: AsyncSession, product_id: uuid.UUID, value: str) -> None:
+    """Waiting lines stop offering the product through the forgotten code."""
+    waiting = await db.scalars(
+        select(PurchaseLine).where(
+            PurchaseLine.product_id.is_(None),
+            PurchaseLine.suggestions.contains([{"kind": "code", "product_id": str(product_id)}]),
+        )
+    )
+    for line in waiting:
+        line.suggestions = [s for s in line.suggestions if not _offers_code(s, product_id, value)]

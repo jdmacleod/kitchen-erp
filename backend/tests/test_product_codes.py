@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncpg
 
 from tests.pricebook_helpers import make_location, make_product
-from tests.test_shared_weighed_codes import CHEESE_A, CODE, _identify, _lines, _waiting
+from tests.test_shared_weighed_codes import CHEESE_A, CHEESE_B, CODE, _identify, _lines, _waiting
 
 CHEESE_C = {
     "raw_text": CHEESE_A["raw_text"].replace("CHEESE ONE", "CHEESE THREE"),
@@ -89,3 +89,25 @@ async def test_the_barcode_is_cleared_in_the_form_and_another_products_code_is_n
     assert r.status_code == 404, r.text
     r = await admin_client.get(f"/api/v1/products/{cheese['id']}/codes")
     assert len(r.json()["items"]) == 2
+
+
+async def test_forgetting_a_code_drops_the_suggestion_it_left_on_waiting_lines(
+    admin_client, admin, db_session
+):
+    loc = await make_location(admin_client, "Juniper Market", "Juniper Market")
+    cheese = await make_product(admin_client, "Cheese A", "Counter cheese A")
+    purchase = await _waiting(admin_client, admin, db_session, loc, [CHEESE_A, CHEESE_B])
+    line = (await _lines(admin_client, purchase))["CTR CHEESE ONE"][0]
+    await _identify(admin_client, purchase, line, cheese)
+    url = f"/api/v1/purchases/{purchase}/lines/{line['id']}/remember-code"
+    r = await admin_client.post(url, json={"shared_ok": True})
+    assert r.status_code == 200, r.text
+    (held,) = (await _lines(admin_client, purchase))["CTR CHEESE TWO"]
+    assert held["suggestions"][0]["kind"] == "code"  # the other wording is offered the match
+
+    codes = (await admin_client.get(f"/api/v1/products/{cheese['id']}/codes")).json()["items"]
+    r = await admin_client.delete(f"/api/v1/products/{cheese['id']}/codes/{codes[0]['id']}")
+    assert r.status_code == 204, r.text
+    (held,) = (await _lines(admin_client, purchase))["CTR CHEESE TWO"]
+    assert held["resolution"] == "unmatched"
+    assert all(s.get("kind") != "code" for s in held["suggestions"])

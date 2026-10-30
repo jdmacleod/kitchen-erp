@@ -79,6 +79,8 @@ describe("a product's codes (issue 448)", () => {
 
     await user.click(within(ask).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("group", { name: "Forget 12345" })).not.toBeInTheDocument();
+    // Focus goes back to the row's Forget.
+    expect(screen.getByRole("button", { name: "Forget" })).toHaveFocus();
 
     await user.click(screen.getByRole("button", { name: "Forget" }));
     await user.click(
@@ -89,6 +91,30 @@ describe("a product's codes (issue 448)", () => {
     await waitFor(() => expect(forgotten).toBe(1));
     expect(await screen.findByText("Forgot 12345.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText("12345")).not.toBeInTheDocument());
+    // The row is gone, so focus goes to the card's heading.
+    expect(screen.getByRole("heading", { name: "Codes" })).toHaveFocus();
+  });
+
+  it("keeps the card and its confirmation after the last code is forgotten", async () => {
+    let codes = [counterCode];
+    mockApi(
+      routes(() => codes, {
+        [`DELETE /products/${flourProductId}/codes/${counterCode.id}`]: () => {
+          codes = [];
+          return new Response(null, { status: 204 });
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderApp(`/catalog/products/${flourProductId}`);
+    await user.click(await screen.findByRole("button", { name: "Forget" }));
+    await user.click(
+      within(screen.getByRole("group", { name: "Forget 12345" })).getByRole("button", {
+        name: "Forget",
+      }),
+    );
+    expect(await screen.findByText("This product has no codes now.")).toBeInTheDocument();
+    expect(screen.getByText("Forgot 12345.")).toHaveAttribute("role", "status");
   });
 
   it("shows no card for a product with no codes", async () => {

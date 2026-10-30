@@ -456,7 +456,7 @@ Sub-phase 1G (`03`) adds the ingredient picker's spellings and standard names, a
 **Product page: codes (#448).**
 
 - A "Codes" card sits after Category, shown only when the product has a code: "Receipt lines and scans that print one of these are identified as this product." Each row reads "{code} · {kind}", then " at {store}" for a store's code and " · remembered from a receipt" when a receipt taught it ("12345 · Weighed-item code at Tideline Market · remembered from a receipt"). The kinds are Barcode, PLU, Item number and Weighed-item code.
-- The barcode row reads "Changed in Edit product". Every other row has "Forget" (secondary), which opens a tomato panel under the row: "Forget {code} ({kind})?", "Lines it already identified keep this product. New lines that print it wait to be identified.", then Forget (danger) and Cancel, with focus on Cancel. After it, the row leaves and a status line reads "Forgot {code}."
+- The barcode row reads "Changed in Edit product". Every other row has "Forget" (secondary), which opens a tomato panel under the row: "Forget {code} ({kind})?", "Lines it already identified keep this product. New lines that print it wait to be identified.", then Forget (danger) and Cancel, with focus on Cancel. Cancel returns focus to the row's Forget. After forgetting, the row leaves, focus moves to the card's heading, and a status line reads "Forgot {code}."; when that was the last code, the card stays and reads "This product has no codes now."
 - A merged product shows no Codes card; its codes are the kept product's.
 
 **Product page: price records (#73).**
