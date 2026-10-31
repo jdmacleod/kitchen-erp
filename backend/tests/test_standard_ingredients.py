@@ -119,6 +119,31 @@ def test_the_baking_decisions_are_in_the_list():
     assert entry["dutch-process-cocoa"].proper_noun
 
 
+def test_the_recipe_collection_decisions_are_in_the_list():
+    # Tier H: what a household's recipes call for that the earlier tiers lacked. A cut
+    # is its own entry beside its animal; jarred peppers are named for the jar.
+    named = {
+        normalize_name(t): e.key
+        for e in standard_list().ingredients
+        for t in (e.name, *e.spellings)
+    }
+    for word, key in [
+        ("cherry peppers", "pickled-cherry-peppers"),
+        ("black-eyed peas", "dried-black-eyed-peas"),
+        ("sweet rice flour", "glutinous-rice-flour"),
+        ("seasoning sauce", "thai-seasoning-sauce"),
+        ("curing salt", "pink-curing-salt"),
+        ("pa thong ko", "youtiao"),
+        ("vegetable base", "stock-concentrate"),
+    ]:
+        assert named[normalize_name(word)] == key, word
+    assert normalize_name("pink salt") not in named  # Himalayan salt, not the cure
+    entry = by_key()
+    assert entry["duck"].fdc and entry["duck-legs"].fdc is None  # no shared reference
+    assert entry["castelvetrano-olives"].proper_noun
+    assert entry["thai-seasoning-sauce"].proper_noun
+
+
 def test_proper_nouns_are_the_only_capitals():
     capitalized = {e.key for e in standard_list().ingredients if e.name != e.name.lower()}
     assert capitalized == {e.key for e in standard_list().ingredients if e.proper_noun}
