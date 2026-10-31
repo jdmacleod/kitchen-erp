@@ -11802,6 +11802,90 @@
         "title": "ProductBrief",
         "type": "object"
       },
+      "ProductCodeList": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProductCodeOut"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ProductCodeList",
+        "type": "object"
+      },
+      "ProductCodeOut": {
+        "additionalProperties": false,
+        "description": "One code a product is known by (03, 1H); vendor-scoped schemes name their vendor.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_barcode": {
+            "title": "Is Barcode",
+            "type": "boolean"
+          },
+          "scheme": {
+            "title": "Scheme",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          },
+          "vendor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Id"
+          },
+          "vendor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name"
+          }
+        },
+        "required": [
+          "id",
+          "scheme",
+          "value",
+          "vendor_id",
+          "vendor_name",
+          "source",
+          "is_barcode",
+          "created_at"
+        ],
+        "title": "ProductCodeOut",
+        "type": "object"
+      },
       "ProductCreate": {
         "additionalProperties": false,
         "properties": {
@@ -28126,6 +28210,97 @@
           }
         },
         "summary": "Activate Product",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/codes": {
+      "get": {
+        "description": "The codes the product is known by: its barcode, PLUs, store item numbers (1H).",
+        "operationId": "list_product_codes_api_v1_products__product_id__codes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductCodeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Product Codes",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/codes/{code_id}": {
+      "delete": {
+        "description": "Forget a remembered code (#448); lines it identified keep their product.",
+        "operationId": "forget_product_code_api_v1_products__product_id__codes__code_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "code_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Code Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Forget Product Code",
         "tags": [
           "catalog"
         ]
