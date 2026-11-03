@@ -144,6 +144,30 @@ def test_the_recipe_collection_decisions_are_in_the_list():
     assert entry["thai-seasoning-sauce"].proper_noun
 
 
+def test_the_recipe_passes_decisions_are_in_the_list():
+    # Tier I: what the three recipe-collection passes call for. A near neighbour that
+    # does not swap is its own entry, and the note says which one it is not.
+    named = {
+        normalize_name(t): e.key
+        for e in standard_list().ingredients
+        for t in (e.name, *e.spellings)
+    }
+    for word, key in [
+        ("sparkling sugar", "sanding-sugar"),
+        ("dried fruit", "mixed-dried-fruit"),
+        ("crescenza", "stracchino"),
+        ("tao jiao", "thai-soybean-paste"),
+        ("process cheese", "processed-cheese"),
+    ]:
+        assert named[normalize_name(word)] == key, word
+    entry = by_key()
+    # No two entries share a reference.
+    assert entry["sesame-seeds"].fdc and entry["black-sesame-seeds"].fdc is None
+    assert entry["tahini"].fdc != entry["chinese-sesame-paste"].fdc
+    assert entry["american-cheese"].fdc != entry["processed-cheese"].fdc
+    assert entry["american-cheese"].proper_noun and entry["italian-seasoning"].proper_noun
+
+
 def test_proper_nouns_are_the_only_capitals():
     capitalized = {e.key for e in standard_list().ingredients if e.name != e.name.lower()}
     assert capitalized == {e.key for e in standard_list().ingredients if e.proper_noun}

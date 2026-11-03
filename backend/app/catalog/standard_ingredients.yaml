@@ -160,6 +160,16 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: american-cheese
+    name: "American cheese"
+    proper_noun: true
+    category: dairy
+    perishability: refrigerated
+    keep: {room: null, fridge: 21, freezer: 60}
+    unit: g
+    fdc: 170853
+    spellings: ["sliced American cheese"]
+    note: "Sold sliced. The melting loaf is processed cheese, its own entry."
   - key: anaheim-pepper
     name: "Anaheim pepper"
     proper_noun: true
@@ -233,6 +243,13 @@ ingredients:
     perishability: refrigerated
     keep: {room: null, fridge: 10, freezer: null}
     unit: ml
+  - key: apple-juice
+    name: "apple juice"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 7, freezer: null}
+    unit: ml
+    fdc: 173933
   - key: apple-pie-spice
     name: "apple pie spice"
     category: spices
@@ -240,6 +257,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: applesauce
+    name: "applesauce"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: 10, freezer: null}
+    unit: g
+    fdc: 167772
+    spellings: ["apple sauce"]
   - key: apricot
     name: "apricot"
     category: produce
@@ -410,6 +435,13 @@ ingredients:
     keep: {room: null, fridge: 7, freezer: 30}
     unit: g
     fdc: 172232
+  - key: basmati-rice
+    name: "basmati rice"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 730, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's long-grain rice record is long-grain white rice's, and no two entries share a reference."
   - key: bay-leaves
     name: "bay leaves"
     category: spices
@@ -574,6 +606,13 @@ ingredients:
     unit: g
     spellings: ["whole black peppercorns", "peppercorns", "whole peppercorns"]
     note: "USDA's pepper record is ground pepper's, and no two entries share a reference."
+  - key: black-sesame-seeds
+    name: "black sesame seeds"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA's sesame seed record is sesame seeds', and no two entries share a reference."
   - key: black-vinegar
     name: "black vinegar"
     category: pantry
@@ -612,6 +651,13 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 120}
     unit: g
     fdc: 171711
+  - key: boiled-cider
+    name: "boiled cider"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    note: "Apple cider reduced to a syrup. USDA has no record for it."
   - key: bok-choy
     name: "bok choy"
     category: produce
@@ -1309,6 +1355,16 @@ ingredients:
     unit: g
     spellings: ["lap cheong", "lap chong"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: chinese-sesame-paste
+    name: "Chinese sesame paste"
+    proper_noun: true
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 170191
+    spellings: ["zhi ma jiang"]
+    note: "Made from toasted sesame, so darker than tahini; the two do not swap."
   - key: chipotles-in-adobo
     name: "chipotles in adobo"
     category: pantry
@@ -1562,6 +1618,14 @@ ingredients:
     keep: {room: null, fridge: 5, freezer: 30}
     unit: g
     fdc: 170199
+  - key: cornflakes
+    name: "cornflakes"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
+    unit: g
+    spellings: ["corn flakes", "corn flake cereal"]
+    note: "USDA's corn flakes records are branded cereals; add a reference in review if one fits."
   - key: cornish-hen
     name: "Cornish hen"
     proper_noun: true
@@ -2204,6 +2268,13 @@ ingredients:
     unit: g
     fdc: 169382
     spellings: ["enoki"]
+  - key: epazote
+    name: "epazote"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 7, freezer: 30}
+    unit: g
+    fdc: 169398
   - key: espresso
     name: "espresso"
     category: beverages
@@ -2307,6 +2378,13 @@ ingredients:
     keep: {room: 30, fridge: 7, freezer: null}
     unit: g
     spellings: ["fingerlings"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: fish-balls
+    name: "fish balls"
+    category: seafood
+    perishability: frozen
+    keep: {room: null, fridge: 3, freezer: 180}
+    unit: g
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: fish-sauce
     name: "fish sauce"
@@ -2603,6 +2681,13 @@ ingredients:
     unit: g
     spellings: ["galangal root", "blue ginger"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: garam-masala
+    name: "garam masala"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: garlic
     name: "garlic"
     category: produce
@@ -2610,6 +2695,14 @@ ingredients:
     keep: {room: 2, fridge: 7, freezer: 30}
     unit: g
     fdc: 169230
+  - key: garlic-chives
+    name: "garlic chives"
+    category: produce
+    perishability: fresh
+    keep: {room: null, fridge: 5, freezer: null}
+    unit: g
+    spellings: ["chinese chives", "nira", "kuchai"]
+    note: "Flat, garlicky leaves; chives are their own entry."
   - key: garlic-powder
     name: "garlic powder"
     category: spices
@@ -3274,6 +3367,14 @@ ingredients:
     unit: g
     spellings: ["minute tapioca", "quick-cooking tapioca", "quick cooking tapioca"]
     note: "Pre-cooked granules for thickening pies; tapioca starch and tapioca pearls are other entries. USDA has no plain record for it."
+  - key: instant-vanilla-pudding-mix
+    name: "instant vanilla pudding mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 168784
+    spellings: ["vanilla instant pudding mix"]
   - key: instant-yeast
     name: "instant yeast"
     category: pantry
@@ -3307,6 +3408,15 @@ ingredients:
     keep: {room: null, fridge: 1, freezer: 30}
     unit: g
     fdc: 171631
+  - key: italian-seasoning
+    name: "Italian seasoning"
+    proper_noun: true
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["italian herb seasoning", "italian mixed herbs"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: jackfruit
     name: "jackfruit"
     category: produce
@@ -3368,6 +3478,14 @@ ingredients:
     keep: {room: 365, fridge: null, freezer: null}
     unit: ml
     spellings: ["sweet soy sauce"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: kefalotyri
+    name: "kefalotyri"
+    category: dairy
+    perishability: refrigerated
+    keep: {room: null, fridge: 60, freezer: 180}
+    unit: g
+    spellings: ["kefalotiri"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: ketchup
     name: "ketchup"
@@ -3438,6 +3556,14 @@ ingredients:
     unit: g
     spellings: ["labne", "strained yogurt cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: ladyfingers
+    name: "ladyfingers"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: null, freezer: null}
+    unit: g
+    fdc: 172821
+    spellings: ["savoiardi"]
   - key: laffa
     name: "laffa"
     category: bakery
@@ -3543,6 +3669,14 @@ ingredients:
     measures:
       - {label: "twist", qty: "2"}
     note: "The twist below is a household estimate to confirm."
+  - key: lemon-soda
+    name: "lemon soda"
+    category: beverages
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: ml
+    spellings: ["limonata"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: lemongrass
     name: "lemongrass"
     category: produce
@@ -3761,6 +3895,13 @@ ingredients:
     unit: g
     fdc: 172740
     spellings: ["matzah", "matza"]
+  - key: matzo-ball-mix
+    name: "matzo ball mix"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "A boxed mix; matzo is its own entry. USDA has no record for it."
   - key: mayonnaise
     name: "mayonnaise"
     category: pantry
@@ -3821,6 +3962,14 @@ ingredients:
     unit: g
     fdc: 172442
     spellings: ["miso paste"]
+  - key: mixed-dried-fruit
+    name: "mixed dried fruit"
+    category: pantry
+    perishability: shelf_months
+    keep: {room: 180, fridge: 180, freezer: null}
+    unit: g
+    spellings: ["dried fruit"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: molasses
     name: "molasses"
     category: pantry
@@ -3941,6 +4090,14 @@ ingredients:
     unit: g
     spellings: ["neufchatel cheese"]
     note: "USDA has no plain record for it; add a reference in review if one fits."
+  - key: non-diastatic-malt-powder
+    name: "non-diastatic malt powder"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["non-diastatic malt"]
+    note: "Sweetens and browns; diastatic malt powder, which feeds the yeast, is its own entry. USDA has no record for it."
   - key: nonfat-dry-milk
     name: "nonfat dry milk"
     category: pantry
@@ -4662,6 +4819,14 @@ ingredients:
     unit: g
     fdc: 169677
     spellings: ["crisps"]
+  - key: potato-flakes
+    name: "potato flakes"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 170445
+    spellings: ["instant mashed potatoes", "instant potato flakes"]
   - key: potato-sticks
     name: "potato sticks"
     category: pantry
@@ -4670,6 +4835,13 @@ ingredients:
     unit: g
     fdc: 168854
     spellings: ["shoestring potato sticks"]
+  - key: poultry-seasoning
+    name: "poultry seasoning"
+    category: spices
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    fdc: 171331
   - key: powdered-sugar
     name: "powdered sugar"
     category: pantry
@@ -4694,6 +4866,15 @@ ingredients:
     unit: g
     fdc: 167555
     spellings: ["pretzel twists", "pretzel sticks"]
+  - key: processed-cheese
+    name: "processed cheese"
+    category: dairy
+    perishability: refrigerated
+    keep: {room: null, fridge: 42, freezer: null}
+    unit: g
+    fdc: 171289
+    spellings: ["process cheese", "pasteurized process cheese"]
+    note: "The melting loaf. Sliced American cheese is its own entry."
   - key: prosciutto
     name: "prosciutto"
     category: meat
@@ -5216,7 +5397,7 @@ ingredients:
     perishability: shelf_stable
     keep: {room: 365, fridge: null, freezer: null}
     unit: g
-    spellings: ["coarse sugar", "decorating sugar"]
+    spellings: ["coarse sugar", "decorating sugar", "sparkling sugar", "coarse sparkling sugar"]
     note: "USDA's sugar record is granulated sugar's, and no two entries share a reference."
   - key: sandwich-bread
     name: "white sandwich bread"
@@ -5651,6 +5832,13 @@ ingredients:
     fdc: 171186
     spellings: ["sriracha sauce"]
     note: "Reference is the generic sriracha record; brands belong on products."
+  - key: ssamjang
+    name: "ssamjang"
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: star-anise
     name: "star anise"
     category: spices
@@ -5674,6 +5862,14 @@ ingredients:
     keep: {room: null, fridge: 90, freezer: null}
     unit: g
     spellings: ["bouillon paste", "soup base", "vegetable base", "chicken base", "beef base"]
+  - key: stracchino
+    name: "stracchino"
+    category: dairy
+    perishability: refrigerated
+    keep: {room: null, fridge: 7, freezer: null}
+    unit: g
+    spellings: ["crescenza"]
+    note: "USDA has no plain record for it; add a reference in review if one fits."
   - key: stracciatella
     name: "stracciatella"
     category: dairy
@@ -5953,6 +6149,15 @@ ingredients:
     unit: ml
     spellings: ["seasoning sauce"]
     note: "A thin soy-based sauce used in Thai stir-fries. USDA has no record for it."
+  - key: thai-soybean-paste
+    name: "Thai soybean paste"
+    proper_noun: true
+    category: pantry
+    perishability: shelf_stable
+    keep: {room: 365, fridge: null, freezer: null}
+    unit: g
+    spellings: ["tao jiao", "Thai yellow bean sauce"]
+    note: "Fermented soybeans in brine; doenjang is its own entry. USDA has no record for it."
   - key: tilapia
     name: "tilapia"
     category: seafood
@@ -6385,6 +6590,13 @@ ingredients:
     measures:
       - {label: "nutmeg", qty: "6"}
     note: "The nutmeg below is a household estimate to confirm. USDA's record is the ground form's, and no two entries share a reference."
+  - key: whole-turkey
+    name: "whole turkey"
+    category: meat
+    perishability: fresh
+    keep: {room: null, fridge: 2, freezer: 365}
+    unit: g
+    fdc: 171480
   - key: whole-wheat-bread
     name: "whole wheat bread"
     category: bakery

@@ -66,6 +66,12 @@ def _key(name: str) -> str | None:
         ("duck breast", "duck"),
         ("rice flour", "rice-flour"),  # glutinous rice flour is its own entry
         ("'nduja", "nduja"),
+        ("coarse sparkling sugar", "sanding-sugar"),  # Tier I
+        ("chinese chives", "garlic-chives"),  # not chives
+        ("instant mashed potatoes", "potato-flakes"),
+        ("black sesame seeds", "black-sesame-seeds"),
+        ("savoiardi", "ladyfingers"),
+        ("non-diastatic malt powder", "non-diastatic-malt-powder"),
     ],
 )
 def test_a_name_finds_its_entry(name, key):
@@ -89,6 +95,8 @@ def test_a_name_finds_its_entry(name, key):
         "fresh currants",  # berries, not the dried Zante grapes
         "himalayan pink salt",  # not pink curing salt
         "beef roast",  # a raw cut, not the deli meat
+        "apricot jam",  # the flavour is a recipe note on jam
+        "malt powder",  # diastatic and non-diastatic both fit: neither is offered
         "Quince paste",  # nothing on the list is a paste of quince
         "",
         "12 oz",
