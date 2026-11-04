@@ -29,8 +29,9 @@ from app.schemas.recipes import (
     RecipeCostOut,
     RecipeCostSummary,
     RecipeIngredientOut,
+    UsdaLineOffer,
 )
-from app.services import unit_display
+from app.services import recipe_bridges, unit_display
 from app.services.pricebook_views import stale_after_days
 from app.services.recipe_costing import _pins
 from app.units import display
@@ -138,6 +139,18 @@ def _price(
     )
 
 
+def _offer_out(offer: recipe_bridges.LineOffer | None) -> UsdaLineOffer | None:
+    if offer is None:
+        return None
+    return UsdaLineOffer(
+        ingredient_id=offer.ingredient_id,
+        kind="density" if offer.kind == "density" else "measure",
+        density_portion_id=offer.density_portion_id,
+        measure_label=offer.measure_label,
+        text=offer.text,
+    )
+
+
 async def cost_out(
     db: AsyncSession,
     snapshot: RecipeCostSnapshot,
@@ -165,6 +178,7 @@ async def cost_out(
         ).all()
     )
     used = await _used(db, [line for line, _ in rows])
+    offers = await recipe_bridges.offers_for(db, [(line, ri) for line, ri in rows])
     ingredient_ids = {ri.ingredient_id for _, ri in rows if ri.ingredient_id is not None}
     names: dict[uuid.UUID, str] = {}
     if ingredient_ids:
@@ -201,6 +215,7 @@ async def cost_out(
                 basket_cost_high=line.basket_cost_high,
                 packs=line.packs,
                 packs_high=line.packs_high,
+                usda_offer=_offer_out(offers.get(line.id)),
             )
         )
     return RecipeCostOut(

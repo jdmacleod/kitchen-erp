@@ -402,7 +402,13 @@ vendors recorded it (Phase 3 review, 2026-10-09, settling UI review T8 of
 then no snapshot carries a kitchen.
 
 Each line's quantity converts to the ingredient's canonical unit through
-`convert`, using the pinned or chosen product's context where one exists. Yield
+`convert`, using the pinned or chosen product's context where one exists. An
+unpinned line never counts in packs, so its failure for want of a pack is
+reported as `unknown_measure`: the fix is the weight of one piece, not the
+product's pack size (amended 2026-11-04). An unconvertible line whose ingredient
+has a preferred USDA reference carries the one USDA offer that would convert it
+(`usda_offer`), taken through the USDA review's write path with
+`mark_reviewed: false`. Yield
 applies by the heuristic in `05`: count and named-measure quantities are
 as-purchased; mass and volume quantities are edible portion and are grossed up
 by dividing by `yield_pct`; `yield_mode` overrides per line. `yield_pct` has

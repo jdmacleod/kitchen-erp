@@ -45,6 +45,8 @@ export interface UsdaDecision {
   measures?: string[];
   skip?: boolean;
   replace_density?: boolean;
+  /** False when one offer is taken from a recipe line: the rest stay on the review. */
+  mark_reviewed?: boolean;
 }
 
 /** What a 409 density_exists carries: the density set since the list was read. */
@@ -72,6 +74,8 @@ export function useUsdaDecision() {
       void client.invalidateQueries({ queryKey: usdaReviewKey });
       void client.invalidateQueries({ queryKey: ["ingredients"] });
       void client.invalidateQueries({ queryKey: ["price-book"] });
+      // A new bridge recomputes the costs of every recipe using the ingredient.
+      void client.invalidateQueries({ queryKey: ["recipes"] });
     },
   });
 }

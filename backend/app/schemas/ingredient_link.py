@@ -141,6 +141,8 @@ class UsdaDecisionIn(ApiModel):
     skip: bool = False
     # After a 409 density_exists: replace the density set since the list was read.
     replace_density: bool = False
+    # False when one offer is taken from a recipe line: the rest stay on the review.
+    mark_reviewed: bool = True
 
 
 class UsdaRelinkIn(ApiModel):

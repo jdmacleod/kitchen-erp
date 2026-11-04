@@ -2860,6 +2860,16 @@
             "title": "Status",
             "type": "string"
           },
+          "usda_offer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UsdaLineOffer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "yield_applied": {
             "anyOf": [
               {
@@ -19733,6 +19743,11 @@
             ],
             "title": "Density Portion Id"
           },
+          "mark_reviewed": {
+            "default": true,
+            "title": "Mark Reviewed",
+            "type": "boolean"
+          },
           "measures": {
             "default": [],
             "items": {
@@ -19771,6 +19786,61 @@
           "ingredient"
         ],
         "title": "UsdaDecisionOut",
+        "type": "object"
+      },
+      "UsdaLineOffer": {
+        "additionalProperties": false,
+        "description": "USDA's value that would convert an unconvertible line; \"Use it\" accepts it\nthrough ``POST /usda/review/{ingredient_id}`` with ``mark_reviewed: false``.",
+        "properties": {
+          "density_portion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Density Portion Id"
+          },
+          "ingredient_id": {
+            "format": "uuid",
+            "title": "Ingredient Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "density",
+              "measure"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "measure_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measure Label"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ingredient_id",
+          "kind",
+          "density_portion_id",
+          "measure_label",
+          "text"
+        ],
+        "title": "UsdaLineOffer",
         "type": "object"
       },
       "UsdaReferenceOut": {

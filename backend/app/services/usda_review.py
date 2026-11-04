@@ -213,7 +213,7 @@ def _offers(
     return densities, _measure_offers(portions, unit, labels), spread
 
 
-async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list[ReviewGroup]:
+async def groups_for(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list[ReviewGroup]:
     """Each ingredient's offers from its USDA food, in three queries however many."""
     fdc_ids = {fdc_id for _, fdc_id in pairs}
     portions: dict[int, list[RefUsdaPortion]] = defaultdict(list)
@@ -267,7 +267,7 @@ async def _groups(db: AsyncSession, pairs: list[tuple[Ingredient, int]]) -> list
 
 
 async def _group(db: AsyncSession, ingredient: Ingredient, fdc_id: int) -> ReviewGroup:
-    [group] = await _groups(db, [(ingredient, fdc_id)])
+    [group] = await groups_for(db, [(ingredient, fdc_id)])
     return group
 
 
@@ -288,7 +288,7 @@ async def review_list(db: AsyncSession) -> ReviewList:
         )
         .order_by(Ingredient.name)
     )
-    groups = [g for g in await _groups(db, list(rows.tuples())) if g.densities or g.measures]
+    groups = [g for g in await groups_for(db, list(rows.tuples())) if g.densities or g.measures]
     return ReviewList(
         loaded=True, release_date=release.release_date if release else None, groups=groups
     )
@@ -302,8 +302,12 @@ async def decide(
     measures: list[str],
     skip: bool,
     replace_density: bool = False,
+    mark_reviewed: bool = True,
 ) -> tuple[int, Ingredient]:
-    """Accept the chosen suggestions, or skip them all. Returns (values saved, ingredient)."""
+    """Accept the chosen suggestions, or skip them all. Returns (values saved, ingredient).
+
+    ``mark_reviewed=False`` takes one offer from a recipe line and leaves the rest
+    on Needs a bridge for the review to decide (the recipe page's "Use it")."""
     ingredient = await db.get(Ingredient, ingredient_id)
     if ingredient is None or not ingredient.active:
         raise ApiError(404, "not_found", "No such active ingredient.")
@@ -368,7 +372,8 @@ async def decide(
                 )
             )
             saved += 1
-    ingredient.usda_reviewed_fdc_id = fdc_id
+    if mark_reviewed:
+        ingredient.usda_reviewed_fdc_id = fdc_id
     await db.commit()
     if saved:
         await pricebook.recompute_for_ingredient(db, ingredient.id)
