@@ -3,7 +3,7 @@
 // strings; nothing here turns them into numbers.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cmp, formatMoney, roundTo, stripZeros } from "../lib/decimal";
+import { cmp, formatMoney, isZero, roundTo, stripZeros } from "../lib/decimal";
 import { catalogKeys, qs, type IngredientCreateInput, type IngredientSummary } from "./catalog";
 import { api } from "./client";
 import { inboxKey } from "./inbox";
@@ -651,7 +651,9 @@ export function formatAmount(text: string): string {
       return whole === "0" || whole === "" ? fraction : `${whole} ${fraction}`;
     }
   }
-  return stripZeros(roundTo(plain, 3));
+  // Three places reads well, but never at the cost of a small amount becoming 0.
+  const rounded = stripZeros(roundTo(plain, 3));
+  return isZero(rounded) ? plain : rounded;
 }
 
 /** Servings as written, or the number, or nothing. */

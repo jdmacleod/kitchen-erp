@@ -11,7 +11,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.db import get_sessionmaker
-from app.models import Recipe
+from app.models import Recipe, RecipeIngredient
 from app.recipes.cooklang import Text, parse
 from app.recipes.cooklang.model import ParseError
 from app.services import recipes
@@ -101,3 +101,46 @@ async def test_the_recipe_page_serves_a_note(
     r = await admin_client.get(f"/api/v1/recipes/{listed['id']}")
     assert r.status_code == 200, r.text
     assert r.json()["body"][0]["steps"][1] == [{"t": "note", "v": NOTE}]
+
+
+def test_a_step_reference_counts_numbered_steps_not_notes():
+    text = (
+        "Mix the @flour{500%g} into a dough.\n\n"
+        "> Rest it if it tears.\n\n"
+        "Shape the dough.\n\n"
+        "Bake @&(2)dough{} until golden, after @&(~1)shaped{}.\n"
+    )
+    parsed = parse(text)
+    assert not isinstance(parsed, ParseError)
+    last = parsed.sections[0].steps[3]
+    refs = [item for item in last.items if hasattr(item, "target")]
+    # Step 2 is "Shape the dough." at index 2 (the note is index 1), and so is ~1.
+    assert [(r.target, r.step) for r in refs] == [("step", 2), ("step", 2)]
+
+
+async def test_reparse_keeps_what_a_person_chose_for_a_line(recipes_repo: TempRepo):  # noqa: F811
+    recipes_repo.write("stew.cook", STEW)
+    recipes_repo.commit("stew")
+    await _scan()
+    async with get_sessionmaker()() as db:
+        line = (await db.execute(select(RecipeIngredient))).scalar_one()
+        line.yield_mode = "as_purchased"
+        await db.commit()
+    await _scan(reparse=True)
+    async with get_sessionmaker()() as db:
+        line = (await db.execute(select(RecipeIngredient))).scalar_one()
+    assert (line.raw_name, line.yield_mode) == ("olive oil", "as_purchased")
+
+
+async def test_reparse_reads_a_renamed_unchanged_file_too(recipes_repo: TempRepo):  # noqa: F811
+    recipes_repo.write("stew.cook", STEW)
+    recipes_repo.commit("stew")
+    await _scan()
+    async with get_sessionmaker()() as db:
+        row = (await db.execute(select(Recipe))).scalar_one()
+        row.body = [{"name": None, "steps": [[{"t": "text", "v": "> old"}]]}]
+        await db.commit()
+    recipes_repo.move("stew.cook", "soups/stew.cook")
+    await _scan(reparse=True)
+    row = (await _rows())["soups/stew.cook"]
+    assert row.body[0]["steps"][1][0]["t"] == "note"

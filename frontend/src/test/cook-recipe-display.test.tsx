@@ -41,6 +41,8 @@ describe("recipe amounts", () => {
     expect(formatAmount("1.5000")).toBe("1.5");
     expect(formatAmount("3")).toBe("3");
     expect(formatAmount("0.142857142857")).toBe("0.143");
+    // A small amount is never rounded away to 0.
+    expect(formatAmount("0.00025")).toBe("0.00025");
   });
 
   it("writes a line's quantity with its fraction", () => {
@@ -110,6 +112,23 @@ describe("the rendered recipe", () => {
     expect(link).toHaveAttribute("href", "https://www.harbor-kitchen.example/barley");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(recipe.querySelector("dl")).toHaveTextContent("Barley stew by Harbor Kitchen");
+  });
+
+  it("keeps a comma inside an address and leaves trailing punctuation out", async () => {
+    mount({
+      "GET /recipes/r-barley": () =>
+        jsonResponse(200, {
+          ...stewRecipe,
+          front_matter: {
+            ...stewRecipe.front_matter,
+            source: "From https://harbor-kitchen.example/recipes/rice,beans.",
+          },
+        }),
+    });
+    const recipe = await screen.findByRole("region", { name: "Recipe" });
+    const link = await within(recipe).findByRole("link", { name: "harbor-kitchen.example" });
+    expect(link).toHaveAttribute("href", "https://harbor-kitchen.example/recipes/rice,beans");
+    expect(recipe.querySelector("dl")).toHaveTextContent("From · harbor-kitchen.example.");
   });
 
   it("reads a Cooklang amount in the front matter as words", async () => {

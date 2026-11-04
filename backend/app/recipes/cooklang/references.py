@@ -40,14 +40,18 @@ def _token(ref: Reference) -> str:
     return f"@&({where}{ref.number}){ref.name}"
 
 
-def _point(ref: Reference, section: int, step: int) -> Reference | ParseError:
-    """A step or section reference made absolute, if it points backwards."""
+def _point(ref: Reference, section: int, step: int, numbered: list[int]) -> Reference | ParseError:
+    """A step or section reference made absolute, if it points backwards.
+
+    Step numbers count the numbered steps only: a `>` note between them is not a
+    step, so ``numbered`` maps a step's number (from 0) to its index in the
+    section, notes included, and ``step`` is the referring step's number."""
     here = section if ref.target == "section" else step
     there = here - ref.number if ref.relative else ref.number - 1
     if 0 <= there < here:
         if ref.target == "section":
             return replace(ref, section=there, step=None)
-        return replace(ref, section=section, step=there)
+        return replace(ref, section=section, step=numbered[there])
     if ref.target == "section":
         return _error(ref, f"`{_token(ref)}` must name an earlier section")
     return _error(ref, f"`{_token(ref)}` must name an earlier step of this section")
@@ -56,8 +60,11 @@ def _point(ref: Reference, section: int, step: int) -> Reference | ParseError:
 _Named = dict[str, tuple[int, int]]  # an ingredient name -> (section, step) it was first named in
 
 
-def _link(item: Item, first_named: _Named, si: int, sj: int) -> Item | ParseError:
-    """One item with its reference pointed; an ingredient is remembered where first named."""
+def _link(
+    item: Item, first_named: _Named, si: int, sj: int, number: int, numbered: list[int]
+) -> Item | ParseError:
+    """One item with its reference pointed; an ingredient is remembered where first named.
+    ``sj`` is the step's index in its section, ``number`` its number among numbered steps."""
     if isinstance(item, IngredientRef):
         key = name_key(item.raw_name)
         if item.reference and key not in first_named:
@@ -67,7 +74,7 @@ def _link(item: Item, first_named: _Named, si: int, sj: int) -> Item | ParseErro
     if not isinstance(item, Reference):
         return item
     if item.target != "ingredient":
-        return _point(item, si, sj)
+        return _point(item, si, number, numbered)
     found = first_named.get(name_key(item.name))
     if found is None:
         return _error(item, f"`{_token(item)}` must name an earlier ingredient")
@@ -80,10 +87,13 @@ def link_references(recipe: Recipe) -> Recipe | ParseError:
     sections: list[Section] = []
     for si, section in enumerate(recipe.sections):
         steps: list[Step] = []
+        numbered = [j for j, s in enumerate(section.steps) if not s.note]
         for sj, step in enumerate(section.steps):
             items: list[Item] = []
+            # A note holds only text, so the number is only read for a numbered step.
+            number = numbered.index(sj) if not step.note else 0
             for item in step.items:
-                linked = _link(item, first_named, si, sj)
+                linked = _link(item, first_named, si, sj, number, numbered)
                 if isinstance(linked, ParseError):
                     return linked
                 items.append(linked)

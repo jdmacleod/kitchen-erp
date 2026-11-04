@@ -16,7 +16,10 @@ const LEADING_KEYS = ["tags", "source"];
 /** Keys the page header already shows: the title, and servings as "Serves 6". */
 const HEADER_KEYS = ["title", "servings"];
 
-const URL_PATTERN = /(https?:\/\/[^\s,]+)/;
+// An address runs to the next space; commas are valid inside one ("rice,beans").
+const URL_PATTERN = /(https?:\/\/\S+)/;
+// Prose punctuation after an address belongs to the sentence, not the link.
+const TRAILING = /[.,;:!?)\]]+$/;
 
 /** A value with each web address as a link named by its site: "onceuponachef.com". */
 function MetaValue({ value }: { value: unknown }) {
@@ -27,22 +30,27 @@ function MetaValue({ value }: { value: unknown }) {
     <>
       {parts.map((part, i) => {
         if (i % 2 === 0) return part.replace(/,\s*$/, "");
-        let site = part;
+        const href = part.replace(TRAILING, "");
+        const trail = part.slice(href.length).replace(/^,\s*$/, "");
+        let site = href;
         try {
-          site = new URL(part).hostname.replace(/^www\./, "");
+          site = new URL(href).hostname.replace(/^www\./, "");
         } catch {
           // not a URL after all: shown as written
         }
         return (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`rounded-sm underline underline-offset-2 ${focusRing}`}
-          >
-            {i > 1 || parts[0].trim() ? ` · ${site}` : site}
-          </a>
+          <span key={i}>
+            {i > 1 || parts[0].trim() ? " · " : null}
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`inline-flex min-h-11 items-center rounded-sm underline underline-offset-2 lg:min-h-0 ${focusRing}`}
+            >
+              {site}
+            </a>
+            {trail}
+          </span>
         );
       })}
     </>
