@@ -223,6 +223,15 @@ def from_unit_of(line: RecipeIngredient) -> str:
     return "each"
 
 
+def _line_failure(failure: ConversionFailure, pin_product_id: uuid.UUID | None) -> str:
+    """The failure as the line should name it. An unpinned line never counts in packs
+    (its pack was set aside above), so "no pack" there means no weight for one piece:
+    the fix is the ingredient's measure, not the product's pack size."""
+    if failure.code == "no_pack" and pin_product_id is None:
+        return "unknown_measure"
+    return failure.code
+
+
 def grosses_up(line: RecipeIngredient, from_unit: str, context: ConversionContext) -> bool:
     """Whether the line's quantity is edible portion to be grossed up by yield (05).
 
@@ -277,14 +286,14 @@ async def cost_line(  # noqa: C901
     low = convert(line.qty, from_unit, context)
     if isinstance(low, ConversionFailure):
         out.status = "unconvertible"
-        out.failure_code = low.code
+        out.failure_code = _line_failure(low, pin_product_id)
         return out
     high = None
     if line.qty_kind == "range" and line.qty_high is not None:
         high = convert(line.qty_high, from_unit, context)
         if isinstance(high, ConversionFailure):
             out.status = "unconvertible"
-            out.failure_code = high.code
+            out.failure_code = _line_failure(high, pin_product_id)
             return out
 
     qty_low, qty_high = low.qty, high.qty if high is not None else None

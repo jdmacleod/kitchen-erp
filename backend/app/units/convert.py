@@ -29,6 +29,13 @@ loaf weighs what its label says, not what a loaf of another bread does.
 
 Measure labels and piece names match their plurals too: "2 loaves" is two "loaf".
 
+A label may carry a qualifier after a comma, as USDA's do ("tbsp, whole"). When
+no measure is named exactly like `from_unit`, the one measure whose label before
+the comma is `from_unit` stands for it; two such measures ("cup, chopped" and
+"cup, sliced") mean neither is used, and the failure names them. A bare count
+("2 onions", `from_unit` "each") with no "each" measure is that many of the
+ingredient's piece measure ("whole", else "medium"), as a pack in pieces is.
+
 Bunches (issue 371) are a family of their own: a bunch is never a piece. A
 quantity in bunches, or a pack counted in bunches, reaches the canonical unit
 only through the ingredient's "bunch" measure (provenance `measure`, or `pack`
@@ -51,7 +58,9 @@ from app.units.table import CANONICAL_UNITS, Unit, units_by_code
 # 3: bunches, through the ingredient's "bunch" measure only (issue 371).
 # 4: a size grade of an ingredient counted in pieces is that many pieces.
 # 5: a product's named pieces ("loaf") are a unit; measures match plurals.
-CONVERT_VERSION = "5"
+# 6: a qualified label ("tbsp, whole") stands for its unit when it is the only
+#    one; "each" falls back to the piece measure.
+CONVERT_VERSION = "6"
 
 # Words that grade a piece by size. For an ingredient counted in pieces they
 # say which pieces, never how many: "12 large" is 12.
@@ -184,6 +193,20 @@ def _find_measure(label: str, measures: tuple[Measure, ...]) -> Measure | None:
             if same if exact else _same_word(label, measure.label):
                 return measure
     return None
+
+
+def qualified_measures(label: str, measures: tuple[Measure, ...]) -> list[Measure]:
+    """Measures labelled ``label`` plus a qualifier: "tbsp, whole" for "tbsp"."""
+    return [m for m in measures if "," in m.label and _same_word(label, m.label.split(",", 1)[0])]
+
+
+def _measure_for(label: str, measures: tuple[Measure, ...]) -> Measure | None:
+    """The measure ``label`` names: exactly, as a plural, or as the only qualified one."""
+    found = _find_measure(label, measures)
+    if found is not None:
+        return found
+    qualified = qualified_measures(label, measures)
+    return qualified[0] if len(qualified) == 1 else None
 
 
 def _product_pieces(
@@ -361,7 +384,13 @@ def _named(qty: Decimal, from_unit: str, context: ConversionContext) -> Canonica
     units = context.units
     if units[canonical].dimension == "count" and from_unit.strip().lower() in SIZE_GRADES:
         return CanonicalQty(_mul(qty, units[canonical].to_base_factor), canonical, NO_BRIDGE)
-    measure = _find_measure(from_unit, context.measures)
+    measure = _measure_for(from_unit, context.measures)
+    if (
+        measure is None
+        and from_unit.strip().lower() == "each"
+        and units[canonical].dimension != "count"
+    ):
+        measure = _piece_measure(context.measures)  # "2 onions" is two of one onion
     if measure is None:
         return None
     return CanonicalQty(
@@ -443,9 +472,7 @@ def convert(  # noqa: C901
                 Provenance("density", context.density_source, context.density_confirmed),
             )
         else:
-            return ConversionFailure(
-                "no_density", "Crossing mass and volume needs a density; none is known."
-            )
+            return ConversionFailure("no_density", _no_density_message(from_unit, context))
         base = _mul(qty, unit.to_base_factor)  # in g or ml
         if unit.dimension == "volume":  # ml -> g
             return CanonicalQty(_mul(base, density), canonical, prov)
@@ -455,3 +482,13 @@ def convert(  # noqa: C901
     return ConversionFailure(
         "unknown_measure", f"No measure turns {unit.dimension} into {canonical}."
     )
+
+
+def _no_density_message(from_unit: str, context: ConversionContext) -> str:
+    """Why mass and volume can't be crossed, naming measures that were too many to choose."""
+    message = "Crossing mass and volume needs a density; none is known."
+    qualified = qualified_measures(from_unit, context.measures)
+    if len(qualified) > 1:
+        labels = " and ".join(f"'{m.label}'" for m in qualified)
+        message += f" {labels} both fit '{from_unit}', so neither was used."
+    return message

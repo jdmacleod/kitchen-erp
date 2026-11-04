@@ -358,6 +358,17 @@ class CostQuantity(ApiModel):
     display_unit: str | None
 
 
+class UsdaLineOffer(ApiModel):
+    """USDA's value that would convert an unconvertible line; "Use it" accepts it
+    through ``POST /usda/review/{ingredient_id}`` with ``mark_reviewed: false``."""
+
+    ingredient_id: uuid.UUID
+    kind: Literal["density", "measure"]
+    density_portion_id: uuid.UUID | None
+    measure_label: str | None
+    text: str  # "1 tsp = 2.3 g"
+
+
 class CostLineOut(ApiModel):
     id: uuid.UUID
     line: RecipeIngredientOut
@@ -377,6 +388,7 @@ class CostLineOut(ApiModel):
     basket_cost_high: DecimalStr | None
     packs: DecimalStr | None
     packs_high: DecimalStr | None
+    usda_offer: UsdaLineOffer | None = None
 
 
 class CostTotals(ApiModel):

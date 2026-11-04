@@ -14,7 +14,9 @@ import {
   type Recipe,
   type RecipeCost,
   type RecipePin,
+  type UsdaLineOffer,
 } from "../../api/recipes";
+import { useUsdaDecision } from "../../api/usdaReview";
 import { formatMoney, isZero, mul, roundTo, stripZeros } from "../../lib/decimal";
 import { formatDate } from "../../lib/format";
 import { Badge } from "../catalog/fields";
@@ -466,7 +468,9 @@ export function conversionFix(line: CostLine): { label: string; to: string | nul
   switch (line.failure_code) {
     case "unknown_measure":
       return {
-        label: line.line.unit_text ? `add a “${line.line.unit_text}” measure` : "add a measure",
+        label: line.line.unit_text
+          ? `add a “${line.line.unit_text}” measure`
+          : "add the weight of one",
         to: at("measures-heading"),
       };
     case "no_bunch_weight":
@@ -481,6 +485,50 @@ export function conversionFix(line: CostLine): { label: string; to: string | nul
     default:
       return { label: "add density", to: at("density-heading") };
   }
+}
+
+/**
+ * USDA's value for an unconvertible line, taken with one click: stored as the
+ * review on Needs a bridge stores it (source usda, unconfirmed), and the
+ * ingredient's other offers stay on that review. Every recipe using the
+ * ingredient is recomputed, so the row and totals refresh.
+ */
+function UsdaOffer({ line, offer }: { line: CostLine; offer: UsdaLineOffer }) {
+  const decide = useUsdaDecision();
+  const notice = useNotice();
+  const name = line.line.ingredient_name ?? line.line.raw_name;
+  const use = () =>
+    decide.mutate(
+      {
+        ingredientId: offer.ingredient_id,
+        mark_reviewed: false,
+        ...(offer.kind === "density" && offer.density_portion_id
+          ? { density_portion_id: offer.density_portion_id }
+          : { measures: offer.measure_label ? [offer.measure_label] : [] }),
+      },
+      {
+        onSuccess: () =>
+          notice.show({
+            tone: "success",
+            message: `Added USDA's ${offer.text} to ${name}. It stays unconfirmed until you check it.`,
+          }),
+        onError: (e) =>
+          notice.show({ tone: "error", message: `Couldn't add it: ${errorMessage(e)}` }),
+      },
+    );
+  return (
+    <span className="flex flex-wrap items-center gap-x-2" data-testid="usda-offer">
+      <span>USDA: {offer.text}</span>
+      <Button
+        variant="secondary"
+        className="min-h-11 px-2 text-xs lg:min-h-8"
+        disabled={decide.isPending}
+        onClick={use}
+      >
+        {decide.isPending ? "Adding…" : "Use it"}
+      </Button>
+    </span>
+  );
 }
 
 /** The row states, each in words (10, Row states; UI-7.9). */
@@ -501,15 +549,18 @@ function RowWords({ line }: { line: CostLine }) {
     case "unconvertible": {
       const fix = conversionFix(line);
       return (
-        <span className={muted}>
-          Can&apos;t convert yet ·{" "}
-          {fix.to ? (
-            <Link to={fix.to} className={link}>
-              {fix.label}
-            </Link>
-          ) : (
-            fix.label
-          )}
+        <span className={`flex flex-col gap-1 ${muted}`}>
+          <span>
+            Can&apos;t convert yet ·{" "}
+            {fix.to ? (
+              <Link to={fix.to} className={link}>
+                {fix.label}
+              </Link>
+            ) : (
+              fix.label
+            )}
+          </span>
+          {line.usda_offer ? <UsdaOffer line={line} offer={line.usda_offer} /> : null}
         </span>
       );
     }

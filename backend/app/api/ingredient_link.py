@@ -182,6 +182,7 @@ async def usda_review_decide(
         measures=body.measures,
         skip=body.skip,
         replace_density=body.replace_density,
+        mark_reviewed=body.mark_reviewed,
     )
     return UsdaDecisionOut(saved=saved, ingredient=await catalog.get_ingredient(db, ingredient_id))
 

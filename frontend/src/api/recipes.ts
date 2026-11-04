@@ -299,6 +299,17 @@ export interface CostLine {
   basket_cost_high: string | null;
   packs: string | null;
   packs_high: string | null;
+  /** USDA's value that would convert an unconvertible line, to take with "Use it". */
+  usda_offer?: UsdaLineOffer | null;
+}
+
+export interface UsdaLineOffer {
+  ingredient_id: string;
+  kind: "density" | "measure";
+  density_portion_id: string | null;
+  measure_label: string | null;
+  /** "1 tsp = 2.3 g". */
+  text: string;
 }
 
 export interface CostTotals {
