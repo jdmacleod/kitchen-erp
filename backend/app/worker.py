@@ -13,8 +13,10 @@ import asyncio
 import os
 import signal
 import socket
+import traceback
 import uuid
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import or_, select
@@ -95,14 +97,27 @@ async def run_once(db: AsyncSession, *, locked_by: str | None = None, **kwargs: 
     return True
 
 
+# How many of a failure's innermost frames the log names.
+ERROR_FRAMES = 4
+
+
 def loop_error_fields(exc: BaseException) -> dict[str, str]:
     """What to log when a loop iteration fails, with a next step when one is known.
 
     Compose starts the worker alongside the API, so on a fresh install it polls
     before anyone has run `kerp migrate` and every poll fails on a missing table.
     A bare "ProgrammingError" every five seconds reads like a broken install.
+
+    ``where`` names the innermost frames as file, line and function, so an error
+    can be traced. The message and locals stay out: they can carry recipe or
+    receipt text (#477).
     """
     fields = {"exc_type": type(exc).__name__}
+    frames = traceback.extract_tb(exc.__traceback__)[-ERROR_FRAMES:]
+    if frames:
+        fields["where"] = " < ".join(
+            f"{Path(f.filename).name}:{f.lineno} {f.name}" for f in reversed(frames)
+        )
     seen: BaseException | None = exc
     while seen is not None:
         for candidate in (seen, getattr(seen, "orig", None)):
