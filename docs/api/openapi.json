@@ -881,6 +881,27 @@
         "title": "BodyIngredient",
         "type": "object"
       },
+      "BodyNote": {
+        "additionalProperties": false,
+        "description": "A `>` note: a step's only item, shown beside the steps and never numbered.",
+        "properties": {
+          "t": {
+            "const": "note",
+            "title": "T",
+            "type": "string"
+          },
+          "v": {
+            "title": "V",
+            "type": "string"
+          }
+        },
+        "required": [
+          "t",
+          "v"
+        ],
+        "title": "BodyNote",
+        "type": "object"
+      },
       "BodyReference": {
         "additionalProperties": false,
         "description": "An `@&` reference to an earlier ingredient, step or section; it has no row.\n\n``section`` and ``step`` index the body's sections and that section's steps\n(from 0); ``step`` is None when the whole section is meant.",
@@ -982,6 +1003,7 @@
                   "mapping": {
                     "cookware": "#/components/schemas/BodyCookware",
                     "ingredient": "#/components/schemas/BodyIngredient",
+                    "note": "#/components/schemas/BodyNote",
                     "reference": "#/components/schemas/BodyReference",
                     "text": "#/components/schemas/BodyText",
                     "timer": "#/components/schemas/BodyTimer"
@@ -991,6 +1013,9 @@
                 "oneOf": [
                   {
                     "$ref": "#/components/schemas/BodyText"
+                  },
+                  {
+                    "$ref": "#/components/schemas/BodyNote"
                   },
                   {
                     "$ref": "#/components/schemas/BodyIngredient"
@@ -15174,6 +15199,10 @@
             ],
             "title": "Consumed Cost High"
           },
+          "lines_negligible": {
+            "title": "Lines Negligible",
+            "type": "integer"
+          },
           "lines_priced": {
             "title": "Lines Priced",
             "type": "integer"
@@ -15206,6 +15235,7 @@
           "per_serving",
           "lines_priced",
           "lines_total",
+          "lines_negligible",
           "provisional",
           "computed_at"
         ],

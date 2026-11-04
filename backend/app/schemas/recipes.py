@@ -82,6 +82,13 @@ class BodyText(ApiModel):
     v: str
 
 
+class BodyNote(ApiModel):
+    """A `>` note: a step's only item, shown beside the steps and never numbered."""
+
+    t: Literal["note"]
+    v: str
+
+
 class BodyIngredient(ApiModel):
     """An ingredient reference; ``seq`` is its ``recipe_ingredient`` row, from 1."""
 
@@ -124,7 +131,7 @@ class BodyTimer(ApiModel):
 
 
 BodyItem = Annotated[
-    BodyText | BodyIngredient | BodyReference | BodyCookware | BodyTimer,
+    BodyText | BodyNote | BodyIngredient | BodyReference | BodyCookware | BodyTimer,
     Field(discriminator="t"),
 ]
 
@@ -443,8 +450,14 @@ class RecipeCostSummary(ApiModel):
     per_serving: DecimalStr | None
     lines_priced: int
     lines_total: int
+    lines_negligible: int  # left out of completeness (07, criterion 16)
     provisional: bool
     computed_at: datetime
+
+    @property
+    def complete(self) -> bool:
+        """Every line that counts is priced; negligible lines don't count."""
+        return self.lines_priced + self.lines_negligible >= self.lines_total
 
 
 class RecipeListItem(RecipeSummary):

@@ -6,6 +6,8 @@ The grammar, as this parser reads it:
   lines anywhere in the body add to the same mapping.
 - `= Name` (optionally `== Name ==`) starts a section.
 - Steps are paragraphs: lines joined by a single space, separated by blank lines.
+- A line starting with `>` is a note: consecutive `>` lines join into one, which
+  is kept as plain text, never read for components, and never numbered.
 - `-- …` runs to the end of the line; `[- … -]` may span lines. Both vanish.
 - `@name{qty%unit}(note)`, `#name{qty}`, `~name{qty%unit}`; `@name`, `#name`
   and `~name` without braces are single words; `~{qty%unit}` is anonymous;
@@ -83,13 +85,25 @@ class _Scan:
     steps: list[Step] = field(default_factory=list)
     items: list[Item] = field(default_factory=list)
     step_line: int = 0
+    in_note: bool = False
     metadata: FrontMatter = field(default_factory=dict)
 
     def end_step(self) -> None:
         items = _tidy(self.items)
         if items:
-            self.steps.append(Step(tuple(items), self.step_line))
+            self.steps.append(Step(tuple(items), self.step_line, note=self.in_note))
         self.items = []
+        self.in_note = False
+
+    def add_note_line(self, text: str, line: int) -> None:
+        """One `>` line: it starts a note, or joins the note before it."""
+        if not self.in_note:
+            self.end_step()
+            self.in_note = True
+            self.step_line = line
+        elif self.items:
+            self.items.append(Text(" "))
+        self.items.append(Text(text))
 
     def end_section(self) -> None:
         self.end_step()
@@ -201,6 +215,11 @@ def _scan_line(scan: _Scan, line: str, line_number: int) -> ParseError | None:  
         if not stripped:
             scan.end_step()
             return None
+        if stripped.startswith(">"):
+            scan.add_note_line(stripped[1:].strip(), line_number)
+            return None
+        if scan.in_note:
+            scan.end_step()  # a step line straight after a note starts a new step
 
     items, had_comment, failure = _scan_inline(scan, line, start, line_number)
     if failure is not None:

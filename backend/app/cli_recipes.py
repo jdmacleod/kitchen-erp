@@ -185,15 +185,22 @@ def conform(path: Path = REQUIRED_PATH_OPTION, apply: bool = APPLY_OPTION) -> No
     typer.echo("Nothing was committed: read `git diff` in the repository and commit it yourself.")
 
 
+REPARSE_OPTION = typer.Option(
+    False,
+    "--reparse",
+    help="Re-read every file, changed or not: after an upgrade that reads recipes differently.",
+)
+
+
 @recipes_cli.command("rescan")
-def rescan() -> None:
+def rescan(reparse: bool = REPARSE_OPTION) -> None:
     """Scan the configured recipes mount now and say what changed (07, 3A)."""
     from app.core.db import dispose_engine, get_sessionmaker
     from app.services.recipes import scan
 
     async def _run():
         async with get_sessionmaker()() as db:
-            out = await scan(db)
+            out = await scan(db, reparse=reparse)
         await dispose_engine()
         return out
 

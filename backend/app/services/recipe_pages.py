@@ -55,7 +55,8 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
     "step"}`` (an `@&` reference: no row, and ``section``/``step`` index this
     list to where it came from; ``step`` is None for a whole section),
     ``{"t": "cookware", "name", "qty"}`` and ``{"t": "timer", "name", "qty",
-    "unit"}``. Decimals are strings; nothing here is a float.
+    "unit"}``. A `>` note is a step of one item, ``{"t": "note", "v"}``.
+    Decimals are strings; nothing here is a float.
     """
     seq = 0
     sections: list[dict[str, Any]] = []
@@ -63,6 +64,10 @@ def serialize_body(parsed: ParsedRecipe) -> list[dict[str, Any]]:
         steps: list[list[dict[str, Any]]] = []
         for step in section.steps:
             items: list[dict[str, Any]] = []
+            if step.note:
+                text = " ".join(item.value for item in step.items if isinstance(item, Text))
+                steps.append([{"t": "note", "v": text}])
+                continue
             for item in step.items:
                 if isinstance(item, Text):
                     items.append({"t": "text", "v": item.value})

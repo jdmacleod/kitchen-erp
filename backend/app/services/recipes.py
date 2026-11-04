@@ -332,8 +332,14 @@ def _create(create: index.Create, parsed: Parsed, repo: RepoView, now: datetime)
     return row
 
 
-async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  # noqa: C901, PLR0912, PLR0915
-    """Run one scan and commit what it changed. Safe to run from the worker or inline."""
+async def scan(  # noqa: C901, PLR0912, PLR0915
+    db: AsyncSession, settings: Settings | None = None, *, reparse: bool = False
+) -> ScanOut:
+    """Run one scan and commit what it changed. Safe to run from the worker or inline.
+
+    ``reparse`` re-reads every settled file whose content did not change, for a
+    parser that now reads files differently (`kerp recipes rescan --reparse`).
+    """
     settings = settings or get_settings()
     now = datetime.now(UTC)
     mount = inspect_mount(settings)
@@ -360,7 +366,9 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  
     await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": SCAN_LOCK_KEY})
     rows = list((await db.execute(select(Recipe))).scalars())
     known = {row.path: row.content_hash for row in rows}
-    files, parsed = _list_files(mount, time.time(), settings.recipes_settle_seconds, known)
+    files, parsed = _list_files(
+        mount, time.time(), settings.recipes_settle_seconds, {} if reparse else known
+    )
     # Only a row whose path is gone can be a relink's origin, and only its
     # ingredient names take part in resemblance (3A, step 3).
     on_disk = {f.path for f in files}
@@ -396,6 +404,12 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  
 
         for action in plan.actions:
             match action:
+                case index.Seen(recipe_id=rid, path=path) if reparse:
+                    row = by_id[rid]
+                    if not await _reindex(db, row, row.content_hash, parsed[path], now):
+                        parse_errors += 1
+                    _mark_present(row, repo, now)
+                    changed.add(rid)
                 case index.Seen(recipe_id=rid):
                     row = by_id[rid]
                     was_dirty = row.dirty
@@ -521,11 +535,9 @@ async def list_recipes(
         for row in rows
     ]
     if completeness == "complete":
-        items = [
-            i for i in items if i.cost is not None and i.cost.lines_priced == i.cost.lines_total
-        ]
+        items = [i for i in items if i.cost is not None and i.cost.complete]
     elif completeness == "incomplete":
-        items = [i for i in items if i.cost is None or i.cost.lines_priced < i.cost.lines_total]
+        items = [i for i in items if i.cost is None or not i.cost.complete]
     return items
 
 

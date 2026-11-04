@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { productTitle } from "../../api/catalog";
 import { errorMessage, isApiError } from "../../api/client";
 import {
   formatCostRange,
   formatQuantity,
+  known,
   lineText,
   pricedSentence,
   resolvedSentence,
@@ -36,21 +37,17 @@ export function unconfirmedPercent(share: string): string | null {
 
 /**
  * The totals strip (10, Cost table): Consumed, Basket, Per serving, Known, and
- * the unconfirmed share in squash when above zero. A provisional snapshot carries
- * a neutral "Provisional" badge with its reason (UI-7.4).
+ * the unconfirmed share in squash when above zero. While any line that counts
+ * has no cost, each figure is a floor and reads "at least $20.90". Lines costed
+ * with no yield are counted once here rather than captioned on every row. A
+ * provisional snapshot carries a neutral "Provisional" badge with its reason
+ * (UI-7.4).
  */
 export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; costing: boolean }) {
   const unconfirmed = cost ? unconfirmedPercent(cost.unconfirmed_share) : null;
-  const partial =
-    cost !== undefined && cost.completeness.lines_priced < cost.completeness.lines_total;
-  const figure = (label: string, value: string | null) => (
-    <div className="flex min-w-0 flex-col">
-      <dt className={`text-xs ${muted}`}>{label}</dt>
-      <dd className="text-lg font-semibold tabular-nums">
-        {costing ? "Costing…" : (value ?? "—")}
-      </dd>
-    </div>
-  );
+  const count = cost ? known(cost.completeness) : null;
+  const partial = count?.partial ?? false;
+  const totals = cost?.totals;
   return (
     <section
       aria-label="Totals"
@@ -58,29 +55,32 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
       data-testid="cost-totals"
     >
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {figure(
-          "Consumed",
-          cost ? formatCostRange(cost.totals.consumed_cost, cost.totals.consumed_cost_high) : null,
-        )}
-        {figure(
-          "Basket",
-          cost ? formatCostRange(cost.totals.basket_cost, cost.totals.basket_cost_high) : null,
-        )}
-        {figure(
-          "Per serving",
-          cost?.totals.per_serving ? formatMoney(cost.totals.per_serving) : null,
-        )}
+        <Figure
+          label="Consumed"
+          costing={costing}
+          partial={partial}
+          value={totals ? formatCostRange(totals.consumed_cost, totals.consumed_cost_high) : null}
+        />
+        <Figure
+          label="Basket"
+          costing={costing}
+          partial={partial}
+          value={totals ? formatCostRange(totals.basket_cost, totals.basket_cost_high) : null}
+        />
+        <Figure
+          label="Per serving"
+          costing={costing}
+          partial={partial}
+          value={totals?.per_serving ? formatMoney(totals.per_serving) : null}
+        />
         <div className="flex min-w-0 flex-col">
           <dt className={`text-xs ${muted}`}>Known</dt>
           <dd className={`text-sm ${partial ? squash : ""}`}>
-            {costing
-              ? "Costing…"
-              : cost
-                ? pricedSentence(cost.completeness.lines_priced, cost.completeness.lines_total)
-                : "—"}
+            {costing ? "Costing…" : count ? pricedSentence(count.priced, count.counted) : "—"}
           </dd>
         </div>
       </dl>
+      {cost && !costing ? <YieldNote cost={cost} /> : null}
       {unconfirmed ? (
         <p className={`text-sm ${squash}`} data-testid="unconfirmed-share">
           {unconfirmed} rests on unconfirmed bridges
@@ -93,6 +93,48 @@ export function CostTotals({ cost, costing }: { cost: RecipeCost | undefined; co
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** One total; "at least" above it while lines are missing, since it is then a floor. */
+function Figure({
+  label,
+  value,
+  costing,
+  partial,
+}: {
+  label: string;
+  value: string | null;
+  costing: boolean;
+  partial: boolean;
+}) {
+  let shown: ReactNode = value ?? "—";
+  if (costing) shown = "Costing…";
+  else if (value && value !== "—" && partial)
+    shown = (
+      <>
+        <span className={`block text-xs font-normal ${squash}`}>at least</span>
+        {value}
+      </>
+    );
+  return (
+    <div className="flex min-w-0 flex-col">
+      <dt className={`text-xs ${muted}`}>{label}</dt>
+      <dd className="text-lg font-semibold tabular-nums">{shown}</dd>
+    </div>
+  );
+}
+
+/** How many costed lines assume no trim or cooking loss, said once for the table. */
+function YieldNote({ cost }: { cost: RecipeCost }) {
+  const assumed = cost.lines.filter((l) => l.yield_assumed).length;
+  if (assumed === 0) return null;
+  const one = assumed === 1;
+  return (
+    <p className={`text-sm ${muted}`} data-testid="yield-assumed">
+      Yield assumed 100% on {assumed} {one ? "line" : "lines"}: no trim or cooking loss is counted
+      for {one ? "it" : "them"}.
+    </p>
   );
 }
 
@@ -202,7 +244,6 @@ interface RowProps {
 
 function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
   const ingredient = line.line;
-  const price = line.price;
   const packs =
     line.packs && !isZero(line.packs)
       ? `${stripZeros(line.packs)}${line.packs_high && line.packs_high !== line.packs ? `–${stripZeros(line.packs_high)}` : ""} ${line.packs === "1" ? "pack" : "packs"}`
@@ -251,57 +292,9 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
         )}
       </div>
       {/* Quantity: converted, in the display unit the server chose (UI-3.10a). */}
-      <div role="cell" className="min-w-0">
-        <span className="flex flex-wrap items-baseline gap-x-2 lg:block">
-          <span className={`lg:hidden ${muted}`}>Quantity</span>
-          <span className="tabular-nums">
-            {line.quantity
-              ? formatQuantity(
-                  line.quantity.display_qty,
-                  line.quantity.display_qty_high,
-                  line.quantity.display_unit,
-                )
-              : "—"}
-          </span>
-        </span>
-        {line.yield_assumed ? (
-          <span className={`block text-xs ${squash}`}>yield 100% assumed</span>
-        ) : null}
-        {line.yield_mode !== "auto" ? (
-          <span className={`block text-xs ${muted}`}>
-            {line.yield_mode === "as_purchased" ? "as purchased" : "edible"}
-          </span>
-        ) : null}
-      </div>
+      <QuantityCell line={line} />
       {/* Price used, or the words for why there is none. */}
-      <div role="cell" className="min-w-0">
-        {price ? (
-          <>
-            <span className="flex flex-wrap items-center gap-x-2">
-              <span className={`lg:hidden ${muted}`}>Price</span>
-              <span className="tabular-nums">
-                {formatUnitPrice(price.display_unit_price, price.display_unit)}
-              </span>
-              {price.stale ? (
-                <Badge tone="warn">
-                  <span className="sr-only">older than {staleAfterDays} days: </span>stale
-                </Badge>
-              ) : null}
-            </span>
-            <span className={`block text-xs ${muted}`}>
-              {[
-                price.product_name,
-                price.vendor_name ?? price.location_name,
-                price.observed_at ? formatDate(price.observed_at) : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
-          </>
-        ) : (
-          <RowWords line={line} />
-        )}
-      </div>
+      <PriceCell line={line} staleAfterDays={staleAfterDays} />
       {/* Cost: consumed, with the basket beneath. */}
       <div role="cell" className="tabular-nums lg:text-right">
         <span className="flex items-baseline justify-between gap-2 lg:block">
@@ -316,6 +309,64 @@ function CostRow({ line, staleAfterDays, recipeId, pin, focusNext }: RowProps) {
           </span>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function QuantityCell({ line }: { line: CostLine }) {
+  return (
+    <div role="cell" className="min-w-0">
+      <span className="flex flex-wrap items-baseline gap-x-2 lg:block">
+        <span className={`lg:hidden ${muted}`}>Quantity</span>
+        <span className="tabular-nums">
+          {line.quantity
+            ? formatQuantity(
+                line.quantity.display_qty,
+                line.quantity.display_qty_high,
+                line.quantity.display_unit,
+              )
+            : "—"}
+        </span>
+      </span>
+      {line.yield_mode !== "auto" ? (
+        <span className={`block text-xs ${muted}`}>
+          {line.yield_mode === "as_purchased" ? "as purchased" : "edible"}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function PriceCell({ line, staleAfterDays }: { line: CostLine; staleAfterDays: number }) {
+  const price = line.price;
+  return (
+    <div role="cell" className="min-w-0">
+      {price ? (
+        <>
+          <span className="flex flex-wrap items-center gap-x-2">
+            <span className={`lg:hidden ${muted}`}>Price</span>
+            <span className="tabular-nums">
+              {formatUnitPrice(price.display_unit_price, price.display_unit)}
+            </span>
+            {price.stale ? (
+              <Badge tone="warn">
+                <span className="sr-only">older than {staleAfterDays} days: </span>stale
+              </Badge>
+            ) : null}
+          </span>
+          <span className={`block text-xs ${muted}`}>
+            {[
+              price.product_name,
+              price.vendor_name ?? price.location_name,
+              price.observed_at ? formatDate(price.observed_at) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </>
+      ) : (
+        <RowWords line={line} />
+      )}
     </div>
   );
 }
