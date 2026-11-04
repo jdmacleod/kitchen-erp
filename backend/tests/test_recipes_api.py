@@ -211,7 +211,11 @@ async def test_list_filters_run_on_the_server(
     recipes_repo.write(
         "drafts/zenith_soup.cook", ">> title: Zenith soup\nBoil the water and wait.\n"
     )
-    recipes_repo.commit("six")
+    # Only negligible lines (07, criterion 16): they count for neither side, so complete.
+    recipes_repo.write(
+        "drafts/brine_pot.cook", ">> title: Brine pot\nStir @salt{} into @water{1%l}.\n"
+    )
+    recipes_repo.commit("seven")
     assert (await admin_client.post("/api/v1/recipes/rescan")).status_code == 200
 
     async def titles(params: dict) -> list[str]:
@@ -220,14 +224,14 @@ async def test_list_filters_run_on_the_server(
         return [i["title"] for i in r.json()["items"]]
 
     assert await titles({"q": "LENTIL"}) == ["Lantern lentils"]  # case folded, on the title
-    assert await titles({"q": "drafts/"}) == ["Zenith soup"]  # or on the path
+    assert await titles({"q": "drafts/"}) == ["Brine pot", "Zenith soup"]  # or on the path
     assert await titles({"q": "100%"}) == []  # a typed % is not a wildcard
     assert await titles({"q": "zz qx"}) == []
 
     # The scan costs every recipe it indexes (3D, package 6b). Nothing is priced,
     # so the five fixtures are incomplete; the recipe with no lines is complete.
     assert len(await titles({"completeness": "incomplete"})) == 5
-    assert await titles({"completeness": "complete"}) == ["Zenith soup"]
+    assert await titles({"completeness": "complete"}) == ["Brine pot", "Zenith soup"]
     assert (await admin_client.get("/api/v1/recipes?completeness=half")).status_code == 422
 
     # Its snapshot says so line by line.
@@ -246,7 +250,7 @@ async def test_list_filters_run_on_the_server(
         "lines_unmapped": 0,
         "lines_negligible": 0,
     }
-    assert await titles({"completeness": "complete"}) == ["Zenith soup"]
+    assert await titles({"completeness": "complete"}) == ["Brine pot", "Zenith soup"]
     assert "Zenith soup" not in await titles({"completeness": "incomplete"})
     assert await titles({"completeness": "incomplete", "q": "zenith"}) == []
 

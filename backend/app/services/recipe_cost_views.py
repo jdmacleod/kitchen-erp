@@ -312,6 +312,7 @@ async def summaries(db: AsyncSession, recipes: list[Recipe]) -> dict[uuid.UUID, 
             per_serving=row.per_serving,
             lines_priced=row.lines_priced,
             lines_total=row.lines_total,
+            lines_negligible=row.lines_negligible,
             provisional=row.provisional,
             computed_at=row.computed_at,
         )

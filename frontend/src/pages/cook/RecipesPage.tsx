@@ -3,7 +3,9 @@ import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
 import { useInbox } from "../../api/inbox";
 import {
+  floorText,
   formatCostRange,
+  known,
   pricedSentence,
   servingsText,
   useRecipes,
@@ -273,7 +275,8 @@ function RecipeRows({ items }: { items: RecipeListItem[] }) {
 function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
   const cost = recipe.cost;
   const servings = servingsText(recipe);
-  const partial = cost !== null && cost.lines_priced < cost.lines_total;
+  const count = cost ? known(cost) : null;
+  const partial = count?.partial ?? false;
   return (
     <div
       role="row"
@@ -310,11 +313,11 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
           <>
             <span>
               <span className="lg:hidden">Cost </span>
-              {formatCostRange(cost.consumed_cost, cost.consumed_cost_high)}
+              {floorText(formatCostRange(cost.consumed_cost, cost.consumed_cost_high), partial)}
             </span>
             {cost.per_serving ? (
               <span className={`block text-xs ${muted}`}>
-                {formatMoney(cost.per_serving)} per serving
+                {floorText(formatMoney(cost.per_serving), partial)} per serving
               </span>
             ) : null}
             {cost.provisional ? (
@@ -329,7 +332,7 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
         {cost ? (
           <>
             <span className="lg:hidden">Basket </span>
-            {formatCostRange(cost.basket_cost, cost.basket_cost_high)}
+            {floorText(formatCostRange(cost.basket_cost, cost.basket_cost_high), partial)}
           </>
         ) : (
           <span className={muted}>—</span>
@@ -339,11 +342,7 @@ function RecipeRow({ recipe }: { recipe: RecipeListItem }) {
         role="cell"
         className={cost ? (partial ? "text-amber-900 dark:text-amber-200" : "") : "hidden lg:block"}
       >
-        {cost ? (
-          pricedSentence(cost.lines_priced, cost.lines_total)
-        ) : (
-          <span className={muted}>—</span>
-        )}
+        {count ? pricedSentence(count.priced, count.counted) : <span className={muted}>—</span>}
       </div>
       <div role="cell" className={`text-xs lg:text-sm ${muted}`}>
         <span className="lg:hidden">Indexed </span>

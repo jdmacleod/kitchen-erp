@@ -67,7 +67,8 @@ describe("the recipe page (UI-7.7, UI-7.9)", () => {
     const recipe = within(main).getByRole("region", { name: "Recipe" });
     // Front matter as a meta block, the section as a heading, and the lines as written.
     const meta = recipe.querySelector("dl")!;
-    expect(meta).toHaveTextContent("servings4");
+    // Servings is in the header ("Serves 4"), so the meta block doesn't repeat it.
+    expect(meta).not.toHaveTextContent("servings");
     expect(meta).toHaveTextContent("tagssoup, winter");
     expect(meta).toHaveTextContent("sourcea family card");
     expect(within(recipe).getByRole("heading", { name: "Broth" })).toBeInTheDocument();
@@ -99,7 +100,8 @@ describe("the recipe page (UI-7.7, UI-7.9)", () => {
       "/catalog/ingredients/i-pearl-barley",
     );
     expect(barley).toHaveTextContent("0.44 lb");
-    expect(barley).toHaveTextContent("yield 100% assumed");
+    // No yield is counted once in the totals, not captioned on the row.
+    expect(barley).not.toHaveTextContent("yield 100% assumed");
     expect(barley).toHaveTextContent("$2.99/lb");
     expect(barley).toHaveTextContent("Moonfield pearl barley 1 lb · Harbor Grocer ·");
     expect(barley).toHaveTextContent("$1.32");
@@ -145,10 +147,15 @@ describe("the recipe page (UI-7.7, UI-7.9)", () => {
     mount();
     const totals = await within(await screen.findByRole("main")).findByTestId("cost-totals");
     await within(totals).findByText("$12.40–13.10");
-    expect(totals).toHaveTextContent("Consumed$12.40–13.10");
-    expect(totals).toHaveTextContent("Basket$31.96");
-    expect(totals).toHaveTextContent("Per serving$3.10");
-    expect(within(totals).getByText("3 of 6 lines priced")).toHaveClass("text-amber-900");
+    // Two counted lines have no cost, so each figure is a floor; the negligible
+    // line counts for neither side (07, criterion 16).
+    expect(totals).toHaveTextContent("Consumedat least$12.40–13.10");
+    expect(totals).toHaveTextContent("Basketat least$31.96");
+    expect(totals).toHaveTextContent("Per servingat least$3.10");
+    expect(within(totals).getByText("3 of 5 lines priced")).toHaveClass("text-amber-900");
+    expect(within(totals).getByTestId("yield-assumed")).toHaveTextContent(
+      "Yield assumed 100% on 1 line",
+    );
     expect(within(totals).getByTestId("unconfirmed-share")).toHaveTextContent(
       "12% rests on unconfirmed bridges",
     );

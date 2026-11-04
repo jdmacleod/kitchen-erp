@@ -731,6 +731,7 @@ async def test_the_list_carries_the_latest_cost_once_a_snapshot_exists(
         "per_serving": "0.8250",
         "lines_priced": 3,
         "lines_total": 3,
+        "lines_negligible": 0,
         "provisional": False,
         "computed_at": listed["computed_at"],
     }
