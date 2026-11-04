@@ -77,10 +77,21 @@ def _density(group: ReviewGroup, from_unit: str) -> LineOffer | None:
 
 
 def _measure(group: ReviewGroup, from_unit: str) -> LineOffer | None:
-    """The measure the line's unit names, or for a bare count the measure for one."""
+    """The measure the line's unit names, or for a bare count the measure for one.
+
+    The converter's rule decides: an exact label first, else the one offer whose
+    label before the comma is the unit ("slice, thin" for "slice"); two such
+    offers mean none, since saving either would leave the line unconverted."""
     by_label = {m.label: m for m in group.measures}
     wanted = PIECE_LABELS if from_unit.lower() == "each" else (measure_label(from_unit),)
     found: MeasureOffer | None = next((by_label[w] for w in wanted if w in by_label), None)
+    if found is None:
+        qualified = [
+            m
+            for m in group.measures
+            if "," in m.label and m.label.split(",", 1)[0].strip() in wanted
+        ]
+        found = qualified[0] if len(qualified) == 1 else None
     if found is None:
         return None
     return LineOffer(

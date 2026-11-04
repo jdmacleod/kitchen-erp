@@ -144,3 +144,51 @@ async def test_an_unpinned_count_line_asks_for_a_measure_not_a_pack_size(
     recipe = await indexed(admin_client, recipes_repo, "harbor-leeks.cook", "Trim @leek{2}.\n")
     line = lines_by_text(await cost(admin_client, recipe["id"]))[("leek", None)]
     assert (line["status"], line["failure_code"]) == ("unconvertible", "unknown_measure")
+
+
+async def _portion(owner_conn: asyncpg.Connection, fdc_id: int, unit: str, grams: int) -> None:
+    await owner_conn.execute(
+        "INSERT INTO ref_usda_portion (id, fdc_id, food_description, portion_label,"
+        " portion_amount, portion_unit, gram_weight, data_type)"
+        " VALUES ($1, $2, 'Bread, rye', $3, 1, $4, $5, 'sr_legacy_food')",
+        uuid.uuid4(),
+        fdc_id,
+        f"1 {unit}",
+        unit,
+        grams,
+    )
+
+
+async def test_a_qualified_offer_serves_its_unit_when_it_is_the_only_one(
+    admin_client: httpx.AsyncClient,
+    db_session,
+    owner_conn: asyncpg.Connection,
+    tmp_path: Path,
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    await _setup(admin_client, db_session, owner_conn, tmp_path)
+    rye = await make_ingredient(admin_client, "Rye bread")
+    toast = await make_ingredient(admin_client, "Toast")
+    await _portion(owner_conn, 1006, "slice, thin", 25)
+    await _portion(owner_conn, 1007, "slice, thin", 20)
+    await _portion(owner_conn, 1007, "slice, thick", 40)
+    await _ref(owner_conn, rye["id"], 1006)
+    await _ref(owner_conn, toast["id"], 1007)
+    recipe = await indexed(
+        admin_client,
+        recipes_repo,
+        "harbor-toast.cook",
+        "Lay out @rye bread{2%slices} and @toast{2%slices}.\n",
+    )
+    got = lines_by_text(await cost(admin_client, recipe["id"]))
+    assert got[("rye bread", "slices")]["usda_offer"]["text"] == "1 slice, thin = 25 g"
+    assert got[("toast", "slices")]["usda_offer"] is None, "two fit: neither would convert"
+
+    offer = got[("rye bread", "slices")]["usda_offer"]
+    r = await admin_client.post(
+        f"/api/v1/usda/review/{rye['id']}",
+        json={"measures": [offer["measure_label"]], "mark_reviewed": False},
+    )
+    assert r.status_code == 200, r.text
+    after = lines_by_text(await cost(admin_client, recipe["id"]))[("rye bread", "slices")]
+    assert after["quantity"]["canonical_qty"] == "50"
