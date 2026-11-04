@@ -119,6 +119,9 @@ Item = Text | IngredientRef | Reference | Cookware | Timer
 class Step:
     items: tuple[Item, ...]
     line: int = field(default=0, compare=False)
+    # A `>` paragraph: words for the cook, not a numbered step. Its one item is
+    # the text as written; nothing in it is an ingredient, cookware or timer.
+    note: bool = False
 
     @property
     def ingredients(self) -> tuple[IngredientRef, ...]:

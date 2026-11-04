@@ -59,6 +59,7 @@ export const barleyStew: RecipeListItem = {
     per_serving: "3.1000",
     lines_priced: 8,
     lines_total: 10,
+    lines_negligible: 0,
     provisional: false,
     computed_at: "2026-10-09T11:05:00Z",
   },
@@ -80,6 +81,7 @@ export const cometCrumble: RecipeListItem = {
     per_serving: "1.2000",
     lines_priced: 5,
     lines_total: 5,
+    lines_negligible: 0,
     provisional: true,
     computed_at: "2026-10-09T11:06:00Z",
   },
@@ -506,6 +508,7 @@ export function history(basis: CostHistory["basis"], costs: string[]): CostHisto
       },
       lines_priced: 6,
       lines_total: 6,
+      lines_negligible: 0,
     })),
   };
 }

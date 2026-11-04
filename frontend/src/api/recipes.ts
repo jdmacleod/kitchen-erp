@@ -3,7 +3,7 @@
 // strings; nothing here turns them into numbers.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cmp, formatMoney, stripZeros } from "../lib/decimal";
+import { cmp, formatMoney, isZero, roundTo, stripZeros } from "../lib/decimal";
 import { catalogKeys, qs, type IngredientCreateInput, type IngredientSummary } from "./catalog";
 import { api } from "./client";
 import { inboxKey } from "./inbox";
@@ -48,6 +48,8 @@ export interface RecipeCostSummary {
   per_serving: string | null;
   lines_priced: number;
   lines_total: number;
+  /** Lines too small to cost (salt, water, "to taste"), left out of completeness (07, criterion 16). */
+  lines_negligible: number;
   provisional: boolean;
   computed_at: string;
 }
@@ -139,6 +141,8 @@ export interface BodyReference {
  */
 export type BodyItem =
   | { t: "text"; v: string }
+  /** A `>` note: always a step's only item, shown beside the steps and never numbered. */
+  | { t: "note"; v: string }
   | {
       t: "ingredient";
       name: string;
@@ -595,6 +599,63 @@ export function pricedSentence(priced: number, total: number): string {
   return `${priced} of ${total} ${total === 1 ? "line" : "lines"} priced`;
 }
 
+/**
+ * The lines that count toward completeness and how many are priced: negligible
+ * lines (salt, water, "to taste") are never costed, so they count for neither
+ * (07, criterion 16). `partial` is true while any counted line has no cost, and
+ * the totals are then only a floor.
+ */
+export function known(c: { lines_priced: number; lines_total: number; lines_negligible: number }): {
+  priced: number;
+  counted: number;
+  partial: boolean;
+} {
+  const counted = Math.max(c.lines_total - c.lines_negligible, 0);
+  return { priced: c.lines_priced, counted, partial: c.lines_priced < counted };
+}
+
+/** A figure that is only a floor while lines are missing: "at least $20.90". */
+export function floorText(figure: string, partial: boolean): string {
+  return partial && figure !== "—" ? `at least ${figure}` : figure;
+}
+
+// The cooking fractions a recipe is written in; a quantity stored as 1/3 comes
+// back as 0.3333333333333333333333333333 and is shown as "1/3" again.
+const FRACTIONS: [string, string][] = [
+  ["1/8", "0.125"],
+  ["1/6", "0.1666666666666666666666666667"],
+  ["1/4", "0.25"],
+  ["1/3", "0.3333333333333333333333333333"],
+  ["3/8", "0.375"],
+  ["1/2", "0.5"],
+  ["5/8", "0.625"],
+  ["2/3", "0.6666666666666666666666666667"],
+  ["3/4", "0.75"],
+  ["5/6", "0.8333333333333333333333333333"],
+  ["7/8", "0.875"],
+];
+
+/**
+ * A recipe amount for reading: "1/3" or "1 2/3" for a long repeating decimal,
+ * otherwise the number with trailing zeros dropped ("0.25", "1.5", "2"). Only
+ * amounts with more than four decimal places are turned back into fractions, so
+ * what the cook wrote as a decimal stays a decimal.
+ */
+export function formatAmount(text: string): string {
+  const plain = stripZeros(text);
+  const [whole, places = ""] = plain.split(".");
+  if (places.length <= 4) return plain;
+  const part = `0.${places}`;
+  for (const [fraction, value] of FRACTIONS) {
+    if (cmp(roundTo(part, 6), roundTo(value, 6)) === 0) {
+      return whole === "0" || whole === "" ? fraction : `${whole} ${fraction}`;
+    }
+  }
+  // Three places reads well, but never at the cost of a small amount becoming 0.
+  const rounded = stripZeros(roundTo(plain, 3));
+  return isZero(rounded) ? plain : rounded;
+}
+
 /** Servings as written, or the number, or nothing. */
 export function servingsText(
   recipe: Pick<RecipeSummary, "servings" | "servings_text">,
@@ -630,8 +691,8 @@ export function lineText(line: RecipeIngredient): string {
   let qty = "";
   if (line.qty_kind === "text") qty = line.qty_text ?? "";
   else if (line.qty_kind === "range" && line.qty)
-    qty = `${stripZeros(line.qty)}–${line.qty_high ? stripZeros(line.qty_high) : ""}`;
-  else if (line.qty_kind === "number" && line.qty) qty = stripZeros(line.qty);
+    qty = `${formatAmount(line.qty)}–${line.qty_high ? formatAmount(line.qty_high) : ""}`;
+  else if (line.qty_kind === "number" && line.qty) qty = formatAmount(line.qty);
   const parts = [qty, line.unit_text ?? "", line.raw_name].filter((p) => p !== "");
   const text = parts.join(" ");
   return line.note ? `${text} (${line.note})` : text;

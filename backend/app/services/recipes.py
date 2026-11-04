@@ -293,13 +293,23 @@ def _apply_good_parse(row: Recipe, parsed: ParsedRecipe) -> None:
 
 
 async def _reindex(
-    db: AsyncSession, row: Recipe, content_hash: str, parsed: Parsed, now: datetime
+    db: AsyncSession,
+    row: Recipe,
+    content_hash: str,
+    parsed: Parsed,
+    now: datetime,
+    *,
+    keep_choices: bool = False,
 ) -> bool:
     """The file's content changed: replace what was derived from it. True when it parsed.
 
     On a parse error (criterion 4) the title, front matter, servings and the
     ``recipe_ingredient`` rows of the last good parse stay, and the new hash is
     stored so the file is not parsed again until it changes.
+
+    ``keep_choices`` is for a reparse of unchanged content: a line at the same
+    place with the same name keeps its ingredient, resolution and yield mode, so
+    re-reading a file never undoes what a person chose for its lines.
     """
     row.content_hash = content_hash
     row.last_indexed_at = now
@@ -308,9 +318,24 @@ async def _reindex(
         row.parse_error_message = _error_message(parsed)
         return False
     _apply_good_parse(row, parsed)
+    kept: dict[tuple[int, str], tuple[uuid.UUID | None, str, str]] = {}
+    if keep_choices:
+        found = await db.execute(
+            select(
+                RecipeIngredient.seq,
+                RecipeIngredient.name_norm,
+                RecipeIngredient.ingredient_id,
+                RecipeIngredient.resolution,
+                RecipeIngredient.yield_mode,
+            ).where(RecipeIngredient.recipe_id == row.id)
+        )
+        kept = {(seq, name): (ing, res, ym) for seq, name, ing, res, ym in found.tuples()}
     await db.execute(delete(RecipeIngredient).where(RecipeIngredient.recipe_id == row.id))
     for line in _ingredient_rows(parsed):
         line.recipe_id = row.id
+        choice = kept.get((line.seq, line.name_norm))
+        if choice is not None:
+            line.ingredient_id, line.resolution, line.yield_mode = choice
         db.add(line)
     return True
 
@@ -351,8 +376,14 @@ def _deferred(now: datetime, files: int) -> ScanOut:
     )
 
 
-async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  # noqa: C901, PLR0912, PLR0915
-    """Run one scan and commit what it changed. Safe to run from the worker or inline."""
+async def scan(  # noqa: C901, PLR0912, PLR0915
+    db: AsyncSession, settings: Settings | None = None, *, reparse: bool = False
+) -> ScanOut:
+    """Run one scan and commit what it changed. Safe to run from the worker or inline.
+
+    ``reparse`` re-reads every settled file whose content did not change, for a
+    parser that now reads files differently (`kerp recipes rescan --reparse`).
+    """
     settings = settings or get_settings()
     now = datetime.now(UTC)
     mount = inspect_mount(settings)
@@ -379,7 +410,9 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  
     await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": SCAN_LOCK_KEY})
     rows = list((await db.execute(select(Recipe))).scalars())
     known = {row.path: row.content_hash for row in rows}
-    files, parsed = _list_files(mount, time.time(), settings.recipes_settle_seconds, known)
+    files, parsed = _list_files(
+        mount, time.time(), settings.recipes_settle_seconds, {} if reparse else known
+    )
     # Only a row whose path is gone can be a relink's origin, and only its
     # ingredient names take part in resemblance (3A, step 3).
     on_disk = {f.path for f in files}
@@ -416,6 +449,14 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  
 
             for action in plan.actions:
                 match action:
+                    case index.Seen(recipe_id=rid, path=path) if reparse:
+                        row = by_id[rid]
+                        if not await _reindex(
+                            db, row, row.content_hash, parsed[path], now, keep_choices=True
+                        ):
+                            parse_errors += 1
+                        _mark_present(row, repo, now)
+                        changed.add(rid)
                     case index.Seen(recipe_id=rid):
                         row = by_id[rid]
                         was_dirty = row.dirty
@@ -431,8 +472,11 @@ async def scan(db: AsyncSession, settings: Settings | None = None) -> ScanOut:  
                         row = by_id[rid]
                         row.path = new_path
                         was_dirty = row.dirty
-                        if row.content_hash != h:
-                            if not await _reindex(db, row, h, parsed[new_path], now):
+                        if row.content_hash != h or reparse:
+                            same = row.content_hash == h
+                            if not await _reindex(
+                                db, row, h, parsed[new_path], now, keep_choices=same
+                            ):
                                 parse_errors += 1
                             changed.add(rid)
                         elif not _has_front_matter_title(row):
@@ -547,11 +591,9 @@ async def list_recipes(
         for row in rows
     ]
     if completeness == "complete":
-        items = [
-            i for i in items if i.cost is not None and i.cost.lines_priced == i.cost.lines_total
-        ]
+        items = [i for i in items if i.cost is not None and i.cost.complete]
     elif completeness == "incomplete":
-        items = [i for i in items if i.cost is None or i.cost.lines_priced < i.cost.lines_total]
+        items = [i for i in items if i.cost is None or not i.cost.complete]
     return items
 
 

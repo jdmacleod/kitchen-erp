@@ -57,7 +57,11 @@ on both; 3D depends on 3C; 3E depends on everything before it.
   text. The Phase 3 review (2026-10-09) added what real files use: ingredient
   notes `@name{qty}(note)`, anonymous timers `~{3%minutes}`, unicode fractions
   (`¾`, `2½`), mixed numbers, and nested front matter, whose keys beyond the
-  ones the application reads are kept verbatim in `recipe.front_matter`. It is
+  ones the application reads are kept verbatim in `recipe.front_matter`. A line
+  starting with `>` is a note (amended 2026-11-04): consecutive `>` lines join
+  into one note, kept as plain text, never read for components and never
+  numbered; `kerp recipes rescan --reparse` reads unchanged files again after a
+  change like this one. It is
   validated against the canonical test suite published by the Cooklang project
   (MIT), vendored under `backend/tests/fixtures/cooklang/` with its licence
   file; the suite stays the gate for every addition. A third-party parser may
