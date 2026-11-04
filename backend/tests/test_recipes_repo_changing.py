@@ -16,7 +16,7 @@ import pytest
 from sqlalchemy import select
 
 from app.core.db import get_sessionmaker
-from app.models import Recipe
+from app.models import Recipe, RecipeCostSnapshot, RecipeIngredient
 from app.recipes.repo import RepoChanging, open_repo
 from app.services import recipes
 from app.worker import loop_error_fields
@@ -110,6 +110,55 @@ async def test_a_scan_mid_write_keeps_nothing_and_the_next_one_indexes(recipes_r
     found = await rows()
     assert found["soups/lentil.cook"].head_commit == second
     assert not found["soups/lentil.cook"].dirty and not found["soups/pea.cook"].dirty
+
+
+async def _state(path: str) -> tuple:
+    """What a scan could change about one recipe: its row, its lines, its snapshots."""
+    async with get_sessionmaker()() as db:
+        row = (await db.execute(select(Recipe).where(Recipe.path == path))).scalar_one()
+        names = sorted(
+            (
+                await db.execute(
+                    select(RecipeIngredient.name_norm).where(RecipeIngredient.recipe_id == row.id)
+                )
+            ).scalars()
+        )
+        snapshots = sorted(
+            (h, c)
+            for h, c in (
+                await db.execute(
+                    select(RecipeCostSnapshot.content_hash, RecipeCostSnapshot.computed_at).where(
+                        RecipeCostSnapshot.recipe_id == row.id
+                    )
+                )
+            ).tuples()
+        )
+        return (row.content_hash, row.dirty, row.last_indexed_at, names, snapshots)
+
+
+async def test_a_scan_that_meets_a_missing_tree_after_writing_rolls_all_of_it_back(
+    recipes_repo: TempRepo,  # noqa: F811
+):
+    """RepoChanging raised mid-plan, after a recipe was re-indexed: nothing is kept."""
+    recipes_repo.write("soups/lentil.cook", SOUP)
+    head = recipes_repo.commit("one")
+    await run_scan()
+    before = await _state("soups/lentil.cook")
+    # An uncommitted edit: HEAD stays put, so the scan re-indexes the file and
+    # only then asks HEAD's tree whether the file is committed.
+    recipes_repo.edit("soups/lentil.cook", "Stir in @spinach{100%g}.\n")
+    restore = hide(recipes_repo, subtree(recipes_repo, head, b"soups"))
+
+    deferred = await run_scan()
+    assert deferred.changed == 0 and deferred.settling == deferred.files
+    assert await _state("soups/lentil.cook") == before
+
+    restore()
+    settled = await run_scan()
+    assert settled.updated == 1
+    content_hash, dirty, _at, names, _snapshots = await _state("soups/lentil.cook")
+    assert content_hash != before[0] and dirty
+    assert "spinach" in names
 
 
 def test_a_worker_error_names_where_it_was_raised_and_not_its_message():
