@@ -79,7 +79,7 @@ flyer_run                              -- one per report; append-only
 
 flyer_offer                            -- relevant candidates only; append-only
   id uuid PK, flyer_run_id FK
-  name_as_printed text, name_original text?, brand text?
+  name_as_printed text, name_norm text, name_original text?, brand text?
   size_qty numeric?, size_unit FK unit?
   price_basis CHECK IN (each, per_lb, per_oz, multi, bogo, percent_off, dollar_off)
   price numeric(12,4)?                 -- money for each/per_lb/per_oz/multi/bogo
@@ -93,12 +93,17 @@ flyer_offer                            -- relevant candidates only; append-only
   relevance CHECK IN (alias, purchased, recipe, list, watched)
   created_at
 
-flyer_offer_link                       -- decision-only (status, product_id, decided_*)
+flyer_offer_link                       -- decision-only: every column but flyer_offer_id
   flyer_offer_id PK FK
   status CHECK IN (auto, suggested, confirmed, rejected)
   product_id FK?, resolution text?, suggestions jsonb?
   size_inherited bool default false
+  corrected_price numeric(12,4)?       -- a person's correction of the printed price (2X)
+  corrected_size_qty numeric?, corrected_size_unit FK unit?   -- and of its size
   decided_by FK user?, decided_at timestamptz?
+
+flyer_offer_crop                       -- image sources only (2X)
+  flyer_offer_id PK FK, media_path text, created_at
 
 flyer_alias                            -- learned on confirm; like receipt_alias, kept apart
   vendor_id FK, name_norm text, product_id FK?, ignore bool
@@ -109,6 +114,8 @@ flyer_alias                            -- learned on confirm; like receipt_alias
 `ingredient.watch bool default false`. `lookup_request.kind` gains `flyer`, owned by `ad_source_id`.
 
 `flyer_run` and `flyer_offer` join the append-only list, and `flyer_offer_link` joins the decision-only list, both in `backend/app/core/grants.py`. No float anywhere: prices, quantities, discounts and box fractions are `numeric` and are serialized as strings.
+
+An offer stays as printed; a person's correction of its price or size is kept on its link, and every read model uses the corrected value where there is one.
 
 Flyer aliases are kept apart from receipt aliases. A circular says "Organic Fuji Apples" where a receipt says "ORG FUJI APL", and mixing the two would make each text space a worse fuzzy match for the other.
 
@@ -133,19 +140,23 @@ The ad week starts on the most recent `publish_weekday`. The report's printed `a
 - `request_id`, `status`, `reason`, `adapter_version`, `ad_week_from`, `ad_week_to`, `fetched_at`;
 - `candidates`: at most 2000, each with the `flyer_offer` fields above except `relevance`.
 
-A report that fails validation is refused with 422 and the request stays open. A report on a closed request is refused with 409. Kitchen ERP never sees the raw payload. The helper keeps it for twelve months (helper SPEC §13).
+A report that fails validation is refused with 422 and stores no run and no offer. When its `request_id` names an open flyer request, that request is answered as a failed attempt: the refusal is recorded in `lookup_answer` against it, it counts toward the week's attempts and the source's pause like a `failed` run, and the inbox reads it as "the adapter needs attention". A report on a closed request is refused with 409. A report may also arrive on a request already answered: a replay of the archived payload with a newer adapter version (U5).
+
+The response lists, for each candidate in order, the id of the offer it became, or null when it wasn't relevant. For an image source the helper then posts each stored offer's page crop to `POST /flyer-offers/{id}/crop` (`products:suggest`; a PNG up to 1 MB, metadata stripped), kept as `flyer_offer_crop` and served under `/api/v1/media` with a session, like product photos (2X).
+
+Kitchen ERP never sees the raw payload. The helper keeps it for twelve months (helper SPEC §13).
 
 ## Relevance
 
 A candidate is relevant to a kitchen when one of these holds, checked in order:
 
 1. Its normalized name matches a `flyer_alias` for the vendor that isn't `ignore`.
-2. Its name is similar (trigram, at least `FLYER_RELEVANCE_THRESHOLD`, default 0.45) to a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365).
-3. It's similar to an ingredient a recipe calls for.
-4. It's similar to an item on the kitchen's shopping list.
-5. It's similar to a watched ingredient.
+2. It and a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365), or that product's ingredient, appear within one another: pg_trgm word similarity in either direction of at least `FLYER_RELEVANCE_THRESHOLD` (default 0.6). "Fuji Apples 3 lb Bag" holds "apple", and "Rolled Oats" sits inside a product name that adds a brand and a size.
+3. Likewise for an ingredient a recipe calls for.
+4. Likewise for an item on the kitchen's open shopping list.
+5. Likewise for a watched ingredient.
 
-The first that holds is recorded in `relevance`. Everything else is counted in `offered_count` and dropped, so "312 offers, 23 relevant" stays visible. A kitchen is the source location's `home_base_id`.
+A learned name marked `ignore` makes the offer irrelevant whatever else matches. The first that holds is recorded in `relevance`. Everything else is counted in `offered_count` and dropped, so "312 offers, 23 relevant" stays visible. A kitchen is the source location's `home_base_id`.
 
 ## Resolution
 
@@ -163,15 +174,15 @@ A source with `require_confirmation` sends every offer to the inbox, even one wi
 - `offer_price(product, location, on)`: the effective unit price of the current offer, if any:
   - `multi` is price ÷ basis_qty;
   - `bogo` is half the price;
-  - `percent_off` and `dollar_off` apply to the trailing regular price (`regular_prices`), and give none when there isn't one.
+  - `percent_off` and `dollar_off` apply to the trailing regular price: the median of the product's non-promo prices that apply at that location (`offer_applicable`, posted prices left out) observed in the last `STALE_AFTER_DAYS`. With none, the offer has no effective price and is shown only as printed.
 - `offer_history(product, location)`: every linked offer, in order, with its ad week.
 
-None of these read `price_observation`, and no price view reads `flyer_offer` (F4).
+No price view, receipt resolution or default cost reads `flyer_offer` (F4). The read models read the price book only for the discount base above.
 
 ## Inbox
 
 - **`flyer_offers`:** one row, "12 flyer offers to match", while any are `suggested`. Opens the offer queue: each offer shows its printed name, price and basis, store, week and suggestions. Image sources also show the page crop (2X).
-- **`flyer_sources`:** one row per source whose current ad week has a `failed` or `not_allowed` run after its last attempt, with the reason. A report refused for validation says "the adapter needs attention".
+- **`flyer_sources`:** one row per source whose current ad week ended without a read: a `failed` or `not_allowed` run, or a refused report, on its last attempt. The row carries the reason; for a refused report it says "the adapter needs attention".
 
 ## Where it shows (2Y)
 
@@ -198,9 +209,9 @@ Real chains, banners, store ids and kitchen locations exist only in the private 
 2U-1 adds the tables, the scheduler and the report endpoint. 2U-2 adds the helper's flyer handler, the archive and the first itemized adapter. 2U-3 adds relevance, resolution and the inbox, and 2U-4 adds the read models and the vendor-location panel.
 
 - **U1.** The migration creates the five tables, `ingredient.watch` and the `flyer` kind. It upgrades and downgrades cleanly, and the runtime role cannot update or delete `flyer_run` or `flyer_offer`.
-- **U2.** `kerp flyers import <file>` seeds `ad_source` rows from a seed file, matched to vendor locations by `platform_store_ref` or vendor and address. A second import changes nothing, and unmatched lines are reported.
+- **U2.** `kerp flyers import <file>` seeds `ad_source` rows from a YAML seed file, matched to vendor locations by their `key`. A second import changes nothing, and unmatched keys are reported.
 - **U3.** The worker queues one `flyer` request per due source and none while a receipt is being read. A second check in the same ad week queues nothing. Three failed attempts in a week stop the retries.
-- **U4.** A valid report creates one `flyer_run` and one `flyer_offer` per relevant candidate, and records `offered_count` and `relevant_count`. An invalid report is refused with 422 and changes nothing.
+- **U4.** A valid report creates one `flyer_run` and one `flyer_offer` per relevant candidate, records `offered_count` and `relevant_count`, and answers with each candidate's offer id or null. An invalid report is refused with 422, stores no run or offer, and answers its request as a failed attempt recorded for the inbox.
 - **U5.** A report of an archived payload re-normalized by a newer adapter version creates a new run, and the read models then use it.
 - **U6.** Relevance keeps a candidate matching a purchase, recipe, list item, watched ingredient or flyer alias, records which one, and drops the rest.
 - **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested` and appears in the inbox's `flyer_offers` row. Confirming one upserts the alias, and the next week's same name links automatically.
@@ -233,7 +244,7 @@ Real chains, banners, store ids and kitchen locations exist only in the private 
 - **X3.** Each page is tiled by `tiles`. Results are merged with duplicates removed on name and price, and every candidate carries `source_page` and `source_bbox`.
 - **X4.** A verifier pass re-reads tiles with low confidence or failing price checks: a price that is zero, negative, or more than three standard deviations from that store's department median.
 - **X5.** On three hand-labelled pages per source, recall of offers with a correct price is at least 85% and precision at least 90%. Until then the source keeps `require_confirmation`, and every one of its offers goes to the inbox.
-- **X6.** The offer queue shows the page crop beside the parsed fields, and the price and size can be corrected before confirming.
+- **X6.** The helper posts each stored image offer's crop. The offer queue shows it beside the parsed fields, and a corrected price or size is kept on the link, leaving the offer as printed.
 - **X7.** Bilingual text is normalized to an English `name_as_printed`, with the printed text kept in `name_original`.
 - **X8.** The helper unloads the vision model after the last page.
 
