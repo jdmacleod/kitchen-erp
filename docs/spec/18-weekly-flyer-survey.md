@@ -1,6 +1,6 @@
 # 18 — Weekly flyer survey (2U–2Y)
 
-**Status: proposed 2026-11-05, for approval as Phase 2 sub-phases 2U–2Y.** It was written from a design-session handoff ("Doc 15", which named the household's own stores). The rulings taken on 2026-11-05 (F1–F11 below) are folded in. The household's store roster and each chain's adapter notes live in the private `kitchen-erp-products` repository (`docs/FLYERS.md`), never here. Every store, brand and price in this document is invented.
+**Status: approved 2026-11-05 as Phase 2 sub-phases 2U–2Y (the owner's go-ahead to build the plan).** It was written from a design-session handoff ("Doc 15", which named the household's own stores). The rulings taken on 2026-11-05 (F1–F11 below) are folded in. The household's store roster and each chain's adapter notes live in the private `kitchen-erp-products` repository (`docs/FLYERS.md`), never here. Every store, brand and price in this document is invented.
 
 ## Why
 
@@ -251,7 +251,7 @@ UI criteria UI-9.1–UI-9.5 in `11` are dormant until their slice.
 
 Updated with every pull request, so the work can stop and resume at any line.
 
-- [ ] Step 0: this spec (kitchen-erp), the roster and adapter notes (helper `docs/FLYERS.md`, SPEC §13). Approved: —
+- [x] Step 0: this spec (kitchen-erp #481), the roster and adapter notes (helper #28: `docs/FLYERS.md`, SPEC §13). Approved 2026-11-05
 - [ ] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, contract schema (U1–U5)
 - [ ] 2U-2: helper `flyer` handler, raw archive, replay, robots check, first itemized adapter, text normalization (helper)
 - [ ] 2U-3: relevance, shared name resolver, flyer aliases, offer queue and inbox rows (U6–U8)
