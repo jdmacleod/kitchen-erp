@@ -22,7 +22,7 @@ Main content is left-aligned beside the sidebar with 44–56px padding. List pag
   - Kind badges are neutral pills, except "Couldn't read" in the tomato tint (G5) and "Careful look" in squash (#121).
   - Aggregate rows carry their size in the title (G6).
   - A footer line explains what the inbox is.
-- **Right column:** Recent purchases, with the "{kitchen} list" panel above it once Plan is built (Phase 4 review, 2026-10-12, L5; laid out under Plan below). The panel is desktop only. Once 2Y is built, a "This week's offers" card sits between them (`18`, UI-9.1): the current kitchen's linked offers grouped by store, one line each with the price as printed and its dates, hidden when there are none.
+- **Right column:** Recent purchases, with the "{kitchen} list" panel above it once Plan is built (Phase 4 review, 2026-10-12, L5; laid out under Plan below). The panel is desktop only. Once 2X is built, a "This week's offers" card sits between them (`18`, UI-9.1): the current kitchen's linked offers grouped by store, one line each with the price as printed and its dates, hidden when there are none.
 - **States:**
   - Loading: skeleton rows, with the badge hidden.
   - Empty: "Nothing needs you", a sentence of context, and a link to Capture.

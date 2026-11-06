@@ -1,6 +1,6 @@
-# 18 — Weekly flyer survey (2U–2Y)
+# 18 — Weekly flyer survey (2U–2X)
 
-**Status: approved 2026-11-05 as Phase 2 sub-phases 2U–2Y (the owner's go-ahead to build the plan).** It was written from a design-session handoff ("Doc 15", which named the household's own stores). The rulings taken on 2026-11-05 (F1–F11 below) are folded in. The household's store roster and each chain's adapter notes live in the private `kitchen-erp-products` repository (`docs/FLYERS.md`), never here. Every store, brand and price in this document is invented.
+**Status: approved 2026-11-05 as Phase 2 sub-phases 2U–2X (the owner's go-ahead to build the plan).** It was written from a design-session handoff ("Doc 15", which named the household's own stores). The rulings taken on 2026-11-05 (F1–F11 below) are folded in. The household's store roster and each chain's adapter notes live in the private `kitchen-erp-products` repository (`docs/FLYERS.md`), never here. Every store, brand and price in this document is invented.
 
 ## Why
 
@@ -16,13 +16,14 @@ The feature is best-effort. Retailer websites are not stable APIs, and adapters 
 - **F2.** No chain, banner or flyer-platform name appears in this repository: not in code, tests, specs, commits or pull requests. Mechanisms are named generically, for example "hosted circular" or "storefront platform".
 - **F3.** The helper fetches, archives and normalizes. Kitchen ERP keeps the registry and queues the weekly work. It also filters for relevance, resolves offers to products, fills the inbox and serves every read model. `products:read` stays "the queue only" (helper SPEC §8.1), and Kitchen ERP still makes no outbound calls (non-negotiable 9).
 - **F4.** An offer is not a price observation. Offers are kept in their own append-only table, with a validity window and a price basis. The default price book, receipt resolution, recipe costing and the planner never read them unless asked. A learned alias links an offer to a product automatically, and anything else waits in the inbox. No person has to accept each offer, because an offer never becomes a price.
-- **F5.** The work is Phase 2 sub-phases 2U–2Y, one per handoff phase A–E.
+- **F5.** The work is Phase 2 sub-phases 2U–2X. The handoff's phases map onto them as A and B → 2U, C → 2V, D → 2W and E → 2X (F12).
 - **F6.** This week's offers appear on a Home card and as a mark on shopping-list items. The inbox holds only what needs a person: offers to match and sources that failed.
-- **F7.** The vision model for image and PDF circulars is chosen by a benchmark at the start of 2X, like 2O's. Text normalization reuses the helper's `LLM_MODEL`. Model names are configuration.
+- **F7.** The vision model for image and PDF circulars is chosen by a benchmark at the start of 2W, like 2O's. Text normalization reuses the helper's `LLM_MODEL`. Model names are configuration.
 - **F8.** A headless browser is added only when an adapter cannot read its source's own data request. It runs as its own container beside the helper, outside Kitchen ERP's Compose project.
 - **F9.** Flyer fetching follows the helper's existing rules (helper SPEC §5): robots.txt is honoured for every host, including undocumented backends, and only facts are kept. A source that robots.txt disallows is recorded as `not_allowed` and is never fetched.
 - **F10.** Relevance is derived from the household's own data, plus a `watch` flag on ingredients. One threshold in configuration; no per-kitchen settings table.
 - **F11.** There is no fixed quiet window. On publication day Kitchen ERP queues a source's request once no receipt is being read and, for image sources, once the model server answers. A sleeping model server delays the run; it never fails it.
+- **F12 (2026-11-06).** The hosted circular proves the foundation in 2U. The 2U probe found that the chain first planned for it publishes its items' names, page boxes and codes as data but prints its prices only on the page, so it joins the image class in 2W as a region source.
 
 ## How circulars are published
 
@@ -32,6 +33,7 @@ Circulars come in five mechanism classes, and an adapter is written per mechanis
 - **Storefront platform.** A store-scoped weekly-deals collection on a hosted e-commerce platform. The store must be selected explicitly, because the site's default store may be another branch.
 - **Itemized first-party page.** A browsable item list on the chain's own site, parsed with per-site selectors. Some chains also publish a PDF edition.
 - **Image or PDF pages.** The circular is page images or a PDF. These need rasterization and a vision model.
+- **Regions.** A circular platform serves each item's name, its box on the page and the store's item codes as data, but the price is printed only on the page image. The structure comes from data and only each item's price is read from its crop (2W).
 - **No circular.** Chains that don't run weekly sales, and markets and stands with no web presence. These stay manual-entry sources and are out of scope.
 
 All the examined first-party pages render their offers client-side, so a plain page fetch yields nothing. Most adapters read the JSON request the page itself makes. A headless browser is needed only where that fails (F8).
@@ -57,12 +59,12 @@ Each stage is idempotent on its inputs. The helper can re-normalize an archived 
 ad_source
   id uuid PK
   vendor_location_id FK UNIQUE        -- one circular per store location
-  mechanism CHECK IN (hosted_circular, storefront, itemized, image)
+  mechanism CHECK IN (hosted_circular, storefront, itemized, image, region)
   adapter text                        -- the helper's adapter name
   store_ref jsonb                     -- ids the adapter needs; an object of strings, opaque here
   publish_weekday smallint 1..7       -- ISO weekday the ad week starts
   enabled bool default false
-  require_confirmation bool           -- default true for image, false otherwise (2X)
+  require_confirmation bool           -- default true for image and region, false otherwise (2W)
   tiles jsonb?                        -- image only: {rows, cols, overlap}
   failures int default 0, paused_until timestamptz?
   created_at, updated_at
@@ -98,11 +100,11 @@ flyer_offer_link                       -- decision-only: every column but flyer_
   status CHECK IN (auto, suggested, confirmed, rejected)
   product_id FK?, resolution text?, suggestions jsonb?
   size_inherited bool default false
-  corrected_price numeric(12,4)?       -- a person's correction of the printed price (2X)
+  corrected_price numeric(12,4)?       -- a person's correction of the printed price (2W)
   corrected_size_qty numeric?, corrected_size_unit FK unit?   -- and of its size
   decided_by FK user?, decided_at timestamptz?
 
-flyer_offer_crop                       -- image sources only (2X)
+flyer_offer_crop                       -- image and region sources only (2W)
   flyer_offer_id PK FK, media_path text, created_at
 
 flyer_alias                            -- learned on confirm; like receipt_alias, kept apart
@@ -142,7 +144,7 @@ The ad week starts on the most recent `publish_weekday`. The report's printed `a
 
 A report that fails validation is refused with 422 and stores no run and no offer. When its `request_id` names an open flyer request, that request is answered as a failed attempt: the refusal is recorded in `lookup_answer` against it, it counts toward the week's attempts and the source's pause like a `failed` run, and the inbox reads it as "the adapter needs attention". A report on a closed request is refused with 409. A report may also arrive on a request already answered: a replay of the archived payload with a newer adapter version (U5).
 
-The response lists, for each candidate in order, the id of the offer it became, or null when it wasn't relevant. For an image source the helper then posts each stored offer's page crop to `POST /flyer-offers/{id}/crop` (`products:suggest`; a PNG up to 1 MB, metadata stripped), kept as `flyer_offer_crop` and served under `/api/v1/media` with a session, like product photos (2X).
+The response lists, for each candidate in order, the id of the offer it became, or null when it wasn't relevant. For an image or region source the helper then posts each stored offer's page crop to `POST /flyer-offers/{id}/crop` (`products:suggest`; a PNG up to 1 MB, metadata stripped), kept as `flyer_offer_crop` and served under `/api/v1/media` with a session, like product photos (2W).
 
 Kitchen ERP never sees the raw payload. The helper keeps it for twelve months (helper SPEC §13).
 
@@ -166,7 +168,7 @@ The receipt resolver's ladder (`04`, 2B) is split so that a name and a vendor ca
 - **Fuzzy alias, model ranking over a shortlist, or similar names.** These become `suggested`, with the suggestions stored, and the offer waits in the inbox.
 - **A person** confirms a suggestion, chooses or creates a product, or rejects the offer. Each choice upserts `flyer_alias`, as receipt confirmations upsert `receipt_alias`.
 
-A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias, until it is turned off (2X). An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
+A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias, until it is turned off (2W). An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
 
 ## Read models
 
@@ -181,10 +183,10 @@ No price view, receipt resolution or default cost reads `flyer_offer` (F4). The 
 
 ## Inbox
 
-- **`flyer_offers`:** one row, "12 flyer offers to match", while any are `suggested`. Opens the offer queue: each offer shows its printed name, price and basis, store, week and suggestions. Image sources also show the page crop (2X).
+- **`flyer_offers`:** one row, "12 flyer offers to match", while any are `suggested`. Opens the offer queue: each offer shows its printed name, price and basis, store, week and suggestions. Image and region sources also show the page crop (2W).
 - **`flyer_sources`:** one row per source whose current ad week ended without a read: a `failed` or `not_allowed` run, or a refused report, on its last attempt. The row carries the reason; for a refused report it says "the adapter needs attention".
 
-## Where it shows (2Y)
+## Where it shows (2X)
 
 - **Home card "This week's offers":** for the current kitchen, grouped by store, one line per linked offer, each linking to its product. Hidden when there are none.
 - **Shopping list:** an item with a current offer shows "On offer at {store}" in olive.
@@ -204,57 +206,54 @@ Real chains, banners, store ids and kitchen locations exist only in the private 
 
 ## Slices and acceptance criteria
 
-### 2U — Foundation and the first itemized adapter
+### 2U — Foundation and the hosted-circular adapter
 
-2U-1 adds the tables, the scheduler and the report endpoint. 2U-2 adds the helper's flyer handler, the archive and the first itemized adapter. 2U-3 adds relevance, resolution and the inbox, and 2U-4 adds the read models and the vendor-location panel.
+2U-1 adds the tables, the scheduler, the report endpoint and relevance. 2U-2 adds the helper's flyer handler, the archive and the hosted-circular adapter. 2U-3 adds resolution, flyer aliases and the inbox, and 2U-4 adds the read models and the vendor-location panel.
 
-- **U1.** The migration creates the five tables, `ingredient.watch` and the `flyer` kind. It upgrades and downgrades cleanly, and the runtime role cannot update or delete `flyer_run` or `flyer_offer`.
+- **U1.** The migration creates the flyer tables, `ingredient.watch` and the `flyer` kind. It upgrades and downgrades cleanly, and the runtime role cannot update or delete `flyer_run` or `flyer_offer`.
 - **U2.** `kerp flyers import <file>` seeds `ad_source` rows from a YAML seed file, matched to vendor locations by their `key`. A second import changes nothing, and unmatched keys are reported.
 - **U3.** The worker queues one `flyer` request per due source and none while a receipt is being read. A second check in the same ad week queues nothing. Three failed attempts in a week stop the retries.
 - **U4.** A valid report creates one `flyer_run` and one `flyer_offer` per relevant candidate, records `offered_count` and `relevant_count`, and answers with each candidate's offer id or null. An invalid report is refused with 422, stores no run or offer, and answers its request as a failed attempt recorded for the inbox.
 - **U5.** A report of an archived payload re-normalized by a newer adapter version creates a new run, and the read models then use it.
 - **U6.** Relevance keeps a candidate matching a purchase, recipe, list item, watched ingredient or flyer alias, records which one, and drops the rest.
 - **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested` and appears in the inbox's `flyer_offers` row. Confirming one upserts the alias, and the next week's same name links automatically.
-- **U8.** A `failed` or `not_allowed` run after its last attempt gives one `flyer_sources` inbox row per source, with its reason, never one per missing offer.
+- **U8.** A `failed` or `not_allowed` run, or a refused report, on a week's last attempt gives one `flyer_sources` inbox row per source, with its reason, never one per missing offer.
 - **U9.** `current_offers` returns linked offers valid today for the kitchen's locations. An offer past `valid_to` is gone, and at a boundary the later `valid_from` wins.
 - **U10.** No price view, receipt resolution, recipe cost or plan changes when offers are reported.
-- **U11.** The first itemized adapter, on one hand-counted ad week per kitchen, yields at least 80% of the items its site shows, with `price_basis` right for each, per-pound, multi-buy and BOGO offers. The count is recorded privately.
+- **U11.** The hosted-circular backend's robots.txt allows the requests the adapter makes (checked 2026-11-05). Should that change, its sources are reported `not_allowed` and never fetched (F9).
+- **U12.** Given a merchant and store id from `store_ref`, the adapter fetches the current ad week's items, archives the raw JSON, and validates it against its expected shape before normalizing.
+- **U13.** A response of an unexpected shape is a `failed` run with the validation error, and the inbox row says the adapter needs attention.
+- **U14.** On one sampled week per kitchen, the candidate count for one store is within 10% of the items its own viewer shows. The count is recorded privately.
+- **U15.** Loyalty qualifiers, limits and multi-buy prices are carried into `requires_loyalty`, `limit_qty` and `price_basis`.
+- **U16.** An offer with no size takes its linked product's size, with `size_inherited` set. Unit prices are computed only for sized offers.
 
-### 2V — The hosted-circular adapter
+### 2V — Storefront and itemized adapters
 
-- **V1.** Before any code is written, the backend host's robots.txt is checked. If it disallows the requests, 2V stops and the sources are recorded `not_allowed` (F9).
-- **V2.** Given a merchant and store id from `store_ref`, the adapter fetches the current ad week's items, archives the raw JSON, and validates it against its expected shape before normalizing.
-- **V3.** A response of an unexpected shape is a `failed` run with the validation error, and the inbox row says the adapter needs attention.
-- **V4.** On one sampled week, the candidate count for one store is within 10% of the items its own viewer shows.
-- **V5.** Loyalty qualifiers, limits and multi-buy prices are carried into `requires_loyalty`, `limit_qty` and `price_basis`.
-- **V6.** An offer with no size takes its linked product's size, with `size_inherited` set. Unit prices are computed only for sized offers.
+- **V1.** The storefront adapter reads the deals of the store in `store_ref` explicitly, and the archived payload names that store.
+- **V2.** Each itemized adapter is one small, replaceable module. Where a chain publishes both PDF and HTML, the choice is recorded after two weeks of watching.
+- **V3.** Each yields at least 80% of the items its site shows on one hand-counted week, with `price_basis` right for each, per-pound, multi-buy and BOGO offers.
+- **V4.** With every 2U–2V source enabled, a week's runs finish without one failing source stopping another.
+- **V5.** Before 2W begins, every linked product at every enabled source has four consecutive weekly offer points, and `offer_history` returns them in order.
 
-### 2W — Storefront and remaining itemized adapters
+### 2W — Image, PDF and region circulars with a vision model
 
-- **W1.** The storefront adapter reads the deals of the store in `store_ref` explicitly, and the archived payload names that store.
-- **W2.** Each remaining itemized adapter is one small, replaceable module. Where a chain publishes both PDF and HTML, the choice is recorded after two weeks of watching.
-- **W3.** Each meets U11's 80% threshold on one sampled week.
-- **W4.** With every 2U–2W source enabled, a week's runs finish without one failing source stopping another.
-- **W5.** Before 2X begins, every linked product at every enabled source has four consecutive weekly offer points, and `offer_history` returns them in order.
+- **W1.** A benchmark on hand-labelled synthetic circular pages and price crops, bilingual ones included, compares the candidate vision models and sets the default `FLYER_VISION_MODEL`. Its results are recorded in the helper.
+- **W2.** The image adapter rasterizes each page at 1600 px or more on the long edge, archives the pages, and records the page count and ad week.
+- **W3.** Each page is tiled by `tiles`. Results are merged with duplicates removed on name and price, and every candidate carries `source_page` and `source_bbox`.
+- **W4.** A region source takes each item's name, box and codes from data and reads only its price from the item's crop; the price text is parsed in code into `price_basis`, and the first code is the offer's `item_ref`.
+- **W5.** A verifier pass re-reads tiles and crops with low confidence or failing price checks: a price that is zero, negative, or more than three standard deviations from that store's department median.
+- **W6.** On three hand-labelled pages per source, recall of offers with a correct price is at least 85% and precision at least 90%. Until then the source keeps `require_confirmation`, and every one of its offers goes to the inbox.
+- **W7.** The helper posts each stored image or region offer's crop. The offer queue shows it beside the parsed fields, and a corrected price or size is kept on the link, leaving the offer as printed.
+- **W8.** Bilingual text is normalized to an English `name_as_printed`, with the printed text kept in `name_original`.
+- **W9.** The helper unloads the vision model after the last page.
 
-### 2X — Image and PDF circulars with a vision model
+### 2X — Where offers are used
 
-- **X1.** A benchmark on hand-labelled synthetic circular pages, bilingual ones included, compares the candidate vision models and sets the default `FLYER_VISION_MODEL`. Its results are recorded in the helper.
-- **X2.** The adapter rasterizes each page at 1600 px or more on the long edge, archives the pages, and records the page count and ad week.
-- **X3.** Each page is tiled by `tiles`. Results are merged with duplicates removed on name and price, and every candidate carries `source_page` and `source_bbox`.
-- **X4.** A verifier pass re-reads tiles with low confidence or failing price checks: a price that is zero, negative, or more than three standard deviations from that store's department median.
-- **X5.** On three hand-labelled pages per source, recall of offers with a correct price is at least 85% and precision at least 90%. Until then the source keeps `require_confirmation`, and every one of its offers goes to the inbox.
-- **X6.** The helper posts each stored image offer's crop. The offer queue shows it beside the parsed fields, and a corrected price or size is kept on the link, leaving the offer as printed.
-- **X7.** Bilingual text is normalized to an English `name_as_printed`, with the printed text kept in `name_original`.
-- **X8.** The helper unloads the vision model after the last page.
-
-### 2Y — Where offers are used
-
-- **Y1.** The planner's "With this week's offers" uses `offer_price` inside each offer's dates. Each stop shows its expected saving against the trailing median regular price, and the plan is unchanged with the toggle off.
-- **Y2.** Recipe costing has a "this week's offers" basis for a kitchen. Estimates from inherited sizes are marked.
-- **Y3.** The product page chart marks offer weeks, and shows a typical price from the trailing twelve weeks.
-- **Y4.** The Home card and the list mark follow UI-9.
-- **Y5.** With no linked offers, nothing new shows anywhere.
+- **X1.** The planner's "With this week's offers" uses `offer_price` inside each offer's dates. Each stop shows its expected saving against the trailing median regular price there, and the plan is unchanged with the toggle off.
+- **X2.** Recipe costing has a "this week's offers" basis for a kitchen. Estimates from inherited sizes are marked.
+- **X3.** The product page chart marks offer weeks, and shows a typical price from the trailing twelve weeks.
+- **X4.** The Home card and the list mark follow UI-9.
+- **X5.** With no linked offers, nothing new shows anywhere.
 
 UI criteria UI-9.1–UI-9.5 in `11` are dormant until their slice.
 
@@ -263,17 +262,16 @@ UI criteria UI-9.1–UI-9.5 in `11` are dormant until their slice.
 Updated with every pull request, so the work can stop and resume at any line.
 
 - [x] Step 0: this spec (kitchen-erp #481), the roster and adapter notes (helper #28: `docs/FLYERS.md`, SPEC §13). Approved 2026-11-05
-- [ ] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, contract schema (U1–U5)
-- [ ] 2U-2: helper `flyer` handler, raw archive, replay, robots check, first itemized adapter, text normalization (helper)
-- [ ] 2U-3: relevance, shared name resolver, flyer aliases, offer queue and inbox rows (U6–U8)
-- [ ] 2U-4: read models and API, vendor-location panel (U9–U10); live hand count (U11)
-- [ ] 2V: hosted-circular adapter (V1–V6)
-- [ ] 2W: storefront and itemized adapters, four-week gate (W1–W5)
-- [ ] 2Y: planner, costing, product chart, Home card, list mark (Y1–Y5, UI-9)
-- [ ] 2X: vision benchmark, image and PDF adapter, verifier, crops (X1–X8)
+- [ ] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10)
+- [ ] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper; U11–U13, U15)
+- [ ] 2U-3: shared name resolver, flyer aliases, offer queue and inbox rows (U7, U8)
+- [ ] 2U-4: read models and API, vendor-location panel, size inheritance (U9, U16); live count (U14)
+- [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)
+- [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
+- [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)
 
 ## Open questions
 
-- Can the first itemized chain's ad be read from its own data request, without a browser? (Answered in 2U-2.)
-- PDF-first or HTML-first, for chains that publish both? (Answered in 2W.)
+- Can the first itemized chain's ad be read from its own data request, without a browser? Yes, but its prices are printed only on the page (2U probe, 2026-11-05), so it moved to 2W as a region source (F12).
+- PDF-first or HTML-first, for chains that publish both? (Answered in 2V.)
 - Is a size lookup worth adding for hosted-circular offers? Decide after measuring how often `size_inherited` is set, and how often it's wrong.

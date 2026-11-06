@@ -483,7 +483,7 @@ The runtime role may update only `payload` on `product_capture`, and a trigger a
 
 `price_current` joins non-voided observations to `price_norm`, reporting each under `COALESCE(product.merged_into, product_id)` with the recorded product kept as `observed_product_id` (#179), and leaving out posted prices (`source = listing`, 2L); `price_current_all` and the views built on it include them, for the "Include posted prices" filter. `offer_latest` yields, for each product and vendor location, the most recent current observation that applies there; for vendors with `price_scope = chain`, an observation at any of the vendor's locations applies to every active location of that vendor. `ingredient_offer` builds on `offer_latest` to give, per ingredient and location, the candidate products with their normalized unit prices and quality ratings, which is what comparison screens and the Phase 4 planner consume.
 
-### Weekly flyers (2U–2Y)
+### Weekly flyers (2U–2X)
 
 Specified in `18`: `ad_source` (one circular per vendor location, with the helper adapter and the store ids it needs), `flyer_run` (one per helper report, append-only), `flyer_offer` (relevant offers with a validity window and a price basis, append-only), `flyer_offer_link` (decision-only: the product an offer is linked to, and how) and `flyer_alias` (learned offer names per vendor, kept apart from `receipt_alias`), with `ingredient.watch` and a `flyer` kind on `lookup_request`. An offer is never a `price_observation`, and no price view reads offers.
 
