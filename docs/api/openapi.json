@@ -3577,6 +3577,112 @@
         "title": "FileSource",
         "type": "object"
       },
+      "FlyerReported": {
+        "additionalProperties": false,
+        "properties": {
+          "offer_ids": {
+            "items": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Offer Ids",
+            "type": "array"
+          },
+          "offered": {
+            "title": "Offered",
+            "type": "integer"
+          },
+          "relevant": {
+            "title": "Relevant",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "empty",
+              "failed",
+              "not_allowed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "offered",
+          "relevant",
+          "offer_ids"
+        ],
+        "title": "FlyerReported",
+        "type": "object"
+      },
+      "FlyerSourceOut": {
+        "additionalProperties": false,
+        "description": "What the helper needs to read a source's circular (18, 2U).",
+        "properties": {
+          "ad_week": {
+            "format": "date",
+            "title": "Ad Week",
+            "type": "string"
+          },
+          "adapter": {
+            "title": "Adapter",
+            "type": "string"
+          },
+          "mechanism": {
+            "enum": [
+              "hosted_circular",
+              "storefront",
+              "itemized",
+              "image",
+              "region"
+            ],
+            "title": "Mechanism",
+            "type": "string"
+          },
+          "store_ref": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Store Ref",
+            "type": "object"
+          },
+          "tiles": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tiles"
+          }
+        },
+        "required": [
+          "mechanism",
+          "adapter",
+          "store_ref",
+          "tiles",
+          "ad_week"
+        ],
+        "title": "FlyerSourceOut",
+        "type": "object"
+      },
       "ForLines": {
         "additionalProperties": false,
         "description": "A To identify group: one vendor's waiting lines with this wording (04, 2D).",
@@ -8786,6 +8892,16 @@
             "title": "Created At",
             "type": "string"
           },
+          "flyer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FlyerSourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -8797,7 +8913,8 @@
               "page",
               "cutout",
               "image",
-              "name"
+              "name",
+              "flyer"
             ],
             "title": "Kind",
             "type": "string"
@@ -22770,6 +22887,28 @@
         ]
       }
     },
+    "/api/v1/flyer-reports": {
+      "post": {
+        "description": "A store's weekly circular, read (18, 2U): its run and the offers that matter.",
+        "operationId": "report_flyer_api_v1_flyer_reports_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlyerReported"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Report Flyer",
+        "tags": [
+          "products helper"
+        ]
+      }
+    },
     "/api/v1/geo/travel-legs": {
       "get": {
         "description": "One free-flow leg, computed if missing: from the engine when it answers,\notherwise an estimate marked so.",
@@ -24892,7 +25031,7 @@
     },
     "/api/v1/lookup-requests": {
       "get": {
-        "description": "Open lookup requests, oldest first: the one thing products:read may read.",
+        "description": "Open lookup requests, oldest first: the one thing products:read may read.\n\nA flyer request carries its source and ad week (18, 2U).",
         "operationId": "lookup_queue_api_v1_lookup_requests_get",
         "responses": {
           "200": {

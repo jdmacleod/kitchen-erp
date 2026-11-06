@@ -29,6 +29,7 @@ from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
 from app.services import (
     catalog_cleanup,
+    flyers,
     lookups,
     naming,
     product_jobs,
@@ -144,6 +145,16 @@ async def _queue_listing_refreshes(sessionmaker: async_sessionmaker[AsyncSession
         log.error("listing refresh error", extra=loop_error_fields(exc))
 
 
+async def _queue_flyer_runs(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
+    try:
+        async with sessionmaker() as db:
+            queued = await flyers.queue_flyer_runs(db)
+        if queued:
+            log.info("flyer reads queued", extra={"count": queued})
+    except Exception as exc:
+        log.error("flyer queue error", extra=loop_error_fields(exc))
+
+
 async def _keep_cleanup_guesses(sessionmaker: async_sessionmaker[AsyncSession]) -> None:
     """Look through the catalog as the page would, which keeps any guess not yet kept."""
     try:
@@ -190,6 +201,8 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
         if loop.time() - last_refresh >= LISTING_REFRESH_CHECK_SECONDS:
             last_refresh = loop.time()
             await _queue_listing_refreshes(sessionmaker)
+            # ...and each enabled source's weekly circular, once no receipt is being read (18, 2U).
+            await _queue_flyer_runs(sessionmaker)
         # Idle: every RECIPES_SCAN_SECONDS, bring the recipe index up to date with
         # the mount (07, 3A). A missing mount makes the scan a no-op.
         scan_seconds = get_settings().recipes_scan_seconds

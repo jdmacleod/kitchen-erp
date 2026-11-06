@@ -25,6 +25,14 @@ from app.models.catalog import (
     VendorListing,
 )
 from app.models.cleanup import CleanupGuess
+from app.models.flyers import (
+    AdSource,
+    FlyerAlias,
+    FlyerOffer,
+    FlyerOfferCrop,
+    FlyerOfferLink,
+    FlyerRun,
+)
 from app.models.identity import ApiToken, AppUser, IdempotencyKey, Session
 from app.models.line_words import LineWord
 from app.models.lookups import ListingPriceChange, LookupAnswer, LookupRequest
@@ -76,6 +84,7 @@ from app.models import keys as _keys  # noqa: F401  isort: skip
 from app.models import suggestions as _suggestions  # noqa: F401  isort: skip
 
 __all__ = [
+    "AdSource",
     "ApiToken",
     "AppUser",
     "Base",
@@ -89,6 +98,11 @@ __all__ = [
     "FdcBranded",
     "FdcFood",
     "FdcRelease",
+    "FlyerAlias",
+    "FlyerOffer",
+    "FlyerOfferCrop",
+    "FlyerOfferLink",
+    "FlyerRun",
     "Gs1Prefix",
     "Gs1PrefixFamily",
     "IdempotencyKey",

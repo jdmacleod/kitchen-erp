@@ -21,13 +21,15 @@ BASE = (
     f"ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO {APP_ROLE}",
 )
 
-# Facts: SELECT and INSERT only (0005, 0018, 0023). A trigger is the second line of defence.
+# Facts: SELECT and INSERT only (0005, 0018, 0023, 0066). A trigger is the second line of defence.
 APPEND_ONLY = (
     "price_observation",
     "price_observation_void",
     "ingest_stage_result",
     "product_stage_result",
     "lookup_answer",
+    "flyer_run",
+    "flyer_offer",
 )
 
 # Append-only apart from the columns the runtime role may set: a suggestion's
@@ -36,6 +38,19 @@ APPEND_ONLY = (
 DECISION_ONLY = {
     "vendor_suggestion": ("status", "decided_by", "decided_at"),
     "product_capture": ("payload",),
+    # Which product a flyer offer is (0066).
+    "flyer_offer_link": (
+        "status",
+        "product_id",
+        "resolution",
+        "suggestions",
+        "size_inherited",
+        "corrected_price",
+        "corrected_size_qty",
+        "corrected_size_unit",
+        "decided_by",
+        "decided_at",
+    ),
 }
 
 # Derived data the runtime role may empty wholesale before a rebuild (0005;
