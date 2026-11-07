@@ -266,7 +266,7 @@ Updated with every pull request, so the work can stop and resume at any line.
 - [x] Step 0: this spec (kitchen-erp #481), the roster and adapter notes (helper #28: `docs/FLYERS.md`, SPEC §13). Approved 2026-11-05
 - [x] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10). Migration 0066, `kerp flyers import`
 - [x] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper #29; U11–U13, U15). The owner allowed the banner's public token (2026-11-06); a sample week read every priced item. One grocery group's banners are seeded; the other group's sites don't answer a plain request, so their ids are still open
-- [ ] 2U-3: shared name resolver, flyer aliases, offer queue with "Other offers", inbox rows, "Watch for offers" (U7, U8, U17; F13). The other grocery group's banners were read in a browser and seeded 2026-11-07; every seeded store read its week
+- [x] 2U-3: shared name resolver, flyer aliases, offer queue with "Other offers", inbox rows, "Watch for offers" (U7, U8, U17; F13). The report links exact aliases and suggests fuzzy aliases or similar names; the idle worker asks the model about one watched offer at a time. One answer covers every store's offer of a vendor's printed name. The other grocery group's banners were read in a browser and seeded 2026-11-07; every seeded store read its week
 - [ ] 2U-4: read models and API, vendor-location panel, size inheritance (U9, U16); live count (U14)
 - [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)

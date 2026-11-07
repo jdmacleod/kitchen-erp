@@ -5,6 +5,7 @@ ad_source (enabled) ─▶ worker, hourly when idle: due this ad week? ─▶ lo
 helper reads the queue ─▶ fetches, archives, normalizes ─▶ POST /flyer-reports
 report ─▶ validate (kitchen-erp-products/1) ─▶ refused? recorded, 422, request stays open
        ─▶ flyer_run ─▶ relevance ─▶ flyer_offer per relevant candidate; the rest counted
+       ─▶ flyer_offer_link per offer: linked by alias, or suggested (flyer_offers.py)
 ```
 
 This application makes none of the helper's calls (non-negotiable 9), and no
@@ -36,7 +37,7 @@ from app.models import (
 from app.models.geo import VendorLocation
 from app.schemas.lookups import FlyerSourceOut, LookupRequestOut
 from app.schemas.products_interchange import FlyerReport
-from app.services import flyer_relevance, lookups
+from app.services import flyer_offers, flyer_relevance, lookups
 from app.services.lookups import _record, _refused, helper_configured
 
 # A source gets this many attempts at an ad week, at least a day apart.
@@ -385,6 +386,7 @@ async def record_report(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
     db.add(run)
     await db.flush()
     offer_ids: list[uuid.UUID | None] = []
+    offers: list[FlyerOffer] = []
     for candidate, name, reason in zip(report.candidates, names, why, strict=True):
         if reason is None:
             offer_ids.append(None)
@@ -392,7 +394,7 @@ async def record_report(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
         # A size in a unit this system doesn't know is dropped, not the offer.
         sized = candidate.size_unit in units
         offer_ids.append(new_id())
-        db.add(
+        offers.append(
             FlyerOffer(
                 id=offer_ids[-1],
                 flyer_run_id=run.id,
@@ -403,6 +405,12 @@ async def record_report(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
                 size_unit=candidate.size_unit if sized else None,
             )
         )
+    db.add_all(offers)
+    await db.flush()
+    # Each offer's product: an exact alias links it, anything else is suggested (2U-3).
+    await flyer_offers.resolve_offers(
+        db, location.vendor_id, offers, require_confirmation=source.require_confirmation
+    )
     # Only the first answer counts toward the source's pause; a replay of a week
     # already answered leaves it as it is.
     if request.status == "open":

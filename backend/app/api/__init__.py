@@ -7,6 +7,7 @@ from app.api import (
     bridges,
     catalog,
     catalog_cleanup,
+    flyer_offers,
     geo,
     health,
     inbox,
@@ -56,3 +57,4 @@ router.include_router(product_proposals.router)
 router.include_router(product_captures.router)
 router.include_router(media.router)
 router.include_router(lookups.router)
+router.include_router(flyer_offers.router)

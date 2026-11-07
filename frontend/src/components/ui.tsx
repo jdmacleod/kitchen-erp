@@ -212,3 +212,45 @@ export function Centered({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+/**
+ * An on/off setting that takes effect at once (role="switch"): the ingredient's
+ * "Watch for offers" (18, UI-9.6) and a circular's switches (UI-9.5). The whole
+ * label is the 44px target below lg. On is herb, because flipping it acts.
+ */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-neutral-900 disabled:opacity-50 lg:min-h-8 dark:text-neutral-100 ${focusRing}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`relative inline-block h-5 w-9 shrink-0 rounded-full transition-colors ${
+          checked ? "bg-blue-600" : "bg-neutral-300 dark:bg-neutral-600"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 size-4 rounded-full bg-white transition-transform ${
+            checked ? "translate-x-4.5" : "translate-x-0.5"
+          }`}
+        />
+      </span>
+      {label}
+    </button>
+  );
+}

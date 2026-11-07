@@ -56,6 +56,7 @@ import {
   primaryLinkClass,
   secondaryLinkClass,
   sectionHeading,
+  Switch,
 } from "../../components/ui";
 import { usePlanBuilt } from "../../lib/kitchen";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
@@ -109,6 +110,8 @@ const muted = "text-neutral-600 dark:text-neutral-400";
  */
 function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
   const setActive = useSetIngredientActive(ingredient.id);
+  // Offers for a watched ingredient ask in the inbox; the rest wait quietly (18, F13).
+  const watch = useUpdateIngredient(ingredient.id);
   const [editing, setEditing] = useState(false);
   const [filters, setFilters] = useState<PriceFiltersValue>(NO_FILTERS);
   const offers = useIngredientOffers(ingredient.id, filters);
@@ -257,6 +260,20 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
         />
         {setActive.isError ? (
           <Alert tone="error">{catalogErrorMessage(setActive.error)}</Alert>
+        ) : null}
+        {ingredient.active && !merged ? (
+          <div>
+            <Switch
+              label="Watch for offers"
+              checked={ingredient.watch ?? false}
+              disabled={watch.isPending}
+              onChange={(next) => watch.mutate({ watch: next })}
+            />
+            <p className={`text-sm ${muted}`}>
+              Its offers in newly read circulars ask you to match them in the inbox.
+            </p>
+            {watch.isError ? <Alert tone="error">{catalogErrorMessage(watch.error)}</Alert> : null}
+          </div>
         ) : null}
         {ingredient.notes ? (
           <p className="text-sm whitespace-pre-wrap">{ingredient.notes}</p>

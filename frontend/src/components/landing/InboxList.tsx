@@ -35,6 +35,10 @@ const kinds: Record<InboxKind, { label: string; tone: BadgeTone }> = {
   posted_prices: { label: "Prices", tone: "neutral" },
   // Recipe names that resolve to no ingredient (07, 3C; UI-7.2): one row, like Identify.
   recipe: { label: "Recipe", tone: "neutral" },
+  // Watched ingredients' flyer offers to match (18, F13), and a store's circular
+  // whose week went unread: it never blocks anything, so not in tomato (U8).
+  flyer_offers: { label: "Offers", tone: "neutral" },
+  flyer_sources: { label: "Circular", tone: "warn" },
 };
 
 /** Rows shown on a phone before "See all" (G6). */

@@ -22,7 +22,9 @@ export type InboxKind =
   | "ingredient_duplicates"
   | "catalog_cleanup"
   | "posted_prices"
-  | "recipe";
+  | "recipe"
+  | "flyer_offers"
+  | "flyer_sources";
 
 export interface InboxItem {
   kind: InboxKind;

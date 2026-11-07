@@ -30,6 +30,7 @@ import { TripsPage } from "./pages/plan/TripsPage";
 import { ComparePage } from "./pages/pricebook/ComparePage";
 import { NeedsBridgePage } from "./pages/pricebook/NeedsBridgePage";
 import { NewPurchasePage } from "./pages/purchases/NewPurchasePage";
+import { OfferQueuePage } from "./pages/purchases/OfferQueuePage";
 import { PurchaseDetailPage } from "./pages/purchases/PurchaseDetailPage";
 import { PurchasesPage } from "./pages/purchases/PurchasesPage";
 import { ReceiptsPage } from "./pages/purchases/ReceiptsPage";
@@ -107,6 +108,7 @@ export function App() {
             {/* Drafts read with older line rules, reached from the inbox (issue 382). */}
             <Route path="/shop/receipts/recheck" element={<RecheckPage />} />
             <Route path="/shop/shelf-prices" element={<ShelfPricePage />} />
+            <Route path="/shop/offers/match" element={<OfferQueuePage />} />
 
             {/* Plan (17, 4A–4B). The stop screen fills in with 4C. */}
             <Route path="/plan/list" element={<ListPage />} />

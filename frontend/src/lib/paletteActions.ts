@@ -119,6 +119,15 @@ export const PALETTE_ACTIONS: PaletteAction[] = [
   action("receipts", "Receipts", "/shop/receipts", ["uploads", "batches", "jobs"], {
     feature: "shop",
   }),
+  // Every suggested flyer offer, watched or not: the only way to Other offers
+  // while no watched offer makes an inbox row (18, F13).
+  action(
+    "match-offers",
+    "Flyer offers to match",
+    "/shop/offers/match",
+    ["flyer", "circular", "weekly ad", "sale", "deals", "other offers"],
+    { feature: "shop" },
+  ),
   action(
     "to-identify",
     "Products to identify",
