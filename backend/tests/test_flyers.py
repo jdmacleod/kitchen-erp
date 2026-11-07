@@ -466,25 +466,26 @@ async def test_accented_names_match_however_they_are_printed(
     assert r.json()["relevant"] == 1
 
 
-async def test_a_name_never_matches_inside_a_longer_word(
+async def test_whole_words_match_and_plurals_count(
     admin_client,
     store,
     helper,  # noqa: F811
     owner_conn,
 ):
-    salt = await make_ingredient(admin_client, "Salt")
-    await owner_conn.execute(
-        "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(salt["id"])
-    )
+    for name in ("Salt", "Egg"):
+        made = await make_ingredient(admin_client, name)
+        await owner_conn.execute(
+            "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(made["id"])
+        )
     await queue()
     [request] = await requests(helper)
     r = await report(
         helper,
         request["id"],
-        candidates=[candidate("Garden Salad Kit"), candidate("Sea Salt Flakes")],
+        candidates=[candidate("Garden Salad Kit"), candidate("Sea Salt Flakes"), candidate("Eggs")],
     )
     assert r.json()["offer_ids"][0] is None
-    assert r.json()["relevant"] == 1
+    assert r.json()["relevant"] == 2  # salt, and eggs for an egg
 
 
 def test_names_fold_case_accents_and_punctuation():
