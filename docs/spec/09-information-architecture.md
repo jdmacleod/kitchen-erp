@@ -47,6 +47,7 @@ Keep the old paths as client-side redirects for at least one release, preserving
 | `/shop/receipts` | `/receipts` |
 | `/shop/receipts/identify` | `/to-identify` (reached from the inbox; no nav item, T6) |
 | `/shop/receipts/recheck` | new for issue 382 (reached from the inbox; no nav item) |
+| `/shop/offers/match` | new for 2U, `18` (reached from the inbox; no nav item) |
 | `/shop/shelf-prices` | `/prices/new` |
 | `/shop/compare` | `/compare` (D7); itself a redirect to `/plan/compare` once 4A is built |
 | `/catalog/ingredients`, `/catalog/ingredients/:id` | `/ingredients`, `/ingredients/:id` |
@@ -155,6 +156,8 @@ Every queue of work the system could not finish on its own feeds one list on Hom
 | Re-read | Re-read proposals ready with changes, one aggregate row (04, 2S) | "3 re-read receipts to review" | Review → the oldest |
 | Older rules | Drafts read with older line rules that Re-check works on, one aggregate row (04, 2S; issue 382). Committed purchases are left out, and a draft stops counting once re-checked under today's rules | "3 drafts were read with older rules" | Re-check them → `/shop/receipts/recheck` |
 | Posted prices | Refreshed listing prices awaiting a decision, one aggregate row (2N) | "4 posted prices changed" | Review |
+| Flyer offers | Relevant circular offers waiting to be matched to a product, one aggregate row (18, 2U) | "12 flyer offers to match" | Match → `/shop/offers/match` |
+| Flyer source | A circular whose current week failed or isn't allowed after its last attempt, one row per source (18, 2U) | "Larkspur Market's circular couldn't be read this week" | Open → its vendor location |
 | Recipe | Distinct normalized recipe names that resolve to no ingredient and are not ignored, one aggregate row like Identify (07, 3C; Phase 3 review, 2026-10-09). The detail names how many recipes they touch | "14 recipe names to resolve" | Resolve → `/cook/recipes/resolve` |
 
 API (T5): `GET /api/v1/inbox`.
