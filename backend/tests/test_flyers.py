@@ -334,6 +334,19 @@ async def test_a_replay_with_a_newer_adapter_is_a_new_run(admin_client, store, h
     assert [r["adapter_version"] for r in runs] == ["itemized-1", "itemized-2"]
 
 
+async def test_a_replay_neither_uses_up_tries_nor_moves_the_pause(store, helper, owner_conn):  # noqa: F811
+    await queue()
+    [request] = await requests(helper)
+    for _ in range(flyers.ATTEMPTS_PER_WEEK):
+        await report(helper, request["id"], status="failed", reason="The page didn't load.")
+    assert await queue(WEDNESDAY + timedelta(days=1)) == 1  # still the week's second try
+    [second] = await requests(helper)
+    await report(helper, second["id"], status="not_allowed", reason="robots.txt says no.")
+    await report(helper, second["id"], status="not_allowed", reason="robots.txt says no.")
+    source = await owner_conn.fetchrow("SELECT failures, paused_until FROM ad_source")
+    assert (source["failures"], source["paused_until"]) == (1, None)
+
+
 async def test_a_size_in_an_unknown_unit_is_dropped_not_the_offer(
     admin_client,
     store,
@@ -423,6 +436,34 @@ async def test_each_reason_an_offer_matters_and_the_rest_are_counted(
         "Tahini, 16 oz jar": "list",
         "Spanish Saffron": "watched",
     }
+
+
+async def test_a_removed_line_is_not_a_purchase(admin_client, store, helper, owner_conn):  # noqa: F811
+    await bought(admin_client, store, "Lentils", "Larkspur Green Lentils 1 lb")
+    await owner_conn.execute(
+        "UPDATE purchase_line SET removed_at = now(), "
+        "removed_by = (SELECT id FROM app_user LIMIT 1)"
+    )
+    await queue()
+    [request] = await requests(helper)
+    r = await report(helper, request["id"], candidates=[candidate("Green Lentils")])
+    assert r.json()["relevant"] == 0
+
+
+async def test_accented_names_match_however_they_are_printed(
+    admin_client,
+    store,
+    helper,  # noqa: F811
+    owner_conn,
+):
+    acai = await make_ingredient(admin_client, "Açaí")
+    await owner_conn.execute(
+        "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(acai["id"])
+    )
+    await queue()
+    [request] = await requests(helper)
+    r = await report(helper, request["id"], candidates=[candidate("Acai Puree")])
+    assert r.json()["relevant"] == 1
 
 
 def test_names_fold_case_accents_and_punctuation():

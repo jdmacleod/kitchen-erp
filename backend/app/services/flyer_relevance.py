@@ -38,9 +38,13 @@ def normalize_name(name: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", folded).strip()
 
 
-# The same folding in SQL, for the names offers are compared with. Every query below is
+# The same folding in SQL, for the names offers are compared with: decomposed, then the
+# combining accents dropped, so "Açaí" folds to "acai" on both sides. Every query below is
 # put together from these constant fragments only; names and ids are bound parameters.
-_SQL_NORM = "trim(regexp_replace(lower({}), '[^a-z0-9]+', ' ', 'g'))"
+_SQL_NORM = (
+    "trim(regexp_replace(regexp_replace(lower(normalize({}, NFKD)), "
+    "'[\\u0300-\\u036f]', '', 'g'), '[^a-z0-9]+', ' ', 'g'))"
+)
 _KITCHEN = "(CAST(:kitchen AS uuid) IS NULL OR vl.home_base_id = CAST(:kitchen AS uuid))"
 
 _TARGETS: dict[str, str] = {
@@ -50,6 +54,7 @@ _TARGETS: dict[str, str] = {
         JOIN vendor_location vl ON vl.id = pu.vendor_location_id
         JOIN product p ON p.id = l.product_id
         WHERE pu.status = 'committed' AND pu.purchased_at >= CAST(:since AS timestamptz)
+          AND l.removed_at IS NULL
           AND {_KITCHEN}
         UNION
         SELECT {_SQL_NORM.format("i.name")} FROM purchase_line l
@@ -58,6 +63,7 @@ _TARGETS: dict[str, str] = {
         JOIN product p ON p.id = l.product_id
         JOIN ingredient i ON i.id = p.ingredient_id
         WHERE pu.status = 'committed' AND pu.purchased_at >= CAST(:since AS timestamptz)
+          AND l.removed_at IS NULL
           AND {_KITCHEN}
     """,  # noqa: S608
     "recipe": f"""

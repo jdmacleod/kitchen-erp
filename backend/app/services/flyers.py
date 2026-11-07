@@ -172,7 +172,7 @@ _DUE = """
 """
 
 _WEEK = """
-    SELECT count(*) AS attempts,
+    SELECT count(DISTINCT r.id) AS attempts,
            max(r.created_at) AS last_at,
            bool_or(fr.status IN ('ok', 'empty', 'not_allowed')) AS settled
     FROM lookup_request r
@@ -403,10 +403,12 @@ async def record_report(db: AsyncSession, token_id: uuid.UUID | None, body: Any)
                 size_unit=candidate.size_unit if sized else None,
             )
         )
+    # Only the first answer counts toward the source's pause; a replay of a week
+    # already answered leaves it as it is.
     if request.status == "open":
         request.status = "answered"
         request.answered_at = now
-    await _note_outcome(db, source, request, report.status, now)
+        await _note_outcome(db, source, request, report.status, now)
     reported = Reported(run.id, run.status, run.offered_count, run.relevant_count, offer_ids)
     await _record(
         db,
