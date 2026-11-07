@@ -3,6 +3,7 @@ inbox rows (U7, U8, U17; ruling F13). Stores and offers are invented."""
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from datetime import date, timedelta
 
@@ -305,3 +306,77 @@ async def test_an_ingredient_can_be_watched_and_unwatched(admin_client, store): 
     assert r.json()["watch"] is False
     r = await admin_client.patch(f"/api/v1/ingredients/{ingredient_id}", json={"notes": "x"})
     assert r.json()["watch"] is False  # untouched by an unrelated edit
+
+
+async def test_a_week_of_refused_reports_says_the_adapter_needs_attention(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+):
+    now = WEDNESDAY
+    bad = candidate("Green Lentils", price_basis="multi")  # multi without basis_qty
+    for _ in range(flyers.ATTEMPTS_PER_WEEK):
+        assert await queue(now) == 1
+        [request] = await requests(helper)
+        assert (await report(helper, request["id"], candidates=[bad])).status_code == 422
+        now += timedelta(days=1)
+    [row] = await flyer_rows(admin_client)
+    assert row["detail"] == "The adapter needs attention: its report didn't fit."
+
+
+# --- review fixes -------------------------------------------------------------------------
+
+
+async def test_offers_kept_before_links_existed_get_them(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    await bought(admin_client, store, "Lentils", "Larkspur Green Lentils 1 lb")
+    await read_week(helper, ["Green Lentils", "Green Lentils"])
+    await owner_conn.execute("DELETE FROM flyer_offer_link")  # as the 2U-2 build left them
+    assert await offer_queue(admin_client) == {"watched": [], "other": []}
+    async with get_sessionmaker()() as db:
+        assert await flyer_offers.link_unlinked_once(db, THURSDAY) is True
+        assert await flyer_offers.link_unlinked_once(db, THURSDAY) is False
+    [group] = (await offer_queue(admin_client))["other"]
+    assert len(group["offers"]) == 2
+
+
+async def test_an_offer_waits_for_its_first_day(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    monkeypatch,
+):
+    await bought(admin_client, store, "Lentils", "Larkspur Green Lentils 1 lb")
+    await read_week(helper, ["Green Lentils"])
+    monkeypatch.setattr(flyers, "today", lambda now=None: date(2026, 11, 3))
+    assert await offer_queue(admin_client) == {"watched": [], "other": []}
+
+
+async def test_an_answer_given_meanwhile_stands(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    lentils = await bought(admin_client, store, "Lentils", "Larkspur Green Lentils 1 lb")
+    await read_week(helper, ["Green Lentils"])
+    body = {"vendor_id": store["vendor"]["id"], "name_norm": "green lentils", "ignore": True}
+    # Another person's answer holds the rows; this one waits for it, then finds
+    # nothing left to decide instead of overwriting it.
+    async with owner_conn.transaction():
+        await owner_conn.execute("SELECT 1 FROM flyer_offer_link FOR UPDATE")
+        late = asyncio.create_task(admin_client.post("/api/v1/flyer-offers/decide", json=body))
+        await asyncio.sleep(0.5)
+        assert not late.done()
+        await owner_conn.execute(
+            "UPDATE flyer_offer_link SET status = 'confirmed', resolution = 'person', "
+            "product_id = $1",
+            uuid.UUID(lentils["id"]),
+        )
+    assert (await late).status_code == 404
+    [link] = await links(owner_conn)
+    assert (link["status"], str(link["product_id"])) == ("confirmed", lentils["id"])

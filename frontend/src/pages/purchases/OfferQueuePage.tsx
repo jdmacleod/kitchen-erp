@@ -101,7 +101,12 @@ function GroupList({ groups, tab }: { groups: OfferGroup[]; tab: Tab }) {
     if (key === null) return;
     focusKey.current = null;
     const at = groups.findIndex((g) => groupKey(g) === key);
-    if (at >= 0) document.getElementById(`offer-${at}`)?.focus();
+    // Its product box, or the ingredient box of the new product it is being given.
+    if (at >= 0)
+      (
+        document.getElementById(`offer-${at}`) ??
+        document.getElementById(`offer-${at}-new-ingredient`)
+      )?.focus();
   });
   return (
     <ul

@@ -36,7 +36,7 @@ _CURRENT = """
         ORDER BY fr.ad_source_id, fr.ad_week_from, fr.created_at DESC
     )
     SELECT o.id FROM flyer_offer o JOIN runs ON runs.id = o.flyer_run_id
-    WHERE o.valid_to >= CAST(:today AS date)
+    WHERE o.valid_from <= CAST(:today AS date) AND o.valid_to >= CAST(:today AS date)
 """
 
 
@@ -204,15 +204,59 @@ async def _group_links(
             {"today": today, "vendor": vendor_id, "norm": norm, "rungs": list(rungs or ())},
         )
     ).scalars()
-    return list(
+    locked = (
+        await db.execute(
+            select(FlyerOfferLink)
+            .where(FlyerOfferLink.flyer_offer_id.in_(list(ids)))
+            .with_for_update()
+        )
+    ).scalars()
+    # Checked again under the lock: a person answering the same group a moment
+    # earlier has already decided these, and their answer stands.
+    return [link for link in locked if link.status == "suggested"]
+
+
+async def link_unlinked_once(db: AsyncSession, today: date) -> bool:
+    """Give current offers kept before 2U-3 their links, one source's run at a time,
+    so a circular already read shows in the queue without a replay. Returns whether
+    there was one."""
+    row = (
+        await db.execute(
+            text(
+                f"""
+                SELECT o.flyer_run_id, r.vendor_id, s.require_confirmation
+                FROM flyer_offer o
+                JOIN flyer_run fr ON fr.id = o.flyer_run_id
+                JOIN ad_source s ON s.id = fr.ad_source_id
+                JOIN vendor_location r ON r.id = s.vendor_location_id
+                WHERE o.id IN ({_CURRENT})
+                  AND NOT EXISTS (
+                      SELECT 1 FROM flyer_offer_link l WHERE l.flyer_offer_id = o.id
+                  )
+                LIMIT 1
+                """  # noqa: S608  constant fragments only
+            ),
+            {"today": today},
+        )
+    ).first()
+    if row is None:
+        return False
+    run_id, vendor_id, require_confirmation = row
+    offers = list(
         (
             await db.execute(
-                select(FlyerOfferLink)
-                .where(FlyerOfferLink.flyer_offer_id.in_(list(ids)))
-                .with_for_update()
+                select(FlyerOffer).where(
+                    FlyerOffer.flyer_run_id == run_id,
+                    ~select(FlyerOfferLink.flyer_offer_id)
+                    .where(FlyerOfferLink.flyer_offer_id == FlyerOffer.id)
+                    .exists(),
+                )
             )
         ).scalars()
     )
+    await resolve_offers(db, vendor_id, offers, require_confirmation=require_confirmation)
+    await db.commit()
+    return True
 
 
 # --- the offer queue ------------------------------------------------------------------

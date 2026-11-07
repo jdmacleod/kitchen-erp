@@ -75,8 +75,10 @@ _UNREAD = """
     JOIN ad_source s ON s.id = w.ad_source_id
     JOIN vendor_location vl ON vl.id = s.vendor_location_id
     JOIN vendor v ON v.id = vl.vendor_id
-    WHERE s.enabled AND vl.active AND NOT w.read AND NOT coalesce(w.waiting, false)
-      AND (w.refused_by_site OR w.attempts >= :attempts)
+    -- A week of refused reports has no runs at all, so every flag may be null.
+    WHERE s.enabled AND vl.active AND NOT coalesce(w.read, false)
+      AND NOT coalesce(w.waiting, false)
+      AND (coalesce(w.refused_by_site, false) OR w.attempts >= :attempts)
     ORDER BY w.ended_at
 """
 

@@ -192,9 +192,12 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
                 if not ran:
                     ran = await product_jobs.run_once(db, locked_by=me)
                 if not ran:
-                    # Then one naming line, else the model's pick for a watched flyer offer (2U-3).
-                    ran = await naming.run_suggestion_once(db) or await flyer_offers.rank_once(
-                        db, flyers.today()
+                    # Then one naming line, else links for offers kept before 2U-3, else the
+                    # model's pick for a watched flyer offer.
+                    ran = (
+                        await naming.run_suggestion_once(db)
+                        or await flyer_offers.link_unlinked_once(db, flyers.today())
+                        or await flyer_offers.rank_once(db, flyers.today())
                     )
         except Exception as exc:  # the database itself is unreachable, most likely
             log.error("worker loop error", extra=loop_error_fields(exc))

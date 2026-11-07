@@ -270,7 +270,7 @@ function IngredientDetail({ ingredient }: { ingredient: Ingredient }) {
               onChange={(next) => watch.mutate({ watch: next })}
             />
             <p className={`text-sm ${muted}`}>
-              This week's flyer offers for it ask you to match them in the inbox.
+              Its offers in newly read circulars ask you to match them in the inbox.
             </p>
             {watch.isError ? <Alert tone="error">{catalogErrorMessage(watch.error)}</Alert> : null}
           </div>
