@@ -466,6 +466,27 @@ async def test_accented_names_match_however_they_are_printed(
     assert r.json()["relevant"] == 1
 
 
+async def test_a_name_never_matches_inside_a_longer_word(
+    admin_client,
+    store,
+    helper,  # noqa: F811
+    owner_conn,
+):
+    salt = await make_ingredient(admin_client, "Salt")
+    await owner_conn.execute(
+        "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(salt["id"])
+    )
+    await queue()
+    [request] = await requests(helper)
+    r = await report(
+        helper,
+        request["id"],
+        candidates=[candidate("Garden Salad Kit"), candidate("Sea Salt Flakes")],
+    )
+    assert r.json()["offer_ids"][0] is None
+    assert r.json()["relevant"] == 1
+
+
 def test_names_fold_case_accents_and_punctuation():
     assert (
         flyers.flyer_relevance.normalize_name("  Jalapeño-Peppers, 1 LB!")

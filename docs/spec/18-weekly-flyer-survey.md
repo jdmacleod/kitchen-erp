@@ -153,7 +153,7 @@ Kitchen ERP never sees the raw payload. The helper keeps it for twelve months (h
 A candidate is relevant to a kitchen when one of these holds, checked in order:
 
 1. Its normalized name matches a `flyer_alias` for the vendor that isn't `ignore`.
-2. It and a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365), or that product's ingredient, appear within one another: pg_trgm word similarity in either direction of at least `FLYER_RELEVANCE_THRESHOLD` (default 0.6). "Fuji Apples 3 lb Bag" holds "apple", and "Rolled Oats" sits inside a product name that adds a brand and a size.
+2. It and a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365), or that product's ingredient, appear within one another: pg_trgm strict word similarity (whole words only) in either direction of at least `FLYER_RELEVANCE_THRESHOLD` (default 0.6). A name never matches inside a longer word: "salt" is not in "salad". "Fuji Apples 3 lb Bag" holds "apple", and "Rolled Oats" sits inside a product name that adds a brand and a size.
 3. Likewise for an ingredient a recipe calls for.
 4. Likewise for an item on the kitchen's open shopping list.
 5. Likewise for a watched ingredient.

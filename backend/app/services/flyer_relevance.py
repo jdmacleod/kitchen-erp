@@ -11,8 +11,9 @@ offer is relevant to a kitchen when, checked in order:
 4. for an item on the kitchen's open shopping list (``list``);
 5. for a watched ingredient (``watched``).
 
-"Appear within one another" is pg_trgm word similarity in either direction, at
-least ``FLYER_RELEVANCE_THRESHOLD``: "Fuji Apples 3 lb Bag" holds "apple", and
+"Appear within one another" is pg_trgm strict word similarity in either direction,
+at least ``FLYER_RELEVANCE_THRESHOLD``. Whole words only, so "salt" is not inside
+"salad"; "Fuji Apples 3 lb Bag" holds "apple", and
 "Rolled Oats" sits inside "Larkspur Organic Rolled Oats 42 oz". A learned name
 marked ignore makes the offer irrelevant whatever else matches. A location with
 no kitchen counts every kitchen's purchases and lists.
@@ -92,8 +93,9 @@ _MATCHING = """
     WHERE EXISTS (
         SELECT 1 FROM targets t(name)
         WHERE t.name <> ''
-          AND greatest(word_similarity(t.name, names.n), word_similarity(names.n, t.name))
-              >= CAST(:threshold AS numeric)
+          AND greatest(
+              strict_word_similarity(t.name, names.n), strict_word_similarity(names.n, t.name)
+          ) >= CAST(:threshold AS numeric)
     )
 """
 
