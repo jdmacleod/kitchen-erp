@@ -169,7 +169,7 @@ The receipt resolver's ladder (`04`, 2B) is split so that a name and a vendor ca
 - **Fuzzy alias, model ranking over a shortlist, or similar names.** These become `suggested`, with the suggestions stored. A `watched` offer waits in the inbox; any other waits under "Other offers" (F13).
 - **A person** confirms a suggestion, chooses or creates a product, or rejects the offer. Each choice upserts `flyer_alias`, as receipt confirmations upsert `receipt_alias`.
 
-A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias, until it is turned off (2W). An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
+A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias and whether or not it is watched, until it is turned off (2W): its reading isn't trusted yet, so it overrides F13. An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
 
 ## Read models
 
@@ -184,7 +184,7 @@ No price view, receipt resolution or default cost reads `flyer_offer` (F4). The 
 
 ## Inbox
 
-- **`flyer_offers`:** one row, "12 flyer offers to match", while any `watched` offers are `suggested` and still valid. Opens the offer queue at its watched offers. The queue's "Other offers" holds the rest of the suggested offers that are still valid, and never counts toward the row (F13). In the queue, each offer shows its printed name, price and basis, store, week and suggestions. Image and region sources also show the page crop (2W).
+- **`flyer_offers`:** one row, "12 flyer offers to match", while any `watched` offers, or any offers from a source with `require_confirmation`, are `suggested` and still valid. Opens the offer queue at its watched offers. The queue's "Other offers" holds the rest of the suggested offers that are still valid, and never counts toward the row (F13). In the queue, each offer shows its printed name, price and basis, store, week and suggestions. Image and region sources also show the page crop (2W).
 - **`flyer_sources`:** one row per source whose current ad week ended without a read: a `failed` or `not_allowed` run, or a refused report, on its last attempt. The row carries the reason; for a refused report it says "the adapter needs attention".
 
 ## Where it shows (2X)
@@ -217,7 +217,7 @@ Real chains, banners, store ids and kitchen locations exist only in the private 
 - **U4.** A valid report creates one `flyer_run` and one `flyer_offer` per relevant candidate, records `offered_count` and `relevant_count`, and answers with each candidate's offer id or null. An invalid report is refused with 422, stores no run or offer, and answers its request as a failed attempt recorded for the inbox.
 - **U5.** A report of an archived payload re-normalized by a newer adapter version creates a new run, and the read models then use it.
 - **U6.** Relevance keeps a candidate matching a flyer alias, watched ingredient, purchase, recipe or list item, records the first that holds in that order, and drops the rest.
-- **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested`: a `watched` offer is counted in the inbox's `flyer_offers` row, any other only under the queue's "Other offers" (F13). Confirming either upserts the alias, and the next week's same name links automatically.
+- **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested`: a `watched` offer, or any offer from a source with `require_confirmation`, is counted in the inbox's `flyer_offers` row, any other only under the queue's "Other offers" (F13). Confirming either upserts the alias, and the next week's same name links automatically.
 - **U17.** An ingredient's page has a "Watch for offers" switch that sets `ingredient.watch`; the next week's offers for it count in the inbox.
 - **U8.** A `failed` or `not_allowed` run, or a refused report, on a week's last attempt gives one `flyer_sources` inbox row per source, with its reason, never one per missing offer.
 - **U9.** `current_offers` returns linked offers valid today for the kitchen's locations. An offer past `valid_to` is gone, and at a boundary the later `valid_from` wins.
