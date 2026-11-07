@@ -4,12 +4,13 @@ A circular prints hundreds of offers; a household cares about a few dozen. An
 offer is relevant to a kitchen when, checked in order:
 
 1. its name is a vendor's learned flyer name that isn't marked ignore (``alias``);
-2. it and something bought at one of the kitchen's locations in the last
+2. it and a watched ingredient appear within one another (``watched``); first, so a
+   watched ingredient that was also bought still asks a person (ruling F13);
+3. it and something bought at one of the kitchen's locations in the last
    ``FLYER_RELEVANCE_DAYS``, by product or ingredient name, appear within one
    another (``purchased``);
-3. likewise for an ingredient a recipe calls for (``recipe``);
-4. for an item on the kitchen's open shopping list (``list``);
-5. for a watched ingredient (``watched``).
+4. likewise for an ingredient a recipe calls for (``recipe``);
+5. for an item on the kitchen's open shopping list (``list``).
 
 "Appear within one another" is pg_trgm strict word similarity in either direction,
 at least ``FLYER_RELEVANCE_THRESHOLD``. Whole words only, so "salt" is not inside
@@ -50,6 +51,9 @@ _SQL_NORM = (
 _KITCHEN = "(CAST(:kitchen AS uuid) IS NULL OR vl.home_base_id = CAST(:kitchen AS uuid))"
 
 _TARGETS: dict[str, str] = {
+    "watched": f"""
+        SELECT {_SQL_NORM.format("i.name")} FROM ingredient i WHERE i.watch AND i.active
+    """,  # noqa: S608
     "purchased": f"""
         SELECT {_SQL_NORM.format("p.name")} FROM purchase_line l
         JOIN purchase pu ON pu.id = l.purchase_id
@@ -81,9 +85,6 @@ _TARGETS: dict[str, str] = {
         LEFT JOIN product p ON p.id = it.product_id
         WHERE s.status = 'open' AND it.checked_at IS NULL
           AND (CAST(:kitchen AS uuid) IS NULL OR s.home_base_id = CAST(:kitchen AS uuid))
-    """,  # noqa: S608
-    "watched": f"""
-        SELECT {_SQL_NORM.format("i.name")} FROM ingredient i WHERE i.watch AND i.active
     """,  # noqa: S608
 }
 
