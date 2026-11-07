@@ -15,13 +15,14 @@ from app.models.base import Base, UUIDPrimaryKey
 
 
 class LookupRequest(UUIDPrimaryKey, Base):
-    """Something the helper may look up: a barcode, a page, a photo's cutout, an image, or
-    a branded product's name (#184)."""
+    """Something the helper may look up: a barcode, a page, a photo's cutout, an image, a
+    branded product's name (#184), or a store's weekly circular (18, 2U)."""
 
     __tablename__ = "lookup_request"
     __table_args__ = (
         CheckConstraint(
-            "kind IN ('gtin', 'page', 'cutout', 'image', 'name')", name="ck_lookup_request_kind"
+            "kind IN ('gtin', 'page', 'cutout', 'image', 'name', 'flyer')",
+            name="ck_lookup_request_kind",
         ),
         CheckConstraint(
             "status IN ('open', 'answered', 'closed')", name="ck_lookup_request_status"
@@ -42,6 +43,10 @@ class LookupRequest(UUIDPrimaryKey, Base):
     # A scheduled refresh of this listing (page requests only, 0024).
     listing_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("vendor_listing.id", ondelete="CASCADE")
+    )
+    # A source's weekly circular (flyer requests only, 0066); value is the ad week's start.
+    ad_source_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("ad_source.id", ondelete="CASCADE")
     )
     value: Mapped[str | None] = mapped_column(Text)
     requested_by: Mapped[uuid.UUID | None] = mapped_column(

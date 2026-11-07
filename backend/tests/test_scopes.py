@@ -34,6 +34,7 @@ DECLARED = {
     ("POST", "/api/v1/lookup-requests/{request_id}/mask"): "products:suggest",
     ("POST", "/api/v1/lookup-answers"): "products:suggest",
     ("POST", "/api/v1/listing-price-changes"): "products:suggest",
+    ("POST", "/api/v1/flyer-reports"): "products:suggest",
 }
 SCOPED = ("vendors:read", "vendors:suggest", "products:read", "products:suggest")
 # Walking these with a session would end the session the rest of the walk uses.

@@ -262,8 +262,8 @@ UI criteria UI-9.1–UI-9.5 in `11` are dormant until their slice.
 Updated with every pull request, so the work can stop and resume at any line.
 
 - [x] Step 0: this spec (kitchen-erp #481), the roster and adapter notes (helper #28: `docs/FLYERS.md`, SPEC §13). Approved 2026-11-05
-- [ ] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10)
-- [ ] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper; U11–U13, U15)
+- [x] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10). Migration 0066, `kerp flyers import`
+- [x] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper #29; U11–U13, U15). The owner allowed the banner's public token (2026-11-06); a sample week read every priced item. One grocery group's banners are seeded; the other group's sites don't answer a plain request, so their ids are still open
 - [ ] 2U-3: shared name resolver, flyer aliases, offer queue and inbox rows (U7, U8)
 - [ ] 2U-4: read models and API, vendor-location panel, size inheritance (U9, U16); live count (U14)
 - [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)

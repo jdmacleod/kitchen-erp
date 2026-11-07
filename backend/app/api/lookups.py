@@ -18,6 +18,7 @@ from app.api.product_photos import _read
 from app.models import AppUser
 from app.schemas.lookups import (
     AnswerOut,
+    FlyerReported,
     HelperStatus,
     LookupQueue,
     LookupRequestOut,
@@ -28,7 +29,7 @@ from app.schemas.lookups import (
     ProductPageLookUp,
 )
 from app.schemas.product_photos import ProductPhotoOut
-from app.services import lookups
+from app.services import flyers, lookups
 
 router = APIRouter(tags=["products helper"])
 
@@ -41,10 +42,11 @@ HelperWriter = Annotated[AppUser, Depends(scoped_user("products:suggest"))]
 
 @router.get("/lookup-requests", response_model=LookupQueue)
 async def lookup_queue(_: HelperReader, db: DbSession) -> LookupQueue:
-    """Open lookup requests, oldest first: the one thing products:read may read."""
-    return LookupQueue(
-        items=[LookupRequestOut.model_validate(r) for r in await lookups.open_requests(db)]
-    )
+    """Open lookup requests, oldest first: the one thing products:read may read.
+
+    A flyer request carries its source and ad week (18, 2U).
+    """
+    return LookupQueue(items=await flyers.queue_items(db))
 
 
 @router.get("/lookup-requests/{request_id}/original", response_class=FileResponse)
@@ -81,6 +83,20 @@ async def report_listing_prices(request: Request, _: HelperWriter, db: DbSession
     """Posted prices that changed; each waits for a person before it is recorded."""
     body = lookups.parse_body(await request.body())
     return PricesReported(added=await lookups.report_prices(db, token_id(request), body))
+
+
+@router.post("/flyer-reports", response_model=FlyerReported)
+async def report_flyer(request: Request, _: HelperWriter, db: DbSession) -> FlyerReported:
+    """A store's weekly circular, read (18, 2U): its run and the offers that matter."""
+    body = lookups.parse_body(await request.body())
+    out = await flyers.record_report(db, token_id(request), body)
+    return FlyerReported(
+        run_id=out.run_id,
+        status=out.status,  # type: ignore[arg-type]
+        offered=out.offered,
+        relevant=out.relevant,
+        offer_ids=out.offer_ids,
+    )
 
 
 # --- people -------------------------------------------------------------------------------

@@ -81,6 +81,8 @@ class Ingredient(UUIDPrimaryKey, Timestamped, Base):
     keep_fridge_days: Mapped[int | None] = mapped_column(Integer)
     keep_freezer_days: Mapped[int | None] = mapped_column(Integer)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Its weekly flyer offers always matter (18, 2U).
+    watch: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
     # 1G: the standard key when created from, or linked to, the standard list;
     # otherwise "local.<name>", assigned on flush (models/keys.py).

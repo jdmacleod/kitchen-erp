@@ -14,10 +14,12 @@ import typer
 from alembic.config import Config
 
 from alembic import command, util
+from app.cli_flyers import flyers_cli
 from app.cli_naming import naming_cli
 from app.cli_osm import osm_cli
 from app.cli_receipts import receipts_cli
 from app.cli_recipes import recipes_cli
+from app.cli_travel import travel_legs_cli
 from app.core.config import DEV_VERSION, UNKNOWN_COMMIT
 from app.core.logging import configure_logging
 
@@ -28,12 +30,12 @@ import_cli = typer.Typer(
     help="Import reference data or a retailer's purchase export.", no_args_is_help=True
 )
 cli.add_typer(import_cli, name="import")
-travel_legs_cli = typer.Typer(help="Drive-time legs between places (17, 4B).", no_args_is_help=True)
-cli.add_typer(travel_legs_cli, name="travel-legs")
+cli.add_typer(travel_legs_cli, name="travel-legs")  # `kerp travel-legs …`: app/cli_travel.py
 cli.add_typer(recipes_cli, name="recipes")  # `kerp recipes …` lives in app/cli_recipes.py
 cli.add_typer(naming_cli, name="naming")  # `kerp naming …` lives in app/cli_naming.py
 cli.add_typer(osm_cli, name="osm")  # `kerp osm …` lives in app/cli_osm.py
 cli.add_typer(receipts_cli, name="receipts")  # `kerp receipts …`: app/cli_receipts.py
+cli.add_typer(flyers_cli, name="flyers")  # `kerp flyers …`: app/cli_flyers.py
 
 _BACKEND_ROOT = Path(__file__).resolve().parent.parent
 
@@ -888,30 +890,6 @@ def recompute_costs() -> None:
         async with get_sessionmaker()() as db:
             typer.echo(f"recomputed costs for {await recompute_all(db)} recipes")
         await dispose_engine()
-
-    asyncio.run(_run())
-
-
-@travel_legs_cli.command("recompute")
-def travel_legs_recompute(
-    all_legs: bool = typer.Option(
-        False, "--all", help="Drop the engine's legs too, not only the estimates."
-    ),
-) -> None:
-    """Drop estimated legs and compute them again from the routing engine, or
-    estimate them again when it is off (17, 4B)."""
-    from app.core.config import get_settings
-    from app.core.db import dispose_engine, get_sessionmaker
-    from app.services.travel import recompute_legs
-
-    async def _run() -> None:
-        async with get_sessionmaker()() as db:
-            counts = await recompute_legs(db, get_settings(), only_estimates=not all_legs)
-        await dispose_engine()
-        typer.echo(
-            f"dropped {counts.dropped} legs; {counts.osrm} from the engine, "
-            f"{counts.estimated} estimated"
-        )
 
     asyncio.run(_run())
 

@@ -280,6 +280,357 @@
     "title": "HelperAnswer",
     "type": "object"
   },
+  "flyer_report": {
+    "$defs": {
+      "FlyerCandidate": {
+        "additionalProperties": false,
+        "description": "One offer as a circular prints it (18). Kitchen ERP decides whether it matters.",
+        "properties": {
+          "basis_qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Basis Qty"
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Brand"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "department": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Department"
+          },
+          "discount": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Discount"
+          },
+          "item_ref": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Item Ref"
+          },
+          "limit_qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Limit Qty"
+          },
+          "name_as_printed": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Name As Printed",
+            "type": "string"
+          },
+          "name_original": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Name Original"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,8}|(?=[\\d.]{1,13}0*$)\\d{0,8}\\.\\d{0,4}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Price"
+          },
+          "price_basis": {
+            "enum": [
+              "each",
+              "per_lb",
+              "per_oz",
+              "multi",
+              "bogo",
+              "percent_off",
+              "dollar_off"
+            ],
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "requires_loyalty": {
+            "default": false,
+            "title": "Requires Loyalty",
+            "type": "boolean"
+          },
+          "size_qty": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size Qty"
+          },
+          "size_unit": {
+            "anyOf": [
+              {
+                "maxLength": 16,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Size Unit"
+          },
+          "source_bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "anyOf": [
+                    {
+                      "maximum": 1.0,
+                      "minimum": 0.0,
+                      "type": "number"
+                    },
+                    {
+                      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "maxItems": 4,
+                "minItems": 4,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Bbox"
+          },
+          "source_page": {
+            "anyOf": [
+              {
+                "maximum": 200,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source Page"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "format": "date",
+            "title": "Valid To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name_as_printed",
+          "price_basis",
+          "valid_from",
+          "valid_to",
+          "confidence"
+        ],
+        "title": "FlyerCandidate",
+        "type": "object"
+      }
+    },
+    "additionalProperties": false,
+    "description": "The helper's report on one ``flyer`` request: its status and what it read.",
+    "properties": {
+      "ad_week_from": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Ad Week From"
+      },
+      "ad_week_to": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Ad Week To"
+      },
+      "adapter_version": {
+        "maxLength": 40,
+        "minLength": 1,
+        "title": "Adapter Version",
+        "type": "string"
+      },
+      "candidates": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/FlyerCandidate"
+        },
+        "maxItems": 2000,
+        "title": "Candidates",
+        "type": "array"
+      },
+      "fetched_at": {
+        "format": "date-time",
+        "title": "Fetched At",
+        "type": "string"
+      },
+      "format": {
+        "const": "kitchen-erp-products/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "reason": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Reason"
+      },
+      "request_id": {
+        "format": "uuid",
+        "title": "Request Id",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "ok",
+          "empty",
+          "failed",
+          "not_allowed"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "format",
+      "request_id",
+      "status",
+      "adapter_version",
+      "fetched_at"
+    ],
+    "title": "FlyerReport",
+    "type": "object"
+  },
   "listing_prices": {
     "$defs": {
       "ListingPrice": {

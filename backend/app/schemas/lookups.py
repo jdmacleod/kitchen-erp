@@ -3,20 +3,32 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Literal
+from datetime import date, datetime
+from typing import Any, Literal
 
 from pydantic import Field
 
 from app.schemas.base import ApiModel, DecimalStr
 
 
+class FlyerSourceOut(ApiModel):
+    """What the helper needs to read a source's circular (18, 2U)."""
+
+    mechanism: Literal["hosted_circular", "storefront", "itemized", "image", "region"]
+    adapter: str
+    store_ref: dict[str, str]
+    tiles: dict[str, Any] | None
+    ad_week: date
+
+
 class LookupRequestOut(ApiModel):
     id: uuid.UUID
-    kind: Literal["gtin", "page", "cutout", "image", "name"]
+    kind: Literal["gtin", "page", "cutout", "image", "name", "flyer"]
     value: str | None
     # Set on a scheduled listing refresh: report changed prices against it.
     listing_id: uuid.UUID | None = None
+    # Set on a flyer request: the source and the ad week to read (18, 2U).
+    flyer: FlyerSourceOut | None = None
     status: Literal["open", "answered", "closed"]
     created_at: datetime
     answered_at: datetime | None
@@ -40,6 +52,15 @@ class AnswerOut(ApiModel):
 
 class PricesReported(ApiModel):
     added: int
+
+
+class FlyerReported(ApiModel):
+    run_id: uuid.UUID
+    status: Literal["ok", "empty", "failed", "not_allowed"]
+    offered: int
+    relevant: int
+    # Each candidate's offer, in the report's order; null where it wasn't relevant.
+    offer_ids: list[uuid.UUID | None]
 
 
 class HelperStatus(ApiModel):

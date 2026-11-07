@@ -93,6 +93,12 @@ class Settings(BaseSettings):
     # listing this often, so the helper can report changed posted prices (2N).
     # 0 turns scheduled refreshes off.
     listing_refresh_days: int = 7
+    # Weekly flyers (18, 2U): an offer is relevant when its name and something the
+    # kitchen bought in the last FLYER_RELEVANCE_DAYS, a recipe calls for, its list
+    # holds, or a watched ingredient appear within one another at least this closely
+    # (pg_trgm word similarity, 0 to 1).
+    flyer_relevance_threshold: Decimal = Decimal("0.6")
+    flyer_relevance_days: int = 365
     tesseract_command: str = "tesseract"
     receipt_max_bytes: int = 32 * 1024 * 1024
     ingest_max_attempts: int = 5
