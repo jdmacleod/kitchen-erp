@@ -134,6 +134,8 @@ export interface Ingredient {
   stored_in?: "room" | "fridge" | "freezer";
   active: boolean;
   notes: string | null;
+  /** Offers for it ask in the inbox (18, F13). */
+  watch?: boolean;
   measures: Measure[];
   /** Where it stands against the standard list (1G); "linked" has its standard name. */
   reconcile_state: "unreviewed" | "linked" | "skipped" | "not_applicable";
@@ -289,6 +291,8 @@ export interface IngredientUpdateInput {
   keep_fridge_days?: number | null;
   keep_freezer_days?: number | null;
   notes?: string | null;
+  /** Offers for a watched ingredient ask in the inbox (18, F13). */
+  watch?: boolean;
 }
 
 export interface MeasureCreateInput {

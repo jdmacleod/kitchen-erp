@@ -649,6 +649,8 @@ async def update_ingredient(
     data.pop("density_source", None)
     if "name" in data:
         data["name"] = data["name"].strip()
+    if data.get("watch") is None:
+        data.pop("watch", None)
     for key, value in data.items():
         setattr(ingredient, key, value)
     set_fields = set(payload.model_dump(exclude_unset=True))

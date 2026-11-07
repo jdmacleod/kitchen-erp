@@ -302,7 +302,7 @@ async def fuzzy_aliases(db: AsyncSession, vendor_id: uuid.UUID, norm: str) -> li
 
 
 async def _shortlist(
-    db: AsyncSession, line: PurchaseLine, norm: str, vendor_id: uuid.UUID | None = None
+    db: AsyncSession, line: PurchaseLine | None, norm: str, vendor_id: uuid.UUID | None = None
 ) -> list[dict[str, Any]]:
     hits = await search_products(db, norm, get_settings().llm_shortlist_size)
     out: list[dict[str, Any]] = []
@@ -311,9 +311,11 @@ async def _shortlist(
         product = await db.get(Product, hit.id)
         if product is None:
             continue
-        # Narrow by price plausibility where history exists.
-        median = await recent_median_unit_price(db, product.id)
-        if median and line.line_total is not None:
+        # Narrow by price plausibility where history exists, for a line with a price.
+        median = None
+        if line is not None and line.line_total is not None:
+            median = await recent_median_unit_price(db, product.id)
+        if median and line is not None and line.line_total is not None:
             implied = await implied_unit_price(db, product, line.qty, line.unit, line.line_total)
             if implied is not None and implied > 0:
                 ratio = implied / median
@@ -386,7 +388,62 @@ async def code_rung(
     return codes
 
 
-async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:  # noqa: C901, PLR0912, PLR0915
+async def shortlist_suggestions(
+    db: AsyncSession,
+    norm: str,
+    vendor_id: uuid.UUID | None,
+    record: dict[str, Any],
+    *,
+    line: PurchaseLine | None = None,
+    use_model: bool = True,
+) -> list[dict[str, Any]]:
+    """The ladder's last rungs for a name: the model's pick from a shortlist, else
+    the shortlist's best hits as similar names. Never resolves on its own.
+
+    Shared by receipt lines and flyer offers (18, 2U-3); a line narrows the
+    shortlist by price plausibility, a bare name doesn't.
+    """
+    suggestions: list[dict[str, Any]] = []
+    shortlist = await _shortlist(db, line, norm, vendor_id)
+    record["shortlist"] = [c["id"] for c in shortlist]
+    if shortlist and use_model and _ranker is not None:
+        try:
+            answer = await _ranker(norm, shortlist)
+        except Exception as exc:  # the model is optional; never block review
+            log.warning("ranker failed", extra={"error": type(exc).__name__})
+            answer = {"product_id": None, "confidence": None, "error": type(exc).__name__}
+        pid = answer.get("product_id")
+        allowed = {c["id"] for c in shortlist}
+        if pid is not None and str(pid) in allowed:
+            suggestions.append(
+                {
+                    "kind": "llm",
+                    "product_id": str(pid),
+                    "ignore": False,
+                    "label": next(c["name"] for c in shortlist if c["id"] == str(pid)),
+                    "score": str(answer.get("confidence") or ""),
+                    **_note(shortlist, str(pid)),
+                }
+            )
+        elif pid is not None:
+            record["llm_rejected"] = "outside_shortlist"
+    if not suggestions:
+        suggestions.extend(
+            {
+                "kind": "similar",
+                "product_id": c["id"],
+                "ignore": False,
+                "label": c["name"],
+                "score": c["score"],
+                **_note(shortlist, c["id"]),
+            }
+            for c in shortlist[:SIMILAR_LIMIT]
+        )
+        record["similar"] = len(suggestions)
+    return suggestions
+
+
+async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine) -> dict[str, Any]:
     """Run the ladder for one item line. Mutates the line; does not commit."""
     vendor_id = purchase.vendor_location.vendor_id if purchase.vendor_location else None
     norm = normalize_receipt_text(line.raw_text or "")
@@ -460,42 +517,7 @@ async def resolve_line(db: AsyncSession, purchase: Purchase, line: PurchaseLine)
     # 5. With no model, or no usable answer, the shortlist's best hits are offered
     #    as similar names, never resolved on their own.
     if not suggestions and norm:
-        shortlist = await _shortlist(db, line, norm, vendor_id)
-        record["shortlist"] = [c["id"] for c in shortlist]
-        if shortlist and _ranker is not None:
-            try:
-                answer = await _ranker(norm, shortlist)
-            except Exception as exc:  # the model is optional; never block review
-                log.warning("ranker failed", extra={"error": type(exc).__name__})
-                answer = {"product_id": None, "confidence": None, "error": type(exc).__name__}
-            pid = answer.get("product_id")
-            allowed = {c["id"] for c in shortlist}
-            if pid is not None and str(pid) in allowed:
-                suggestions.append(
-                    {
-                        "kind": "llm",
-                        "product_id": str(pid),
-                        "ignore": False,
-                        "label": next(c["name"] for c in shortlist if c["id"] == str(pid)),
-                        "score": str(answer.get("confidence") or ""),
-                        **_note(shortlist, str(pid)),
-                    }
-                )
-            elif pid is not None:
-                record["llm_rejected"] = "outside_shortlist"
-        if not suggestions:
-            suggestions.extend(
-                {
-                    "kind": "similar",
-                    "product_id": c["id"],
-                    "ignore": False,
-                    "label": c["name"],
-                    "score": c["score"],
-                    **_note(shortlist, c["id"]),
-                }
-                for c in shortlist[:SIMILAR_LIMIT]
-            )
-            record["similar"] = len(suggestions)
+        suggestions.extend(await shortlist_suggestions(db, norm, vendor_id, record, line=line))
 
     if held is not None:
         suggestions.insert(0, held)

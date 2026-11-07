@@ -4708,7 +4708,9 @@
               "ingredient_duplicates",
               "catalog_cleanup",
               "posted_prices",
-              "recipe"
+              "recipe",
+              "flyer_offers",
+              "flyer_sources"
             ],
             "title": "Kind",
             "type": "string"
@@ -5682,6 +5684,11 @@
             "title": "Updated At",
             "type": "string"
           },
+          "watch": {
+            "default": false,
+            "title": "Watch",
+            "type": "boolean"
+          },
           "yield_pct": {
             "title": "Yield Pct",
             "type": "string"
@@ -6284,6 +6291,17 @@
               }
             ],
             "title": "Perishability"
+          },
+          "watch": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watch"
           },
           "yield_pct": {
             "anyOf": [
@@ -10871,6 +10889,108 @@
         "title": "Offer",
         "type": "object"
       },
+      "OfferDecided": {
+        "additionalProperties": false,
+        "properties": {
+          "decided": {
+            "title": "Decided",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "decided"
+        ],
+        "title": "OfferDecided",
+        "type": "object"
+      },
+      "OfferDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "ignore": {
+            "default": false,
+            "title": "Ignore",
+            "type": "boolean"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "vendor_id": {
+            "format": "uuid",
+            "title": "Vendor Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor_id",
+          "name_norm"
+        ],
+        "title": "OfferDecision",
+        "type": "object"
+      },
+      "OfferGroup": {
+        "additionalProperties": false,
+        "description": "One vendor's printed name; a decision applies to every store's offer of it.",
+        "properties": {
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "name_as_printed": {
+            "title": "Name As Printed",
+            "type": "string"
+          },
+          "name_norm": {
+            "title": "Name Norm",
+            "type": "string"
+          },
+          "offers": {
+            "items": {
+              "$ref": "#/components/schemas/QueuedOffer"
+            },
+            "title": "Offers",
+            "type": "array"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/OfferSuggestion"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "vendor": {
+            "$ref": "#/components/schemas/OfferVendor"
+          },
+          "watched": {
+            "title": "Watched",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "vendor",
+          "name_norm",
+          "name_as_printed",
+          "watched",
+          "suggestions",
+          "offers",
+          "first_seen_at"
+        ],
+        "title": "OfferGroup",
+        "type": "object"
+      },
       "OfferList": {
         "additionalProperties": false,
         "properties": {
@@ -10891,6 +11011,137 @@
           "stale_after_days"
         ],
         "title": "OfferList",
+        "type": "object"
+      },
+      "OfferLocation": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "OfferLocation",
+        "type": "object"
+      },
+      "OfferQueue": {
+        "additionalProperties": false,
+        "description": "Watched offers ask a person; the other offers wait quietly (F13).",
+        "properties": {
+          "other": {
+            "items": {
+              "$ref": "#/components/schemas/OfferGroup"
+            },
+            "title": "Other",
+            "type": "array"
+          },
+          "watched": {
+            "items": {
+              "$ref": "#/components/schemas/OfferGroup"
+            },
+            "title": "Watched",
+            "type": "array"
+          }
+        },
+        "required": [
+          "watched",
+          "other"
+        ],
+        "title": "OfferQueue",
+        "type": "object"
+      },
+      "OfferSuggestion": {
+        "additionalProperties": false,
+        "properties": {
+          "brand_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Note"
+          },
+          "ignore": {
+            "default": false,
+            "title": "Ignore",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "alias",
+              "fuzzy",
+              "llm",
+              "similar"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "kind",
+          "product_id",
+          "label"
+        ],
+        "title": "OfferSuggestion",
+        "type": "object"
+      },
+      "OfferVendor": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "OfferVendor",
         "type": "object"
       },
       "OlderChecked": {
@@ -14921,6 +15172,133 @@
           "name"
         ],
         "title": "QueueVendor",
+        "type": "object"
+      },
+      "QueuedOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "basis_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis Qty"
+          },
+          "discount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "limit_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Qty"
+          },
+          "location": {
+            "$ref": "#/components/schemas/OfferLocation"
+          },
+          "name_as_printed": {
+            "title": "Name As Printed",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_basis": {
+            "enum": [
+              "each",
+              "per_lb",
+              "per_oz",
+              "multi",
+              "bogo",
+              "percent_off",
+              "dollar_off"
+            ],
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "requires_loyalty": {
+            "title": "Requires Loyalty",
+            "type": "boolean"
+          },
+          "size_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Qty"
+          },
+          "size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Unit"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "format": "date",
+            "title": "Valid To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "location",
+          "name_as_printed",
+          "price_basis",
+          "price",
+          "basis_qty",
+          "discount",
+          "size_qty",
+          "size_unit",
+          "requires_loyalty",
+          "limit_qty",
+          "valid_from",
+          "valid_to"
+        ],
+        "title": "QueuedOffer",
         "type": "object"
       },
       "ReceiptDocumentOut": {
@@ -22884,6 +23262,70 @@
         "summary": "Skip Suggestions",
         "tags": [
           "catalog cleanup"
+        ]
+      }
+    },
+    "/api/v1/flyer-offers/decide": {
+      "post": {
+        "description": "Use a product for every current offer of that name, or mark it not wanted; the\nname is learned for next week.",
+        "operationId": "decide_api_v1_flyer_offers_decide_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfferDecision"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferDecided"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide",
+        "tags": [
+          "flyers"
+        ]
+      }
+    },
+    "/api/v1/flyer-offers/queue": {
+      "get": {
+        "description": "Current suggested offers, one group per vendor and printed name (U7, F13).",
+        "operationId": "offer_queue_api_v1_flyer_offers_queue_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferQueue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Offer Queue",
+        "tags": [
+          "flyers"
         ]
       }
     },

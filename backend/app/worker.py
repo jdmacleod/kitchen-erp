@@ -29,6 +29,7 @@ from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
 from app.services import (
     catalog_cleanup,
+    flyer_offers,
     flyers,
     lookups,
     naming,
@@ -191,7 +192,10 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
                 if not ran:
                     ran = await product_jobs.run_once(db, locked_by=me)
                 if not ran:
-                    ran = await naming.run_suggestion_once(db)
+                    # Then one naming line, else the model's pick for a watched flyer offer (2U-3).
+                    ran = await naming.run_suggestion_once(db) or await flyer_offers.rank_once(
+                        db, flyers.today()
+                    )
         except Exception as exc:  # the database itself is unreachable, most likely
             log.error("worker loop error", extra=loop_error_fields(exc))
             ran = False

@@ -24,6 +24,8 @@ InboxKind = Literal[
     "catalog_cleanup",
     "posted_prices",
     "recipe",
+    "flyer_offers",
+    "flyer_sources",
 ]
 
 

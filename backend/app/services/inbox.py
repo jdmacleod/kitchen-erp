@@ -27,6 +27,8 @@ Spec: docs/spec/09-information-architecture.md, "Unified inbox".
     posted_prices    refreshed posted prices awaiting a person (2N) one aggregate row
     recipe           recipe_resolution.queue_counts: recipe names    one aggregate row
                      that resolve to no ingredient (07, 3C)
+    flyer_offers     watched flyer offers to match (18, F13)         one aggregate row
+    flyer_sources    a circular whose ad week went unread (18, U8)  source
 
 Receipts (and receipts being read again, 2S), product photos and product pages
 still being read are not items: they come back as ``reading`` so Home can show
@@ -55,6 +57,7 @@ from app.models.catalog import Ingredient
 from app.schemas.inbox import InboxItem, InboxOut, InboxReading
 from app.services import (
     catalog_cleanup,
+    flyer_inbox,
     identify_queue,
     ingredient_duplicates,
     lookups,
@@ -645,6 +648,8 @@ _KINDS: list[tuple[str, Callable[[AsyncSession], Awaitable[list[InboxItem]]]]] =
     ("catalog_cleanup", _catalog_cleanup),
     ("posted_prices", _posted_prices),
     ("recipe", _recipes),
+    ("flyer_offers", flyer_inbox.offers),
+    ("flyer_sources", flyer_inbox.sources),
 ]
 
 

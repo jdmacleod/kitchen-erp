@@ -123,6 +123,8 @@ class IngredientUpdate(ApiModel):
     keep_fridge_days: int | None = Field(default=None, ge=0, le=3650)
     keep_freezer_days: int | None = Field(default=None, ge=0, le=3650)
     notes: str | None = None
+    # Offers for a watched ingredient ask a person in the inbox (18, F13).
+    watch: bool | None = None
     # A rename is conformed to the 1G rules unless kept as typed (#345).
     keep_name: bool = Field(default=False, exclude=True)
     # A change of unit removes measures stored in the old one, which no longer
@@ -178,6 +180,7 @@ class IngredientOut(Categorized):
     keep_freezer_days: int | None = None
     active: bool
     notes: str | None
+    watch: bool = False
     measures: list[MeasureOut] = []  # noqa: RUF012
     # Where it stands against the standard list (1G); "linked" has its standard name.
     reconcile_state: ReconcileState = "not_applicable"
