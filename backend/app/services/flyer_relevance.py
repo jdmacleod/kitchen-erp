@@ -11,8 +11,10 @@ offer is relevant to a kitchen when, checked in order:
 4. for an item on the kitchen's open shopping list (``list``);
 5. for a watched ingredient (``watched``).
 
-"Appear within one another" is pg_trgm word similarity in either direction, at
-least ``FLYER_RELEVANCE_THRESHOLD``: "Fuji Apples 3 lb Bag" holds "apple", and
+"Appear within one another" is pg_trgm strict word similarity in either direction,
+at least ``FLYER_RELEVANCE_THRESHOLD``. Whole words only, so "salt" is not inside
+"salad", and a trailing plural "s" is dropped from every word first; "Fuji Apples 3 lb
+Bag" holds "apple", and
 "Rolled Oats" sits inside "Larkspur Organic Rolled Oats 42 oz". A learned name
 marked ignore makes the offer irrelevant whatever else matches. A location with
 no kitchen counts every kitchen's purchases and lists.
@@ -85,17 +87,24 @@ _TARGETS: dict[str, str] = {
     """,  # noqa: S608
 }
 
-_MATCHING = """
-    WITH targets AS ({targets}),
-         names AS (SELECT n, i FROM unnest(CAST(:names AS text[])) WITH ORDINALITY AS a(n, i))
+# A trailing plural "s" is dropped from each word on both sides, so "Eggs" is "egg".
+_SINGULAR = "regexp_replace({}, '([a-z]{{2}})s\\M', '\\1', 'g')"
+
+_MATCHING = f"""
+    WITH targets AS (SELECT {_SINGULAR.format("name")} AS name FROM ({{targets}}) AS t(name)),
+         names AS (
+             SELECT {_SINGULAR.format("n")} AS n, i
+             FROM unnest(CAST(:names AS text[])) WITH ORDINALITY AS a(n, i)
+         )
     SELECT names.i FROM names
     WHERE EXISTS (
-        SELECT 1 FROM targets t(name)
+        SELECT 1 FROM targets t
         WHERE t.name <> ''
-          AND greatest(word_similarity(t.name, names.n), word_similarity(names.n, t.name))
-              >= CAST(:threshold AS numeric)
+          AND greatest(
+              strict_word_similarity(t.name, names.n), strict_word_similarity(names.n, t.name)
+          ) >= CAST(:threshold AS numeric)
     )
-"""
+"""  # noqa: S608
 
 
 async def relevance(
@@ -132,7 +141,7 @@ async def relevance(
         if not pending:
             break
         rows = await db.execute(
-            text(_MATCHING.format(targets=targets)),
+            text(_MATCHING.replace("{targets}", targets)),
             {**params, "names": [names[i] for i in pending]},
         )
         matched = {pending[i - 1] for (i,) in rows.all()}
