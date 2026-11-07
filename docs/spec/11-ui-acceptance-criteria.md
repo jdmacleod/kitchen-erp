@@ -202,3 +202,4 @@ Dormant until the slice named in each criterion is built.
 - **UI-9.3** (2U) The offer queue (`/shop/offers/match`) shows each offer's printed name, price and basis, store and dates, with its suggestions; "Use this", the product typeahead and "Not wanted" are 44px targets below 1024px, and the queue is keyboard-operable like Identify.
 - **UI-9.4** (2W) For an image or region source, the queue shows the page crop beside the parsed fields, and the price and size are editable before "Use this".
 - **UI-9.5** (2U) A vendor location's Circular card shows the mechanism, the publication weekday, Enabled and "Ask before using" switches, the last four runs with "312 offers · 23 relevant" or the failure reason, and "Check now".
+- **UI-9.6** (2U) The offer queue opens at "Watched" and has "Other offers" beside it, each with its count; the inbox row counts only "Watched". An ingredient's page has a "Watch for offers" switch, a 44px target below 1024px.

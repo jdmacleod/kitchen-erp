@@ -375,6 +375,8 @@ async def test_each_reason_an_offer_matters_and_the_rest_are_counted(
     owner_conn,
 ):
     await bought(admin_client, store, "Lentils", "Larkspur Green Lentils 1 lb")
+    # Bought and watched: watched comes first, so it still asks a person (F13).
+    millet = await bought(admin_client, store, "Millet", "Larkspur Hulled Millet 2 lb")
     barley = await make_ingredient(admin_client, "Pearl barley")
     recipe_id = uuid.uuid4()
     await owner_conn.execute(
@@ -400,7 +402,8 @@ async def test_each_reason_an_offer_matters_and_the_rest_are_counted(
     assert r.status_code == 201, r.text
     saffron = await make_ingredient(admin_client, "Saffron")
     await owner_conn.execute(
-        "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(saffron["id"])
+        "UPDATE ingredient SET watch = true WHERE id = ANY($1::uuid[])",
+        [uuid.UUID(saffron["id"]), uuid.UUID(millet["ingredient"]["id"])],
     )
     vendor_id = uuid.UUID(store["vendor"]["id"])
     for name, product in (("tinned figs", True), ("garden hose 50 ft", False)):
@@ -422,12 +425,13 @@ async def test_each_reason_an_offer_matters_and_the_rest_are_counted(
         "Pearl Barley 2 lb",
         "Tahini, 16 oz jar",
         "Spanish Saffron",
+        "Hulled Millet",
         "Garden Hose 50 ft",
         "Motor Oil 5 qt",
     ]
     r = await report(helper, request["id"], candidates=[candidate(n) for n in names])
     assert r.status_code == 200, r.text
-    assert (r.json()["offered"], r.json()["relevant"]) == (7, 5)
+    assert (r.json()["offered"], r.json()["relevant"]) == (8, 6)
     rows = await owner_conn.fetch("SELECT name_as_printed, relevance FROM flyer_offer")
     assert {row["name_as_printed"]: row["relevance"] for row in rows} == {
         "Tinned Figs": "alias",
@@ -435,6 +439,7 @@ async def test_each_reason_an_offer_matters_and_the_rest_are_counted(
         "Pearl Barley 2 lb": "recipe",
         "Tahini, 16 oz jar": "list",
         "Spanish Saffron": "watched",
+        "Hulled Millet": "watched",
     }
 
 

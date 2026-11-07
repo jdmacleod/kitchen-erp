@@ -24,6 +24,7 @@ The feature is best-effort. Retailer websites are not stable APIs, and adapters 
 - **F10.** Relevance is derived from the household's own data, plus a `watch` flag on ingredients. One threshold in configuration; no per-kitchen settings table.
 - **F11.** There is no fixed quiet window. On publication day Kitchen ERP queues a source's request once no receipt is being read and, for image sources, once the model server answers. A sleeping model server delays the run; it never fails it.
 - **F12 (2026-11-06).** The hosted circular proves the foundation in 2U. The 2U probe found that the chain first planned for it publishes its items' names, page boxes and codes as data but prints its prices only on the page, so it joins the image class in 2W as a region source.
+- **F13 (2026-11-07).** Only offers for watched ingredients ask a person. The first live week found 44–56% of each store's offers relevant, against the 5–15% expected, because a household's purchases and recipes cover most of a circular. Every relevant offer is still kept and resolved, and an exact alias still links one automatically. A watched match without an alias waits in the inbox. Any other suggestion waits quietly under "Other offers" in the offer queue: a person may match it when they like, and the alias they teach links next week's offer automatically. An ingredient is watched from its own page.
 
 ## How circulars are published
 
@@ -153,22 +154,22 @@ Kitchen ERP never sees the raw payload. The helper keeps it for twelve months (h
 A candidate is relevant to a kitchen when one of these holds, checked in order:
 
 1. Its normalized name matches a `flyer_alias` for the vendor that isn't `ignore`.
-2. It and a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365), or that product's ingredient, appear within one another: pg_trgm strict word similarity (whole words only) in either direction of at least `FLYER_RELEVANCE_THRESHOLD` (default 0.6). A name never matches inside a longer word: "salt" is not in "salad". "Fuji Apples 3 lb Bag" holds "apple", and "Rolled Oats" sits inside a product name that adds a brand and a size.
-3. Likewise for an ingredient a recipe calls for.
-4. Likewise for an item on the kitchen's open shopping list.
-5. Likewise for a watched ingredient.
+2. It and a watched ingredient appear within one another, as in 3.
+3. It and a product bought at one of the kitchen's locations in the last `FLYER_RELEVANCE_DAYS` (default 365), or that product's ingredient, appear within one another: pg_trgm strict word similarity (whole words only) in either direction of at least `FLYER_RELEVANCE_THRESHOLD` (default 0.6). A name never matches inside a longer word: "salt" is not in "salad". "Fuji Apples 3 lb Bag" holds "apple", and "Rolled Oats" sits inside a product name that adds a brand and a size.
+4. Likewise for an ingredient a recipe calls for.
+5. Likewise for an item on the kitchen's open shopping list.
 
-A learned name marked `ignore` makes the offer irrelevant whatever else matches. The first that holds is recorded in `relevance`. Everything else is counted in `offered_count` and dropped, so "312 offers, 23 relevant" stays visible. A kitchen is the source location's `home_base_id`.
+A learned name marked `ignore` makes the offer irrelevant whatever else matches. The first that holds is recorded in `relevance`, so a watched ingredient that was also bought is recorded as `watched` (F13). Everything else is counted in `offered_count` and dropped, so "312 offers, 23 relevant" stays visible. A kitchen is the source location's `home_base_id`.
 
 ## Resolution
 
 The receipt resolver's ladder (`04`, 2B) is split so that a name and a vendor can be resolved without a receipt line, and offers use it with their own aliases:
 
 - **Exact flyer alias.** The offer links automatically (`status = auto`), or is rejected when the alias says `ignore`.
-- **Fuzzy alias, model ranking over a shortlist, or similar names.** These become `suggested`, with the suggestions stored, and the offer waits in the inbox.
+- **Fuzzy alias, model ranking over a shortlist, or similar names.** These become `suggested`, with the suggestions stored. A `watched` offer waits in the inbox; any other waits under "Other offers" (F13).
 - **A person** confirms a suggestion, chooses or creates a product, or rejects the offer. Each choice upserts `flyer_alias`, as receipt confirmations upsert `receipt_alias`.
 
-A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias, until it is turned off (2W). An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
+A source with `require_confirmation` sends every offer to the inbox, even one with an exact alias and whether or not it is watched, until it is turned off (2W): its reading isn't trusted yet, so it overrides F13. An offer with no size, linked to a product with one, takes the product's size for unit prices, and `size_inherited` is set.
 
 ## Read models
 
@@ -183,7 +184,7 @@ No price view, receipt resolution or default cost reads `flyer_offer` (F4). The 
 
 ## Inbox
 
-- **`flyer_offers`:** one row, "12 flyer offers to match", while any are `suggested`. Opens the offer queue: each offer shows its printed name, price and basis, store, week and suggestions. Image and region sources also show the page crop (2W).
+- **`flyer_offers`:** one row, "12 flyer offers to match", while any `watched` offers, or any offers from a source with `require_confirmation`, are `suggested` and still valid. Opens the offer queue at its watched offers. The queue's "Other offers" holds the rest of the suggested offers that are still valid, and never counts toward the row (F13). In the queue, each offer shows its printed name, price and basis, store, week and suggestions. Image and region sources also show the page crop (2W).
 - **`flyer_sources`:** one row per source whose current ad week ended without a read: a `failed` or `not_allowed` run, or a refused report, on its last attempt. The row carries the reason; for a refused report it says "the adapter needs attention".
 
 ## Where it shows (2X)
@@ -215,8 +216,9 @@ Real chains, banners, store ids and kitchen locations exist only in the private 
 - **U3.** The worker queues one `flyer` request per due source and none while a receipt is being read. A second check in the same ad week queues nothing. Three failed attempts in a week stop the retries.
 - **U4.** A valid report creates one `flyer_run` and one `flyer_offer` per relevant candidate, records `offered_count` and `relevant_count`, and answers with each candidate's offer id or null. An invalid report is refused with 422, stores no run or offer, and answers its request as a failed attempt recorded for the inbox.
 - **U5.** A report of an archived payload re-normalized by a newer adapter version creates a new run, and the read models then use it.
-- **U6.** Relevance keeps a candidate matching a purchase, recipe, list item, watched ingredient or flyer alias, records which one, and drops the rest.
-- **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested` and appears in the inbox's `flyer_offers` row. Confirming one upserts the alias, and the next week's same name links automatically.
+- **U6.** Relevance keeps a candidate matching a flyer alias, watched ingredient, purchase, recipe or list item, records the first that holds in that order, and drops the rest.
+- **U7.** An exact flyer alias links an offer automatically. Anything else becomes `suggested`: a `watched` offer, or any offer from a source with `require_confirmation`, is counted in the inbox's `flyer_offers` row, any other only under the queue's "Other offers" (F13). Confirming either upserts the alias, and the next week's same name links automatically.
+- **U17.** An ingredient's page has a "Watch for offers" switch that sets `ingredient.watch`; the next week's offers for it count in the inbox.
 - **U8.** A `failed` or `not_allowed` run, or a refused report, on a week's last attempt gives one `flyer_sources` inbox row per source, with its reason, never one per missing offer.
 - **U9.** `current_offers` returns linked offers valid today for the kitchen's locations. An offer past `valid_to` is gone, and at a boundary the later `valid_from` wins.
 - **U10.** No price view, receipt resolution, recipe cost or plan changes when offers are reported.
@@ -264,7 +266,7 @@ Updated with every pull request, so the work can stop and resume at any line.
 - [x] Step 0: this spec (kitchen-erp #481), the roster and adapter notes (helper #28: `docs/FLYERS.md`, SPEC §13). Approved 2026-11-05
 - [x] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10). Migration 0066, `kerp flyers import`
 - [x] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper #29; U11–U13, U15). The owner allowed the banner's public token (2026-11-06); a sample week read every priced item. One grocery group's banners are seeded; the other group's sites don't answer a plain request, so their ids are still open
-- [ ] 2U-3: shared name resolver, flyer aliases, offer queue and inbox rows (U7, U8)
+- [ ] 2U-3: shared name resolver, flyer aliases, offer queue with "Other offers", inbox rows, "Watch for offers" (U7, U8, U17; F13). The other grocery group's banners were read in a browser and seeded 2026-11-07; every seeded store read its week
 - [ ] 2U-4: read models and API, vendor-location panel, size inheritance (U9, U16); live count (U14)
 - [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
