@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
+import { formatRelative } from "../lib/format";
 import {
   adminUser,
   errorResponse,
@@ -123,7 +124,10 @@ describe("the recipes list (UI-7.3, UI-7.4)", () => {
     expect(stew).toHaveTextContent("$31.96");
     expect(stew).toHaveTextContent("8 of 10 lines priced");
     expect(within(stew).getByText("8 of 10 lines priced")).toHaveClass("text-amber-900");
-    expect(within(stew).getByText(/ago|just now/)).toBeInTheDocument();
+    // Relative while recent, a date after a month: whichever today gives.
+    expect(
+      within(stew).getByText(formatRelative(recipeList[0].last_indexed_at)),
+    ).toBeInTheDocument();
     expect(within(stew).queryByText(/provisional/)).not.toBeInTheDocument();
   });
 
