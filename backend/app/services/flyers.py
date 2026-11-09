@@ -207,7 +207,10 @@ async def queue_flyer_runs(db: AsyncSession, now: datetime | None = None) -> int
     for request_id, week, weekday in (await db.execute(text(_PAST_OPEN))).all():
         if week < ad_week_start(weekday, on).isoformat():
             await db.execute(
-                update(LookupRequest).where(LookupRequest.id == request_id).values(status="closed")
+                # Only while still open: a report may have answered it since the select.
+                update(LookupRequest)
+                .where(LookupRequest.id == request_id, LookupRequest.status == "open")
+                .values(status="closed")
             )
     queued = 0
     for source_id, weekday in (await db.execute(text(_DUE), {"now": now})).all():
