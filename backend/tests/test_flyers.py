@@ -235,6 +235,22 @@ async def test_two_failed_weeks_pause_a_source_and_hide_it(store, helper, owner_
     assert await requests(helper) == []
 
 
+async def test_a_week_the_helper_never_answered_does_not_stop_the_next(
+    store,
+    helper,  # noqa: F811
+    owner_conn,
+):
+    """V4: a request the helper keeps failing on, or never reached, is closed when its
+    week is over, and the source is asked about the new week."""
+    assert await queue() == 1
+    assert await queue(WEDNESDAY + timedelta(days=6)) == 0  # still its week
+    assert await queue(WEDNESDAY + timedelta(days=7)) == 1
+    rows = await owner_conn.fetch(
+        "SELECT value, status FROM lookup_request WHERE kind = 'flyer' ORDER BY value"
+    )
+    assert [tuple(r) for r in rows] == [("2026-11-04", "closed"), ("2026-11-11", "open")]
+
+
 async def test_a_turned_off_source_is_not_queued(store, helper, owner_conn):  # noqa: F811
     await owner_conn.execute("UPDATE ad_source SET enabled = false")
     assert await queue() == 0

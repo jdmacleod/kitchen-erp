@@ -21,7 +21,7 @@ from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -172,6 +172,14 @@ _DUE = """
       )
 """
 
+# An open request for a week before its source's current one: the helper never
+# answered it. Left open, it would keep the source from being asked again (V4).
+_PAST_OPEN = """
+    SELECT r.id, r.value, s.publish_weekday FROM lookup_request r
+    JOIN ad_source s ON s.id = r.ad_source_id
+    WHERE r.kind = 'flyer' AND r.status = 'open'
+"""
+
 _WEEK = """
     SELECT count(DISTINCT r.id) AS attempts,
            max(r.created_at) AS last_at,
@@ -188,12 +196,22 @@ async def queue_flyer_runs(db: AsyncSession, now: datetime | None = None) -> int
     Only while a products helper token exists and no receipt is being read. A
     week is settled by a run that read it (``ok``, ``empty``) or was refused by
     the site (``not_allowed``); otherwise it gets ``ATTEMPTS_PER_WEEK`` attempts,
-    ``RETRY_AFTER`` apart. Returns how many were queued.
+    ``RETRY_AFTER`` apart. A request left unanswered past its week is closed, so
+    one stuck request never stops its source being asked again. Returns how many
+    were queued.
     """
     now = now or datetime.now(UTC)
     if not await helper_configured(db) or await reading_receipts(db):
         return 0
     on = today(now)
+    for request_id, week, weekday in (await db.execute(text(_PAST_OPEN))).all():
+        if week < ad_week_start(weekday, on).isoformat():
+            await db.execute(
+                # Only while still open: a report may have answered it since the select.
+                update(LookupRequest)
+                .where(LookupRequest.id == request_id, LookupRequest.status == "open")
+                .values(status="closed")
+            )
     queued = 0
     for source_id, weekday in (await db.execute(text(_DUE), {"now": now})).all():
         week = ad_week_start(weekday, on).isoformat()

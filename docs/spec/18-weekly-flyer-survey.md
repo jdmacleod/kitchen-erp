@@ -272,11 +272,14 @@ Updated with every pull request, so the work can stop and resume at any line.
 - [x] 2U-4a: read models and API, size inheritance (U9, U16). `GET /flyer-offers/current?home_base_id=` lists the kitchen's linked offers valid that day with their price per canonical unit; `GET /products/{id}/flyer-offers` is a product's offer history. A size is marked inherited when an offer links, by an alias or a person
 - [x] 2U-4b: the vendor location's Circular card and its API (UI-9.5); live count (U14). `GET`, `PUT` and `PATCH /vendor-locations/{id}/circular` and `POST …/circular/check`; "Check now" lifts a pause and reads a week again even when it was read. The live count was taken on 2026-11-08 for one store per kitchen and passed; it is recorded in the private helper
 - [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)
+  - [x] V1–V3 probes and adapters (helper #32, 2026-11-09). The storefront adapter reads one store's deals and archives the store it read for; its hand count read every item. One chain listed as itemized is a hosted circular, read by the 2U adapter with 97% recall. One chain's own ad is disallowed by robots.txt, and its only other source is a consumer aggregator, so it waits on a ruling
+  - [x] V4: a request left unanswered past its week is closed, so it never stops its source being queued again (#494)
+  - [ ] Seed the new sources in the household, then V5: four consecutive weekly offer points per linked product at every enabled source
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
 - [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)
 
 ## Open questions
 
 - Can the first itemized chain's ad be read from its own data request, without a browser? Yes, but its prices are printed only on the page (2U probe, 2026-11-05), so it moved to 2W as a region source (F12).
-- PDF-first or HTML-first, for chains that publish both? (Answered in 2V.)
+- PDF-first or HTML-first, for chains that publish both? Neither: the one chain that publishes both serves its PDF as page images, and its item data comes from the hosted circular (2V, 2026-11-09).
 - Is a size lookup worth adding for hosted-circular offers? Decide after measuring how often `size_inherited` is set, and how often it's wrong.
