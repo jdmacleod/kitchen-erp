@@ -43,6 +43,8 @@ function routes(
     "GET /home-bases": () => jsonResponse(200, { items: [homeBase] }),
     [`GET /vendors/${chainVendorId}`]: () => jsonResponse(200, chainVendor),
     "GET /vendor-locations": () => jsonResponse(200, { items: [location()] }),
+    [`GET /vendor-locations/${chainLocation.id}/circular`]: () =>
+      jsonResponse(200, { source: null, runs: [], checking: false }),
     ...extra,
   };
 }
