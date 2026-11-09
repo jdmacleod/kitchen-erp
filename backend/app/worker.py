@@ -27,6 +27,7 @@ from app.core.db import get_sessionmaker
 from app.core.logging import get_logger
 from app.ingest.stages import RUNNABLE_STAGES, run_stage
 from app.models import IngestJob
+from app.schemas.recipes import ScanOut
 from app.services import (
     catalog_cleanup,
     flyer_offers,
@@ -101,6 +102,12 @@ async def run_once(db: AsyncSession, *, locked_by: str | None = None, **kwargs: 
 
 # How many of a failure's innermost frames the log names.
 ERROR_FRAMES = 4
+
+
+def scan_log_fields(result: ScanOut) -> dict[str, Any]:
+    """A recipe scan's counts for the log, under one key: ``created`` and others
+    are LogRecord attributes, which ``extra`` may not overwrite."""
+    return {"recipes": result.model_dump(mode="json")}
 
 
 def loop_error_fields(exc: BaseException) -> dict[str, str]:
@@ -219,7 +226,7 @@ async def run(poll_seconds: float = 5.0) -> None:  # noqa: C901
                 async with sessionmaker() as db:
                     result = await recipes.scan(db)
                 if result.mounted and result.changed:
-                    log.info("recipes scanned", extra=result.model_dump(mode="json"))
+                    log.info("recipes scanned", extra=scan_log_fields(result))
             except Exception as exc:
                 log.error("recipe scan error", extra=loop_error_fields(exc))
         # Idle: keep Tidy the catalog's USDA guesses for the names that need them.
