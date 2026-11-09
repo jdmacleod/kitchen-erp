@@ -268,9 +268,23 @@ async def _units(db: AsyncSession, codes: set[str]) -> set[str]:
 
 
 async def _weeks_failed(db: AsyncSession, request: LookupRequest, status: str) -> bool:
-    """Whether this failed report ends its ad week: refused by the site, or the last try."""
+    """Whether this failed report ends its ad week: refused by the site, or the last try.
+
+    A week ends failed once. "Check now" can ask again after that (flyer_sources), and
+    those tries never count as another failed week."""
     if status == "not_allowed":
-        return True
+        refused_before = await db.scalar(
+            select(func.count())
+            .select_from(FlyerRun)
+            .join(LookupRequest, LookupRequest.id == FlyerRun.lookup_request_id)
+            .where(
+                LookupRequest.ad_source_id == request.ad_source_id,
+                LookupRequest.value == request.value,
+                LookupRequest.id != request.id,
+                FlyerRun.status == "not_allowed",
+            )
+        )
+        return not refused_before
     attempts = await db.scalar(
         select(func.count())
         .select_from(LookupRequest)
@@ -280,7 +294,7 @@ async def _weeks_failed(db: AsyncSession, request: LookupRequest, status: str) -
             LookupRequest.value == request.value,
         )
     )
-    return (attempts or 0) >= ATTEMPTS_PER_WEEK
+    return attempts == ATTEMPTS_PER_WEEK
 
 
 async def _note_outcome(

@@ -50,6 +50,8 @@ export type CircularPatch = Partial<
   Pick<CircularSource, "enabled" | "require_confirmation" | "publish_weekday">
 >;
 
+const CHECKING_POLL_MS = 15_000;
+
 const circularKey = (id: string) => ["circular", id] as const;
 const path = (id: string) => `/vendor-locations/${encodeURIComponent(id)}/circular`;
 
@@ -57,6 +59,8 @@ export function useCircular(locationId: string) {
   return useQuery({
     queryKey: circularKey(locationId),
     queryFn: () => api<Circular>(path(locationId)),
+    // While a read waits for the helper, look again until it has answered.
+    refetchInterval: (query) => (query.state.data?.checking ? CHECKING_POLL_MS : false),
   });
 }
 

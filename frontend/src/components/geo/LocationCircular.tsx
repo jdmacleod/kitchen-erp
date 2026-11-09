@@ -110,7 +110,7 @@ function CircularDetails({
         {mechanismLabel(source.mechanism)} · {source.adapter}
         {ids} · new each {WEEKDAYS[source.publish_weekday - 1]}
       </p>
-      {source.paused_until ? (
+      {source.paused_until && new Date(source.paused_until) > new Date() ? (
         <p className="text-xs text-amber-800 dark:text-amber-300">
           Paused until {formatDate(source.paused_until)}: two weeks in a row couldn't be read.
         </p>

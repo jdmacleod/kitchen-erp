@@ -180,3 +180,22 @@ describe("a location's circular", () => {
     );
   });
 });
+
+describe("a paused circular", () => {
+  it("says a circular is paused only until its pause is over", async () => {
+    const week = 7 * 24 * 60 * 60 * 1000;
+    let pausedUntil = new Date(Date.now() + week).toISOString();
+    mockApi(routes(() => ({ ...read, source: { ...source, paused_until: pausedUntil } })));
+    const { unmount } = renderApp(`/catalog/vendors/${chainVendorId}`);
+    expect(
+      await within(await card()).findByText(/two weeks in a row couldn't be read/),
+    ).toBeInTheDocument();
+    unmount();
+
+    pausedUntil = new Date(Date.now() - week).toISOString();
+    renderApp(`/catalog/vendors/${chainVendorId}`);
+    const section = await card();
+    await within(section).findByRole("switch", { name: "Enabled" });
+    expect(within(section).queryByText(/two weeks in a row/)).not.toBeInTheDocument();
+  });
+});

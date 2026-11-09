@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
@@ -125,5 +126,13 @@ async def check_now(
             created_at=now,
         )
     )
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        # Someone else, or the weekly queue, asked for a read a moment earlier: the
+        # index allows one open request per source.
+        await db.rollback()
+        if "uq_lookup_request_open_ad_source" not in str(exc.orig):
+            raise
+        raise ApiError(409, "already_checking", "A read of it is already waiting.") from exc
     return await circular(db, location_id)

@@ -7,7 +7,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from app.services import flyers
+from app.services import flyer_sources, flyers
 from tests.pricebook_helpers import make_location
 from tests.test_flyers import (
     candidate,
@@ -146,3 +146,40 @@ async def test_turning_a_circular_off_stops_the_weekly_queue(
     assert date.fromisoformat((await requests(helper))[0]["flyer"]["ad_week"]) == THURSDAY - (
         timedelta(days=1)
     )
+
+
+async def test_reads_asked_again_in_a_failed_week_count_it_once(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    for _ in range(5):
+        r = await admin_client.post(url(store, "/check"))
+        assert r.status_code == 200, r.text
+        [request] = await requests(helper)
+        r = await report(helper, request["id"], status="failed", reason="The site timed out.")
+        assert r.status_code == 200, r.text
+    # One week ended failed, however often it was asked for: no pause yet.
+    row = await owner_conn.fetchrow("SELECT failures, paused_until FROM ad_source")
+    assert tuple(row) == (1, None)
+
+
+async def test_a_check_racing_another_is_told_a_read_is_waiting(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    monkeypatch,
+):
+    """The weekly queue asks between the card's look and its insert."""
+    looked = flyer_sources.circular
+
+    async def raced(db, location_id):
+        seen = await looked(db, location_id)
+        if not seen["checking"]:
+            await queue()
+        return seen
+
+    monkeypatch.setattr(flyer_sources, "circular", raced)
+    r = await admin_client.post(url(store, "/check"))
+    assert (r.status_code, r.json()["error"]["code"]) == (409, "already_checking")
