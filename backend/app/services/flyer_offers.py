@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import ApiError
 from app.models import FlyerAlias, FlyerOffer, FlyerOfferLink, Product
-from app.services import resolution
+from app.services import flyer_reads, resolution
 
 # The offers that still matter: from the newest run of each source's ad week, still
 # valid. A replay's run supersedes the one it re-read (U5).
@@ -118,6 +118,10 @@ async def resolve_offers(
                 suggestions=suggestions,
             )
         )
+    # An offer printed without a size reads by its product's (U16).
+    await flyer_reads.inherit_sizes(
+        db, [o.id for o in offers if (a := aliases.get(o.name_norm)) and a.product_id]
+    )
 
 
 async def _suggest(
@@ -354,6 +358,8 @@ async def decide(
         link.resolution = "person"
         link.decided_by = user_id
         link.decided_at = now
+    if not ignore:
+        await flyer_reads.inherit_sizes(db, [link.flyer_offer_id for link in links])
     await upsert_flyer_alias(db, vendor_id, name_norm, None if ignore else product_id)
     await db.commit()
     return len(links)
