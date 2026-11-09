@@ -80,7 +80,9 @@ def drop_repeated_tail(transcript: str, run: int = REPEATED_RUN, copied: int = C
     (where its last row may be cut off mid-row) and ``run`` rows long. Rows just
     before it that were printed earlier too go with it: the model's first pass
     ended there and the copy began a row or two sooner than the run shows.
-    Blank rows are not compared.
+    Rows alone cannot tell that from a sale whose last row before the copy was
+    also bought earlier, with no total or footer after it; that row is lost, and
+    the reading check shows the gap. Blank rows are not compared.
     """
     lines = transcript.splitlines()
     rows = [(index, line.strip()) for index, line in enumerate(lines) if line.strip()]

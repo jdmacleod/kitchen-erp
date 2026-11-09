@@ -96,5 +96,19 @@ describe("rows not read", () => {
     expect(rowAmount("KESTREL JAM 4,25")).toBe("4.25");
     expect(rowAmount("MEMBER SAVINGS 1.00-")).toBeNull();
     expect(rowAmount("FERNLEAF BASIL")).toBeNull();
+    expect(rowAmount("RETURNED PLUMS -2.50")).toBeNull();
+    expect(rowAmount("HARBOR GRILL 1,234.56")).toBe("1234.56");
+  });
+
+  it("offers a row printed twice again when only one was added", async () => {
+    const line = { ...receiptPurchase.lines[0], raw_text: "FERNLEAF BASIL 0.89 F" };
+    render({
+      ...flagged,
+      lines: [...receiptPurchase.lines, { ...line, id: "added-line", seq: 99 }],
+      printed_checks: { unread_rows: ["FERNLEAF BASIL 0.89 F", "FERNLEAF BASIL 0.89 F"] },
+    });
+    await screen.findByTestId("review");
+    expect(screen.getAllByText("Added")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Add it at $0.89" })).toBeInTheDocument();
   });
 });

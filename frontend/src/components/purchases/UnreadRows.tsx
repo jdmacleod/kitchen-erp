@@ -2,12 +2,17 @@ import type { LineAddInput, Purchase, PurchaseLine } from "../../api/purchases";
 import { formatMoney } from "../../lib/decimal";
 import { Alert, Button } from "../ui";
 
-/** The last amount a row prints ("FERNLEAF BASIL $0.89" gives 0.89), unless it is negative. */
+/**
+ * The last amount a row prints ("FERNLEAF BASIL $0.89" gives 0.89, "1,234.56"
+ * gives 1234.56), unless it is negative ("-2.50" or "2.50-").
+ */
 export function rowAmount(row: string): string | null {
-  const amounts = [...row.matchAll(/(\d+)[.,](\d{2})(?!\d)(-?)/g)];
+  const amounts = [
+    ...row.matchAll(/(-?)\$?(?<![\d.,])(\d{1,3}(?:,\d{3})+|\d+)[.,](\d{2})(?![\d,])(-?)/g),
+  ];
   const last = amounts.at(-1);
-  if (!last || last[3] === "-") return null;
-  return `${last[1]}.${last[2]}`;
+  if (!last || last[1] === "-" || last[4] === "-") return null;
+  return `${last[2].replaceAll(",", "")}.${last[3]}`;
 }
 
 interface UnreadRowsProps {
@@ -32,7 +37,15 @@ export function UnreadRows({ purchase, lines, busy, onAdd }: UnreadRowsProps) {
       </Alert>
     );
   }
-  const added = new Set(lines.map((l) => l.raw_text));
+  // Each saved line answers one unread row, so a row printed twice and added once
+  // still offers the second.
+  const saved = new Map<string | null, number>();
+  for (const line of lines) saved.set(line.raw_text, (saved.get(line.raw_text) ?? 0) + 1);
+  const added = rows.map((row) => {
+    const left = saved.get(row) ?? 0;
+    if (left > 0) saved.set(row, left - 1);
+    return left > 0;
+  });
   return (
     <Alert tone="info">
       {rows.length === 1
@@ -44,7 +57,7 @@ export function UnreadRows({ purchase, lines, busy, onAdd }: UnreadRowsProps) {
           return (
             <li key={i} className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs">{row}</span>
-              {added.has(row) ? (
+              {added[i] ? (
                 <span className="text-xs">Added</span>
               ) : amount ? (
                 <Button

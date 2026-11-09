@@ -88,7 +88,7 @@ def suggest(text: str | None, vocabulary: frozenset[str]) -> list[dict[str, str]
     out: list[dict[str, str]] = []
     for word in _WORD.findall(text or ""):
         key = word.casefold()
-        if len(key) < _MIN_LEN or _known(key, vocabulary | RECEIPT_WORDS):
+        if len(key) < _MIN_LEN or _known(key, vocabulary) or _known(key, RECEIPT_WORDS):
             continue
         near = _one_edit(key) & vocabulary
         if len(near) == 1:
