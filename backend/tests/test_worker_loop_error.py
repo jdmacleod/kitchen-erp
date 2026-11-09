@@ -35,3 +35,30 @@ def test_the_worker_installs_the_model_ranker(monkeypatch):
         assert resolution._ranker is not None
     finally:
         resolution.set_ranker(None)
+
+
+# Regression: a scan that changed something logged its counts as top-level extras, and
+# ``created`` is a LogRecord attribute, so the log call itself raised (KeyError).
+def test_a_recipe_scan_logs_its_counts():
+    import logging
+    from datetime import UTC, datetime
+
+    from app.core.logging import JsonFormatter
+    from app.schemas.recipes import ScanOut
+    from app.worker import scan_log_fields
+
+    counts = dict.fromkeys(
+        ("files", "settling", "created", "updated", "moved", "missing", "parse_errors"), 1
+    )
+    result = ScanOut(mounted=True, scanned_at=datetime.now(UTC), proposals=0, **counts)
+    record = logging.getLogger("app.worker").makeRecord(
+        "app.worker",
+        logging.INFO,
+        __file__,
+        1,
+        "recipes scanned",
+        (),
+        None,
+        extra=scan_log_fields(result),
+    )
+    assert '"created": 1' in JsonFormatter().format(record)
