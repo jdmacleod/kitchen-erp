@@ -228,7 +228,7 @@ async def _receipts(db: AsyncSession) -> list[InboxItem]:
                 created_at=r["created_at"],
                 # "Adds up" or "Check the lines" beside it, before it is opened.
                 trust=check.trust if check.trust != "couldnt_read" else None,
-                gap=purchases.reading_gap(check, r["total"]),
+                gap=purchases.reading_gap(check),
             )
         )
     return items

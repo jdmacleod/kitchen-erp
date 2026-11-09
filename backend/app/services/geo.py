@@ -636,7 +636,7 @@ async def list_locations(
         ).label("distance_m")
         stmt = stmt.add_columns(distance).order_by(distance, VendorLocation.name)
     else:
-        stmt = stmt.order_by(VendorLocation.name)
+        stmt = stmt.order_by(func.lower(Vendor.name), func.lower(VendorLocation.name))
     result = await db.execute(stmt)
     rows: list[LocationRow] = []
     at = to_household(open_at) if open_at is not None else None

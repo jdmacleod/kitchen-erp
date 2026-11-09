@@ -23,6 +23,37 @@ _MIN_LEN = 5
 _WORD = re.compile(r"[A-Za-z]+")
 _LETTERS = string.ascii_lowercase
 
+# Words a till prints about prices and payment, which a line's text can carry
+# with its item ("Regular Price 2.10, You saved 0.60"). They are not food, so the
+# catalog never has them and a food one edit away ("prime", "shaved") would be
+# offered for them.
+RECEIPT_WORDS = frozenset(
+    {
+        "balance",
+        "bonus",
+        "change",
+        "coupon",
+        "credit",
+        "deposit",
+        "discount",
+        "items",
+        "manual",
+        "member",
+        "points",
+        "price",
+        "promo",
+        "quantity",
+        "redemption",
+        "regular",
+        "reward",
+        "saved",
+        "saving",
+        "subtotal",
+        "total",
+        "weight",
+    }
+)
+
 
 def words(texts: Iterable[str | None]) -> frozenset[str]:
     """Every word of the texts, casefolded, long enough to correct towards."""
@@ -57,7 +88,7 @@ def suggest(text: str | None, vocabulary: frozenset[str]) -> list[dict[str, str]
     out: list[dict[str, str]] = []
     for word in _WORD.findall(text or ""):
         key = word.casefold()
-        if len(key) < _MIN_LEN or _known(key, vocabulary):
+        if len(key) < _MIN_LEN or _known(key, vocabulary) or _known(key, RECEIPT_WORDS):
             continue
         near = _one_edit(key) & vocabulary
         if len(near) == 1:

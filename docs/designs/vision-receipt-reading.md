@@ -54,7 +54,7 @@ Mode: Builder
 
 - **The two models don't share the GPU:** `qwen2.5:14b` takes 12.2 GB at 8k context and evicts glm-ocr, so each receipt swaps twice (a few seconds).
 - **Ollama 0.34's repeat-limit abort** is a 500 ("token repeat limit reached"), or an error inside a stream. The client treats it as out of room, and `transcribe()` streams so it keeps the rows before the abort (#193).
-- **glm-ocr loops at the end** of most receipts until its 4,096-token cap; `drop_repeated_tail` cuts the loop. The calls are recorded as `out_of_room`, which is expected.
+- **glm-ocr loops at the end** of most receipts until its 4,096-token cap, copying the receipt again from an earlier row; `drop_repeated_tail` cuts the copy where it starts and keeps rows the receipt prints twice. The calls are recorded as `out_of_room`, which is expected.
 - **Line passes in `ingest/structure.py`:** #207 added the savings-printed-negative, points and payment-row passes; #217 added continuation rows (one item over several rows). Spec 04 §2C lists them.
 - **Outside check:** 20 public, MIT-licensed photographed receipts (`Endle/beanbeaver-core`) scored much lower (30% at best). Their layouts are Canadian. They were loaded only into the throwaway e2e stack, never committed, and are no basis for decisions.
 - **`LLM_THINK`** controls whether the text model reasons (#198). `qwen2.5:14b` doesn't reason; `gemma4:12b` needs `false`.

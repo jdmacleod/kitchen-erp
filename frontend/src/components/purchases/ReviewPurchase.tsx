@@ -79,6 +79,7 @@ import { RememberCode } from "./RememberCode";
 import { RemovedLinesCaption } from "./RemovePurchase";
 import { RereadLines } from "./RereadLines";
 import { LineActions } from "./ReviewLineActions";
+import { UnreadRows } from "./UnreadRows";
 import { WhyOff } from "./WhyOff";
 
 const acceptedKindOf: Record<Suggestion["kind"], AcceptedKind> = {
@@ -360,7 +361,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         pendingFocus.current = `review-edit-${current.id}-qty`;
         return;
       case "c":
-        if (busy) return;
+        if (busy || lines.length === 0) return;
         event.preventDefault();
         setConfirming(true);
         return;
@@ -448,8 +449,6 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
   const linesPartial = purchase.flags.includes("lines_partial");
   // Rows the scan prints like purchases that no line accounts for (issue 181).
   const rowsNotRead = purchase.flags.includes("rows_not_read") && purchase.status !== "committed";
-  // The rows themselves, when the reading kept them (older readings did not).
-  const unreadRows = purchase.printed_checks?.unread_rows ?? [];
   // Lines read without their decimal point, when putting it back makes the lines
   // match the printed total (#59). Offered, never applied without a click.
   const decimalSuspects = purchase.flags.includes("decimals_restore_total")
@@ -544,26 +543,12 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
         </Alert>
       ) : null}
       {rowsNotRead && !linesPartial ? (
-        <Alert tone="info">
-          {unreadRows.length > 0 ? (
-            <>
-              {unreadRows.length === 1
-                ? "This row on the receipt prints an amount but was not read as a line:"
-                : "These rows on the receipt print an amount but were not read as lines:"}
-              <ul className="my-1 list-disc pl-5 font-mono text-xs">
-                {unreadRows.map((row, i) => (
-                  <li key={i}>{row}</li>
-                ))}
-              </ul>
-              Check them against the receipt image and add any that are purchases with Add a line.
-            </>
-          ) : (
-            <>
-              Some rows on the receipt print an amount but were not read as lines. Compare the lines
-              with the receipt image and add any that are missing.
-            </>
-          )}
-        </Alert>
+        <UnreadRows
+          purchase={purchase}
+          lines={lines}
+          busy={busy}
+          onAdd={(input) => addLine.mutate(input)}
+        />
       ) : null}
       {dateMissing ? (
         <Alert tone="info">
@@ -645,7 +630,9 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                 </div>
                 {shown.length === 0 ? (
                   <p className={`py-4 ${hintClass}`}>
-                    Nothing here needs you. Every line is matched or ignored.
+                    {lines.length === 0
+                      ? "No lines were read from this receipt. Add each one from the receipt image with Add a line, or try Re-read lines."
+                      : "Nothing here needs you. Every line is matched or ignored."}
                   </p>
                 ) : wide ? (
                   <div className="overflow-x-auto">
@@ -686,7 +673,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
                 )}
                 {running ? <LinesTotal purchase={purchase} /> : null}
                 <RemovedLinesCaption purchase={purchase} />
-                <Disclosure summary="Add a line" className="mt-3">
+                <Disclosure summary="Add a line" className="mt-3" defaultOpen={lines.length === 0}>
                   <AddLineForm
                     itemLines={itemLines}
                     busy={busy}
@@ -701,7 +688,7 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
           <div className="sticky bottom-[calc(6rem+env(safe-area-inset-bottom))] z-10 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50/95 p-3 shadow-card backdrop-blur lg:bottom-4 dark:border-neutral-800 dark:bg-neutral-950/95">
             <Button
               onClick={() => setConfirming(true)}
-              disabled={busy || correcting}
+              disabled={busy || correcting || lines.length === 0}
               className="min-h-12 flex-1 text-base lg:min-h-10 lg:flex-none lg:text-sm"
             >
               Commit purchase
@@ -709,9 +696,11 @@ export function ReviewPurchase({ purchase }: { purchase: Purchase }) {
             <span className={hintClass}>
               {correcting
                 ? "Save or cancel your corrections before committing."
-                : unresolved > 0
-                  ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.`
-                  : "Every item line has a product."}
+                : lines.length === 0
+                  ? "Add the receipt's lines before committing."
+                  : unresolved > 0
+                    ? `${unresolved} unidentified ${unresolved === 1 ? "line" : "lines"} will go to the to-identify queue.`
+                    : "Every item line has a product."}
             </span>
           </div>
         </div>

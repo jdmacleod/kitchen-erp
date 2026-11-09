@@ -249,16 +249,82 @@ async def test_an_unreachable_model_server_waits_instead_of_falling_back(
 # --- 96: a transcript that runs away --------------------------------------------------
 
 
+def _cut_off(text: str) -> Callable[[], httpx.Response]:
+    """A reply that ran to its output cap, as glm-ocr's do."""
+
+    def reply() -> httpx.Response:
+        return _stream(
+            {"message": {"content": text}, "done": False},
+            {"message": {"content": ""}, "done": True, "done_reason": "length"},
+        )
+
+    return reply
+
+
 async def test_a_looping_transcript_is_cut_after_its_first_appearance(
     receipts_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     loop = "PLUM JAM 4.25\nRYE LOAF 3.50\nTOTAL 7.75"
     transport = TranscriberTransport(
-        RecordedTransport({}), _transcript(f"HARBOR MARKET\n{loop}\n{loop}\n{loop}")
+        RecordedTransport({}), _cut_off(f"HARBOR MARKET\n{loop}\n{loop}\n{loop}")
     )
     monkeypatch.setattr(llm, "http_transport", transport)
     text = await _transcribe(tmp_path)
     assert text == f"HARBOR MARKET\n{loop}"
+
+
+async def test_a_reply_the_model_ended_itself_is_kept_whole(
+    receipts_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    receipt = (
+        "HARBOR MARKET\nPLUM JAM 4.25\nRYE LOAF 3.50\nPLUM JAM 4.25\nRYE LOAF 3.50\nTOTAL 15.50"
+    )
+    transport = TranscriberTransport(RecordedTransport({}), _transcript(receipt))
+    monkeypatch.setattr(llm, "http_transport", transport)
+    assert await _transcribe(tmp_path) == receipt
+
+
+# The same item bought twice, as a till that prints each one's multi-buy price
+# and saving: three rows printed again, twice, in the middle of the sale.
+TWICE = "1 @ 3/4.50\nKESTREL OAT MILK 1.50 F\nRegular Price 2.10 , You saved 0.60"
+SALE = (
+    "Your Cashier was ROBIN\n\n"
+    f"{TWICE}\n\n{TWICE}\n"
+    "PLUM JAM 4.25 F\nRYE LOAF 3.50 F\n"
+    f"{TWICE}\n"
+    "TAX 0.00\n**** BALANCE 11.40\n"
+    "04/12/26 10:15am 7 3\nTHANK YOU FOR SHOPPING"
+)
+
+
+def test_rows_a_receipt_prints_again_are_not_a_loop():
+    assert ocr.drop_repeated_tail(SALE) == SALE
+
+
+def test_a_copy_of_the_receipt_from_the_top_is_cut_where_it_starts():
+    # glm-ocr goes back to the first row and copies on until the cap, cut mid-row.
+    looping = SALE + "\n" + SALE + "\n" + SALE[:40]
+    assert ocr.drop_repeated_tail(looping) == SALE
+
+
+def test_a_copy_that_starts_partway_and_skips_rows_is_cut_where_it_starts():
+    # The copy picks up from an item, then jumps back to the top of the sale.
+    tail = "PLUM JAM 4.25 F\nRYE LOAF 3.50 F\n" + SALE
+    assert ocr.drop_repeated_tail("\n".join([SALE, tail, tail, tail])) == SALE
+
+
+def test_a_short_cycle_that_runs_to_the_cap_is_cut_and_its_first_pass_kept():
+    footer = "Tell us how we did\nat our website\nThank you"
+    looping = f"HARBOR MARKET\nRYE LOAF 3.50\nTOTAL 3.50\n{footer}\n{footer}\n{footer}\nTell us"
+    assert ocr.drop_repeated_tail(looping) == f"HARBOR MARKET\nRYE LOAF 3.50\nTOTAL 3.50\n{footer}"
+
+
+def test_rows_printed_first_and_copied_after_the_receipt_go_with_the_copy():
+    # The first pass printed the footer at the top; its second copy is the loop.
+    footer = "Your clerk: ROBIN\n04/12/26 10:15 AM\nThank you for shopping"
+    first = f"{footer}\nRYE LOAF 3.50\nTOTAL 3.50"
+    looping = f"{first}\n{footer}\n{footer}\n{footer}"
+    assert ocr.drop_repeated_tail(looping) == first
 
 
 async def test_a_reply_aborted_for_repeating_keeps_its_rows_and_counts_as_out_of_room(

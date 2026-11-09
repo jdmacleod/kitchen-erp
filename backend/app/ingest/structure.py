@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from app.ingest.donations import donations_paid
 from app.ingest.lines import (
     _REGULAR_PRICE,
     _SAVING,
@@ -50,6 +51,8 @@ from app.ingest.tax_rows import tax_from_print, tax_from_rate
 # no_amount_printed: a weight or count row that prints no amount of its own, which
 #   could not be joined to its item, counts for nothing rather than for its rate
 #   (pattern 2).
+# donation_paid: a donation added at the till, read as a discount, is a fee
+#   (app.ingest.donations).
 # kind_from_wording: a line read as a discount names a product with its size and
 #   no saving, and the receipt adds up better as an item (pattern 3).
 # regular_price_from_text: the item was read at what was paid and its saving
@@ -87,6 +90,7 @@ STRUCTURE_FLAGS = frozenset(
         "qty_from_prefix",
         "no_amount_printed",
         "kind_from_wording",
+        "donation_paid",
         "regular_price_from_text",
         "footer_text",
         "tax_from_rate",
@@ -142,6 +146,7 @@ def post_passes(
     deposit_rows(parsed)
     rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
+    donations_paid(parsed, printed_total, header_tax)
     savings_already_netted(parsed, printed_total, header_tax)
     printed_savings = None if checks is None else checks.get("savings_total")
     savings_in_price(

@@ -59,6 +59,12 @@ def _shape(lines: list[lines_mod.ParsedLine]) -> list[tuple]:
         # A till that weighs with a tare: the net weight, then the gross in brackets.
         ("1.24 (1.25) lb @ 2.99 /lb", ("1.24", "lb", "2.99", None)),
         ("0.38 ( 0.39 ) lb @ 1.79 /lb", ("0.38", "lb", "1.79", None)),
+        # A count at a multi-buy price: two at 2 for 5.00 is 2.50 each.
+        ("2 @ 2/5.00", ("2", "each", "2.50", None)),
+        ("1 @ 3/4.50", ("1", "each", "1.50", None)),
+        ("2 @ 1/ $8.99", ("2", "each", "8.99", None)),
+        # A weight a till labels as one, under a meat counter's item.
+        ("Manual Weight 3.40 lb @ 2.50 USD/lb", ("3.40", "lb", "2.50", None)),
     ],
 )
 def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
@@ -83,6 +89,7 @@ def test_a_row_that_is_only_a_quantity_is_read(raw, expected):
         "OAT MILK 3.49",
         "2.31 lb",  # no rate
         "0.84 lb @ 1.49 PLUMS/lb",  # a word, not a currency, before the unit
+        "Weight Watchers Bar 2 @ 1.25",  # a count: "Weight" is a name there
     ],
 )
 def test_a_row_with_more_than_a_quantity_is_not_one(raw):
@@ -135,6 +142,41 @@ def test_a_count_read_as_a_discount_of_the_item_above_joins_the_item_below():
         (2, "AVOCADO                  3.95 F", "item", "5", "each", "0.79", "3.95", None,
          ["qty_from_line_above"]),
     ]  # fmt: skip
+
+
+def test_a_count_at_a_multi_buy_price_joins_the_item_it_comes_to():
+    # The model reads "2 @ 2/5.00" as a purchase at the group's price, so the
+    # item below it would count twice.
+    lines = _read(
+        ("3 @ 0.65", "item", "1.95"),
+        ("KESTREL LEMONS 1.95 F", "item", "1.95"),
+        ("2 @ 2/5.00", "item", "5.00"),
+        ("KESTREL PEARS 5.00 F", "item", "5.00"),
+        ("1 @ 3/4.50", "item", "4.50"),
+        ("MARIGOLD OAT MILK 1.50 F", "item", "1.50"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["3 @ 0.65", "2 @ 2/5.00", "1 @ 3/4.50"]
+    assert [(line.raw_text, str(line.qty), str(line.unit_price), str(line.line_total))
+            for line in kept] == [
+        ("KESTREL LEMONS 1.95 F", "3", "0.65", "1.95"),
+        ("KESTREL PEARS 5.00 F", "2", "2.50", "5.00"),
+        ("MARIGOLD OAT MILK 1.50 F", "1", "1.50", "1.50"),
+    ]  # fmt: skip
+
+
+def test_a_labelled_weight_under_its_item_joins_it():
+    lines = _read(
+        ("KESTREL CHICKEN THIGHS 8.50 F", "item", "8.50"),
+        ("Manual Weight 3.40 lb @ 2.50 USD/lb", "item", "8.50"),
+        ("OAT MILK 3.49", "item", "3.49"),
+    )
+    kept, merged = lines_mod.merge_quantity_lines(lines)
+    assert merged == ["Manual Weight 3.40 lb @ 2.50 USD/lb"]
+    assert [(line.raw_text, str(line.qty), line.unit) for line in kept] == [
+        ("KESTREL CHICKEN THIGHS 8.50 F", "3.40", "lb"),
+        ("OAT MILK 3.49", "1", "each"),
+    ]
 
 
 def test_the_quantity_rows_own_amount_from_the_model_is_never_used():
@@ -201,7 +243,7 @@ def test_a_count_whose_arithmetic_fits_no_neighbour_is_left_for_review():
 
 def test_a_quantity_row_never_joins_an_item_that_prints_its_own():
     lines = _read(
-        ("2 @ 0.79", "item", "1.58"),
+        ("3 @ 0.65", "item", "1.95"),
         ("BLK BNS 15OZ  2 @ 0.79   1.58", "item", "1.58"),
     )
     kept, merged = lines_mod.merge_quantity_lines(lines)

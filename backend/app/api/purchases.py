@@ -352,7 +352,7 @@ async def purchase_out(
         computed_total=purchases.computed_total(purchase),
         lines_total=check.lines_total,
         trust=check.trust,
-        gap=purchases.reading_gap(check, purchase.total),
+        gap=purchases.reading_gap(check),
         held=check.held,
         status=purchase.status,
         source=purchase.source,
