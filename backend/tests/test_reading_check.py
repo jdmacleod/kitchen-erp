@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from app.services.purchases import assess
+from app.services.purchases import assess, reading_gap
 
 D = Decimal
 
@@ -57,6 +57,14 @@ def test_nothing_read_is_couldnt_read():
 def test_without_a_printed_total_the_lines_are_checked_never_held():
     found = check(flags=["total_missing"], lines_sum=D("90.00"))
     assert (found.trust, found.held) == ("check_lines", False)
+
+
+def test_the_gap_is_from_the_printed_total_and_none_without_one():
+    assert reading_gap(check(lines_sum=D("20.30"))) == D("0.30")
+    assert reading_gap(check(lines_sum=D("20.00"))) is None  # adds up
+    # The stored total stands in for one the receipt never printed: nothing to be off from.
+    assert reading_gap(check(flags=["total_missing"])) is None
+    assert reading_gap(check(flags=["total_missing"], lines_sum=D("90.00"))) is None
 
 
 def test_only_a_draft_is_held():

@@ -218,6 +218,8 @@ const FLAG_LABELS: Record<string, string> = {
   qty_from_prefix: "count printed before the name",
   no_amount_printed: "prints no amount",
   kind_from_wording: "a product, not a saving",
+  // A donation added at the till, read as money off.
+  donation_paid: "a donation, paid",
   regular_price_from_text: "regular price restored",
   footer_text: "footer text?",
   tax_from_rate: "tax from its rate",
@@ -382,13 +384,20 @@ export function LineParsed({
     <>
       <span className="tabular-nums">{qty}</span>
       <span className="block text-xs tabular-nums">
-        {line.unit_price !== null ? `${formatMoney(line.unit_price, 2, 4)} ea` : ""}
+        {line.unit_price !== null
+          ? `${formatMoney(line.unit_price, 2, 4)}${perUnit(line.unit)}`
+          : ""}
         {line.unit_price !== null && line.line_total !== null ? " · " : ""}
         {counted(line)}
       </span>
       <SoFar running={running} />
     </>
   );
+}
+
+/** How a line's unit price is read: "$0.99 ea" for a count, "$0.99/lb" for a weighed line. */
+function perUnit(unit: string | null): string {
+  return unit === null || unit === "each" ? " ea" : `/${unit}`;
 }
 
 /** The one-click fixes on a line: a spelling, a saving in the price, the item a saving is for. */

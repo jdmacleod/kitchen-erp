@@ -43,6 +43,20 @@ describe("why the lines are off (2S, U1–U3)", () => {
     expect(printed).toHaveTextContent("The receipt prints $1.65 in savings; the lines have $1.65.");
   });
 
+  it("says one line is an item in the singular", async () => {
+    const one = {
+      ...youPayPurchase,
+      printed_checks: { item_count: 2 },
+      lines: [youPayPurchase.lines[0]],
+    };
+    mockApi(routes(() => one));
+    renderApp(base);
+    const printed = within(await panel()).getByRole("list", {
+      name: "What the receipt prints about itself",
+    });
+    expect(printed).toHaveTextContent("The receipt counts 2 items; 1 line is an item.");
+  });
+
   it("counts every saving as already in the price in one click", async () => {
     const calls = mockApi(
       routes(() => youPayPurchase, {

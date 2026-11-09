@@ -775,3 +775,33 @@ def test_a_weight_row_both_neighbours_fit_is_left_alone():
     plums, jam = lines
     assert plums.qty == Decimal("3") and "qty_from_text" in plums.flags
     assert (jam.qty, jam.flags) == (Decimal("1"), [])
+
+
+# --- 15. A donation added at the till, read as a discount -------------------------
+
+
+def test_a_donation_read_as_a_discount_is_paid_when_it_reconciles():
+    lines = _passes(
+        ("KESTREL PORK SHOULDER 24.60 F", "item", "24.60"),
+        ("STORE DONATION 0.40", "discount", "0.40", 0),
+        total="25.00",
+    )
+    donation = _by_text(lines)["STORE DONATION 0.40"]
+    assert (donation.line_kind, donation.parent_seq) == ("fee", None)
+    assert donation.flags == ["donation_paid"]
+    assert reconcile(lines, Decimal("25.00"), None)["mismatch"] is False
+
+
+def test_a_donation_stays_a_discount_when_the_receipt_adds_up_as_read():
+    lines = _passes(
+        ("KESTREL PORK SHOULDER 24.60 F", "item", "24.60"),
+        ("ROUND UP FOR CHARITY 0.40", "discount", "0.40", 0),
+        total="24.20",
+    )
+    assert _by_text(lines)["ROUND UP FOR CHARITY 0.40"].line_kind == "discount"
+    # Without a printed total there is nothing to prove it by.
+    lines = _passes(
+        ("KESTREL PORK SHOULDER 24.60 F", "item", "24.60"),
+        ("STORE DONATION 0.40", "discount", "0.40", 0),
+    )
+    assert _by_text(lines)["STORE DONATION 0.40"].line_kind == "discount"

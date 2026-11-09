@@ -79,6 +79,8 @@ class ReadingCheck:
     """How far a receipt's reading can be trusted, derived from what is stored now.
 
     ``trust`` is None for a purchase entered by hand: there was no reading.
+    ``printed`` is the total the lines were held against: None when the receipt's
+    total could not be read, since the stored one is then what the lines add up to.
     ``held`` marks a draft that needs a careful look before it is committed. It
     never blocks a commit (non-negotiable 8 is about not committing *without* a
     person, and opening the review is that person).
@@ -87,6 +89,7 @@ class ReadingCheck:
     trust: Trust | None
     held: bool
     lines_total: Decimal
+    printed: Decimal | None = None
 
 
 def assess(
@@ -113,20 +116,24 @@ def assess(
         return ReadingCheck(trust="couldnt_read", held=False, lines_total=lines_sum)
     printed = None if "total_missing" in flags else total
     if printed is not None and abs(lines_sum - printed) <= TOTAL_TOLERANCE:
-        return ReadingCheck(trust="adds_up", held=False, lines_total=lines_sum)
+        return ReadingCheck(trust="adds_up", held=False, lines_total=lines_sum, printed=printed)
     held = False
     if status == "draft" and printed is not None:
         unscanned += "total_not_in_scan" in flags
         gap = abs(lines_sum - printed)
         held = printed <= 0 or gap > printed * HOLD_GAP_SHARE or unscanned > 0
-    return ReadingCheck(trust="check_lines", held=held, lines_total=lines_sum)
+    return ReadingCheck(trust="check_lines", held=held, lines_total=lines_sum, printed=printed)
 
 
-def reading_gap(check: ReadingCheck, total: Decimal | None) -> Decimal | None:
-    """How far the lines are from the printed total, when that is why they need checking."""
-    if check.trust != "check_lines" or total is None:
+def reading_gap(check: ReadingCheck) -> Decimal | None:
+    """How far the lines are from the printed total, when that is why they need checking.
+
+    None when no total was printed to be off from: the lines need checking for
+    another reason (a missing total or date), and "off by 0.00" says nothing.
+    """
+    if check.trust != "check_lines" or check.printed is None:
         return None
-    return abs(check.lines_total - total)
+    return abs(check.lines_total - check.printed)
 
 
 def reading_check(purchase: Purchase) -> ReadingCheck:

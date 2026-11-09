@@ -47,7 +47,11 @@ LINE_READING_FLAGS = frozenset(
 # 3: a tax table the model left out, read from its "<base> @ <rate>% = <amount>"
 #    rows when the bases add up to the items (tax_from_print); an item's
 #    regular-price note is no longer read as the receipt's savings total.
-LINE_RULES_VERSION = 3
+# 4: a count at a multi-buy price printed on a row of its own ("2 @ 2/5.00"), and
+#    a weight labelled as one ("Manual Weight 3.40 lb @ 2.50 USD/lb"), join the item
+#    they come to, rather than counting as a second purchase.
+#    A donation added at the till and read as a discount is a fee (donation_paid).
+LINE_RULES_VERSION = 4
 
 
 @dataclass

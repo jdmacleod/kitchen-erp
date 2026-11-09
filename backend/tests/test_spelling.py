@@ -24,6 +24,12 @@ def test_short_words_and_unknown_words_far_from_any_are_left_alone():
     assert suggest("ORG BBY KESTRELWOOD", VOCAB) == []
 
 
+def test_what_a_till_prints_about_prices_is_never_a_misspelling():
+    vocab = words(["Prime rib roast", "Shaved parmesan", "Kestrel milk"])
+    text = "1 @ 3/4.50 KESTREL MILK Regular Price 2.10 , You saved 0.60 Member Savings"
+    assert suggest(text, vocab) == []
+
+
 def test_two_equally_near_words_suggest_neither():
     vocab = words(["Kestra blend", "Kestrel blend"])
     assert suggest("KESTRE", vocab) == []

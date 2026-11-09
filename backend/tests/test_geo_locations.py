@@ -351,3 +351,25 @@ async def test_create_honours_idempotency_key(admin_client: httpx.AsyncClient):
     )
     assert changed.status_code == 422
     assert changed.json()["error"]["code"] == "idempotency_key_reused"
+
+
+async def test_without_a_position_locations_are_listed_by_vendor_then_branch(
+    admin_client: httpx.AsyncClient,
+):
+    larkspur = await make_vendor(admin_client, "Larkspur Grocers", "chain")
+    marigold = await make_vendor(admin_client, "marigold market", "chain")
+    # Branch names alone would put the two vendors' branches among each other.
+    for vendor, branch, coords in [
+        (marigold, "Alder Way", NEAR_A),
+        (larkspur, "Birch Road", MID),
+        (marigold, "Cedar Lane", FAR),
+        (larkspur, "Aspen Court", HOME_A),
+    ]:
+        await make_location(admin_client, branch, coords, vendor_id=vendor["id"])
+    r = await admin_client.get("/api/v1/vendor-locations")
+    assert [(i["vendor"]["name"], i["name"]) for i in r.json()["items"]] == [
+        ("Larkspur Grocers", "Aspen Court"),
+        ("Larkspur Grocers", "Birch Road"),
+        ("marigold market", "Alder Way"),
+        ("marigold market", "Cedar Lane"),
+    ]

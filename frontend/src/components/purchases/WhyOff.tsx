@@ -65,7 +65,7 @@ function CheckRow({ check }: { check: Check }) {
         : `Paid ${printed}; the total reads ${read}.`
       : check.key === "savings"
         ? `The receipt prints ${printed} in savings; the lines have ${read}.`
-        : `The receipt counts ${printed} items; ${read} lines are items.`;
+        : `The receipt counts ${printed} items; ${read} ${read === "1" ? "line is an item" : "lines are items"}.`;
   return (
     <li className="flex items-start gap-2">
       <span aria-hidden="true" className={check.ok ? "text-green-800 dark:text-green-300" : ""}>

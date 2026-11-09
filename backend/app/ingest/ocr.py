@@ -58,30 +58,49 @@ TESSERACT_CONFIG = ("--psm", "6")
 
 # How the vision transcriber is asked (04, 2O). glm-ocr's own prompt: the JSON
 # extraction prompt gave nothing usable. It transcribes the receipt and then
-# repeats lines until its output cap (measured: 22 distinct lines in 112), and
-# repeat and presence penalties did not stop it, so the cap is what a 100-line
-# receipt needs and the loop is cut off afterwards. The reading benchmark scores
-# exactly this.
+# goes back and copies it, or a part of it, over and over until its output cap
+# (measured: 22 distinct lines in 112), and repeat and presence penalties did not
+# stop it, so the cap is what a 100-line receipt needs and the loop is cut off
+# afterwards. The reading benchmark scores exactly this.
 OCR_TASK = "Text Recognition:"
 OCR_NUM_PREDICT = 4096
+# A run of rows printed again counts as the loop when it is this long, or when it
+# runs on to where the reply stopped and is at least REPEATED_RUN rows. A receipt
+# prints the same few rows again for the same item bought twice ("1 @ 3/4.50",
+# the item, its regular price and saving), never a copy this long.
 REPEATED_RUN = 3
+COPIED_RUN = 10
 
 
-def drop_repeated_tail(transcript: str, run: int = REPEATED_RUN) -> str:
-    """The transcript up to the first run of ``run`` lines it has already printed.
+def drop_repeated_tail(transcript: str, run: int = REPEATED_RUN, copied: int = COPIED_RUN) -> str:
+    """The transcript up to where the OCR model started copying it again.
 
-    A receipt can print one line twice (two of the same item), but not the same
-    three lines in the same order twice; that is the OCR model looping.
+    The copy starts at the first row that begins a run of rows already printed
+    in the same order, ``copied`` rows long or running on to the end of the reply
+    (where its last row may be cut off mid-row) and ``run`` rows long. Rows just
+    before it that were printed earlier too go with it: the model's first pass
+    ended there and the copy began a row or two sooner than the run shows.
+    Blank rows are not compared.
     """
     lines = transcript.splitlines()
-    seen: set[tuple[str, ...]] = set()
-    for i in range(len(lines) - run + 1):
-        key = tuple(line.strip() for line in lines[i : i + run])
-        if not all(key):
-            continue
-        if key in seen:
-            return "\n".join(lines[:i])
-        seen.add(key)
+    rows = [(index, line.strip()) for index, line in enumerate(lines) if line.strip()]
+    keys = [key for _, key in rows]
+    count = len(keys)
+    for i in range(1, count):
+        for j in range(i):
+            if keys[j] != keys[i]:
+                continue
+            length = 1
+            while i + length < count and keys[j + length] == keys[i + length]:
+                length += 1
+            to_end = i + length == count or (
+                i + length == count - 1 and keys[j + length].startswith(keys[-1])
+            )
+            if length >= copied or (to_end and length >= run):
+                start = i
+                while start > 0 and keys[start - 1] in keys[: start - 1]:
+                    start -= 1
+                return "\n".join(lines[: rows[start][0]]).rstrip()
     return transcript
 
 
@@ -220,9 +239,12 @@ class VisionOcrAdapter:
         self.timeout_seconds = settings.ocr_vision_timeout_seconds
         self.record: dict[str, object] = {}
 
+    # 2: the loop is told from rows a receipt prints twice (only a cut-off reply).
+    VERSION = "2"
+
     @property
     def version(self) -> str:
-        return f"{self.model}/1"
+        return f"{self.model}/{self.VERSION}"
 
     async def run(self, document: ReceiptDocument, image_path: Path) -> str:
         if not self.model:
@@ -265,7 +287,9 @@ class VisionOcrAdapter:
         # ModelUnavailable (a server that cannot be reached, or in trouble) is not
         # caught: the job waits and retries, exactly as for the text model.
         self._note(client)
-        transcript = drop_repeated_tail(transcript)
+        # A reply the model ended itself did not loop; only one cut off can have.
+        if self.record.get("outcome") == "out_of_room":
+            transcript = drop_repeated_tail(transcript)
         if not transcript.strip():
             raise OcrUnavailable("empty_transcript")
         return transcript

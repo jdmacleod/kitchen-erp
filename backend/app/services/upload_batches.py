@@ -150,7 +150,7 @@ def _receipt(r, job: IngestJob) -> BatchReceipt:
     item.item_lines = r["item_lines"]
     item.lines_total = check.lines_total
     item.trust = check.trust
-    item.gap = purchases.reading_gap(check, r["total"])
+    item.gap = purchases.reading_gap(check)
     item.held = check.held
     return item
 

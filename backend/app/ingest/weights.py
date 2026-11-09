@@ -28,6 +28,8 @@ WEIGHT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 COUNT_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*" + _RATE, re.IGNORECASE)
+# A count at a multi-buy price: "2 @ 2/5.00" is two at 2 for 5.00, so 2.50 each.
+MULTI_BUY_PATTERN = re.compile(r"(?<![\d.])(\d{1,3})\s*@\s*(\d{1,2})\s*/\s*" + _RATE, re.IGNORECASE)
 # A weight whose unit OCR garbled past "Ib": "ll", "|i", "lt", "1k" for "lb", on a
 # phone scan of a thermal receipt. Only a decimal weight, a two-character token that
 # starts like an "l", and an "@ rate" qualify, and such a row joins an item only when
@@ -82,22 +84,30 @@ class PrintedQuantity:
 # of a quantity row: nothing, or a tax letter or two.
 _RATE_UNIT = re.compile(_CURRENCY + r"/\s*(?:lbs?|[il1|]bs?|kg|oz|g|ea|each)\b", re.I)
 _TAX_CODE = re.compile(r"[A-Za-z*]{0,2}")
+# What a till may print before a weight to say what it is: "Manual Weight 3.40 lb
+# @ 2.50 USD/lb" under a meat counter's item. Not a name, so the row is still
+# only a weight.
+_WEIGHT_LABEL = re.compile(r"\b(?:manual\s+weight|net\s+(?:weight|wt)|weight)\b", re.I)
 
 
 def quantity_only(raw_text: str) -> PrintedQuantity | None:
     """The row's weight or count when that is all the row holds, else None.
 
-    "2.71 lb @ 3.99 /lb" and "5 @ 0.79" qualify, as does "2.31 lb @ 0.69/lb 1.59 F"
+    "2.71 lb @ 3.99 /lb", "5 @ 0.79" and a multi-buy "2 @ 2/5.00" (the rate is 2.50)
+    qualify, as does "2.31 lb @ 0.69/lb 1.59 F"
     with its amount and tax letter. A row with a name ("AVOCADO 3 @ 0.69 2.07"), a
     negative amount or two amounts does not. A weight whose "lb" OCR garbled
     ("1.30 ll @ 2.00 /lt") is read as pounds and marked ``unit_misread``.
     """
     weighed = WEIGHT_PATTERN.search(raw_text)
     garbled = None if weighed else GARBLED_WEIGHT_PATTERN.search(raw_text)
-    match = weighed or garbled or COUNT_PATTERN.search(raw_text)
+    multi = None if weighed or garbled else MULTI_BUY_PATTERN.search(raw_text)
+    match = weighed or garbled or multi or COUNT_PATTERN.search(raw_text)
     if match is None:
         return None
     rest = _RATE_UNIT.sub(" ", raw_text[: match.start()] + " " + raw_text[match.end() :])
+    if weighed is not None or garbled is not None:
+        rest = _WEIGHT_LABEL.sub(" ", rest)
     if garbled is not None:
         rest = _GARBLED_RATE_UNIT.sub(" ", rest)
     amounts = _amounts(rest)
@@ -109,6 +119,11 @@ def quantity_only(raw_text: str) -> PrintedQuantity | None:
     elif garbled is not None:
         amount = amounts[0] if amounts else None
         return PrintedQuantity(Decimal(match.group(1)), "lb", Decimal(match.group(3)), amount, True)
+    elif multi is not None:
+        per = Decimal(match.group(2))
+        if per < 1:
+            return None
+        qty, unit, rate = Decimal(match.group(1)), "each", Decimal(match.group(3)) / per
     else:
         qty, unit, rate = Decimal(match.group(1)), "each", match.group(2)
     if unit is None:
