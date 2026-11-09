@@ -81,3 +81,51 @@ class OfferDecision(ApiModel):
 
 class OfferDecided(ApiModel):
     decided: int
+
+
+# --- read models (2U-4) ----------------------------------------------------------------
+
+
+class OfferProduct(ApiModel):
+    id: uuid.UUID
+    name: str
+
+
+class LinkedOffer(ApiModel):
+    """A linked offer as printed, with a person's corrections and the size it reads by."""
+
+    id: uuid.UUID
+    product: OfferProduct
+    vendor: OfferVendor
+    location: OfferLocation
+    name_as_printed: str
+    price_basis: Literal["each", "per_lb", "per_oz", "multi", "bogo", "percent_off", "dollar_off"]
+    price: DecimalStr | None
+    basis_qty: DecimalStr | None
+    discount: DecimalStr | None
+    size_qty: DecimalStr | None
+    size_unit: str | None
+    # The size is the product's: the circular printed none (U16).
+    size_inherited: bool
+    requires_loyalty: bool
+    limit_qty: DecimalStr | None
+    valid_from: date
+    valid_to: date
+    ad_week_from: date | None
+    ad_week_to: date | None
+
+
+class CurrentOffer(LinkedOffer):
+    # Per canonical unit; null when the offer can only be shown as printed.
+    unit_price: DecimalStr | None
+    unit: str | None
+    # The trailing regular price a percent or dollar off is taken from.
+    regular_unit_price: DecimalStr | None
+
+
+class CurrentOffers(ApiModel):
+    items: list[CurrentOffer]
+
+
+class OfferHistory(ApiModel):
+    items: list[LinkedOffer]

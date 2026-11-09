@@ -180,6 +180,8 @@ A source with `require_confirmation` sends every offer to the inbox, even one wi
   - `percent_off` and `dollar_off` apply to the trailing regular price: the median of the product's non-promo prices that apply at that location (`offer_applicable`, posted prices left out) observed in the last `STALE_AFTER_DAYS`. With none, the offer has no effective price and is shown only as printed.
 - `offer_history(product, location)`: every linked offer, in order, with its ad week.
 
+The effective unit price is per canonical unit, as `price_norm`'s, and rounded by the price book's rule. An offer with no size, own or inherited, has none, nor has a percent or dollar off with no regular price, nor a dollar off with no size; each is shown as printed.
+
 No price view, receipt resolution or default cost reads `flyer_offer` (F4). The read models read the price book only for the discount base above.
 
 ## Inbox
@@ -267,7 +269,8 @@ Updated with every pull request, so the work can stop and resume at any line.
 - [x] 2U-1: migration, `ad_source` import, scheduler, `POST /flyer-reports`, relevance, contract schema (U1–U6, U10). Migration 0066, `kerp flyers import`
 - [x] 2U-2: helper `flyer` handler, raw archive, replay, the hosted-circular adapter (helper #29; U11–U13, U15). The owner allowed the banner's public token (2026-11-06); a sample week read every priced item. One grocery group's banners are seeded; the other group's sites don't answer a plain request, so their ids are still open
 - [x] 2U-3: shared name resolver, flyer aliases, offer queue with "Other offers", inbox rows, "Watch for offers" (U7, U8, U17; F13). The report links exact aliases and suggests fuzzy aliases or similar names; the idle worker asks the model about one watched offer at a time. One answer covers every store's offer of a vendor's printed name. The other grocery group's banners were read in a browser and seeded 2026-11-07; every seeded store read its week
-- [ ] 2U-4: read models and API, vendor-location panel, size inheritance (U9, U16); live count (U14)
+- [x] 2U-4a: read models and API, size inheritance (U9, U16). `GET /flyer-offers/current?home_base_id=` lists the kitchen's linked offers valid that day with their price per canonical unit; `GET /products/{id}/flyer-offers` is a product's offer history. A size is marked inherited when an offer links, by an alias or a person
+- [ ] 2U-4b: the vendor location's Circular card and its API (UI-9.5); live count (U14)
 - [ ] 2V: storefront and itemized adapters, four-week gate (V1–V5)
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
 - [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)

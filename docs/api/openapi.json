@@ -3217,6 +3217,225 @@
         "title": "CostTotals",
         "type": "object"
       },
+      "CurrentOffer": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_week_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week From"
+          },
+          "ad_week_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week To"
+          },
+          "basis_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis Qty"
+          },
+          "discount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "limit_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Qty"
+          },
+          "location": {
+            "$ref": "#/components/schemas/OfferLocation"
+          },
+          "name_as_printed": {
+            "title": "Name As Printed",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_basis": {
+            "enum": [
+              "each",
+              "per_lb",
+              "per_oz",
+              "multi",
+              "bogo",
+              "percent_off",
+              "dollar_off"
+            ],
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "product": {
+            "$ref": "#/components/schemas/OfferProduct"
+          },
+          "regular_unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regular Unit Price"
+          },
+          "requires_loyalty": {
+            "title": "Requires Loyalty",
+            "type": "boolean"
+          },
+          "size_inherited": {
+            "title": "Size Inherited",
+            "type": "boolean"
+          },
+          "size_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Qty"
+          },
+          "size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Unit"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "format": "date",
+            "title": "Valid To",
+            "type": "string"
+          },
+          "vendor": {
+            "$ref": "#/components/schemas/OfferVendor"
+          }
+        },
+        "required": [
+          "id",
+          "product",
+          "vendor",
+          "location",
+          "name_as_printed",
+          "price_basis",
+          "price",
+          "basis_qty",
+          "discount",
+          "size_qty",
+          "size_unit",
+          "size_inherited",
+          "requires_loyalty",
+          "limit_qty",
+          "valid_from",
+          "valid_to",
+          "ad_week_from",
+          "ad_week_to",
+          "unit_price",
+          "unit",
+          "regular_unit_price"
+        ],
+        "title": "CurrentOffer",
+        "type": "object"
+      },
+      "CurrentOffers": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CurrentOffer"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "CurrentOffers",
+        "type": "object"
+      },
       "DensityOfferOut": {
         "additionalProperties": false,
         "properties": {
@@ -8459,6 +8678,173 @@
         "title": "LinkedLocationRef",
         "type": "object"
       },
+      "LinkedOffer": {
+        "additionalProperties": false,
+        "description": "A linked offer as printed, with a person's corrections and the size it reads by.",
+        "properties": {
+          "ad_week_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week From"
+          },
+          "ad_week_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week To"
+          },
+          "basis_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Basis Qty"
+          },
+          "discount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discount"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "limit_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit Qty"
+          },
+          "location": {
+            "$ref": "#/components/schemas/OfferLocation"
+          },
+          "name_as_printed": {
+            "title": "Name As Printed",
+            "type": "string"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price"
+          },
+          "price_basis": {
+            "enum": [
+              "each",
+              "per_lb",
+              "per_oz",
+              "multi",
+              "bogo",
+              "percent_off",
+              "dollar_off"
+            ],
+            "title": "Price Basis",
+            "type": "string"
+          },
+          "product": {
+            "$ref": "#/components/schemas/OfferProduct"
+          },
+          "requires_loyalty": {
+            "title": "Requires Loyalty",
+            "type": "boolean"
+          },
+          "size_inherited": {
+            "title": "Size Inherited",
+            "type": "boolean"
+          },
+          "size_qty": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Qty"
+          },
+          "size_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Unit"
+          },
+          "valid_from": {
+            "format": "date",
+            "title": "Valid From",
+            "type": "string"
+          },
+          "valid_to": {
+            "format": "date",
+            "title": "Valid To",
+            "type": "string"
+          },
+          "vendor": {
+            "$ref": "#/components/schemas/OfferVendor"
+          }
+        },
+        "required": [
+          "id",
+          "product",
+          "vendor",
+          "location",
+          "name_as_printed",
+          "price_basis",
+          "price",
+          "basis_qty",
+          "discount",
+          "size_qty",
+          "size_unit",
+          "size_inherited",
+          "requires_loyalty",
+          "limit_qty",
+          "valid_from",
+          "valid_to",
+          "ad_week_from",
+          "ad_week_to"
+        ],
+        "title": "LinkedOffer",
+        "type": "object"
+      },
       "ListOut": {
         "additionalProperties": false,
         "properties": {
@@ -10991,6 +11377,23 @@
         "title": "OfferGroup",
         "type": "object"
       },
+      "OfferHistory": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LinkedOffer"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "OfferHistory",
+        "type": "object"
+      },
       "OfferList": {
         "additionalProperties": false,
         "properties": {
@@ -11031,6 +11434,26 @@
           "name"
         ],
         "title": "OfferLocation",
+        "type": "object"
+      },
+      "OfferProduct": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "OfferProduct",
         "type": "object"
       },
       "OfferQueue": {
@@ -23265,6 +23688,71 @@
         ]
       }
     },
+    "/api/v1/flyer-offers/current": {
+      "get": {
+        "description": "The kitchen's linked offers valid that day, each with its price per unit (U9).",
+        "operationId": "current_offers_api_v1_flyer_offers_current_get",
+        "parameters": [
+          {
+            "description": "the kitchen; never inferred",
+            "in": "query",
+            "name": "home_base_id",
+            "required": true,
+            "schema": {
+              "description": "the kitchen; never inferred",
+              "format": "uuid",
+              "title": "Home Base Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "the day; today when left out",
+            "in": "query",
+            "name": "on",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "the day; today when left out",
+              "title": "On"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentOffers"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Current Offers",
+        "tags": [
+          "flyers"
+        ]
+      }
+    },
     "/api/v1/flyer-offers/decide": {
       "post": {
         "description": "Use a product for every current offer of that name, or mark it not wanted; the\nname is learned for next week.",
@@ -29070,6 +29558,67 @@
         "summary": "Confirm Density Override",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/flyer-offers": {
+      "get": {
+        "description": "Every linked offer of a product, newest week first, at one store or all.",
+        "operationId": "offer_history_api_v1_products__product_id__flyer_offers_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "vendor_location_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Vendor Location Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfferHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Offer History",
+        "tags": [
+          "flyers"
         ]
       }
     },
