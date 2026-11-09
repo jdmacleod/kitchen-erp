@@ -1878,6 +1878,211 @@
         "title": "ChooseIn",
         "type": "object"
       },
+      "CircularIn": {
+        "additionalProperties": false,
+        "description": "What the helper is told about a location's circular; replaces it whole.",
+        "properties": {
+          "adapter": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Adapter",
+            "type": "string"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "mechanism": {
+            "enum": [
+              "hosted_circular",
+              "storefront",
+              "itemized",
+              "image",
+              "region"
+            ],
+            "title": "Mechanism",
+            "type": "string"
+          },
+          "publish_weekday": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Publish Weekday",
+            "type": "integer"
+          },
+          "require_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Require Confirmation"
+          },
+          "store_ref": {
+            "additionalProperties": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "default": {},
+            "maxProperties": 8,
+            "title": "Store Ref",
+            "type": "object"
+          }
+        },
+        "required": [
+          "mechanism",
+          "adapter",
+          "publish_weekday"
+        ],
+        "title": "CircularIn",
+        "type": "object"
+      },
+      "CircularOut": {
+        "additionalProperties": false,
+        "description": "A location's circular: none set up is ``source: null``.",
+        "properties": {
+          "checking": {
+            "title": "Checking",
+            "type": "boolean"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/FlyerRunOut"
+            },
+            "title": "Runs",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CircularSourceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "source",
+          "runs",
+          "checking"
+        ],
+        "title": "CircularOut",
+        "type": "object"
+      },
+      "CircularPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "publish_weekday": {
+            "anyOf": [
+              {
+                "maximum": 7.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publish Weekday"
+          },
+          "require_confirmation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Require Confirmation"
+          }
+        },
+        "title": "CircularPatch",
+        "type": "object"
+      },
+      "CircularSourceOut": {
+        "additionalProperties": false,
+        "properties": {
+          "adapter": {
+            "title": "Adapter",
+            "type": "string"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "failures": {
+            "title": "Failures",
+            "type": "integer"
+          },
+          "mechanism": {
+            "enum": [
+              "hosted_circular",
+              "storefront",
+              "itemized",
+              "image",
+              "region"
+            ],
+            "title": "Mechanism",
+            "type": "string"
+          },
+          "paused_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Until"
+          },
+          "publish_weekday": {
+            "title": "Publish Weekday",
+            "type": "integer"
+          },
+          "require_confirmation": {
+            "title": "Require Confirmation",
+            "type": "boolean"
+          },
+          "store_ref": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Store Ref",
+            "type": "object"
+          }
+        },
+        "required": [
+          "mechanism",
+          "adapter",
+          "store_ref",
+          "publish_weekday",
+          "enabled",
+          "require_confirmation",
+          "failures",
+          "paused_until"
+        ],
+        "title": "CircularSourceOut",
+        "type": "object"
+      },
       "CleanupApplyIn": {
         "additionalProperties": false,
         "properties": {
@@ -3846,6 +4051,86 @@
           "offer_ids"
         ],
         "title": "FlyerReported",
+        "type": "object"
+      },
+      "FlyerRunOut": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_week_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week From"
+          },
+          "ad_week_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ad Week To"
+          },
+          "fetched_at": {
+            "format": "date-time",
+            "title": "Fetched At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "offered_count": {
+            "title": "Offered Count",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "relevant_count": {
+            "title": "Relevant Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "empty",
+              "failed",
+              "not_allowed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "reason",
+          "ad_week_from",
+          "ad_week_to",
+          "fetched_at",
+          "offered_count",
+          "relevant_count"
+        ],
+        "title": "FlyerRunOut",
         "type": "object"
       },
       "FlyerSourceOut": {
@@ -33455,6 +33740,198 @@
         "tags": [
           "geo",
           "vendor-locations"
+        ]
+      }
+    },
+    "/api/v1/vendor-locations/{location_id}/circular": {
+      "get": {
+        "description": "The location's circular, its last four runs, and whether a read is waiting.",
+        "operationId": "get_circular_api_v1_vendor_locations__location_id__circular_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircularOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Circular",
+        "tags": [
+          "flyers"
+        ]
+      },
+      "patch": {
+        "description": "Turn it on or off, ask before using its offers, or move its weekday.",
+        "operationId": "patch_circular_api_v1_vendor_locations__location_id__circular_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircularPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircularOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Circular",
+        "tags": [
+          "flyers"
+        ]
+      },
+      "put": {
+        "description": "Set up the circular, or replace what the helper is told about it.",
+        "operationId": "put_circular_api_v1_vendor_locations__location_id__circular_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CircularIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircularOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Circular",
+        "tags": [
+          "flyers"
+        ]
+      }
+    },
+    "/api/v1/vendor-locations/{location_id}/circular/check": {
+      "post": {
+        "description": "Ask the helper to read this week's circular now; lifts a pause.",
+        "operationId": "check_now_api_v1_vendor_locations__location_id__circular_check_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "location_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Location Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CircularOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Now",
+        "tags": [
+          "flyers"
         ]
       }
     },

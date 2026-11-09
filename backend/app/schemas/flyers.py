@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from app.schemas.base import ApiModel, DecimalStr
 
@@ -129,3 +129,58 @@ class CurrentOffers(ApiModel):
 
 class OfferHistory(ApiModel):
     items: list[LinkedOffer]
+
+
+# --- a vendor location's circular (2U-4; UI-9.5) ---------------------------------------
+
+Mechanism = Literal["hosted_circular", "storefront", "itemized", "image", "region"]
+
+
+class CircularIn(ApiModel):
+    """What the helper is told about a location's circular; replaces it whole."""
+
+    mechanism: Mechanism
+    adapter: str = Field(min_length=1, max_length=64)
+    store_ref: dict[str, Annotated[str, Field(max_length=200)]] = Field(default={}, max_length=8)
+    publish_weekday: int = Field(ge=1, le=7)
+    enabled: bool = False
+    # Left out: image and region sources ask first, the others don't (2W).
+    require_confirmation: bool | None = None
+
+
+class CircularPatch(ApiModel):
+    enabled: bool | None = None
+    require_confirmation: bool | None = None
+    publish_weekday: int | None = Field(default=None, ge=1, le=7)
+
+
+class CircularSourceOut(ApiModel):
+    mechanism: Mechanism
+    adapter: str
+    store_ref: dict[str, str]
+    publish_weekday: int
+    enabled: bool
+    require_confirmation: bool
+    failures: int
+    paused_until: datetime | None
+
+
+class FlyerRunOut(ApiModel):
+    id: uuid.UUID
+    status: Literal["ok", "empty", "failed", "not_allowed"]
+    reason: str | None
+    ad_week_from: date | None
+    ad_week_to: date | None
+    fetched_at: datetime
+    offered_count: int
+    relevant_count: int
+
+
+class CircularOut(ApiModel):
+    """A location's circular: none set up is ``source: null``."""
+
+    source: CircularSourceOut | None
+    # The newest first.
+    runs: list[FlyerRunOut]
+    # A read is waiting for the helper.
+    checking: bool

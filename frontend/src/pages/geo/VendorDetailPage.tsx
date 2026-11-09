@@ -36,6 +36,7 @@ import {
 import { CoordinatesField } from "../../components/geo/CoordinatesField";
 import { EditVendorForm } from "../../components/geo/EditVendorForm";
 import { LinkOsmDialog } from "../../components/geo/LinkOsmDialog";
+import { LocationCircular } from "../../components/geo/LocationCircular";
 import { OpeningHoursInput } from "../../components/geo/OpeningHoursInput";
 import { SuggestionReviewDrawer } from "../../components/geo/SuggestionReviewDrawer";
 import {
@@ -662,6 +663,7 @@ function LocationCard({
           onLinked={() => setLinking(false)}
         />
       ) : null}
+      <LocationCircular id={location.id} name={location.name} />
     </div>
   );
 }
