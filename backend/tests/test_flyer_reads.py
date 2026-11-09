@@ -299,3 +299,91 @@ async def test_a_products_offer_history_lists_every_week(
     assert elsewhere.json()["items"] == []
     missing = await admin_client.get(f"/api/v1/products/{uuid.uuid4()}/flyer-offers")
     assert missing.status_code == 404
+
+
+async def test_a_counted_pack_is_priced_per_piece_not_per_pack_of_packs(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    product = await make_product(
+        admin_client,
+        "Eggs",
+        "Larkspur Eggs",
+        canonical_unit="each",
+        pack_qty="6",
+        pack_unit="each",
+    )
+    await learned(owner_conn, store, product, "eggs")
+    await owner_conn.execute(
+        "UPDATE ingredient SET watch = true WHERE id = $1", uuid.UUID(product["ingredient"]["id"])
+    )
+    await read(
+        helper,
+        [
+            candidate("Eggs", "6"),
+            candidate("Eggs", "6", size_qty="6", size_unit="each", valid_from="2026-11-05"),
+        ],
+    )
+    # The later valid_from is the printed six; both are $1 an egg.
+    [offer] = await current(admin_client, await kitchen(owner_conn, store))
+    assert (offer["size_inherited"], offer["unit"], offer["unit_price"]) == (
+        False,
+        "each",
+        "1.000000",
+    )
+    [printed, inherited] = (
+        await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")
+    ).json()["items"]
+    assert (printed["size_inherited"], inherited["size_inherited"]) == (False, True)
+    async with get_sessionmaker()() as db:
+        priced = await flyer_reads.offer_price(
+            db, uuid.UUID(product["id"]), uuid.UUID(store["id"]), date(2026, 11, 4)
+        )
+    assert priced is not None and priced.price == Decimal(1)
+
+
+async def test_a_size_given_to_the_product_later_is_read_by(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    product = await lentils(admin_client, store)
+    await learned(owner_conn, store, product)
+    await read(helper, [candidate("Green Lentils", "2.49")])
+    r = await admin_client.patch(
+        f"/api/v1/products/{product['id']}", json={"pack_qty": "1", "pack_unit": "lb"}
+    )
+    assert r.status_code == 200, r.text
+    [offer] = await current(admin_client, await kitchen(owner_conn, store))
+    assert (offer["size_qty"], offer["size_inherited"]) == ("1", True)
+    assert Decimal(offer["unit_price"]) == unit_price(Decimal("2.49"), POUND)
+
+
+async def test_a_discount_is_off_the_prices_seen_by_that_day_only(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    product = await lentils(admin_client, store, pack_qty="1", pack_unit="lb")
+    later = await admin_client.post(
+        "/api/v1/purchases",
+        json={
+            "vendor_location_id": store["id"],
+            "purchased_at": "2026-11-07T18:00:00Z",
+            "lines": [{"product_id": product["id"], "qty": "1", "unit": "each", "unit_price": "9"}],
+        },
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert later.status_code == 201, later.text
+    await learned(owner_conn, store, product)
+    await read(helper, [candidate("Green Lentils", None, price_basis="percent_off", discount="50")])
+    async with get_sessionmaker()() as db:
+        priced = await flyer_reads.offer_price(
+            db, uuid.UUID(product["id"]), uuid.UUID(store["id"]), THURSDAY
+        )
+    # Only the $3 bought before Thursday counts, not the $9 bought after it.
+    assert priced is not None and priced.regular == unit_price(Decimal(3), POUND)

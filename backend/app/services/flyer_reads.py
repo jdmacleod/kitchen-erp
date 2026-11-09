@@ -23,7 +23,7 @@ from __future__ import annotations
 import statistics
 import uuid
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
@@ -39,7 +39,9 @@ from app.services.units import build_context
 from app.units import CanonicalQty, ConversionContext, convert
 
 # Linked offers from the newest run of each source's ad week, with what a person
-# corrected and the size they read by. A merged product reads as its survivor.
+# corrected and the size they read by. A merged product reads as its survivor. An
+# offer printed without a size reads by its product's as it is now, so a size added
+# to the product after the offer linked counts too.
 _LINKED = """
     WITH runs AS (
         SELECT DISTINCT ON (fr.ad_source_id, fr.ad_week_from) fr.id
@@ -49,13 +51,13 @@ _LINKED = """
     SELECT o.id, o.name_as_printed, o.price_basis,
            COALESCE(l.corrected_price, o.price) AS price,
            o.basis_qty, o.discount, o.requires_loyalty, o.limit_qty,
-           o.valid_from, o.valid_to, fr.ad_week_from, fr.ad_week_to, l.size_inherited,
-           CASE WHEN l.corrected_size_qty IS NOT NULL THEN l.corrected_size_qty
-                WHEN o.size_qty IS NOT NULL THEN o.size_qty
-                WHEN l.size_inherited THEN p.pack_qty END AS size_qty,
+           o.valid_from, o.valid_to, fr.ad_week_from, fr.ad_week_to,
+           (l.corrected_size_qty IS NULL AND o.size_qty IS NULL AND p.pack_qty IS NOT NULL)
+               AS size_inherited,
+           COALESCE(l.corrected_size_qty, o.size_qty, p.pack_qty) AS size_qty,
            CASE WHEN l.corrected_size_qty IS NOT NULL THEN l.corrected_size_unit
                 WHEN o.size_qty IS NOT NULL THEN o.size_unit
-                WHEN l.size_inherited THEN p.pack_unit END AS size_unit,
+                ELSE p.pack_unit END AS size_unit,
            p.id AS product_id, p.name AS product_name,
            r.id AS location_id, r.name AS location_name,
            v.id AS vendor_id, v.name AS vendor_name
@@ -72,7 +74,7 @@ _LINKED = """
 
 # The price book's regular prices for a product at a location: qualifying (a
 # committed purchase or a shelf price; posted prices are not in offer_applicable),
-# not on promotion, recent, normalized.
+# not on promotion, normalized, from the trailing window up to the day asked about.
 _REGULAR = """
     SELECT oa.norm_unit, oa.norm_unit_price
     FROM offer_applicable oa
@@ -80,7 +82,7 @@ _REGULAR = """
     LEFT JOIN purchase pu ON pu.id = pl.purchase_id
     WHERE oa.product_id = :product AND oa.applies_to_location_id = :location
       AND NOT oa.is_promo AND oa.norm_status = 'ok' AND oa.norm_unit_price IS NOT NULL
-      AND oa.observed_at >= CAST(:since AS date)
+      AND oa.observed_at >= CAST(:since AS date) AND oa.observed_at < CAST(:until AS date)
       AND (oa.purchase_line_id IS NULL OR pu.status = 'committed')
 """
 
@@ -98,7 +100,8 @@ class UnitPrice:
 
 
 async def inherit_sizes(db: AsyncSession, offer_ids: list[uuid.UUID]) -> None:
-    """Mark the linked offers printed without a size whose product has one (U16)."""
+    """Mark the linked offers printed without a size whose product has one (U16): the
+    record of how it linked. The read models check the product's size as it is now."""
     await db.flush()
     await db.execute(
         text(
@@ -197,6 +200,17 @@ def _canonical(
     return result if isinstance(result, CanonicalQty) and result.qty > 0 else None
 
 
+def _size(row: dict[str, Any], ctx: ConversionContext) -> CanonicalQty | None:
+    """What one of the offer is. A size taken from the product is one pack of it. A
+    printed size counts pieces, never packs: "6 ct" of a six-pack is the one pack,
+    where "6 each" of a packed product would be six packs to the converter."""
+    if row["size_inherited"]:
+        return _canonical(Decimal(1), "each", ctx)
+    if ctx.product is not None:
+        ctx = replace(ctx, product=replace(ctx.product, pack=None, piece_pack=None))
+    return _canonical(row["size_qty"], row["size_unit"], ctx)
+
+
 async def _regular(
     db: AsyncSession, row: dict[str, Any], on: date, unit: str | None
 ) -> tuple[Decimal, str] | None:
@@ -206,7 +220,12 @@ async def _regular(
     found = (
         await db.execute(
             text(_REGULAR),
-            {"product": row["product_id"], "location": row["location_id"], "since": since},
+            {
+                "product": row["product_id"],
+                "location": row["location_id"],
+                "since": since,
+                "until": on + timedelta(days=1),
+            },
         )
     ).all()
     if unit is None and found:
@@ -226,7 +245,7 @@ async def _unit_price(
         if one is None or price is None:
             return UnitPrice(None, None, None)
         return UnitPrice(unit_price(price, one.qty), one.unit, None)
-    size = _canonical(row["size_qty"], row["size_unit"], ctx)
+    size = _size(row, ctx)
     if basis in ("each", "multi", "bogo"):
         if size is None or price is None:
             return UnitPrice(None, None, None)
