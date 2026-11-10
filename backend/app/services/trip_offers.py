@@ -355,7 +355,8 @@ async def offers(  # noqa: C901, PLR0912, PLR0915
                         pairs, item.kind, ingredient, product, stand_in.regular, units
                     )
                     if regular is not None:
-                        saving = max(regular.line_cost - costed.line_cost, Decimal(0))
+                        # Signed: a dearer offer takes from the stop's saving.
+                        saving = regular.line_cost - costed.line_cost
                 offer = Offer(
                     item_id=item.id,
                     location_id=location_id,
@@ -395,7 +396,9 @@ def expected_saving(items: list[Offer]) -> Decimal | None:
     """What a stop's offers save against the regular prices there; None when none of
     its items rests on an offer with a regular price to save against."""
     savings = [o.saving for o in items if o.saving is not None]
-    return packs.money(sum(savings, Decimal(0))) if savings else None
+    if not savings:
+        return None
+    return packs.money(max(sum(savings, Decimal(0)), Decimal(0)))
 
 
 def without_stale(book: OfferBook) -> OfferBook:

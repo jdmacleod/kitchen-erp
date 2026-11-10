@@ -171,3 +171,56 @@ async def test_the_stop_screen_carries_the_offer_it_was_planned_with(
     [line] = screen["items"]
     assert line["flyer_offer_id"] == chosen["stops"][0]["items"][0]["flyer_offer_id"]
     assert line["line_cost"] == "2.0000"
+
+
+async def test_bought_at_the_offer_is_recorded_as_a_sale_price(
+    admin_client,
+    helper,  # noqa: F811
+    owner_conn,
+    world,
+    no_network: None,
+):
+    """A sale price never joins the regular prices offers and savings are measured
+    against."""
+    await circular(helper, owner_conn, world, "2.00")
+    trip = await plan(admin_client, world, with_offers=True)
+    chosen = variant(trip, "cheapest")
+    r = await admin_client.post(f"{TRIPS}/{trip['id']}/choose", json={"variant_id": chosen["id"]})
+    assert r.status_code == 200, r.text
+    [line] = chosen["stops"][0]["items"]
+    r = await admin_client.post(
+        f"{TRIPS}/{trip['id']}/stops/1/done",
+        json={"checked_item_ids": [line["id"]]},
+        headers={"Idempotency-Key": str(uuid.uuid4())},
+    )
+    assert r.status_code == 200, r.text
+    [promo] = await owner_conn.fetch(
+        "SELECT o.is_promo FROM price_observation o JOIN purchase_line pl"
+        " ON pl.id = o.purchase_line_id WHERE 'offer_price' = ANY(pl.flags)"
+    )
+    assert promo["is_promo"] is True
+
+
+def test_a_dearer_offer_takes_from_the_stops_saving():
+    from decimal import Decimal
+
+    from app.services import trip_offers
+
+    def line(saving: str | None) -> trip_offers.Offer:
+        return trip_offers.Offer(
+            item_id=uuid.uuid4(),
+            location_id=uuid.uuid4(),
+            product_id=uuid.uuid4(),
+            observation_id=uuid.uuid4(),
+            observed_at=IN_THE_AD_WEEK,
+            unit_price=Decimal(1),
+            packs=None,
+            pack_price=None,
+            line_cost=Decimal(1),
+            stale=False,
+            saving=Decimal(saving) if saving else None,
+        )
+
+    assert trip_offers.expected_saving([line("2"), line("-1")]) == Decimal("1.0000")
+    assert trip_offers.expected_saving([line("-1")]) == Decimal("0.0000")
+    assert trip_offers.expected_saving([line(None)]) is None

@@ -458,7 +458,9 @@ async def done(
     for position, item in enumerate(checked_items, start=1):
         lines.append(await _line_for(db, item, list_items[item.list_item_id], units))
         if item.actual_price is None:
-            flags[position] = [purchases.PLANNED_PRICE]
+            # Bought at this week's offer: a sale price, never a regular one (X1).
+            offer = [purchases.OFFER_PRICE] if item.flyer_offer_id else []
+            flags[position] = [purchases.PLANNED_PRICE, *offer]
     purchase = None
     observation_ids: list[uuid.UUID] = []
     if lines:
