@@ -805,3 +805,42 @@ def test_a_donation_stays_a_discount_when_the_receipt_adds_up_as_read():
         ("STORE DONATION 0.40", "discount", "0.40", 0),
     )
     assert _by_text(lines)["STORE DONATION 0.40"].line_kind == "discount"
+
+
+# --- A free-item coupon read as an item ----------------------------------------
+
+_FREE_ROWS = (
+    ("CINDER PLUMS 3.00 F", "item", "3.00"),
+    ("SC SAVED YOU 0.50", "discount", "0.50", 0),
+    ("HEATH SAUSAGE 0.00 F", "item", "0.00"),
+    ("SC FREE Heath Sausage 4.25", "item", "4.25"),
+)
+_FREE_TEXT = "\n".join(row[0] for row in _FREE_ROWS) + "\nTOTAL SAVINGS 4.75\n"
+
+
+def test_a_free_row_the_savings_total_lacks_is_a_saving_on_the_item_above():
+    # The till prints what was paid on each row; every saving is already in it.
+    lines = _passes(*_FREE_ROWS, text=_FREE_TEXT, total="3.00")
+    by = _by_text(lines)
+    coupon = by["SC FREE Heath Sausage 4.25"]
+    assert coupon.line_kind == "discount"
+    assert coupon.parent_seq == by["HEATH SAUSAGE 0.00 F"].seq
+    assert coupon.flags == ["free_item_coupon", "saving_in_price_by_total"]
+    assert reconcile(lines, Decimal("3.00"), None)["mismatch"] is False
+
+
+def test_a_product_that_says_free_stays_an_item():
+    rows = (*_FREE_ROWS[:2], ("SUGAR FREE GUM 1.25 F", "item", "1.25"))
+    text = "\n".join(row[0] for row in rows) + "\nTOTAL SAVINGS 0.50\n"
+    lines = _passes(*rows, text=text, total="4.25")
+    assert _by_text(lines)["SUGAR FREE GUM 1.25 F"].line_kind == "item"
+    # Nor when its price is the saving the model left out, on a receipt that adds up.
+    rows = (("CINDER PLUMS 3.00 F", "item", "3.00"), ("SUGAR FREE GUM 1.25 F", "item", "1.25"))
+    text = "\n".join(row[0] for row in rows) + "\nTOTAL SAVINGS 1.25\n"
+    lines = _passes(*rows, text=text, total="4.25")
+    assert _by_text(lines)["SUGAR FREE GUM 1.25 F"].line_kind == "item"
+    # Nor without a printed savings total, or a printed total, to prove it by.
+    lines = _passes(*_FREE_ROWS, text=_FREE_TEXT.replace("TOTAL SAVINGS 4.75\n", ""), total="3.00")
+    assert _by_text(lines)["SC FREE Heath Sausage 4.25"].line_kind == "item"
+    lines = _passes(*_FREE_ROWS, text=_FREE_TEXT)
+    assert _by_text(lines)["SC FREE Heath Sausage 4.25"].line_kind == "item"

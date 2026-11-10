@@ -72,7 +72,8 @@ _COUPONS_FOOTER = [
 
 def test_what_the_coupons_came_to_is_never_the_receipt_total():
     text = "\n".join([*_COUPONS_FOOTER[:5], "REF#: 0042 TOTAL: 9.40", *_COUPONS_FOOTER[5:]])
-    assert header_stage.printed_total_line(text) == (Decimal("9.40"), True)
+    # The slip's TOTAL is the card's share, so the BALANCE above it is the total.
+    assert header_stage.printed_total_line(text) == (Decimal("9.40"), False)
     fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("9.40")), text)
     assert fixed.total == Decimal("9.40") and flags == []
 
@@ -147,6 +148,32 @@ _SLIP_MISREAD = "\n".join(
 def test_a_balance_the_tender_repeats_beats_a_total_printed_only_on_the_slip():
     fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("28.85")), _SLIP_MISREAD)
     assert fixed.total == Decimal("26.85") and flags == ["total_from_balance"]
+
+
+# Paid two ways: each card's slip prints its own share as TOTAL.
+_SPLIT_TENDER = "\n".join(
+    [
+        "FENWICK OATS              6.40",
+        "CINDER PLUMS             20.45",
+        "**** BALANCE             26.85",
+        "GIFT CARD Purchase",
+        "REF#: 4417 TOTAL: 10.00",
+        "PURCHASE: 26.85",
+        "VISA Purchase",
+        "REF#: 9023 TOTAL: 16.85",
+    ]
+)
+
+
+def test_a_split_payment_slip_total_is_not_the_receipt_total():
+    assert header_stage.printed_total_line(_SPLIT_TENDER) == (Decimal("26.85"), False)
+    fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("16.85")), _SPLIT_TENDER)
+    assert fixed.total == Decimal("26.85") and flags == ["total_from_balance"]
+
+
+def test_a_sale_total_labelled_total_amount_is_still_the_total():
+    text = "FENWICK OATS 6.40\nCINDER PLUMS 20.45\nTOTAL AMOUNT 26.85\nVISA 26.85"
+    assert header_stage.printed_total_line(text) == (Decimal("26.85"), True)
 
 
 def test_a_balance_printed_once_does_not_replace_a_slip_total():
