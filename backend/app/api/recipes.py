@@ -14,6 +14,7 @@ from fastapi import APIRouter, Query, Response, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.core.config import get_settings
+from app.core.errors import ApiError
 from app.schemas.recipes import (
     Completeness,
     CostBasis,
@@ -115,15 +116,21 @@ async def get_cost(
     ``window_days`` applies to ``average`` only and defaults to the stale window.
     ``home_base_id`` asks for the per-kitchen view (17, 4A, L3): prices at that
     kitchen's locations only, computed on demand and never snapshotted, so the
-    stored snapshot and the history stand; an unknown kitchen is a 422.
+    stored snapshot and the history stand; an unknown kitchen is a 422. The
+    ``offers`` basis (18, X2) is that view's only: each line at the cheapest offer
+    valid today at the kitchen's stores, else its latest price.
     """
     recipe = await recipes.get_recipe(db, recipe_id)
+    if basis == "offers" and home_base_id is None:
+        raise ApiError(422, "offers_need_kitchen", "This week's offers are a kitchen's.")
     if home_base_id is not None:
         await user_settings.require_home_base(db, home_base_id)
-        view, lines = await recipe_costing.compute_view(
+        view, lines, offered = await recipe_costing.compute_view(
             db, recipe, basis, window_days, min_quality, home_base_id=home_base_id
         )
-        return await recipe_cost_views.cost_out(db, view, lines, home_base_id=home_base_id)
+        return await recipe_cost_views.cost_out(
+            db, view, lines, home_base_id=home_base_id, offered=offered
+        )
     snapshot = await recipe_costing.find_snapshot(db, recipe, basis, window_days, min_quality)
     if snapshot is None:
         snapshot = await recipe_costing.compute_snapshot(

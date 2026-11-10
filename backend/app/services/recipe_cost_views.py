@@ -31,7 +31,7 @@ from app.schemas.recipes import (
     RecipeIngredientOut,
     UsdaLineOffer,
 )
-from app.services import recipe_bridges, unit_display
+from app.services import recipe_bridges, recipe_costing, unit_display
 from app.services.pricebook_views import stale_after_days
 from app.services.recipe_costing import _pins
 from app.units import display
@@ -113,6 +113,29 @@ def _quantity(line: RecipeCostLine, mass: str | None) -> CostQuantity | None:
     )
 
 
+_OFFERED_SQL = """
+    SELECT vl.id AS location_id, vl.name AS location_name, v.id AS vendor_id,
+           v.name AS vendor_name, p.id AS product_id, p.name AS product_name, p.brand
+    FROM vendor_location vl JOIN vendor v ON v.id = vl.vendor_id, product p
+    WHERE vl.id = :location AND p.id = :product
+"""
+
+
+async def _offered(db: AsyncSession, offer: recipe_costing.OfferPrice) -> dict[str, Any]:
+    """What an offer-priced line names: the store and product, the offer, and whether
+    its price rests on the product's size (an estimate)."""
+    row = (
+        (
+            await db.execute(
+                text(_OFFERED_SQL), {"location": offer.location_id, "product": offer.product_id}
+            )
+        )
+        .mappings()
+        .one()
+    )
+    return dict(row) | {"flyer_offer_id": offer.offer_id, "estimate": offer.estimate}
+
+
 def _price(
     line: RecipeCostLine, used: dict[str, Any] | None, mass: str | None, now: datetime, stale: int
 ) -> CostPriceUsed | None:
@@ -136,6 +159,8 @@ def _price(
         observation_id=line.observation_id,
         observed_at=observed_at,
         stale=observed_at is not None and (now - observed_at) > timedelta(days=stale),
+        flyer_offer_id=used.get("flyer_offer_id"),
+        estimate=used.get("estimate", False),
     )
 
 
@@ -157,8 +182,12 @@ async def cost_out(
     lines_in: list[tuple[RecipeCostLine, RecipeIngredient]] | None = None,
     *,
     home_base_id: uuid.UUID | None = None,
+    offered: dict[uuid.UUID, recipe_costing.OfferPrice] | None = None,
 ) -> RecipeCostOut:
     """The snapshot as the cost table shows it.
+
+    ``offered`` names, by line id, the offer that priced each line under the
+    per-kitchen view's ``offers`` basis (18, X2).
 
     ``lines_in`` carries the unsaved lines of a per-kitchen view
     (``recipe_costing.compute_view``), which has no rows to read back; stored
@@ -178,6 +207,8 @@ async def cost_out(
         ).all()
     )
     used = await _used(db, [line for line, _ in rows])
+    for line_id, offer in (offered or {}).items():
+        used[line_id] = await _offered(db, offer)
     offers = await recipe_bridges.offers_for(db, [(line, ri) for line, ri in rows])
     ingredient_ids = {ri.ingredient_id for _, ri in rows if ri.ingredient_id is not None}
     names: dict[uuid.UUID, str] = {}

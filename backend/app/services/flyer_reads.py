@@ -182,6 +182,11 @@ class StandIn:
     unit_price: Decimal
     unit: str
     regular: Decimal | None
+    # The price rests on the product's size because the circular printed none (U16):
+    # an estimate. A per-pound or per-ounce price is exact whatever the size.
+    estimate: bool = False
+    # How much one of the offer is, in ``unit``; None for a price by weight.
+    pack_qty: Decimal | None = None
 
 
 async def stand_ins(
@@ -217,8 +222,15 @@ async def stand_ins(
         if regular is None:
             found = await _regular(db, row, on, priced.unit)
             regular = found[0] if found else None
+        sized = row["price_basis"] not in _PER
+        pack = _size(row, contexts[product_id]) if sized else None
         out[(product_id, row["location_id"])] = StandIn(
-            row["id"], priced.price, priced.unit, regular
+            row["id"],
+            priced.price,
+            priced.unit,
+            regular,
+            estimate=sized and bool(row["size_inherited"]) and row["price_basis"] != "percent_off",
+            pack_qty=pack.qty if pack is not None and pack.unit == priced.unit else None,
         )
     return out
 
