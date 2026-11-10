@@ -3,7 +3,7 @@ import { errorMessage } from "../../api/client";
 import { useCurrentOffers, type CurrentOffer } from "../../api/flyerOffers";
 import { formatCalendarDate } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
-import { distinctOffers, offerPriceText } from "../../lib/offers";
+import { distinctDeals, offerPriceText, type Deal } from "../../lib/offers";
 import { Alert, focusRing, sectionHeading, tapTarget } from "../ui";
 
 /**
@@ -29,11 +29,12 @@ export function OffersCard() {
   }
   if (!offers.data?.length) return null;
 
-  const stores = new Map<string, { name: string; offers: CurrentOffer[] }>();
-  for (const offer of distinctOffers(offers.data)) {
-    const store = stores.get(offer.vendor.id) ?? { name: offer.vendor.name, offers: [] };
-    store.offers.push(offer);
-    stores.set(offer.vendor.id, store);
+  const stores = new Map<string, { name: string; deals: Deal<CurrentOffer>[] }>();
+  for (const deal of distinctDeals(offers.data, (o) => `${o.vendor.id}:${o.product.id}`)) {
+    const { vendor } = deal.offer;
+    const store = stores.get(vendor.id) ?? { name: vendor.name, deals: [] };
+    store.deals.push(deal);
+    stores.set(vendor.id, store);
   }
 
   return (
@@ -45,7 +46,7 @@ export function OffersCard() {
         <section key={id} aria-label={store.name} className="mt-3">
           <h3 className="text-sm font-medium">{store.name}</h3>
           <ul className="mt-1">
-            {store.offers.map((offer) => (
+            {store.deals.map(({ offer, locations }) => (
               <li
                 key={offer.id}
                 className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-neutral-200 py-1.5 text-sm first:border-t-0 dark:border-neutral-800"
@@ -57,6 +58,11 @@ export function OffersCard() {
                   {offer.product.name}
                 </Link>
                 <span className="tabular-nums">{offerPriceText(offer)}</span>
+                {locations ? (
+                  <span className="text-xs text-neutral-600 dark:text-neutral-400">
+                    at {locations.join(", ")}
+                  </span>
+                ) : null}
                 <span className="text-xs text-neutral-600 dark:text-neutral-400">
                   through {formatCalendarDate(offer.valid_to)}
                 </span>

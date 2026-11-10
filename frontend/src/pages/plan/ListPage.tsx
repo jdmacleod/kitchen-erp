@@ -290,7 +290,8 @@ function ListBody({
 }: ListBodyProps) {
   const empty = list.unchecked.length === 0 && list.checked.length === 0;
   // This week's offers mark the open list's unchecked items (UI-9.2).
-  const offers = useCurrentOffers(archived ? null : homeBaseId).data ?? [];
+  const current = useCurrentOffers(archived ? null : homeBaseId);
+  const offers = current.data ?? [];
   const rows = (items: ShoppingItem[]) => (
     <ul>
       {items.map((item) => (
@@ -324,6 +325,12 @@ function ListBody({
             />
           </div>
         )}
+        {current.isError ? (
+          // The list still works; only the offer marks are missing (never "no offers").
+          <Alert tone="error" className="mt-2">
+            Couldn&apos;t load this week&apos;s offers: {errorMessage(current.error)}
+          </Alert>
+        ) : null}
         {empty ? (
           <div className="mt-3">
             <EmptyState title={archived ? "This list was empty." : "Nothing on the list."}>

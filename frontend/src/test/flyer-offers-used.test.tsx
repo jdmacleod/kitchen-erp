@@ -4,7 +4,14 @@ import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { CurrentOffer } from "../api/flyerOffers";
 import { chainLocation } from "./geo-fixtures";
-import { adminUser, jsonResponse, mockApi, renderApp, type RouteHandler } from "./helpers";
+import {
+  adminUser,
+  errorResponse,
+  jsonResponse,
+  mockApi,
+  renderApp,
+  type RouteHandler,
+} from "./helpers";
 import { chickpeas, item, kitchen, list, oatMilk, planHealth, settings } from "./plan-fixtures";
 import { manualPurchase } from "./purchase-fixtures";
 import { quietInbox } from "./recipe-fixtures";
@@ -101,6 +108,16 @@ describe("this week's offers on Home (UI-9.1)", () => {
     );
   });
 
+  it("names the branches when a store's branches have different deals", async () => {
+    mount("/", [offer(1), offer(2, { price: "6.00" })]);
+    const card = await screen.findByRole("region", { name: "This week's offers" });
+    const lines = within(card).getAllByRole("listitem");
+    expect(lines.map((l) => l.textContent)).toEqual([
+      "Larkspur dried chickpeas3 for $5at Larkspur 1through Nov 10, 2026",
+      "Larkspur dried chickpeas3 for $6at Larkspur 2through Nov 10, 2026",
+    ]);
+  });
+
   it("shows nothing at all when the kitchen has no linked offers (X5)", async () => {
     mount("/", []);
     await screen.findByRole("heading", { name: "Recent purchases" });
@@ -120,6 +137,23 @@ describe("the list's offer mark (UI-9.2)", () => {
     expect(peas).toHaveTextContent("Dried Chickpeas, 3 for $5, through Nov 10, 2026");
     expect(within(peas).queryByText(/Juniper/)).not.toBeInTheDocument();
     expect(within(milk).getByText("On offer at Juniper Grocers")).toBeInTheDocument();
+  });
+
+  it("names the branch when the store's branches have different deals", async () => {
+    mount("/plan/list", [offer(1), offer(2, { price: "6.00" })]);
+    const [peas] = await screen.findAllByTestId("list-item");
+    expect(await within(peas).findByText("On offer at Larkspur Market (Larkspur 1)")).toBeVisible();
+    expect(within(peas).getByText("On offer at Larkspur Market (Larkspur 2)")).toBeVisible();
+  });
+
+  it("says when the offers couldn't be read, and still shows the list", async () => {
+    mount("/plan/list", [], {
+      "GET /flyer-offers/current": () => errorResponse(503, "unavailable", "The server is busy."),
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Couldn't load this week's offers: The server is busy.",
+    );
+    expect(await screen.findAllByTestId("list-item")).toHaveLength(2);
   });
 
   it("leaves checked items, and items without an offer, unmarked", async () => {
