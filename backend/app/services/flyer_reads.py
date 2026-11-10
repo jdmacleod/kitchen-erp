@@ -173,6 +173,56 @@ async def current_offers(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class StandIn:
+    """An offer's price at one store on one day, for the planner (X1): per canonical
+    unit, with the median regular price there it saves against (None without one)."""
+
+    offer_id: uuid.UUID
+    unit_price: Decimal
+    unit: str
+    regular: Decimal | None
+
+
+async def stand_ins(
+    db: AsyncSession, location_ids: list[uuid.UUID], on: date
+) -> dict[tuple[uuid.UUID, uuid.UUID], StandIn]:
+    """The priced linked offers valid on ``on`` at these stores, by (product, location).
+    The later ``valid_from`` wins, as in ``current_offers``; an offer shown only as
+    printed has no price to stand in with."""
+    if not location_ids:
+        return {}
+    rows = await db.execute(
+        text(
+            f"""
+            SELECT DISTINCT ON (location_id, product_id) * FROM ({_LINKED}
+                WHERE r.id = ANY(CAST(:locations AS uuid[]))
+                  AND o.valid_from <= CAST(:on AS date) AND o.valid_to >= CAST(:on AS date)
+            ) linked
+            ORDER BY location_id, product_id, valid_from DESC, id
+            """  # noqa: S608  constant fragments only
+        ),
+        {"locations": [str(i) for i in location_ids], "on": on},
+    )
+    contexts: dict[uuid.UUID, ConversionContext] = {}
+    out: dict[tuple[uuid.UUID, uuid.UUID], StandIn] = {}
+    for row in (dict(r) for r in rows.mappings()):
+        product_id = row["product_id"]
+        if product_id not in contexts:
+            contexts[product_id] = await _context(db, product_id)
+        priced = await _unit_price(db, row, contexts[product_id], on)
+        if priced.price is None or priced.unit is None:
+            continue
+        regular = priced.regular
+        if regular is None:
+            found = await _regular(db, row, on, priced.unit)
+            regular = found[0] if found else None
+        out[(product_id, row["location_id"])] = StandIn(
+            row["id"], priced.price, priced.unit, regular
+        )
+    return out
+
+
 async def offer_history(
     db: AsyncSession, product_id: uuid.UUID, on: date, location_id: uuid.UUID | None = None
 ) -> dict[str, Any]:

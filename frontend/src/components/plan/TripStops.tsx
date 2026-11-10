@@ -142,6 +142,8 @@ function StopBody({
               </span>
               {item.price_stale ? <Badge tone="warn">stale</Badge> : null}
               {item.forced ? <Badge tone="neutral">only here</Badge> : null}
+              {/* Neutral: olive in Plan is only the cheapest and a Done trip (UI-8.20). */}
+              {item.flyer_offer_id ? <Badge tone="neutral">this week&apos;s offer</Badge> : null}
             </span>
             <span className="tabular-nums">{formatMoney(item.line_cost)}</span>
           </li>
@@ -153,6 +155,13 @@ function StopBody({
           {formatMoney(stop.subtotal)}
         </span>
       </p>
+      {stop.expected_saving ? (
+        <p className={muted} data-testid="stop-saving">
+          This week&apos;s offers save about{" "}
+          <span className="tabular-nums">{formatMoney(stop.expected_saving)}</span> against the
+          usual prices here
+        </p>
+      ) : null}
 
       {stop.done_at ? (
         <p className={muted} data-testid="stop-actual">

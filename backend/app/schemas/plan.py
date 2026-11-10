@@ -251,6 +251,9 @@ class TripCreate(ApiModel):
     max_stops: Annotated[int, Field(ge=1, le=4)] = 3
     mileage_rate: Annotated[Decimal, Field(ge=0, max_digits=8, decimal_places=4)] | None = None
     stop_overhead_min: Annotated[int, Field(ge=0, le=32767)] | None = None
+    # "With this week's offers" (18, X1): an offer valid on the planned day prices a
+    # product at its store in place of the price book's latest price there.
+    with_offers: bool = False
 
 
 class Annotation(ApiModel):
@@ -276,6 +279,8 @@ class StopItemOut(ApiModel):
     pack_price: DecimalStr | None
     line_cost: DecimalStr
     observation_id: uuid.UUID
+    # The offer whose price stood in for the observation's (X1).
+    flyer_offer_id: uuid.UUID | None = None
     price_stale: bool
     forced: bool
     actual_price: DecimalStr | None
@@ -303,6 +308,8 @@ class StopOut(ApiModel):
     overhead_min: int
     subtotal: DecimalStr
     hours_known: bool
+    # What the stop's offers save against the trailing median regular prices there.
+    expected_saving: DecimalStr | None = None
     done_at: datetime | None
     purchase_id: uuid.UUID | None
     actual_cost: DecimalStr | None = None
@@ -347,6 +354,7 @@ class TripBase(ApiModel):
     max_stops: int
     mileage_rate: DecimalStr | None
     stop_overhead_min: int
+    with_offers: bool = False
     status: PlanStatus
     chosen_variant_id: uuid.UUID | None
     created_by: uuid.UUID
@@ -426,6 +434,7 @@ class StopScreenItem(ApiModel):
     pack_price: DecimalStr | None
     line_cost: DecimalStr
     observation_id: uuid.UUID
+    flyer_offer_id: uuid.UUID | None = None
     planned_observed_at: datetime
     price_stale: bool
     forced: bool

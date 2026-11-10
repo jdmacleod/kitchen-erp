@@ -37,7 +37,8 @@ from sqlalchemy.orm import selectinload
 from app.core.config import Settings
 from app.models import Ingredient, Product
 from app.models.plan import ShoppingListItem
-from app.services import packs
+from app.services import flyer_reads, flyers, packs
+from app.services.flyer_reads import StandIn
 from app.services.units import load_units
 from app.units import (
     ConversionContext,
@@ -95,6 +96,10 @@ class Offer:
     pack_price: Decimal | None
     line_cost: Decimal
     stale: bool
+    # This week's offer priced it, standing in for ``observation_id``'s price (18, X1),
+    # and saved this much against the trailing median regular price there.
+    flyer_offer_id: uuid.UUID | None = None
+    saving: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,8 +279,13 @@ async def offers(  # noqa: C901, PLR0912, PLR0915
     settings: Settings,
     *,
     now: datetime | None = None,
+    stand_ins: dict[tuple[uuid.UUID, uuid.UUID], StandIn] | None = None,
 ) -> OfferBook:
-    """The cheapest qualifying product per (item, location), with packs and cost."""
+    """The cheapest qualifying product per (item, location), with packs and cost.
+
+    With ``stand_ins`` (the planner's "With this week's offers"), a product's offer
+    at a store prices it there in place of its latest price-book price."""
+    stand_ins = stand_ins or {}
     now = now or datetime.now(UTC)
     stale_before = now - timedelta(days=settings.stale_after_days)
     units = await load_units(db)
@@ -331,23 +341,37 @@ async def offers(  # noqa: C901, PLR0912, PLR0915
                     continue
                 if price.unit != ingredient.canonical_unit:
                     continue
-                costed = cost_item(pairs, item.kind, ingredient, product, price.unit_price, units)
+                stand_in = stand_ins.get((product.id, location_id))
+                if stand_in is not None and stand_in.unit != price.unit:
+                    stand_in = None
+                unit_price = stand_in.unit_price if stand_in else price.unit_price
+                costed = cost_item(pairs, item.kind, ingredient, product, unit_price, units)
                 if costed is None:
                     reason = "cant_convert"
                     continue
+                saving = None
+                if stand_in is not None and stand_in.regular is not None:
+                    regular = cost_item(
+                        pairs, item.kind, ingredient, product, stand_in.regular, units
+                    )
+                    if regular is not None:
+                        saving = max(regular.line_cost - costed.line_cost, Decimal(0))
                 offer = Offer(
                     item_id=item.id,
                     location_id=location_id,
                     product_id=product.id,
                     observation_id=price.observation_id,
                     observed_at=price.observed_at,
-                    unit_price=price.unit_price,
+                    unit_price=unit_price,
                     packs=costed.packs,
                     pack_price=costed.pack_price,
                     line_cost=costed.line_cost,
-                    stale=price.observed_at < stale_before,
+                    # An offer valid on the trip's day is this week's, never stale.
+                    stale=stand_in is None and price.observed_at < stale_before,
+                    flyer_offer_id=stand_in.offer_id if stand_in else None,
+                    saving=saving,
                 )
-                key = (costed.line_cost, price.unit_price, str(product.id))
+                key = (costed.line_cost, unit_price, str(product.id))
                 if best is None or key < best[0]:
                     best = (key, offer)
             if best is not None:
@@ -355,6 +379,23 @@ async def offers(  # noqa: C901, PLR0912, PLR0915
             else:
                 reasons[(item.id, location_id)] = reason
     return OfferBook(offers=found, reasons=reasons)
+
+
+async def stand_ins(
+    db: AsyncSession, location_ids: list[uuid.UUID], planned_at: datetime, with_offers: bool
+) -> dict[tuple[uuid.UUID, uuid.UUID], StandIn] | None:
+    """The offers valid on the planned day at these stores, when the plan asked for
+    them (X1); off, None, and no offer is even read."""
+    if not with_offers:
+        return None
+    return await flyer_reads.stand_ins(db, location_ids, flyers.today(planned_at))
+
+
+def expected_saving(items: list[Offer]) -> Decimal | None:
+    """What a stop's offers save against the regular prices there; None when none of
+    its items rests on an offer with a regular price to save against."""
+    savings = [o.saving for o in items if o.saving is not None]
+    return packs.money(sum(savings, Decimal(0))) if savings else None
 
 
 def without_stale(book: OfferBook) -> OfferBook:

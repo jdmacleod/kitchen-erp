@@ -193,7 +193,7 @@ No price view, receipt resolution or default cost reads `flyer_offer` (F4). The 
 
 - **Home card "This week's offers":** for the current kitchen, grouped by store, one line per linked offer, each linking to its product. Hidden when there are none.
 - **Shopping list:** an item with a current offer shows "On offer at {store}" in olive.
-- **Trip planner:** a "With this week's offers" toggle. When it's on, an offer's effective price stands in for the price book's price at that store inside the offer's dates. Each stop shows the expected saving against the trailing median regular price there.
+- **Trip planner:** a "With this week's offers" toggle. When it's on, an offer's effective price stands in for the price book's price at that store inside the offer's dates. Each stop shows the expected saving against the trailing median regular price there. As built, an offer stands in only where the price book already has a price for that product at that store (2X-3).
 - **Recipe costing:** a "with this week's offers" basis for a chosen kitchen. Offer prices from inherited sizes are marked as estimates.
 - **Product page:** offer weeks marked on the price history chart, and a typical price from the trailing twelve weeks of offers and regular prices.
 - **Vendor location page:** its `ad_source`, with:
@@ -278,7 +278,7 @@ Updated with every pull request, so the work can stop and resume at any line.
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
   - [x] 2X-1: Home's "This week's offers" card and the list's "On offer at {store}" mark (X4, X5 for both; UI-9.1, UI-9.2). The card groups the current kitchen's offers by store, one line per product; an ingredient item is marked by an offer for any of its products, a product item only by its own. Offers carry their product's `ingredient_id`
   - [x] 2X-2: the product chart's offer weeks and typical price (X3, X5). `GET /products/{id}/flyer-offers` prices each offer in its own week, in the product's display unit, and adds `typical`: the median of regular prices and offer prices over the last twelve weeks. The chart shades each ad week, with a title naming every store's offer; the typical price shows only for a product with offers
-  - [ ] 2X-3: the planner's "With this week's offers" (X1)
+  - [x] 2X-3: the planner's "With this week's offers" (X1, X5). Migration 0067: `trip_plan.with_offers`, `trip_plan_stop.expected_saving`, `trip_plan_stop_item.flyer_offer_id`. An offer valid on the planned day stands in for a product's latest price-book price at its store; where the price book has no price for it there, the offer adds none, so every planned item keeps the observation the stop screen compares against. The saving is the line priced at the median regular price there over `STALE_AFTER_DAYS`, less its offer price. The stop screen's "Cheaper at stop" and "Get here" use the offers valid that day. The drawer's switch shows only while the kitchen has offers
   - [ ] 2X-4: recipe costing's "this week's offers" basis (X2)
 - [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)
 

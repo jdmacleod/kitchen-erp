@@ -273,6 +273,10 @@ class TripPlan(UUIDPrimaryKey, Base):
     max_stops: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     mileage_rate: Mapped[Decimal | None] = mapped_column(Numeric(8, 4))
     stop_overhead_min: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    # Priced with this week's offers where they stand in (18, X1; migration 0067).
+    with_offers: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="planned")
     chosen_variant_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
@@ -346,6 +350,10 @@ class TripPlanStop(UUIDPrimaryKey, Base):
         CheckConstraint("leg_seconds >= 0 AND leg_meters >= 0", name="ck_trip_plan_stop_leg"),
         CheckConstraint("multiplier > 0", name="ck_trip_plan_stop_multiplier"),
         CheckConstraint("overhead_min >= 0", name="ck_trip_plan_stop_overhead"),
+        CheckConstraint(
+            "expected_saving IS NULL OR expected_saving >= 0",
+            name="ck_trip_plan_stop_expected_saving",
+        ),
     )
 
     variant_id: Mapped[uuid.UUID] = mapped_column(
@@ -365,6 +373,8 @@ class TripPlanStop(UUIDPrimaryKey, Base):
     overhead_min: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     hours_known: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # What the stop's offers save against the trailing median regular prices there.
+    expected_saving: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     purchase_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("purchase.id", ondelete="SET NULL")
@@ -418,6 +428,10 @@ class TripPlanStopItem(UUIDPrimaryKey, Base):
     )
     price_stale: Mapped[bool] = mapped_column(Boolean, nullable=False)
     forced: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # The offer whose price stood in for ``observation_id``'s (18, X1).
+    flyer_offer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("flyer_offer.id", name="fk_trip_plan_stop_item_flyer_offer")
+    )
     actual_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     actual_qty: Mapped[Decimal | None] = mapped_column(Numeric)
     actual_unit: Mapped[str | None] = mapped_column(String(16), ForeignKey("unit.code"))

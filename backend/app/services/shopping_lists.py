@@ -51,6 +51,16 @@ Pair = tuple[Decimal, str]
 # --- lookups ----------------------------------------------------------------------------
 
 
+def item_label(item: ShoppingListItem) -> str:
+    """A list item's name for the planner and the stop screen: its product's or its
+    ingredient's."""
+    if item.kind == "product" and item.product is not None:
+        return item.product.name
+    if item.ingredient is not None:
+        return item.ingredient.name
+    return str(item.id)
+
+
 async def get_home_base(db: AsyncSession, home_base_id: uuid.UUID) -> HomeBase:
     row = await db.get(HomeBase, home_base_id)
     if row is None:
