@@ -65,8 +65,9 @@ async def offer_history(
     db: DbSession,
     vendor_location_id: uuid.UUID | None = None,
 ) -> OfferHistory:
-    """Every linked offer of a product, newest week first, at one store or all."""
+    """Every linked offer of a product, newest week first, at one store or all, with
+    the product's typical price over the last twelve weeks (X3)."""
     if await db.get(Product, product_id) is None:
         raise ApiError(404, "not_found", "No such product.")
-    items = await flyer_reads.offer_history(db, product_id, vendor_location_id)
-    return OfferHistory.model_validate({"items": items})
+    history = await flyer_reads.offer_history(db, product_id, flyers.today(), vendor_location_id)
+    return OfferHistory.model_validate(history)

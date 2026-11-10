@@ -129,8 +129,27 @@ class CurrentOffers(ApiModel):
     items: list[CurrentOffer]
 
 
+class HistoryOffer(LinkedOffer):
+    # Priced in its own week; per canonical unit, and as the product's prices are shown.
+    unit_price: DecimalStr | None
+    unit: str | None
+    display_unit_price: DecimalStr | None
+    display_unit: str | None
+
+
+class TypicalPrice(ApiModel):
+    """The median of the product's regular and offer prices over the last ``weeks``."""
+
+    display_unit_price: DecimalStr
+    display_unit: str
+    weeks: int
+    regular_count: int
+    offer_count: int
+
+
 class OfferHistory(ApiModel):
-    items: list[LinkedOffer]
+    items: list[HistoryOffer]
+    typical: TypicalPrice | None
 
 
 # --- a vendor location's circular (2U-4; UI-9.5) ---------------------------------------

@@ -24,7 +24,7 @@ import statistics
 import uuid
 from collections import Counter
 from dataclasses import dataclass, replace
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -34,6 +34,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.models import Ingredient, Product
+from app.services import unit_display
 from app.services.price_rounding import unit_price
 from app.services.units import build_context
 from app.units import CanonicalQty, ConversionContext, convert
@@ -85,6 +86,36 @@ _REGULAR = """
       AND oa.observed_at >= CAST(:since AS date) AND oa.observed_at < CAST(:until AS date)
       AND (oa.purchase_line_id IS NULL OR pu.status = 'committed')
 """
+
+# A product's regular prices at every store, or one (the product page's typical price).
+# A chain price applies at every branch; each observation counts once.
+_REGULAR_ANYWHERE = """
+    SELECT DISTINCT ON (oa.observation_id) oa.norm_unit, oa.norm_unit_price
+    FROM offer_applicable oa
+    LEFT JOIN purchase_line pl ON pl.id = oa.purchase_line_id
+    LEFT JOIN purchase pu ON pu.id = pl.purchase_id
+    WHERE oa.product_id = :product
+      AND (CAST(:location AS uuid) IS NULL OR oa.applies_to_location_id = CAST(:location AS uuid))
+      AND NOT oa.is_promo AND oa.norm_status = 'ok' AND oa.norm_unit_price IS NOT NULL
+      AND oa.observed_at >= CAST(:since AS date) AND oa.observed_at < CAST(:until AS date)
+      AND (oa.purchase_line_id IS NULL OR pu.status = 'committed')
+"""
+
+# Every regular price a product's history may take a discount off, fetched once.
+_REGULAR_HISTORY = """
+    SELECT oa.applies_to_location_id AS location_id, oa.observed_at,
+           oa.norm_unit, oa.norm_unit_price
+    FROM offer_applicable oa
+    LEFT JOIN purchase_line pl ON pl.id = oa.purchase_line_id
+    LEFT JOIN purchase pu ON pu.id = pl.purchase_id
+    WHERE oa.product_id = :product AND oa.applies_to_location_id = ANY(CAST(:locations AS uuid[]))
+      AND NOT oa.is_promo AND oa.norm_status = 'ok' AND oa.norm_unit_price IS NOT NULL
+      AND oa.observed_at >= CAST(:since AS date) AND oa.observed_at < CAST(:until AS date)
+      AND (oa.purchase_line_id IS NULL OR pu.status = 'committed')
+"""
+
+# The typical price looks back this far over offers and regular prices (X3).
+TYPICAL_WEEKS = 12
 
 _PER = {"per_lb": "lb", "per_oz": "oz"}
 _HUNDRED = Decimal(100)
@@ -143,15 +174,104 @@ async def current_offers(
 
 
 async def offer_history(
-    db: AsyncSession, product_id: uuid.UUID, location_id: uuid.UUID | None = None
-) -> list[dict[str, Any]]:
-    """Every linked offer of a product, newest week first, at one store or all."""
+    db: AsyncSession, product_id: uuid.UUID, on: date, location_id: uuid.UUID | None = None
+) -> dict[str, Any]:
+    """Every linked offer of a product, newest week first, at one store or all, each
+    priced in its own week; and the typical price over the last ``TYPICAL_WEEKS``."""
     where = "WHERE p.id = :product" + (" AND r.id = :location" if location_id else "")
     rows = await db.execute(
         text(f"{_LINKED} {where} ORDER BY o.valid_from DESC, r.name, o.id"),
         {"product": product_id, "location": location_id},
     )
-    return [_shape(dict(r)) for r in rows.mappings()]
+    rows = [dict(r) for r in rows.mappings()]
+    mass = await _mass_unit(db, product_id)
+    ctx = await _context(db, product_id) if rows else None
+    prefetched = await _history_regulars(db, product_id, rows)
+    items = []
+    for row in rows:
+        priced = await _unit_price(db, row, ctx, row["valid_from"], prefetched)  # type: ignore[arg-type]
+        shown = unit_display.shown(priced.price, priced.unit, mass)
+        items.append(
+            _shape(row)
+            | {
+                "unit_price": priced.price,
+                "unit": priced.unit,
+                "display_unit_price": shown.price if shown else None,
+                "display_unit": shown.unit if shown else None,
+            }
+        )
+    typical = await _typical(db, product_id, location_id, on, items, mass)
+    return {"items": items, "typical": typical}
+
+
+async def _history_regulars(
+    db: AsyncSession, product_id: uuid.UUID, rows: list[dict[str, Any]]
+) -> list[Any]:
+    """The regular prices every discount in the history is taken off, in one read."""
+    discounts = [r for r in rows if r["price_basis"] in ("percent_off", "dollar_off")]
+    if not discounts:
+        return []
+    days = timedelta(days=get_settings().stale_after_days)
+    result = await db.execute(
+        text(_REGULAR_HISTORY),
+        {
+            "product": product_id,
+            "locations": [str(i) for i in {r["location_id"] for r in discounts}],
+            "since": min(r["valid_from"] for r in discounts) - days,
+            "until": max(r["valid_from"] for r in discounts) + timedelta(days=1),
+        },
+    )
+    return list(result.all())
+
+
+async def _mass_unit(db: AsyncSession, product_id: uuid.UUID) -> str | None:
+    ingredient_of = await unit_display.ingredient_of_products(db, [product_id])
+    masses = await unit_display.mass_units(db, ingredient_of.values())
+    return masses.get(ingredient_of.get(product_id))  # type: ignore[arg-type]
+
+
+async def _typical(
+    db: AsyncSession,
+    product_id: uuid.UUID,
+    location_id: uuid.UUID | None,
+    on: date,
+    offers: list[dict[str, Any]],
+    mass: str | None,
+) -> dict[str, Any] | None:
+    """The median of the product's regular prices and its offers' prices over the last
+    ``TYPICAL_WEEKS``, in the unit most of them are in; None when there are none."""
+    since = on - timedelta(weeks=TYPICAL_WEEKS)
+    regular = (
+        await db.execute(
+            text(_REGULAR_ANYWHERE),
+            {
+                "product": product_id,
+                "location": location_id,
+                "since": since,
+                "until": on + timedelta(days=1),
+            },
+        )
+    ).all()
+    offered = [
+        (o["unit"], o["unit_price"])
+        for o in offers
+        if o["unit_price"] is not None and o["valid_to"] >= since and o["valid_from"] <= on
+    ]
+    pool = [(u, Decimal(p)) for u, p in regular] + offered
+    if not pool:
+        return None
+    unit = Counter(u for u, _ in pool).most_common(1)[0][0]
+    middle = unit_price(statistics.median(p for u, p in pool if u == unit), Decimal(1))
+    shown = unit_display.shown(middle, unit, mass)
+    if shown is None:
+        return None
+    return {
+        "display_unit_price": shown.price,
+        "display_unit": shown.unit,
+        "weeks": TYPICAL_WEEKS,
+        "regular_count": sum(1 for u, _ in regular if u == unit),
+        "offer_count": sum(1 for u, _ in offered if u == unit),
+    }
 
 
 async def offer_price(
@@ -212,22 +332,37 @@ def _size(row: dict[str, Any], ctx: ConversionContext) -> CanonicalQty | None:
 
 
 async def _regular(
-    db: AsyncSession, row: dict[str, Any], on: date, unit: str | None
+    db: AsyncSession,
+    row: dict[str, Any],
+    on: date,
+    unit: str | None,
+    prefetched: list[Any] | None = None,
 ) -> tuple[Decimal, str] | None:
     """The median regular unit price at the offer's store: in ``unit`` when the offer
-    has one, else in the unit most of those prices are kept in."""
+    has one, else in the unit most of those prices are kept in. ``prefetched`` holds
+    ``_REGULAR_HISTORY`` rows covering the window, read once for a whole history."""
     since = on - timedelta(days=get_settings().stale_after_days)
-    found = (
-        await db.execute(
-            text(_REGULAR),
-            {
-                "product": row["product_id"],
-                "location": row["location_id"],
-                "since": since,
-                "until": on + timedelta(days=1),
-            },
-        )
-    ).all()
+    until = on + timedelta(days=1)
+    if prefetched is not None:
+        start = datetime.combine(since, time(), UTC)
+        end = datetime.combine(until, time(), UTC)
+        found = [
+            (r.norm_unit, r.norm_unit_price)
+            for r in prefetched
+            if r.location_id == row["location_id"] and start <= r.observed_at < end
+        ]
+    else:
+        found = (
+            await db.execute(
+                text(_REGULAR),
+                {
+                    "product": row["product_id"],
+                    "location": row["location_id"],
+                    "since": since,
+                    "until": until,
+                },
+            )
+        ).all()
     if unit is None and found:
         unit = Counter(u for u, _ in found).most_common(1)[0][0]
     prices = [Decimal(p) for u, p in found if u == unit]
@@ -237,7 +372,11 @@ async def _regular(
 
 
 async def _unit_price(
-    db: AsyncSession, row: dict[str, Any], ctx: ConversionContext, on: date
+    db: AsyncSession,
+    row: dict[str, Any],
+    ctx: ConversionContext,
+    on: date,
+    prefetched: list[Any] | None = None,
 ) -> UnitPrice:
     basis, price = row["price_basis"], row["price"]
     if basis in _PER:
@@ -251,7 +390,7 @@ async def _unit_price(
             return UnitPrice(None, None, None)
         each = {"each": price, "multi": price / (row["basis_qty"] or 1), "bogo": price / 2}[basis]
         return UnitPrice(unit_price(each, size.qty), size.unit, None)
-    regular = await _regular(db, row, on, size.unit if size else None)
+    regular = await _regular(db, row, on, size.unit if size else None, prefetched)
     discount = row["discount"]
     if regular is None or discount is None:
         return UnitPrice(None, None, None)

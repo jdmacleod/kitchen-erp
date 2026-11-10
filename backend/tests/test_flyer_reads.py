@@ -13,7 +13,7 @@ import pytest
 from app.core.db import get_sessionmaker
 from app.services import flyer_reads, flyers
 from app.services.price_rounding import unit_price
-from tests.pricebook_helpers import make_product
+from tests.pricebook_helpers import make_location, make_product, shelf
 from tests.test_flyer_offers import THURSDAY, links
 from tests.test_flyers import (
     WEDNESDAY,
@@ -303,6 +303,89 @@ async def test_a_products_offer_history_lists_every_week(
     assert elsewhere.json()["items"] == []
     missing = await admin_client.get(f"/api/v1/products/{uuid.uuid4()}/flyer-offers")
     assert missing.status_code == 404
+
+
+async def test_the_history_prices_each_week_and_gives_a_typical_price(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    """X3: the product page's typical price is the median of its regular prices and
+    its offers' over the last twelve weeks; a week not begun yet doesn't count."""
+    product = await lentils(admin_client, store, pack_qty="1", pack_unit="lb")
+    await learned(owner_conn, store, product)
+    pound = {"size_qty": "1", "size_unit": "lb"}
+    first = await read(helper, [candidate("Green Lentils", "2.49", **pound)])
+    nxt = {"valid_from": "2026-11-11", "valid_to": "2026-11-17"}
+    await read(
+        helper,
+        [candidate("Green Lentils", "1.99", **pound, **nxt)],
+        first,
+        ad_week_from="2026-11-11",
+        ad_week_to="2026-11-17",
+    )
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    assert [(o["display_unit_price"], o["display_unit"]) for o in body["items"]] == [
+        ("1.99", "lb"),
+        ("2.49", "lb"),
+    ]
+    typical = body["typical"]
+    # The $3 bought a month ago and this week's $2.49; next week's $1.99 hasn't begun.
+    assert (typical["display_unit"], typical["regular_count"], typical["offer_count"]) == (
+        "lb",
+        1,
+        1,
+    )
+    assert Decimal(typical["display_unit_price"]).quantize(Decimal("0.01")) == Decimal("2.75")
+
+
+async def test_a_discount_in_the_history_is_taken_off_the_regular_price_then(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    """The history reads every regular price its discounts need at once; the price is
+    the one ``current_offers`` gives for the same week."""
+    product = await lentils(admin_client, store, pack_qty="1", pack_unit="lb")
+    await learned(owner_conn, store, product)
+    pound = {"size_qty": "1", "size_unit": "lb"}
+    await read(
+        helper,
+        [candidate("Green Lentils", None, price_basis="percent_off", discount="20", **pound)],
+    )
+    [current_offer] = await current(admin_client, await kitchen(owner_conn, store))
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    [offer] = body["items"]
+    assert current_offer["unit_price"] is not None
+    assert offer["unit_price"] == current_offer["unit_price"]
+    assert offer["display_unit"] == "lb"
+    assert Decimal(offer["display_unit_price"]).quantize(Decimal("0.01")) == Decimal("2.40")
+
+
+async def test_a_chain_price_counts_once_in_the_typical_price(admin_client):
+    """A chain price applies at every branch, and is still one price."""
+    first = await make_location(
+        admin_client, "Larkspur chain", "Larkspur north", kind="chain", price_scope="chain"
+    )
+    await make_location(
+        admin_client, "Larkspur chain", "Larkspur south", vendor_id=first["vendor"]["id"]
+    )
+    product = await make_product(
+        admin_client, "Lentils", "Larkspur Green Lentils", pack_qty="1", pack_unit="lb"
+    )
+    await shelf(
+        admin_client, product["id"], first["id"], "3.00", observed_at="2026-10-20T17:00:00Z"
+    )
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    assert body["typical"]["regular_count"] == 1
+
+
+async def test_a_product_with_no_prices_has_no_typical_price(admin_client):
+    product = await make_product(admin_client, "Lentils", "Larkspur Green Lentils")
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    assert body == {"items": [], "typical": None}
 
 
 async def test_a_counted_pack_is_priced_per_piece_not_per_pack_of_packs(
