@@ -1,4 +1,5 @@
-import type { QueuedOffer } from "../api/flyerOffers";
+import type { CurrentOffer, QueuedOffer } from "../api/flyerOffers";
+import type { ShoppingItem } from "../api/shoppingList";
 import { formatMoney, stripZeros } from "./decimal";
 
 /**
@@ -32,4 +33,35 @@ export function offerPriceText(
     }
   })();
   return offer.requires_loyalty ? `${base}, card price` : base;
+}
+
+/** One offer per store and product: the same circular runs at several of a chain's locations. */
+export function distinctOffers<T extends Pick<CurrentOffer, "vendor" | "product">>(
+  offers: readonly T[],
+): T[] {
+  const seen = new Set<string>();
+  return offers.filter((o) => {
+    const key = `${o.vendor.id}:${o.product.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/** The current offers for a list item, one per store: its product's, or any of its ingredient's (UI-9.2). */
+export function offersForItem(
+  item: Pick<ShoppingItem, "kind" | "ingredient" | "product">,
+  offers: readonly CurrentOffer[],
+): CurrentOffer[] {
+  const matches = offers.filter((o) =>
+    item.kind === "product"
+      ? o.product.id === item.product?.id
+      : item.ingredient !== null && o.product.ingredient_id === item.ingredient.id,
+  );
+  const seen = new Set<string>();
+  return matches.filter((o) => {
+    if (seen.has(o.vendor.id)) return false;
+    seen.add(o.vendor.id);
+    return true;
+  });
 }

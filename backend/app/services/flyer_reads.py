@@ -58,7 +58,7 @@ _LINKED = """
            CASE WHEN l.corrected_size_qty IS NOT NULL THEN l.corrected_size_unit
                 WHEN o.size_qty IS NOT NULL THEN o.size_unit
                 ELSE p.pack_unit END AS size_unit,
-           p.id AS product_id, p.name AS product_name,
+           p.id AS product_id, p.name AS product_name, p.ingredient_id,
            r.id AS location_id, r.name AS location_name,
            v.id AS vendor_id, v.name AS vendor_name
     FROM flyer_offer o
@@ -287,7 +287,11 @@ async def _priced(db: AsyncSession, rows: list[dict[str, Any]], on: date) -> lis
 def _shape(row: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": row["id"],
-        "product": {"id": row["product_id"], "name": row["product_name"]},
+        "product": {
+            "id": row["product_id"],
+            "name": row["product_name"],
+            "ingredient_id": row["ingredient_id"],
+        },
         "vendor": {"id": row["vendor_id"], "name": row["vendor_name"]},
         "location": {"id": row["location_id"], "name": row["location_name"]},
         **{

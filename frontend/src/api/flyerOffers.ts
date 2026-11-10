@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { qs } from "./catalog";
 import { api } from "./client";
 import { inboxKey } from "./inbox";
 
@@ -52,7 +53,33 @@ export type OfferDecision =
   | { vendor_id: string; name_norm: string; product_id: string }
   | { vendor_id: string; name_norm: string; ignore: true };
 
+/** A linked offer valid today at one of the kitchen's stores (18, 2U-4; UI-9.1). */
+export interface CurrentOffer extends QueuedOffer {
+  product: { id: string; name: string; ingredient_id: string | null };
+  vendor: { id: string; name: string };
+  size_inherited: boolean;
+  ad_week_from: string | null;
+  ad_week_to: string | null;
+  /** Per canonical unit; null when the offer can only be shown as printed. */
+  unit_price: string | null;
+  unit: string | null;
+  regular_unit_price: string | null;
+}
+
 const queueKey = ["flyer-offers", "queue"] as const;
+const currentKey = (homeBaseId: string) => ["flyer-offers", "current", homeBaseId] as const;
+
+/** The kitchen's current offers, ordered by vendor, location and product. */
+export function useCurrentOffers(homeBaseId: string | null | undefined) {
+  return useQuery({
+    queryKey: currentKey(homeBaseId ?? ""),
+    queryFn: () =>
+      api<{ items: CurrentOffer[] }>(
+        `/flyer-offers/current${qs({ home_base_id: homeBaseId ?? "" })}`,
+      ).then((r) => r.items),
+    enabled: Boolean(homeBaseId),
+  });
+}
 
 export function useOfferQueue() {
   return useQuery({
@@ -68,6 +95,8 @@ export function useDecideOffer() {
       api<{ decided: number }>("/flyer-offers/decide", { method: "POST", body: input }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queueKey });
+      // A match links this week's offers, so the kitchen's current ones change.
+      void client.invalidateQueries({ queryKey: ["flyer-offers", "current"] });
       void client.invalidateQueries({ queryKey: inboxKey });
     },
   });

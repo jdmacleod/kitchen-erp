@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { errorMessage } from "../../api/client";
+import { useCurrentOffers } from "../../api/flyerOffers";
 import {
   itemName,
   listKeys,
@@ -28,6 +29,7 @@ import {
 } from "../../components/ui";
 import { formatDate } from "../../lib/format";
 import { useCurrentKitchen } from "../../lib/kitchen";
+import { offersForItem } from "../../lib/offers";
 import { LG_QUERY, useMediaQuery } from "../../lib/useMediaQuery";
 import { usePageTitle } from "../../lib/usePageTitle";
 
@@ -287,12 +289,15 @@ function ListBody({
   onNotice,
 }: ListBodyProps) {
   const empty = list.unchecked.length === 0 && list.checked.length === 0;
+  // This week's offers mark the open list's unchecked items (UI-9.2).
+  const offers = useCurrentOffers(archived ? null : homeBaseId).data ?? [];
   const rows = (items: ShoppingItem[]) => (
     <ul>
       {items.map((item) => (
         <ListItemRow
           key={item.id}
           item={item}
+          offers={item.checked_at === null ? offersForItem(item, offers) : []}
           listKey={listKey}
           readOnly={archived}
           onToggled={onToggled}
