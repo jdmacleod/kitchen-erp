@@ -113,3 +113,32 @@ async def test_the_offers_basis_needs_a_kitchen(admin_client, harbor):
         f"/api/v1/recipes/{harbor['recipe']['id']}/cost", params={"basis": "offers"}
     )
     assert (r.status_code, r.json()["error"]["code"]) == (422, "offers_need_kitchen")
+
+
+async def test_the_basket_buys_the_offers_size_not_the_catalogs(
+    admin_client,
+    helper,  # noqa: F811
+    owner_conn,
+    harbor,
+):
+    """$2.00 for a 500 g bag of a product kept as 1 kg: 200 g is one 500 g bag."""
+    await circular(helper, owner_conn, harbor, size_qty="500", size_unit="g")
+    barley = lines_by_name(await offers_cost(admin_client, harbor))["barley"]
+    assert barley["price"]["norm_unit_price"] == "0.004000"
+    assert (barley["consumed_cost"], barley["packs"], barley["basket_cost"]) == (
+        "0.8000",
+        "1",
+        "2.0000",
+    )
+
+
+async def test_a_price_by_the_pound_is_never_an_estimate(
+    admin_client,
+    helper,  # noqa: F811
+    owner_conn,
+    harbor,
+):
+    await circular(helper, owner_conn, harbor, price_basis="per_lb")
+    price = lines_by_name(await offers_cost(admin_client, harbor))["barley"]["price"]
+    assert price["flyer_offer_id"] is not None
+    assert price["estimate"] is False

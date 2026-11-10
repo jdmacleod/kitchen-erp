@@ -127,6 +127,9 @@ class OfferPrice:
     unit_price: Decimal
     unit: str
     estimate: bool
+    # One of the offer in the canonical unit: the basket buys these, not the catalog
+    # pack; None for a price by weight.
+    pack_qty: Decimal | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,7 +346,8 @@ async def cost_line(
     out.observation_id = chosen.observation.observation_id if chosen else None
     price = offer.unit_price if offer else chosen.norm_unit_price  # type: ignore[union-attr]
     assert product is not None  # noqa: S101
-    _price_line(out, price, _pack_canonical_qty(product, context), qty_low, qty_high)
+    pack_qty = offer.pack_qty if offer else _pack_canonical_qty(product, context)
+    _price_line(out, price, pack_qty, qty_low, qty_high)
     return out
 
 
@@ -499,7 +503,8 @@ async def kitchen_offers(
                 offer_id=stand_in.offer_id,
                 unit_price=stand_in.unit_price,
                 unit=stand_in.unit,
-                estimate=stand_in.size_inherited,
+                estimate=stand_in.estimate,
+                pack_qty=stand_in.pack_qty,
             )
         )
     return out
