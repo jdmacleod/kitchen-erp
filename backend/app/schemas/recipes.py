@@ -326,7 +326,8 @@ class RecipePinIn(ApiModel):
 
 # --- 3D: cost snapshots ------------------------------------------------------------------
 
-CostBasis = Literal["latest", "average", "cheapest"]
+# "offers" (this week's, 18 X2) is the per-kitchen view's only: it needs home_base_id.
+CostBasis = Literal["latest", "average", "cheapest", "offers"]
 CostLineStatus = Literal["priced", "unpriced", "unconvertible", "unmapped", "negligible"]
 YieldMode = Literal["auto", "as_purchased", "edible"]
 
@@ -352,6 +353,10 @@ class CostPriceUsed(ApiModel):
     observation_id: uuid.UUID | None
     observed_at: datetime | None
     stale: bool
+    # This week's offer priced it (the "offers" basis); an estimate when the offer
+    # printed no size and the product's stood in (X2).
+    flyer_offer_id: uuid.UUID | None = None
+    estimate: bool = False
 
 
 class CostQuantity(ApiModel):

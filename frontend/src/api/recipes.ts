@@ -15,7 +15,8 @@ export type MountState = "mounted" | "missing" | "empty" | "no_cook_files";
 export type QtyKind = "number" | "range" | "text" | "none";
 export type Resolution = "alias" | "manual" | "unmatched" | "negligible" | "ignored";
 export type Completeness = "complete" | "incomplete";
-export type CostBasis = "latest" | "average" | "cheapest";
+/** "offers" (this week's, 18 X2) is a kitchen's view only, never a stored snapshot. */
+export type CostBasis = "latest" | "average" | "cheapest" | "offers";
 export type CostLineStatus = "priced" | "unpriced" | "unconvertible" | "unmapped" | "negligible";
 export type YieldMode = "auto" | "as_purchased" | "edible";
 
@@ -25,6 +26,7 @@ export const basisLabel: Record<CostBasis, string> = {
   latest: "Latest",
   average: "Average (90 days)",
   cheapest: "Cheapest",
+  offers: "This week's offers",
 };
 
 export interface RecipeSummary {
@@ -272,6 +274,9 @@ export interface CostPriceUsed {
   observation_id: string | null;
   observed_at: string | null;
   stale: boolean;
+  /** This week's offer priced it (the "offers" basis); an estimate when its size is the product's. */
+  flyer_offer_id?: string | null;
+  estimate?: boolean;
 }
 
 export interface CostQuantity {

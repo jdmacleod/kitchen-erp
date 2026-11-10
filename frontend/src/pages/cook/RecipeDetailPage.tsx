@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
+import { useCurrentOffers } from "../../api/flyerOffers";
 import {
   COST_BASES,
   basisLabel,
@@ -39,7 +40,7 @@ import { usePageTitle } from "../../lib/usePageTitle";
 const muted = "text-neutral-600 dark:text-neutral-400";
 
 function parseBasis(value: string | null): CostBasis {
-  return value === "average" || value === "cheapest" ? value : "latest";
+  return value === "average" || value === "cheapest" || value === "offers" ? value : "latest";
 }
 
 export function RecipeDetailPage() {
@@ -107,7 +108,7 @@ function Breadcrumb() {
  */
 function RecipeDetail({ recipe }: { recipe: Recipe }) {
   const [params, setParams] = useSearchParams();
-  const basis = parseBasis(params.get("basis"));
+  const asked = parseBasis(params.get("basis"));
   const setBasis = (b: CostBasis) =>
     setParams(
       (prev) => {
@@ -138,6 +139,13 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
 
   // A basis without a snapshot is computed inside the call, so "Costing…" shows
   // until it answers (UI-7.8). A missing file keeps its last snapshot.
+  // This week's offers are a kitchen's (X2): offered only with a kitchen chosen that
+  // has offers (X5), and read as Latest without a kitchen. A line with no offer
+  // takes its latest price, so the basis stands while the offers load.
+  const offers = useCurrentOffers(scoped?.id);
+  const basis: CostBasis = asked === "offers" && !scoped ? "latest" : asked;
+  const showOffers = scoped !== null && ((offers.data?.length ?? 0) > 0 || basis === "offers");
+  const bases: CostBasis[] = showOffers ? [...COST_BASES, "offers"] : [...COST_BASES];
   const cost = useRecipeCost(recipe.id, basis, true, scoped?.id ?? "");
   const history = useRecipeCostHistory(recipe.id, basis, scoped === null);
   const points = snapshotPoints(history.data?.items ?? [], cost.data);
@@ -220,7 +228,7 @@ function RecipeDetail({ recipe }: { recipe: Recipe }) {
             <div className="flex flex-wrap items-center gap-2">
               <SegmentedControl<CostBasis>
                 label="Basis"
-                options={COST_BASES.map((b) => ({ value: b, label: basisLabel[b] }))}
+                options={bases.map((b) => ({ value: b, label: basisLabel[b] }))}
                 value={basis}
                 onChange={setBasis}
               />

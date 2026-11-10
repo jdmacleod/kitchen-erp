@@ -355,6 +355,12 @@ function PriceCell({ line, staleAfterDays }: { line: CostLine; staleAfterDays: n
                 <span className="sr-only">older than {staleAfterDays} days: </span>stale
               </Badge>
             ) : null}
+            {price.flyer_offer_id ? <Badge tone="neutral">this week&apos;s offer</Badge> : null}
+            {price.estimate ? (
+              <Badge tone="warn">
+                <span className="sr-only">priced by the product&apos;s size: </span>estimate
+              </Badge>
+            ) : null}
           </span>
           <span className={`block text-xs ${muted}`}>
             {[

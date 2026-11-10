@@ -182,6 +182,8 @@ class StandIn:
     unit_price: Decimal
     unit: str
     regular: Decimal | None
+    # Priced by the product's size: the circular printed none (U16), so an estimate.
+    size_inherited: bool = False
 
 
 async def stand_ins(
@@ -218,7 +220,7 @@ async def stand_ins(
             found = await _regular(db, row, on, priced.unit)
             regular = found[0] if found else None
         out[(product_id, row["location_id"])] = StandIn(
-            row["id"], priced.price, priced.unit, regular
+            row["id"], priced.price, priced.unit, regular, bool(row["size_inherited"])
         )
     return out
 

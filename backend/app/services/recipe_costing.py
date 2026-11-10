@@ -62,6 +62,7 @@ from app.models import (
     RecipeIngredient,
     RecipePin,
 )
+from app.models.geo import VendorLocation
 from app.services.packs import CTX as _CTX
 from app.services.packs import basket as _basket
 from app.services.packs import money as _money
@@ -70,7 +71,9 @@ from app.services.pricebook_views import stale_after_days
 from app.services.units import build_context
 from app.units import ConversionContext, ConversionFailure, convert
 
-Basis = Literal["latest", "average", "cheapest"]
+Basis = Literal["latest", "average", "cheapest", "offers"]
+# The bases a snapshot is kept under. "offers" (this week's, 18 X2) is a per-kitchen
+# view only, worked out on demand and never kept, so no stored cost reads an offer.
 BASES: tuple[Basis, ...] = ("latest", "average", "cheapest")
 
 _FOUR = Decimal("0.0001")
@@ -112,6 +115,18 @@ class QualifyingPrice:
     observed_at: datetime
     norm_unit_price: Decimal
     norm_unit: str
+
+
+@dataclass(frozen=True, slots=True)
+class OfferPrice:
+    """A kitchen store's offer valid today for a product of the line's ingredient."""
+
+    product_id: uuid.UUID
+    location_id: uuid.UUID
+    offer_id: uuid.UUID
+    unit_price: Decimal
+    unit: str
+    estimate: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +223,9 @@ class LineCost:
     bridge_kind: str | None = None
     bridge_confirmed: bool | None = None
     failure_code: str | None = None
+    # Priced by this week's offer at that store (the "offers" basis), marked an
+    # estimate when the offer's size is the product's.
+    offer: OfferPrice | None = None
 
     @property
     def unconfirmed(self) -> bool:
@@ -246,7 +264,7 @@ def grosses_up(line: RecipeIngredient, from_unit: str, context: ConversionContex
     return unit is not None and unit.dimension in ("mass", "volume")
 
 
-async def cost_line(  # noqa: C901
+async def cost_line(
     db: AsyncSession,
     line: RecipeIngredient,
     ingredient: Ingredient | None,
@@ -255,6 +273,7 @@ async def cost_line(  # noqa: C901
     basis: Basis,
     window_days: int | None,
     now: datetime,
+    offers: list[OfferPrice] | None = None,
 ) -> LineCost:
     out = LineCost(recipe_ingredient_id=line.id, status="negligible")
     if line.negligible or line.resolution == "ignored" or line.qty is None:
@@ -268,9 +287,17 @@ async def cost_line(  # noqa: C901
     if pin_product_id is not None:
         candidates = [p for p in prices if p.product_id == pin_product_id]
     candidates = [p for p in candidates if p.norm_unit == ingredient.canonical_unit]
-    chosen = choose(candidates, basis, window_days, now)
+    offer = _best_offer(offers, ingredient.canonical_unit, pin_product_id)
+    # An offer prices the line in place of any price-book price (the "offers" basis).
+    chosen = (
+        None
+        if offer is not None
+        else choose(candidates, "latest" if basis == "offers" else basis, window_days, now)
+    )
 
-    product_id = chosen.observation.product_id if chosen else pin_product_id
+    product_id = (
+        offer.product_id if offer else chosen.observation.product_id if chosen else pin_product_id
+    )
     product = await db.get(Product, product_id) if product_id is not None else None
     out.product_id = product_id
     context = await build_context(db, ingredient, product)
@@ -308,20 +335,44 @@ async def cost_line(  # noqa: C901
     if provenance.bridge_kind != "none":
         out.bridge_confirmed = not provenance.rests_on_unconfirmed
 
-    if chosen is None:
+    if chosen is None and offer is None:
         out.status = "unpriced"
         return out
     out.status = "priced"
-    out.observation_id = chosen.observation.observation_id
-    out.norm_unit_price = chosen.norm_unit_price
+    out.offer = offer
+    out.observation_id = chosen.observation.observation_id if chosen else None
+    price = offer.unit_price if offer else chosen.norm_unit_price  # type: ignore[union-attr]
     assert product is not None  # noqa: S101
-    pack_qty = _pack_canonical_qty(product, context)
-    out.consumed_cost = _money(_CTX.multiply(qty_low, chosen.norm_unit_price))
-    out.basket_cost, out.packs = _basket(qty_low, chosen.norm_unit_price, pack_qty)
-    if qty_high is not None:
-        out.consumed_cost_high = _money(_CTX.multiply(qty_high, chosen.norm_unit_price))
-        out.basket_cost_high, out.packs_high = _basket(qty_high, chosen.norm_unit_price, pack_qty)
+    _price_line(out, price, _pack_canonical_qty(product, context), qty_low, qty_high)
     return out
+
+
+def _best_offer(
+    offers: list[OfferPrice] | None, canonical_unit: str, pin_product_id: uuid.UUID | None
+) -> OfferPrice | None:
+    """This week's cheapest offer the line can take (X2): of the pinned product when
+    there is a pin, in the ingredient's canonical unit."""
+    usable = [
+        o
+        for o in offers or ()
+        if o.unit == canonical_unit and (pin_product_id is None or o.product_id == pin_product_id)
+    ]
+    return min(usable, key=lambda o: (o.unit_price, str(o.offer_id))) if usable else None
+
+
+def _price_line(
+    out: LineCost,
+    price: Decimal,
+    pack_qty: Decimal | None,
+    qty_low: Decimal,
+    qty_high: Decimal | None,
+) -> None:
+    out.norm_unit_price = price
+    out.consumed_cost = _money(_CTX.multiply(qty_low, price))
+    out.basket_cost, out.packs = _basket(qty_low, price, pack_qty)
+    if qty_high is not None:
+        out.consumed_cost_high = _money(_CTX.multiply(qty_high, price))
+        out.basket_cost_high, out.packs_high = _basket(qty_high, price, pack_qty)
 
 
 # --- the snapshot -----------------------------------------------------------------------
@@ -408,6 +459,52 @@ class Costing:
         return sum(c.status == status for c in self.costs)
 
 
+async def kitchen_offers(
+    db: AsyncSession, home_base_id: uuid.UUID, min_quality: int | None
+) -> dict[uuid.UUID, list[OfferPrice]]:
+    """The offers valid today at the kitchen's stores, by the ingredient of their
+    product: active products only, of at least ``min_quality`` when given."""
+    # Imported here: flyer reads import the catalog, which imports this module.
+    from app.services import flyer_reads, flyers
+
+    location_ids = list(
+        (
+            await db.execute(
+                select(VendorLocation.id).where(
+                    VendorLocation.home_base_id == home_base_id, VendorLocation.active
+                )
+            )
+        ).scalars()
+    )
+    found = await flyer_reads.stand_ins(db, location_ids, flyers.today())
+    if not found:
+        return {}
+    products = {
+        p.id: p
+        for p in (
+            await db.execute(select(Product).where(Product.id.in_({k[0] for k in found})))
+        ).scalars()
+    }
+    out: dict[uuid.UUID, list[OfferPrice]] = {}
+    for (product_id, location_id), stand_in in found.items():
+        product = products.get(product_id)
+        if product is None or not product.active:
+            continue
+        if min_quality is not None and (product.quality_rating or 0) < min_quality:
+            continue
+        out.setdefault(product.ingredient_id, []).append(
+            OfferPrice(
+                product_id=product_id,
+                location_id=location_id,
+                offer_id=stand_in.offer_id,
+                unit_price=stand_in.unit_price,
+                unit=stand_in.unit,
+                estimate=stand_in.size_inherited,
+            )
+        )
+    return out
+
+
 async def cost_recipe(
     db: AsyncSession,
     recipe: Recipe,
@@ -444,6 +541,10 @@ async def cost_recipe(
         min_quality,
         home_base_id,
     )
+    offers: dict[uuid.UUID, list[OfferPrice]] = {}
+    if basis == "offers":
+        assert home_base_id is not None  # noqa: S101  the API refuses it without a kitchen
+        offers = await kitchen_offers(db, home_base_id, min_quality)
 
     costs: list[LineCost] = []
     for line in lines:
@@ -458,6 +559,7 @@ async def cost_recipe(
                 basis,
                 window,
                 now,
+                offers.get(ingredient.id, []) if ingredient is not None else None,
             )
         )
 
@@ -536,6 +638,7 @@ async def compute_snapshot(
     commit: bool = True,
 ) -> RecipeCostSnapshot:
     """Cost the recipe as it is indexed now and upsert the snapshot and its lines."""
+    assert basis in BASES  # noqa: S101  "offers" is a per-kitchen view, never kept
     window = effective_window(basis, window_days)
     costing = await cost_recipe(db, recipe, basis, window, min_quality)
     snapshot = await _find(db, recipe, basis, window, min_quality)
@@ -569,9 +672,14 @@ async def compute_view(
     min_quality: int | None = None,
     *,
     home_base_id: uuid.UUID,
-) -> tuple[RecipeCostSnapshot, list[tuple[RecipeCostLine, RecipeIngredient]]]:
+) -> tuple[
+    RecipeCostSnapshot,
+    list[tuple[RecipeCostLine, RecipeIngredient]],
+    dict[uuid.UUID, OfferPrice],
+]:
     """The recipe costed with prices at one kitchen's locations only, as an
-    unsaved snapshot and its unsaved lines (17, 4A, L3).
+    unsaved snapshot, its unsaved lines and, for the "offers" basis, the offer that
+    priced each line an offer priced, by the line's id (17, 4A, L3; 18, X2).
 
     Nothing here is added to the session: the stored snapshot, ``provisional``
     and the household-wide history are untouched, and the row ids are fresh on
@@ -590,7 +698,8 @@ async def compute_view(
     _fill_snapshot(snapshot, recipe, costing)
     by_id = {line.id: line for line in costing.lines}
     rows = [(_line_row(snapshot.id, c), by_id[c.recipe_ingredient_id]) for c in costing.costs]
-    return snapshot, rows
+    offered = {row.id: c.offer for (row, _), c in zip(rows, costing.costs, strict=True) if c.offer}
+    return snapshot, rows, offered
 
 
 # --- recompute entry points (called by the triggers and the CLI) ------------------------
