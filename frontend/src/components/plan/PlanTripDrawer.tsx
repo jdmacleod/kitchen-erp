@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { errorMessage, isApiError } from "../../api/client";
+import { useCurrentOffers } from "../../api/flyerOffers";
 import { useLocations, type HomeBase } from "../../api/geo";
 import { useCreateTrip, type PlanDefaults, type Trip, type TripCreateInput } from "../../api/trips";
 import { isNonNegativeDecimal } from "../../lib/decimal";
 import { fromDateTimeLocal, toDateTimeLocal } from "../../lib/openingHours";
-import { Disclosure, SelectField } from "../catalog/fields";
+import { Disclosure, hintClass, SelectField } from "../catalog/fields";
 import { Drawer } from "../Drawer";
-import { Alert, Field, focusRing } from "../ui";
+import { Alert, Field, focusRing, Switch } from "../ui";
 
 /** The documented default of `PLAN_VALUE_OF_TIME_PER_HOUR` (17, P4), used only if `/plan/defaults` cannot be read. */
 export const DEFAULT_VALUE_OF_TIME = "20.00";
@@ -24,6 +25,7 @@ export type TripPrefill = Partial<
     | "max_stops"
     | "mileage_rate"
     | "stop_overhead_min"
+    | "with_offers"
   >
 >;
 
@@ -65,6 +67,7 @@ interface FormState {
   maxStops: string;
   mileage: string;
   overhead: string;
+  withOffers: boolean;
 }
 
 function initialState(
@@ -96,6 +99,7 @@ function initialState(
       prefill?.stop_overhead_min === null || prefill?.stop_overhead_min === undefined
         ? ""
         : String(prefill.stop_overhead_min),
+    withOffers: prefill?.with_offers ?? false,
   };
 }
 
@@ -155,6 +159,9 @@ export function PlanTripDrawer({
   const [form, setForm] = useState<FormState>(initial);
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateTrip();
+  // The switch shows only while the kitchen has offers to use, or a replan used them (X5).
+  const offers = useCurrentOffers(homeBaseId);
+  const canUseOffers = (offers.data?.length ?? 0) > 0 || initial.withOffers;
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
   const dirty = (Object.keys(initial) as (keyof FormState)[]).some((k) => form[k] !== initial[k]);
@@ -194,6 +201,7 @@ export function PlanTripDrawer({
     }
     if (mileage !== "") input.mileage_rate = mileage;
     if (overhead !== "") input.stop_overhead_min = Number(overhead);
+    if (form.withOffers) input.with_offers = true;
     create.mutate(input, { onSuccess: onPlanned });
   };
 
@@ -289,6 +297,18 @@ export function PlanTripDrawer({
             </option>
           ))}
         </SelectField>
+        {canUseOffers ? (
+          <div>
+            <Switch
+              label="With this week's offers"
+              checked={form.withOffers}
+              onChange={(next) => set("withOffers", next)}
+            />
+            <p className={hintClass}>
+              An offer in its dates prices its product at that store, in place of the price book.
+            </p>
+          </div>
+        ) : null}
         <Disclosure summary="More" defaultOpen={moreOpen}>
           <Field
             id="plan-trip-mileage"

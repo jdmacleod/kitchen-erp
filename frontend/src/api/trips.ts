@@ -49,6 +49,8 @@ export interface TripCreateInput {
   max_stops: number;
   mileage_rate?: string;
   stop_overhead_min?: number;
+  /** "With this week's offers" (18, X1). */
+  with_offers?: boolean;
 }
 
 /**
@@ -74,6 +76,8 @@ export interface StopItem {
   pack_price: string | null;
   line_cost: string;
   observation_id: string;
+  /** The offer whose price stood in for the observation's (X1). */
+  flyer_offer_id?: string | null;
   price_stale: boolean;
   forced: boolean;
   actual_price: string | null;
@@ -97,6 +101,8 @@ export interface Stop {
   overhead_min: number;
   subtotal: string;
   hours_known: boolean;
+  /** What the stop's offers save against the regular prices there; null without any (X1). */
+  expected_saving?: string | null;
   done_at: string | null;
   purchase_id: string | null;
   /** Once "Done here" ran: what its purchase came to ("0" when nothing was bought), beside `subtotal`, the prediction (4C). */
@@ -141,6 +147,8 @@ interface TripBase {
   max_stops: number;
   mileage_rate: string | null;
   stop_overhead_min: number;
+  /** Planned with this week's offers (X1). */
+  with_offers?: boolean;
   status: PlanStatus;
   chosen_variant_id: string | null;
   created_by: string;

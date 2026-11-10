@@ -19052,6 +19052,18 @@
             ],
             "title": "Actual Unit"
           },
+          "flyer_offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flyer Offer Id"
+          },
           "forced": {
             "title": "Forced",
             "type": "boolean"
@@ -19202,6 +19214,17 @@
               }
             ],
             "title": "Done At"
+          },
+          "expected_saving": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Saving"
           },
           "hours_known": {
             "title": "Hours Known",
@@ -19432,6 +19455,18 @@
           "effective_cost": {
             "title": "Effective Cost",
             "type": "string"
+          },
+          "flyer_offer_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flyer Offer Id"
           },
           "forced": {
             "title": "Forced",
@@ -20275,6 +20310,11 @@
               }
             ],
             "title": "Value Of Time Per Hour"
+          },
+          "with_offers": {
+            "default": false,
+            "title": "With Offers",
+            "type": "boolean"
           }
         },
         "required": [
@@ -20424,6 +20464,11 @@
             },
             "title": "Variants",
             "type": "array"
+          },
+          "with_offers": {
+            "default": false,
+            "title": "With Offers",
+            "type": "boolean"
           }
         },
         "required": [
@@ -20595,6 +20640,11 @@
             },
             "title": "Variants",
             "type": "array"
+          },
+          "with_offers": {
+            "default": false,
+            "title": "With Offers",
+            "type": "boolean"
           }
         },
         "required": [

@@ -54,7 +54,15 @@ from app.schemas.plan import (
     UserBrief,
 )
 from app.schemas.purchases import LineIn, ManualPurchaseIn
-from app.services import pricebook, purchases, trip_offers, trip_planner
+from app.services import (
+    flyer_reads,
+    flyers,
+    pricebook,
+    purchases,
+    shopping_lists,
+    trip_offers,
+    trip_planner,
+)
 from app.services.packs import CTX, money
 from app.services.units import load_units
 
@@ -132,6 +140,16 @@ async def _ingredient(db: AsyncSession, ingredient_id: uuid.UUID) -> Ingredient:
     return (await db.execute(stmt)).scalar_one()
 
 
+async def _stand_ins(
+    db: AsyncSession, plan_row: TripPlan, location_id: uuid.UUID
+) -> dict[tuple[uuid.UUID, uuid.UUID], flyer_reads.StandIn] | None:
+    """A plan made with this week's offers prices with them in the aisle too: the
+    offers valid today at this store (X1)."""
+    if not plan_row.with_offers:
+        return None
+    return await flyer_reads.stand_ins(db, [location_id], flyers.today())
+
+
 async def _check_unit(db: AsyncSession, unit: str) -> None:
     if unit not in await load_units(db):
         raise ApiError(422, "unknown_unit", "unit is not a known unit code.")
@@ -150,14 +168,6 @@ def effective_cost(item: TripPlanStopItem) -> Decimal:
     if item.actual_price is None:
         return item.line_cost
     return money(CTX.multiply(_multiplier(item), item.actual_price))
-
-
-def _label(list_item: ShoppingListItem) -> str:
-    if list_item.kind == "product" and list_item.product is not None:
-        return list_item.product.name
-    if list_item.ingredient is not None:
-        return list_item.ingredient.name
-    return str(list_item.id)
 
 
 def _amounts(list_item: ShoppingListItem) -> list[AmountOut]:
@@ -198,7 +208,7 @@ async def stop_screen(
             StopScreenItem(
                 id=item.id,
                 list_item_id=item.list_item_id,
-                label=_label(row),
+                label=shopping_lists.item_label(row),
                 amounts=_amounts(row),
                 note=row.note,
                 product=ProductBrief.model_validate(item.product),
@@ -206,6 +216,7 @@ async def stop_screen(
                 pack_price=item.pack_price,
                 line_cost=item.line_cost,
                 observation_id=item.observation_id,
+                flyer_offer_id=item.flyer_offer_id,
                 planned_observed_at=observed[item.observation_id],
                 price_stale=item.price_stale,
                 forced=item.forced,
@@ -235,6 +246,7 @@ async def stop_screen(
             [list_items[i.list_item_id] for _, i in elsewhere],
             [stop.vendor_location_id],
             settings,
+            stand_ins=await _stand_ins(db, plan_row, stop.vendor_location_id),
         )
         products = await _products(db, {o.product_id for o in book.offers.values()})
         for other, item in elsewhere:
@@ -246,7 +258,7 @@ async def stop_screen(
                 CheaperElsewhereItem(
                     id=item.id,
                     list_item_id=item.list_item_id,
-                    label=_label(row),
+                    label=shopping_lists.item_label(row),
                     amounts=_amounts(row),
                     at_seq=other.seq,
                     at_location_name=other.location.name,
@@ -347,7 +359,13 @@ async def get_here(
     if any(i.list_item_id == item.list_item_id for i in stop.items):
         raise ApiError(409, "already_here", "That item is already at this stop.")
     list_item = (await _list_items(db, [item.list_item_id]))[item.list_item_id]
-    book = await trip_offers.offers(db, [list_item], [stop.vendor_location_id], settings)
+    book = await trip_offers.offers(
+        db,
+        [list_item],
+        [stop.vendor_location_id],
+        settings,
+        stand_ins=await _stand_ins(db, plan_row, stop.vendor_location_id),
+    )
     offer = book.offers.get((item.list_item_id, stop.vendor_location_id))
     if offer is None and payload.price is None:
         raise ApiError(
@@ -366,6 +384,7 @@ async def get_here(
         item.pack_price = offer.pack_price
         item.line_cost = offer.line_cost
         item.observation_id = offer.observation_id
+        item.flyer_offer_id = offer.flyer_offer_id
         item.price_stale = offer.stale
     if payload.price is not None:
         item.actual_price = payload.price
@@ -439,7 +458,9 @@ async def done(
     for position, item in enumerate(checked_items, start=1):
         lines.append(await _line_for(db, item, list_items[item.list_item_id], units))
         if item.actual_price is None:
-            flags[position] = [purchases.PLANNED_PRICE]
+            # Bought at this week's offer: a sale price, never a regular one (X1).
+            offer = [purchases.OFFER_PRICE] if item.flyer_offer_id else []
+            flags[position] = [purchases.PLANNED_PRICE, *offer]
     purchase = None
     observation_ids: list[uuid.UUID] = []
     if lines:

@@ -453,6 +453,7 @@ async def _emit(db: AsyncSession, purchase: Purchase, line: PurchaseLine, user: 
         unit=line.unit,
         source="manual",
         entered_by=user,
+        is_promo=OFFER_PRICE in line.flags,
         observed_at=purchase.purchased_at,
         purchase_line_id=line.id,
     )
@@ -484,6 +485,9 @@ def _new_line(
 # its observation is the purchase line's, like any other, but a reader can tell
 # a confirmed price from an assumed one.
 PLANNED_PRICE = "planned_price"
+# ...and at this week's offer (18, X1): its observation is a sale price, so it never
+# joins the regular prices offers and savings are measured against.
+OFFER_PRICE = "offer_price"
 
 
 async def create_manual_core(

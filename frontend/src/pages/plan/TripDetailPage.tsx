@@ -56,6 +56,7 @@ export function replanPrefill(trip: Trip): TripPrefill {
     max_stops: trip.max_stops,
     mileage_rate: trip.mileage_rate,
     stop_overhead_min: trip.stop_overhead_min,
+    with_offers: trip.with_offers,
   };
 }
 

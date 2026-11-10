@@ -56,7 +56,6 @@ from app.core.ids import new_id
 from app.models import AppUser, Purchase
 from app.models.geo import HomeBase, Place, VendorLocation
 from app.models.plan import (
-    ShoppingListItem,
     TravelLeg,
     TripPlan,
     TripPlanStop,
@@ -725,14 +724,6 @@ def _unsourceable(
 # --- I/O: candidates, the plan, the choice ---------------------------------------------------
 
 
-def _label(item: ShoppingListItem) -> str:
-    if item.kind == "product" and item.product is not None:
-        return item.product.name
-    if item.ingredient is not None:
-        return item.ingredient.name
-    return str(item.id)
-
-
 async def candidates(
     db: AsyncSession, home: HomeBase, settings: Settings
 ) -> tuple[list[Candidate], dict[uuid.UUID, VendorLocation]]:
@@ -808,13 +799,15 @@ async def create_plan(
             f"No active vendor location within {settings.plan_candidate_radius_km} km "
             "of the kitchen.",
         )
-    book = await trip_offers.offers(db, rows, [c.location_id for c in found], settings)
-    matrix = await travel.legs_for(
-        db, [origin, destination, *(c.place_id for c in found)], settings
-    )
     planned_at = payload.planned_at
     if planned_at.tzinfo is None:
         planned_at = planned_at.replace(tzinfo=UTC)
+    location_ids = [c.location_id for c in found]
+    stand_ins = await trip_offers.stand_ins(db, location_ids, planned_at, payload.with_offers)
+    book = await trip_offers.offers(db, rows, location_ids, settings, stand_ins=stand_ins)
+    matrix = await travel.legs_for(
+        db, [origin, destination, *(c.place_id for c in found)], settings
+    )
     inputs = PlanInputs(
         origin_place_id=origin,
         destination_place_id=destination,
@@ -837,7 +830,7 @@ async def create_plan(
     items = [
         PlanItem(
             item_id=i.id,
-            label=_label(i),
+            label=shopping_lists.item_label(i),
             deferrable=i.deferrable,
             pinned=i.kind == "product" or i.min_quality is not None,
         )
@@ -860,6 +853,7 @@ async def create_plan(
         max_stops=inputs.max_stops,
         mileage_rate=inputs.mileage_rate,
         stop_overhead_min=inputs.stop_overhead_min,
+        with_offers=payload.with_offers,
         status="planned",
         created_by=user.id,
     )
@@ -893,6 +887,7 @@ async def create_plan(
                 overhead_min=stop.overhead_min,
                 subtotal=stop.subtotal,
                 hours_known=stop.hours_known,
+                expected_saving=trip_offers.expected_saving(stop.items),
             )
             db.add(stop_row)
             for offer in stop.items:
@@ -906,6 +901,7 @@ async def create_plan(
                         pack_price=offer.pack_price,
                         line_cost=offer.line_cost,
                         observation_id=offer.observation_id,
+                        flyer_offer_id=offer.flyer_offer_id,
                         price_stale=offer.stale,
                         forced=offer.item_id in variant.forced_item_ids,
                     )
@@ -1034,6 +1030,7 @@ def _stop_out(stop: TripPlanStop) -> StopOut:
         overhead_min=stop.overhead_min,
         subtotal=stop.subtotal,
         hours_known=stop.hours_known,
+        expected_saving=stop.expected_saving,
         done_at=stop.done_at,
         purchase_id=stop.purchase_id,
         actual_cost=actual_cost,
@@ -1048,6 +1045,7 @@ def _stop_out(stop: TripPlanStop) -> StopOut:
                 pack_price=i.pack_price,
                 line_cost=i.line_cost,
                 observation_id=i.observation_id,
+                flyer_offer_id=i.flyer_offer_id,
                 price_stale=i.price_stale,
                 forced=i.forced,
                 actual_price=i.actual_price,
@@ -1094,6 +1092,7 @@ def _base(plan_row: TripPlan) -> dict[str, Any]:
         "max_stops": plan_row.max_stops,
         "mileage_rate": plan_row.mileage_rate,
         "stop_overhead_min": plan_row.stop_overhead_min,
+        "with_offers": plan_row.with_offers,
         "status": plan_row.status,
         "chosen_variant_id": plan_row.chosen_variant_id,
         "created_by": plan_row.created_by,
