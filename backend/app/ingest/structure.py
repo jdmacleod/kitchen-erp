@@ -37,6 +37,7 @@ from app.ingest.lines import (
 )
 from app.ingest.printed_rows import (
     anchor_rows,
+    free_item_coupons,
     printed_checks,
     quantity_from_text,
     savings_already_netted,
@@ -53,6 +54,8 @@ from app.ingest.tax_rows import tax_from_print, tax_from_rate
 #   (pattern 2).
 # donation_paid: a donation added at the till, read as a discount, is a fee
 #   (app.ingest.donations).
+# free_item_coupon: a "free" row read as an item is the saving the printed
+#   savings total lacks (printed_rows.free_item_coupons).
 # kind_from_wording: a line read as a discount names a product with its size and
 #   no saving, and the receipt adds up better as an item (pattern 3).
 # regular_price_from_text: the item was read at what was paid and its saving
@@ -91,6 +94,7 @@ STRUCTURE_FLAGS = frozenset(
         "no_amount_printed",
         "kind_from_wording",
         "donation_paid",
+        "free_item_coupon",
         "regular_price_from_text",
         "footer_text",
         "tax_from_rate",
@@ -147,14 +151,11 @@ def post_passes(
     rate_notes_not_discounts(parsed)
     items_read_as_discounts(parsed, printed_total, header_tax)
     donations_paid(parsed, printed_total, header_tax)
-    savings_already_netted(parsed, printed_total, header_tax)
     printed_savings = None if checks is None else checks.get("savings_total")
-    savings_in_price(
-        parsed,
-        printed_total,
-        header_tax,
-        None if printed_savings is None else Decimal(printed_savings),
-    )
+    savings = None if printed_savings is None else Decimal(printed_savings)
+    free_item_coupons(parsed, savings)
+    savings_already_netted(parsed, printed_total, header_tax)
+    savings_in_price(parsed, printed_total, header_tax, savings)
     payment_rows(parsed, printed_total, header_tax)
     # Again, once a payment read as an item no longer hides the items' sum.
     tax_from_print(parsed, receipt_text, header_tax)

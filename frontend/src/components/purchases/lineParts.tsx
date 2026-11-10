@@ -220,6 +220,7 @@ const FLAG_LABELS: Record<string, string> = {
   kind_from_wording: "a product, not a saving",
   // A donation added at the till, read as money off.
   donation_paid: "a donation, paid",
+  free_item_coupon: "a free-item coupon",
   regular_price_from_text: "regular price restored",
   footer_text: "footer text?",
   tax_from_rate: "tax from its rate",

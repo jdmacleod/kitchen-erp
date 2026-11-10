@@ -51,7 +51,9 @@ LINE_READING_FLAGS = frozenset(
 #    a weight labelled as one ("Manual Weight 3.40 lb @ 2.50 USD/lb"), join the item
 #    they come to, rather than counting as a second purchase.
 #    A donation added at the till and read as a discount is a fee (donation_paid).
-LINE_RULES_VERSION = 4
+# 5: a "free" row read as an item is a saving when it is the one the printed
+#    savings total lacks (free_item_coupon).
+LINE_RULES_VERSION = 5
 
 
 @dataclass
