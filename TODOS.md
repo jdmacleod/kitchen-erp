@@ -166,6 +166,18 @@ Design: `docs/designs/vision-receipt-reading.md`.
 **Priority:** P3
 **Depends on:** Enough done trips to fill each band
 
+### Let an offer stand in at a store with no price-book price
+
+**What:** In a plan made "With this week's offers", let a linked offer price a product at a store where the price book has no price for it yet, and give the stop screen a planned price that names the offer instead of an observation.
+
+**Why:** As built, an offer stands in only where the price book already has a price there, so a store that is cheap only this week, for a product never bought there, is never chosen for it.
+
+**Context:** `18` (2X-3, 2026-11-09). Every planned item keeps the observation that "planned price" and "Cheaper at stop" compare against; an offer-only line has none, so both comparisons need a second source of planned price first.
+
+**Effort:** M (human) / S (CC)
+**Priority:** P3
+**Depends on:** Linked offers in the household, and a trip where the narrower rule visibly missed a cheaper store
+
 ## Completed
 
 - **Edit a location's receipt identifiers in the UI**: the vendor page's location form has "Store codes on receipts" (2026-09-28).

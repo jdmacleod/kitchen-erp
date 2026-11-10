@@ -30,7 +30,7 @@ Where this package records a decision, treat it as settled unless implementation
 | `15-keep-times-and-best-by-dates.md` | Sub-phase 2Q: keep times per ingredient and an inferred best-by date on each purchase line, from the USDA and UC storage charts; approved 2026-10-08 |
 | `16-brand-families.md` | Sub-phase 2R: store brands and the families of stores that sell them, imported from the kitchen-erp-brands dataset; labels, kind, out-of-family matching and tiers on offers; approved 2026-10-09 |
 | `17-phase-4-lists-and-trips.md` | Phase 4 specified to implementation depth: shopping lists per kitchen and the kitchen switcher (4A), drive times and the trip planner (4B), at the store (4C); approved 2026-10-12, built 2026-10-13, with the review's rulings and the build's notes folded in |
-| `18-weekly-flyer-survey.md` | Sub-phases 2U–2X: weekly circulars read by the products helper become store-scoped offers, kept apart from prices, matched to products and offered to the planner, recipe costing and Home; approved 2026-11-05 |
+| `18-weekly-flyer-survey.md` | Sub-phases 2U–2X: weekly circulars read by the products helper become store-scoped offers, kept apart from prices, matched to products and offered to the planner, recipe costing and Home; approved 2026-11-05. 2U and 2X built and deployed 2026-11-09; 2V's adapters built, waiting on its four-week gate (V5); 2W not started |
 | `18-weekly-flyer-survey-handoff.md` | The handoff draft spec 18 was built from, with store, chain and place names redacted; superseded, kept as a record |
 | `assets/tier-a-ingredients.csv` | Draft source for the 1G standard list; untracked (`*.csv` is gitignored), superseded by `backend/app/catalog/standard_ingredients.yaml` |
 
