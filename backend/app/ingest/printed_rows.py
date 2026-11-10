@@ -282,16 +282,40 @@ def _saved(lines: list[ParsedLine]) -> Decimal:
     return sum((x for x in off if x > 0), Decimal("0")) + sum(kept, Decimal("0"))
 
 
-def free_item_coupons(lines: list[ParsedLine], printed_savings: Decimal | None) -> None:
+def _adds_up_either_way(
+    lines: list[ParsedLine], printed_total: Decimal, header_tax: Decimal | None
+) -> bool:
+    """Whether the lines match the total, with the savings taken off or already in the prices."""
+    if _off_by(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
+        return True
+    off = [line for line in lines if line.line_kind == "discount" and line.line_total > 0]
+    kept = [line.line_total for line in off]
+    for line in off:
+        line.line_total = Decimal("0")
+    adds_up = _off_by(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE
+    for line, amount in zip(off, kept, strict=True):
+        line.line_total = amount
+    return adds_up
+
+
+def free_item_coupons(
+    lines: list[ParsedLine],
+    printed_savings: Decimal | None,
+    printed_total: Decimal | None,
+    header_tax: Decimal | None = None,
+) -> None:
     """A "free" row read as an item is a saving, when it is the one the total lacks.
 
     A till can print a free-item coupon as a saving with no minus sign ("FREE
     RYE LOAF 3.50"). Product names say free too ("SUGAR FREE GUM"), so the row
-    becomes a discount on the item above only when the savings read, with it,
-    come to exactly the receipt's printed savings total. Flagged
-    ``free_item_coupon``; whether it is already in the price is decided after.
+    becomes a discount on the item above only when the receipt does not add up
+    as read, the savings read with it come to exactly the printed savings total,
+    and the lines then match the printed total. Flagged ``free_item_coupon``;
+    whether it is already in the price is decided after.
     """
-    if printed_savings is None:
+    if printed_savings is None or printed_total is None:
+        return
+    if _off_by(lines, printed_total, header_tax) <= RECONCILE_TOLERANCE:
         return
     for i, line in enumerate(lines):
         if line.line_kind != "item" or line.line_total <= 0:
@@ -300,8 +324,11 @@ def free_item_coupons(lines: list[ParsedLine], printed_savings: Decimal | None) 
             continue
         if _saved(lines) + line.line_total != printed_savings:
             continue
-        above = next((x for x in reversed(lines[:i]) if x.line_kind == "item"), None)
         line.line_kind = "discount"
+        if not _adds_up_either_way(lines, printed_total, header_tax):
+            line.line_kind = "item"
+            continue
+        above = next((x for x in reversed(lines[:i]) if x.line_kind == "item"), None)
         line.parent_seq = None if above is None else above.seq
         line.flags.append("free_item_coupon")
         return

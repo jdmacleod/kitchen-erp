@@ -171,6 +171,11 @@ def test_a_split_payment_slip_total_is_not_the_receipt_total():
     assert fixed.total == Decimal("26.85") and flags == ["total_from_balance"]
 
 
+def test_a_sale_total_labelled_total_amount_is_still_the_total():
+    text = "FENWICK OATS 6.40\nCINDER PLUMS 20.45\nTOTAL AMOUNT 26.85\nVISA 26.85"
+    assert header_stage.printed_total_line(text) == (Decimal("26.85"), True)
+
+
 def test_a_balance_printed_once_does_not_replace_a_slip_total():
     text = _SLIP_MISREAD.replace("Visa                     26.85", "Visa")
     fixed, flags = readers.apply_printed_total(ReceiptHeader(total=Decimal("28.85")), text)

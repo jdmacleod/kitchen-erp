@@ -530,7 +530,7 @@ def printed_total_line(text: str) -> tuple[Decimal, bool] | None:
         m = _TOTAL_LINE.search(line.strip())
         if not m or _in_savings_block(rows, i):
             continue
-        if m.group("label").lower() == "total" and _PAYMENT_ROW.search(line):
+        if m.group("label").lower() == "total" and _TENDER_ROW.search(line):
             continue  # one card's share of a split payment ("REF#: 12 TOTAL: 9.50")
         strong = m.group("label").lower() != "balance"
         if best is None or strong or not best[1]:
@@ -568,6 +568,12 @@ def rows_printing(amount: Decimal, text: str) -> list[str]:
 
 # The card or cash slip printed under the sale: what was tendered, not what the sale
 # came to, though it repeats that amount. "TOTAL AMOUNT" there is the slip's own label.
+# A card slip's own row, by wording only a tender prints. Not "amount": a sale's
+# total may be labelled TOTAL AMOUNT.
+_TENDER_ROW = re.compile(
+    r"\bref\s*#|visa|master\s*card|amex|discover|debit|approv|\bauth|tender|\bcard\b",
+    re.IGNORECASE,
+)
 _PAYMENT_ROW = re.compile(
     r"amount|visa|master\s*card|amex|discover|debit|credit|cash|tender|change|"
     r"approv|auth|account|card|\bref\s*#",

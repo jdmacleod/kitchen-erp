@@ -153,7 +153,7 @@ def post_passes(
     donations_paid(parsed, printed_total, header_tax)
     printed_savings = None if checks is None else checks.get("savings_total")
     savings = None if printed_savings is None else Decimal(printed_savings)
-    free_item_coupons(parsed, savings)
+    free_item_coupons(parsed, savings, printed_total, header_tax)
     savings_already_netted(parsed, printed_total, header_tax)
     savings_in_price(parsed, printed_total, header_tax, savings)
     payment_rows(parsed, printed_total, header_tax)
