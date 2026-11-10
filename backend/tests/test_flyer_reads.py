@@ -305,6 +305,47 @@ async def test_a_products_offer_history_lists_every_week(
     assert missing.status_code == 404
 
 
+async def test_the_history_prices_each_week_and_gives_a_typical_price(
+    admin_client,
+    store,  # noqa: F811
+    helper,  # noqa: F811
+    owner_conn,
+):
+    """X3: the product page's typical price is the median of its regular prices and
+    its offers' over the last twelve weeks; a week not begun yet doesn't count."""
+    product = await lentils(admin_client, store, pack_qty="1", pack_unit="lb")
+    await learned(owner_conn, store, product)
+    pound = {"size_qty": "1", "size_unit": "lb"}
+    first = await read(helper, [candidate("Green Lentils", "2.49", **pound)])
+    nxt = {"valid_from": "2026-11-11", "valid_to": "2026-11-17"}
+    await read(
+        helper,
+        [candidate("Green Lentils", "1.99", **pound, **nxt)],
+        first,
+        ad_week_from="2026-11-11",
+        ad_week_to="2026-11-17",
+    )
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    assert [(o["display_unit_price"], o["display_unit"]) for o in body["items"]] == [
+        ("1.99", "lb"),
+        ("2.49", "lb"),
+    ]
+    typical = body["typical"]
+    # The $3 bought a month ago and this week's $2.49; next week's $1.99 hasn't begun.
+    assert (typical["display_unit"], typical["regular_count"], typical["offer_count"]) == (
+        "lb",
+        1,
+        1,
+    )
+    assert Decimal(typical["display_unit_price"]).quantize(Decimal("0.01")) == Decimal("2.75")
+
+
+async def test_a_product_with_no_prices_has_no_typical_price(admin_client):
+    product = await make_product(admin_client, "Lentils", "Larkspur Green Lentils")
+    body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
+    assert body == {"items": [], "typical": None}
+
+
 async def test_a_counted_pack_is_priced_per_piece_not_per_pack_of_packs(
     admin_client,
     store,  # noqa: F811

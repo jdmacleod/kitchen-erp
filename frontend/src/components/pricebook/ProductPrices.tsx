@@ -1,15 +1,21 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import type { Product } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
+import { useOfferHistory, type HistoryOffer, type OfferHistory } from "../../api/flyerOffers";
 import { useProductPrices } from "../../api/pricebook";
 import { formatMoney, stripZeros } from "../../lib/decimal";
+import { offerPriceText } from "../../lib/offers";
 import { Alert, Card, focusRing, sectionHeading } from "../ui";
 import { PriceAge, PromoBadge, RegularPrice, formatUnitPrice } from "./PriceAge";
-import { PriceHistoryChart, chartable } from "./PriceHistoryChart";
+import { PriceHistoryChart, chartable, type OfferWeek } from "./PriceHistoryChart";
 
 /** The product page's price history chart and latest-price-per-location table. */
 export function ProductPrices({ product }: { product: Product }) {
   const prices = useProductPrices(product.id);
+  // Offers are extra: while they load, or if they can't, the chart shows without them.
+  const history = useOfferHistory(product.id).data;
+  const weeks = useMemo(() => offerWeeks(history?.items ?? []), [history]);
   // The chart's unit is its points' (issue 371: normalized, else per bunch).
   const unit =
     chartable(prices.data?.points ?? []).find((p) => p.display_unit)?.display_unit ??
@@ -27,7 +33,8 @@ export function ProductPrices({ product }: { product: Product }) {
         <Alert tone="error">{errorMessage(prices.error)}</Alert>
       ) : (
         <div className="flex flex-col gap-4">
-          <PriceHistoryChart points={prices.data.points} unit={unit} />
+          <PriceHistoryChart points={prices.data.points} unit={unit} offerWeeks={weeks} />
+          {history ? <TypicalPrice history={history} /> : null}
           {prices.data.latest.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm" aria-label="Latest price per location">
@@ -79,4 +86,40 @@ export function ProductPrices({ product }: { product: Product }) {
       )}
     </Card>
   );
+}
+
+/** Only for a product with offers: without them nothing new shows (X5). */
+function TypicalPrice({ history }: { history: OfferHistory }) {
+  const typical = history.typical;
+  if (history.items.length === 0 || typical === null) return null;
+  return (
+    <p className="text-sm" data-testid="typical-price">
+      Typical price{" "}
+      <span className="tabular-nums">
+        {formatUnitPrice(typical.display_unit_price, typical.display_unit)}
+      </span>{" "}
+      <span className="text-neutral-600 dark:text-neutral-400">
+        over the last {typical.weeks} weeks, from {count(typical.regular_count, "regular price")}{" "}
+        and {count(typical.offer_count, "offer")}
+      </span>
+    </p>
+  );
+}
+
+function count(n: number, noun: string): string {
+  return `${n} ${n === 1 ? noun : `${noun}s`}`;
+}
+
+/** The product's offers as chart bands, one per ad week, naming each store's offer (X3). */
+function offerWeeks(items: HistoryOffer[]): OfferWeek[] {
+  const weeks = new Map<string, OfferWeek>();
+  for (const o of items) {
+    const from = o.ad_week_from ?? o.valid_from;
+    const to = o.ad_week_to ?? o.valid_to;
+    const week = weeks.get(`${from}:${to}`) ?? { from, to, offers: [] };
+    const line = `${o.vendor.name}: ${offerPriceText(o)}`;
+    if (!week.offers.includes(line)) week.offers.push(line);
+    weeks.set(`${from}:${to}`, week);
+  }
+  return [...weeks.values()];
 }

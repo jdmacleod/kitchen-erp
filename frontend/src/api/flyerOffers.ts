@@ -66,6 +66,24 @@ export interface CurrentOffer extends QueuedOffer {
   regular_unit_price: string | null;
 }
 
+/** A product's linked offer in its own week, priced as the product's prices are shown (X3). */
+export interface HistoryOffer extends Omit<CurrentOffer, "regular_unit_price"> {
+  display_unit_price: string | null;
+  display_unit: string | null;
+}
+
+export interface OfferHistory {
+  items: HistoryOffer[];
+  /** The median of regular and offer prices over the last `weeks`; null with none. */
+  typical: {
+    display_unit_price: string;
+    display_unit: string;
+    weeks: number;
+    regular_count: number;
+    offer_count: number;
+  } | null;
+}
+
 const queueKey = ["flyer-offers", "queue"] as const;
 const currentKey = (homeBaseId: string) => ["flyer-offers", "current", homeBaseId] as const;
 
@@ -99,5 +117,13 @@ export function useDecideOffer() {
       void client.invalidateQueries({ queryKey: ["flyer-offers", "current"] });
       void client.invalidateQueries({ queryKey: inboxKey });
     },
+  });
+}
+
+/** A product's offers, newest week first, and its typical price (X3). */
+export function useOfferHistory(productId: string) {
+  return useQuery({
+    queryKey: ["flyer-offers", "product", productId] as const,
+    queryFn: () => api<OfferHistory>(`/products/${encodeURIComponent(productId)}/flyer-offers`),
   });
 }

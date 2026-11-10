@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { PricePoint } from "../../api/pricebook";
 import { formatMoney } from "../../lib/decimal";
-import { formatDate } from "../../lib/format";
+import { formatCalendarDate, formatDate } from "../../lib/format";
 import { SERIES_COLOURS } from "../../lib/palette";
 import { formatUnitPrice, regularText } from "./PriceAge";
 
@@ -20,10 +20,30 @@ interface Series {
   points: (PricePoint & { x: number; y: number })[];
 }
 
+/** A week some store's circular had the product on offer, drawn as a band (X3). */
+export interface OfferWeek {
+  from: string;
+  to: string;
+  /** What the band's title says, e.g. "Larkspur Market: 3 for $5". */
+  offers: string[];
+}
+
 interface PriceHistoryChartProps {
   points: PricePoint[];
   /** The unit the normalized prices are in, for the axis label. */
   unit: string | null;
+  offerWeeks?: OfferWeek[];
+}
+
+const DAY = 86_400_000;
+
+/** A calendar date's span in local time, start of its first day to end of its last. */
+function span(week: OfferWeek): [number, number] {
+  const day = (ymd: string) => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    return new Date(y, m - 1, d).getTime();
+  };
+  return [day(week.from), day(week.to) + DAY];
 }
 
 /**
@@ -44,7 +64,7 @@ export function chartable<
  * a diamond marker and the word "sale" next to it, never colour alone.
  * Decimal strings become numbers here only to place marks on the canvas.
  */
-export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
+export function PriceHistoryChart({ points, unit, offerWeeks = [] }: PriceHistoryChartProps) {
   const chart = useMemo(() => {
     const usable = chartable(points);
     const skipped = points.length - usable.length;
@@ -54,16 +74,19 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
         skipped,
         ticksY: [] as number[],
         ticksX: [] as number[],
+        bands: [] as { week: OfferWeek; x: number; w: number }[],
         scale: null,
       };
 
     const times = usable.map((p) => new Date(p.observed_at).getTime());
     const prices = usable.map((p) => Number(p.display_unit_price));
-    let tMin = Math.min(...times);
-    let tMax = Math.max(...times);
+    // The range takes in the offer weeks, so this week's offer shows past the last price.
+    const weeks = offerWeeks.map(span);
+    let tMin = Math.min(...times, ...weeks.map(([a]) => a));
+    let tMax = Math.max(...times, ...weeks.map(([, b]) => b));
     if (tMin === tMax) {
-      tMin -= 86_400_000;
-      tMax += 86_400_000;
+      tMin -= DAY;
+      tMax += DAY;
     }
     const pMax = Math.max(...prices) * 1.1 || 1;
     const pMin = 0;
@@ -92,8 +115,13 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
 
     const ticksY = [0, 0.25, 0.5, 0.75, 1].map((f) => pMin + f * (pMax - pMin));
     const ticksX = [0, 0.5, 1].map((f) => tMin + f * (tMax - tMin));
-    return { series: [...bySeries.values()], skipped, ticksY, ticksX, scale: { sx, sy } };
-  }, [points]);
+    const bands = offerWeeks.map((week, i) => ({
+      week,
+      x: sx(weeks[i][0]),
+      w: Math.max(2, sx(weeks[i][1]) - sx(weeks[i][0])),
+    }));
+    return { series: [...bySeries.values()], skipped, ticksY, ticksX, bands, scale: { sx, sy } };
+  }, [points, offerWeeks]);
 
   if (!chart.scale) {
     return (
@@ -117,6 +145,20 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
           className="h-auto w-full min-w-[420px] text-neutral-700 dark:text-neutral-300"
           data-testid="price-history-chart"
         >
+          {chart.bands.map(({ week, x, w }) => (
+            <rect
+              key={`${week.from}:${week.to}`}
+              data-testid="offer-week"
+              x={x}
+              y={PAD.top}
+              width={w}
+              height={H - PAD.top - PAD.bottom}
+              fill="currentColor"
+              fillOpacity="0.1"
+            >
+              <title>{`On offer ${formatCalendarDate(week.from)} to ${formatCalendarDate(week.to)}: ${week.offers.join("; ")}`}</title>
+            </rect>
+          ))}
           {chart.ticksY.map((v) => (
             <g key={v}>
               <line
@@ -218,6 +260,14 @@ export function PriceHistoryChart({ points, unit }: PriceHistoryChartProps) {
           </svg>
           sale price
         </span>
+        {chart.bands.length > 0 ? (
+          <span className="inline-flex items-center gap-1.5 text-neutral-600 dark:text-neutral-400">
+            <svg width="14" height="14" aria-hidden="true">
+              <rect width="14" height="14" fill="currentColor" fillOpacity="0.2" />
+            </svg>
+            offer week
+          </span>
+        ) : null}
         {chart.skipped > 0 ? (
           <span className="text-neutral-600 dark:text-neutral-400">
             {chart.skipped} not normalized and not charted

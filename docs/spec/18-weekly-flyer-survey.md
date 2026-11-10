@@ -277,7 +277,7 @@ Updated with every pull request, so the work can stop and resume at any line.
   - [ ] Seed the new sources in the household, then V5: four consecutive weekly offer points per linked product at every enabled source
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
   - [x] 2X-1: Home's "This week's offers" card and the list's "On offer at {store}" mark (X4, X5 for both; UI-9.1, UI-9.2). The card groups the current kitchen's offers by store, one line per product; an ingredient item is marked by an offer for any of its products, a product item only by its own. Offers carry their product's `ingredient_id`
-  - [ ] 2X-2: the product chart's offer weeks and typical price (X3)
+  - [x] 2X-2: the product chart's offer weeks and typical price (X3, X5). `GET /products/{id}/flyer-offers` prices each offer in its own week, in the product's display unit, and adds `typical`: the median of regular prices and offer prices over the last twelve weeks. The chart shades each ad week, with a title naming every store's offer; the typical price shows only for a product with offers
   - [ ] 2X-3: the planner's "With this week's offers" (X1)
   - [ ] 2X-4: recipe costing's "this week's offers" basis (X2)
 - [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)
