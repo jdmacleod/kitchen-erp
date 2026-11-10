@@ -358,7 +358,8 @@ async def test_a_discount_in_the_history_is_taken_off_the_regular_price_then(
     [current_offer] = await current(admin_client, await kitchen(owner_conn, store))
     body = (await admin_client.get(f"/api/v1/products/{product['id']}/flyer-offers")).json()
     [offer] = body["items"]
-    assert offer["unit_price"] == current_offer["unit_price"] is not None
+    assert current_offer["unit_price"] is not None
+    assert offer["unit_price"] == current_offer["unit_price"]
     assert offer["display_unit"] == "lb"
     assert Decimal(offer["display_unit_price"]).quantize(Decimal("0.01")) == Decimal("2.40")
 
