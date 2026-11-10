@@ -115,6 +115,7 @@ export function useDecideOffer() {
       void client.invalidateQueries({ queryKey: queueKey });
       // A match links this week's offers, so the kitchen's current ones change.
       void client.invalidateQueries({ queryKey: ["flyer-offers", "current"] });
+      void client.invalidateQueries({ queryKey: ["price-book", "flyer-offer-history"] });
       void client.invalidateQueries({ queryKey: inboxKey });
     },
   });
@@ -123,7 +124,8 @@ export function useDecideOffer() {
 /** A product's offers, newest week first, and its typical price (X3). */
 export function useOfferHistory(productId: string) {
   return useQuery({
-    queryKey: ["flyer-offers", "product", productId] as const,
+    // Under the price book's prefix: a price voided or recorded refreshes the typical price.
+    queryKey: ["price-book", "flyer-offer-history", productId] as const,
     queryFn: () => api<OfferHistory>(`/products/${encodeURIComponent(productId)}/flyer-offers`),
   });
 }
