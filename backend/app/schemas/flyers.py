@@ -89,6 +89,8 @@ class OfferDecided(ApiModel):
 class OfferProduct(ApiModel):
     id: uuid.UUID
     name: str
+    # A list item for the ingredient is on offer when its product is (UI-9.2).
+    ingredient_id: uuid.UUID | None = None
 
 
 class LinkedOffer(ApiModel):

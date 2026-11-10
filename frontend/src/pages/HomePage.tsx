@@ -5,6 +5,7 @@ import { useRecentCommittedPurchases } from "../api/purchases";
 import { useChrome } from "../components/chrome";
 import { FirstRunChecklist } from "../components/landing/FirstRunChecklist";
 import { InboxList, ReadingLine, useInboxSummary } from "../components/landing/InboxList";
+import { OffersCard } from "../components/landing/OffersCard";
 import { RecentPurchases } from "../components/landing/RecentPurchases";
 import { ShoppingListPanel } from "../components/landing/ShoppingListPanel";
 import { Alert, Button, PageHeader, sectionHeading } from "../components/ui";
@@ -117,6 +118,8 @@ export function HomePage() {
         <div className="flex flex-col gap-8">
           {/* The "{kitchen} list" panel sits above Recent purchases once Plan is built; desktop only (L5). */}
           {plan ? <ShoppingListPanel /> : null}
+          {/* Offers are a kitchen's, so they wait for Plan's kitchens (UI-9.1). */}
+          {plan ? <OffersCard /> : null}
           {failed ? (
             <Alert tone="error">{errorMessage(locations.error ?? recent.error)}</Alert>
           ) : (

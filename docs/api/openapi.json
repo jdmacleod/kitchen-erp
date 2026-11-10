@@ -11729,6 +11729,18 @@
             "title": "Id",
             "type": "string"
           },
+          "ingredient_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredient Id"
+          },
           "name": {
             "title": "Name",
             "type": "string"

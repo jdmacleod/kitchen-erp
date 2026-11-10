@@ -276,6 +276,10 @@ Updated with every pull request, so the work can stop and resume at any line.
   - [x] V4: a request left unanswered past its week is closed, so it never stops its source being queued again (#494)
   - [ ] Seed the new sources in the household, then V5: four consecutive weekly offer points per linked product at every enabled source
 - [ ] 2X: planner, costing, product chart, Home card, list mark (X1–X5, UI-9)
+  - [x] 2X-1: Home's "This week's offers" card and the list's "On offer at {store}" mark (X4, X5 for both; UI-9.1, UI-9.2). The card groups the current kitchen's offers by store, one line per product; an ingredient item is marked by an offer for any of its products, a product item only by its own. Offers carry their product's `ingredient_id`
+  - [ ] 2X-2: the product chart's offer weeks and typical price (X3)
+  - [ ] 2X-3: the planner's "With this week's offers" (X1)
+  - [ ] 2X-4: recipe costing's "this week's offers" basis (X2)
 - [ ] 2W: vision benchmark, image, PDF and region adapters, verifier, crops (W1–W9)
 
 ## Open questions

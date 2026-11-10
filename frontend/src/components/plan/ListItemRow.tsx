@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { formatPack } from "../../api/catalog";
 import { errorMessage } from "../../api/client";
+import type { CurrentOffer } from "../../api/flyerOffers";
 import { useMe } from "../../api/queries";
 import {
   itemName,
@@ -11,7 +12,8 @@ import {
   type ShoppingItem,
   type listKeys,
 } from "../../api/shoppingList";
-import { formatDateTime } from "../../lib/format";
+import { formatCalendarDate, formatDateTime } from "../../lib/format";
+import { offerPriceText, type Deal } from "../../lib/offers";
 import { Badge, QualityStars } from "../catalog/fields";
 import { MoreActionsDialog } from "../MoreActionsDialog";
 import { Alert, Button, focusRing } from "../ui";
@@ -23,6 +25,8 @@ const muted = "text-neutral-600 dark:text-neutral-400";
 
 interface ListItemRowProps {
   item: ShoppingItem;
+  /** This week's offers for it, one per deal (UI-9.2). */
+  offers?: Deal<CurrentOffer>[];
   listKey: ReturnType<typeof listKeys.list>;
   /** An archived list: nothing on the row acts. */
   readOnly?: boolean;
@@ -41,6 +45,7 @@ interface ListItemRowProps {
  */
 export function ListItemRow({
   item,
+  offers = [],
   listKey,
   readOnly = false,
   onToggled,
@@ -152,6 +157,18 @@ export function ListItemRow({
               </Link>
             ) : null}
           </div>
+          {offers.map(({ offer, locations }) => (
+            <p key={offer.id} className="text-sm">
+              <span className="text-green-800 dark:text-green-300">
+                On offer at {offer.vendor.name}
+                {locations ? ` (${locations.join(", ")})` : ""}
+              </span>{" "}
+              <span className={`text-xs ${muted}`}>
+                {offer.name_as_printed}, {offerPriceText(offer)}, through{" "}
+                {formatCalendarDate(offer.valid_to)}
+              </span>
+            </p>
+          ))}
           {item.note ? <p className={`text-sm ${muted}`}>{item.note}</p> : null}
           {checked && item.checked_by ? (
             <p className={`text-xs ${muted}`}>

@@ -1,4 +1,5 @@
-import type { QueuedOffer } from "../api/flyerOffers";
+import type { CurrentOffer, QueuedOffer } from "../api/flyerOffers";
+import type { ShoppingItem } from "../api/shoppingList";
 import { formatMoney, stripZeros } from "./decimal";
 
 /**
@@ -32,4 +33,68 @@ export function offerPriceText(
     }
   })();
   return offer.requires_loyalty ? `${base}, card price` : base;
+}
+
+type DealOffer = Pick<
+  CurrentOffer,
+  | "id"
+  | "vendor"
+  | "location"
+  | "product"
+  | "price_basis"
+  | "price"
+  | "basis_qty"
+  | "discount"
+  | "requires_loyalty"
+  | "valid_to"
+>;
+
+/** One deal and where it runs: `locations` is null when every branch of the store runs it. */
+export interface Deal<T extends DealOffer> {
+  offer: T;
+  locations: string[] | null;
+}
+
+function terms(o: DealOffer): string {
+  return [o.price_basis, o.price, o.basis_qty, o.discount, o.requires_loyalty, o.valid_to].join(
+    "|",
+  );
+}
+
+/**
+ * Offers grouped by `group` (a store and product on Home, a store for a list item),
+ * one deal per distinct set of terms: the same circular at several branches is one
+ * line, and branches whose deals differ are named (UI-9.1, UI-9.2).
+ */
+export function distinctDeals<T extends DealOffer>(
+  offers: readonly T[],
+  group: (o: T) => string,
+): Deal<T>[] {
+  const groups = new Map<string, Map<string, Deal<T> & { names: string[] }>>();
+  for (const o of offers) {
+    const deals = groups.get(group(o)) ?? new Map<string, Deal<T> & { names: string[] }>();
+    const deal = deals.get(terms(o)) ?? { offer: o, locations: null, names: [] };
+    deal.names.push(o.location.name);
+    deals.set(terms(o), deal);
+    groups.set(group(o), deals);
+  }
+  return [...groups.values()].flatMap((deals) =>
+    [...deals.values()].map(({ offer, names }) => ({
+      offer,
+      locations: deals.size > 1 ? names : null,
+    })),
+  );
+}
+
+/** The current offers for a list item, by store: its product's, or any of its ingredient's (UI-9.2). */
+export function offersForItem(
+  item: Pick<ShoppingItem, "kind" | "ingredient" | "product">,
+  offers: readonly CurrentOffer[],
+): Deal<CurrentOffer>[] {
+  const matches = offers.filter((o) =>
+    item.kind === "product"
+      ? o.product.id === item.product?.id
+      : item.ingredient !== null && o.product.ingredient_id === item.ingredient.id,
+  );
+  return distinctDeals(matches, (o) => `${o.vendor.id}:${o.product.id}`);
 }

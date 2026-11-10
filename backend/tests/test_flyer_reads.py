@@ -104,7 +104,11 @@ async def test_a_linked_offer_is_current_in_its_week_and_gone_after(
     home = await kitchen(owner_conn, store)
 
     [offer] = await current(admin_client, home)
-    assert offer["product"] == {"id": product["id"], "name": "Larkspur Green Lentils"}
+    assert offer["product"] == {
+        "id": product["id"],
+        "name": "Larkspur Green Lentils",
+        "ingredient_id": product["ingredient"]["id"],
+    }
     assert (offer["location"]["id"], offer["price"], offer["size_inherited"]) == (
         store["id"],
         "2.4900",

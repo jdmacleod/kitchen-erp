@@ -53,6 +53,7 @@ function baseRoutes(): Record<string, RouteHandler> {
       jsonResponse(200, { items: [ingredientMatch(flour, { exact: true })] }),
     "GET /products/search": () => jsonResponse(200, { items: [] }),
     "GET /recipes": () => jsonResponse(200, { items: recipeList }),
+    "GET /flyer-offers/current": () => jsonResponse(200, { items: [] }),
   };
 }
 
