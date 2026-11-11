@@ -370,7 +370,8 @@ async def second_transcript(
         adapter = factory()
         try:
             text = await adapter.run(document, image_path)
-        except (OcrUnavailable, StageFailure) as exc:
+        except (OcrUnavailable, StageFailure, OSError) as exc:
+            # OSError: a full or unwritable temporary directory while rendering.
             log.info("second transcript from %s unavailable: %s", name, exc)
             continue
         if text.strip():

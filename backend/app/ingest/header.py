@@ -389,22 +389,30 @@ async def _phone_evidence(
         numbers = [phones.digits(n) for n in phones_in_text(second_text or "")]
     if not numbers:
         return
-    by_vendor: dict[uuid.UUID, list[VendorLocation]] = {}
-    with_phones = await db.execute(active.where(VendorLocation.phone.is_not(None)))
-    for location in with_phones.scalars().unique():
-        own = phones.digits(location.phone or "")
-        if any(phones.same_number(number, own) for number in numbers):
-            by_vendor.setdefault(location.vendor_id, []).append(location)
-    for matched in by_vendor.values():
-        if len(matched) == 1:
-            found = candidate(matched[0])
-            found.phone = matched[0].phone
-            if from_second:
-                found.from_second_text.append("phone")
-        else:
-            for location in matched:
-                if location.id in candidates:
-                    candidates[location.id].phone_shared = True
+    with_phones = list(
+        (await db.execute(active.where(VendorLocation.phone.is_not(None)))).scalars().unique()
+    )
+    # Each number on its own: a branch's own number printed beside a head-office
+    # number every branch lists still places the branch.
+    placed: set[uuid.UUID] = set()
+    shared: list[VendorLocation] = []
+    for number in numbers:
+        by_vendor: dict[uuid.UUID, list[VendorLocation]] = {}
+        for location in with_phones:
+            if phones.same_number(number, phones.digits(location.phone or "")):
+                by_vendor.setdefault(location.vendor_id, []).append(location)
+        for matched in by_vendor.values():
+            if len(matched) > 1:
+                shared.extend(matched)
+            elif matched[0].id not in placed:
+                placed.add(matched[0].id)
+                found = candidate(matched[0])
+                found.phone = matched[0].phone
+                if from_second:
+                    found.from_second_text.append("phone")
+    for location in shared:
+        if location.id in candidates and location.id not in placed:
+            candidates[location.id].phone_shared = True
 
 
 async def match_location(  # noqa: C901
@@ -456,15 +464,20 @@ async def match_location(  # noqa: C901
             ):
                 candidate(location).identifier = ident
                 break
-            if (
-                second_text
-                and len(ident) >= MIN_TEXT_IDENTIFIER
-                and identifier_in_text(ident, second_text)
-            ):
-                found = candidate(location)
-                found.identifier = ident
-                found.from_second_text.append("identifier")
-                break
+        else:
+            # Only when no identifier of this location is in the model's read or
+            # the text taken: the second text is the weaker source.
+            for identifier in location.receipt_identifiers:
+                ident = identifier.strip()
+                if (
+                    second_text
+                    and len(ident) >= MIN_TEXT_IDENTIFIER
+                    and identifier_in_text(ident, second_text)
+                ):
+                    found = candidate(location)
+                    found.identifier = ident
+                    found.from_second_text.append("identifier")
+                    break
 
     # 2. Proximity of the capture point.
     distance = cast(func.ST_Distance(Place.geom, ReceiptDocument.capture_geo), Numeric)

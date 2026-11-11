@@ -25,7 +25,8 @@ clean_geo = gh.clean_geo
 no_network = gh.no_network
 receipts_dir = ih.receipts_dir
 ocr_registry = ih.ocr_registry
-__all__ = ["transcriber"]
+# Fixtures pytest finds by name in this module.
+__all__ = ["clean_geo", "no_network", "ocr_registry", "receipts_dir", "transcriber"]
 
 PHONE = "(555) 555-0142"
 SECOND_TEXT = f"HARBORVIEW MARKET\n1200 HARBOR VISTA BLVD\n{PHONE}\nSTORE 0412\nKELP 1.00\n"
@@ -112,6 +113,30 @@ async def test_a_shared_number_in_the_second_text_decides_nothing(admin_client, 
     assert all(c["evidence"]["phone"] is None for c in location["candidates"])
 
 
+async def test_a_branchs_own_number_beside_a_shared_one_still_places_it(admin_client, db_session):
+    _, marisol, _ = await branches(
+        admin_client,
+        Bayside={"phone": "555-555-0100"},
+        Midtown={"phone": "555-555-0100"},
+        **{"San Marisol": {"phone": "555-555-0142"}},
+    )
+    both = f"HEAD OFFICE 555-555-0100\n{SECOND_TEXT}"
+    location = await match(db_session, second_text=both)
+    assert location["vendor_location_id"] == marisol
+    top = location["candidates"][0]["evidence"]
+    assert top["phone"] == "555-555-0142" and top["phone_shared"] is False
+
+
+async def test_the_text_taken_comes_before_the_second_text_for_a_store_number(
+    admin_client, db_session
+):
+    _, _, midtown = await branches(admin_client, Midtown={"receipt_identifiers": ["0412", "7788"]})
+    location = await match(db_session, receipt_text="STORE 7788", second_text=SECOND_TEXT)
+    evidence = location["candidates"][0]["evidence"]
+    assert location["vendor_location_id"] == midtown and evidence["identifier"] == "7788"
+    assert "from_second_text" not in evidence
+
+
 async def test_a_store_number_in_the_second_text_places_the_branch(admin_client, db_session):
     _, _, midtown = await branches(admin_client, Midtown={"receipt_identifiers": ["0412"]})
     location = await match(db_session, second_text=SECOND_TEXT)
@@ -171,4 +196,26 @@ async def test_no_second_text_when_tesseract_is_the_reader(
     final = await run_job(job["id"], ocr_adapters=["client", "tesseract"])
 
     assert final.stage == "review" and len(tesseract.calls) == 1
+    assert "second_text" not in (await stage_outputs(admin_client, job["id"]))["ocr"]
+
+
+class _Failing:
+    name = "tesseract"
+    version = "spy"
+
+    async def run(self, document: Any, image_path: Path) -> str:
+        raise OSError("no space left on device")
+
+
+async def test_a_second_reader_that_fails_leaves_the_stage_as_it_was(
+    admin_client: httpx.AsyncClient, receipts_dir: Path, transcriber, ocr_registry
+):
+    fixture = load_fixture("independent_minimal")
+    transcriber(fixture, _transcript(fixture.ocr_text))
+    ocr_registry["tesseract"] = _Failing
+    _, job = await upload_fixture(admin_client, fixture, client_ocr=False)
+
+    final = await run_job(job["id"], ocr_adapters=VISION)
+
+    assert final.stage == "review"
     assert "second_text" not in (await stage_outputs(admin_client, job["id"]))["ocr"]
